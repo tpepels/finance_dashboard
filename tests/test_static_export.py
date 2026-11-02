@@ -46,7 +46,7 @@ class StaticExportTests(unittest.TestCase):
                 [v["id"] for v in result["series"]],
                 ["bond.us.real_10y", "policy_rate.us.fed_upper"],
             )
-            self.assertEqual(len(result["unresolved"]), 3)
+            self.assertEqual(len(result["unresolved"]), 2)
             for path in root.rglob("*.json"):
                 output = path.read_text()
                 self.assertNotIn("TOP_SECRET_SHOULD_NOT_LEAK", output)

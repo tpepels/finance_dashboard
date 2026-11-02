@@ -355,19 +355,19 @@
     },
     {
       "id": "credit.world.private_gdp_gap",
-      "name": "Cross-country credit-to-GDP gap",
+      "name": "GDP-weighted international private credit-to-GDP gap (43 BIS economies)",
       "theme": "credit_recession",
-      "status": "unresolved",
-      "provider": "BIS",
-      "source_key": null,
-      "source_url": "https://data.bis.org/topics/CREDIT_GAP",
-      "geography": "WORLD",
-      "frequency": null,
-      "unit": null,
-      "measurement": "Credit-to-GDP gap using BIS methodology",
-      "revision_policy": "not_established",
-      "rights": "unknown",
-      "notes": "Exact per-country SDMX series key to be mapped"
+      "status": "mapped",
+      "provider": "BIS_WORLD_WEIGHTED",
+      "source_key": "GAP/43_COUNTRIES_PRIOR_YEAR_GDP_80PCT",
+      "source_url": "https://data.bis.org/topics/CREDIT_GAPS",
+      "geography": "BIS_43_COUNTRY_COVERAGE",
+      "frequency": "Q",
+      "unit": "percentage_points",
+      "measurement": "GDP-weighted average of 43 country BIS private-nonfinancial credit-to-GDP gaps (actual minus one-sided HP trend) with prior-year nominal USD World Bank GDP weights. Excludes euro-area aggregate; published only when reporting countries comprise at least 80% of world GDP.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Derived international credit-cycle composite, NOT a BIS-published world credit-gap series and NOT one global credit/GDP ratio passed through a global HP filter. Based on 43 independent economies excluding euro-area aggregate XM; observed 2024 GDP coverage 89.77%, 2025 89.72%. Nominal USD GDP from World Bank WDI NY.GDP.MKTP.CD and BIS WS_CREDIT_GAP Q.<country>.P.A.C; lag annual GDP by one year; refuse quarters with <80% world GDP coverage. A separate coverage series exposes coverage per quarter."
     },
     {
       "id": "gold.usd.spot",
@@ -528,6 +528,22 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "Genuine index net total-return levels. Not ACWI ETF price or vendor-adjusted close. MSCI public API history since 2000; prices may have holiday carry-forwards; no invented interpolation."
+    },
+    {
+      "id": "credit.world.private_gdp_gap_coverage",
+      "name": "GDP coverage of 43-economy BIS credit-gap composite",
+      "theme": "credit_recession",
+      "status": "mapped",
+      "provider": "BIS_WORLD_WEIGHTED",
+      "source_key": "COVERAGE/43_COUNTRIES_PRIOR_YEAR_GDP_80PCT",
+      "source_url": "https://data.bis.org/topics/CREDIT_GAPS",
+      "geography": "BIS_43_COUNTRY_COVERAGE",
+      "frequency": "Q",
+      "unit": "percent",
+      "measurement": "Share of world nominal USD GDP in countries with a published quarterly BIS private credit gap; country GDP weights from previous calendar year. 80% threshold applied.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "This is a coverage diagnostic, not a credit-gap reading; never substitute it for worldwide total credit/GDP. Euro-area aggregate XM excluded to prevent duplication."
     }
   ]
 }

@@ -18,6 +18,8 @@ import httpx
 
 from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES, _dimension_code, ACCEPT
 from .catalog import load_documents
+from .world_credit import (BIS_COMPOSITE_URL, WORLD_GDP_URL,
+    parse_bis_national_credit_gaps, parse_wdi_gdp_all, country_weighted_bis_gap)
 from .remaining_sources import (
     BEA_Q_URL, MSCI_LEVELS_URL, MSCI_ACWI_INDEX_CODE,
     parse_bea_q1, parse_msci_acwi, gold_acwi_rolling_correlation,
@@ -36,7 +38,7 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED"))
 
 
 class SourceUnavailable(ProviderError):
@@ -572,6 +574,21 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "BIS_WORLD_WEIGHTED":
+            if key not in ("GAP/43_COUNTRIES_PRIOR_YEAR_GDP_80PCT",
+                           "COVERAGE/43_COUNTRIES_PRIOR_YEAR_GDP_80PCT"):
+                raise SourceUnavailable("Unrecognized BIS country-gap global methodology")
+            bis_params = {"startPeriod":f"{max(1960, start.year-1)}-Q1"} if start else {}
+            bis = self._get(BIS_COMPOSITE_URL, params=bis_params,
+                            headers={"Accept": ACCEPT})
+            countries = parse_bis_national_credit_gaps(bis.json())
+            gdp_params={"format":"json", "per_page":20000,
+                        "date":f"{max(1960,start.year-1) if start else 1960}:{date.today().year}"}
+            gdp_response=self._get(WORLD_GDP_URL,params=gdp_params)
+            gdp_by_year, world_gdp = parse_wdi_gdp_all(gdp_response.json())
+            gap, coverage = country_weighted_bis_gap(countries,gdp_by_year,world_gdp,start=start)
+            values = gap if key.startswith("GAP/") else coverage
+            return FetchedSeries(series_id, BIS_COMPOSITE_URL, None, values)
         if provider == "ILO_LABOUR_PRODUCTIVITY_RATIO":
             if key != "UN_SDG_SL_EMP_GTOTL_WORLD_100_OVER_SHARE":
                 raise SourceUnavailable("Unknown global productivity/pay methodology")

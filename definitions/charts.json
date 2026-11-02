@@ -187,6 +187,30 @@
       "display_mode": "raw",
       "rationale": "Trace variation in the trailing historical 36-month gold-global-equity return relationship using an actual NETR benchmark.",
       "caveats": "World Bank gold monthly mean and monthly mean MSCI ACWI NETR USD index levels; Pearson on consecutive monthly arithmetic returns. Different from the existing GLD/VT ETF proxy."
+    },
+    {
+      "id": "world_bis_credit_cycle_composite",
+      "theme": "credit_recession",
+      "title": "GDP-weighted international private-credit cycle (43 BIS economies)",
+      "status": "mapped",
+      "series_ids": [
+        "credit.world.private_gdp_gap"
+      ],
+      "display_mode": "raw",
+      "rationale": "Compare country credit-to-GDP deviations using prior-year nominal GDP weights to reflect global credit-cycle exposure.",
+      "caveats": "Derived GDP-weighted average of national BIS one-sided HP-filter gaps; not an official world/BIS aggregate. Up to 43 economies; threshold >=80% of world GDP; use companion coverage chart."
+    },
+    {
+      "id": "world_bis_credit_cycle_gdp_coverage",
+      "theme": "credit_recession",
+      "title": "GDP coverage of the international private-credit composite",
+      "status": "mapped",
+      "series_ids": [
+        "credit.world.private_gdp_gap_coverage"
+      ],
+      "display_mode": "raw",
+      "rationale": "Expose quarterly world GDP share represented by economies contributing to the GDP-weighted credit gap.",
+      "caveats": "Prior calendar-year USD GDP denominator; 80% inclusion threshold. Covered economies and weights vary over time; values below threshold omitted."
     }
   ]
 }
