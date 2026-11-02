@@ -82,7 +82,7 @@ class RouterTests(unittest.TestCase):
 
     def test_imf_transport(self):
         def handler(request):
-            self.assertIn("/GGXWDG_NGDP/WEOWORLD", str(request.url))
+            self.assertTrue(str(request.url).endswith("/GGXWDG_NGDP"))
             return httpx.Response(200, json={
                 "values": {"GGXWDG_NGDP": {"WEOWORLD": {"2020": 97.1}}}
             })

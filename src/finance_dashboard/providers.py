@@ -252,7 +252,7 @@ class ProviderRouter:
             return FetchedSeries(series_id, str(response.request.url), None, observations)
         if provider == "IMF_DATAMAPPER":
             region, identifier = key.split("/", 1)
-            url = f"{IMF_MAPPER_ROOT}/{identifier}/{region}"
+            url = f"{IMF_MAPPER_ROOT}/{identifier}"
             response = self._get(url)
             observations = parse_imf_mapper(response.json(), region, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
