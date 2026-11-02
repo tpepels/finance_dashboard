@@ -62,3 +62,7 @@ The frontend's full user controls are implemented. [Latest short frontend CI run
 **Not yet verified:** a completed public Pages deployment and graphical interaction against a real browser with every backend/source combination. The [Phase 3 issue](https://github.com/tpepels/finance_dashboard/issues/2) remains open until full user-facing acceptance is confirmed. The full source explorer works in local private mode; the public version will necessarily show only the five cleared datasets until further distribution rights are established.
 
 Phase 4 is intentionally excluded: portfolio analytics, trading indicators, alerts, risk scores, auth, external chart scripting and extra data providers.
+
+## One-container home-server deployment
+
+A consolidated, verified deployment is available in [HOME_SERVER_DOCKER.md](HOME_SERVER_DOCKER.md): one multi-stage [Dockerfile.standalone](../Dockerfile.standalone) bundles the built React site, existing FastAPI routes, one internal background refresh thread and a persistent SQLite (WAL) database. Add just [one service](home-server-finance-service.yml) to your existing media-server Compose; the original PostgreSQL multi-container stack is not required. [Docker UI/API/migration/SQLite restart smoke passed](https://github.com/tpepels/finance_dashboard/actions/runs/41513402528). The optional market feed is disabled by default to keep a macro-first dashboard, enabled through FINANCE_INCLUDE_MARKETS=1. This is an additional deployment mode, not a new analytics backend and not a publicly licensed chart website.
