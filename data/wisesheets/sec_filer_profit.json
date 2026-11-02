@@ -190,7 +190,7 @@
   ],
   "schema_version": 1,
   "source": "Wisesheets SEC EDGAR XBRL, ECB FX, World Bank GDP",
-  "source_snapshot_at_utc": "2026-11-02T16:40:43.632446+00:00",
+  "source_snapshot_at_utc": "2026-11-02T19:55:17.798006+00:00",
   "source_urls": [
     "https://www.wisesheets.io/api/docs",
     "https://data.ecb.europa.eu/data/datasets/EXR",
