@@ -5,6 +5,7 @@ import unittest
 
 from finance_dashboard.remaining_sources import (
     DerivedDataError, parse_bea_q1, parse_msci_acwi, gold_acwi_rolling_correlation,
+    global_output_to_labour_income_ratio,
 )
 from finance_dashboard.providers import ProviderRouter
 from unittest.mock import patch
@@ -59,6 +60,16 @@ class RemainingExactSourceTests(unittest.TestCase):
         gold.pop(date(2021,5,1))
         incomplete=gold_acwi_rolling_correlation(gold,acwi,window=36)
         self.assertLess(len(incomplete),len(results))
+
+    def test_world_labour_hourly_productivity_pay_identity(self):
+        share={date(2022,1,1):Decimal("50"),
+               date(2023,1,1):Decimal("55")}
+        ratio=global_output_to_labour_income_ratio(share)
+        self.assertEqual(ratio[date(2022,1,1)],Decimal("2"))
+        self.assertEqual(ratio[date(2023,1,1)],Decimal(100)/Decimal(55))
+        self.assertLess(ratio[date(2023,1,1)],ratio[date(2022,1,1)])
+        with self.assertRaisesRegex(DerivedDataError,"Invalid global"):
+            global_output_to_labour_income_ratio({date(2023,1,1):Decimal(0)})
 
     def test_production_parser_mock_transport(self):
         def handler(req):

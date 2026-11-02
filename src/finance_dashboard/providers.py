@@ -21,6 +21,7 @@ from .catalog import load_documents
 from .remaining_sources import (
     BEA_Q_URL, MSCI_LEVELS_URL, MSCI_ACWI_INDEX_CODE,
     parse_bea_q1, parse_msci_acwi, gold_acwi_rolling_correlation,
+    global_output_to_labour_income_ratio,
 )
 
 FRED_ROOT = "https://api.stlouisfed.org/fred/series/observations"
@@ -35,7 +36,7 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO"))
 
 
 class SourceUnavailable(ProviderError):
@@ -571,6 +572,15 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "ILO_LABOUR_PRODUCTIVITY_RATIO":
+            if key != "UN_SDG_SL_EMP_GTOTL_WORLD_100_OVER_SHARE":
+                raise SourceUnavailable("Unknown global productivity/pay methodology")
+            labour_income = self.fetch("labour.world.income_share")
+            observations = global_output_to_labour_income_ratio(
+                labour_income.observations, start=start)
+            return FetchedSeries(series_id,
+                "https://unstats.un.org/SDGAPI/v1/sdg/Series/SL_EMP_GTOTL/GeoArea/1/DataSlice",
+                None, observations)
         if provider == "BEA_Q":
             if key != "BEA_2026_TABLE_E_Q1":
                 raise SourceUnavailable("Unknown BEA Q table/version")
@@ -602,7 +612,7 @@ class ProviderRouter:
             observations = gold_acwi_rolling_correlation(
                 gold.observations, index.observations, window=36, start=start)
             return FetchedSeries(series_id,
-                "https://data.worldbank.org/indicator;https://www.msci.com/indexes/index/892400/msci-acwi-index",
+                "https://www.msci.com/indexes/index/892400/msci-acwi-index",
                 None, observations)
         if provider == "CORGANO_SPOT":
             response = self._get(CORGANO_GOLD_LATEST)

@@ -186,3 +186,24 @@ def gold_acwi_rolling_correlation(
     if not out:
         raise DerivedDataError("Insufficient consecutive months for gold/ACWI correlation")
     return dict(sorted((d,v) for d,v in out.items() if start is None or d>=start))
+
+
+def global_output_to_labour_income_ratio(
+    labour_share: dict[date, Decimal], *, start: date | None = None,
+) -> dict[date, Decimal]:
+    """Ratio (world GDP / total hours) / (world labour income / total hours).
+
+    The same hours denominator cancels; GDP/labour income = 100/ILO SDG
+    10.4.1 labour-income share percent. Labour income includes imputed
+    self-employment earnings. It is NOT an independently observed hourly
+    employee compensation series, and can be interpreted only with this scope.
+    """
+    result = {}
+    for day, share in labour_share.items():
+        if not share.is_finite() or share <= 0 or share > 100:
+            raise DerivedDataError("Invalid global ILO labour income share")
+        if start is None or day >= start:
+            result[day] = Decimal(100)/share
+    if not result:
+        raise DerivedDataError("No world productivity-to-labour-income ratios")
+    return dict(sorted(result.items()))
