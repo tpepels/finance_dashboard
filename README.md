@@ -11,7 +11,7 @@ A self-hosted global financial and macroeconomic research application. The appli
 | 3 — Dashboard | React, ECharts, source-traceable Fed/ECB/BOJ graph, time-range controls and exports | Not started |
 | 4 — Analysis | Derived macro indicators, valuation, labour/capital, concentration, portfolio and gold | Not started |
 
-Phase 2 does not include charts or a frontend. The data worker now includes BIS (3), FRED (3), ECB (1), World Bank (8), and IMF DataMapper (1) official source mappings. FRED requires a personal API key; the remaining unresolved indicators are clearly blocked. Unresolved indicators are **not presented as available data**. See [coverage](docs/DATA_COVERAGE.md) for actual source availability and limits.
+Phase 2 does not include charts or a frontend. The data worker now includes BIS (3), FRED (3), ECB (1), World Bank (8), IMF DataMapper (1), Shiller (1), and UN SDG/ILO labour share (1) official source mappings. FRED requires a personal API key; the remaining unresolved indicators are clearly blocked. Unresolved indicators are **not presented as available data**. See [coverage](docs/DATA_COVERAGE.md) for actual source availability and limits.
 
 ## Quick start (Docker Compose)
 

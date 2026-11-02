@@ -17,6 +17,7 @@ SAMPLES = (
     "valuation.domestic_cap_gdp.jp",
     "fiscal.world.public_debt",
     "valuation.us.cape",
+    "labour.world.income_share",
 )
 
 

@@ -24,8 +24,9 @@ FRED_CSV_ROOT = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 ECB_ROOT = "https://data-api.ecb.europa.eu/service/data"
 WORLD_BANK_ROOT = "https://api.worldbank.org/v2"
 SHILLER_HOME = "https://shillerdata.com/"
+UN_SDG_ROOT = "https://unstats.un.org/SDGAPI/v1/sdg/Series"
 IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG"))
 
 
 class SourceUnavailable(ProviderError):
@@ -109,6 +110,29 @@ def parse_ecb_csv(csv_text: str, key: str, frequency: str) -> dict[date, Decimal
     if not output:
         raise ProviderError("ECB response contains no usable observations")
     return output
+
+
+def parse_un_sdg(payload: Any, series_code: str, area_code: str,
+                 start: date | None = None) -> dict[date, Decimal]:
+    """UNSD official ILO-custodied global labour share; only unbroken annual global slice."""
+    if not isinstance(payload, dict):
+        raise ProviderError("UN SDG response malformed")
+    if payload.get("series") != series_code or str(payload.get("geoAreaCode")) != area_code:
+        raise ProviderError("UN SDG returned a different series or geography")
+    rows = payload.get("dimensions")
+    if not isinstance(rows, list):
+        raise ProviderError("UN SDG missing observation dimensions")
+    out: dict[date, Decimal] = {}
+    for row in rows:
+        if row.get("Reporting Type") != "G" or row.get("Age") != "ALLAGE":
+            continue
+        day = _date(str(row.get("timePeriodStart")), "A")
+        if day.year > date.today().year or start and day < start:
+            continue
+        _put(out, day, _value(row.get("value")))
+    if not out:
+        raise ProviderError("UN SDG no usable world labour share observations")
+    return out
 
 
 def parse_imf_mapper(payload: Any, region: str, indicator: str, start: date | None = None) -> dict[date, Decimal]:
@@ -296,6 +320,12 @@ class ProviderRouter:
                 params["date"] = f"{start.year}:{date.today().year}"
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
+            return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "UN_SDG":
+            code, area = key.split("/", 1)
+            url = f"{UN_SDG_ROOT}/{code}/GeoArea/{area}/DataSlice"
+            response = self._get(url)
+            observations = parse_un_sdg(response.json(), code, area, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
         if provider == "SHILLER":
             import xlrd

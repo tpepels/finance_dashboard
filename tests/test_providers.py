@@ -7,7 +7,7 @@ import httpx
 
 from finance_dashboard.providers import (
     ProviderRouter, ProviderError, SourceUnavailable,
-    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet,
+    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg,
 )
 
 
@@ -59,6 +59,17 @@ class ParserTests(unittest.TestCase):
             self.assertEqual(values[date(2025, 1, 1)], Decimal("91.234"))
             self.assertNotIn(date(2026, 1, 1), values)
 
+    def test_un_global_labour_share(self):
+        raw = {"series": "SL_EMP_GTOTL", "geoAreaCode": 1, "dimensions": [
+            {"value": "53.9", "timePeriodStart": "2004", "Age": "ALLAGE", "Reporting Type": "G"},
+            {"value": "53.1", "timePeriodStart": "2005", "Age": "ALLAGE", "Reporting Type": "G"},
+            {"value": "44", "timePeriodStart": "2005", "Age": "ALLAGE", "Reporting Type": "N"}
+        ]}
+        values = parse_un_sdg(raw, "SL_EMP_GTOTL", "1")
+        self.assertEqual(values[date(2004, 1, 1)], Decimal("53.9"))
+        self.assertEqual(values[date(2005, 1, 1)], Decimal("53.1"))
+        self.assertEqual(len(values), 2)
+
     def test_shiller_month_dates_and_cape(self):
         class Sheet:
             ncols = 3
@@ -95,6 +106,21 @@ class ParserTests(unittest.TestCase):
 class RouterTests(unittest.TestCase):
     def router(self, handler):
         return ProviderRouter(httpx.Client(transport=httpx.MockTransport(handler)))
+
+    def test_un_transport(self):
+        def handler(request):
+            self.assertIn("SL_EMP_GTOTL/GeoArea/1/DataSlice", str(request.url))
+            return httpx.Response(200, json={
+                "series": "SL_EMP_GTOTL", "geoAreaCode": 1,
+                "dimensions": [{"value": "53.9", "timePeriodStart": "2004",
+                                "Age": "ALLAGE", "Reporting Type": "G"}],
+            })
+        router = self.router(handler)
+        try:
+            got = router.fetch("labour.world.income_share")
+            self.assertEqual(got.observations[date(2004, 1, 1)], Decimal("53.9"))
+        finally:
+            router.close()
 
     def test_imf_transport(self):
         def handler(request):
@@ -168,10 +194,10 @@ class RouterTests(unittest.TestCase):
     def test_unresolved_never_fabricated(self):
         router = self.router(lambda request: self.fail("No network for unresolved"))
         try:
-            self.assertEqual(len(router.supported_ids()), 17)
+            self.assertEqual(len(router.supported_ids()), 18)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("valuation.global.cape")
-            self.assertEqual(len(router.blocked()), 9)
+            self.assertEqual(len(router.blocked()), 8)
         finally:
             router.close()
 
