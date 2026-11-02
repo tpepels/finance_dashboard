@@ -1,6 +1,6 @@
 # Scheduled static-data pipeline for GitHub Pages
 
-The backend generates source-traceable JSON from **every mapped catalog series** without a permanent FastAPI or PostgreSQL instance.
+The backend generates source-traceable JSON from **every mapped catalog series** (currently 36 macro/index sources) without a permanent FastAPI or PostgreSQL instance.
 
 ## FRED authentication
 
@@ -50,7 +50,7 @@ The 24 instrument and three currency feeds are documented in [MARKET_DATA.md](MA
 
 ### Exact new index/valuation inputs
 
-The exported macro catalog now includes official BEA Q1 (replacement-cost Tobin Q), MSCI ACWI NETR USD index levels, a 36-month monthly-average gold/index return correlation, the ILO world GDP/labour-income hourly ratio identity and a 43-economy GDP-weighted BIS credit-gap composite with a separate world-GDP coverage series. The original historical MSCI top-ten constituent concentration and world listed-company earnings/GDP remain unresolved and explicitly listed in the JSON manifest.
+The exported macro catalog now includes official BEA Q1 (replacement-cost Tobin Q), MSCI ACWI NETR USD index levels, a 36-month monthly-average gold/index return correlation, the ILO world GDP/labour-income hourly ratio identity and a 43-economy GDP-weighted BIS credit-gap composite with a separate world-GDP coverage series. The original historical MSCI top-ten constituent concentration and world listed-company earnings/GDP remain unresolved and explicitly listed in the JSON manifest. Four world valuation macro sources are now mapped and exported: 51 WDI world capitalization USD observations, 51 matched WDI capitalization/world-GDP ratios, and 11 public Siblis global-index trailing P/E plus 11 same-universe earnings-yield snapshots. The [complete 36-series static export passed](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778). Siblis remains proprietary and must not automatically be published to Pages.
 
 ### Wisesheets supplementary earnings
 
