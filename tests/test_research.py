@@ -41,6 +41,43 @@ class ResearchIndicatorTests(unittest.TestCase):
                 self.assertEqual(len({known[s]["unit"] for s in spec["sources"]}), 1)
                 self.assertEqual(len({known[s]["frequency"] for s in spec["sources"]}), 1)
 
+    def test_distribution_complement_is_not_misrepresented_as_profits(self):
+        spec = BY_ID["us_income_distribution"]
+        sid = spec["sources"][0]
+        output = compile_indicator(spec,
+            {sid: [(date(2022,1,1), D("0.59")), (date(2023,1,1), D("0.57"))]},
+            {sid: meta(sid, unit="ratio", frequency="A")})
+        self.assertEqual([p["value"] for p in output["series"][0]["points"]], ["59.00", "57.00"])
+        self.assertEqual([p["value"] for p in output["series"][1]["points"]], ["41.00", "43.00"])
+        self.assertEqual(output["headline"]["value"], "57.00")
+        self.assertIn("NOT corporate profit", output["caveat"])
+
+    def test_real_gdp_growth_differential_uses_only_common_year(self):
+        spec = BY_ID["compare_growth_differential"]
+        a,b = spec["sources"]
+        output = compile_indicator(spec,
+            {a: [(date(2023,1,1), D("2.7")), (date(2024,1,1), D("2.9"))],
+             b: [(date(2023,1,1), D("0.5")), (date(2025,1,1), D("1.3"))]},
+            {sid: meta(sid, unit="percent", frequency="A") for sid in spec["sources"]})
+        self.assertEqual(output["series"][0]["points"], [
+            {"date": "2023-01-01", "value": "2.2"}])
+        self.assertEqual(output["headline"]["unit"], "percentage_points")
+        self.assertEqual(output["headline"]["value"], "2.2")
+
+    def test_credit_dispersion_needs_all_three_identical_quarters(self):
+        spec = BY_ID["compare_credit_dispersion"]
+        us, ea, jp = spec["sources"]
+        output = compile_indicator(spec,
+            {us: [(date(2024,1,1), D("1.2")), (date(2024,4,1), D("1.5"))],
+             ea: [(date(2024,1,1), D("-3.5")), (date(2024,4,1), D("-1.0"))],
+             jp: [(date(2024,1,1), D("2.0"))]},
+            {sid: meta(sid, unit="percentage_points", frequency="Q")
+             for sid in spec["sources"]})
+        self.assertEqual(output["series"][0]["points"], [
+            {"date": "2024-01-01", "value": "5.5"}])
+        self.assertEqual(output["headline"]["value"], "5.5")
+        self.assertEqual(len(output["series"][0]["points"]), 1)
+
     def test_quarterly_productivity_pay_uses_exact_sector_and_output_deflator(self):
         spec = BY_ID["us_productivity_pay"]
         a, b, c = spec["sources"]
