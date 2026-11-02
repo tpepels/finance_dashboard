@@ -28,9 +28,14 @@ export function chartOptions(
 ): EChartsOption {
   const active = plotted.filter(s => s.observations.length);
   const palette = ['#174875', '#bc6b32', '#2f7168', '#90609c', '#73833b', '#a84b56'];
-  const markLines = showEvents ? HISTORY_EVENTS.map(event => ({
-    xAxis: event.date, label: { show: false },
-  })) : [];
+  const recorded = active.flatMap(item => item.observations.map(point => point.date)).sort();
+  const earliest = recorded.at(0);
+  const latest = recorded.at(-1);
+  // Out-of-window markers must not stretch an economic chart's time axis.
+  const markLines = showEvents
+    ? HISTORY_EVENTS.filter(event => earliest && latest && event.date >= earliest && event.date <= latest)
+        .map(event => ({ xAxis: event.date, label: { show: false } }))
+    : [];
   return {
     animation: false,
     color: palette,
