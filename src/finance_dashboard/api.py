@@ -13,6 +13,9 @@ from .providers import ProviderRouter, PROVIDER_CODES
 from .catalog import load_documents, validate
 from .database import IngestionRun, make_engine
 from .service import current_observations
+from .market import instruments
+from .market_service import MarketIngestionService
+from .database import MarketIngestionRun, FxIngestionRun
 
 
 class SeriesQuery(BaseModel):
@@ -27,6 +30,21 @@ class SeriesQuery(BaseModel):
             raise ValueError("Duplicate series IDs")
         if self.start and self.end and self.start > self.end:
             raise ValueError("start must be on or before end")
+        return self
+
+
+class MarketQuery(BaseModel):
+    instrument_ids: list[str] = Field(min_length=1, max_length=48)
+    start: date | None = None
+    end: date | None = None
+    snapshot_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def check(self):
+        if len(self.instrument_ids) != len(set(self.instrument_ids)):
+            raise ValueError("Duplicate instrument IDs")
+        if self.start and self.end and self.start > self.end:
+            raise ValueError("start must be before end")
         return self
 
 
@@ -56,6 +74,74 @@ def create_app(engine=None) -> FastAPI:
         if item is None:
             raise HTTPException(404, "Unknown series")
         return item
+
+    market_registry = instruments()
+
+    @app.get("/api/markets")
+    def markets():
+        return {"items": [market_registry[sid] for sid in sorted(market_registry)],
+                "count": len(market_registry),
+                "return_methods": [
+                    "raw_price_index",
+                    "vendor_adjusted_index",
+                    "cash_dividend_reinvested_index",
+                    "eur_adjusted_index",
+                ]}
+
+    @app.get("/api/markets/{instrument_id:path}")
+    def market_instrument(instrument_id: str):
+        definition = market_registry.get(instrument_id)
+        if definition is None:
+            raise HTTPException(404, "Unknown market instrument")
+        return definition
+
+    @app.post("/api/market/query")
+    def market_query(request: MarketQuery):
+        unknown = [sid for sid in request.instrument_ids if sid not in market_registry]
+        if unknown:
+            raise HTTPException(404, f"Unknown market instruments: {unknown}")
+        service = MarketIngestionService(db, registry=market_registry)
+        result = [
+            service.read_performance(sid, start=request.start, end=request.end,
+                                     snapshot_at=request.snapshot_at)
+            for sid in request.instrument_ids
+        ]
+        if any(len(item.get("observations", [])) > 100000 for item in result):
+            raise HTTPException(413, "One market series exceeds 100000 observations")
+        return {"series": result, "base_currency": "EUR",
+                "snapshot_kind": "app_first_seen_not_source_publication_vintage",
+                "calendar_alignment": "Native trading dates; no invented market closures or FX"}
+
+    @app.get("/api/market/status")
+    def market_status():
+        out = []
+        with Session(db) as session:
+            for sid in sorted(market_registry):
+                last = session.scalars(
+                    select(MarketIngestionRun).where(MarketIngestionRun.instrument_id == sid)
+                    .order_by(MarketIngestionRun.started_at.desc(), MarketIngestionRun.id.desc())
+                    .limit(1)).first()
+                success = session.scalars(
+                    select(MarketIngestionRun).where(
+                        MarketIngestionRun.instrument_id == sid, MarketIngestionRun.status == "success")
+                    .order_by(MarketIngestionRun.started_at.desc()).limit(1)).first()
+                out.append({
+                    "id": sid, "symbol": market_registry[sid]["source_symbol"],
+                    "status": last.status if last else "never_ingested",
+                    "last_success": success.ended_at.isoformat() if success and success.ended_at else None,
+                    "received": last.observations_received if last else 0,
+                    "error": last.error if last else None,
+                })
+            fx_items = []
+            for currency in ("USD", "GBP", "CHF"):
+                last = session.scalars(
+                    select(FxIngestionRun).where(FxIngestionRun.currency == currency)
+                    .order_by(FxIngestionRun.started_at.desc()).limit(1)).first()
+                fx_items.append({"currency": currency,
+                                 "status": last.status if last else "never_ingested",
+                                 "received": last.observations_received if last else 0})
+        return {"instruments": out, "fx": fx_items}
+
 
     @app.get("/api/charts")
     def charts():
