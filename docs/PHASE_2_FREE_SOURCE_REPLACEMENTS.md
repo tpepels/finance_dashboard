@@ -1,6 +1,6 @@
 # Phase 2 source substitution decision — 2026-11-02
 
-**Authority:** Owner approved replacing two original historical indicators with publicly accessible macroeconomic measurements after confirming that there is no academic or institutional data access and declining to depend on paid datasets. Original measures are preserved in [the superseded-definitions archive](../definitions/superseded_series.json).
+**Authority:** Owner approved replacing the two inaccessible original indicators with free macroeconomic indicators after confirming no institutional access. The initial proposed corporate geographic scope was **OECD**; the implemented Eurostat **EU27** fallback is a narrower, separately disclosed implementation deviation, not automatically approved as equivalent. Original measures are preserved in [the superseded-definitions archive](../definitions/superseded_series.json).
 
 ## Replacement 1: MSCI ACWI index concentration
 
@@ -31,6 +31,10 @@ The replacement source registrations, three mapped charts and source-specific pa
 - Negative tests for wrong index, missing evidence, wrong sector, currency, direction, geography, nonfinite measurements, duplicate periods and unmatched years.
 - Full reproducible acceptance requires **39/39 mapped catalogue series**, **zero unresolved active definitions**, PostgreSQL/API readback, complete static export with rights metadata, and verified new-source observation counts.
 
-**Completion boundary:** Once integrated full acceptance is green, the user-approved Phase 2 data-layer implementation for these **redefined, explicitly limited** indicators is technically complete. This does **not** claim the unavailable original global listed-company earnings/GDP, a complete MSCI monthly index-constituent history, or full OECD geographic coverage.
+**Completion boundary:** Once integrated full acceptance is green, the **implemented 39-series technical data pipeline** is verified. The OECD-vs-EU27 geographic scope deviation remains **open for owner acceptance or further OECD/UN source work**; do not claim that the proposed wider corporate geographic coverage is complete. This does **not** claim the unavailable original global listed-company earnings/GDP, a complete MSCI monthly index-constituent history, or full OECD geographic coverage.
 
 This decision amends the previously locked [feature](PHASE_2_FEATURE_CONTRACT.md), [architecture](PHASE_2_ARCHITECTURE_CONTRACT.md) and [implementation](PHASE_2_IMPLEMENTATION_CONTRACT.md) contracts. Reverting to the original definitions requires a new, explicit source/scope decision.
+
+## Geographic acceptance qualification (separate from technical CI)
+
+The owner's `Ok, go ahead` followed a proposal for **OECD** corporate operating surplus/GDP as the initial geographical measure, with wider UN coverage only when defensible. The working **EU27 Eurostat** series was selected during implementation only after the OECD SDMX service was inaccessible from GitHub CI. **This narrower EU27 geography was not separately approved by the owner as equivalent to the proposed OECD scope.** The 39/39 mapped-source CI acceptance proves the **implemented EU27 data path**; it does not discharge the separate question of extending to OECD or UN-supported multi-economy geography. Do not call the originally proposed OECD corporate-data coverage implemented or fully close all Phase 2 scope requirements on the basis of a green CI run. The original unavailable global listed-company earnings/GDP and full historical monthly MSCI concentration series remain correctly archived as superseded, not reconstructed.
