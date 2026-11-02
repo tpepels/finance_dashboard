@@ -474,7 +474,7 @@ def main() -> int:
     destination = Path(args.output)
     destination.parent.mkdir(parents=True, exist_ok=True)
     tmp = destination.with_suffix(".tmp")
-    tmp.write_text(json.dumps(result, sort_keys=True, indent=2) + "\\n",
+    tmp.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n",
                    encoding="utf-8")
     tmp.replace(destination)
     print("WISESHEETS_US_SEC_EARNINGS=PASS "

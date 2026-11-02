@@ -112,7 +112,7 @@ class WiseTests(unittest.TestCase):
                 return {date(2024,1,1):D("1.2")}
             def world_gdp(self):return {2024:D(100)}
         result=collect_wisesheets(FakeClient(),min_issuers=1)
-        self.assertEqual(result["observations"][0]["sec_filer_income_as_pct_of_world_gdp"],"5")
+        self.assertEqual(D(result["observations"][0]["sec_filer_income_as_pct_of_world_gdp"]),D(5))
         self.assertIn("NOT a global", result["description"])
 
 
