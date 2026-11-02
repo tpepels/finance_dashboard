@@ -1,31 +1,75 @@
 # Global Capital Monitor
 
-A self-hosted research dashboard for global equities, macroeconomic conditions, labour/capital distribution, credit risk, and gold.
+A self-hosted global financial and macroeconomic research application. The application traces original economic observations back to their sources, retaining every value it sees rather than overwriting revised history.
 
-**Current state: Phase 1 — source catalog and data contracts.** There is no running dashboard or live ingestion yet. No synthetic observations or prices are included.
+## Delivery phases
 
-## Phased delivery
-
-| Phase | Scope | Exit condition |
+| Phase | Scope | Status |
 |---|---|---|
-| **1 — Data contracts and feasibility** | Architecture, source registry, exact source identifiers when confirmed, chart specifications, validation, evidence and licensing flags | All mapped series have identifiers and provenance; missing/unlicensed datasets are surfaced; contract tests pass |
-| **2 — Reliable data pipeline** | BIS/ECB/FRED/World Bank adapters, immutable publication-vintage history, PostgreSQL, refresh worker and read-only FastAPI | Official observations are fetched, reconciled, stored, refreshed and queried; failures preserve prior data |
-| **3 — Interactive research dashboard** | React, Apache ECharts, thematic views, combined charts, time-range controls, normalization and CSV export | Verified data flows from official source to chart and can be traced back to source |
-| **4 — Macro analytics and portfolio exposure** | Derived indicators, broader labour/profit/concentration coverage, portfolio/gold analytics, monitoring and hardening | Each analytical claim has a reproducible methodology and no unsupported global proxies |
+| 1 — Contracts | Source catalog, methodology, chart definitions, provenance and data-quality rules | Complete |
+| **2 — Backend** | BIS SDMX adapter, PostgreSQL observations/revisions, background updates, FastAPI queries and offline tests | **Implemented; live provider/production DB validation pending** |
+| 3 — Dashboard | React, ECharts, source-traceable Fed/ECB/BOJ graph, time-range controls and exports | Not started |
+| 4 — Analysis | Derived macro indicators, valuation, labour/capital, concentration, portfolio and gold | Not started |
 
-Phase 1 intentionally distinguishes **documented source mappings** from **live-verified data**. Mapping confirmation does not mean API connectivity, usage rights or complete observation coverage have been validated.
+Phase 2 does not include charts or a frontend. Only **three** real-source BIS policy rates are ingested: US, euro area and Japan. All other catalog entries remain documented mappings or unresolved proposals and are **not presented as available data**.
 
-## Run Phase 1 checks
+## Quick start (Docker Compose)
 
-Requires Python 3.11+; no external dependencies.
+Requires Docker Compose and Internet access for the scheduled worker.
 
-```bash
-PYTHONPATH=src python -m finance_dashboard validate
-PYTHONPATH=src python -m finance_dashboard report
-PYTHONPATH=src python -m finance_dashboard list --theme monetary_policy
-PYTHONPATH=src python -m unittest discover -s tests -v
-```
+\`\`\`bash
+cp .env.example .env
+# Set a long random POSTGRES_PASSWORD; percent-encode URL-special characters.
+docker compose up --build -d
+docker compose logs --tail=30 worker
+curl http://127.0.0.1:8080/api/data-status
+\`\`\`
 
-The canonical files are `definitions/series.json` and `definitions/charts.json`. The validator checks provenance, unique IDs, supported units and frequencies, source-mapping claims, chart references and comparability rules.
+Services: \`postgres\` (private volume), one-shot \`migrate\` (Alembic), \`app\` (port 8080 on loopback only) and \`worker\` (daily refresh, initial full backfill). Worker fetches immediately at boot and every 24 hours. All historical data comes directly from the BIS SDMX API. Failed updates do not discard old observations.
 
-See [architecture](docs/ARCHITECTURE.md), [source policy](docs/DATA_POLICY.md) and [Phase 1 audit](docs/PHASE_1_AUDIT.md).
+\`\`\`bash
+# Manual full refresh, with an existing Compose stack:
+docker compose exec worker python -m finance_dashboard.worker --once --full
+
+# Catalog and source checks:
+docker compose exec app python -m finance_dashboard validate
+docker compose exec app python -m finance_dashboard report
+
+# Query three daily policy rates:
+curl -sS http://127.0.0.1:8080/api/series
+curl -sS http://127.0.0.1:8080/api/data-status
+curl -sS -X POST http://127.0.0.1:8080/api/query \
+  -H 'Content-Type: application/json' \
+  -d '{"series_ids":["policy_rate.us.bis","policy_rate.ea.bis","policy_rate.jp.bis"],"start":"2025-01-01"}'
+\`\`\`
+
+The query API returns decimal values as **strings** to avoid silent float rounding. A snapshot timestamp means *first observed by this app*, **not** a historical BIS release vintage. The app has no authentication and is bound to loopback; do not expose it directly to the public Internet. Place behind a secured reverse proxy if remote access is necessary.
+
+### Local development
+
+Requires Python 3.11+ and a running PostgreSQL server for persistent ingestion.
+
+\`\`\`bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -e .
+python -m unittest discover -s tests -v
+python -m finance_dashboard validate
+export DATABASE_URL='postgresql+psycopg://capital_monitor:password@localhost/capital_monitor'
+alembic upgrade head
+python -m finance_dashboard.worker --once
+uvicorn finance_dashboard.api:app_factory --factory --port 8080
+\`\`\`
+
+For provider documentation, compliance and known limitations see [architecture](docs/ARCHITECTURE.md), [source policy](docs/DATA_POLICY.md), [Phase 1 audit](docs/PHASE_1_AUDIT.md), and [Phase 2 implementation](docs/PHASE_2.md).
+
+## API
+
+- \`GET /api/health\`: database readiness
+- \`GET /api/series\`: catalog, including not-yet-ingested series
+- \`GET /api/series/{id}\`: canonical definition and original source
+- \`GET /api/charts\`: chart definitions, **not** rendered charts
+- \`POST /api/query\`: up to 12 BIS series IDs, start/end dates and optional \`snapshot_at\`
+- \`GET /api/data-status\`: latest attempt, latest success and error details
+
+API documentation: \`/docs\`. There are no public write endpoints or automatic asset recommendations.

@@ -1,19 +1,26 @@
-name: Contract checks
+name: Fast backend checks
 
 on:
   push:
   pull_request:
 
 jobs:
-  catalog:
+  backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate catalog
-        run: PYTHONPATH=src python -m finance_dashboard validate
-      - name: Run offline contract tests
-        run: PYTHONPATH=src python -m unittest discover -s tests -v
+          cache: pip
+      - name: Install backend
+        run: pip install -e .
+      - name: Validate definitions
+        run: python -m finance_dashboard validate
+      - name: Offline contracts and pipeline tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify migration against SQLite
+        run: |
+          DATABASE_URL=sqlite+pysqlite:////tmp/capital-monitor-migration-test.db alembic upgrade head
+          DATABASE_URL=sqlite+pysqlite:////tmp/capital-monitor-migration-test.db alembic current
