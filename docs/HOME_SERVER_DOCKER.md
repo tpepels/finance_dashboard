@@ -28,6 +28,10 @@ docker compose ps finance-dashboard
 
 Open `http://media-server:5052/` or `http://192.168.1.200:5052/` (only if that remains the server's current LAN address). `GET /api/health` validates the SQLite connection. On first startup, the app starts immediately and the background refresh imports historical observations one source at a time. Empty-source states are displayed until ingestion succeeds. Check `/api/data-status` for each source's last success/failure. Failure of one external provider leaves previous readings available.
 
+## Verified single-container acceptance
+
+The [single-container Docker smoke run](https://github.com/tpepels/finance_dashboard/actions/runs/41513402528) passed on 2026-11-02. The workflow built a multi-stage image with React/TypeScript and Python, booted one container as the host UID/GID with a persistent SQLite bind mount, applied Alembic migrations, served the built frontend at `/`, served all 42 macro definitions and 24 chart definitions over the existing `/api` routes, and successfully restarted against the same SQLite file. Focused tests also verify SQLite WAL and a single background refresh thread; the smoke run disables external network ingestion so it completes quickly. Full external source ingestion was independently validated in Phase 2.
+
 ## State and refresh
 
 - **SQLite**: persistent files `/srv/finance-dashboard/finance.sqlite3` and journal/WAL siblings. Auto-migrated with Alembic at every startup. Back up the directory (including WAL/SHM; for consistent hot backup use SQLite backup API).
