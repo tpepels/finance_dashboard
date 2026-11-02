@@ -177,3 +177,7 @@ The main presentation now integrates accounting composition, independently calcu
 The calibration plot compares actual per-bin **mean forecast probabilities** from the underlying scored cases against per-bin realized outcome shares. This is not a prospective probability guarantee; overlapping recession horizons reduce effective independent-event samples and are separately audited. Missing vintage models do not render calibration data.
 
 These changes address visual/comparative functionality; original authentic-data acceptance remains open wherever the required historical sources have not been imported and independently verified.
+
+### UI test scope
+
+The local Docker build includes short Vitest assertions for: multi-geometry economic charts, dated same-source country ranking, stacked GDP residuals, a separate productivity/pay gap, actual risk/return comparison using matched currency histories, paired-return correlation matrix, and withheld model calibration on absent ALFRED source vintages. A separate mocked ready-data test checks that the chart shows observed frequency alongside bin-average predicted probability; it is not interpreted as empirical model validation.

@@ -26,7 +26,7 @@ export function geometryFor(id: string, frequency: string, count: number): Analy
 }
 
 function baseline(series: PlottedSeries[]): Record<string, any> {
-  return chartOptions(series, 'raw', false, true) as Record<string, any>;
+  return chartOptions(series, 'raw', false, true) as unknown as Record<string, any>;
 }
 
 function zeroReference() {

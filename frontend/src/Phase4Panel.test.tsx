@@ -101,6 +101,8 @@ describe('Phase 4 integrated local research tools', () => {
     expect(screen.getByRole('img', { name: /Drawdowns EUR/ })).toBeTruthy();
     expect(screen.getByText(/Hypothetical monthly-rebalanced portfolio/)).toBeTruthy();
     expect(screen.getByText(/Fund country exposures cannot be inferred/)).toBeTruthy();
+    expect(screen.getByRole('img', { name: /Investor currency risk return comparison/ })).toBeTruthy();
+    expect(screen.getByRole('table', { name: /Monthly return correlation matrix/ })).toBeTruthy();
     await waitFor(() => expect(fetcher.mock.calls.some(([path]) =>
       path === '/api/market/compare')).toBe(true));
   });
