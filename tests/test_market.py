@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi.testclient import TestClient
+from finance_dashboard.api import create_app
 from sqlalchemy import create_engine, select, func
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -185,6 +186,29 @@ class MarketPersistenceTests(unittest.TestCase):
         with Session(self.engine) as session:
             self.assertEqual(len(current_market_prices(session,"vwce.de")),3)
             self.assertEqual(session.scalar(select(func.count()).select_from(MarketPriceVersion)),4)
+
+    def test_market_api_registry_query_and_status(self):
+        self.service.refresh_instrument("vwce.de")
+        with TestClient(create_app(self.engine)) as client:
+            registry=client.get("/api/markets")
+            self.assertEqual(registry.status_code,200)
+            self.assertEqual(registry.json()["count"],24)
+            self.assertEqual(client.get("/api/markets/vwce.de").json()["isin"],"IE00BK5BQT80")
+            self.assertEqual(client.get("/api/markets/does-not-exist").status_code,404)
+            query=client.post("/api/market/query",json={
+                "instrument_ids":["vwce.de"],"start":"2025-01-03"})
+            self.assertEqual(query.status_code,200)
+            result=query.json()["series"][0]
+            self.assertEqual(result["status"],"ready")
+            self.assertEqual(result["isin"],"IE00BK5BQT80")
+            self.assertEqual(len(result["observations"]),2)
+            self.assertEqual(len(result["corporate_actions"]),2)
+            self.assertEqual(client.post("/api/market/query",json={
+                "instrument_ids":["unknown"]}).status_code,404)
+            status=client.get("/api/market/status")
+            self.assertEqual(status.status_code,200)
+            row=next(x for x in status.json()["instruments"] if x["id"]=="vwce.de")
+            self.assertEqual(row["status"],"success")
 
     def test_fx_version_history(self):
         self.assertEqual(self.service.refresh_fx("USD")["versions_added"],2)
