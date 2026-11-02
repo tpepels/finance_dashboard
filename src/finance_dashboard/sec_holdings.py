@@ -7,7 +7,7 @@ availability begins on filing acceptance, NOT at the month of holdings.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import argparse
@@ -59,27 +59,30 @@ def _decimal(value: str | None) -> Decimal | None:
     return number if number.is_finite() else None
 
 
-def accepted_at_from_sec_submissions(meta: dict, accession: str) -> datetime:
-    """Verify accession against the exact official SEC submissions JSON rows."""
+def conservative_eligibility_from_sec_submissions(meta: dict, accession: str) -> tuple[datetime, str]:
+    """SEC filing DATE is dependable; acceptance JSON timezone may not be.
+
+    SEC does NOT guarantee a publication timestamp. We delay source eligibility
+    by two calendar dates beyond the official filing date to avoid treating an
+    acceptance timestamp as exact public visibility. This is a conservative
+    research rule, NOT proof of the actual dissemination instant.
+    """
     filings = meta.get("filings", {}).get("recent", {})
     numbers = filings.get("accessionNumber", [])
     forms = filings.get("form", [])
     accepted = filings.get("acceptanceDateTime", [])
-    if not (len(numbers) == len(forms) == len(accepted)):
-        raise HoldingsError("Incomplete SEC submissions metadata columns")
+    filed = filings.get("filingDate", [])
+    if not (len(numbers) == len(forms) == len(accepted) == len(filed)):
+        raise HoldingsError("Incomplete official SEC submissions metadata columns")
     hits = [i for i, number in enumerate(numbers) if number == accession]
     if len(hits) != 1 or forms[hits[0]] not in NPORT_FORMS:
         raise HoldingsError("Accession not uniquely confirmed as NPORT-P/A by SEC metadata")
-    raw = accepted[hits[0]]
-    if not isinstance(raw, str):
-        raise HoldingsError("SEC acceptance timestamp absent")
-    # SEC submission API uses US Eastern-local wall clock; do not silently
-    # call an unzoned timestamp UTC. Retain the exact SEC time as source text.
-    timestamp = datetime.fromisoformat(raw.replace("Z","+00:00"))
-    if timestamp.tzinfo is None:
-        from zoneinfo import ZoneInfo
-        timestamp = timestamp.replace(tzinfo=ZoneInfo("America/New_York"))
-    return timestamp.astimezone(timezone.utc)
+    if not isinstance(accepted[hits[0]], str) or not accepted[hits[0]]:
+        raise HoldingsError("SEC raw acceptance audit timestamp absent")
+    filed_day = date.fromisoformat(filed[hits[0]])
+    eligible = datetime.combine(filed_day + timedelta(days=2),
+                                datetime.min.time(), tzinfo=timezone.utc)
+    return eligible, accepted[hits[0]]
 
 
 def parse_nport(xml: bytes, *, instrument_id: str, accession: str,
@@ -104,7 +107,7 @@ def parse_nport(xml: bytes, *, instrument_id: str, accession: str,
         raise HoldingsError("XML too large or malformed")
     if b"<!DOCTYPE" in xml.upper() or b"<!ENTITY" in xml.upper():
         raise HoldingsError("External entity or DTD is not supported")
-    accepted_at = accepted_at_from_sec_submissions(sec_metadata,accession)
+    eligible_at, raw_acceptance = conservative_eligibility_from_sec_submissions(sec_metadata,accession)
     root = ET.fromstring(xml)
     if _name(root) != "edgarSubmission":
         raise HoldingsError("Not SEC EDGAR N-PORT XML")
@@ -122,7 +125,7 @@ def parse_nport(xml: bytes, *, instrument_id: str, accession: str,
     if not raw_period:
         raise HoldingsError("Missing reported holdings period")
     period = date.fromisoformat(raw_period.replace("/","-"))
-    if period > accepted_at.date():
+    if period > eligible_at.date():
         raise HoldingsError("Holding observation cannot follow public filing date")
     investments = _section(root,"invstOrSecs")
     if investments is None:
@@ -166,9 +169,13 @@ def parse_nport(xml: bytes, *, instrument_id: str, accession: str,
         "instrument_id":instrument_id,"fund_name":item["name"],
         "sec_cik":cik,"sec_series_id":series_id,"accession":accession,
         "source_url":filing_url, "holdings_date":period.isoformat(),
-        "available_at_utc":accepted_at.isoformat(),
+        "eligible_after_buffer_utc":eligible_at.isoformat(),
+        "available_at_utc":eligible_at.isoformat(),
+        "sec_acceptance_timestamp_unverified_timezone":raw_acceptance,
+        "availability_time_quality":"conservative_filing_date_plus_two_days_not_actual_public_dissemination",
         "reporting_semantics":("N-PORT fund holdings as of holdings_date; public "
-                               "availability begins at SEC filing acceptance date."),
+                               "actual public dissemination time is NOT verified; eligibility "
+                               "uses official filingDate plus two calendar days."),
         "country_semantics":("N-PORT C.5.a issuer country of organization; NOT "
                              "confidential C.5.b ultimate risk/economic exposure. "
                              "Fund-of-funds is not recursively look-through."),
@@ -269,7 +276,7 @@ def main() -> None:
                      expected_series_id=args.series_id)
     path=store_snapshot(data,root=args.root)
     print(json.dumps({"stored":str(path),"holdings_date":data["holdings_date"],
-                      "publicly_available_from":data["available_at_utc"],
+                      "eligible_after_conservative_buffer":data["available_at_utc"],
                       "issuer_country_coverage_pct":data["classified_long_nav_percent"],
                       "complete":data["complete_share_of_nav"]},indent=2))
 
