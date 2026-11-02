@@ -43,7 +43,7 @@ afterEach(() => {
 
 describe('Wisesheets supplementary source is not a global company-profit estimate', () => {
   it('uses already collected server snapshot and displays reporting/FX coverage', async () => {
-    const fetched = vi.fn(async () => ({ ok: true, status: 200,
+    const fetched = vi.fn(async (_url: string) => ({ ok: true, status: 200,
       json: async () => response }));
     vi.stubGlobal('fetch', fetched);
     const user = userEvent.setup();
