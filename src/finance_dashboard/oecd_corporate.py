@@ -20,6 +20,10 @@ from typing import Any
 OECD_DATA_URL = ("https://sdmx.oecd.org/public/rest/data/"
                  "OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1")
 OECD_WDI_URL = "https://api.worldbank.org/v2/country/all/indicator/NY.GDP.MKTP.CD"
+OECD_WDI_LOCAL_GDP_URL = "https://api.worldbank.org/v2/country/all/indicator/NY.GDP.MKTP.CN"
+# Only stable, explicitly matched LCU currency pairs with sector totals but
+# missing OECD product tax balance; no generalized mixed-currency fallback.
+LOCAL_GDP_FALLBACK = {"USA": "USD", "JPN": "JPY", "CAN": "CAD"}
 OECD_MEMBER_ISO3 = frozenset(
     "AUS AUT BEL CAN CHL COL CRI CZE DNK EST FIN FRA DEU GRC HUN ISL "
     "IRL ISR ITA JPN KOR LVA LTU LUX MEX NLD NZL NOR POL PRT SVK SVN "
@@ -106,6 +110,7 @@ def parse_oecd_annual_sector_csv(raw: str) -> dict[int, dict[str, dict[str, Deci
         if component != "net_product_taxes" and amount < 0:
             raise OecdSectorError("Negative corporate surplus or gross value added")
         target = data.setdefault(year, {}).setdefault(row["REF_AREA"], {})
+        target["currency"] = currency
         if component in target and target[component] != amount:
             raise OecdSectorError("Conflicting duplicate OECD accounting observations")
         target[component] = amount
@@ -115,14 +120,16 @@ def parse_oecd_annual_sector_csv(raw: str) -> dict[int, dict[str, dict[str, Deci
     return data
 
 
-def parse_oecd_gdp_weights(payload: Any) -> dict[int, dict[str, Decimal]]:
+def parse_oecd_gdp_weights(payload: Any, *, indicator: str = "NY.GDP.MKTP.CD") -> dict[int, dict[str, Decimal]]:
+    if indicator not in ("NY.GDP.MKTP.CD", "NY.GDP.MKTP.CN"):
+        raise OecdSectorError("Unsupported WDI GDP weight or local GDP indicator")
     if (not isinstance(payload, list) or len(payload) != 2
         or not isinstance(payload[0], dict) or payload[0].get("pages") != 1
         or not isinstance(payload[1], list)):
         raise OecdSectorError("Invalid or paginated WDI GDP response")
     data: dict[int, dict[str, Decimal]] = {}
     for row in payload[1]:
-        if row.get("indicator", {}).get("id") != "NY.GDP.MKTP.CD":
+        if row.get("indicator", {}).get("id") != indicator:
             raise OecdSectorError("World Bank GDP weights have wrong indicator")
         code = row.get("countryiso3code")
         if code not in OECD_MEMBER_ISO3 or row.get("value") is None:
@@ -147,6 +154,7 @@ def compute_oecd_corporate_surplus(
     corporate: dict[int, dict[str, dict[str, Decimal]]],
     nominal_gdp_usd: dict[int, dict[str, Decimal]],
     *,
+    nominal_gdp_lcu: dict[int, dict[str, Decimal]] | None = None,
     start: date | None = None,
     coverage_floor: Decimal = MIN_GDP_WEIGHT_COVERAGE,
 ) -> tuple[dict[date, Decimal], dict[date, Decimal], dict[date, Decimal]]:
@@ -154,7 +162,7 @@ def compute_oecd_corporate_surplus(
 
     Fixed 2026 OECD membership is applied retrospectively. Report only
     years with >=35/38 WDI GDP weights, >=29 contributing companies, and
-    >=80% OECD-known GDP weight coverage. Do not fill missing years.
+     >=80% OECD-known GDP weight coverage. Explicit WDI local-GDP fallback only for USD/JPY/CAD stable-currency countries when OECD product taxes are missing. Do not fill missing years.
     """
     shares, coverage, member_counts = {}, {}, {}
     for year in sorted(set(corporate) & set(nominal_gdp_usd)):
@@ -169,11 +177,23 @@ def compute_oecd_corporate_surplus(
             raise OecdSectorError("OECD WDI GDP weight denominator zero")
         eligible = []
         for country, components in corporate[year].items():
-            if country not in weights or not set(SECTOR_KEYS.values()).issubset(components):
+            if country not in weights or not {"nfc","fc","gva"}.issubset(components):
                 continue
             nfc = components["nfc"]
             fc = components["fc"]
-            gdp = components["gva"] + components["net_product_taxes"]
+            if "net_product_taxes" in components:
+                gdp = components["gva"] + components["net_product_taxes"]
+            elif (country in LOCAL_GDP_FALLBACK
+                  and components.get("currency") == LOCAL_GDP_FALLBACK[country]
+                  and nominal_gdp_lcu and country in nominal_gdp_lcu.get(year, {})):
+                # OECD sector GOS / WDI local-currency GDP for exactly USA,
+                # JPN and CAN, whose currency did not change over this period.
+                # Value in WDI LCU divided by 10^6 matches OECD unit multiplier 6.
+                gdp = nominal_gdp_lcu[year][country] / Decimal(1_000_000)
+                if not components["gva"] * Decimal("0.90") <= gdp <= components["gva"] * Decimal("1.35"):
+                    raise OecdSectorError("Incompatible OECD GVA vs WDI local GDP magnitude")
+            else:
+                continue
             if gdp <= 0:
                 raise OecdSectorError("Nonpositive OECD derived GDP denominator")
             national_ratio = (nfc + fc) / gdp
