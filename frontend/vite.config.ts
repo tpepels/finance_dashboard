@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 // One frontend; local read-only FastAPI proxy or source-validated static JSON.
 export default defineConfig({
   plugins: [react()],
-  base: process.env.GITHUB_PAGES === '1' ? '/finance_dashboard/' : '/',
+  base: '/',
   server: {
     host: '127.0.0.1',
     proxy: {
