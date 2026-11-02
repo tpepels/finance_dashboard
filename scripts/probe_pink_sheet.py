@@ -13,6 +13,9 @@ for name in wb.sheet_names:
     if "month" in name.lower() or "price" in name.lower():
         rows=wb.get_sheet_by_name(name).to_python()
         print("header sheets",name,"row_count",len(rows),flush=True)
+        for col,name in enumerate(rows[4]):
+            if "gold" in str(name).lower():
+                print("GOLD_COLUMN",col,"header",repr(name),"unit",repr(rows[5][col]),"example",repr(rows[-1][col]),flush=True)
         for i in list(range(min(8,len(rows)))) + list(range(max(8,len(rows)-2),len(rows))):
             row=rows[i]
             print("ROW",i,repr(row[:22]),flush=True)
