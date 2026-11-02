@@ -148,7 +148,11 @@ def parse_nport(xml: bytes, *, instrument_id: str, accession: str,
         if abs(pct) > Decimal("500") or abs(value) > Decimal("1e15"):
             raise HoldingsError("Implausible SEC investment value/percentage")
         payoff = (_find_first(security,"payoffProfile") or "").lower()
-        if pct < 0 or payoff not in ("long", "") or value < 0:
+        # SEC derivative market values are not equivalent to look-through
+        # underlying economic exposure; exclude them from issuer-country bars.
+        asset_cat = (_find_first(security,"assetCat") or "").upper()
+        derivative = asset_cat in {"DE", "DCR", "DFE", "DIR", "DO", "DCO"}
+        if derivative or pct < 0 or payoff not in ("long", "") or value < 0:
             excluded += 1
             continue
         total_long += pct
@@ -176,7 +180,9 @@ def parse_nport(xml: bytes, *, instrument_id: str, accession: str,
         "reporting_semantics":("N-PORT fund holdings as of holdings_date; public "
                                "actual public dissemination time is NOT verified; eligibility "
                                "uses official filingDate plus two calendar days."),
-        "country_semantics":("N-PORT C.5.a issuer country of organization; NOT "
+        "country_semantics":("N-PORT C.5.a issuer country of organization for non-derivative "
+                             "long investments; derivative market value/issuer does not "
+                             "identify the underlying country exposure. NOT "
                              "confidential C.5.b ultimate risk/economic exposure. "
                              "Fund-of-funds is not recursively look-through."),
         "positions_reported":positions,"positions_unclassified":missing,
