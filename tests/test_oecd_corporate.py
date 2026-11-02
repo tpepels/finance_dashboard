@@ -86,6 +86,22 @@ class OecdMacroParserTests(unittest.TestCase):
         self.assertEqual(values[2][date(2023,1,1)],Decimal(33))
         self.assertEqual(len(values[0]),1)
 
+    def test_north_american_currency_matched_wdi_local_gdp_fallback(self):
+        rows=input_rows()
+        for row in rows:
+            if row["REF_AREA"]=="CAN":
+                row["CURRENCY"]="CAD"
+        rows=[row for row in rows if not (row["REF_AREA"]=="CAN" and row["TRANSACTION"]=="D21X31")]
+        sector=parse_oecd_annual_sector_csv(csv_text(rows))
+        weight=parse_oecd_gdp_weights(wdi_payload())
+        local={2023:{"CAN":Decimal(100_000_000)}}
+        got=compute_oecd_corporate_surplus(sector,weight,nominal_gdp_lcu=local)
+        self.assertEqual(got[2][date(2023,1,1)],Decimal(33))
+        # Reject mismatched country source currency despite seemingly valid GDP number.
+        sector[2023]["CAN"]["currency"]="EUR"
+        no_fallback=compute_oecd_corporate_surplus(sector,weight,nominal_gdp_lcu=local)
+        self.assertEqual(no_fallback[2][date(2023,1,1)],Decimal(32))
+
     def test_rejects_future_wrong_currency_flow_units_duplicates(self):
         cases=[
           ("wrong flow",lambda rows: rows[0].update(DATAFLOW="OECD.FAKE")),
@@ -143,7 +159,12 @@ class OecdProviderTests(unittest.TestCase):
                 self.assertEqual(req.url.params["format"],"csvfile")
                 return httpx.Response(200,text=csv_text(input_rows()))
             self.assertEqual(req.url.params["format"],"json")
-            return httpx.Response(200,json=wdi_payload())
+            sample=wdi_payload()
+            if "NY.GDP.MKTP.CN" in str(req.url):
+                for entry in sample[1]:
+                    entry["indicator"]["id"]="NY.GDP.MKTP.CN"
+                    entry["value"]=100_000_000
+            return httpx.Response(200,json=sample)
         router=ProviderRouter(httpx.Client(transport=httpx.MockTransport(handle)))
         try:
             expected={
@@ -156,7 +177,7 @@ class OecdProviderTests(unittest.TestCase):
                 self.assertEqual(fetched.observations,{date(2023,1,1):value})
                 self.assertIn("sdmx.oecd.org",fetched.request_url)
                 self.assertIn("worldbank.org",fetched.request_url)
-            self.assertEqual(len(seen),6)
+            self.assertEqual(len(seen),9)
         finally:
             router.close()
 
