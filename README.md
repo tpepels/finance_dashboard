@@ -31,6 +31,10 @@ The frontend uses Vite's local `/api` proxy to `127.0.0.1:8080`; it does **not**
 
 **Pages:** [manual licence-filtered deployment workflow](.github/workflows/phase3-pages.yml) includes only source data with explicitly confirmed `cc_by_4_0` rights (currently **5 of 42**); all 37 restricted/review-required datasets are withheld from the public artifact. The entire macro explorer is available in local/private mode; the limited public site cannot show restricted Fed/ECB/BOJ data until data redistribution rights are cleared. No permanent Pages publication is claimed. The implementation and publication constraints are documented in [Phase 3](docs/PHASE_3.md).
 
+## Home-server installation: one additional container
+
+For your existing Plex/Pi-hole/Transmission/media-server Compose stack, use the [single-container finance service definition](docs/home-server-finance-service.yml) and [one-container deployment guide](docs/HOME_SERVER_DOCKER.md). The finance image contains the React UI + FastAPI + an automatic macro refresh thread + **persistent SQLite**; you do **not** need the repository's separate PostgreSQL, migration, app and worker containers. It uses host port **5052** with `/srv/finance-dashboard` as the persistent database folder. The [full Docker smoke acceptance passed](https://github.com/tpepels/finance_dashboard/actions/runs/41513402528) with actual API/UI responses, migration and volume-backed restart. This mode is local/LAN only; it does not grant public data-redistribution rights.
+
 ## Run locally
 
 Requires Docker Compose, a network connection, and a PostgreSQL password.
