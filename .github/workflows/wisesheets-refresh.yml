@@ -1,6 +1,12 @@
 name: Refresh SEC listed profits via Wisesheets
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/wisesheets-refresh.yml
+      - src/finance_dashboard/wisesheets.py
+      - scripts/validate_wisesheets_snapshot.py
   schedule:
     - cron: '20 7 3 * *'
 permissions:
