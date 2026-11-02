@@ -31,8 +31,8 @@ export function rawCompatible(selected: LoadedSeries[]): boolean {
 }
 
 export function compareCompatible(
-  candidate: { unit: string; frequency: string },
-  selected: { unit: string; frequency: string }[],
+  candidate: { id: string; unit: string; frequency: string },
+  selected: { id: string; unit: string; frequency: string }[],
   mode: ViewMode,
 ): boolean {
   // Visual normalization must not be used to justify comparisons between
