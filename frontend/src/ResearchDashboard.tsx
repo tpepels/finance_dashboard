@@ -126,6 +126,53 @@ function preparePlot(data: ResearchResult): PlottedSeries[] {
   });
 }
 
+/** Source-bounded findings; never combine ratios from different populations. */
+function ObservedFinding({ result }: { result: ResearchResult }) {
+  if (result.comparison?.ranked?.length) {
+    const highest = result.comparison.ranked[0];
+    const lowest = result.comparison.ranked[result.comparison.ranked.length - 1];
+    return <p className="research-finding">
+      <strong>Observed comparison · {result.comparison.date}.</strong>
+      {' '}{highest.name}: {readableValue(highest.value, result.comparison.unit)};
+      {' '}{lowest.name}: {readableValue(lowest.value, result.comparison.unit)}.
+      {' '}The matched-date difference is
+      {' '}{readableValue(result.comparison.range,
+        result.comparison.unit === 'percent' ? 'percentage_points' : result.comparison.unit)}.
+      {' '}Based on {result.comparison.common_date_count} fully matched observation dates in this window.
+    </p>;
+  }
+  if (result.id === 'us_productivity_pay' && result.headline) {
+    const gap = result.series.find(part => part.id === 'derived.us.productivity_pay_gap');
+    const trend = gap?.year_change;
+    return <p className="research-finding">
+      <strong>Calculated production-price comparison · {result.headline.date}.</strong>
+      {' '}The hourly output / deflated hourly pay ratio is
+      {' '}{readableValue(result.headline.value, 'percent')} relative to its 2017 baseline.
+      {trend && <> In the last observed year, that gap moved
+        {' '}{readableValue(trend.difference, 'percentage_points')}
+        {' '}between {trend.start} and {trend.end}.</>}
+      {' '}The figure uses matched BLS nonfarm-business quarters.
+    </p>;
+  }
+  const series = result.series[0];
+  const ctx = series?.historical_context;
+  if (ctx && series.latest) {
+    const distance = Number(ctx.latest_minus_median);
+    return <p className="research-finding">
+      <strong>Observed historical position · {series.latest.date}.</strong>
+      {' '}{readableValue(series.latest.value, series.unit)}
+      {' '}{distance > 0 ? 'is above' : distance < 0 ? 'is below' : 'equals'}
+      {' '}the {ctx.count}-observation median
+      {' '}({readableValue(ctx.median, series.unit)})
+      {distance !== 0 && <> by
+        {' '}{readableValue(Math.abs(distance),
+          series.unit === 'percent' ? 'percentage_points' : series.unit)}</>}.
+      {' '}Sample {ctx.first_date}–{ctx.last_date}; latest-rank percentile is descriptive, not a forecast.
+    </p>;
+  }
+  return null;
+}
+
 function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
   const root = useRef<HTMLElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -270,6 +317,7 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
         </small>
       </div>)}
     </div>}
+    {result?.status === 'ready' && <ObservedFinding result={result} />}
     <div className="research-interpretation">
       <p>{spec.reading}</p>
       <p className="research-caveat">{spec.caveat}</p>

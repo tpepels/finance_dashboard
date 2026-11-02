@@ -153,6 +153,60 @@ function StatRows({ stats }: { stats: Statistics }) {
   </dl>;
 }
 
+/** Same-period risk/return trade-off; no Sharpe ratio without a risk-free series. */
+function RiskReturnView({ comparison }: { comparison: Comparison }) {
+  const host = useRef<HTMLDivElement>(null);
+  const values = useMemo(() => [
+    ...comparison.instruments.map(asset => ({ ...asset, portfolio: false })),
+    ...(comparison.portfolio ? [{ ...comparison.portfolio, id: 'portfolio',
+      name: 'Monthly-rebalanced model portfolio', portfolio: true }] : []),
+  ].filter(asset => Number.isFinite(asset.annualized_return_pct)
+    && asset.annualized_return_pct !== null
+    && Number.isFinite(asset.annualized_volatility_pct)
+    && asset.annualized_volatility_pct !== null), [comparison]);
+  useEffect(() => {
+    if (!host.current || !values.length) return;
+    const chart = createChart(host.current);
+    chart.setOption({
+      animation: false,
+      grid: { top: 22, left: 62, right: 28, bottom: 52 },
+      xAxis: { type: 'value', min: 0, name: 'Annualized volatility (%)',
+        nameLocation: 'middle', nameGap: 31, splitLine: { lineStyle: { color: '#e9efeb' } } },
+      yAxis: { type: 'value', name: 'Annualized return (%)',
+        nameLocation: 'middle', nameGap: 45, splitLine: { lineStyle: { color: '#e9efeb' } } },
+      tooltip: { trigger: 'item', formatter: (item: any) =>
+        item.name + '<br/>Volatility: ' + item.value[0].toFixed(2) +
+        '%<br/>Annualized return: ' + item.value[1].toFixed(2) + '%' },
+      series: [{ type: 'scatter', symbolSize: 14,
+        label: { show: true, position: 'top', formatter: (item: any) => item.name,
+          fontSize: 10, color: '#4c6971' },
+        data: values.map(asset => ({
+          name: asset.name, value: [
+            Number(asset.annualized_volatility_pct),
+            Number(asset.annualized_return_pct)],
+          itemStyle: { color: asset.portfolio ? '#ae704b' : '#3a7b73' },
+        })),
+      }],
+    });
+    const observer = typeof ResizeObserver === 'undefined' ? null :
+      new ResizeObserver(() => chart.resize());
+    observer?.observe(host.current);
+    return () => { observer?.disconnect(); chart.dispose(); };
+  }, [values]);
+  if (!values.length) return <p className="p4-method">
+    A comparable risk–return plot requires at least twelve contiguous monthly returns for
+    each plotted instrument. There are no validated annualized statistics in this sample.
+  </p>;
+  return <section className="p4-chart p4-risk-return">
+    <h4>Same-window annualized return versus realized volatility</h4>
+    <div className="p4-plot" ref={host} role="img"
+      aria-label="Investor currency risk return comparison plotted by volatility and annualized return"/>
+    <p className="p4-method">All points use the same {comparison.currency} currency and
+      {comparison.aligned_months.length} recorded common months. Past returns are not forward forecasts.
+      The portfolio point assumes monthly rebalancing and omits trading costs.</p>
+  </section>;
+}
+
 function AssetComparison() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [catalogError, setCatalogError] = useState('');
@@ -282,6 +336,7 @@ function AssetComparison() {
         {' '}({comparison.aligned_months.length}).
         {comparison.excluded_common_months > 0 &&
           ' Disconnected older common months excluded: ' + comparison.excluded_common_months + '.'}</p>
+      <RiskReturnView comparison={comparison}/>
       <div className="p4-plots">
         <Phase4Plot assets={lines} currency={currency} metric="index_100"/>
         <Phase4Plot assets={lines} currency={currency} metric="drawdown_pct"/>

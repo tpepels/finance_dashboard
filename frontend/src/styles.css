@@ -388,3 +388,9 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .evidence-calibration h5 { font-size: 13px; color: #335d64; margin: 7px 0; }
 .evidence-calibration-plot { height: 270px; min-height: 270px; width: 100%; }
 .evidence-calibration p { font-size: 11px; line-height: 1.6; color: #74878a; }
+
+.research-finding { background: #f0f6f3; margin: 0 17px 13px; border-left: 3px solid #648f84; padding: 12px 14px; font-size: 11px; line-height: 1.6; color: #345e59; }
+.research-finding strong { color: #254e49; }
+.p4-risk-return { margin: 18px 0; }
+.p4-risk-return .p4-plot { height: 315px; }
+.p4-risk-return .p4-method { margin: 7px 12px; font-size: 11px; }
