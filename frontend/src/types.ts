@@ -64,5 +64,4 @@ export interface ChartSettings {
   range: RangePreset;
   from: string;
   to: string;
-  events: boolean;
 }
