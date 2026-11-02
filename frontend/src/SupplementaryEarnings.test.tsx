@@ -68,9 +68,7 @@ describe('Wisesheets supplementary source is not a global company-profit estimat
 
   it('surfaces missing collection rather than fabricating observed years', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 404 })));
-    const user = userEvent.setup();
-    render(<SupplementaryEarnings publicOnly={false} />);
-    await user.click(screen.getByRole('button', { name: /Show/ }));
+    render(<SupplementaryEarnings />);
     expect(await screen.findByText(/No verified Wisesheets annual earnings snapshot/)).toBeTruthy();
   });
 });
