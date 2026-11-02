@@ -283,3 +283,10 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
   .research-footer { flex-direction: column; gap: 9px; }
   .research-explorer-toggle { flex-direction: column; gap: 4px; }
 }
+
+.research-source-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 10px; border-top: 1px solid #ecf1ee; border-bottom: 1px solid #ecf1ee; padding: 11px 22px; margin: 1px 0 9px; }
+.research-source-reading { min-width: 0; display: grid; gap: 3px; }
+.research-source-reading > span { font-size: 10px; color: #789094; line-height: 1.4; }
+.research-source-reading > strong { font-size: 14px; font-variant-numeric: tabular-nums; color: #2d555d; font-weight: 700; }
+.research-source-reading > small { font-size: 10px; color: #84989a; line-height: 1.5; }
+.research-source-reading > small span { color: #55736f; }
