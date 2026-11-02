@@ -8,7 +8,7 @@ services:
     container_name: finance-dashboard
     user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "${FINANCE_PORT:-5052}:8080"
+      - "${FINANCE_BIND_HOST:-0.0.0.0}:${FINANCE_PORT:-5052}:8080"
     environment:
       TZ: ${TZ:-Europe/Lisbon}
       FRED_API_KEY: ${FRED_API_KEY:-}
