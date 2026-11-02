@@ -32,7 +32,7 @@ jobs:
       - name: Build and launch database, migrations and API
         run: docker compose up --build -d --wait postgres migrate app
       - name: Ingest actual BIS history into PostgreSQL
-        run: docker compose run --rm worker python -m finance_dashboard.worker --once --full
+        run: docker compose run --rm worker python -m finance_dashboard.worker --once --full --provider BIS
       - name: Verify stored observations via FastAPI
         run: python scripts/deployment_smoke.py
       - name: Log containers after failure

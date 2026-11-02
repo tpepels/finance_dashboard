@@ -7,7 +7,7 @@ republish data to GitHub Pages.
 | Provider / category | Coverage | Reason |
 |---|---|---|
 | BIS central bank policy rates | 3 mapped, live verified | SDMX 1.0 decoder and historical backfill |
-| FRED Fed corridor, US TIPS and Sahm Rule | 3 mapped, adapter | Public FRED chart CSV; optionally keyed FRED JSON API |
+| FRED Fed corridor, US TIPS and Sahm Rule | 3 mapped, adapter | FRED JSON API requires FRED_API_KEY; opt-in public CSV fallback is unreliable and unverified in CI |
 | ECB deposit facility | 1 mapped, adapter | Official ECB CSV format |
 | World Bank real GDP and listed-cap/GDP | 8 mapped, adapter | Indicators v2 JSON API, annual source periods |
 | IMF WEO international public debt | Unresolved | Exact October 2026 WEO dataflow/aggregate series, release vintage and distinction between actuals/projections require confirmation |

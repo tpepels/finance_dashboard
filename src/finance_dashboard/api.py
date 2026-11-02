@@ -102,7 +102,12 @@ def create_app(engine=None) -> FastAPI:
                     "series_id": sid,
                     "provider": by_id[sid]["provider"],
                     "mapped": sid in supported,
-                    "status": last.status if last else ("never_ingested" if sid in supported else "source_unresolved"),
+                    "status": last.status if last else (
+                        "source_unresolved" if sid not in supported
+                        else "credentials_required" if by_id[sid]["provider"] == "FRED"
+                          and not (environ.get("FRED_API_KEY") or environ.get("FRED_PUBLIC_CSV_FALLBACK") == "1")
+                        else "never_ingested"
+                    ),
                     "last_attempt": last.started_at.isoformat() if last else None,
                     "last_success": None,
                     "received": last.observations_received if last else 0,

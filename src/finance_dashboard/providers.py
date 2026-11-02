@@ -199,15 +199,17 @@ class ProviderRouter:
                     params["observation_start"] = start.isoformat()
                 response = self._get(FRED_ROOT, params=params)
                 observations = parse_fred_json(response.json(), item["frequency"])
-            else:
-                # Official public chart-data CSV, not FRED's keyed REST API.
-                # Use only where redistribution terms permit; record rights separately.
+            elif os.getenv("FRED_PUBLIC_CSV_FALLBACK") == "1":
+                # Explicit opt-in: public CSV can time out or rate-limit in CI.
                 params = {"id": identifier}
                 if start:
                     params["cosd"] = start.isoformat()
                 response = self._get(FRED_CSV_ROOT, params=params)
                 observations = parse_fred_csv(response.text, identifier, item["frequency"])
-            return FetchedSeries(series_id, str(response.request.url).split("&api_key=")[0], None, observations)
+            else:
+                raise SourceUnavailable("FRED_API_KEY required (optional public CSV fallback: FRED_PUBLIC_CSV_FALLBACK=1)")
+            # Always report a non-secret source URI, even for authenticated requests.
+            return FetchedSeries(series_id, f"https://fred.stlouisfed.org/series/{identifier}", None, observations)
         if provider == "ECB":
             if not key.startswith("FM."):
                 raise SourceUnavailable(f"Unsupported ECB dataset: {key}")

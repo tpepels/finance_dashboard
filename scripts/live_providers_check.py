@@ -10,13 +10,11 @@ import json
 from finance_dashboard.providers import ProviderRouter
 
 SAMPLES = (
-    "policy_rate.us.fed_upper",
-    "bond.us.real_10y",
-    "recession.us.sahm",
     "policy_rate.ea.ecb_dfr",
     "gdp.real_growth.us",
     "gdp.real_growth.world",
     "valuation.domestic_cap_gdp.us",
+    "valuation.domestic_cap_gdp.jp",
 )
 
 
@@ -35,7 +33,7 @@ def main() -> int:
             }))
     finally:
         router.close()
-    print("PHASE2_MULTISOURCE_LIVE=PASS")
+    print("PHASE2_NONFRED_LIVE=PASS (FRED requires configured API key)")
     return 0
 
 

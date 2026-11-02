@@ -17,7 +17,7 @@ from .service import IngestionService
 log = logging.getLogger(__name__)
 
 
-def refresh_all(engine, full: bool = False) -> int:
+def refresh_all(engine, full: bool = False, providers: set[str] | None = None) -> int:
     failures = 0
     client = ProviderRouter()
     try:
@@ -31,6 +31,8 @@ def refresh_all(engine, full: bool = False) -> int:
             try:
                 service = IngestionService(engine, client)
                 for series_id in client.supported_ids():
+                    if providers is not None and client.definitions[series_id]["provider"] not in providers:
+                        continue
                     try:
                         report = service.refresh(series_id, full=full)
                         log.info("refreshed: %s", json.dumps(report))
@@ -49,16 +51,19 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true", help="Perform one bounded refresh")
     parser.add_argument("--full", action="store_true", help="Refetch complete history for each series")
+    parser.add_argument("--provider", choices=["BIS", "FRED", "ECB", "WORLD_BANK"],
+                        action="append", help="Limit refresh to named provider (repeatable)")
     parser.add_argument("--interval-seconds", type=int, default=int(os.getenv("REFRESH_INTERVAL_SECONDS", "86400")))
     args = parser.parse_args()
     if args.interval_seconds < 3600:
         parser.error("interval must be at least 3600 seconds")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     engine = make_engine()
+    providers = set(args.provider) if args.provider else None
     if args.once:
-        return 1 if refresh_all(engine, full=args.full) else 0
+        return 1 if refresh_all(engine, full=args.full, providers=providers) else 0
     while True:
-        refresh_all(engine, full=args.full)
+        refresh_all(engine, full=args.full, providers=providers)
         # Independent from FastAPI; errors remain visible and retry next cycle.
         time.sleep(args.interval_seconds)
 

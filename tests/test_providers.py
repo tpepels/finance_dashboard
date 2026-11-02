@@ -2,6 +2,7 @@
 from datetime import date
 from decimal import Decimal
 import unittest
+from unittest.mock import patch
 import httpx
 
 from finance_dashboard.providers import (
@@ -89,10 +90,11 @@ class RouterTests(unittest.TestCase):
             )
         router = self.router(handler)
         try:
-            self.assertEqual(
-                router.fetch("bond.us.real_10y").observations,
-                {date(2026, 1, 1): Decimal("1.5")},
-            )
+            with patch.dict("os.environ", {"FRED_PUBLIC_CSV_FALLBACK": "1", "FRED_API_KEY": ""}):
+                self.assertEqual(
+                    router.fetch("bond.us.real_10y").observations,
+                    {date(2026, 1, 1): Decimal("1.5")},
+                )
         finally:
             router.close()
 
@@ -109,6 +111,15 @@ class RouterTests(unittest.TestCase):
                 router.fetch("policy_rate.ea.ecb_dfr").observations,
                 {date(2026, 1, 1): Decimal("2.0")},
             )
+        finally:
+            router.close()
+
+    def test_fred_without_credential_reports_blocker(self):
+        router = self.router(lambda request: self.fail("no FRED fetch without configuration"))
+        try:
+            with patch.dict("os.environ", {"FRED_API_KEY": "", "FRED_PUBLIC_CSV_FALLBACK": ""}):
+                with self.assertRaisesRegex(SourceUnavailable, "FRED_API_KEY required"):
+                    router.fetch("bond.us.real_10y")
         finally:
             router.close()
 
