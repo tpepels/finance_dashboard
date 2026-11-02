@@ -290,3 +290,5 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .research-source-reading > strong { font-size: 14px; font-variant-numeric: tabular-nums; color: #2d555d; font-weight: 700; }
 .research-source-reading > small { font-size: 10px; color: #84989a; line-height: 1.5; }
 .research-source-reading > small span { color: #55736f; }
+
+.research-relationship { color: #60777d; font-size: 12px; line-height: 1.65; max-width: 1120px; margin: 0 0 13px; }
