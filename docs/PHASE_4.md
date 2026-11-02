@@ -122,3 +122,16 @@ New focused local regression files:
 5. Probabilistic crisis forecasting, causally validated financial stress scores, issuer NAV reconciliation and transaction-cost-sensitive investment simulation require data/contracts and real validation beyond what has been implemented. No invented forecast or opaque number is exposed.
 
 The Phase 4 tracker remains **open** until the full agreed acceptance evidence is available.
+
+## Multinational labour-income-share measurements: same PWT, not a synthetic EU series
+
+Phase 4 now also uses the exact Penn World Table 11.0 **annual fractional compensation/GDP shares** for Japan, Germany, France and Italy, through 2023. It retains the already implemented US PWT series:
+
+- Japan: [LABSHPJPA156NRUG](https://fred.stlouisfed.org/series/LABSHPJPA156NRUG)
+- Germany: [LABSHPDEA156NRUG](https://fred.stlouisfed.org/series/LABSHPDEA156NRUG)
+- France: [LABSHPFRA156NRUG](https://fred.stlouisfed.org/series/LABSHPFRA156NRUG)
+- Italy: [LABSHPITA156NRUG](https://fred.stlouisfed.org/series/LABSHPITA156NRUG)
+- United States: [LABSHPUSA156NRUG](https://fred.stlouisfed.org/series/LABSHPUSA156NRUG)
+
+Each series is multiplied by 100 to display percent. The comparative view overlays all **five countries** on an identical PWT methodology and uses exact shared years to calculate any high-minus-low range. The European research page displays Germany, France and Italy **individually**; no fake EU27 total or unverified euro-area aggregate is synthesized. Japan's labour/non-labour GDP split uses one Japanese PWT denominator and labels the complement as **not corporate profits or Marxian surplus value**. These observations currently end in 2023, and revised historical PWT data are not genuine publication vintages.
+
