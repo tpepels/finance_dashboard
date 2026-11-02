@@ -142,3 +142,30 @@ Each series is multiplied by 100 to display percent. The comparative view overla
 The four previously unimplemented research areas now have actual local source/compute/API/UI contracts: **ALFRED dated observations and as-of revisions; exact SEC N-PORT fund filing/CIK/series issuer-country allocations; OECD 2025 IOT industry net-surplus accounting; and an expanding-window vintage-only US recession research model.** User-visible views show source methodology, exact missing inputs and appropriate restrictions rather than inventing outputs. The official SEC timestamp is **not** a guaranteed public dissemination instant; eligibility is conservatively delayed and marked approximate. Dated holdings for Irish UCITS are not provided by SEC, and OECD cross-country productive-capital stocks and published data still require independent reconciliation. Event-based model evaluation needs complete original ALFRED snapshots and adequate recession/non-recession cases. This phase remains open for real-data verification, historic look-through and external scientific validation.
 
 For exact commands, source references, methodological assumptions and acceptance rules, see [Phase 4 primary-source research workflows](PHASE_4_RESEARCH_SOURCES.md).
+
+## November 2026 continuation: source completeness and validation controls
+
+The following changes have been committed to `main` and have regression tests
+but **have not been executed in the production Docker environment**:
+
+- Two US ETF fund/series SEC identities are independently verified and embedded
+  in the SEC collector: VT (`0000857489`, `S000022482`) and BND
+  (`0000794105`, `S000002564`). The collector now caps attempts separately
+  from the requested number of *matching series* filings. Original country
+  allocations remain unavailable until live SEC collection and source review.
+- `python -m finance_dashboard.vintage --backfill` resumes a long ALFRED
+  as-of history in **at most 180** fresh API requests per invocation, reporting
+  the remaining date and count without fabricating gaps.
+- Recession model evaluation displays approximate positive-event clusters and a
+  deterministic nonoverlapping historical evaluation subset when enough
+  admissible events exist. Even a good Brier or AUC is not scientific
+  out-of-time validation.
+- OECD IOT normalized inputs can optionally include `gross_value_added` and
+  `net_taxes_on_production` to verify an internal current-price accounting
+  identity. The dashboard marks this coverage and explicitly warns that
+  operator-supplied CSV hashes do not authenticate the original OECD release.
+  Independent archive hashes, full row-level mapping and OECD STAN capital
+  stock consistency are still missing.
+
+**Acceptance remains open.** Do not display any of the uncollected source
+measurements as historical facts. See [the acquisition and audit commands](PHASE_4_RESEARCH_SOURCES.md).

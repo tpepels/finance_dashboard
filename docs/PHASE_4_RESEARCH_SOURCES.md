@@ -1,6 +1,6 @@
 # Phase 4 research data: actual historical releases, fund holdings and surplus accounts
 
-**Status: implementations committed, but no original ALFRED bulk vintages, verified SEC fund mappings, OECD 2025 component extracts or independent validation results were uploaded through this chat. These must remain missing in the dashboard until acquired.**
+**Status:** Independently confirmed SEC identities for VT and BND are bundled with their official N-PORT filing-index references. No original ALFRED historical backfill, SEC holdings ingestion, OECD source-account extraction or independently validated predictive results have been observed on the target server. Dataset-dependent results must remain unavailable until collection and auditing.
 
 The application remains **one** Docker service and stores data in its existing /data bind volume. All downloads run in a CLI or the one in-process background refresh; browsers never request arbitrary external URLs or send the FRED/SEC credentials.
 
@@ -21,8 +21,13 @@ docker compose exec finance-dashboard python -m finance_dashboard.vintage \
   --series T10Y3M --series SAHMREALTIME --series USREC \
   --start 2000-01-01 --end 2004-12-31
 
-# Continue 2005–2009, 2010–2014, 2015–2019, 2020–2024,
-# and 2025 through the latest fully completed month.
+# Continue 2005–2009, 2010–2014, 2015–2019, 2020–2024 as desired.
+# Or backfill the entire historical interval in resumable 180-request batches.
+# Re-run this identical command until missing_after_run is zero.
+docker compose exec finance-dashboard python -m finance_dashboard.vintage \
+  --backfill --max-requests 180 \
+  --series T10Y3M --series SAHMREALTIME --series USREC \
+  --start 2000-01-01 --end 2026-10-31
 ```
 
 Each run reuses cached observations and reports failures without leaking request URLs containing API keys. Daily in-process refresh captures the **last completed calendar month's as-of** snapshots automatically when `FINANCE_VINTAGE_REFRESH=1` and `FRED_API_KEY` is set; if no key exists it safely skips. This is not a backfill.
@@ -47,7 +52,12 @@ Original SEC N-PORT public filings provide fund series identity, reported portfo
 
 **Important SEC timing limitation:** the SEC says actual public dissemination may lag acceptance and does not publish a guaranteed visibility timestamp. `acceptanceDateTime` in historical submissions JSON may also contain inconsistent timezone formatting. Instead of falsely claiming an exact public timestamp, this importer uses **official filingDate + two calendar days** as a conservative **research-eligibility convention**; it is not verified actual dissemination time or a guarantee. The interface labels this uncertainty.
 
-Before collection, research the actual SEC registrant CIK and series ID for each US ETF, then create a local file `/data/holdings/sec_funds.json`, for example:
+Two US-ETF share classes are independently mapped to their original registered fund series in the default collector:
+
+- **VT**: CIK `0000857489`, fund series `S000022482`; [SEC NPORT-P filed 2026-09-28](https://www.sec.gov/Archives/edgar/data/857489/000085748926000275/0000857489-26-000275-index.htm).
+- **BND**: CIK `0000794105`, fund series `S000002564`; [SEC NPORT-P filed 2025-08-27](https://www.sec.gov/Archives/edgar/data/794105/000079410525000080/0000794105-25-000080-index.htm).
+
+For these two verified funds, no configuration file is needed. They do **not** have holdings values until SEC collection succeeds. Other US-registered ETFs require independently identified registrant and series IDs; Irish UCITS cannot use this importer. To explicitly override the built-in mappings, create `/data/holdings/sec_funds.json` containing your complete desired list, for example:
 
 ```json
 [
@@ -57,13 +67,13 @@ Before collection, research the actual SEC registrant CIK and series ID for each
 
 These are **placeholders**, not published mappings. Do not paste them as functional values. Use `SEC_USER_AGENT` with a **real organization/contact email**, as SEC requires declared bot identification; do not use invented contact details.
 
-Collect up to 12 source filings per configured fund in one bounded pass:
+Collect up to 12 **matching fund-series** filings per configured fund, while examining at most 60 candidate accession documents per registrant. The matching limit does not count filings belonging to other fund series:
 
 ```bash
 docker compose exec finance-dashboard python -m finance_dashboard.sec_holdings_sync --limit 12
 ```
 
-To collect later updates automatically (roughly monthly), set `FINANCE_SEC_HOLDINGS_REFRESH=1` in the **same** Compose service and supply `SEC_USER_AGENT`. It will not run without mappings and contact. Periodic updates avoid repeated downloads for 28 days after a completed collection. Historical full backfill depends on SEC archive coverage and matching fund IDs; annual/per-fund coverage is not assumed.
+To collect later updates automatically (roughly monthly), set `FINANCE_SEC_HOLDINGS_REFRESH=1` in the **same** Compose service and supply `SEC_USER_AGENT`. It will not run without a verified built-in or user-supplied mapping and real SEC contact. Periodic updates avoid repeated downloads for 28 days after a completed collection. Historical full backfill depends on SEC archive coverage and matching fund IDs; annual/per-fund coverage is not assumed.
 
 The API is `GET /api/holdings/vt?asof=2024-12-31`. The dashboard shows the original holdings period, conservative eligibility date, issuer-country weights and residual/unclassified percentages. It is **not** a verified revenue-by-country portfolio exposure.
 
@@ -79,8 +89,10 @@ Primary sources:
 `src/finance_dashboard/marx_accounts.py` has a strict, **operator-normalized** CSV ingestion contract. It validates: country/year/ISIC industry, identical current-currency units, source release and URL, unique industry rows, finite compensation/CFC/net surplus and optional independently documented self-employed compensation and net capital stock. The accepted columns are:
 
 ```text
-country,year,isic_section,employee_compensation,consumption_fixed_capital,net_operating_surplus,imputed_selfemployed_compensation,net_fixed_capital_stock,unit,currency,source_release,original_table,source_url,imputation_method,capital_stock_source
+country,year,isic_section,employee_compensation,consumption_fixed_capital,net_operating_surplus,imputed_selfemployed_compensation,net_fixed_capital_stock,gross_value_added,net_taxes_on_production,unit,currency,source_release,original_table,source_url,imputation_method,capital_stock_source
 ```
+
+The `gross_value_added` and `net_taxes_on_production` columns are optional but must both be present for an accounting-identity cross-check. When supplied, gross value added must reconcile to employee compensation + depreciation + net operating surplus + net taxes within a declared rounding tolerance (larger of 0.01 source units or 0.0001% of GVA). The dashboard explicitly states whether every included industry passed this arithmetic check. This test catches mapping mistakes but **does not independently authenticate the source archive**.
 
 Normalizing the OECD bulk file into this schema requires a transparent, audited mapping against the publisher's documentation. **The code does not automatically validate every row against the original OECD ZIP. A locally supplied CSV carrying the OECD URL is not independently certified OECD data.** Reproducible source-archive hashes and a formal mapping audit are required before calling a real-world result research-grade.
 
@@ -114,7 +126,7 @@ Pre-specified evaluation horizons are 6 and 12 months. At month-end origin `t`:
 3. Standardization is calculated on training samples only. Fixed L2 coefficient penalty is 1. No random hyperparameter tuning on test results.
 4. An evaluation outcome from the last dated USREC vintage is used only after the **entire future 6/12-month window is observed**. Right-censored predictions are excluded, never treated as safe/no recession.
 5. At least **60** historical training cases with sufficient event diversity and a separate retrospective test of at least **24 predictions / 5 positive / 12 negative outcomes** are required before Brier, expanding historical-prevalence baseline, AUC and calibration bins are displayed.
-6. Overlapping future windows violate test independence, and retrospective NBER event dating means **even a successful historical evaluation is not independently validated live forecast calibration**. The model does not claim a statistically significant crisis probability, economic causation or universality.
+6. Overlapping future windows violate test independence. The model now counts approximate event clusters and reports a deterministic, chronologically chosen, nonoverlapping subsample's Brier/AUC **only if the regular sample-size and outcome-diversity gates pass**. Those diagnostics reduce one source of dependence but are not independent recession episodes. Retrospective NBER event dating means **even a successful historical evaluation is not independently validated live forecast calibration**. The model does not claim a statistically significant crisis probability, economic causation or universality.
 
 The API is `GET /api/vintage/backtest?horizon_months=12` and the dashboard includes its status, source dates, sample counts and documented metrics. If the source cache cannot meet test requirements, it displays **insufficient_vintages** or **insufficient_holdout_events**, with no fictitious probabilities.
 
@@ -123,8 +135,8 @@ The API is `GET /api/vintage/backtest?horizon_months=12` and the dashboard inclu
 | Research obligation | Implemented | Still required for accepted real-world results |
 |---|---|---|
 | Genuine publication-vintage analysis | ALFRED source-specific collection/validation, read-only historic comparison, month-end capture | Fetch full historical ALFRED vintages locally and inspect actual release-by-release source parity |
-| Dated ETF holdings | Source-identity-checked SEC N-PORT XML importer, bounded official collector, as-of eligible snapshot query | Discover verified CIK/series mappings, execute collector and audit filings/coverage; issuer country is not full look-through |
-| Marxian surplus/profit accounting | OECD national IOT validated normalized-input engine; explicit industry and self-employment scenarios; capital-stock gate | Real OECD 2025 source extraction and row-level mapping audit, STAN capital stock reconciliation and methodological research review |
+| Dated ETF holdings | Source-identity-checked SEC N-PORT XML importer, bounded official collector, as-of eligible snapshot query | VT/BND source identities verified; collect original documents and audit as-of coverage, then verify remaining US ETF mappings; issuer country is not full look-through |
+| Marxian surplus/profit accounting | OECD normalized-input engine; optional gross-value-added accounting reconciliation; explicit industry and self-employment scenarios; capital-stock gate | Real OECD 2025 source extraction and row-level mapping audit, STAN capital stock reconciliation and methodological research review |
 | Validated predictive model | As-of training, true historical-label availability filter, deterministic walk-forward logistic model, Brier/AUC/calibration gates | Actual ALFRED backfill, enough independent event periods, uncertainty analysis, model comparison, out-of-time scientific replication and stability tests |
 
 No GitHub Actions are used. Python modules have focused tests inside the Docker build, but no successful server build or real provider dataset has been observed through this chat. The issue must stay **OPEN** until those tests and scientific requirements pass.
