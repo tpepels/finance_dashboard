@@ -135,3 +135,10 @@ Phase 4 now also uses the exact Penn World Table 11.0 **annual fractional compen
 
 Each series is multiplied by 100 to display percent. The comparative view overlays all **five countries** on an identical PWT methodology and uses exact shared years to calculate any high-minus-low range. The European research page displays Germany, France and Italy **individually**; no fake EU27 total or unverified euro-area aggregate is synthesized. Japan's labour/non-labour GDP split uses one Japanese PWT denominator and labels the complement as **not corporate profits or Marxian surplus value**. These observations currently end in 2023, and revised historical PWT data are not genuine publication vintages.
 
+
+
+## Historical-research extension (2026-11-02)
+
+The four previously unimplemented research areas now have actual local source/compute/API/UI contracts: **ALFRED dated observations and as-of revisions; exact SEC N-PORT fund filing/CIK/series issuer-country allocations; OECD 2025 IOT industry net-surplus accounting; and an expanding-window vintage-only US recession research model.** User-visible views show source methodology, exact missing inputs and appropriate restrictions rather than inventing outputs. The official SEC timestamp is **not** a guaranteed public dissemination instant; eligibility is conservatively delayed and marked approximate. Dated holdings for Irish UCITS are not provided by SEC, and OECD cross-country productive-capital stocks and published data still require independent reconciliation. Event-based model evaluation needs complete original ALFRED snapshots and adequate recession/non-recession cases. This phase remains open for real-data verification, historic look-through and external scientific validation.
+
+For exact commands, source references, methodological assumptions and acceptance rules, see [Phase 4 primary-source research workflows](PHASE_4_RESEARCH_SOURCES.md).
