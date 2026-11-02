@@ -42,7 +42,7 @@ const regions = [
   { id: 'compare', title: 'Compare regions', explanation: 'Same source methodology' },
 ];
 
-const fetchMock = vi.fn(async (input: string) => {
+const fetchMock = vi.fn(async (input: string): Promise<{ ok: boolean; status?: number; json?: () => Promise<unknown> }> => {
   const path = String(input);
   if (path === '/api/research') return {
     ok: true, json: async () => ({

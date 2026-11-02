@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { chartOptions, createChart, numberLabel } from './viz';
+import { createChart, numberLabel } from './viz';
+import { analyticalOptions, geometryFor } from './researchViz';
 import type { PlottedSeries, SeriesDefinition } from './types';
 import { NBER_SHADE_CAPTION } from './periods';
 
@@ -25,6 +26,9 @@ interface ResearchSeries {
   year_change?: {
     start: string; end: string; difference: string; unit: string;
   } | null;
+  historical_context?: { count: number; first_date: string; last_date: string;
+    minimum: string; median: string; maximum: string; latest_midrank_pct: string;
+    latest_minus_median: string } | null;
 }
 interface ResearchResult extends IndicatorDef {
   status: 'ready' | 'no_data';
@@ -32,6 +36,8 @@ interface ResearchResult extends IndicatorDef {
   provenance: SourceEvidence[];
   series: ResearchSeries[];
   method: string;
+  comparison?: { date: string; common_date_count: number; unit: string; range: string;
+    ranked: { id: string; name: string; value: string }[] } | null;
 }
 
 const GROUPS = [
@@ -123,6 +129,7 @@ function preparePlot(data: ResearchResult): PlottedSeries[] {
 function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
   const root = useRef<HTMLElement>(null);
   const host = useRef<HTMLDivElement>(null);
+  const secondaryHost = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [result, setResult] = useState<ResearchResult | null>(null);
   const [error, setError] = useState('');
@@ -160,22 +167,35 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
   }, [visible, spec.id, start]);
 
   const plotted = useMemo(() => result ? preparePlot(result) : [], [result]);
-  const options = useMemo(() => chartOptions(plotted, 'raw', false, true), [plotted]);
+  const geometry = geometryFor(spec.id, plotted[0]?.definition.frequency ?? 'A', plotted.length);
   const hasPoints = plotted.some(series => series.observations.length);
+  const comparable = geometry === 'country-bars' && Boolean(result?.comparison);
+  const options = useMemo(() => result
+    ? analyticalOptions(result, plotted, geometry, 'main') : null, [result, plotted, geometry]);
+  const detailOptions = useMemo(() => result && (
+    geometry === 'productivity' || comparable)
+    ? analyticalOptions(result, plotted, geometry, geometry === 'productivity' ? 'secondary' : 'history')
+    : null, [result, plotted, geometry, comparable]);
   useEffect(() => {
-    if (!host.current || !hasPoints) return;
+    if (!host.current || !hasPoints || !options) return;
     const element = host.current;
     const chart = createChart(element);
     chart.setOption(options, true);
     const observer = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(() => chart.resize())
-      : null;
+      ? new ResizeObserver(() => chart.resize()) : null;
     observer?.observe(element);
-    return () => {
-      observer?.disconnect();
-      chart.dispose();
-    };
+    return () => { observer?.disconnect(); chart.dispose(); };
   }, [options, hasPoints]);
+  useEffect(() => {
+    if (!secondaryHost.current || !hasPoints || !detailOptions) return;
+    const element = secondaryHost.current;
+    const chart = createChart(element);
+    chart.setOption(detailOptions, true);
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => chart.resize()) : null;
+    observer?.observe(element);
+    return () => { observer?.disconnect(); chart.dispose(); };
+  }, [detailOptions, hasPoints]);
 
   const sources = result?.provenance ?? [];
   return <article className="research-card" ref={root} id={'research-' + spec.id}>
@@ -198,7 +218,45 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
       {hasPoints && <div ref={host} className="research-plot" role="img"
         aria-label={'Measured economic graph: ' + spec.title} />}
     </div>
+    {result && comparable && <p className="research-measure-note">
+      Country ranking at the exact shared source date {result.comparison?.date};
+      {' '}{result.comparison?.common_date_count} fully matched dates in this selected window.
+    </p>}
+    {result && geometry === 'country-bars' && !result.comparison && hasPoints &&
+      <p className="research-measure-note">No common observation date across all sources;
+        only original histories can be displayed.</p>}
+    {detailOptions && hasPoints && <section className="research-drilldown">
+      <h4>{geometry === 'productivity'
+        ? 'Calculated productivity / pay ratio gap · percent relative to 2017'
+        : 'Underlying historical country comparison'}</h4>
+      <div ref={secondaryHost} className="research-secondary-plot" role="img"
+        aria-label={geometry === 'productivity' ? 'Historical productivity pay ratio gap' :
+          'Country comparison historical trends'} />
+    </section>}
 
+    {result?.status === 'ready' && result.series.some(series => series.historical_context) &&
+      <div className="research-history-context" aria-label="Observed historical positions">
+        {result.series.filter(series => series.historical_context).map(series => {
+          const history = series.historical_context!;
+          const position = Number(history.latest_midrank_pct);
+          return <div key={series.id} className="research-history-item">
+            <div className="research-history-description">
+              <strong>{series.name}</strong>
+              <span>Latest historical midrank: {readableValue(history.latest_midrank_pct, 'percent')}
+                {' '}from {history.count} observed periods, {history.first_date}–{history.last_date}</span>
+            </div>
+            <div className="research-percentile-track" role="img"
+              aria-label={'Latest midrank ' + position.toFixed(1) + ' percent for ' + series.name}>
+              <span style={{left: Math.max(0, Math.min(100, position)) + '%'}}/>
+            </div>
+            <div className="research-history-range">
+              <span>Low {readableValue(history.minimum, series.unit)}</span>
+              <span>Median {readableValue(history.median, series.unit)}</span>
+              <span>High {readableValue(history.maximum, series.unit)}</span>
+            </div>
+          </div>;
+        })}
+      </div>}
     {result?.status === 'ready' && <div className="research-source-strip">
       {result.series.map(series => <div key={series.id} className="research-source-reading">
         <span>{series.name}</span>
@@ -216,7 +274,7 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
       <p>{spec.reading}</p>
       <p className="research-caveat">{spec.caveat}</p>
     </div>
-    {result?.headline?.explanation && spec.id === 'us_productivity_pay'
+    {result?.headline?.explanation && (spec.id === 'us_productivity_pay' || comparable)
       && <p className="research-equation">{result.headline.explanation}</p>}
     {result && <details className="research-source-details">
       <summary>Source records and method</summary>
