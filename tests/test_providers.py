@@ -342,7 +342,10 @@ class RouterTests(unittest.TestCase):
     def test_unresolved_never_fabricated(self):
         router = self.router(lambda request: self.fail("No network for unresolved"))
         try:
-            self.assertEqual(len(router.supported_ids()), 32)
+            # Full mapped registry (including newly added world macro aggregates), not a stale fixed size.
+        catalog, _ = __import__("finance_dashboard.catalog", fromlist=["load_documents"]).load_documents()
+        mapped = {row["id"] for row in catalog["series"] if row["status"] == "mapped"}
+        self.assertEqual(set(router.supported_ids()), mapped)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("profit.global.corporate_share")
             self.assertEqual(len(router.blocked()), 2)
