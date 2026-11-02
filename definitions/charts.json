@@ -135,6 +135,20 @@
       "display_mode": "raw",
       "rationale": "Compare long-term debt burdens and monetary policy.",
       "caveats": "Country aggregation and mixing daily/annual measurements are unresolved."
+    },
+    {
+      "id": "bis_credit_gaps",
+      "theme": "credit_recession",
+      "title": "BIS credit-to-GDP gaps — United States, euro area and Japan",
+      "status": "mapped",
+      "series_ids": [
+        "credit_gap.us.bis",
+        "credit_gap.ea.bis",
+        "credit_gap.jp.bis"
+      ],
+      "display_mode": "raw",
+      "rationale": "Compare credit booms and deleveraging using the same BIS one-sided HP methodology across geographies.",
+      "caveats": "Percentage-point gap of private nonfinancial-sector credit to GDP; cross-country comparability depends on statistical definitions and coverage; not a world gap."
     }
   ]
 }

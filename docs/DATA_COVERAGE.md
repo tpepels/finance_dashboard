@@ -1,11 +1,12 @@
 # Data coverage and blockers (Phase 2 expanded)
 
-The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **20 mapped**, 3 FRED credential-gated, 16 previously live verified; **7 unresolved**. This document distinguishes
+The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **23 mapped** (including 3 additional country-level BIS credit gaps), 3 FRED credential-gated; **7 original series unresolved**. This document distinguishes
 an implementable adapter from verified observations and legal permission to
 republish data to GitHub Pages.
 
 | Provider / category | Coverage | Reason |
 |---|---|---|
+| BIS quarterly country credit gaps | 3 mapped | Q.US/Q.XM/Q.JP: CG_DTYPE=C, private nonfinancial borrowers and all lenders; no fabricated global aggregate |
 | BIS central bank policy rates | 3 mapped, live verified | SDMX 1.0 decoder and historical backfill in PostgreSQL |
 | FRED Fed corridor, US TIPS and Sahm Rule | 3 mapped, **credential-gated** | FRED JSON API requires FRED_API_KEY; opt-in public CSV fallback is unreliable and unverified in CI |
 | ECB deposit facility | 1 mapped, adapter | Official ECB CSV format |

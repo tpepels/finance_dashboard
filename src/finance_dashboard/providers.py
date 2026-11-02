@@ -16,7 +16,7 @@ from typing import Any
 
 import httpx
 
-from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES
+from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES, _dimension_code, ACCEPT
 from .catalog import load_documents
 
 FRED_ROOT = "https://api.stlouisfed.org/fred/series/observations"
@@ -27,8 +27,9 @@ SHILLER_HOME = "https://shillerdata.com/"
 UN_SDG_ROOT = "https://unstats.un.org/SDGAPI/v1/sdg/Series"
 PINK_SHEET_URL = "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx"
 IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
+BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP"))
 
 
 class SourceUnavailable(ProviderError):
@@ -57,6 +58,12 @@ def _date(raw: str, frequency: str) -> date:
             return date(int(raw), 1, 1)
         if frequency == "M":
             return date.fromisoformat(raw + "-01") if len(raw) == 7 else date.fromisoformat(raw)
+        if frequency == "Q":
+            import re
+            match = re.fullmatch(r"(\d{4})-?Q([1-4])", raw)
+            if not match:
+                raise ValueError("not a quarter")
+            return date(int(match.group(1)), 1 + (int(match.group(2)) - 1) * 3, 1)
         return date.fromisoformat(raw)
     except (ValueError, TypeError) as exc:
         raise ProviderError(f"Invalid observation period: {raw!r}") from exc
@@ -166,6 +173,55 @@ def parse_un_sdg(payload: Any, series_code: str, area_code: str,
     if not out:
         raise ProviderError("UN SDG no usable world labour share observations")
     return out
+
+
+def parse_bis_credit_gap(payload: Any, country: str,
+                         start: date | None = None) -> tuple[dict[date, Decimal], datetime | None]:
+    """Select *gap* (CG_DTYPE=C), never actual ratio A or HP trend B.
+
+    BIS series: Q.{country}.P.A.C (private nonfinancial borrowers, all lenders,
+    actual minus one-sided HP trend). Units: percentage points of GDP.
+    """
+    try:
+        data = payload["data"]
+        structure = data["structure"]
+        sdims = structure["dimensions"]["series"]
+        odims = structure["dimensions"]["observation"]
+        datasets = data["dataSets"]
+    except (KeyError, TypeError) as exc:
+        raise ProviderError("Malformed BIS credit gap SDMX response") from exc
+    if len(odims) != 1 or odims[0].get("id") != "TIME_PERIOD":
+        raise ProviderError("Expected quarterly TIME_PERIOD observation dimension")
+    values: dict[date, Decimal] = {}
+    matched = 0
+    for dataset in datasets:
+        for series_key, series_node in dataset.get("series", {}).items():
+            labels = _dimension_code(sdims, series_key)
+            if labels.get("FREQ") != "Q" or labels.get("BORROWERS_CTY") != country:
+                raise ProviderError("Unexpected BIS credit gap frequency or geography")
+            if labels.get("TC_BORROWERS") != "P" or labels.get("TC_LENDERS") != "A":
+                raise ProviderError("Unexpected BIS credit borrowers or lenders")
+            if labels.get("CG_DTYPE") != "C":
+                continue
+            matched += 1
+            if matched > 1:
+                raise ProviderError("Multiple BIS credit-gap series matched")
+            for index, row in series_node.get("observations", {}).items():
+                label = _dimension_code(odims, index)["TIME_PERIOD"]
+                day = _date(label, "Q")
+                if start and day < start:
+                    continue
+                if day > date.today():
+                    continue
+                _put(values, day, _value(row[0]))
+    if matched != 1 or not values:
+        raise ProviderError("No actual-minus-trend credit gaps in BIS result")
+    prepared_raw = payload.get("meta", {}).get("prepared")
+    try:
+        prepared = datetime.fromisoformat(prepared_raw.replace("Z", "+00:00")) if prepared_raw else None
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise ProviderError("Invalid BIS credit gap preparation timestamp") from exc
+    return dict(sorted(values.items())), prepared
 
 
 def parse_siblis_cape(payload: Any, ticker: str, start: date | None = None) -> dict[date, Decimal]:
@@ -379,6 +435,17 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "BIS_CREDIT_GAP":
+            # The API is queried with a country code then exact dimensions
+            # are selected from the SDMX structure, not assumed by series position.
+            country = key.split("/")[1].split(".")[1]
+            if country not in {"US", "JP", "XM"}:
+                raise SourceUnavailable("Unsupported BIS credit-gap country")
+            url = f"{BIS_CREDIT_GAP_ROOT}/Q.{country}"
+            response = self._get(url, params={"startPeriod": f"{start.year}-Q1"} if start else {},
+                                 headers={"Accept": ACCEPT})
+            observations, prepared = parse_bis_credit_gap(response.json(), country, start)
+            return FetchedSeries(series_id, str(response.request.url), prepared, observations)
         if provider == "SIBLIS_FREE":
             ticker, ratio = key.split("/", 1)
             if ticker not in {"ACWI"} or ratio != "cape":

@@ -432,6 +432,54 @@
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
       "notes": "World Bank Pink Sheet monthly average, not daily spot/total return. 1960 onward, workbook subject to monthly revisions, attribution required."
+    },
+    {
+      "id": "credit_gap.us.bis",
+      "name": "US credit-to-GDP gap",
+      "theme": "credit_recession",
+      "status": "mapped",
+      "provider": "BIS_CREDIT_GAP",
+      "source_key": "BIS,WS_CREDIT_GAP,1.0/Q.US.P.A.C",
+      "source_url": "https://data.bis.org/topics/CREDIT_GAPS",
+      "geography": "United States",
+      "frequency": "Q",
+      "unit": "percentage_points",
+      "measurement": "BIS credit-to-GDP gap, actual credit/GDP minus one-sided HP trend (CG_DTYPE=C); private non-financial sector, all lending sectors",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Country/area-specific BIS Basel III early-warning indicator. Cannot be summed into a legitimate worldwide gap; other CG_DTYPE codes are credit/GDP actual (A) or trend (B)."
+    },
+    {
+      "id": "credit_gap.ea.bis",
+      "name": "Euro-area credit-to-GDP gap",
+      "theme": "credit_recession",
+      "status": "mapped",
+      "provider": "BIS_CREDIT_GAP",
+      "source_key": "BIS,WS_CREDIT_GAP,1.0/Q.XM.P.A.C",
+      "source_url": "https://data.bis.org/topics/CREDIT_GAPS",
+      "geography": "Euro area",
+      "frequency": "Q",
+      "unit": "percentage_points",
+      "measurement": "BIS credit-to-GDP gap, actual credit/GDP minus one-sided HP trend (CG_DTYPE=C); private non-financial sector, all lending sectors",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Country/area-specific BIS Basel III early-warning indicator. Cannot be summed into a legitimate worldwide gap; other CG_DTYPE codes are credit/GDP actual (A) or trend (B)."
+    },
+    {
+      "id": "credit_gap.jp.bis",
+      "name": "Japan credit-to-GDP gap",
+      "theme": "credit_recession",
+      "status": "mapped",
+      "provider": "BIS_CREDIT_GAP",
+      "source_key": "BIS,WS_CREDIT_GAP,1.0/Q.JP.P.A.C",
+      "source_url": "https://data.bis.org/topics/CREDIT_GAPS",
+      "geography": "Japan",
+      "frequency": "Q",
+      "unit": "percentage_points",
+      "measurement": "BIS credit-to-GDP gap, actual credit/GDP minus one-sided HP trend (CG_DTYPE=C); private non-financial sector, all lending sectors",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Country/area-specific BIS Basel III early-warning indicator. Cannot be summed into a legitimate worldwide gap; other CG_DTYPE codes are credit/GDP actual (A) or trend (B)."
     }
   ]
 }
