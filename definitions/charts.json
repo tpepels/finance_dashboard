@@ -175,6 +175,18 @@
       "display_mode": "indexed_100",
       "rationale": "Compare US equities/net worth valuation to earnings-adjusted equity prices, preserving both original measures.",
       "caveats": "NCBCEPNW is equity market value versus net worth, not Tobin Q; quarterly versus monthly frequencies and unlike units require explicit alignment and normalization."
+    },
+    {
+      "id": "gold_vs_global_index_netr",
+      "theme": "gold_currency",
+      "title": "Monthly gold / MSCI ACWI net-return correlation",
+      "status": "mapped",
+      "series_ids": [
+        "gold.world.equity_correlation"
+      ],
+      "display_mode": "raw",
+      "rationale": "Trace variation in the trailing historical 36-month gold-global-equity return relationship using an actual NETR benchmark.",
+      "caveats": "World Bank gold monthly mean and monthly mean MSCI ACWI NETR USD index levels; Pearson on consecutive monthly arithmetic returns. Different from the existing GLD/VT ETF proxy."
     }
   ]
 }

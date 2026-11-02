@@ -342,10 +342,10 @@ class RouterTests(unittest.TestCase):
     def test_unresolved_never_fabricated(self):
         router = self.router(lambda request: self.fail("No network for unresolved"))
         try:
-            self.assertEqual(len(router.supported_ids()), 26)
+            self.assertEqual(len(router.supported_ids()), 29)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("profit.global.corporate_share")
-            self.assertEqual(len(router.blocked()), 6)
+            self.assertEqual(len(router.blocked()), 4)
         finally:
             router.close()
 

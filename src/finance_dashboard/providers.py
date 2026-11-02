@@ -18,6 +18,10 @@ import httpx
 
 from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES, _dimension_code, ACCEPT
 from .catalog import load_documents
+from .remaining_sources import (
+    BEA_Q_URL, MSCI_LEVELS_URL, MSCI_ACWI_INDEX_CODE,
+    parse_bea_q1, parse_msci_acwi, gold_acwi_rolling_correlation,
+)
 
 FRED_ROOT = "https://api.stlouisfed.org/fred/series/observations"
 FRED_TABLE_ROOT = "https://fred.stlouisfed.org/data"
@@ -31,7 +35,7 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR"))
 
 
 class SourceUnavailable(ProviderError):
@@ -567,6 +571,39 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "BEA_Q":
+            if key != "BEA_2026_TABLE_E_Q1":
+                raise SourceUnavailable("Unknown BEA Q table/version")
+            response = self._get(BEA_Q_URL)
+            observations = parse_bea_q1(response.text, start=start)
+            return FetchedSeries(series_id, BEA_Q_URL, None, observations)
+        if provider == "MSCI_NETR":
+            if key != "892400/NETR/USD":
+                raise SourceUnavailable("MSCI index, variant or currency unspecified")
+            response = self._get(MSCI_LEVELS_URL, params={
+                "index_codes": MSCI_ACWI_INDEX_CODE,
+                "currency_symbol": "USD",
+                "index_variant": "NETR",
+                "data_frequency": "DAILY",
+                "start_date": (start or date(2000, 1, 1)).strftime("%Y%m%d"),
+                "end_date": date.today().strftime("%Y%m%d"),
+            }, headers={"User-Agent": "Mozilla/5.0",
+                        "Referer": "https://www.msci.com/",
+                        "Accept": "application/json"})
+            observations = parse_msci_acwi(response.json(), start=start)
+            return FetchedSeries(series_id,
+                "https://www.msci.com/indexes/index/892400/msci-acwi-index",
+                None, observations)
+        if provider == "GOLD_MSCI_CORR":
+            if key != "36M/PINK_SHEET_GOLD/MSCI_892400_NETR_USD":
+                raise SourceUnavailable("Unsupported gold/index correlation convention")
+            gold = self.fetch("gold.usd.monthly_average")
+            index = self.fetch("equity.world.msci_acwi_netr_usd")
+            observations = gold_acwi_rolling_correlation(
+                gold.observations, index.observations, window=36, start=start)
+            return FetchedSeries(series_id,
+                "https://data.worldbank.org/indicator;https://www.msci.com/indexes/index/892400/msci-acwi-index",
+                None, observations)
         if provider == "CORGANO_SPOT":
             response = self._get(CORGANO_GOLD_LATEST)
             observations = parse_corgano_gold(response.json(), start)

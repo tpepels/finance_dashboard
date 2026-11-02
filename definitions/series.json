@@ -275,19 +275,19 @@
     },
     {
       "id": "valuation.us.tobins_q",
-      "name": "US Tobin's Q",
+      "name": "US BEA Q1: equity market value / replacement-cost produced assets",
       "theme": "valuation",
-      "status": "unresolved",
-      "provider": "RESEARCH",
-      "source_key": null,
-      "source_url": "https://www.federalreserve.gov/releases/z1/",
+      "status": "mapped",
+      "provider": "BEA_Q",
+      "source_key": "BEA_2026_TABLE_E_Q1",
+      "source_url": "https://apps.bea.gov/scb/issues/2026/05-may/0526-domestic-returns.htm",
       "geography": "US",
-      "frequency": null,
-      "unit": null,
-      "measurement": "Market valuation relative to replacement-cost concept",
-      "revision_policy": "not_established",
-      "rights": "unknown",
-      "notes": "Requires defensible definition and denominator"
+      "frequency": "A",
+      "unit": "ratio",
+      "measurement": "Bureau of Economic Analysis Q1: market value of domestic nonfinancial corporate outstanding equities / net stock of produced assets valued at current (replacement) cost",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Official BEA Survey of Current Business 2026 Table E Q1, historical annual 1960-2024; updated annually. Q1 is equity-only numerator and differs from BEA Q2 (adds book bonds) and Q3 (market bonds plus net liquid assets). Current-cost produced assets denominator is capital stock plus inventories, not market net worth. Does not extrapolate 2025 or 2026."
     },
     {
       "id": "labour.world.income_share",
@@ -387,19 +387,19 @@
     },
     {
       "id": "gold.world.equity_correlation",
-      "name": "Gold versus equities rolling correlation",
+      "name": "36-month gold / MSCI ACWI net-total-return correlation (USD)",
       "theme": "gold_currency",
-      "status": "unresolved",
-      "provider": "DERIVED",
-      "source_key": null,
-      "source_url": "https://www.gold.org/goldhub/data",
+      "status": "mapped",
+      "provider": "GOLD_MSCI_CORR",
+      "source_key": "36M/PINK_SHEET_GOLD/MSCI_892400_NETR_USD",
+      "source_url": "https://www.msci.com/indexes/index/892400/msci-acwi-index",
       "geography": "WORLD",
-      "frequency": null,
-      "unit": null,
-      "measurement": "Trailing gold/equity returns correlation",
-      "revision_policy": "not_established",
-      "rights": "unknown",
-      "notes": "Depends on licensed gold and total-return equity series"
+      "frequency": "M",
+      "unit": "ratio",
+      "measurement": "Trailing 36 fully consecutive monthly Pearson correlation of USD monthly World Bank gold average returns and average daily MSCI ACWI USD net total-return index-level changes",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Genuine MSCI ACWI NETR index 892400; World Bank Pink Sheet nominal USD/troy ounce average. Both price and index measured as monthly mean levels before computing arithmetic monthly returns. Index levels include net dividend reinvestment under MSCI NETR; gold is monthly average commodity spot benchmark, not ETF or daily spot fixing. Only complete calendar months. Distinct from GLD/VT ETF proxy."
     },
     {
       "id": "fiscal.world.public_debt",
@@ -512,6 +512,22 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "Useful US market-to-balance-sheet valuation proxy, NOT full Tobin's Q. Requires no replacement-cost assets assumptions. Source may make major quarterly structural revisions; public redistribution rights must be verified."
+    },
+    {
+      "id": "equity.world.msci_acwi_netr_usd",
+      "name": "MSCI ACWI daily net total-return index level in USD",
+      "theme": "valuation",
+      "status": "mapped",
+      "provider": "MSCI_NETR",
+      "source_key": "892400/NETR/USD",
+      "source_url": "https://www.msci.com/indexes/index/892400/msci-acwi-index",
+      "geography": "WORLD",
+      "frequency": "D",
+      "unit": "index",
+      "measurement": "MSCI All Country World Index (large/mid cap developed and emerging markets), index code 892400, NETR USD official daily levels",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Genuine index net total-return levels. Not ACWI ETF price or vendor-adjusted close. MSCI public API history since 2000; prices may have holiday carry-forwards; no invented interpolation."
     }
   ]
 }
