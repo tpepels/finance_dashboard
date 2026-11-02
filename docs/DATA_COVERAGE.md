@@ -29,7 +29,7 @@ All mapped source IDs are referenced from `definitions/series.json`. The relevan
 | Siblis public global valuation year ends | `valuation.world.global_trailing_pe` | 11 sparse dates, 2016–2025 Dec and Sep 2026 | Normalized aggregate 3,000-company index P/E, proprietary; no redistributed public website without permission |
 | Same Siblis observations | `valuation.world.global_earnings_yield` | 11 sparse dates | 100/P-E in percent of **index** market capitalization; not global net income/GDP |
 
-[Successful 36-series static source validation](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778). The original 32 macro series were previously accepted into PostgreSQL; new 36-series PostgreSQL verification is separately tracked. [Macro-first amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md). **No cross-universe WDI capitalization × Siblis earnings-yield fabrication.**
+[Successful 36-series static source validation](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778). All 36 mapped macro/index series, including the four new aggregates, **passed full real historical PostgreSQL ingestion and API readback**: [acceptance run](https://github.com/tpepels/finance_dashboard/actions/runs/41494100275). [Macro-first amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md). **No cross-universe WDI capitalization × Siblis earnings-yield fabrication.**
 
 ## Stock, ETF and foreign-exchange coverage
 
