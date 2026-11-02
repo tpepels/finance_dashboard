@@ -58,6 +58,15 @@ class InsightTests(unittest.TestCase):
         self.assertEqual(report["series"][0]["year_change"]["difference"], "-1.2")
         self.assertEqual(report["series"][1]["year_change"]["difference"], "-0.6")
 
+    def test_missing_country_blocks_partial_cohort_spread(self):
+        result = summarize([
+            record("policy_rate.us.bis", [("2025-01-01", "3")]),
+            record("policy_rate.jp.bis", []),
+            record("policy_rate.ea.bis", [("2025-01-01", "2")]),
+        ])
+        self.assertIsNone(result["matched_spread"])
+        self.assertEqual(result["series"][1]["status"], "no_data")
+
     def test_empty_source_keeps_no_data_status(self):
         report = summarize([record("valuation.world.global_trailing_pe", [], "M", "ratio")])
         self.assertEqual(report["series"][0]["status"], "no_data")
