@@ -10,6 +10,7 @@ import httpx
 from finance_dashboard.vintage import (
     SOURCES, VintageError, fetch_snapshot, read_snapshot,
     latest_asof_reading, available_snapshots, _month_ends,
+    capture_previous_month,
 )
 from finance_dashboard.vintage_backtest import target_after, fit_predict, metrics, walk_forward
 
@@ -44,6 +45,30 @@ class VintageTests(unittest.TestCase):
             self.assertNotIn("syntheticsecret",(root/"SAHMREALTIME"/"2020-03-31.json").read_text())
             self.assertEqual(latest_asof_reading(again)["age_days"],30)
             self.assertEqual(available_snapshots(root)["series"][1]["count"],1)
+
+    def test_month_end_retrieval_is_idempotent_and_requires_key(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            disabled=capture_previous_month(root,today=date(2026,11,2),api_key="")
+            self.assertEqual(disabled["status"],"disabled_no_key")
+            self.assertEqual(disabled["captured"],0)
+            called=[]
+            def handler(request):
+                called.append(request.url.params["series_id"])
+                self.assertEqual(request.url.params["realtime_start"],"2026-10-31")
+                return httpx.Response(200,json={
+                    "observations":[{
+                        "date":"2026-10-01","value":"0.5",
+                        "realtime_start":"2026-10-15",
+                        "realtime_end":"9999-12-31"}]})
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                first=capture_previous_month(root,today=date(2026,11,2),
+                    api_key="fake",client=client)
+                second=capture_previous_month(root,today=date(2026,11,2),
+                    api_key="fake",client=client)
+            self.assertEqual(first["status"],"complete")
+            self.assertEqual(second["captured"],3)
+            self.assertEqual(len(called),3)
 
     def test_refuses_future_or_after_vintage_observation(self):
         def handler(_):
