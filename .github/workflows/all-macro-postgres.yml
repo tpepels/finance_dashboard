@@ -12,6 +12,7 @@ on:
       - definitions/series.json
       - Dockerfile
       - data/msci_acwi_published_snapshots.json
+      - src/finance_dashboard/oecd_corporate.py
       - src/finance_dashboard/eurostat_corporate.py
       - src/finance_dashboard/concentration_snapshots.py
       - tests/test_postgres.py
