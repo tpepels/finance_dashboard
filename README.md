@@ -51,6 +51,18 @@ curl -sS -X POST http://127.0.0.1:8080/api/query \
 
 Other API routes: `GET /api/health`, `GET /api/series/{id}`, `GET /api/data-status`. OpenAPI at `/docs`.
 
+## GitHub Actions static data build
+
+A scheduled workflow now validates the repository secret **FRED_API_KEY**
+through the official FRED API, fetches all mapped series, and uploads a
+key-free **finance-dashboard-static-data** JSON artifact. It runs daily at
+06:20 UTC and on manual dispatch. The first full build successfully exported
+all 26 mapped series: [successful run](https://github.com/tpepels/finance_dashboard/actions/runs/41464962331).
+
+See [static export architecture and secret handling](docs/STATIC_DATA.md).
+This produces the data needed by a future GitHub Pages frontend; **Pages is
+not yet deployed**, because the React dashboard belongs to Phase 3.
+
 ## Verification
 
 - [Full live source acceptance — 23 non-BIS-policy series](https://github.com/tpepels/finance_dashboard/actions/runs/41459407905): includes all FRED series using the public table and the Federal Reserve's corporate equity/net-worth series, gold spot quote, BIS credit gaps, Siblis ACWI CAPE, World Bank WDI/Pink Sheet, IMF, ECB, ILO/UNSD and Shiller.
