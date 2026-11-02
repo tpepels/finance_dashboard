@@ -46,71 +46,6 @@
       "caveats": "Neither series is a perfect Buffett indicator; gaps and listing residence affect ratios."
     },
     {
-      "id": "policy_instruments",
-      "theme": "monetary_policy",
-      "title": "Fed target upper bound versus ECB deposit facility",
-      "status": "draft",
-      "series_ids": [
-        "policy_rate.us.fed_upper",
-        "policy_rate.ea.ecb_dfr"
-      ],
-      "display_mode": "raw",
-      "rationale": "Contrast different policy instruments while retaining explicit labels.",
-      "caveats": "Different monetary-policy instruments; do not call this harmonized policy. Not part of the validated research dashboard; its measures have different economic meanings."
-    },
-    {
-      "id": "valuation_vs_real_yield",
-      "theme": "valuation",
-      "title": "CAPE versus 10-year real yield",
-      "status": "draft",
-      "series_ids": [
-        "valuation.us.cape",
-        "bond.us.real_10y"
-      ],
-      "display_mode": "indexed_100",
-      "rationale": "Examine whether changing discount rates accompany valuation changes.",
-      "caveats": "One valuation series is not yet mapped; incompatible units require explicit normalization."
-    },
-    {
-      "id": "crisis_signal",
-      "theme": "credit_recession",
-      "title": "US Sahm Rule and private credit stress",
-      "status": "draft",
-      "series_ids": [
-        "recession.us.sahm",
-        "credit.world.private_gdp_gap"
-      ],
-      "display_mode": "indexed_100",
-      "rationale": "Examine labour deterioration alongside financial leverage.",
-      "caveats": "Different frequencies and countries; meaningful alignment remains unspecified."
-    },
-    {
-      "id": "gold_vs_valuation",
-      "theme": "gold_currency",
-      "title": "Gold versus real yields",
-      "status": "draft",
-      "series_ids": [
-        "gold.usd.monthly_average",
-        "bond.us.real_10y"
-      ],
-      "display_mode": "indexed_100",
-      "rationale": "Compare gold movements with inflation-indexed bond yields.",
-      "caveats": "Monthly gold average versus daily real yield requires explicit frequency alignment and dual-axis display; indexed-to-100 does not work for negative real yields."
-    },
-    {
-      "id": "public_debt_vs_rates",
-      "theme": "structural_risk",
-      "title": "Public debt versus policy rates",
-      "status": "draft",
-      "series_ids": [
-        "fiscal.world.public_debt",
-        "policy_rate.us.bis"
-      ],
-      "display_mode": "raw",
-      "rationale": "Compare long-term debt burdens and monetary policy.",
-      "caveats": "Country aggregation and mixing daily/annual measurements are unresolved."
-    },
-    {
       "id": "bis_credit_gaps",
       "theme": "credit_recession",
       "title": "BIS credit-to-GDP gaps — United States, euro area and Japan",
@@ -123,32 +58,6 @@
       "display_mode": "raw",
       "rationale": "Compare credit booms and deleveraging using the same BIS one-sided HP methodology across geographies.",
       "caveats": "Percentage-point gap of private nonfinancial-sector credit to GDP; cross-country comparability depends on statistical definitions and coverage; not a world gap."
-    },
-    {
-      "id": "world_productivity_labour_income",
-      "theme": "labour_capital",
-      "title": "World productivity growth and labour income share",
-      "status": "draft",
-      "series_ids": [
-        "labour.world.productivity_growth",
-        "labour.world.income_share"
-      ],
-      "display_mode": "raw",
-      "rationale": "Compare changes in global output per worker with workers' share of worldwide income, using two separately-labelled percentage measurements.",
-      "caveats": "Productivity is an annual growth rate and labour share is a level of income; levels are not directly comparable even though both use percentages. This does not constitute a wage/productivity-gap series. Not part of the validated research dashboard; its measures have different economic meanings."
-    },
-    {
-      "id": "us_equity_net_worth_vs_cape",
-      "title": "US corporate equities/net worth and Shiller CAPE",
-      "theme": "valuation",
-      "status": "draft",
-      "series_ids": [
-        "valuation.us.equity_net_worth",
-        "valuation.us.cape"
-      ],
-      "display_mode": "indexed_100",
-      "rationale": "Compare US equities/net worth valuation to earnings-adjusted equity prices, preserving both original measures.",
-      "caveats": "NCBCEPNW is equity market value versus net worth, not Tobin Q; quarterly versus monthly frequencies and unlike units require explicit alignment and normalization."
     },
     {
       "id": "gold_vs_global_index_netr",
