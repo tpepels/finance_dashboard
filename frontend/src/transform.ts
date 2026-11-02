@@ -1,4 +1,5 @@
 import type { LoadedSeries, PlotPoint, PlottedSeries, RangePreset, ViewMode } from './types';
+import { measureFamily } from './editorial';
 
 export const MIN_PERCENTILE_POINTS = 20;
 
@@ -25,7 +26,8 @@ export function windowFor(
 export function rawCompatible(selected: LoadedSeries[]): boolean {
   const available = selected.filter(s => s.status === 'ready');
   return available.every(s => s.definition.unit === available[0]?.definition.unit &&
-    s.definition.frequency === available[0]?.definition.frequency);
+    s.definition.frequency === available[0]?.definition.frequency &&
+    measureFamily(s.id) === measureFamily(available[0]?.id ?? s.id));
 }
 
 export function compareCompatible(
@@ -33,6 +35,9 @@ export function compareCompatible(
   selected: { unit: string; frequency: string }[],
   mode: ViewMode,
 ): boolean {
+  // Visual normalization must not be used to justify comparisons between
+  // different economic measurements. A matching unit alone is insufficient.
+  if (!selected.every(s => measureFamily(s.id) === measureFamily(candidate.id))) return false;
   return mode !== 'raw' || selected.every(s =>
     s.unit === candidate.unit && s.frequency === candidate.frequency);
 }
@@ -62,8 +67,8 @@ export function transformSeries(
   const parsed = parseObservations(series, start, end);
   const output: PlottedSeries = { definition: series.definition, observations: [] };
   if (series.status !== 'ready') {
-    output.issue = series.message || (series.status === 'blocked'
-      ? 'Not licensed for public viewing.' : 'No recorded observations.');
+    output.issue = series.message || (series.status === 'no_data'
+      ? 'No recorded observations.' : 'Source could not be loaded.');
     return output;
   }
   if (!parsed.length) {
