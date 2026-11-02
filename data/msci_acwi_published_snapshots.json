@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "index_code": "892400",
+  "index_name": "MSCI ACWI",
+  "measurement": "Published total weight of the largest ten MSCI ACWI constituents, by index constituent/share class (not by issuer)",
+  "frequency": "M",
+  "method": "Frozen dated public-source snapshots; sparse observations, no interpolation and no backfilled inferred values",
+  "snapshot_rows": [
+    {
+      "as_of": "2019-12-31",
+      "top10_percent": "11.94",
+      "source_type": "published_independent_research_citing_MSCI",
+      "source_url": "https://www.austin180advisory.com/wp-content/uploads/2022/02/2020.06.24-Asset-Class-Taxonomy-Paper-from-SSRN.pdf",
+      "source_note": "Exhibit 3 explicitly identifies top-ten weights of MSCI ACWI as of December 31, 2019; 11.94%."
+    },
+    {
+      "as_of": "2020-10-30",
+      "top10_percent": "15.93",
+      "source_type": "msci_acwi_dated_factsheet_archive",
+      "source_url": "https://foro.masdividendos.com/uploads/short-url/fPVgQB8q4qpfx5mQlN0hs0VVkrR.pdf",
+      "source_note": "MSCI ACWI October 30, 2020 factsheet, TOP 10 CONSTITUENTS Total 15.93%."
+    },
+    {
+      "as_of": "2021-08-31",
+      "top10_percent": "16.06",
+      "source_type": "msci_acwi_dated_factsheet_archive",
+      "source_url": "https://schweizerfinanzblog.ch/wp-content/uploads/2021/09/msci-acwi.pdf",
+      "source_note": "MSCI ACWI August 31, 2021 factsheet, TOP 10 CONSTITUENTS Total 16.06%."
+    },
+    {
+      "as_of": "2023-10-31",
+      "top10_percent": "18.45",
+      "source_type": "msci_acwi_dated_factsheet_archive",
+      "source_url": "https://indexalyzer.com/wp-content/uploads/2023/11/msci-acwi-net.pdf",
+      "source_note": "MSCI ACWI October 31, 2023 factsheet, TOP 10 CONSTITUENTS Total 18.45%."
+    },
+    {
+      "as_of": "2024-07-31",
+      "top10_percent": "21.23",
+      "source_type": "msci_acwi_dated_factsheet_archive",
+      "source_url": "https://gestiyon.com/wp-content/uploads/2024/08/doc-MSCI-ACWI-2024-1.pdf",
+      "source_note": "MSCI ACWI July 31, 2024 factsheet, TOP 10 CONSTITUENTS Total 21.23%."
+    },
+    {
+      "as_of": "2025-05-30",
+      "top10_percent": "21.88",
+      "source_type": "msci_official_dated_factsheet",
+      "source_url": "https://www.msci.com/documents/10199/8d97d244-4685-4200-a24c-3e2942e3adeb",
+      "source_note": "MSCI ACWI May 30, 2025 factsheet, TOP 10 CONSTITUENTS Total 21.88%."
+    },
+    {
+      "as_of": "2025-10-31",
+      "top10_percent": "25.55",
+      "source_type": "msci_official_dated_factsheet",
+      "source_url": "https://www.msci.com/documents/10199/255599/msci-acwi-index-aud-net.pdf",
+      "source_note": "MSCI ACWI October 31, 2025 AUD NET factsheet; the constituent index weights are currency-invariant; Total 25.55%."
+    },
+    {
+      "as_of": "2026-09-30",
+      "top10_percent": "25.40",
+      "source_type": "msci_official_index_page_snapshot",
+      "source_url": "https://www.msci.com/indexes/index/892400/msci-acwi-index",
+      "source_note": "MSCI ACWI official index page, as of September 30, 2026; top ten weights 5.11+4.76+3.52+2.35+1.97+1.87+1.55+1.55+1.55+1.17 = 25.40%. This webpage updates; this entry freezes the as-of value."
+    }
+  ]
+}
