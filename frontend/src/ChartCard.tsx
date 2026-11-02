@@ -5,6 +5,7 @@ import { chartCsv, compareCompatible, rawCompatible, transformSeries, VIEW_MODE_
 import { chartOptions, createChart, numberLabel } from './viz';
 import type { ChartInstance } from './viz';
 import { HISTORY_EVENTS } from './events';
+import { recencyMessage } from './freshness';
 
 interface Props {
   definition: ChartDefinition;
@@ -234,6 +235,10 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
           {plotted.some(p => p.baseline) && <span>Index baselines: {plotted.filter(p => p.baseline)
             .map(p => `${p.definition.geography}: ${p.baseline}`).join('; ')}</span>}
         </div>
+        {!loading && activeLoaded.map(item => {
+          const alert = recencyMessage(item);
+          return alert ? <p className="data-warning" key={'recency-' + item.id}><strong>{item.definition.name}:</strong> {alert}</p> : null;
+        })}
         {plotted.filter(p => p.issue).map(p =>
           <p className="data-warning" key={p.definition.id}><strong>{p.definition.name}:</strong> {p.issue}</p>)}
         <p className="method-note">{mode === 'raw'
