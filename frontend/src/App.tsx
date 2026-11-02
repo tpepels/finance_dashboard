@@ -9,7 +9,7 @@ export default function App() {
   return <div className="research-app">
     <ResearchDashboard />
     <Phase4Panel />
-    <div className="research-source-shell">
+    <div className="research-source-shell" id="research-sources">
       <details onToggle={event => setShowSources(event.currentTarget.open)}>
         <summary className="research-explorer-toggle">
           <span>Source data & chart explorer</span>

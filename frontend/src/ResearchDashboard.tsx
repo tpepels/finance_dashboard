@@ -401,6 +401,10 @@ export default function ResearchDashboard() {
         explicit limits. Global aggregates, regional output and corporate sectors are
         treated separately. Source graphs and raw observations remain available
         in the explorer below.</p>
+      <nav className="research-primary-links" aria-label="Research sections">
+        <a href="#phase4">Advanced risk, portfolio and historical evidence</a>
+        <a href="#research-sources">Original source explorer</a>
+      </nav>
     </header>
     {!catalog && !error && <p className="research-loading" role="status">Loading economic research definitions…</p>}
     {error && <section role="alert" className="system-error">{error}</section>}

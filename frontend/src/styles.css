@@ -394,3 +394,8 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .p4-risk-return { margin: 18px 0; }
 .p4-risk-return .p4-plot { height: 315px; }
 .p4-risk-return .p4-method { margin: 7px 12px; font-size: 11px; }
+
+.research-primary-links { display: flex; gap: 9px; margin-top: 19px; flex-wrap: wrap; }
+.research-primary-links a { font-size: 12px; color: #345e64; border: 1px solid #cfdfd9; background: #eff5f2; border-radius: 4px; text-decoration: none; padding: 10px 13px; font-weight: 650; }
+.research-primary-links a:hover, .research-primary-links a:focus-visible { background: #dcebe5; outline-color: #2b706d; }
+#phase4, #research-sources { scroll-margin-top: 72px; }
