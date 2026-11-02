@@ -35,6 +35,8 @@ for label,url in URLS.items():
             result["dims_sample"]=payload.get("dimensions",[])[:3]
         elif label == "gold_spot_now" and response.status_code == 200:
             payload=response.json()
+            result["unit_value"]=payload.get("meta",{}).get("unit")
+            result["spot_source"]=payload.get("meta",{}).get("source")
             result["root_keys"]=list(payload)[:25] if isinstance(payload,dict) else []
             result["schema"]={key: (list(value)[:12] if isinstance(value,dict) else type(value).__name__) for key,value in payload.items()} if isinstance(payload,dict) else {}
         elif label=="world_bank_small" and response.status_code==200:
