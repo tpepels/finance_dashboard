@@ -59,3 +59,63 @@ class ObservationVersion(Base):
     value: Mapped[Decimal] = mapped_column(Numeric(24, 10), nullable=False)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ingestion_run_id: Mapped[str] = mapped_column(ForeignKey("ingestion_runs.id"), nullable=False)
+
+
+# Market prices, corporate actions, and ECB FX are deliberately distinct
+# from single-valued macro indicators. Every row is immutable once inserted.
+class MarketInstrumentRow(Base):
+    __tablename__ = "market_instruments"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(64), nullable=False)
+    exchange_mic: Mapped[str] = mapped_column(String(12), nullable=False)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class MarketIngestionRun(Base):
+    __tablename__ = "market_ingestion_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    instrument_id: Mapped[str] = mapped_column(ForeignKey("market_instruments.id"), index=True, nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    requested_from: Mapped[date | None] = mapped_column(Date())
+    observations_received: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    versions_added: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[str | None] = mapped_column(Text())
+
+
+class MarketPriceVersion(Base):
+    __tablename__ = "market_price_versions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[str] = mapped_column(ForeignKey("market_instruments.id"), index=True, nullable=False)
+    day: Mapped[date] = mapped_column(Date(), index=True, nullable=False)
+    close: Mapped[Decimal] = mapped_column(Numeric(28, 12), nullable=False)
+    adjusted_close: Mapped[Decimal] = mapped_column(Numeric(28, 12), nullable=False)
+    volume: Mapped[int | None] = mapped_column(Integer())
+    dividend: Mapped[Decimal | None] = mapped_column(Numeric(28, 12))
+    split_ratio: Mapped[Decimal | None] = mapped_column(Numeric(28, 12))
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingestion_run_id: Mapped[str] = mapped_column(ForeignKey("market_ingestion_runs.id"), nullable=False)
+
+
+class FxIngestionRun(Base):
+    __tablename__ = "fx_ingestion_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False, index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    observations_received: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    versions_added: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text())
+
+
+class FxRateVersion(Base):
+    __tablename__ = "fx_rate_versions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    currency: Mapped[str] = mapped_column(String(8), index=True, nullable=False)
+    day: Mapped[date] = mapped_column(Date(), index=True, nullable=False)
+    foreign_per_eur: Mapped[Decimal] = mapped_column(Numeric(24, 12), nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingestion_run_id: Mapped[str] = mapped_column(ForeignKey("fx_ingestion_runs.id"), nullable=False)
