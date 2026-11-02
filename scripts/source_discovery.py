@@ -3,6 +3,9 @@ import json
 import httpx
 
 URLS = {
+  "un_labour_areas": "https://unstats.un.org/SDGAPI/v1/sdg/Series/SL_EMP_GTOTL/GeoAreas",
+  "un_labour_world": "https://unstats.un.org/SDGAPI/v1/sdg/Series/SL_EMP_GTOTL/GeoArea/1/DataSlice",
+  "un_labour_china": "https://unstats.un.org/SDGAPI/v1/sdg/Series/SL_EMP_GTOTL/GeoArea/156/DataSlice",
   "ilo_country": "https://rplumber.ilo.org/data/indicator?id=SDG_1041_NOC_RT&ref_area=USA",
   "ilo_bulk_csv": "https://rplumber.ilo.org/files/indicator/SDG_1041_NOC_RT_A.csv.gz",
   "imf_mapper_debt": "https://www.imf.org/external/datamapper/api/v2/GGXWDG_NGDP",
