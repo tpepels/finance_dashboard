@@ -18,6 +18,7 @@ SAMPLES = (
     "fiscal.world.public_debt",
     "valuation.us.cape",
     "labour.world.income_share",
+    "gold.usd.monthly_average",
 )
 
 

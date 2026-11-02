@@ -15,11 +15,11 @@ republish data to GitHub Pages.
 | BIS global private credit gap | Unresolved | There is no single well-defined worldwide country-comparable credit-gap series; individual geographies must be specified |
 | Robert Shiller US CAPE | 1 mapped, adapter | Official Shiller workbook, dynamic link discovery, Excel header checks; redistribution rights still need review |
 | MSCI/global profit/concentration | Unresolved | Complete histories and redistribution rights generally require licensed index data |
-| Gold spot and correlations | Unresolved | Source licence and precise convention (fixing/spot/total return, currency) need defining |
+| World Bank monthly gold price | 1 mapped, adapter | Pink Sheet monthly average USD/troy oz since 1960; openly licensed CC BY 4.0 with attribution. Daily spot and total returns remain separate unresolved series |
 | Productivity versus compensation | Unresolved | World aggregate with harmonized wages/output coverage not selected |
 | US Tobin's Q | Unresolved | Valuation methodology and source definition not selected |
 
-All 18 mapped entries can now enter the ingestion worker. The other 8 are
+All 19 mapped entries can now enter the ingestion worker. The other 8 are; one additional monthly gold average source has been introduced separately
 **blocked source specifications**, never silently substituted with a US series or
 an invented global aggregate.
 

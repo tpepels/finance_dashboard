@@ -25,8 +25,9 @@ ECB_ROOT = "https://data-api.ecb.europa.eu/service/data"
 WORLD_BANK_ROOT = "https://api.worldbank.org/v2"
 SHILLER_HOME = "https://shillerdata.com/"
 UN_SDG_ROOT = "https://unstats.un.org/SDGAPI/v1/sdg/Series"
+PINK_SHEET_URL = "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx"
 IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET"))
 
 
 class SourceUnavailable(ProviderError):
@@ -109,6 +110,37 @@ def parse_ecb_csv(csv_text: str, key: str, frequency: str) -> dict[date, Decimal
         _put(output, _date(row["TIME_PERIOD"], frequency), _value(row["OBS_VALUE"]))
     if not output:
         raise ProviderError("ECB response contains no usable observations")
+    return output
+
+
+def parse_pink_sheet_gold(rows: list[list], start: date | None = None) -> dict[date, Decimal]:
+    """World Bank Pink Sheet 'Monthly Prices', nominal Gold ($/troy oz) since 1960."""
+    import re
+    headers = []
+    for index, row in enumerate(rows[:15]):
+        columns = [j for j, cell in enumerate(row) if str(cell).strip() == "Gold"]
+        if columns:
+            headers.append((index, columns[0]))
+    if len(headers) != 1:
+        raise ProviderError("World Bank workbook must have one Gold column")
+    header_row, col = headers[0]
+    if header_row + 1 >= len(rows) or col >= len(rows[header_row+1]) or "troy oz" not in str(rows[header_row+1][col]).lower():
+        raise ProviderError("World Bank Gold column is not priced per troy ounce")
+    output = {}
+    for row in rows[header_row+2:]:
+        if not row:
+            continue
+        raw = str(row[0]).strip()
+        if not re.fullmatch(r"\d{4}M(0[1-9]|1[0-2])", raw):
+            continue
+        day = date(int(raw[:4]), int(raw[-2:]), 1)
+        if day > date.today() or start and day < start:
+            continue
+        if col >= len(row):
+            continue
+        _put(output, day, _value(row[col]))
+    if not output:
+        raise ProviderError("World Bank Pink Sheet has no usable gold-price months")
     return output
 
 
@@ -321,6 +353,19 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "WORLD_BANK_PINK_SHEET":
+            from io import BytesIO
+            from python_calamine import CalamineWorkbook
+            response = self._get(PINK_SHEET_URL, follow_redirects=True)
+            if len(response.content) > 15_000_000:
+                raise ProviderError("World Bank workbook exceeds safe size limit")
+            try:
+                workbook = CalamineWorkbook.from_filelike(BytesIO(response.content))
+                rows = workbook.get_sheet_by_name("Monthly Prices").to_python()
+            except (ValueError, RuntimeError) as exc:
+                raise ProviderError("World Bank monthly workbook is invalid") from exc
+            observations = parse_pink_sheet_gold(rows, start)
+            return FetchedSeries(series_id, PINK_SHEET_URL, None, observations)
         if provider == "UN_SDG":
             code, area = key.split("/", 1)
             url = f"{UN_SDG_ROOT}/{code}/GeoArea/{area}/DataSlice"

@@ -116,12 +116,12 @@
       "title": "Gold versus real yields",
       "status": "draft",
       "series_ids": [
-        "gold.usd.spot",
+        "gold.usd.monthly_average",
         "bond.us.real_10y"
       ],
       "display_mode": "indexed_100",
       "rationale": "Compare gold movements with inflation-indexed bond yields.",
-      "caveats": "Indexed mode can be meaningless for negative rates; prefer dual axes after validation."
+      "caveats": "Monthly gold average versus daily real yield requires explicit frequency alignment and dual-axis display; indexed-to-100 does not work for negative real yields."
     },
     {
       "id": "public_debt_vs_rates",

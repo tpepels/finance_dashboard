@@ -416,6 +416,22 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "IMF DataMapper currently shows April 2026 WEO, not the later October 2026 WEO portal. Historical figures may be IMF estimates; current/future projection years excluded."
+    },
+    {
+      "id": "gold.usd.monthly_average",
+      "name": "World Bank monthly gold price (USD per troy ounce)",
+      "theme": "gold_currency",
+      "status": "mapped",
+      "provider": "WORLD_BANK_PINK_SHEET",
+      "source_key": "CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Gold",
+      "source_url": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx",
+      "geography": "WORLD",
+      "frequency": "M",
+      "unit": "usd_per_oz",
+      "measurement": "Average monthly nominal gold price in USD per troy ounce",
+      "revision_policy": "revisable",
+      "rights": "cc_by_4_0",
+      "notes": "World Bank Pink Sheet monthly average, not daily spot/total return. 1960 onward, workbook subject to monthly revisions, attribution required."
     }
   ]
 }

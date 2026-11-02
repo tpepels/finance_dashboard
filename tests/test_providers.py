@@ -7,7 +7,7 @@ import httpx
 
 from finance_dashboard.providers import (
     ProviderRouter, ProviderError, SourceUnavailable,
-    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg,
+    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold,
 )
 
 
@@ -58,6 +58,21 @@ class ParserTests(unittest.TestCase):
             values = parse_imf_mapper(raw, "WEOWORLD", "GGXWDG_NGDP")
             self.assertEqual(values[date(2025, 1, 1)], Decimal("91.234"))
             self.assertNotIn(date(2026, 1, 1), values)
+
+    def test_world_bank_pink_sheet_gold(self):
+        rows = [
+          ["monthly prices in nominal US dollars"], ["metadata"], ["metadata"], [""],
+          ["", "Gold", "Copper"], ["", "($/troy oz)", "($/mt)"],
+          ["2025M01", 2641.5, 100.0], ["2025M02", None, 100.0],
+          ["2025M03", 2900.25, 100.0]
+        ]
+        result = parse_pink_sheet_gold(rows)
+        self.assertEqual(result[date(2025,1,1)], Decimal("2641.5"))
+        self.assertEqual(result[date(2025,3,1)], Decimal("2900.25"))
+        self.assertNotIn(date(2025,2,1), result)
+        with self.assertRaisesRegex(ProviderError, "priced per troy ounce"):
+            rows[5][1] = "($/kg)"
+            parse_pink_sheet_gold(rows)
 
     def test_un_global_labour_share(self):
         raw = {"series": "SL_EMP_GTOTL", "geoAreaCode": 1, "dimensions": [
@@ -194,7 +209,7 @@ class RouterTests(unittest.TestCase):
     def test_unresolved_never_fabricated(self):
         router = self.router(lambda request: self.fail("No network for unresolved"))
         try:
-            self.assertEqual(len(router.supported_ids()), 18)
+            self.assertEqual(len(router.supported_ids()), 19)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("valuation.global.cape")
             self.assertEqual(len(router.blocked()), 8)
