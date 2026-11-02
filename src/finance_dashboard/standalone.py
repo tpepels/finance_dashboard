@@ -36,11 +36,20 @@ def refresh_interval() -> int:
 
 
 def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
-                 include_markets: bool) -> None:
+                 include_markets: bool, sync_wisesheets: bool = True) -> None:
     # Import the already tested source adapters only when refresh is enabled.
     from .worker import refresh_all, refresh_market_all
 
     while not stopped.is_set():
+        if sync_wisesheets:
+            try:
+                from .wisesheets_sync import sync_wisesheets_snapshot
+                if sync_wisesheets_snapshot():
+                    log.info("Installed newer verified monthly SEC earnings aggregate")
+            except Exception:
+                # The bundled snapshot and last successful /data copy remain readable.
+                # Never expose provider URLs, private credentials or raw response.
+                log.warning("Monthly SEC earnings aggregate sync failed; retaining snapshot")
         try:
             macro_failures = refresh_all(engine)
             if macro_failures:
@@ -66,11 +75,13 @@ async def standalone_lifespan(app: FastAPI, *, engine: Engine) -> AsyncIterator[
         return
     interval_seconds = refresh_interval()
     include_markets = enabled("FINANCE_INCLUDE_MARKETS")
+    sync_wisesheets = enabled("FINANCE_WISESHEETS_SYNC", "1")
     stopped = Event()
     thread = Thread(target=refresh_loop, name="finance-macro-refresh",
                     args=(engine, stopped),
                     kwargs={"interval_seconds": interval_seconds,
-                            "include_markets": include_markets}, daemon=True)
+                            "include_markets": include_markets,
+                            "sync_wisesheets": sync_wisesheets}, daemon=True)
     thread.start()
     log.info("Single-container refresh started: interval=%ss markets=%s",
              interval_seconds, include_markets)
