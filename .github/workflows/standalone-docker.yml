@@ -9,6 +9,10 @@ on:
       - src/finance_dashboard/standalone.py
       - src/finance_dashboard/api.py
       - src/finance_dashboard/database.py
+      - src/finance_dashboard/wisesheets.py
+      - src/finance_dashboard/wisesheets_sync.py
+      - data/wisesheets/sec_filer_profit.json
+      - tests/test_wisesheets_sync.py
       - tests/test_standalone.py
       - .github/workflows/standalone-docker.yml
   workflow_dispatch:
@@ -27,6 +31,7 @@ jobs:
         run: |
           pip install -e .
           python -m unittest discover -s tests -p 'test_standalone.py' -v
+          python -m unittest discover -s tests -p 'test_wisesheets_sync.py' -v
       - name: Check drop-in Compose service syntax
         run: |
           printf "services:\n" > /tmp/finance-service-check.yml
@@ -62,12 +67,15 @@ jobs:
           assert len(definitions['items'])==42
           with urllib.request.urlopen(base+'/api/charts') as r: charts=json.load(r)
           assert len(charts['items'])==24
+          with urllib.request.urlopen(base+'/api/earnings/sec-filers') as r: wise=json.load(r)
+          assert wise['id']=='profit.us_sec_filers.world_gdp_share'
+          assert len(wise['observations'])==5
           req=urllib.request.Request(base+'/api/query',method='POST',
               data=b'{"series_ids":["policy_rate.us.bis"]}',
               headers={'Content-Type':'application/json'})
           with urllib.request.urlopen(req) as r: query=json.load(r)
           assert query['series'][0]['status']=='no_data'
-          print('ONE_CONTAINER_UI_API=PASS series=42 charts=24',flush=True)
+          print('ONE_CONTAINER_UI_API=PASS series=42 charts=24 wisesheets_years=5',flush=True)
           PY
           test -s /tmp/finance-dashboard-persistent/finance.sqlite3
           docker restart finance-dashboard-smoke
