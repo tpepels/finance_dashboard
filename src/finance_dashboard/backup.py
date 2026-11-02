@@ -142,11 +142,51 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
         temporary_db.unlink(missing_ok=True)
 
 
+def verify_manifest(path: Path) -> dict:
+    """Verify a complete backup bundle without trusting paths in a manifest."""
+    manifest_path = Path(path)
+    contents = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for field in ("database", "earnings_snapshot"):
+        record = contents.get(field)
+        if record is None:
+            if field == "database":
+                raise ValueError("Missing backup database metadata")
+            continue
+        if not isinstance(record, dict) or not isinstance(record.get("file"), str):
+            raise ValueError("Malformed backup bundle")
+        filename = record["file"]
+        if (Path(filename).name != filename or not filename.startswith("finance-")
+            or not filename.endswith(".sqlite3" if field == "database" else ".sec-filer.json")):
+            raise ValueError("Backup bundle file name invalid")
+        file_path = manifest_path.parent / filename
+        if not file_path.is_file() or file_path.is_symlink():
+            raise ValueError("Missing or symbolic-link backup component")
+        if _hash(file_path) != record.get("sha256"):
+            raise ValueError("Backup SHA-256 mismatch")
+        if field == "database":
+            _valid_database(file_path)
+        else:
+            if json.loads(file_path.read_text(encoding="utf-8")).get("id") != (
+                "profit.us_sec_filers.world_gdp_share"):
+                raise ValueError("Invalid SEC backup identity")
+    return {
+        "verified": True,
+        "manifest": manifest_path.name,
+        "components": [k for k in ("database", "earnings_snapshot")
+                       if contents.get(k) is not None],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verified SQLite online backup")
     parser.add_argument("--output-dir", default="/data/backups")
     parser.add_argument("--keep", type=int, default=14)
+    parser.add_argument("--verify-manifest", default=None,
+                        help="Verify SHA-256 and integrity of an existing backup manifest")
     args = parser.parse_args()
+    if args.verify_manifest:
+        print(json.dumps(verify_manifest(Path(args.verify_manifest)), indent=2))
+        return
     db = source_database_path()
     snapshot = Path(os.environ.get(
         "WISESHEETS_SNAPSHOT_PATH", "/data/wisesheets/sec_filer_profit.json"))
