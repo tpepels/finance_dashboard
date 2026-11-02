@@ -8,12 +8,28 @@ A source-traceable financial and macroeconomic research application for global e
 |---|---|---|
 | 1 — Data contracts | Validated source and chart catalog, methodology/rights flags | Complete |
 | 2 — Macro data infrastructure | Macro feeds, worldwide capitalization/GDP and earnings-yield aggregates, optional 24 market listings/ECB FX, PostgreSQL, worker and FastAPI | **42 mapped macro/index series live-source-verified and integrated; original unavailable definitions explicitly superseded and archived** |
-| 3 — Dashboard | React combined graphs, filtering and static GitHub Pages export with redistribution checks | Not started |
+| 3 — Dashboard | Minimal React/ECharts thematic chart explorer with interaction, local API/static data, public rights-filter and Pages workflow | **Frontend implemented; browser/live deployment acceptance pending** |
 | 4 — Analytics | Derived economic indicators, ETF/gold portfolio and risk comparison | Not started |
 
 The active catalog now contains **42 mapped macro/index series**: 36 previously verified sources, three free public-source replacements, and three OECD38 country-weighted corporate-surplus and participation series. The two unavailable original series definitions are retained, with the exact change-of-scope rationale, in [`definitions/superseded_series.json`](definitions/superseded_series.json). “Mapped” does not imply the provider has granted public redistribution rights. The original 32 mapped series have been checked against live source responses, including the three BIS policy rates in a separate Docker/PostgreSQL acceptance run and all 23 other series through the source acceptance workflow.
 
 **The owner approved replacements** for the original two inaccessible historical indicators: [publicly documented MSCI ACWI top-ten index snapshots](data/msci_acwi_published_snapshots.json), which are sparse rather than monthly, and [official Eurostat EU27 corporate operating surplus relative to EU GDP](docs/PHASE_2_FREE_SOURCE_REPLACEMENTS.md), which includes unlisted corporations and is not worldwide listed-company net profits. A second official Eurostat indicator measures nonfinancial corporate gross surplus/sector gross value added. No original global-earnings or complete monthly index-weight coverage is claimed. Independent ETF NAV and ticker-change audits are no longer macro Phase 2 exit gates, per the [owner-approved scope amendment](docs/PHASE_2_MACRO_SCOPE_AMENDMENT.md). The existing optional market-data layer is already integrated: 24 global/EU/US ETF and stock listings, three ECB FX feeds, source-adjusted closes, dividend and split history, EUR performance, and two labelled GLD/VT proxy correlations. See [market-data contracts](docs/MARKET_DATA.md) and [data coverage](docs/DATA_COVERAGE.md).
+
+## Phase 3 — the macro dashboard
+
+The [original user-approved Phase 3 scope](docs/PHASE_3_CONTRACT.md) is a **single vertically scrolling thematic research page**, not a portfolio system. A small Vite/React/TypeScript frontend uses Apache ECharts and the already validated 42-source Python data layer. Collapsible themes and individually expanded charts expose source-native comparison, periods (5Y/10Y/20Y/Max/Custom), original/index-100/percentile views, context events, sources/ingestion runs, table, CSV, PNG, JSON config and shareable chart URL.
+
+**Private/local with all mapped macro data:** run the existing Docker Compose/FastAPI/PostgreSQL stack, then run:
+
+```bash
+cd frontend
+npm install                 # Node 24 recommended (npm 11)
+npm run dev                 # http://127.0.0.1:5173
+```
+
+The frontend uses Vite's local `/api` proxy to `127.0.0.1:8080`; it does **not** expose the home server. Alternative local static mode: from the repository root run `python -m finance_dashboard.static_export --macro-only --output-dir frontend/public/data`, then `VITE_DATA_MODE=static npm run dev` inside `frontend` (private data, do **not** publish).
+
+**Pages:** [manual licence-filtered deployment workflow](.github/workflows/phase3-pages.yml) includes only source data with explicitly confirmed `cc_by_4_0` rights (currently **5 of 42**); all 37 restricted/review-required datasets are withheld from the public artifact. The entire macro explorer is available in local/private mode; the limited public site cannot show restricted Fed/ECB/BOJ data until data redistribution rights are cleared. No permanent Pages publication is claimed. The implementation and publication constraints are documented in [Phase 3](docs/PHASE_3.md).
 
 ## Run locally
 
