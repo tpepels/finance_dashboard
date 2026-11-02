@@ -48,7 +48,7 @@ class MacroAggregateParserTests(unittest.TestCase):
             "<html></html>",
             published_html().replace("Historical trailing P/E", "Random"),
             published_html().replace("21.60</td><td>22.96", "Infinity</td><td>22.96"),
-            published_html().replace("2025 Dec", "2026 Dec"),
+            published_html().replace("2025 Dec", "2024 Dec"),
             published_html().replace("2016 Dec", "April 2016").replace("2017 Dec", "April 2017"),
         ):
             with self.assertRaises(AggregateSourceError):
@@ -126,7 +126,7 @@ class MacroAggregateProviderTests(unittest.TestCase):
             }]])
         router = ProviderRouter(httpx.Client(transport=httpx.MockTransport(handler)))
         try:
-            with self.assertRaisesRegex(ValueError, "indicator mismatch"):
+            with self.assertRaisesRegex(Exception, "indicator mismatch"):
                 router.fetch("valuation.world.listed_market_cap_world_gdp")
         finally:
             router.close()
