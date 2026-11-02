@@ -211,6 +211,54 @@
       "display_mode": "raw",
       "rationale": "Expose quarterly world GDP share represented by economies contributing to the GDP-weighted credit gap.",
       "caveats": "Prior calendar-year USD GDP denominator; 80% inclusion threshold. Covered economies and weights vary over time; values below threshold omitted."
+    },
+    {
+      "id": "world_listed_cap_share",
+      "theme": "valuation",
+      "title": "World listed-company market capitalization relative to world GDP",
+      "status": "mapped",
+      "series_ids": [
+        "valuation.world.listed_market_cap_world_gdp"
+      ],
+      "display_mode": "raw",
+      "rationale": "Track worldwide listed domestic equity market size relative to nominal global economic output since WDI WFE source history begins.",
+      "caveats": "Uses WDI WLD listed-market-capitalization / WDI WLD GDP; capital-market country coverage is incomplete and changes through time. Not the WDI country-weighted aggregate CM.MKT.LCAP.GD.ZS."
+    },
+    {
+      "id": "world_listed_cap_usd",
+      "theme": "valuation",
+      "title": "World listed-company capitalization in current US dollars",
+      "status": "mapped",
+      "series_ids": [
+        "valuation.world.listed_market_cap_usd"
+      ],
+      "display_mode": "raw",
+      "rationale": "Show WFE-sourced WDI world aggregate listed domestic equity capitalization in annual nominal USD.",
+      "caveats": "USD values and geographic coverage vary; not inflation-adjusted and not the full worldwide listed corporate earnings numerator."
+    },
+    {
+      "id": "world_aggregate_trailing_pe",
+      "theme": "valuation",
+      "title": "Global equities aggregate trailing P/E (Siblis)",
+      "status": "mapped",
+      "series_ids": [
+        "valuation.world.global_trailing_pe"
+      ],
+      "display_mode": "raw",
+      "rationale": "Follow the normalized aggregate index price-to-earnings multiple on officially published month-end snapshots.",
+      "caveats": "Sparse selected dates rather than a complete historical monthly series; Siblis index covers ~3,000 companies and is not all worldwide listed issuers. Proprietary source; no public redistribution without rights."
+    },
+    {
+      "id": "world_aggregate_earnings_yield",
+      "theme": "valuation",
+      "title": "Global equities normalized trailing earnings yield",
+      "status": "mapped",
+      "series_ids": [
+        "valuation.world.global_earnings_yield"
+      ],
+      "display_mode": "raw",
+      "rationale": "Measure the inverse of the globally published Siblis index P/E as earnings relative to that index's capitalization.",
+      "caveats": "Not corporate net profits as a share of global GDP. Sparse year-end snapshots and distinct index universe; proprietary data require separate publishing permission."
     }
   ]
 }
