@@ -29,3 +29,16 @@ for dataset in ["DSD_NASEC1@DF_QSA_TRANSACTIONS_C","DSD_NASEC1@DF_QSA"]:
         print("DATA",dataset,key,resp.status,resp.read(1400)[:1400],flush=True)
     except Exception as exc:
       print("DATA_ERROR",dataset,key,type(exc).__name__,str(exc)[:190],flush=True)
+
+# Eurostat fallback: official ESA2010 institutional sector annual series.
+for geo in ["EA20","EU27_2020"]:
+ for sector,na_item in [("S11","B2G"),("S12","B2G"),("S1","B1GQ"),("S11","B2G_B3G")]:
+  from urllib.parse import urlencode
+  url="https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/nasa_10_nf_tr?"+urlencode({"geo":geo,"sector":sector,"na_item":na_item,"unit":"CP_MEUR","sinceTimePeriod":"2020"})
+  try:
+    req=urllib.request.Request(url,headers={"User-Agent":"CapitalMonitor/1.0"})
+    with urllib.request.urlopen(req,timeout=8) as response:
+      b=response.read(1400)
+      print("EUROSTAT",geo,sector,na_item,response.status,b[:600],flush=True)
+  except Exception as exc:
+    print("EUROSTAT_ERROR",geo,sector,na_item,type(exc).__name__,str(exc)[:140],flush=True)
