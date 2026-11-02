@@ -527,7 +527,15 @@ def load_sec_profit_snapshot(path: Path | None = None) -> dict | None:
         preferred = os.environ.get("WISESHEETS_SNAPSHOT_PATH")
         persistent = Path(preferred) if preferred else None
         bundled = DEFAULT_ROOT / "data" / "wisesheets" / "sec_filer_profit.json"
-        path = persistent if persistent and persistent.is_file() else bundled
+        if persistent and persistent.is_file():
+            try:
+                return load_sec_profit_snapshot(persistent)
+            except WisesheetsError:
+                # A corrupted volume snapshot must not hide the last validated
+                # image-bundled research data. Its failure remains visible
+                # through local collection logs and the persistent refresh marker.
+                pass
+        path = bundled
     else:
         path = Path(path)
     if not path.is_file():
