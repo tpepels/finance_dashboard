@@ -35,7 +35,10 @@ with httpx.Client(timeout=9, follow_redirects=False) as client:
                 report["count"]=len(j.get("data",[]))
                 report["dates"]=[x.get("trading_day (EOD)") for x in j.get("data",[])[:2]]
             if name in ("bis_gap_us","bis_gap_jp","bis_gap_ea") and r.status_code==200:
-                j=r.json(); data=j.get("data",{}); structures=data.get("structures",[])
+                j=r.json(); data=j.get("data",{}); structures=data.get("structures",data.get("structure",[]))
+                report["data_keys"]=list(data)
+                report["structure_type"]=type(structures).__name__
+                if isinstance(structures,dict): structures=[structures]
                 if structures:
                     dims=structures[0].get("dimensions",{})
                     report["series_dimensions"]=[(v.get("id"),len(v.get("values",[])), [z.get("id") for z in v.get("values",[])[:8]]) for v in dims.get("series",[])]
