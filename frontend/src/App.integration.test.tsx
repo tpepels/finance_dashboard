@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+vi.mock('./Phase4Panel', () => ({ default: () => null }));
 vi.mock('./SourceExplorer', () => ({
   default: () => <section>Original source appendix loaded</section>,
 }));
