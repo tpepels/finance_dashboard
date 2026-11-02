@@ -84,16 +84,12 @@ def import_fund(mapping: dict, *, client: httpx.Client,
     fund = mapping["instrument_id"]
     cik = mapping["cik"]
     expected = mapping["series_id"]
-    if not read_verified_config and not fund:  # Unreachable; explicit guard only.
-        raise HoldingsError("Fund mapping missing")
     base=_get_json(client,SUBMISSIONS_URL+f"CIK{int(cik):010d}.json")
     if str(int(base.get("cik","0"))) != str(int(cik)):
         raise HoldingsError("SEC registrant identity mismatch")
     rows = _rows(base)
     # SEC may offload historical submissions into separately named page JSON.
     for page in base.get("filings",{}).get("files",[]):
-        if not any(row["date"] >= earliest.isoformat() for row in rows):
-            pass  # Continue archive discovery, not a reason to skip.
         name = page.get("name","")
         if not PAGE.fullmatch(name):
             continue
