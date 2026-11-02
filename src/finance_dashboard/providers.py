@@ -21,6 +21,11 @@ from .catalog import load_documents
 from .wisesheets import load_sec_profit_snapshot, snapshot_series
 from .world_credit import (BIS_COMPOSITE_URL, WORLD_GDP_URL,
     parse_bis_national_credit_gaps, parse_wdi_gdp_all, country_weighted_bis_gap)
+from .concentration_snapshots import load_msci_concentration_snapshots
+from .eurostat_corporate import (
+    EUROSTAT_JSON_URL, EUROSTAT_KI_URL, EU27,
+    parse_eurostat_annual_series, eu27_corporate_gross_surplus_gdp,
+)
 from .macro_aggregates import (
     SIBLIS_WORLD_PE_URL, parse_siblis_world_pe, aggregate_earnings_yield,
     world_listed_market_cap_gdp,
@@ -43,7 +48,7 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA"))
 
 
 class SourceUnavailable(ProviderError):
@@ -602,6 +607,46 @@ class ProviderRouter:
             if provider == "SIBLIS_WORLD_EARNINGS_YIELD":
                 observations = aggregate_earnings_yield(observations)
             return FetchedSeries(series_id, SIBLIS_WORLD_PE_URL, None, observations)
+        if provider == "MSCI_PUBLISHED_TOP10":
+            if key != "892400/TOP10/PUBLISHED_SPARSE_SNAPSHOTS":
+                raise SourceUnavailable("Wrong index, statistic or historical method")
+            values = load_msci_concentration_snapshots(start=start)
+            return FetchedSeries(series_id,
+                "https://www.msci.com/indexes/index/892400/msci-acwi-index",
+                None, values)
+        if provider == "EUROSTAT_CORPORATE_GDP":
+            if key != "nasa_10_nf_tr/EU27_2020/S11+S12_B2A3G/S1_B1GQ":
+                raise SourceUnavailable("Invalid Eurostat corporation GDP methodology")
+            sources = {}
+            source_urls = []
+            for sector, na_item in (("S11", "B2A3G"), ("S12", "B2A3G"), ("S1", "B1GQ")):
+                params = {"freq": "A", "unit": "CP_MEUR", "direct": "RECV",
+                          "sector": sector, "na_item": na_item, "geo": EU27}
+                if start:
+                    params["sinceTimePeriod"] = str(start.year)
+                result = self._get(EUROSTAT_JSON_URL, params=params)
+                sources[sector] = parse_eurostat_annual_series(
+                    result.json(), dataset="nasa_10_nf_tr", sector=sector,
+                    na_item=na_item, unit="CP_MEUR", direct="RECV", start=start)
+                source_urls.append(str(result.request.url))
+            values = eu27_corporate_gross_surplus_gdp(
+                sources["S11"], sources["S12"], sources["S1"], start=start)
+            return FetchedSeries(series_id, " + ".join(source_urls), None, values)
+        if provider == "EUROSTAT_NFC_PROFIT_GVA":
+            if key != "nasa_10_ki/EU27_2020/S11/B2G_B3G_RAT_S11":
+                raise SourceUnavailable("Invalid Eurostat NFC gross profit share source key")
+            params = {"freq": "A", "unit": "PC", "sector": "S11",
+                      "geo": EU27, "na_item": "B2G_B3G_RAT_S11"}
+            if start:
+                params["sinceTimePeriod"] = str(start.year)
+            response = self._get(EUROSTAT_KI_URL, params=params)
+            values = parse_eurostat_annual_series(
+                response.json(), dataset="nasa_10_ki",
+                sector="S11", na_item="B2G_B3G_RAT_S11",
+                unit="PC", start=start)
+            if any(v > 100 for v in values.values()):
+                raise ProviderError("Non-financial corporation gross profit share >100% of GVA")
+            return FetchedSeries(series_id, str(response.request.url), None, values)
         if provider == "BIS_WORLD_WEIGHTED":
             if key not in ("GAP/43_COUNTRIES_PRIOR_YEAR_GDP_80PCT",
                            "COVERAGE/43_COUNTRIES_PRIOR_YEAR_GDP_80PCT"):
