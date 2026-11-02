@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from .bis import COUNTRIES
+from .providers import ProviderRouter, PROVIDER_CODES
 from .catalog import load_documents, validate
 from .database import IngestionRun, make_engine
 from .service import current_observations
@@ -38,6 +38,7 @@ def create_app(engine=None) -> FastAPI:
     if errors:
         raise RuntimeError("Catalog invalid: " + "; ".join(errors))
     by_id = {s["id"]: s for s in catalog["series"]}
+    supported = {sid for sid, s in by_id.items() if s["status"] == "mapped" and s["provider"] in PROVIDER_CODES}
 
     @app.get("/api/health")
     def health():
@@ -65,8 +66,8 @@ def create_app(engine=None) -> FastAPI:
         for sid in request.series_ids:
             if sid not in by_id:
                 raise HTTPException(404, f"Unknown series: {sid}")
-            if sid not in COUNTRIES:
-                raise HTTPException(422, f"Series not ingested in Phase 2: {sid}")
+            if sid not in supported:
+                raise HTTPException(422, f"Series not yet supported by an ingestion adapter: {sid}")
         output = []
         with Session(db) as session:
             for sid in request.series_ids:
@@ -92,14 +93,16 @@ def create_app(engine=None) -> FastAPI:
     def data_status():
         result = []
         with Session(db) as session:
-            for sid in COUNTRIES:
+            for sid in sorted(by_id):
                 last = session.scalars(
                     select(IngestionRun).where(IngestionRun.series_id == sid)
                     .order_by(IngestionRun.started_at.desc(), IngestionRun.id.desc()).limit(1)
                 ).first()
                 result.append({
                     "series_id": sid,
-                    "status": last.status if last else "never_ingested",
+                    "provider": by_id[sid]["provider"],
+                    "mapped": sid in supported,
+                    "status": last.status if last else ("never_ingested" if sid in supported else "source_unresolved"),
                     "last_attempt": last.started_at.isoformat() if last else None,
                     "last_success": None,
                     "received": last.observations_received if last else 0,

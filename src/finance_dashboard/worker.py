@@ -10,7 +10,7 @@ import time
 
 from sqlalchemy import text
 
-from .bis import BisPolicyClient, COUNTRIES
+from .providers import ProviderRouter
 from .database import make_engine
 from .service import IngestionService
 
@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 def refresh_all(engine, full: bool = False) -> int:
     failures = 0
-    client = BisPolicyClient()
+    client = ProviderRouter()
     try:
         with engine.connect() as conn:
             # PostgreSQL advisory lock stops two scheduled workers changing one series concurrently.
@@ -30,7 +30,7 @@ def refresh_all(engine, full: bool = False) -> int:
                     return 1
             try:
                 service = IngestionService(engine, client)
-                for series_id in COUNTRIES:
+                for series_id in client.supported_ids():
                     try:
                         report = service.refresh(series_id, full=full)
                         log.info("refreshed: %s", json.dumps(report))

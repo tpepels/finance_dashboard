@@ -1,4 +1,4 @@
-"""Atomic BIS ingestion with append-only corrections and application-seen snapshots."""
+"""Provider-neutral atomic ingestion with append-only corrections and app snapshots."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -8,19 +8,17 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .bis import BisPolicyClient, COUNTRIES, FetchedSeries
+from .providers import ProviderRouter
 from .catalog import load_documents
 from .database import IngestionRun, ObservationVersion, SeriesRow, now_utc
 
 
 class IngestionService:
-    def __init__(self, engine, provider: BisPolicyClient | None = None):
+    def __init__(self, engine, provider=None):
         self.engine = engine
-        self.provider = provider or BisPolicyClient()
+        self.provider = provider or ProviderRouter()
 
     def refresh(self, series_id: str, *, full: bool = False, today: date | None = None) -> dict:
-        if series_id not in COUNTRIES:
-            raise ValueError(f"Unsupported ingestion series: {series_id}")
         definitions, _ = load_documents()
         definition = next((item for item in definitions["series"] if item["id"] == series_id), None)
         if not definition or definition["status"] != "mapped":
@@ -29,17 +27,18 @@ class IngestionService:
             row = session.get(SeriesRow, series_id)
             if row is None:
                 session.add(SeriesRow(
-                    id=series_id, provider="BIS", source_key=definition["source_key"],
+                    id=series_id, provider=definition["provider"], source_key=definition["source_key"],
                     updated_at=now_utc(),
                 ))
-            elif row.source_key != definition["source_key"]:
+            elif row.source_key != definition["source_key"] or row.provider != definition["provider"]:
                 raise ValueError("Source mapping changed: requires explicit migration")
         with Session(self.engine) as session:
             last_date = session.scalar(
                 select(func.max(ObservationVersion.period)).where(ObservationVersion.series_id == series_id)
             )
         # Overlap makes backward revisions detectable; first run fetches full history.
-        start = None if full or last_date is None else last_date - timedelta(days=120)
+        overlap = 120 if definition["frequency"] == "D" else 730 if definition["frequency"] == "M" else 365 * 5
+        start = None if full or last_date is None else last_date - timedelta(days=overlap)
         run_id = str(uuid4())
         with Session(self.engine) as session, session.begin():
             session.add(IngestionRun(
