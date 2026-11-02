@@ -298,6 +298,55 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
         else:
             headline = None
 
+    # Display explicit source-dated changes with each plotted line. The
+    # comparison period is the nearest actually observed date about a year
+    # earlier, within tolerance for its declared source frequency.
+    tolerance = {"D": 40, "M": 55, "Q": 120, "A": 210}
+    for series in used:
+        recorded = series["points"]
+        series["latest"] = recorded[-1] if recorded else None
+        series["year_change"] = None
+        if len(recorded) < 2:
+            continue
+        last = recorded[-1]
+        target = date.fromisoformat(last["date"]) - timedelta(days=365)
+        matches = [(abs((date.fromisoformat(row["date"]) - target).days), row)
+                   for row in recorded[:-1]
+                   if abs((date.fromisoformat(row["date"]) - target).days)
+                       <= tolerance[series["frequency"]]]
+        if not matches:
+            continue
+        prior = min(matches, key=lambda row: (row[0], row[1]["date"]))[1]
+        series["year_change"] = {
+            "start": prior["date"], "end": last["date"],
+            "difference": str(Decimal(last["value"]) - Decimal(prior["value"])),
+            "unit": "percentage_points" if series["unit"] == "percent"
+                    else "index_points" if series["unit"] == "index"
+                    else series["unit"],
+        }
+
+    # Country comparisons require an EXACT shared source date. If one of the
+    # requested countries has no data, do not silently compare a smaller set.
+    if len(used) > 1 and kind == "raw":
+        maps = [{row["date"]: Decimal(row["value"]) for row in line["points"]}
+                for line in used]
+        shared = set.intersection(*(set(row) for row in maps))
+        if shared:
+            day = max(shared)
+            by_value = sorted((values[day], line["name"])
+                              for values, line in zip(maps, used))
+            headline = {
+                "date": day, "value": str(by_value[-1][0] - by_value[0][0]),
+                "unit": "percentage_points" if used[0]["unit"] == "percent"
+                        else used[0]["unit"],
+                "label": "Highest–lowest at exactly shared date",
+                "explanation": (f"{by_value[-1][1]} ({by_value[-1][0]}) minus "
+                                f"{by_value[0][1]} ({by_value[0][0]}); "
+                                "source dates match exactly, no resampling."),
+            }
+        else:
+            headline = None
+
     return {
         "id": spec["id"], "region": spec["region"], "theme": spec["theme"],
         "title": spec["title"], "question": spec["question"],
