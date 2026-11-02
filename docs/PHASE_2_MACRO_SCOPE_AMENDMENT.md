@@ -34,7 +34,8 @@
 ## Verification evidence
 
 - [36-series live export including all four new aggregates](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778): Siblis 11+11 source snapshots, WDI capitalization 51 years, WDI capitalization/world GDP 51 years; all 24 optional historical instruments and 3 FX sources also passed.
-- [Previously verified 32-series PostgreSQL full backfill](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670).
-- [Phase 2 tracker](https://github.com/tpepels/finance_dashboard/issues/1): new complete full macro PostgreSQL acceptance should include all 36 series before declaring this extension end-to-end accepted.
+- [Previously verified original 32-series PostgreSQL backfill](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670).
+- [**Passed full 36-series live historical PostgreSQL and FastAPI acceptance**](https://github.com/tpepels/finance_dashboard/actions/runs/41494100275), including 51+51 World Bank and 11+11 Siblis observations.
+- [Phase 2 tracker](https://github.com/tpepels/finance_dashboard/issues/1): the complete 36-source PostgreSQL/API acceptance passed; two original historical indicators remain unresolved.
 
 A frozen requirement contract only changes through an owner decision recorded here, synchronized to the [feature contract](PHASE_2_FEATURE_CONTRACT.md), [architecture contract](PHASE_2_ARCHITECTURE_CONTRACT.md) and [implementation contract](PHASE_2_IMPLEMENTATION_CONTRACT.md). This decision is the explicit record of the macro-first amendment, not a declaration of Phase 2 completion.
