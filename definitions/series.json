@@ -496,6 +496,22 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "ILO-custodied worldwide productivity growth. Does not represent wage growth or productivity-compensation divergence."
+    },
+    {
+      "id": "valuation.us.equity_net_worth",
+      "name": "US nonfinancial corporate equities as % of net worth",
+      "theme": "valuation",
+      "status": "mapped",
+      "provider": "FRED",
+      "source_key": "NCBCEPNW",
+      "source_url": "https://fred.stlouisfed.org/series/NCBCEPNW",
+      "geography": "US",
+      "frequency": "Q",
+      "unit": "percent",
+      "measurement": "Federal Reserve Z.1 nonfinancial corporate business, corporate equities as a percentage of net worth, level (NCBCEPNW)",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Useful US market-to-balance-sheet valuation proxy, NOT full Tobin's Q. Requires no replacement-cost assets assumptions. Source may make major quarterly structural revisions; public redistribution rights must be verified."
     }
   ]
 }

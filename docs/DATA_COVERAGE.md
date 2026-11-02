@@ -1,6 +1,6 @@
 # Data coverage and blockers (Phase 2 expanded)
 
-The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **25 mapped** (including 3 BIS credit gaps and a separate worldwide productivity series), 3 FRED with official key or public-table fallback; **6 original series unresolved**. This document distinguishes
+The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **26 mapped** (including 3 BIS credit gaps and a separate worldwide productivity series), 3 FRED with official key or public-table fallback; **6 original series unresolved**. This document distinguishes
 an implementable adapter from verified observations and legal permission to
 republish data to GitHub Pages.
 
@@ -12,6 +12,7 @@ republish data to GitHub Pages.
 | ECB deposit facility | 1 mapped, adapter | Official ECB CSV format |
 | World Bank real GDP and listed-cap/GDP | 8 mapped, live verified | Indicators v2 JSON API, all 6 GDP geographies plus both capitalization ratios verified |
 | IMF world general-government debt | 1 mapped, live verified | April 2026 WEO DataMapper, not October WEO; current and future calendar years excluded |
+| Federal Reserve nonfinancial corporate equities/net worth | 1 mapped | FRED NCBCEPNW; quarterly US Z.1 valuation proxy. **Not Tobin Q** (replacement-cost denominator still unresolved) |
 | Siblis global ACWI CAPE | 1 mapped, live endpoint verified | Sparse proprietary free-tier snapshot series, noncommercial use. Public GitHub Pages redistribution **not permitted without separate licence**; no interpolated history |
 | ILO / UNSD world labour share | 1 mapped, live verified | Official UN SDG 10.4.1 `SL_EMP_GTOTL` world (M49=1), ILO-custodied; filter global reporting and all ages |
 | BIS global private credit gap | Unresolved | There is no single well-defined worldwide country-comparable credit-gap series; individual geographies must be specified |

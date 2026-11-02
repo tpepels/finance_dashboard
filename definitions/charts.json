@@ -162,6 +162,19 @@
       "display_mode": "raw",
       "rationale": "Compare changes in global output per worker with workers' share of worldwide income, using two separately-labelled percentage measurements.",
       "caveats": "Productivity is an annual growth rate and labour share is a level of income; levels are not directly comparable even though both use percentages. This does not constitute a wage/productivity-gap series."
+    },
+    {
+      "id": "us_equity_net_worth_vs_cape",
+      "title": "US corporate equities/net worth and Shiller CAPE",
+      "theme": "valuation",
+      "status": "draft",
+      "series_ids": [
+        "valuation.us.equity_net_worth",
+        "valuation.us.cape"
+      ],
+      "display_mode": "indexed_100",
+      "rationale": "Compare US equities/net worth valuation to earnings-adjusted equity prices, preserving both original measures.",
+      "caveats": "NCBCEPNW is equity market value versus net worth, not Tobin Q; quarterly versus monthly frequencies and unlike units require explicit alignment and normalization."
     }
   ]
 }
