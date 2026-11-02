@@ -6,10 +6,10 @@ Status: **baseline frozen on 2026-11-02**. This records the complete delivery ta
 
 | Component | Authoritative paths | Required behaviour |
 |---|---|---|
-| Catalog / validation | `definitions/series.json`, `definitions/charts.json`, `src/finance_dashboard/catalog.py` | 34 definitions, no fake mapping of two unresolved IDs; unit/frequency/source validation |
-| Macro providers | `providers.py`, `bis.py`, `remaining_sources.py`, `world_credit.py` | Complete 32 live mapped series, BEA Q1, ILO identity, world BIS composite/coverage, MSCI NETR, World Bank gold |
-| Market registry / ingestion | `definitions/instruments.json`, `market.py`, `market_service.py` | All 24 listings, raw/adjusted prices, dividends, splits, proper historical ex-dates and exchange/currency checks |
-| Market analytics / export | `market_analytics.py`, `market_export.py` | Four distinct return conventions, ECB USD/GBP/CHF FX conversion, explicitly labelled GLD/VT 36m proxies |
+| Catalog / validation | `definitions/series.json`, `definitions/charts.json`, `src/finance_dashboard/catalog.py` | 38 definitions (34 original + 4 new global macro), 36 mapped and 2 original unresolved; source/frequency/unit validation |
+| Macro providers | `providers.py`, `bis.py`, `remaining_sources.py`, `world_credit.py`, `macro_aggregates.py` | Complete 36 live mapped sources: original 32 plus WDI world capitalization, matched world cap/GDP ratio, Siblis world trailing P/E and same-universe earnings yield |
+| Optional market registry / ingestion | `definitions/instruments.json`, `market.py`, `market_service.py` | Retain all 24 implemented listings, raw/adjusted prices, dividends, splits, proper historical ex-dates and exchange/currency checks |
+| Optional market analytics / export | `market_analytics.py`, `market_export.py` | Four distinct return conventions, ECB USD/GBP/CHF FX conversion, explicitly labelled GLD/VT 36m proxies |
 | Persistence | `database.py`, `service.py`, `migrations/` | Append-only versioned records, ingestion runs, transactions, date/type fidelity, previous successful values on failure |
 | Query API | `api.py` | Read-only `/api/series`, `/api/charts`, `/api/query`, `/api/data-status`, market routes, `/api/earnings/sec-filers` |
 | Scheduled and static data | `worker.py`, `static_export.py`, `.github/workflows/static-data.yml` | all mapped data; complete fail-closed JSON artifact, no secrets |
@@ -28,19 +28,23 @@ Status: **baseline frozen on 2026-11-02**. This records the complete delivery ta
 7. **Historical MSCI concentration (outstanding):** at each composition date, sum ten largest *actual MSCI security weights* after source total-weight validation; preserve security/share-class identities, dates and revision provenance. Monthly multi-year history is required. No present-day-membership backtest.
 8. **Worldwide listed profits (outstanding):** annual or consistent TTM consolidated net income attributable to ordinary shareholders, including losses, unique issuer and global geography, fiscal alignment, USD conversion and current USD world GDP. Track missing-data coverage, delistings, cross-listed shares and consolidated parent/subsidiary eliminations. An MSCI or Siblis earnings estimate derived from an index P/E is allowed *only as a separately named proxy*, with compatible same-date index cap/P-E and explicit provider method.
 
+9. **Global macro aggregates (implemented):** WDI `WLD/CM.MKT.LCAP.CD` capitalization current USD (51 annual observations, 1975–2025); derived same-year world WDI cap / world GDP * 100, 51 annual; Siblis published sparse global trailing P/E (11 snapshots: Dec 2016–2025 and Sep 2026) and 100/P-E yield, 11 corresponding snapshots. World Bank WLD market-cap/GDP derived from levels is distinct from the WDI weighted-country share; different P/E universes must **never** be mixed to claim global net earnings/GDP. Siblis redistribution restricted.
+
 ## Definition and completion gates
 
 | Gate | State as of baseline | Evidence / outstanding requirement |
 |---|---|---|
-| 32/32 mapped macro + derived series | **PASS** | [complete macro PostgreSQL ingestion and API](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670) |
-| 24/24 market histories + 3/3 ECB FX | **PASS** | [real market PostgreSQL/API](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707) |
-| Combined mapped static artifact | **PASS** | [32-series complete static export](https://github.com/tpepels/finance_dashboard/actions/runs/41474846662) |
+| Original 32/32 mapped macro + derived series | **PASS** | [complete original macro PostgreSQL ingestion and API](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670) |
+| 4 new macro aggregates, real public provider responses/static export | **PASS** | [36-series source-validated static export](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778) |
+| 36-series macro PostgreSQL ingestion and API | **OPEN pending fresh full acceptance** | Entire new mapped catalogue plus original series, not 32-only smoke test |
+| Optional 24/24 market histories + 3/3 ECB FX | **PASS — nonblocking** | [real market PostgreSQL/API](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707) |
+| Combined mapped static artifact | **PASS** | [36-series macro export plus optional markets](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778) |
 | Wisesheets SEC-filer supplementary history | **PASS — limited universe** | [full documented 2021–2025 scan](https://github.com/tpepels/finance_dashboard/actions/runs/41483503450) |
 | `concentration.global.top10` | **OPEN** | Historical original MSCI security-weight dataset, complete import, calculation, provenance and API/static tests |
 | `profit.global.corporate_share` | **OPEN** | Worldwide historical consolidated issuer earnings, consistent GDP formula, missing/delisted-issuer audit and API/static tests |
-| Historical instrument ticker/exchange continuity | **OPEN** | Independent test cases across real symbol/venue changes; verify persisted same-security identity |
-| Independent issuer NAV and distributions | **OPEN** | Validate each applicable ETF/share class against publisher records and document discrepancies |
-| Full Phase 2 regression | **OPEN** | All original series, 24 market listings, FX, supplementary data and new sources in one versioned acceptance report |
+| Historical instrument ticker/exchange continuity | **NONBLOCKING optional debt** | Already implemented instrument history remains; further per-ETF work removed from macro phase by owner |
+| Independent issuer NAV and distributions | **NONBLOCKING optional debt** | No claim of independent issuer audit; owner explicitly removed this Phase 2 condition |
+| Full Phase 2 macro regression | **OPEN** | 36 mapped macro series including 4 new sources, supplementary provenance and unresolved exact historical definitions in acceptance report |
 
 Tests must include complete source registries; no tests that pass on a hand-picked subset count as phase completion. Integrate both new original measures in *the existing* registry, persistence model, API and static export, including failure/staleness/rights semantics. Do not mark a definition `mapped` before live source evidence.
 
@@ -50,9 +54,9 @@ Tests must include complete source registries; no tests that pass on a hand-pick
 2. Add catalog definition/rights metadata and source adapter; implement data-normalization, calculation and revision tracking; migrate schema if needed.
 3. Integrate and validate API and static export; use the same calculation service, not duplicated browser formulas.
 4. Run bounded unit/property tests for all variations and short real-source/PostgreSQL acceptance; do not block on long CI. Store links/results in issue #1.
-5. Reconcile ETF issuer NAV/distributions and ticker/venue continuity; update documentation and issue checkboxes.
+5. Record the macro-first owner amendment and remove ETF NAV/ticker audits from mandatory completion; optional market data remains operational.
 6. Close issue #1 only after all original and integration gates pass or the owner explicitly approves a change to the frozen contract.
 
 ## Contract-change policy
 
-Feature identity, sources, formula scope, universe, outputs and quality gates cannot be reduced or substituted by implementing only a representative subset. A proposed scope change must be approved by the owner and recorded in issue #1, with synchronized edits to the feature and architecture contracts. **A written design freeze is not technical enforcement of repository branch protection.**
+Feature identity, sources, formula scope, universe, outputs and quality gates cannot be reduced or substituted by implementing only a representative subset. A proposed scope change must be approved by the owner and recorded in issue #1, with synchronized edits to the feature and architecture contracts. **A written design freeze is not technical enforcement of repository branch protection.** [Owner-approved macro-first change](PHASE_2_MACRO_SCOPE_AMENDMENT.md) supersedes the previous ETF-level acceptance gates.
