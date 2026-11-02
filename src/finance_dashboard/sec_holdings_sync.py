@@ -7,7 +7,7 @@ historical ETF ticker mapping is inferred from today's trading symbol.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -168,6 +168,30 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
                                 "status":"failed","errors":1})
     return {"status":"complete" if all(x.get("errors",0)==0 for x in reports)
             else "partial","funds":reports}
+
+
+def collect_if_due(*, config: Path = CONFIG, root: Path | None = None,
+                   today: date | None = None) -> dict:
+    """Do not re-download the same SEC submissions on every daily refresh."""
+    target = root or Path(os.environ.get("FINANCE_HOLDINGS_DIR","/data/holdings"))
+    day = today or datetime.now(timezone.utc).date()
+    if not config.is_file():
+        return {"status":"unconfigured","funds":[]}
+    marker = target / ".sec-refresh-state.json"
+    if marker.exists():
+        try:
+            recorded = date.fromisoformat(json.loads(marker.read_text())["date"])
+            if 0 <= (day-recorded).days < 28:
+                return {"status":"not_due","last_success":recorded.isoformat(),"funds":[]}
+        except (ValueError,KeyError,OSError,json.JSONDecodeError):
+            pass
+    result = collect_configured(config=config,root=target,max_filings_per_fund=12)
+    if result["status"] == "complete":
+        target.mkdir(parents=True,exist_ok=True)
+        temporary = target / ".sec-refresh-state.pending"
+        temporary.write_text(json.dumps({"date":day.isoformat()}),encoding="utf-8")
+        os.replace(temporary,marker)
+    return result
 
 
 def main() -> int:
