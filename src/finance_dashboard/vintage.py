@@ -233,6 +233,52 @@ def capture_previous_month(root: Path = ROOT, *,
             "captured":captured,"errors":errors}
 
 
+def backfill_batch(start: date, end: date, series_ids: list[str], *,
+                   api_key: str, client: httpx.Client, root: Path = ROOT,
+                   max_requests: int = 180, pause_seconds: float = 0.2) -> dict:
+    """Resume full-range publication-vintage ingestion in bounded API batches.
+
+    Missing dates remain missing after failures. Successful source snapshots
+    are reused without rewriting their original as-of/retrieval provenance.
+    """
+    if (start > end or end > date.today() or not series_ids
+        or len(series_ids) != len(set(series_ids))
+        or any(sid not in SOURCES for sid in series_ids)):
+        raise VintageError("Invalid ALFRED historical backfill range or sources")
+    if not 1 <= max_requests <= 180 or pause_seconds < 0:
+        raise VintageError("ALFRED request budget must be between 1 and 180")
+    periods = [(sid, asof) for asof in _month_ends(start, end)
+               for sid in series_ids]
+    pending = [(sid, day) for sid, day in periods
+               if read_snapshot(root, sid, day) is None]
+    fetched, failures = 0, []
+    for sid, day in pending[:max_requests]:
+        try:
+            fetch_snapshot(sid, day, api_key=api_key, client=client, root=root)
+            fetched += 1
+        except (VintageError, httpx.HTTPError, OSError, ValueError, KeyError) as exc:
+            # The upstream exception may contain a URL with a private API key.
+            failures.append({"series_id": sid, "asof": day.isoformat(),
+                             "error_type": type(exc).__name__})
+        if pause_seconds:
+            time.sleep(pause_seconds)
+    outstanding = [(sid, day) for sid, day in periods
+                   if read_snapshot(root, sid, day) is None]
+    return {
+        "provider": "ALFRED", "status": "complete" if not outstanding else "partial",
+        "source_vintages_requested": len(periods),
+        "already_cached_before_run": len(periods)-len(pending),
+        "downloaded_now": fetched, "failed_now": failures,
+        "missing_after_run": len(outstanding),
+        "next_missing": ({"series_id": outstanding[0][0],
+                          "asof": outstanding[0][1].isoformat()}
+                         if outstanding else None),
+        "max_requests_per_invocation": max_requests,
+        "notes": ("Repeat the identical --backfill command until missing_after_run "
+                  "is zero. A missing source snapshot is never interpolated."),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch genuine dated ALFRED series snapshots")
     parser.add_argument("--start", type=date.fromisoformat, required=True)
@@ -240,17 +286,30 @@ def main() -> int:
     parser.add_argument("--series", action="append", choices=sorted(SOURCES),
                         required=True, help="Repeat to select multiple data series")
     parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--backfill", action="store_true",
+                        help="Resume multi-year range, up to 180 missing requests per run")
+    parser.add_argument("--max-requests", type=int, default=180,
+                        help="Per-run backfill API budget (1–180)")
     args = parser.parse_args()
     if args.end > date.today() or args.start > args.end:
         parser.error("Historical as-of dates must be ordered and not in the future")
     if len(args.series) != len(set(args.series)):
         parser.error("Do not repeat the same series ID")
     months = _month_ends(args.start, args.end)
-    if len(months) * len(args.series) > 180:
-        parser.error("At most 180 snapshot requests per run; partition longer history")
+    if not args.backfill and len(months) * len(args.series) > 180:
+        parser.error("At most 180 source requests per run; use --backfill for longer history")
+    if not 1 <= args.max_requests <= 180:
+        parser.error("--max-requests must be 1–180")
     key = os.environ.get("FRED_API_KEY", "")
     if not key:
         parser.error("FRED_API_KEY is required for ALFRED")
+    if args.backfill:
+        with httpx.Client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
+            result = backfill_batch(args.start, args.end, args.series,
+                                    api_key=key, client=client, root=args.root,
+                                    max_requests=args.max_requests)
+        print(json.dumps(result, indent=2))
+        return 1 if result["failed_now"] else 0
     ok, failed = 0, 0
     with httpx.Client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
         for day in months:

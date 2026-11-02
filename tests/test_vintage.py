@@ -10,7 +10,7 @@ import httpx
 from finance_dashboard.vintage import (
     SOURCES, VintageError, fetch_snapshot, read_snapshot,
     latest_asof_reading, available_snapshots, _month_ends,
-    capture_previous_month,
+    capture_previous_month, backfill_batch,
 )
 from finance_dashboard.vintage_backtest import target_after, fit_predict, metrics, walk_forward
 
@@ -69,6 +69,37 @@ class VintageTests(unittest.TestCase):
             self.assertEqual(first["status"],"complete")
             self.assertEqual(second["captured"],3)
             self.assertEqual(len(called),3)
+
+    def test_resume_backfill_only_requests_missing_month_end_vintages(self):
+        calls=[]
+        def handler(request):
+            calls.append((request.url.params["series_id"],
+                          request.url.params["realtime_start"]))
+            return httpx.Response(200,json={"observations":[{
+                "date":"2020-01-01","value":"0.5",
+                "realtime_start":"2020-01-10",
+                "realtime_end":"9999-12-31"}]})
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                first=backfill_batch(date(2020,1,1),date(2020,3,31),
+                    ["T10Y3M"],api_key="private",client=client,root=root,
+                    max_requests=2,pause_seconds=0)
+                self.assertEqual(first["missing_after_run"],1)
+                self.assertEqual(first["downloaded_now"],2)
+                self.assertEqual(first["next_missing"]["asof"],"2020-03-31")
+                second=backfill_batch(date(2020,1,1),date(2020,3,31),
+                    ["T10Y3M"],api_key="private",client=client,root=root,
+                    max_requests=2,pause_seconds=0)
+                self.assertEqual(second["already_cached_before_run"],2)
+                self.assertEqual(second["downloaded_now"],1)
+                self.assertEqual(second["status"],"complete")
+                self.assertEqual(len(calls),3)
+                self.assertNotIn("private",(root/"T10Y3M"/"2020-01-31.json").read_text())
+                with self.assertRaises(VintageError):
+                    backfill_batch(date(2020,1,1),date(2020,3,31),
+                        ["T10Y3M"],api_key="fake",client=client,root=root,
+                        max_requests=181,pause_seconds=0)
 
     def test_refuses_future_or_after_vintage_observation(self):
         def handler(_):
