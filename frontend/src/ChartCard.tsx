@@ -7,7 +7,6 @@ import InsightReadout from './InsightReadout';
 import { chartCsv, compareCompatible, rawCompatible, transformSeries, VIEW_MODE_LABELS, windowFor } from './transform';
 import { chartOptions, createChart, numberLabel } from './viz';
 import type { ChartInstance } from './viz';
-import { HISTORY_EVENTS } from './events';
 import { recencyMessage } from './freshness';
 
 interface Props {
@@ -47,7 +46,6 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
   const [range, setRange] = useState<RangePreset>(deepLink?.range ?? '20y');
   const [from, setFrom] = useState(deepLink?.from ?? '');
   const [to, setTo] = useState(deepLink?.to ?? '');
-  const [showEvents, setShowEvents] = useState(deepLink?.events ?? false);
   const root = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(expanded);
   const [loaded, setLoaded] = useState<LoadedSeries[]>([]);
@@ -109,8 +107,8 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
   const plotted = useMemo(() => invalidRange || incompatibleRaw ? [] :
     activeLoaded.map(s => transformSeries(s, mode, window.start, window.end)),
     [activeLoaded, mode, window.start, window.end, invalidRange, incompatibleRaw]);
-  const options = useMemo(() => chartOptions(plotted, mode, showEvents, !expanded),
-    [plotted, mode, showEvents, expanded]);
+  const options = useMemo(() => chartOptions(plotted, mode, false, !expanded),
+    [plotted, mode, expanded]);
 
   useEffect(() => {
     if (!host.current || !plotted.some(p => p.observations.length)) return;
@@ -151,7 +149,6 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
       if (from) url.searchParams.set('from', from);
       if (to) url.searchParams.set('to', to);
     }
-    if (showEvents) url.searchParams.set('events', '1');
     return url.href;
   }
 
@@ -170,7 +167,7 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
     download(`${definition.id}-view.json`, JSON.stringify({
       schema_version: 1, chart_id: definition.id, settings: {
         ids, mode, range, from: range === 'custom' ? from : window.start ?? '',
-        to: range === 'custom' ? to : window.end ?? '', events: showEvents,
+        to: range === 'custom' ? to : window.end ?? '',
       }, sources: activeLoaded.map(s => ({
         id: s.id, name: s.definition.name, provider: s.definition.provider,
         frequency: s.definition.frequency, unit: s.definition.unit,
@@ -302,10 +299,7 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
         <p className="data-caveat"><strong>Interpretation:</strong> {definition.caveats}</p>
 
         <div className="action-row">
-          <label className="event-toggle">
-            <input type="checkbox" checked={showEvents} onChange={e => setShowEvents(e.target.checked)} />
-            Historical markers
-          </label>
+
           <button type="button" onClick={() => { setTableVisible(v => !v); setTablePage(0); }}>
             {tableVisible ? 'Hide table' : 'Data table'}
           </button>
@@ -319,15 +313,6 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
           <button type="button" onClick={copyLink}>Copy chart link</button>
           {notice && <small role="status">{notice}</small>}
         </div>
-        {showEvents && <div className="event-list">
-          {HISTORY_EVENTS.filter(e =>
-            (!window.start || e.date >= window.start) && (!window.end || e.date <= window.end))
-            .map(event => <p key={event.date}>
-              <time dateTime={event.date}>{event.date}</time> — {event.title}: {event.description}
-              {' '}<a href={event.source} target="_blank" rel="noopener noreferrer">Source</a>
-            </p>)}
-          <small>Historical dates are context markers, not claims of causation.</small>
-        </div>}
 
         {tableVisible && <section className="observation-table" aria-label="Recorded source observations">
           <h4>Recorded observations</h4>
