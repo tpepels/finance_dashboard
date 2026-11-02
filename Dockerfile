@@ -27,12 +27,15 @@ COPY definitions/ /app/definitions/
 COPY data/msci_acwi_published_snapshots.json /app/data/msci_acwi_published_snapshots.json
 COPY data/wisesheets/sec_filer_profit.json /app/data/wisesheets/sec_filer_profit.json
 COPY migrations/ /app/migrations/
+COPY tests/ /app/tests/
 COPY alembic.ini /app/alembic.ini
 COPY scripts/run-standalone.sh /app/run-standalone.sh
 COPY --from=frontend-build /build/frontend/dist/ /app/site/
 RUN pip install --no-cache-dir . \
     && python -m compileall -q /app/src \
     && python -m finance_dashboard validate \
+    && python -m unittest discover -s tests -p 'test_research.py' -v \
+    && python -m unittest discover -s tests -p 'test_insights.py' -v \
     && chmod 755 /app/run-standalone.sh
 EXPOSE 8080
 VOLUME /data
