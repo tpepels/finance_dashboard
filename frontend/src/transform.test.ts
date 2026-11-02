@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { recencyMessage } from './freshness';
 import type { LoadedSeries, PlottedSeries } from './types';
 import {
   chartCsv, compareCompatible, gapBreaks, isSparse,
@@ -82,5 +83,22 @@ describe('native observation transformations', () => {
       message: 'Not licensed for publication.' };
     expect(transformSeries(blocked, 'raw').issue).toContain('licensed');
     expect(transformSeries(source([]), 'raw').issue).toContain('No observations');
+  });
+});
+
+describe('explicit data quality states', () => {
+  const now = new Date('2026-11-02T12:00:00Z');
+  it('flags missing, blocked and dated observations distinctly', () => {
+    expect(recencyMessage(source([]), now)).toContain('No observations');
+    const blocked = { ...source([]), status: 'blocked' as const };
+    expect(recencyMessage(blocked, now)).toContain('withheld');
+    const old = source([['2016-01-01', '3']]);
+    expect(recencyMessage(old, now)).toContain('older');
+    const recent = source([['2026-01-01', '3']]);
+    expect(recencyMessage(recent, now)).toBeNull();
+  });
+  it('checks daily and annual observation staleness with different thresholds', () => {
+    expect(recencyMessage(source([['2026-09-01', '3']], 'percent', 'D'), now)).toContain('older');
+    expect(recencyMessage(source([['2025-01-01', '3']], 'percent', 'A'), now)).toBeNull();
   });
 });
