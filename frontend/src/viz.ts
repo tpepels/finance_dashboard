@@ -2,7 +2,7 @@ import * as echarts from 'echarts/core';
 import { LineChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import type { EChartsOption, EChartsType } from 'echarts/core';
+import type { EChartsCoreOption as EChartsOption, EChartsType } from 'echarts/core';
 import type { PlottedSeries, ViewMode } from './types';
 import { gapBreaks, isSparse } from './transform';
 import { HISTORY_EVENTS } from './events';
