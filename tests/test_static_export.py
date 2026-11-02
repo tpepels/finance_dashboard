@@ -46,7 +46,7 @@ class StaticExportTests(unittest.TestCase):
                 [v["id"] for v in result["series"]],
                 ["bond.us.real_10y", "policy_rate.us.fed_upper"],
             )
-            self.assertEqual(len(result["unresolved"]), 2)
+            self.assertEqual(len(result["unresolved"]), 0)
             for path in root.rglob("*.json"):
                 output = path.read_text()
                 self.assertNotIn("TOP_SECRET_SHOULD_NOT_LEAK", output)
@@ -79,8 +79,9 @@ class StaticExportTests(unittest.TestCase):
                 provider_factory=FakeRouter,include_markets=False,sec_snapshot_path=path)
             self.assertEqual(manifest["supplementary_sources"][0]["status"],
                              "partial_us_sec_reporter_coverage")
-            self.assertEqual(manifest["unresolved"][0]["id"]=="profit.global.corporate_share"
-                             or manifest["unresolved"][1]["id"]=="profit.global.corporate_share",True)
+            self.assertEqual(manifest["unresolved"], [])
+            self.assertNotIn("profit.global.corporate_share",
+                             [row["id"] for row in manifest["series"]])
             exported=json.loads((root/"supplementary"/"sec_filer_profit.json").read_text())
             self.assertEqual(exported["observations"][0]["year"],2024)
             self.assertEqual(exported["snapshot_status"],"current")
