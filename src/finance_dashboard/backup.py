@@ -7,6 +7,7 @@ and installs it atomically. Backups under /data are *not* off-site backups.
 from __future__ import annotations
 
 import argparse
+from contextlib import closing
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
@@ -44,7 +45,7 @@ def _temp_in(parent: Path, suffix: str) -> Path:
 
 
 def _valid_database(path: Path) -> None:
-    with sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30) as read:
+    with closing(sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)) as read:
         row = read.execute("PRAGMA integrity_check").fetchone()
         if row is None or row[0] != "ok":
             raise ValueError("SQLite backup failed integrity_check")
@@ -69,8 +70,8 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
     temporary_db = _temp_in(out, ".sqlite3")
     created = []
     try:
-        with sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=30) as original:
-            with sqlite3.connect(temporary_db, timeout=30) as destination:
+        with closing(sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=30)) as original:
+            with closing(sqlite3.connect(temporary_db, timeout=30)) as destination:
                 original.backup(destination, pages=128, sleep=0.05)
         _valid_database(temporary_db)
         os.replace(temporary_db, database_target)
