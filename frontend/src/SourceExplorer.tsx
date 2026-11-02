@@ -22,7 +22,6 @@ function readLink(): { id?: string; settings?: ChartSettings } {
       ids: (url.searchParams.get('series') ?? '').split(',').filter(Boolean),
       mode, range, from: url.searchParams.get('from') ?? '',
       to: url.searchParams.get('to') ?? '',
-      events: url.searchParams.get('events') === '1',
     },
   };
 }
