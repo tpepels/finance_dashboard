@@ -30,7 +30,7 @@ The main interface is **always visible**: geographically scoped research tabs, r
 | **Japan** | Real GDP growth, BIS rates and private-credit gap, domestic listed market-cap/GDP |
 | **Compare regions** | Identically defined country GDP growth, BIS policy rates, BIS national credit gaps and comparable World Bank domestic capitalization/GDP |
 
-**34 original economic research indicator definitions are now 38**, after adding US growth, monetary policy, real yields and nonfinancial replacement-cost valuation. All 38 are based on mapped source series; the source catalogue has **49 datasets**, including seven newly researched BLS/Penn World Table/FRED series. Initial ingestion may take time. The existing **21 original curated graphs** remain accessible in **Source data & chart explorer**. US SEC-reporting-company Wisesheets earnings are included in the supplementary explorer but are never presented as worldwide corporate net profits.
+**42 research indicators** are now defined, including new matched-date US/euro-area growth and policy differences, BIS cross-economy credit-gap dispersion and the complementary components of US GDP labour income. All 38 are based on mapped source series; the source catalogue has **49 datasets**, including seven newly researched BLS/Penn World Table/FRED series. Initial ingestion may take time. The existing **21 original curated graphs** remain accessible in **Source data & chart explorer**. US SEC-reporting-company Wisesheets earnings are included in the supplementary explorer but are never presented as worldwide corporate net profits.
 
 Three unobtrusive, **unlabeled gray bands** appear on eligible charts for NBER-defined US contraction months associated with the dot-com crash (April–November 2001), global financial crisis (January 2008–June 2009) and COVID (March–April 2020). These are **US recession dates**, not dates of the European or world recessions.
 
@@ -48,7 +48,7 @@ The original source catalogue and 21 original charts remain available. The brows
 
 **Phase 3:** permanently visible dashboard, ordered chart layout, original source explorer, meaningful geographic divisions, subdued recession backgrounds, documentation and presentation of descriptive findings.
 
-**Phase 4 (the portion implemented here):** an analytically derived BLS same-sector compensation/productivity comparison and indexed distribution gap, exact-date comparative differences and consistent year-change statistics. The broader planned Phase 4—predictive macroeconomic models, causal attribution, formal surplus-value accounting, validated scenario models and robust economic risk scores—**is not complete** and is not claimed.
+**Phase 4 (the portion implemented here):** an analytically derived BLS same-sector compensation/productivity comparison and indexed distribution gap, PWT labour/non-labour national income components (the residual is not profits), exact-date cross-economy GDP-growth/policy-rate differences, credit-gap dispersion and consistent year-change statistics. The broader planned Phase 4—predictive macroeconomic models, causal attribution, formal surplus-value accounting, validated scenario models and robust economic risk scores—**is not complete** and is not claimed.
 
 ## Local tests
 
