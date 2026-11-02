@@ -1,6 +1,8 @@
 name: Build static market data
 
 # No frontend is deployed here. This produces an audited dataset artifact.
+# Includes the validated monthly Wisesheets aggregate snapshot when present;
+# the daily build never accesses WISESHEETS_API_KEY or re-crawls SEC filers.
 on:
   workflow_dispatch:
   schedule:

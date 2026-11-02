@@ -91,3 +91,5 @@ units, with SEC provenance. See [WISESHEETS.md](WISESHEETS.md).
 The monthly complete SEC-filer aggregation is **supplementary**;
 it is not a replacement for `profit.global.corporate_share` or a
 historically unbiased worldwide listed-company universe.
+
+**Wisesheets full source scan verified (2026-11-02):** 8,179 unique SEC issuers, 6,161 issuers with verified SEC-filing annual financials, 5 reporting years (2021–2025), 150 API requests. Separate `profit.us_sec_filers.world_gdp_share` aggregate committed in [data/wisesheets/sec_filer_profit.json](https://github.com/tpepels/finance_dashboard/blob/main/data/wisesheets/sec_filer_profit.json) and documented [here](WISESHEETS.md). It is SEC-reporting listed coverage, not all global listed companies.

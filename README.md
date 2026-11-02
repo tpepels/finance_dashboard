@@ -105,9 +105,7 @@ World Bank world GDP. Incomplete SEC filing provenance, unavailable FX
 and source data quality are explicitly reported; the original
 `profit.global.corporate_share` remains unresolved.
 
-The supplementary aggregate is made available to
-`GET /api/earnings/sec-filers` and the static export once the first
-complete scan succeeds. It is not fetched by the browser and never
+The first complete scan **passed** on 2026-11-02: 8,179 distinct SEC issuer CIKs in the current universe; **6,161** issuers with filing-traceable historical annual earnings. Five annual aggregate years (2021–2025) were retained, using only 150 authenticated requests. [Successful full run](https://github.com/tpepels/finance_dashboard/actions/runs/41483503450). The aggregate is available through `GET /api/earnings/sec-filers` and the static export. It is not fetched by the browser and never
 contains your API key. See [Wisesheets methodology](docs/WISESHEETS.md).
 
 ## Four exact original indicators resolved (2026-11-02)

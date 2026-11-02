@@ -62,6 +62,14 @@ The daily static export marks the supplementary dataset as
 if the last successful snapshot exceeds 45 days. It remains **separate**
 from the original unresolved `profit.global.corporate_share` indicator.
 
+## First complete live scan (2026-11-02)
+
+**PASS:** 8,179 unique SEC CIKs in the accessible current-company directory, 6,161 issuers with SEC-filing-traceable annual earnings, **150 requests** against the 5,000/month free limit. Published fiscal years: **2021–2025**. Earlier isolated fiscal years (2007–2020) were excluded as too sparse to be treated as an annual SEC cross-section. The output lists currency omissions, untraceable earnings issuers and excluded invalid records for every applicable year.
+
+[Verified complete run](https://github.com/tpepels/finance_dashboard/actions/runs/41483503450) · [Committed aggregate](https://github.com/tpepels/finance_dashboard/blob/main/data/wisesheets/sec_filer_profit.json)
+
+The observed 8,179 unique CIKs are fewer than Wisesheets' advertised 21,577 US-listed ticker securities; ticker count and distinct SEC reporting issuers are different units of coverage. The result remains subject to current-universe survivorship bias.
+
 ## Evidence
 
 - Source contract: https://www.wisesheets.io/api/docs
