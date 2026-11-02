@@ -41,7 +41,12 @@ class CatalogTests(unittest.TestCase):
 
     def test_mapped_chart_cannot_use_unresolved_series(self):
         series, charts = self.modified()
-        charts["charts"][0]["series_ids"].append("profit.global.corporate_share")
+        original = copy.deepcopy(series["series"][0])
+        original["id"] = "temporarily.unresolved"
+        original["status"] = "unresolved"
+        original["source_key"] = None
+        series["series"].append(original)
+        charts["charts"][0]["series_ids"].append(original["id"])
         self.assertTrue(any("unresolved series" in e for e in validate(series, charts)))
 
     def test_raw_chart_rejects_mixed_units(self):
