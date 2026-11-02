@@ -269,6 +269,42 @@
       "display_mode": "raw",
       "rationale": "Official Eurostat macro indicator of how much nonfinancial corporate value added accrues as gross operating surplus instead of employee pay, taxes and subsidies.",
       "caveats": "This official gross-profit-share denominator is NFC sector GVA, NOT GDP. Excludes financial corporations and households. Separate from the S11+S12/whole GDP series."
+    },
+    {
+      "id": "oecd38_corporate_surplus_gdp",
+      "theme": "labour_capital",
+      "title": "OECD members: GDP-weighted corporate operating surplus / GDP",
+      "status": "mapped",
+      "series_ids": [
+        "profit.oecd38.corporate_gross_surplus_gdp"
+      ],
+      "display_mode": "raw",
+      "rationale": "Track corporate gross operating surplus as a share of national GDP across 2026's 38 OECD members, GDP weighted, without listing individual firms.",
+      "caveats": "OECD membership fixed retrospectively to 2026; GDP-weighted average is a documented researcher composite rather than an official aggregate published by OECD. Data only for years with at least 35/38 GDP weights, 29 country reports and >=80% GDP coverage. Two corporate sectors S11+S12, includes unlisted corporations, no households; WDI nominal USD GDP weighting, OECD country-local-account denominator."
+    },
+    {
+      "id": "oecd38_corporate_surplus_coverage",
+      "theme": "labour_capital",
+      "title": "OECD corporate-surplus data coverage — member GDP share",
+      "status": "mapped",
+      "series_ids": [
+        "profit.oecd38.corporate_gross_surplus_gdp_coverage"
+      ],
+      "display_mode": "raw",
+      "rationale": "Display how much of 38 member OECD GDP has complete numerator and denominator accounting data each year.",
+      "caveats": "Denominator comprises OECD members with available World Bank GDP USD and >=35/38 countries must have GDP weights; does not represent world GDP and may omit country GDP not published by WDI."
+    },
+    {
+      "id": "oecd38_corporate_surplus_members",
+      "theme": "labour_capital",
+      "title": "OECD corporate-surplus data coverage — participating member countries",
+      "status": "mapped",
+      "series_ids": [
+        "profit.oecd38.corporate_gross_surplus_member_count"
+      ],
+      "display_mode": "raw",
+      "rationale": "Show the number of countries entering the GDP-weighted corporate surplus series at each annual observation.",
+      "caveats": "Count is of 2026's 38 current OECD member countries with complete annual matched OECD sector-account observations and GDP weights, not number of OECD members in the historical year. Excluded years are blank."
     }
   ]
 }
