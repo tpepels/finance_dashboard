@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ChartDefinition, DataContext, LoadedSeries, SeriesDefinition } from './types';
 
@@ -71,7 +71,7 @@ describe('minimal dashboard interactive acceptance', () => {
   it('renders original thematic page, opens BIS Fed/ECB/BOJ chart, and traces exact source rows', async () => {
     const user = userEvent.setup();
     render(<App />);
-    expect(await screen.findByText('Monetary policy')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Monetary policy' })).toBeTruthy();
     expect(await screen.findByRole('heading', {
       name: 'Fed, ECB and BOJ harmonized policy rates',
     })).toBeTruthy();
@@ -99,8 +99,8 @@ describe('minimal dashboard interactive acceptance', () => {
     await user.click(screen.getByRole('button', { name: 'Custom' }));
     const from = screen.getByLabelText('From');
     const to = screen.getByLabelText('To');
-    await user.type(from, '2025-01-01');
-    await user.type(to, '2026-10-30');
+    fireEvent.change(from, { target: { value: '2025-01-01' } });
+    fireEvent.change(to, { target: { value: '2026-10-30' } });
     const selector = screen.getByLabelText('Add comparison series');
     expect(within(selector).queryByRole('option', { name: /real GDP/ })).toBeNull();
 
