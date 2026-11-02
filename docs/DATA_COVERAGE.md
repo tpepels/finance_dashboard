@@ -10,7 +10,7 @@ republish data to GitHub Pages.
 | FRED Fed corridor, US TIPS and Sahm Rule | 3 mapped, adapter | FRED JSON API requires FRED_API_KEY; opt-in public CSV fallback is unreliable and unverified in CI |
 | ECB deposit facility | 1 mapped, adapter | Official ECB CSV format |
 | World Bank real GDP and listed-cap/GDP | 8 mapped, adapter | Indicators v2 JSON API, annual source periods |
-| IMF WEO international public debt | Unresolved | Exact October 2026 WEO dataflow/aggregate series, release vintage and distinction between actuals/projections require confirmation |
+| IMF world general-government debt | 1 mapped via DataMapper, adapter | April 2026 WEO DataMapper, not October WEO; current and future projection years excluded; methodology and vintage flag explicit |
 | ILO global labour share | Unresolved | ILO publishes SDG 10.4.1, but a world aggregate/series key and provenance have not yet been established |
 | BIS global private credit gap | Unresolved | There is no single well-defined worldwide country-comparable credit-gap series; individual geographies must be specified |
 | Yale Shiller CAPE | Unresolved | Public workbook exists but download/version format and rights need confirmation |
@@ -19,7 +19,7 @@ republish data to GitHub Pages.
 | Productivity versus compensation | Unresolved | World aggregate with harmonized wages/output coverage not selected |
 | US Tobin's Q | Unresolved | Valuation methodology and source definition not selected |
 
-All 15 mapped entries can now enter the ingestion worker. The other 11 are
+All 16 mapped entries can now enter the ingestion worker. The other 10 are
 **blocked source specifications**, never silently substituted with a US series or
 an invented global aggregate.
 

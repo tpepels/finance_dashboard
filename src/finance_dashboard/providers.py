@@ -21,7 +21,8 @@ FRED_ROOT = "https://api.stlouisfed.org/fred/series/observations"
 FRED_CSV_ROOT = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 ECB_ROOT = "https://data-api.ecb.europa.eu/service/data"
 WORLD_BANK_ROOT = "https://api.worldbank.org/v2"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK"))
+IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER"))
 
 
 class SourceUnavailable(ProviderError):
@@ -104,6 +105,26 @@ def parse_ecb_csv(csv_text: str, key: str, frequency: str) -> dict[date, Decimal
         _put(output, _date(row["TIME_PERIOD"], frequency), _value(row["OBS_VALUE"]))
     if not output:
         raise ProviderError("ECB response contains no usable observations")
+    return output
+
+
+def parse_imf_mapper(payload: Any, region: str, indicator: str, start: date | None = None) -> dict[date, Decimal]:
+    """Read exactly the published group and indicator; exclude forecast/current year."""
+    if not isinstance(payload, dict):
+        raise ProviderError("IMF DataMapper returned non-JSON data")
+    values = payload.get("values", {}).get(indicator, {})
+    if region not in values or not isinstance(values[region], dict):
+        raise ProviderError(f"IMF DataMapper region or indicator missing: {region}/{indicator}")
+    output: dict[date, Decimal] = {}
+    for year, raw_value in values[region].items():
+        day = _date(year, "A")
+        # DataMapper WEO offers projections without a per-value status flag here.
+        # Only previous calendar years are ingested as historical estimates.
+        if day.year >= date.today().year or start and day < start:
+            continue
+        _put(output, day, _value(raw_value))
+    if not output:
+        raise ProviderError("IMF DataMapper has no historical observations for requested series")
     return output
 
 
@@ -223,10 +244,16 @@ class ProviderRouter:
         if provider == "WORLD_BANK":
             country, identifier = key.split("/", 1)
             url = f"{WORLD_BANK_ROOT}/country/{country}/indicator/{identifier}"
-            params = {"format": "json", "per_page": 20000}
+            params = {"format": "json", "per_page": 150}
             if start:
                 params["date"] = f"{start.year}:{date.today().year}"
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
+            return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "IMF_DATAMAPPER":
+            region, identifier = key.split("/", 1)
+            url = f"{IMF_MAPPER_ROOT}/{identifier}/{region}"
+            response = self._get(url)
+            observations = parse_imf_mapper(response.json(), region, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
         raise SourceUnavailable(f"No validated adapter for provider: {provider}")

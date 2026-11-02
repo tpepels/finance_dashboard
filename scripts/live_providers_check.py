@@ -15,6 +15,7 @@ SAMPLES = (
     "gdp.real_growth.world",
     "valuation.domestic_cap_gdp.us",
     "valuation.domestic_cap_gdp.jp",
+    "fiscal.world.public_debt",
 )
 
 
@@ -22,7 +23,7 @@ def main() -> int:
     router = ProviderRouter()
     try:
         for sid in SAMPLES:
-            start = date.today() - timedelta(days=400 if sid.startswith("gdp.") else 1100)
+            start = date.today() - timedelta(days=1100 if not sid.startswith("valuation.") else 2200)
             result = router.fetch(sid, start)
             assert result.observations, f"No observations for {sid}"
             assert min(result.observations) >= start, f"Upstream ignored window: {sid}"

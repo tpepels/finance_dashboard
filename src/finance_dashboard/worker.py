@@ -58,6 +58,7 @@ def main() -> int:
     if args.interval_seconds < 3600:
         parser.error("interval must be at least 3600 seconds")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # API keys in URLs must not enter logs
     engine = make_engine()
     providers = set(args.provider) if args.provider else None
     if args.once:

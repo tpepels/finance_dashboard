@@ -41,6 +41,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://capital_monitor:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/capital_monitor
       REFRESH_INTERVAL_SECONDS: "86400"
+      FRED_API_KEY: ${FRED_API_KEY:-}
+      FRED_PUBLIC_CSV_FALLBACK: ${FRED_PUBLIC_CSV_FALLBACK:-0}
     command: ["python", "-m", "finance_dashboard.worker"]
     depends_on:
       migrate:

@@ -7,7 +7,7 @@ import httpx
 
 from finance_dashboard.providers import (
     ProviderRouter, ProviderError, SourceUnavailable,
-    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank,
+    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper,
 )
 
 
@@ -46,6 +46,19 @@ class ParserTests(unittest.TestCase):
         result = parse_world_bank(data, "USA", "NY.GDP.MKTP.KD.ZG")
         self.assertEqual(result, {date(2025, 1, 1): Decimal("2.4")})
 
+    def test_imf_mapper_historical_only(self):
+        from unittest.mock import patch
+        # Treat year 2025 as historical and 2026 as current-year estimate/forecast.
+        with patch("finance_dashboard.providers.date") as fake_date:
+            fake_date.today.return_value = date(2026, 11, 2)
+            fake_date.side_effect = lambda *args: date(*args)
+            raw = {"values": {"GGXWDG_NGDP": {"WEOWORLD": {
+                "2024": 90.123, "2025": 91.234, "2026": 92.345, "2027": 93.45
+            }}}}
+            values = parse_imf_mapper(raw, "WEOWORLD", "GGXWDG_NGDP")
+            self.assertEqual(values[date(2025, 1, 1)], Decimal("91.234"))
+            self.assertNotIn(date(2026, 1, 1), values)
+
     def test_world_bank_bad_geo_fails(self):
         data = [{"page": 1, "pages": 1}, [
             {"countryiso3code": "FRA", "indicator": {"id": "NY.GDP.MKTP.KD.ZG"},
@@ -66,6 +79,19 @@ class ParserTests(unittest.TestCase):
 class RouterTests(unittest.TestCase):
     def router(self, handler):
         return ProviderRouter(httpx.Client(transport=httpx.MockTransport(handler)))
+
+    def test_imf_transport(self):
+        def handler(request):
+            self.assertIn("/GGXWDG_NGDP/WEOWORLD", str(request.url))
+            return httpx.Response(200, json={
+                "values": {"GGXWDG_NGDP": {"WEOWORLD": {"2020": 97.1}}}
+            })
+        router = self.router(handler)
+        try:
+            got = router.fetch("fiscal.world.public_debt")
+            self.assertEqual(got.observations[date(2020, 1, 1)], Decimal("97.1"))
+        finally:
+            router.close()
 
     def test_world_bank_transport(self):
         def handler(request):
@@ -126,10 +152,10 @@ class RouterTests(unittest.TestCase):
     def test_unresolved_never_fabricated(self):
         router = self.router(lambda request: self.fail("No network for unresolved"))
         try:
-            self.assertEqual(len(router.supported_ids()), 15)
+            self.assertEqual(len(router.supported_ids()), 16)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("valuation.global.cape")
-            self.assertEqual(len(router.blocked()), 11)
+            self.assertEqual(len(router.blocked()), 10)
         finally:
             router.close()
 
