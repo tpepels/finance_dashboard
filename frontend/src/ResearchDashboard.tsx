@@ -36,11 +36,11 @@ interface ResearchResult extends IndicatorDef {
 
 const GROUPS = [
   'Growth and demand',
+  'Labour and distribution',
   'Financial conditions',
   'Debt and leverage',
   'Capital and equity valuation',
   'Ownership and concentration',
-  'Labour and distribution',
   'Data coverage',
 ];
 
