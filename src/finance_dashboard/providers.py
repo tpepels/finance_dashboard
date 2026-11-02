@@ -20,6 +20,7 @@ from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES, _dime
 from .catalog import load_documents
 
 FRED_ROOT = "https://api.stlouisfed.org/fred/series/observations"
+FRED_TABLE_ROOT = "https://fred.stlouisfed.org/data"
 FRED_CSV_ROOT = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 ECB_ROOT = "https://data-api.ecb.europa.eu/service/data"
 WORLD_BANK_ROOT = "https://api.worldbank.org/v2"
@@ -93,6 +94,64 @@ def parse_fred_csv(csv_text: str, identifier: str, frequency: str) -> dict[date,
     if not output:
         raise ProviderError("FRED CSV contains no usable observations")
     return output
+
+
+class FredTableParser(HTMLParser):
+    """Extract actual DATE/VALUE rows from the public FRED observations HTML."""
+    def __init__(self):
+        super().__init__()
+        self.tables = []
+        self.table = None
+        self.row = None
+        self.cell = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self.table = []
+        elif tag == "tr" and self.table is not None:
+            self.row = []
+        elif tag in ("td", "th") and self.row is not None:
+            self.cell = []
+
+    def handle_data(self, data):
+        if self.cell is not None:
+            self.cell.append(data)
+
+    def handle_endtag(self, tag):
+        if tag in ("td","th") and self.cell is not None and self.row is not None:
+            self.row.append("".join(self.cell).strip())
+            self.cell = None
+        elif tag == "tr" and self.table is not None and self.row is not None:
+            self.table.append(self.row)
+            self.row = None
+        elif tag == "table" and self.table is not None:
+            self.tables.append(self.table)
+            self.table = None
+
+
+def parse_fred_table_html(html: str, identifier: str, frequency: str) -> dict[date, Decimal]:
+    """Fails closed if FRED public table layout changes; never guess chart values."""
+    if identifier not in html or "Series ID" not in html:
+        raise ProviderError("FRED table page does not identify the expected series")
+    parser = FredTableParser()
+    parser.feed(html)
+    valid_tables = []
+    for table in parser.tables:
+        header_positions = [i for i,row in enumerate(table)
+                            if len(row) >= 2 and row[0].upper() == "DATE"
+                            and row[1].upper() == "VALUE"]
+        if len(header_positions) == 1:
+            valid_tables.append(table[header_positions[0]+1:])
+    if len(valid_tables) != 1:
+        raise ProviderError("FRED public DATE/VALUE table missing or ambiguous")
+    result: dict[date, Decimal] = {}
+    for row in valid_tables[0]:
+        if len(row) != 2:
+            raise ProviderError("FRED DATE/VALUE table has an unexpected row")
+        _put(result, _date(row[0], frequency), _value(row[1]))
+    if not result:
+        raise ProviderError("FRED public table contains no usable observations")
+    return result
 
 
 def parse_fred_json(payload: dict, frequency: str) -> dict[date, Decimal]:
@@ -451,7 +510,15 @@ class ProviderRouter:
                 response = self._get(FRED_CSV_ROOT, params=params)
                 observations = parse_fred_csv(response.text, identifier, item["frequency"])
             else:
-                raise SourceUnavailable("FRED_API_KEY required (optional public CSV fallback: FRED_PUBLIC_CSV_FALLBACK=1)")
+                # Public FRED DATE/VALUE table. No API key; exact series identity,
+                # unit/frequency and row structure are validated before ingestion.
+                # FRED and underlying data rights still govern redistribution.
+                response = self._get(f"{FRED_TABLE_ROOT}/{identifier}")
+                rows = parse_fred_table_html(response.text, identifier, item["frequency"])
+                observations = {day: val for day, val in rows.items()
+                                if start is None or day >= start}
+                if not observations:
+                    raise ProviderError("FRED table has no observations in requested window")
             # Always report a non-secret source URI, even for authenticated requests.
             return FetchedSeries(series_id, f"https://fred.stlouisfed.org/series/{identifier}", None, observations)
         if provider == "ECB":

@@ -7,7 +7,7 @@ import httpx
 
 from finance_dashboard.providers import (
     ProviderRouter, ProviderError, SourceUnavailable,
-    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape, parse_bis_credit_gap, parse_corgano_gold,
+    parse_fred_csv, parse_fred_json, parse_fred_table_html, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape, parse_bis_credit_gap, parse_corgano_gold,
 )
 
 
@@ -18,6 +18,16 @@ class ParserTests(unittest.TestCase):
             "DFII10", "D",
         )
         self.assertEqual(values, {date(2026, 1, 2): Decimal("-0.125")})
+
+    def test_fred_html_table_and_source_identity(self):
+        html = """<html><body><div>Series ID DFII10</div>
+            <table><tr><th>DATE</th><th>VALUE</th></tr>
+            <tr><td>2026-01-01</td><td>.</td></tr>
+            <tr><td>2026-01-02</td><td>2.375</td></tr></table></body></html>"""
+        self.assertEqual(parse_fred_table_html(html, "DFII10", "D"),
+                         {date(2026,1,2):Decimal("2.375")})
+        with self.assertRaisesRegex(ProviderError,"identify"):
+            parse_fred_table_html(html, "DFEDTARU", "D")
 
     def test_fred_json_missing(self):
         values = parse_fred_json({"observations": [
@@ -293,12 +303,17 @@ class RouterTests(unittest.TestCase):
         finally:
             router.close()
 
-    def test_fred_without_credential_reports_blocker(self):
-        router = self.router(lambda request: self.fail("no FRED fetch without configuration"))
+    def test_fred_without_credential_uses_public_official_table(self):
+        def handler(request):
+            self.assertTrue(str(request.url).endswith("/data/DFII10"))
+            return httpx.Response(200,text="""<div>Series ID DFII10</div>
+                <table><tr><th>DATE</th><th>VALUE</th></tr>
+                <tr><td>2026-01-02</td><td>2.375</td></tr></table>""")
+        router = self.router(handler)
         try:
             with patch.dict("os.environ", {"FRED_API_KEY": "", "FRED_PUBLIC_CSV_FALLBACK": ""}):
-                with self.assertRaisesRegex(SourceUnavailable, "FRED_API_KEY required"):
-                    router.fetch("bond.us.real_10y")
+                self.assertEqual(router.fetch("bond.us.real_10y").observations,
+                                 {date(2026,1,2):Decimal("2.375")})
         finally:
             router.close()
 

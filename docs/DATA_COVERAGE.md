@@ -1,6 +1,6 @@
 # Data coverage and blockers (Phase 2 expanded)
 
-The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **25 mapped** (including 3 BIS credit gaps and a separate worldwide productivity series), 3 FRED credential-gated; **6 original series unresolved**. This document distinguishes
+The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **25 mapped** (including 3 BIS credit gaps and a separate worldwide productivity series), 3 FRED with official key or public-table fallback; **6 original series unresolved**. This document distinguishes
 an implementable adapter from verified observations and legal permission to
 republish data to GitHub Pages.
 
@@ -8,7 +8,7 @@ republish data to GitHub Pages.
 |---|---|---|
 | BIS quarterly country credit gaps | 3 mapped | Q.US/Q.XM/Q.JP: CG_DTYPE=C, private nonfinancial borrowers and all lenders; no fabricated global aggregate |
 | BIS central bank policy rates | 3 mapped, live verified | SDMX 1.0 decoder and historical backfill in PostgreSQL |
-| FRED Fed corridor, US TIPS and Sahm Rule | 3 mapped, **credential-gated** | FRED JSON API requires FRED_API_KEY; opt-in public CSV fallback is unreliable and unverified in CI |
+| FRED Fed corridor, US TIPS and Sahm Rule | 3 mapped, **key or public table fallback** | Official keyed JSON API preferred; public FRED DATE/VALUE HTML offers no-key personal retrieval; all series rights still flagged for review |
 | ECB deposit facility | 1 mapped, adapter | Official ECB CSV format |
 | World Bank real GDP and listed-cap/GDP | 8 mapped, live verified | Indicators v2 JSON API, all 6 GDP geographies plus both capitalization ratios verified |
 | IMF world general-government debt | 1 mapped, live verified | April 2026 WEO DataMapper, not October WEO; current and future calendar years excluded |
@@ -48,7 +48,7 @@ the series; complete rights reviews before enabling public JSON export.
 - Offline contracts and PostgreSQL integration: [GitHub Actions](https://github.com/tpepels/finance_dashboard/actions/runs/41453185646).
 - All **13 mapped non-FRED/non-BIS** series: [live acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41453185610).
 - All **3 BIS** rates plus full PostgreSQL ingestion/API: [Docker acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048).
-- **3 FRED** sources have parser/transport tests but no verified authenticated production call because no FRED_API_KEY was supplied.
+- **3 FRED** sources have exact HTML table parsing and key-based API support; live fallback validation is tracked separately. No API key was supplied.
 - 8 other original indicator definitions remain unresolved. The original `gold.usd.spot` is now a live-only spot snapshot (no historic spot backfill): monthly-average gold has a separate canonical series ID.
 
 ## Global CAPE licensing

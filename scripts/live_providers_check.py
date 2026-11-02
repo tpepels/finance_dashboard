@@ -15,7 +15,7 @@ def main() -> int:
     successful = 0
     try:
         sources = [sid for sid in router.supported_ids()
-                   if router.definitions[sid]["provider"] not in {"BIS", "FRED"}]
+                   if router.definitions[sid]["provider"] != "BIS"]
         for sid in sources:
             start = date.today() - timedelta(days=2200 if sid.startswith("valuation.domestic") else 1100)
             result = router.fetch(sid, start)
@@ -29,7 +29,7 @@ def main() -> int:
             }), flush=True)
     finally:
         router.close()
-    print(f"PHASE2_NONFRED_LIVE=PASS (verified={successful}, FRED requires API key; BIS verified separately)")
+    print(f"PHASE2_ALL_NONBIS_LIVE=PASS (verified={successful}, BIS policies verified separately)")
     return 0
 
 

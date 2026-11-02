@@ -11,7 +11,7 @@ A self-hosted global financial and macroeconomic research application. The appli
 | 3 — Dashboard | React, ECharts, source-traceable Fed/ECB/BOJ graph, time-range controls and exports | Not started |
 | 4 — Analysis | Derived macro indicators, valuation, labour/capital, concentration, portfolio and gold | Not started |
 
-Phase 2 does not include charts or a frontend. The data worker now includes BIS (3), FRED (3), ECB (1), World Bank WDI (8), IMF DataMapper (1), Shiller (1), UN SDG/ILO labour share (1), and World Bank Pink Sheet monthly gold (1) source mappings. FRED requires a personal API key; the remaining unresolved indicators are clearly blocked. Unresolved indicators are **not presented as available data**. See [coverage](docs/DATA_COVERAGE.md) for actual source availability and limits.
+Phase 2 does not include charts or a frontend. The data worker now includes BIS (3), FRED (3), ECB (1), World Bank WDI (8), IMF DataMapper (1), Shiller (1), UN SDG/ILO labour share (1), and World Bank Pink Sheet monthly gold (1) source mappings. FRED prefers a personal API key but also supports a source-validated public table fallback; the remaining unresolved indicators are clearly blocked. Unresolved indicators are **not presented as available data**. See [coverage](docs/DATA_COVERAGE.md) for actual source availability and limits.
 
 ## Quick start (Docker Compose)
 
@@ -20,13 +20,13 @@ Requires Docker Compose and Internet access for the scheduled worker.
 \`\`\`bash
 cp .env.example .env
 # Set a long random POSTGRES_PASSWORD; percent-encode URL-special characters.
-# Set FRED_API_KEY as well to enable all 3 FRED series.
+# Optional: set FRED_API_KEY for the documented JSON API instead of HTML table retrieval.
 docker compose up --build -d
 docker compose logs --tail=30 worker
 curl http://127.0.0.1:8080/api/data-status
 \`\`\`
 
-Services: \`postgres\` (private volume), one-shot \`migrate\` (Alembic), \`app\` (port 8080 on loopback only) and \`worker\` (daily refresh, initial full backfill). Worker fetches immediately at boot and every 24 hours. Historical observations are retrieved from the official source associated with each mapped series. The 3 FRED series require FRED_API_KEY unless you explicitly enable the unreliable FRED_PUBLIC_CSV_FALLBACK=1. The optional public endpoint is not live-verified. Failed updates do not discard old observations.
+Services: \`postgres\` (private volume), one-shot \`migrate\` (Alembic), \`app\` (port 8080 on loopback only) and \`worker\` (daily refresh, initial full backfill). Worker fetches immediately at boot and every 24 hours. Historical observations are retrieved from the official source associated with each mapped series. The 3 FRED series prefer FRED_API_KEY and otherwise use the official public FRED observation table. The optional public endpoint is not live-verified. Failed updates do not discard old observations.
 
 \`\`\`bash
 # Manual full refresh, with an existing Compose stack:
