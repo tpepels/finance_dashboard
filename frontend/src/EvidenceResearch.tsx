@@ -12,6 +12,7 @@ interface VintageSnapshot {
 }
 interface HoldingReport {
   holdings_date: string; available_at_utc: string; source_url: string;
+  availability_time_quality: string;
   accession: string; fund_name: string; reported_long_nav_percent: string;
   classified_long_nav_percent: string; unclassified_long_nav_percent: string;
   complete_share_of_nav: boolean; positions_reported: number;
@@ -148,7 +149,8 @@ function Holdings() {
   return <div className="evidence-space">
     <h4>SEC-verified historical ETF filing holdings</h4>
     <p>Country fields are the SEC N-PORT issuer countries of organization.
-      Filing acceptance determines when they were publicly knowable.
+      SEC filing dates and the conservative two-day eligibility rule control
+      when they appear in historical comparisons. Exact SEC public dissemination times are unavailable.
       They do not describe issuer revenue or underlying fund-of-fund exposures.</p>
     <div className="evidence-inputs">
       <label>Registered US ETF
@@ -163,7 +165,7 @@ function Holdings() {
       <label>Actually reported holdings period
         <select value={entry?.accession ?? ''} onChange={e=>setCurrent(e.target.value)}>
           {(data?.records ?? []).map(row=><option value={row.accession} key={row.accession}>
-            {row.holdings_date} · public {row.available_at_utc.slice(0,10)}</option>)}
+            {row.holdings_date} · eligible {row.available_at_utc.slice(0,10)}</option>)}
         </select></label>
     </div>
     {error && <p role="alert">{error}</p>}
@@ -173,7 +175,7 @@ function Holdings() {
     {entry && <div>
       <div className="evidence-facts">
         <strong>Reported date: {entry.holdings_date}</strong>
-        <span>Public from {entry.available_at_utc}</span>
+        <span>Research eligibility after {entry.available_at_utc}</span>
         <span>{entry.positions_reported} reported positions</span>
         <span>{entry.classified_long_nav_percent}% of NAV classified by issuer country;
           {' '}{entry.complete_share_of_nav?'near-complete reported coverage':'incomplete coverage'}</span>
@@ -185,7 +187,7 @@ function Holdings() {
           <strong>{Number(row.share_of_fund_nav_pct).toFixed(2)}% NAV</strong>
         </div>)}
       </div>
-      <p>{entry.country_semantics}</p>
+      <p>{entry.country_semantics} {entry.availability_time_quality}.</p>
       <a href={entry.source_url} target="_blank" rel="noopener noreferrer">
         Original SEC accession {entry.accession}</a>
     </div>}
