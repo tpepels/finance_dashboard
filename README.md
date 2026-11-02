@@ -7,7 +7,7 @@ A self-hosted global financial and macroeconomic research application. The appli
 | Phase | Scope | Status |
 |---|---|---|
 | 1 — Contracts | Source catalog, methodology, chart definitions, provenance and data-quality rules | Complete |
-| **2 — Backend** | BIS SDMX adapter, PostgreSQL observations/revisions, background updates, FastAPI queries and offline tests | **Implemented; live provider/production DB validation pending** |
+| **2 — Backend** | BIS SDMX adapter, PostgreSQL observations/revisions, background updates, FastAPI queries and offline tests | **Complete: live BIS + Docker/PostgreSQL acceptance passed (2026-11-02)** |
 | 3 — Dashboard | React, ECharts, source-traceable Fed/ECB/BOJ graph, time-range controls and exports | Not started |
 | 4 — Analysis | Derived macro indicators, valuation, labour/capital, concentration, portfolio and gold | Not started |
 
@@ -42,6 +42,8 @@ curl -sS -X POST http://127.0.0.1:8080/api/query \
   -H 'Content-Type: application/json' \
   -d '{"series_ids":["policy_rate.us.bis","policy_rate.ea.bis","policy_rate.jp.bis"],"start":"2025-01-01"}'
 \`\`\`
+
+The independent [live acceptance workflow](https://github.com/tpepels/finance_dashboard/actions/workflows/phase2-live.yml) passed on 2026-11-02: it fetched 26,416 US, 10,130 euro-area and 24,914 Japanese observations in a disposable PostgreSQL instance and confirmed all three through FastAPI. Historical BIS null/NaN observations are missing data, never coerced to zero. This is a verified deployed-container smoke test, not a claim that a production instance has been launched.
 
 The query API returns decimal values as **strings** to avoid silent float rounding. A snapshot timestamp means *first observed by this app*, **not** a historical BIS release vintage. The app has no authentication and is bound to loopback; do not expose it directly to the public Internet. Place behind a secured reverse proxy if remote access is necessary.
 

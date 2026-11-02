@@ -1,6 +1,6 @@
 # Phase 2 — Ingestion, database, revision handling and API
 
-Implemented for three BIS central bank policy rate series only. This document distinguishes implementation from validation.
+Phase 2 completed and live-verified on 2026-11-02 for the three BIS central bank policy rate series. This verification ran in disposable GitHub Actions Docker containers; it is not a persistent production deployment.
 
 ## Source retrieval
 
@@ -20,12 +20,12 @@ No deletion is inferred from missing provider observations. Datetimes are UTC. H
 
 \`app\` reads data and metadata; \`worker\` is the only source downloader. Alembic runs once before either service. Postgres remains private; API binds loopback.
 
-CI is bounded to five minutes, uses local SDMX fixtures and SQLite integration tests for ingestion, snapshots, failures, API responses and migration. Network access, live BIS observations, an actual PostgreSQL service and Docker deployment still need environment-level validation.
+Routine CI is bounded to five minutes, with local SDMX fixtures, SQLite and PostgreSQL tests. A separate bounded [live acceptance run](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048) successfully queried the three live BIS series, initialized a Docker Compose PostgreSQL database and applied Alembic migrations, backfilled 26,416 US / 10,130 euro-area / 24,914 Japanese historical observations, and read all three through FastAPI. The euro-area full-history feed exposed null/NaN observations; the adapter now skips these genuine missing data points instead of rejecting an entire series. This run is reproducible via manual workflow dispatch and does not establish a continuously deployed production instance.
 
 ## Known gaps / deferred work
 
 - Only BIS harmonized rates are ingested; FRED, ECB, IMF and others are Phase 3+.
 - Historical revisions older than the overlap are not detected automatically; a periodic full refresh can be added later.
-- No frontend. No live-success claim until worker runs against BIS.
+- No frontend; the Phase 2 live worker/HTTP acceptance succeeded. No always-on production deployment has been made.
 - No full licence review. Provider terms must be checked before public redistribution.
 - The API is unauthenticated and intentionally loopback-bound.

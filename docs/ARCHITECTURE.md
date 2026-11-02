@@ -1,6 +1,6 @@
 # Architecture baseline (decision record)
 
-Status: Phase 1 contracts and Phase 2 ingestion/storage/API implementation committed. Live BIS and deployed Compose verification remain outstanding.
+Status: Phase 1 contracts and Phase 2 ingestion/storage/API implementation committed. Live BIS and disposable Compose/PostgreSQL end-to-end verification passed on 2026-11-02; no production instance has been deployed.
 
 ## System boundaries
 
