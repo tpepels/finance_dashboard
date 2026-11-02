@@ -161,7 +161,6 @@ class ProviderRouter:
         self.client = client or httpx.Client(
             timeout=httpx.Timeout(30.0),
             follow_redirects=False,
-            headers={"User-Agent": "global-capital-monitor/0.2"},
         )
         self.owns_client = client is None
         self.bis = bis or BisPolicyClient(self.client, retries=1)
@@ -194,7 +193,9 @@ class ProviderRouter:
                 if response.status_code in (429, 500, 502, 503, 504) and attempt == 0:
                     time.sleep(0.5)
                     continue
-                response.raise_for_status()
+                if response.status_code >= 400:
+                    # Avoid embedding FRED API keys or signed URLs in errors/logs.
+                    raise SourceUnavailable(f"Provider HTTP {response.status_code} ({response.request.url.host})")
                 return response
             except (httpx.TimeoutException, httpx.TransportError):
                 if attempt == 1:
