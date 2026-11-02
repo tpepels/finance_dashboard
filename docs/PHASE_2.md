@@ -1,32 +1,37 @@
-# Phase 2 — Ingestion, database, revision handling and API
+# Phase 2 — Backend implementation and acceptance
 
-The original BIS-only Phase 2 was verified on 2026-11-02, but was too narrow. Expanded Phase 2 now provides 19 mapped sources and 16 live-verified series, with three FRED series awaiting credentials and eight other original indicator definitions unresolved. This verification ran in disposable GitHub Actions Docker containers; it is not a persistent production deployment.
+As of 2026-11-02, the backend implements **26** operational source series and retains **six** unsupported original measurements without invented proxies. See [the per-source audit](DATA_COVERAGE.md). The Phase 2 issue remains open because the agreed full indicator scope is not yet satisfied.
 
-## Source retrieval
+## Architecture
 
-API: \`https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/D.{US|XM|JP}\`
+The provider-router chooses an adapter using canonical IDs from `definitions/series.json`. Provider responses must match exact series identifiers, geography, units and native observation periods.
 
-Uses header \`Accept: application/vnd.sdmx.data+json;version=1.0.0\`. Official API documentation: https://stats.bis.org/api-doc/v2/. Country codes and daily observations are decoded from the SDMX structure's dimension-index mappings. Unexpected dimensions, duplicate series, mismatched countries, infinite values and invalid dates cause an error, without database updates. Historical BIS NaN/null values are treated as **missing observations** and skipped, never coerced to zero; a series containing only missing observations still fails.
+- BIS SDMX-JSON: daily harmonized rates and quarterly private-sector credit-to-GDP gaps;
+- FRED: preferred authenticated JSON API, or verified public DATE/VALUE observations HTML with extended rows, including quarterly values;
+- ECB: official CSV policy-rate dataset;
+- World Bank WDI: official annual indicators JSON; Pink Sheet: monthly gold workbook with USD per troy-ounce check;
+- IMF DataMapper: explicitly version-limited historical global public debt;
+- Shiller: public US CAPE workbook;
+- Siblis: **proprietary** sparse ACWI CAPE free snapshots; no public redistribution;
+- UNSD/ILO: annual world labour-share and productivity-growth series;
+- Corgano: single current quoted gold spot midpoint/oz, UTC timestamp, no faux historical spot data.
 
-BIS response \`meta.prepared\` records response preparation, **not historical publication time**. No \`source_vintage\` is fabricated. The worker initially fetches full history, then performs daily polls with a 120-day overlap to catch corrections. Older revisions require \`worker --once --full\`; no claim of discovering all historical revisions automatically.
+## Persistence and temporal correctness
 
-## Durability
+PostgreSQL stores original normalized source observations, append-only versions, ingest runs, provider request URLs and first-seen timestamps. Atomic source updates and bounded retries preserve last-known-good observations upon failures. Native periods are retained; data are not filled with invented daily values. Annual observations have period-start dates as storage keys and are still labelled annual.
 
-Schema has series identities, ingest-run log and append-only observation versions. Only changed values create versions; unchanged refreshes are idempotent. A per-series transaction saves observations and marks success together. Failures mark the ingest run failed in a separate transaction, retaining prior observations. PostgreSQL row-level locks serialize writes to one series; a PostgreSQL advisory lock serializes worker refreshes.
+An application-first-seen snapshot is not a true source publication vintage. Missing BIS NaN/null observations remain missing. Live spot quote source and per-ounce price contract are validated.
 
-No deletion is inferred from missing provider observations. Datetimes are UTC. Historical app-snapshot queries filter by \`first_seen_at\` and select the most recent version available by ingestion order; they do **not** replay true historical BIS publication vintages.
+The scheduled worker shares the same Python codebase, runs separately from the FastAPI server and can filter any mapped provider by `--provider`. The HTTP API remains read-only and bound to loopback for local deployment.
 
-## Runtime and tests
+## Verification
 
-\`app\` reads data and metadata; \`worker\` is the only source downloader. Alembic runs once before either service. Postgres remains private; API binds loopback.
+- [BIS full Docker/PostgreSQL/API acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048): US 26,416; euro area 10,130; Japan 24,914 observations.
+- [23 other live source checks](https://github.com/tpepels/finance_dashboard/actions/runs/41459407905), including all four FRED series without a key.
+- [Fast offline/PostgreSQL tests](https://github.com/tpepels/finance_dashboard/actions/runs/41459407973).
 
-Routine CI is bounded to five minutes, with local SDMX fixtures, SQLite and PostgreSQL tests. A separate bounded [live acceptance run](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048) successfully queried the three live BIS series, initialized a Docker Compose PostgreSQL database and applied Alembic migrations, backfilled 26,416 US / 10,130 euro-area / 24,914 Japanese historical observations, and read all three through FastAPI. The euro-area full-history feed exposed null/NaN observations; the adapter now skips these genuine missing data points instead of rejecting an entire series. This run is reproducible via manual workflow dispatch and does not establish a continuously deployed production instance.
+The live source checks validate the actual provider responses and parsers. A combined 26-source production Docker backfill and public GitHub Pages deployment have **not** occurred, and should not be claimed. Data-rights clearance is needed before any public static export.
 
-## Known gaps / deferred work
+## Pending exact indicators
 
-- Supported adapters include BIS, FRED, ECB, World Bank WDI, IMF DataMapper, UN SDG (ILO-custodied), Shiller workbook and World Bank Pink Sheet. See [coverage](DATA_COVERAGE.md) for precise IDs and blocking requirements.
-- FRED authenticated requests have not been live-validated; a FRED_API_KEY is needed.
-- Historical revisions older than the overlap are not detected automatically; a periodic full refresh can be added later.
-- No frontend; the Phase 2 live worker/HTTP acceptance succeeded. No always-on production deployment has been made.
-- No full licence review. Provider terms must be checked before public redistribution.
-- The API is unauthenticated and intentionally loopback-bound.
+Tobin Q; global productivity-compensation gap; global **listed-company** profit share; licensed historical index top-ten weights; a defensible world credit gap aggregate; and gold/global equity total-return correlation. These need genuine source/licence definitions, as documented in [Data coverage](DATA_COVERAGE.md).

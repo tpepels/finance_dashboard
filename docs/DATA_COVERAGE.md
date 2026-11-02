@@ -1,57 +1,60 @@
-# Data coverage and blockers (Phase 2 expanded)
+# Phase 2 — source coverage, provenance and blockers
 
-The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **26 mapped** (including 3 BIS credit gaps and a separate worldwide productivity series), 3 FRED with official key or public-table fallback; **6 original series unresolved**. This document distinguishes
-an implementable adapter from verified observations and legal permission to
-republish data to GitHub Pages.
+Verified 2026-11-02. **32 canonical series total: 26 mapped and live-source verified; 6 unresolved original definitions.**
 
-| Provider / category | Coverage | Reason |
+An operational adapter can fetch and parse real source data into PostgreSQL; it is not an assertion that the provider grants public redistribution rights or that every derived comparison is methodologically valid.
+
+| Source / provider | Series | Verification | Important limitation |
+|---|---:|---|---|
+| BIS policy rates | 3 | Live backfill + Docker/PostgreSQL/API | Harmonized policy instruments may change historically |
+| BIS credit gaps | 3 | Live SDMX country checks | US, euro area and Japan, private nonfinancial credit gap **CG_DTYPE=C**; no world aggregate |
+| FRED | 4 | Live no-key observations HTML + keyed JSON contract tests | Fed upper target, real 10Y yield, Sahm Rule and nonfinancial corporate equities/net worth; raw-data rights review |
+| ECB | 1 | Live CSV | ECB deposit facility, distinct from BIS harmonized rate |
+| World Bank WDI | 8 | Live six real GDP growth areas + US/Japan domestic listed-cap/GDP | Annual, incomplete country coverage, revised values |
+| IMF DataMapper | 1 | Live | WEO DataMapper world public debt; not Oct 2026 WEO. Excludes current/future calendar years; earlier years may still be estimates |
+| Shiller US CAPE | 1 | Live Excel workbook | US-only; dynamic workbook, reproduction rights review |
+| Siblis ACWI CAPE | 1 | Live free API | **Sparse nine historical snapshots, proprietary**; public chart/data redistribution requires licence |
+| ILO-custodied UN SDG | 2 | Live world labour share + real output/worker growth | Productivity growth differs from compensation growth |
+| World Bank Pink Sheet | 1 | Live Excel workbook | Monthly average USD/oz, **not daily spot** |
+| Gold spot quote | 1 | Live Corgano XAU/USD quote | One current indicative spot midpoint/oz; historical API provides futures, not spot |
+
+All mapped source IDs are referenced from `definitions/series.json`. The relevant open-source calculations and provider validation functions are in `src/finance_dashboard/providers.py` and `src/finance_dashboard/bis.py`.
+
+## The six remaining original indicators
+
+| Original series ID | Missing requirement | Treatment |
 |---|---|---|
-| BIS quarterly country credit gaps | 3 mapped | Q.US/Q.XM/Q.JP: CG_DTYPE=C, private nonfinancial borrowers and all lenders; no fabricated global aggregate |
-| BIS central bank policy rates | 3 mapped, live verified | SDMX 1.0 decoder and historical backfill in PostgreSQL |
-| FRED Fed corridor, US TIPS and Sahm Rule | 3 mapped, **key or public table fallback** | Official keyed JSON API preferred; public FRED DATE/VALUE HTML offers no-key personal retrieval; all series rights still flagged for review |
-| ECB deposit facility | 1 mapped, adapter | Official ECB CSV format |
-| World Bank real GDP and listed-cap/GDP | 8 mapped, live verified | Indicators v2 JSON API, all 6 GDP geographies plus both capitalization ratios verified |
-| IMF world general-government debt | 1 mapped, live verified | April 2026 WEO DataMapper, not October WEO; current and future calendar years excluded |
-| Federal Reserve nonfinancial corporate equities/net worth | 1 mapped | FRED NCBCEPNW; quarterly US Z.1 valuation proxy. **Not Tobin Q** (replacement-cost denominator still unresolved) |
-| Siblis global ACWI CAPE | 1 mapped, live endpoint verified | Sparse proprietary free-tier snapshot series, noncommercial use. Public GitHub Pages redistribution **not permitted without separate licence**; no interpolated history |
-| ILO / UNSD world labour share | 1 mapped, live verified | Official UN SDG 10.4.1 `SL_EMP_GTOTL` world (M49=1), ILO-custodied; filter global reporting and all ages |
-| BIS global private credit gap | Unresolved | There is no single well-defined worldwide country-comparable credit-gap series; individual geographies must be specified |
-| Robert Shiller US CAPE | 1 mapped, live verified | Official Shiller workbook, dynamic link discovery, Excel header checks; redistribution rights still need review |
-| MSCI/global profit/concentration | Unresolved | Complete histories and redistribution rights generally require licensed index data |
-| Live XAU/USD spot quote | 1 mapped, indicative quote | Corgano gold spot midpoint, provenance-gated, daily latest only. Historical API offers **futures**, not spot; never substitute it |
-| UN SDG global productivity growth | 1 mapped | SL_EMP_PCAP, world, age 15+; wage growth and wage/productivity divergence still unresolved |
-| World Bank monthly gold price | 1 mapped, live verified | Pink Sheet monthly average USD/troy oz since 1960; openly licensed CC BY 4.0 with attribution. Daily spot and total returns remain separate unresolved series |
-| Productivity versus compensation | Unresolved | World aggregate with harmonized wages/output coverage not selected |
-| US Tobin's Q | Unresolved | Valuation methodology and source definition not selected |
+| `valuation.us.tobins_q` | Exact, versioned replacement-cost asset numerator/denominator (e.g. BEA Q1/Q3 definitions) | Keep unresolved. The new `valuation.us.equity_net_worth` (FRED NCBCEPNW) is a **separately labelled proxy**, not Tobin's Q |
+| `labour.world.productivity_compensation` | Comparable global hourly productivity and real labour compensation series, weighting and coverage | Keep unresolved. `labour.world.productivity_growth` supplies only global output-per-worker growth |
+| `profit.global.corporate_share` | Worldwide profits **attributable to listed companies** with non-duplicated multinational geographic allocation | Keep unresolved. National-accounts total corporate profits are not listed-company profits |
+| `concentration.global.top10` | Licensed historical constituent and free-float market-cap weights for a defined global equity index | Keep unresolved. Public current top-ten lists are not sufficient for historical concentration analysis |
+| `credit.world.private_gdp_gap` | Economically justified global aggregate credit gap and country/denominator weights | Keep unresolved. Three **country-level BIS gaps** are implemented and comparable on a combined chart |
+| `gold.world.equity_correlation` | Historical world equity **total-return** series with defined currency, price/return conventions and rights | Keep unresolved. World Bank monthly gold and live spot quote are available, but no licensed world equity return series |
 
-All 20 mapped entries can now enter the ingestion worker. The other 7 are; one additional monthly gold average source has been introduced separately
-**blocked source specifications**, never silently substituted with a US series or
-an invented global aggregate.
+These indicators are intentionally absent from chart-ready data. A chart referencing a non-mapped series stays `draft`, and the API rejects unpopulated series rather than returning fake values.
 
-## Evidence / API contracts
+## Provider verification
 
-- BIS: https://stats.bis.org/api-doc/v2/
-- FRED REST: https://fred.stlouisfed.org/docs/api/fred/series_observations.html
-- FRED public CSV: https://fred.stlouisfed.org/help/data/downloading/using-the-download-data-link/
-- ECB CSV: https://data.ecb.europa.eu/help/api/data-examples
-- World Bank V2: https://datahelpdesk.worldbank.org/knowledgebase/articles/898581-api-basic-call-structures
-- IMF WEO portal: https://data.imf.org/datasets/WEO
-- ILO labour income datasets: https://ilostat.ilo.org/data/
+- [23 non-BIS policy sources live](https://github.com/tpepels/finance_dashboard/actions/runs/41459407905).
+- [3 BIS policy rates, full PostgreSQL/API integration](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048).
+- [Offline and PostgreSQL tests](https://github.com/tpepels/finance_dashboard/actions/runs/41459407973).
 
-## Export warning
+FRED's public observation HTML renders up to the first 1,000 observations in an HTML table and later observations in `#extra-rows` records. The parser reads both, and fails closed on malformed rows. Its key-based JSON API remains preferred for long-term stability.
 
-A successful fetch does **not** establish permission to redistribute the raw
-data in a public static GitHub Pages deployment. Store provider rights with
-the series; complete rights reviews before enabling public JSON export.
+The BIS credit-gap parser selects dimensional code `C` (actual minus trend) independently of positional ordering of `A` (actual) or `B` (trend). True historical publication vintages cannot be inferred from when the app downloaded the data.
 
-## Current verification (2026-11-02)
+## Publishing to GitHub Pages
 
-- Offline contracts and PostgreSQL integration: [GitHub Actions](https://github.com/tpepels/finance_dashboard/actions/runs/41453185646).
-- All **13 mapped non-FRED/non-BIS** series: [live acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41453185610).
-- All **3 BIS** rates plus full PostgreSQL ingestion/API: [Docker acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048).
-- **3 FRED** sources have exact HTML table parsing and key-based API support; live fallback validation is tracked separately. No API key was supplied.
-- 8 other original indicator definitions remain unresolved. The original `gold.usd.spot` is now a live-only spot snapshot (no historic spot backfill): monthly-average gold has a separate canonical series ID.
+Public Github Pages requires **series-by-series attribution and redistribution permission**; a public API or free data query does not in itself grant that permission. For example the free Siblis data cannot simply be committed to public JSON/CSV for distribution. Gold spot quote and some FRED/index data also carry usage rights. The exporter must filter or omit restricted sources and report them explicitly.
 
-## Global CAPE licensing
+Sources:
 
-The free Siblis ACWI CAPE API is authenticated-free but proprietary. Provider permits non-commercial personal research; public-site reproduction of complete datasets or API-powered charts requires a separate redistribution agreement. The original series ID now maps to a genuine ACWI CAPE dataset, but no public Pages export is authorized. Source: https://siblisresearch.com/data-licensing/.
+- BIS policy and credit SDMX: https://stats.bis.org/api-doc/v2/
+- FRED official API: https://fred.stlouisfed.org/docs/api/fred/
+- FRED financial accounts ratio: https://fred.stlouisfed.org/series/NCBCEPNW
+- World Bank: https://datahelpdesk.worldbank.org/knowledgebase/articles/898581-api-basic-call-structures
+- IMF: https://www.imf.org/external/datamapper/api/v2/GGXWDG_NGDP
+- UN SDG: https://unstats.un.org/SDGAPI/v1/sdg/Series/SL_EMP_GTOTL/GeoArea/1/DataSlice
+- Shiller: https://shillerdata.com/
+- Siblis free API: https://siblisresearch.supabase.co/functions/v1/free-data-api/v1/ACWI/cape
+- Siblis licence: https://siblisresearch.com/data-licensing/

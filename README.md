@@ -1,80 +1,65 @@
 # Global Capital Monitor
 
-A self-hosted global financial and macroeconomic research application. The application traces original economic observations back to their sources, retaining every value it sees rather than overwriting revised history.
+A source-traceable financial and macroeconomic research application for global equity, labour, credit, valuation, and gold risk.
 
-## Delivery phases
+## Phased delivery
 
-| Phase | Scope | Status |
+| Phase | Deliverable | Status |
 |---|---|---|
-| 1 — Contracts | Source catalog, methodology, chart definitions, provenance and data-quality rules | Complete |
-| **2 — Backend** | BIS/FRED/ECB/World Bank/IMF/UN/Shiller adapters, PostgreSQL, worker, FastAPI | **19 mapped, 16 live-verified, 3 FRED credential-gated; 8 source definitions remain unresolved** |
-| 3 — Dashboard | React, ECharts, source-traceable Fed/ECB/BOJ graph, time-range controls and exports | Not started |
-| 4 — Analysis | Derived macro indicators, valuation, labour/capital, concentration, portfolio and gold | Not started |
+| 1 — Data contracts | Validated source and chart catalog, methodology/rights flags | Complete |
+| 2 — Data infrastructure | Multiple source adapters, real observations, PostgreSQL revision history, scheduled worker and FastAPI | **26 mapped and live-source verified; 6 original definitions unresolved** |
+| 3 — Dashboard | React combined graphs, filtering and static GitHub Pages export with redistribution checks | Not started |
+| 4 — Analytics | Derived economic indicators, ETF/gold portfolio and risk comparison | Not started |
 
-Phase 2 does not include charts or a frontend. The data worker now includes BIS (3), FRED (3), ECB (1), World Bank WDI (8), IMF DataMapper (1), Shiller (1), UN SDG/ILO labour share (1), and World Bank Pink Sheet monthly gold (1) source mappings. FRED prefers a personal API key but also supports a source-validated public table fallback; the remaining unresolved indicators are clearly blocked. Unresolved indicators are **not presented as available data**. See [coverage](docs/DATA_COVERAGE.md) for actual source availability and limits.
+The catalog now contains **32 series definitions**: 26 operational provider mappings and 6 unresolved economic measures. “Mapped” does not imply the provider has granted public redistribution rights. The 26 mapped series have been checked against live source responses, including the three BIS policy rates in a separate Docker/PostgreSQL acceptance run and all 23 other series through the source acceptance workflow.
 
-## Quick start (Docker Compose)
+**The original full-scope Phase 2 issue remains open** because six metrics cannot yet be presented from defensible worldwide datasets. See [Data coverage](docs/DATA_COVERAGE.md).
 
-Requires Docker Compose and Internet access for the scheduled worker.
+## Run locally
 
-\`\`\`bash
+Requires Docker Compose, a network connection, and a PostgreSQL password.
+
+```bash
 cp .env.example .env
-# Set a long random POSTGRES_PASSWORD; percent-encode URL-special characters.
-# Optional: set FRED_API_KEY for the documented JSON API instead of HTML table retrieval.
+# Change POSTGRES_PASSWORD in .env to a long random secret
 docker compose up --build -d
-docker compose logs --tail=30 worker
+docker compose logs --tail=50 worker
 curl http://127.0.0.1:8080/api/data-status
-\`\`\`
+```
 
-Services: \`postgres\` (private volume), one-shot \`migrate\` (Alembic), \`app\` (port 8080 on loopback only) and \`worker\` (daily refresh, initial full backfill). Worker fetches immediately at boot and every 24 hours. Historical observations are retrieved from the official source associated with each mapped series. The 3 FRED series prefer FRED_API_KEY and otherwise use the official public FRED observation table. The optional public endpoint is not live-verified. Failed updates do not discard old observations.
+The `worker` fetches and stores every mapped series by default, including FRED without a key via its public observations table. `FRED_API_KEY` is optional and enables the official keyed JSON interface instead. Ingestion errors preserve the last successful observations, log an ingest-run failure, and are exposed in the status API.
 
-\`\`\`bash
-# Manual full refresh, with an existing Compose stack:
+For a manual refresh:
+
+```bash
+docker compose exec worker python -m finance_dashboard.worker --once
+# Optional: select a provider from the supported provider list
+docker compose exec worker python -m finance_dashboard.worker --once --provider FRED
+# Or explicitly rescan full history for older revisions
 docker compose exec worker python -m finance_dashboard.worker --once --full
+```
 
-# Catalog and source checks:
-docker compose exec app python -m finance_dashboard validate
-docker compose exec app python -m finance_dashboard report
+Queries are read-only; the API is bound to local loopback by default.
 
-# Query three daily policy rates:
+```bash
 curl -sS http://127.0.0.1:8080/api/series
-curl -sS http://127.0.0.1:8080/api/data-status
+curl -sS http://127.0.0.1:8080/api/charts
 curl -sS -X POST http://127.0.0.1:8080/api/query \
   -H 'Content-Type: application/json' \
   -d '{"series_ids":["policy_rate.us.bis","policy_rate.ea.bis","policy_rate.jp.bis"],"start":"2025-01-01"}'
-\`\`\`
+```
 
-The [expanded source acceptance workflow](https://github.com/tpepels/finance_dashboard/actions/runs/41453185610) verified all 13 mapped non-FRED/non-BIS sources against live APIs (including all six GDP regions, IMF, global labour share and monthly gold), while the [BIS live acceptance workflow](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048) verified the remaining 3 BIS series in Docker/PostgreSQL. There are 8 unimplemented original indicator definitions; they need source selection, economic methodology and/or licensing before we can claim Phase 2 data completeness. Source ingestion support is separate from granting redistribution rights for a public GitHub Pages site.
+Other API routes: `GET /api/health`, `GET /api/series/{id}`, `GET /api/data-status`. OpenAPI at `/docs`.
 
-The independent [live acceptance workflow](https://github.com/tpepels/finance_dashboard/actions/workflows/phase2-live.yml) passed on 2026-11-02: it fetched 26,416 US, 10,130 euro-area and 24,914 Japanese observations in a disposable PostgreSQL instance and confirmed all three through FastAPI. Historical BIS null/NaN observations are missing data, never coerced to zero. This is a verified deployed-container smoke test, not a claim that a production instance has been launched.
+## Verification
 
-The query API returns decimal values as **strings** to avoid silent float rounding. A snapshot timestamp means *first observed by this app*, **not** a historical BIS release vintage. The app has no authentication and is bound to loopback; do not expose it directly to the public Internet. Place behind a secured reverse proxy if remote access is necessary.
+- [Full live source acceptance — 23 non-BIS-policy series](https://github.com/tpepels/finance_dashboard/actions/runs/41459407905): includes all FRED series using the public table and the Federal Reserve's corporate equity/net-worth series, gold spot quote, BIS credit gaps, Siblis ACWI CAPE, World Bank WDI/Pink Sheet, IMF, ECB, ILO/UNSD and Shiller.
+- [Three BIS policy-rate series, real Docker/PostgreSQL backfill and FastAPI query](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048).
+- [Short offline / PostgreSQL integration test suite](https://github.com/tpepels/finance_dashboard/actions/runs/41459407973).
+- [Open Phase 2 completion tracker](https://github.com/tpepels/finance_dashboard/issues/1).
 
-### Local development
+In the three-series BIS Docker test, 26,416 US, 10,130 euro-area, and 24,914 Japanese historical observations were ingested and queried. No permanent deployment has been created. The other 23 mapped sources passed live fetch/validation, not a combined production full-history backfill. Published revisions can be reingested without destroying the prior observed values; the application's first-seen timestamp is **not** a provider publication vintage.
 
-Requires Python 3.11+ and a running PostgreSQL server for persistent ingestion.
+## Limits
 
-\`\`\`bash
-python -m venv .venv
-. .venv/bin/activate
-pip install -e .
-python -m unittest discover -s tests -v
-python -m finance_dashboard validate
-export DATABASE_URL='postgresql+psycopg://capital_monitor:password@localhost/capital_monitor'
-alembic upgrade head
-python -m finance_dashboard.worker --once
-uvicorn finance_dashboard.api:app_factory --factory --port 8080
-\`\`\`
-
-For provider documentation, compliance and known limitations see [architecture](docs/ARCHITECTURE.md), [source policy](docs/DATA_POLICY.md), [Phase 1 audit](docs/PHASE_1_AUDIT.md), and [Phase 2 implementation](docs/PHASE_2.md).
-
-## API
-
-- \`GET /api/health\`: database readiness
-- \`GET /api/series\`: catalog, including not-yet-ingested series
-- \`GET /api/series/{id}\`: canonical definition and original source
-- \`GET /api/charts\`: chart definitions, **not** rendered charts
-- \`POST /api/query\`: up to 12 BIS series IDs, start/end dates and optional \`snapshot_at\`
-- \`GET /api/data-status\`: latest attempt, latest success and error details
-
-API documentation: \`/docs\`. There are no public write endpoints or automatic asset recommendations.
+The API does not offer trade instructions, generic market-data redistribution, a React dashboard, historical true-spot gold prices, or a consistent world financial-company profit aggregate. The Siblis ACWI CAPE free API supplies sparse proprietary snapshots for personal noncommercial research; **do not publish its data to GitHub Pages without separate rights**. See [Source policy](docs/DATA_POLICY.md), [architecture](docs/ARCHITECTURE.md), and [Phase 2 details](docs/PHASE_2.md).

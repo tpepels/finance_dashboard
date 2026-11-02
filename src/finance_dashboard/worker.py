@@ -10,7 +10,7 @@ import time
 
 from sqlalchemy import text
 
-from .providers import ProviderRouter
+from .providers import ProviderRouter, PROVIDER_CODES
 from .database import make_engine
 from .service import IngestionService
 
@@ -51,7 +51,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true", help="Perform one bounded refresh")
     parser.add_argument("--full", action="store_true", help="Refetch complete history for each series")
-    parser.add_argument("--provider", choices=["BIS", "FRED", "ECB", "WORLD_BANK"],
+    parser.add_argument("--provider", choices=sorted(PROVIDER_CODES),
                         action="append", help="Limit refresh to named provider (repeatable)")
     parser.add_argument("--interval-seconds", type=int, default=int(os.getenv("REFRESH_INTERVAL_SECONDS", "86400")))
     args = parser.parse_args()
