@@ -23,10 +23,12 @@ class LocalBackupTests(unittest.TestCase):
             "FINANCE_BACKUP_DIR": "/data/backups",
             "FINANCE_BACKUP_KEEP": "14",
         }):
-            with patch("finance_dashboard.worker.refresh_all", return_value=0) as macro, \\
-                 patch("finance_dashboard.backup.backup_local") as backup, \\
-                 patch("finance_dashboard.backup.source_database_path",
-                       return_value=Path("/data/finance.sqlite3")):
+            with (
+                patch("finance_dashboard.worker.refresh_all", return_value=0) as macro,
+                patch("finance_dashboard.backup.backup_local") as backup,
+                patch("finance_dashboard.backup.source_database_path",
+                      return_value=Path("/data/finance.sqlite3"))
+            ):
                 refresh_loop(None, OneCycle(), interval_seconds=86400,
                              include_markets=False, refresh_wisesheets=False)
                 self.assertEqual(macro.call_count, 1)
