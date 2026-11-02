@@ -1,0 +1,159 @@
+"""Consistent online SQLite/Wisesheets backup for the one-container local server.
+
+SQLite WAL files must not be copied raw while the writer is active. Python's
+sqlite3 backup uses SQLite's consistent online-backup API, validates the copy,
+and installs it atomically. Backups under /data are *not* off-site backups.
+"""
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+from hashlib import sha256
+import json
+import os
+from pathlib import Path
+import shutil
+import sqlite3
+from tempfile import NamedTemporaryFile
+
+from sqlalchemy.engine import make_url
+
+
+def source_database_path() -> Path:
+    value = os.environ.get("DATABASE_URL", "")
+    if not value.startswith("sqlite"):
+        raise ValueError("Local one-container backup requires SQLite DATABASE_URL")
+    database = make_url(value).database
+    if not database or database == ":memory:":
+        raise ValueError("Persistent database filename required")
+    return Path(database)
+
+
+def _hash(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _temp_in(parent: Path, suffix: str) -> Path:
+    with NamedTemporaryFile(prefix=".finance-backup-", suffix=suffix,
+                            dir=parent, delete=False) as temp:
+        return Path(temp.name)
+
+
+def _valid_database(path: Path) -> None:
+    with sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30) as read:
+        row = read.execute("PRAGMA integrity_check").fetchone()
+        if row is None or row[0] != "ok":
+            raise ValueError("SQLite backup failed integrity_check")
+
+
+def backup_local(output_dir: Path, *, source_db: Path | None = None,
+                 earnings_snapshot: Path | None = None,
+                 keep: int = 14) -> dict:
+    """Return a verified backup manifest, deleting only older OWNED backups."""
+    if keep < 1 or keep > 365:
+        raise ValueError("Backup retention must be 1..365")
+    source = source_db or source_database_path()
+    if not source.is_file():
+        raise ValueError("Database file not initialized")
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    # Microsecond suffix protects repeated manual runs and concurrent calls.
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    prefix = "finance-" + stamp
+    database_target = out / (prefix + ".sqlite3")
+    manifest_path = out / (prefix + ".json")
+    temporary_db = _temp_in(out, ".sqlite3")
+    created = []
+    try:
+        with sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=30) as original:
+            with sqlite3.connect(temporary_db, timeout=30) as destination:
+                original.backup(destination, pages=128, sleep=0.05)
+        _valid_database(temporary_db)
+        os.replace(temporary_db, database_target)
+        created.append(database_target)
+        manifest = {
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "method": "SQLite sqlite3 backup API, integrity_check passed",
+            "database": {
+                "file": database_target.name,
+                "bytes": database_target.stat().st_size,
+                "sha256": _hash(database_target),
+            },
+            "earnings_snapshot": None,
+            "note": ("Copy this bundle off-site. A backup kept only within the "
+                     "same /data volume does not survive failure of that disk."),
+        }
+        if earnings_snapshot is not None and earnings_snapshot.is_file():
+            snapshot_target = out / (prefix + ".sec-filer.json")
+            temp_snapshot = _temp_in(out, ".json")
+            try:
+                # The existing writer installs whole snapshots via atomic rename.
+                with earnings_snapshot.open("rb") as inp, temp_snapshot.open("wb") as dest:
+                    shutil.copyfileobj(inp, dest)
+                data = json.loads(temp_snapshot.read_text(encoding="utf-8"))
+                if data.get("id") != "profit.us_sec_filers.world_gdp_share":
+                    raise ValueError("Unexpected SEC filer snapshot identity")
+                os.replace(temp_snapshot, snapshot_target)
+                created.append(snapshot_target)
+                manifest["earnings_snapshot"] = {
+                    "file": snapshot_target.name,
+                    "bytes": snapshot_target.stat().st_size,
+                    "sha256": _hash(snapshot_target),
+                    "collection_timestamp": data.get("source_snapshot_at_utc"),
+                }
+            finally:
+                temp_snapshot.unlink(missing_ok=True)
+        temporary_manifest = _temp_in(out, ".json")
+        try:
+            temporary_manifest.write_text(json.dumps(manifest, indent=2) + "\n",
+                                          encoding="utf-8")
+            os.replace(temporary_manifest, manifest_path)
+        finally:
+            temporary_manifest.unlink(missing_ok=True)
+        # Only prune verified bundles owned by this application, never raw user files.
+        manifests = sorted(out.glob("finance-*.json"), reverse=True)
+        manifests = [p for p in manifests if p.name.endswith("Z.json")
+                     and p.is_file() and not p.is_symlink()]
+        for outdated in manifests[keep:]:
+            try:
+                old = json.loads(outdated.read_text(encoding="utf-8"))
+                for item in (old.get("database"), old.get("earnings_snapshot")):
+                    if not isinstance(item, dict):
+                        continue
+                    candidate = out / item.get("file", "")
+                    if (candidate.parent == out and not candidate.is_symlink()
+                        and candidate.name.startswith("finance-")
+                        and candidate.suffix in (".sqlite3", ".json")):
+                        candidate.unlink(missing_ok=True)
+                outdated.unlink(missing_ok=True)
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                # A malformed manifest must not destroy unrelated files.
+                continue
+        return manifest
+    except Exception:
+        for path in created:
+            path.unlink(missing_ok=True)
+        raise
+    finally:
+        temporary_db.unlink(missing_ok=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Verified SQLite online backup")
+    parser.add_argument("--output-dir", default="/data/backups")
+    parser.add_argument("--keep", type=int, default=14)
+    args = parser.parse_args()
+    db = source_database_path()
+    snapshot = Path(os.environ.get(
+        "WISESHEETS_SNAPSHOT_PATH", "/data/wisesheets/sec_filer_profit.json"))
+    manifest = backup_local(Path(args.output_dir), source_db=db,
+                            earnings_snapshot=snapshot, keep=args.keep)
+    print(json.dumps(manifest, indent=2))
+
+
+if __name__ == "__main__":
+    main()
