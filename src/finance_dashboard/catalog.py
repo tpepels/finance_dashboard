@@ -18,7 +18,7 @@ THEMES = {
 FREQUENCIES = {"D", "M", "Q", "A"}
 UNITS = {
     "percent", "percentage_points", "index", "usd", "ratio",
-    "usd_per_oz", "persons", "currency_per_usd",
+    "usd_per_oz", "persons", "count", "currency_per_usd",
 }
 STATES = {"mapped", "unresolved"}
 RIGHTS = {"cc_by_4_0", "review_required", "unknown"}
