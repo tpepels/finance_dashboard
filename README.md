@@ -7,11 +7,11 @@ A self-hosted global financial and macroeconomic research application. The appli
 | Phase | Scope | Status |
 |---|---|---|
 | 1 — Contracts | Source catalog, methodology, chart definitions, provenance and data-quality rules | Complete |
-| **2 — Backend** | BIS SDMX adapter, PostgreSQL observations/revisions, background updates, FastAPI queries and offline tests | **Expanded implementation; BIS live verified; wider source acceptance in progress** |
+| **2 — Backend** | BIS/FRED/ECB/World Bank/IMF/UN/Shiller adapters, PostgreSQL, worker, FastAPI | **19 mapped, 16 live-verified, 3 FRED credential-gated; 8 source definitions remain unresolved** |
 | 3 — Dashboard | React, ECharts, source-traceable Fed/ECB/BOJ graph, time-range controls and exports | Not started |
 | 4 — Analysis | Derived macro indicators, valuation, labour/capital, concentration, portfolio and gold | Not started |
 
-Phase 2 does not include charts or a frontend. The data worker now includes BIS (3), FRED (3), ECB (1), World Bank (8), IMF DataMapper (1), Shiller (1), and UN SDG/ILO labour share (1) official source mappings. FRED requires a personal API key; the remaining unresolved indicators are clearly blocked. Unresolved indicators are **not presented as available data**. See [coverage](docs/DATA_COVERAGE.md) for actual source availability and limits.
+Phase 2 does not include charts or a frontend. The data worker now includes BIS (3), FRED (3), ECB (1), World Bank WDI (8), IMF DataMapper (1), Shiller (1), UN SDG/ILO labour share (1), and World Bank Pink Sheet monthly gold (1) source mappings. FRED requires a personal API key; the remaining unresolved indicators are clearly blocked. Unresolved indicators are **not presented as available data**. See [coverage](docs/DATA_COVERAGE.md) for actual source availability and limits.
 
 ## Quick start (Docker Compose)
 
@@ -20,12 +20,13 @@ Requires Docker Compose and Internet access for the scheduled worker.
 \`\`\`bash
 cp .env.example .env
 # Set a long random POSTGRES_PASSWORD; percent-encode URL-special characters.
+# Set FRED_API_KEY as well to enable all 3 FRED series.
 docker compose up --build -d
 docker compose logs --tail=30 worker
 curl http://127.0.0.1:8080/api/data-status
 \`\`\`
 
-Services: \`postgres\` (private volume), one-shot \`migrate\` (Alembic), \`app\` (port 8080 on loopback only) and \`worker\` (daily refresh, initial full backfill). Worker fetches immediately at boot and every 24 hours. All historical data comes directly from the BIS SDMX API. Failed updates do not discard old observations.
+Services: \`postgres\` (private volume), one-shot \`migrate\` (Alembic), \`app\` (port 8080 on loopback only) and \`worker\` (daily refresh, initial full backfill). Worker fetches immediately at boot and every 24 hours. Historical observations are retrieved from the official source associated with each mapped series. The 3 FRED series require FRED_API_KEY unless you explicitly enable the unreliable FRED_PUBLIC_CSV_FALLBACK=1. The optional public endpoint is not live-verified. Failed updates do not discard old observations.
 
 \`\`\`bash
 # Manual full refresh, with an existing Compose stack:
@@ -42,6 +43,8 @@ curl -sS -X POST http://127.0.0.1:8080/api/query \
   -H 'Content-Type: application/json' \
   -d '{"series_ids":["policy_rate.us.bis","policy_rate.ea.bis","policy_rate.jp.bis"],"start":"2025-01-01"}'
 \`\`\`
+
+The [expanded source acceptance workflow](https://github.com/tpepels/finance_dashboard/actions/runs/41453185610) verified all 13 mapped non-FRED/non-BIS sources against live APIs (including all six GDP regions, IMF, global labour share and monthly gold), while the [BIS live acceptance workflow](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048) verified the remaining 3 BIS series in Docker/PostgreSQL. There are 8 unimplemented original indicator definitions; they need source selection, economic methodology and/or licensing before we can claim Phase 2 data completeness. Source ingestion support is separate from granting redistribution rights for a public GitHub Pages site.
 
 The independent [live acceptance workflow](https://github.com/tpepels/finance_dashboard/actions/workflows/phase2-live.yml) passed on 2026-11-02: it fetched 26,416 US, 10,130 euro-area and 24,914 Japanese observations in a disposable PostgreSQL instance and confirmed all three through FastAPI. Historical BIS null/NaN observations are missing data, never coerced to zero. This is a verified deployed-container smoke test, not a claim that a production instance has been launched.
 

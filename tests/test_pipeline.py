@@ -76,6 +76,23 @@ class PipelineTests(unittest.TestCase):
         with Session(self.engine) as session:
             self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 0)
 
+    def test_non_bis_world_bank_uses_own_provider_and_api(self):
+        from finance_dashboard.database import SeriesRow
+        country_id = "gdp.real_growth.us"
+        provider = FakeProvider()
+        provider.values = {date(2025, 1, 1): Decimal("2.75")}
+        service = IngestionService(self.engine, provider)
+        result = service.refresh(country_id, today=date(2026, 11, 2))
+        self.assertEqual(result["versions_added"], 1)
+        with Session(self.engine) as session:
+            row = session.get(SeriesRow, country_id)
+            self.assertEqual(row.provider, "WORLD_BANK")
+            self.assertEqual(row.source_key, "USA/NY.GDP.MKTP.KD.ZG")
+        with TestClient(create_app(self.engine)) as client:
+            response = client.post("/api/query", json={"series_ids": [country_id]})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["series"][0]["observations"][0]["value"], "2.7500000000")
+
     def test_api_query_and_status(self):
         self.svc.refresh(ID, today=date(2026, 9, 1))
         with TestClient(create_app(self.engine)) as client:

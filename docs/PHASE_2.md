@@ -1,6 +1,6 @@
 # Phase 2 — Ingestion, database, revision handling and API
 
-Phase 2 completed and live-verified on 2026-11-02 for the three BIS central bank policy rate series. This verification ran in disposable GitHub Actions Docker containers; it is not a persistent production deployment.
+The original BIS-only Phase 2 was verified on 2026-11-02, but was too narrow. Expanded Phase 2 now provides 19 mapped sources and 16 live-verified series, with three FRED series awaiting credentials and eight other original indicator definitions unresolved. This verification ran in disposable GitHub Actions Docker containers; it is not a persistent production deployment.
 
 ## Source retrieval
 
@@ -24,7 +24,8 @@ Routine CI is bounded to five minutes, with local SDMX fixtures, SQLite and Post
 
 ## Known gaps / deferred work
 
-- Only BIS harmonized rates are ingested; FRED, ECB, IMF and others are Phase 3+.
+- Supported adapters include BIS, FRED, ECB, World Bank WDI, IMF DataMapper, UN SDG (ILO-custodied), Shiller workbook and World Bank Pink Sheet. See [coverage](DATA_COVERAGE.md) for precise IDs and blocking requirements.
+- FRED authenticated requests have not been live-validated; a FRED_API_KEY is needed.
 - Historical revisions older than the overlap are not detected automatically; a periodic full refresh can be added later.
 - No frontend; the Phase 2 live worker/HTTP acceptance succeeded. No always-on production deployment has been made.
 - No full licence review. Provider terms must be checked before public redistribution.
