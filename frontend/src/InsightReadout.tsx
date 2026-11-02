@@ -38,6 +38,7 @@ export default function InsightReadout({ result, error, compact = false }: {
         </small>
       </div>)}
     </div>
+    {result.series.some(s => s.status !== 'ready') && <p className="data-warning">One or more requested sources have no recorded observations. A full-cohort spread is not reported.</p>}
     {result.matched_spread && <p className="readout-spread">
       <strong>Common-date range ({result.matched_spread.date}):</strong>{' '}
       {result.matched_spread.highest.name} {value(result.matched_spread.highest.value, ready[0]?.unit)}
