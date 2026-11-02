@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/all_macro_pg_smoke.py
       - .github/workflows/all-macro-postgres.yml
+      - migrations/**
 jobs:
   all-macro:
     runs-on: ubuntu-latest
