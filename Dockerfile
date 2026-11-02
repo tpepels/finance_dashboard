@@ -5,6 +5,7 @@ WORKDIR /app
 COPY pyproject.toml README.md /app/
 COPY src/ /app/src/
 COPY definitions/ /app/definitions/
+COPY data/msci_acwi_published_snapshots.json /app/data/msci_acwi_published_snapshots.json
 COPY migrations/ /app/migrations/
 COPY alembic.ini /app/alembic.ini
 RUN pip install --no-cache-dir .
