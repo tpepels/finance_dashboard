@@ -155,10 +155,10 @@ def parse_yahoo_chart(payload: dict, instrument: dict, *, start: date | None = N
     dividends, splits = {}, {}
     for event in (events.get("dividends") or {}).values():
         day = _market_date(event["date"], zone)
-        if day not in bars:
-            if day < min(bars) or (start and day < start):
-                continue
-            raise MarketDataError("Dividend date has no corresponding trading price")
+        # Keep the original ex-date, including exceptional exchange closure
+        # dates; the cash event is applied at the next actual trading session.
+        if day < min(bars) or (start and day < start) or day > max(bars):
+            continue
         if day in dividends:
             raise MarketDataError("Multiple dividend events per day require explicit support")
         value = decimal_value(event["amount"])
@@ -167,10 +167,10 @@ def parse_yahoo_chart(payload: dict, instrument: dict, *, start: date | None = N
         dividends[day] = value
     for event in (events.get("splits") or {}).values():
         day = _market_date(event["date"], zone)
-        if day not in bars:
-            if day < min(bars) or (start and day < start):
-                continue
-            raise MarketDataError("Split date has no corresponding trading price")
+        # Some historical splits occurred on exchange-closure dates
+        # (NVDA, 2001-09-12, following 9/11). Retain the actual event date.
+        if day < min(bars) or (start and day < start) or day > max(bars):
+            continue
         if day in splits:
             raise MarketDataError("Multiple split events per day require explicit support")
         numerator = decimal_value(event["numerator"], positive=True)
@@ -280,8 +280,18 @@ def performance(history: MarketHistory, fx: dict[date, Decimal] | None = None) -
     eur_base=None
     out=[]
     for bar in bars:
+        # Apply every corporate action on (last_market_day, this_market_day],
+        # even when the provider recorded the event on an exchange closure.
+        interval_start = previous.day if previous else bar.day-timedelta(days=1)
+        period_dividends = sum(
+            (value for action_day,value in history.dividends.items()
+             if interval_start < action_day <= bar.day), D(0))
+        period_splits = D(1)
+        for action_day,ratio in history.splits.items():
+            if interval_start < action_day <= bar.day:
+                period_splits *= ratio
         if previous:
-            numerator=(bar.close+history.dividends.get(bar.day,D(0)))*history.splits.get(bar.day,D(1))
+            numerator=(bar.close+period_dividends)*period_splits
             cash_index=cash_index*numerator/previous.close
         fx_rate=currency_to_eur(bar.day,history.currency,fx or {})
         eur_adj=bar.adjusted_close/fx_rate if fx_rate is not None else None
@@ -292,8 +302,8 @@ def performance(history: MarketHistory, fx: dict[date, Decimal] | None = None) -
             "close":str(bar.close),
             "adjusted_close":str(bar.adjusted_close),
             "volume":bar.volume,
-            "dividend":str(history.dividends[bar.day]) if bar.day in history.dividends else None,
-            "split_ratio":str(history.splits[bar.day]) if bar.day in history.splits else None,
+            "dividend":str(period_dividends) if period_dividends != 0 else None,
+            "split_ratio":str(period_splits) if period_splits != 1 else None,
             "price_index":str(price_base and bar.close/price_base*D(100)),
             "vendor_adjusted_index":str(bar.adjusted_close/vendor_base*D(100)),
             "cash_dividend_reinvested_index":str(cash_index),
@@ -310,5 +320,12 @@ def performance(history: MarketHistory, fx: dict[date, Decimal] | None = None) -
         "observations":out,
         "dividend_events":len(history.dividends),
         "split_events":len(history.splits),
-        "return_method":"vendor_adjusted_index uses Yahoo adjusted closes; cash_dividend_reinvested_index reinvests source cash dividends at ex-date close gross of tax; EUR index uses ECB foreign units per EUR, prior reference within 5 calendar days; no EUR values when FX unavailable",
+        "corporate_actions": sorted([
+            {"ex_date":day.isoformat(),"type":"dividend","value":str(value)}
+            for day,value in history.dividends.items()
+        ] + [
+            {"ex_date":day.isoformat(),"type":"split","value":str(value)}
+            for day,value in history.splits.items()
+        ], key=lambda record:(record["ex_date"],record["type"])),
+        "return_method":"vendor_adjusted_index uses Yahoo adjusted closes; cash_dividend_reinvested_index reinvests source cash dividends at the next trading close on/after ex-date, including on scheduled market closures, gross of tax; EUR index uses ECB foreign units per EUR, prior reference within 5 calendar days; no EUR values when FX unavailable",
     }
