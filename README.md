@@ -7,13 +7,13 @@ A source-traceable financial and macroeconomic research application for global e
 | Phase | Deliverable | Status |
 |---|---|---|
 | 1 — Data contracts | Validated source and chart catalog, methodology/rights flags | Complete |
-| 2 — Data infrastructure | Multiple source adapters, real observations, PostgreSQL revision history, scheduled worker and FastAPI | **26 mapped and live-source verified; 6 original definitions unresolved** |
+| 2 — Data infrastructure | Macro feeds, 24 stock/ETF listings, ECB FX, adjusted returns, corporate actions, PostgreSQL, worker and FastAPI | **26 macro + 24 market + 3 FX verified; six original measures unresolved** |
 | 3 — Dashboard | React combined graphs, filtering and static GitHub Pages export with redistribution checks | Not started |
 | 4 — Analytics | Derived economic indicators, ETF/gold portfolio and risk comparison | Not started |
 
 The catalog now contains **32 series definitions**: 26 operational provider mappings and 6 unresolved economic measures. “Mapped” does not imply the provider has granted public redistribution rights. The 26 mapped series have been checked against live source responses, including the three BIS policy rates in a separate Docker/PostgreSQL acceptance run and all 23 other series through the source acceptance workflow.
 
-**The original full-scope Phase 2 issue remains open** because six metrics cannot yet be presented from defensible worldwide datasets. See [Data coverage](docs/DATA_COVERAGE.md).
+**Phase 2 remains open** because six original indicators still lack defensible globally comparable sources. The previously missing market-data layer is now fully integrated: 24 global/EU/US ETF and stock listings, three ECB FX feeds, source-adjusted closes, dividend and split history, EUR performance, and two labelled GLD/VT proxy correlations. See [market-data contracts](docs/MARKET_DATA.md) and [data coverage](docs/DATA_COVERAGE.md).
 
 ## Run locally
 
@@ -27,7 +27,7 @@ docker compose logs --tail=50 worker
 curl http://127.0.0.1:8080/api/data-status
 ```
 
-The `worker` fetches and stores every mapped series by default, including FRED without a key via its public observations table. `FRED_API_KEY` is optional and enables the official keyed JSON interface instead. Ingestion errors preserve the last successful observations, log an ingest-run failure, and are exposed in the status API.
+The `worker` fetches and stores every mapped macro series, all 24 registered exchange listings, and three ECB FX pairs by default, including FRED without a key via its public observations table. `FRED_API_KEY` is optional and enables the official keyed JSON interface instead. Ingestion errors preserve the last successful observations, log an ingest-run failure, and are exposed in the status API.
 
 For a manual refresh:
 
@@ -37,6 +37,8 @@ docker compose exec worker python -m finance_dashboard.worker --once
 docker compose exec worker python -m finance_dashboard.worker --once --provider FRED
 # Or explicitly rescan full history for older revisions
 docker compose exec worker python -m finance_dashboard.worker --once --full
+# Market-only backfill/refresh, including corporate actions and FX:
+docker compose exec worker python -m finance_dashboard.worker --once --market-only
 ```
 
 Queries are read-only; the API is bound to local loopback by default.
@@ -51,13 +53,25 @@ curl -sS -X POST http://127.0.0.1:8080/api/query \
 
 Other API routes: `GET /api/health`, `GET /api/series/{id}`, `GET /api/data-status`. OpenAPI at `/docs`.
 
+Market data API:
+
+```bash
+curl -sS http://127.0.0.1:8080/api/markets
+curl -sS http://127.0.0.1:8080/api/market/status
+curl -sS -X POST http://127.0.0.1:8080/api/market/query \
+  -H 'Content-Type: application/json' \
+  -d '{"instrument_ids":["vwce.de","vwrl.as","vt","gld"],"start":"2025-01-01"}'
+curl -sS 'http://127.0.0.1:8080/api/market/gold-world-proxy?currency=EUR&window_months=36'
+```
+
+Raw and adjusted price returns, vendor-adjusted index, dividend-reinvested index and EUR-adjusted returns remain distinct. The two gold/VT correlations are explicitly **ETF proxies**, not the original global-index/spot-gold definition.
+
 ## GitHub Actions static data build
 
 A scheduled workflow now validates the repository secret **FRED_API_KEY**
 through the official FRED API, fetches all mapped series, and uploads a
 key-free **finance-dashboard-static-data** JSON artifact. It runs daily at
-06:20 UTC and on manual dispatch. The first full build successfully exported
-all 26 mapped series: [successful run](https://github.com/tpepels/finance_dashboard/actions/runs/41464962331).
+06:20 UTC and on manual dispatch. The expanded build successfully exported **26 macro series + 24 ETF/stock histories + three ECB FX feeds + two ETF proxy correlations**: [successful full-market static build](https://github.com/tpepels/finance_dashboard/actions/runs/41470215544).
 
 See [static export architecture and secret handling](docs/STATIC_DATA.md).
 This produces the data needed by a future GitHub Pages frontend; **Pages is
@@ -68,9 +82,11 @@ not yet deployed**, because the React dashboard belongs to Phase 3.
 - [Full live source acceptance — 23 non-BIS-policy series](https://github.com/tpepels/finance_dashboard/actions/runs/41459407905): includes all FRED series using the public table and the Federal Reserve's corporate equity/net-worth series, gold spot quote, BIS credit gaps, Siblis ACWI CAPE, World Bank WDI/Pink Sheet, IMF, ECB, ILO/UNSD and Shiller.
 - [Three BIS policy-rate series, real Docker/PostgreSQL backfill and FastAPI query](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048).
 - [Short offline / PostgreSQL integration test suite](https://github.com/tpepels/finance_dashboard/actions/runs/41459407973).
+- [Market static build: 24 instruments, 3 FX feeds](https://github.com/tpepels/finance_dashboard/actions/runs/41470215544).
+- [Market Docker/PostgreSQL acceptance: all 24 listings](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707).
 - [Open Phase 2 completion tracker](https://github.com/tpepels/finance_dashboard/issues/1).
 
-In the three-series BIS Docker test, 26,416 US, 10,130 euro-area, and 24,914 Japanese historical observations were ingested and queried. No permanent deployment has been created. The other 23 mapped sources passed live fetch/validation, not a combined production full-history backfill. Published revisions can be reingested without destroying the prior observed values; the application's first-seen timestamp is **not** a provider publication vintage.
+In the three-series BIS Docker test, 26,416 US, 10,130 euro-area, and 24,914 Japanese historical observations were ingested and queried. No permanent deployment has been created. All 24 market instruments and three ECB FX feeds additionally passed [full historical Docker/PostgreSQL ingestion and API validation](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707). The other 23 macro sources have live source/fixture validation but have not been jointly production-backfilled in the same Docker run. Published revisions can be reingested without destroying the prior observed values; the application's first-seen timestamp is **not** a provider publication vintage.
 
 ## Limits
 
