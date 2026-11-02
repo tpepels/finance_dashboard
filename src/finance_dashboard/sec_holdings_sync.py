@@ -139,7 +139,9 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         time.sleep(.35)
     return {"instrument_id":fund,"attempted":tried,"stored_or_already_present":imported,
             "other_series_skipped":skipped_series,"errors":errors,
-            "status":"complete" if errors==0 else "partial",
+            "status":("complete" if errors == 0 and imported > 0
+                      else "no_matching_series" if errors == 0
+                           else "partial"),
             "filing_source":SUBMISSIONS_URL,
             "lookback_from":earliest.isoformat(),
             "note":"Accepted SEC disclosure dates are buffered conservatively; no unverifiable look-through."}
@@ -166,8 +168,8 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
             except (HoldingsError,httpx.HTTPError,ValueError):
                 reports.append({"instrument_id":mapping["instrument_id"],
                                 "status":"failed","errors":1})
-    return {"status":"complete" if all(x.get("errors",0)==0 for x in reports)
-            else "partial","funds":reports}
+    return {"status":("complete" if all(x.get("status") == "complete" for x in reports)
+                      else "partial"),"funds":reports}
 
 
 def collect_if_due(*, config: Path = CONFIG, root: Path | None = None,
