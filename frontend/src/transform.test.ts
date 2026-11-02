@@ -55,6 +55,9 @@ describe('native observation transformations', () => {
     expect(rawCompatible([a, c])).toBe(false);
     expect(compareCompatible(b.definition, [a.definition], 'raw')).toBe(false);
     expect(compareCompatible(b.definition, [a.definition], 'indexed_100')).toBe(true);
+    const unrelated = { ...b.definition, id: 'labour.world.income_share' };
+    const growth = { ...a.definition, id: 'labour.world.productivity_growth' };
+    expect(compareCompatible(unrelated, [growth], 'indexed_100')).toBe(false);
   });
   it('uses actual last source date for years and does not anchor older series to today', () => {
     const input = source([['2001-01-01', '2'], ['2020-12-31', '3']]);
@@ -78,20 +81,19 @@ describe('native observation transformations', () => {
     expect(csv).toContain('"unit-run"');
     expect(csv.split('\r\n')).toHaveLength(4);
   });
-  it('handles missing-data and rights blocks as distinct chart issues', () => {
-    const blocked = { ...source([]), status: 'blocked' as const,
-      message: 'Not licensed for publication.' };
-    expect(transformSeries(blocked, 'raw').issue).toContain('licensed');
+  it('handles absent and failed local observations without fabricated values', () => {
     expect(transformSeries(source([]), 'raw').issue).toContain('No observations');
+    const missing = { ...source([]), status: 'no_data' as const };
+    expect(transformSeries(missing, 'raw').issue).toContain('No recorded observations');
+    const failed = { ...source([]), status: 'error' as const, message: 'Local fetch error' };
+    expect(transformSeries(failed, 'raw').issue).toContain('Local fetch error');
   });
 });
 
 describe('explicit data quality states', () => {
   const now = new Date('2026-11-02T12:00:00Z');
-  it('flags missing, blocked and dated observations distinctly', () => {
+  it('flags missing and dated observations distinctly', () => {
     expect(recencyMessage(source([]), now)).toContain('No observations');
-    const blocked = { ...source([]), status: 'blocked' as const };
-    expect(recencyMessage(blocked, now)).toContain('withheld');
     const old = source([['2016-01-01', '3']]);
     expect(recencyMessage(old, now)).toContain('older');
     const recent = source([['2026-01-01', '3']]);
