@@ -122,9 +122,18 @@ function DiagnosticView() {
         {item.threshold !== null && <p>Source reference: {item.direction === 'lt'
           ? 'below ' : 'at or above '}{fmt(item.threshold, ' pp')}.
           Consecutive qualifying source readings: {item.consecutive_source_observations}.</p>}
-        {item.historical_rank_pct !== null && <p>Observed historical rank:
-          {' '}{fmt(item.historical_rank_pct, '%')} of {item.rank_sample_count}
-          {' '}source observations (latest-revised history).</p>}
+        {item.historical_rank_pct !== null && <div className="p4-rank">
+          <p>Observed historical rank: {fmt(item.historical_rank_pct, '%')} of
+            {' '}{item.rank_sample_count} source observations (latest-revised history).</p>
+          <div className="research-percentile-track" role="img"
+            aria-label={item.title + ' historical percentile ' + fmt(item.historical_rank_pct, '%')}>
+            <span style={{left: Math.max(0, Math.min(100, Number(item.historical_rank_pct))) + '%'}} />
+          </div>
+        </div>}
+        {item.threshold !== null && item.latest && <p>
+          Observed difference from published reference threshold:
+          {' '}{fmt(Number(item.latest.value) - Number(item.threshold), item.unit === 'percentage_points' ? ' pp' : '%')}
+          . This is a distance from a criterion, not a calibrated probability.</p>
         <p>{item.meaning}</p><p className="p4-caveat">{item.caveat}</p>
         <a href={item.source_url} target="_blank" rel="noopener noreferrer">
           {item.provider} original evidence</a>
@@ -291,10 +300,31 @@ function AssetComparison() {
           <p className="p4-caveat">Fund country exposures cannot be inferred from trading
             currency or domicile. No historical constituent/holdings weights are asserted.</p>
         </article>}</div>
-      <div className="p4-correlation"><h4>Correlations of actual monthly returns</h4>
-        {comparison.correlations.map(item => <p key={item.left + item.right}>
-          {item.left} / {item.right}: {fmt(item.monthly_return_pearson)}
-          {' '}({item.sample_monthly_returns} monthly returns)</p>)}
+      <div className="p4-correlation"><h4>Paired monthly-return correlation matrix</h4>
+        <p className="p4-method">Pearson r from jointly recorded monthly observations.
+          Diagonal values require at least two recorded returns; missing pairs are not filled.</p>
+        <div className="p4-correlation-overflow"><table aria-label="Monthly return correlation matrix">
+          <thead><tr><th>Instrument</th>{comparison.instruments.map(asset =>
+            <th key={asset.id} scope="col">{asset.id}</th>)}</tr></thead>
+          <tbody>{comparison.instruments.map(left => <tr key={left.id}>
+            <th scope="row">{left.id}</th>{comparison.instruments.map(right => {
+              const item = comparison.correlations.find(pair =>
+                (pair.left === left.id && pair.right === right.id) ||
+                (pair.left === right.id && pair.right === left.id));
+              const diagonal = left.id === right.id;
+              const value = diagonal
+                ? (left.observations.length >= 3 ? 1 : null)
+                : (item?.monthly_return_pearson ?? null);
+              const n = diagonal ? Math.max(0, left.observations.length - 1)
+                : (item?.sample_monthly_returns ?? 0);
+              const magnitude = value === null ? 0 : Math.min(1, Math.abs(value));
+              return <td key={right.id} style={{backgroundColor: value === null ? '#f3f5f4'
+                : value < 0 ? 'rgba(184,103,73,' + (0.09 + magnitude * .47) + ')'
+                : 'rgba(44,126,111,' + (0.08 + magnitude * .4) + ')'}}>
+                <strong>{fmt(value)}</strong><small>n={n}</small>
+              </td>;
+            })}</tr>)}</tbody>
+        </table></div>
       </div>
       <p className="p4-method">*Annualized statistics need at least 12 contiguous monthly
         returns. {comparison.method} {comparison.caveats}</p>

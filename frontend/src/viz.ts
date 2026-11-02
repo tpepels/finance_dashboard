@@ -1,5 +1,5 @@
 import * as echarts from 'echarts/core';
-import { LineChart, ScatterChart } from 'echarts/charts';
+import { BarChart, LineChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent, DataZoomComponent, MarkAreaComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { EChartsCoreOption as EChartsOption, EChartsType } from 'echarts/core';
@@ -7,7 +7,7 @@ import type { PlottedSeries, ViewMode } from './types';
 import { gapBreaks, isSparse } from './transform';
 import { NBER_CRISIS_WINDOWS } from './periods';
 
-echarts.use([LineChart, ScatterChart, GridComponent, TooltipComponent, DataZoomComponent, MarkAreaComponent, LegendComponent, CanvasRenderer]);
+echarts.use([LineChart, ScatterChart, BarChart, GridComponent, TooltipComponent, DataZoomComponent, MarkAreaComponent, LegendComponent, CanvasRenderer]);
 
 export type ChartInstance = EChartsType;
 export const createChart = (element: HTMLDivElement): EChartsType =>

@@ -374,3 +374,17 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .research-percentile-track { margin-top: 10px; height: 7px; border-radius: 8px; background: linear-gradient(to right,#dde8e4,#a9c7c0); position: relative; }
 .research-percentile-track span { position: absolute; top: -3px; width: 4px; height: 13px; background: #1d5255; border: 1px solid #fff; border-radius: 2px; transform: translateX(-50%); }
 .research-history-range { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 10px; color: #7c9093; font-variant-numeric: tabular-nums; }
+
+.p4-rank { margin: 8px 0 12px; }
+.p4-rank p { margin: 0 0 9px; }
+.p4-correlation-overflow { overflow-x: auto; margin: 11px 0 16px; }
+.p4-correlation-overflow table { border-collapse: separate; border-spacing: 3px; min-width: 380px; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+.p4-correlation-overflow th { text-align: center; color: #526c72; padding: 9px; font-size: 11px; }
+.p4-correlation-overflow th:first-child { text-align: left; }
+.p4-correlation-overflow td { text-align: center; color: #234850; padding: 12px 9px; border-radius: 3px; min-width: 75px; }
+.p4-correlation-overflow td strong { display: block; font-size: 16px; }
+.p4-correlation-overflow td small { display: block; font-size: 10px; color: #60777b; margin-top: 4px; }
+.evidence-calibration { border-top: 1px solid #d8e4df; padding: 11px 0; }
+.evidence-calibration h5 { font-size: 13px; color: #335d64; margin: 7px 0; }
+.evidence-calibration-plot { height: 270px; min-height: 270px; width: 100%; }
+.evidence-calibration p { font-size: 11px; line-height: 1.6; color: #74878a; }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createChart } from './viz';
 
 type View = 'vintages' | 'holdings' | 'surplus' | 'backtest';
 interface VintageInventory {
@@ -281,6 +282,60 @@ function MarxAccounts() {
   </div>;
 }
 
+/** Reliability diagram uses the actual mean probability in each evaluation bin;
+ * unlike bin midpoints, it is computed from the predictions being evaluated. */
+function CalibrationView({ result }: { result: PredictionBacktest }) {
+  const element = useRef<HTMLDivElement>(null);
+  const rows = useMemo(() => (result.evaluation?.calibration ?? []).map((bin, index) => {
+    const predictions = result.observations.filter(row =>
+      row.estimated_probability >= bin.range[0] &&
+      (index === (result.evaluation?.calibration.length ?? 0) - 1
+        ? row.estimated_probability <= bin.range[1]
+        : row.estimated_probability < bin.range[1]));
+    const mean = predictions.length
+      ? predictions.reduce((sum, row) => sum + row.estimated_probability, 0) / predictions.length
+      : null;
+    return { label: (bin.range[0] * 100).toFixed(0) + '–' +
+        (bin.range[1] * 100).toFixed(0) + '%',
+      predicted: mean === null ? null : mean * 100,
+      observed: bin.observed_fraction === null ? null : bin.observed_fraction * 100,
+      count: bin.count };
+  }).filter(bin => bin.count > 0), [result]);
+  useEffect(() => {
+    if (!element.current || !rows.length) return;
+    const chart = createChart(element.current);
+    chart.setOption({
+      animation: false,
+      tooltip: { trigger: 'axis' },
+      legend: { top: 3, data: ['Average predicted probability', 'Observed outcome frequency'] },
+      grid: { top: 54, right: 16, left: 54, bottom: 45 },
+      xAxis: { type: 'category', data: rows.map(row => row.label),
+        axisLabel: { color: '#58737b' }, name: 'Predicted probability bin' },
+      yAxis: { type: 'value', min: 0, max: 100, name: 'Percent',
+        axisLabel: { formatter: '{value}%' } },
+      series: [
+        { type: 'bar', name: 'Average predicted probability', barMaxWidth: 24,
+          itemStyle: { color: '#5a8593' }, data: rows.map(row => row.predicted) },
+        { type: 'bar', name: 'Observed outcome frequency', barMaxWidth: 24,
+          itemStyle: { color: '#2b796e' }, data: rows.map(row => row.observed) },
+      ],
+    });
+    const observer = typeof ResizeObserver === 'undefined' ? null
+      : new ResizeObserver(() => chart.resize());
+    observer?.observe(element.current);
+    return () => { observer?.disconnect(); chart.dispose(); };
+  }, [rows]);
+  if (!rows.length) return null;
+  return <section className="evidence-calibration">
+    <h5>Out-of-sample probability calibration (retrospective)</h5>
+    <div ref={element} className="evidence-calibration-plot" role="img"
+      aria-label="Observed event frequency compared with average forecast probability by bin" />
+    <p>Actual mean predictions versus observed outcomes in each populated bin.
+      Forecast cases can share the same future recession episode; inspect the
+      independent-event audit before drawing any reliability conclusion.</p>
+  </section>;
+}
+
 function Backtest() {
   const [horizon,setHorizon]=useState('12');
   const [result,setResult]=useState<PredictionBacktest|null>(null);
@@ -331,6 +386,7 @@ function Backtest() {
           : ' Too few independently spaced cases for a separate performance estimate.'}
         {' '}{result.independence.limitation}
       </p>}
+      {result.evaluation && <CalibrationView result={result}/>}
       {result.evaluation && <div className="evidence-table"><table>
         <thead><tr><th>Predicted probability band</th><th>Test cases</th><th>Observed outcome fraction</th></tr></thead>
         <tbody>{result.evaluation.calibration.map((bin,i)=><tr key={i}>
