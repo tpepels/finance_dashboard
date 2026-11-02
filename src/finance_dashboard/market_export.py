@@ -7,6 +7,7 @@ from decimal import Decimal
 import sys
 
 from .market import EcbFxClient, YahooMarketClient, instruments, performance, MarketDataError
+from .market_analytics import rolling_gold_vs_global_etf
 
 
 def export_markets(
@@ -81,11 +82,24 @@ def export_markets(
                 print(f"Market fetch failed: {sid} (details redacted)", file=sys.stderr,flush=True)
     if failures:
         raise RuntimeError("Market export incomplete: "+", ".join(sorted(failures)))
+    # This is an explicitly labelled investable-ETF proxy, not a fabricated
+    # index total-return benchmark or gold spot history.
+    for currency in ("USD", "EUR"):
+        derived=rolling_gold_vs_global_etf(
+            payloads["gld"]["data"], payloads["vt"]["data"],
+            months=36, currency=currency)
+        payloads[f"proxy.gold_vt_36m_{currency.lower()}"]=derived
     manifest={
         "schema_version":1,
         "base_currency":"EUR",
         "instrument_count":len(registry),
         "fx_currencies":currencies,
+        "derived":[
+            {"id":f"proxy.gold_vt_36m_{ccy.lower()}",
+             "file":f"markets/proxy.gold_vt_36m_{ccy.lower()}.json",
+             "status":"proxy_not_global_index"}
+            for ccy in ("USD","EUR")
+        ],
         "instruments":[{
             "id":sid,"name":item["name"],"kind":item["kind"],
             "asset_class":item["asset_class"],"isin":item["isin"],

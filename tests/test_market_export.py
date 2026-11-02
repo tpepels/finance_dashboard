@@ -73,7 +73,7 @@ class MarketExportTests(unittest.TestCase):
                     provider_factory=FakeMacro,include_markets=True)
             self.assertEqual(result["series_count"],1)
             self.assertEqual(result["market"]["instrument_count"],24)
-            self.assertEqual(len(list((dest/"markets").glob("*.json"))),25)
+            self.assertEqual(len(list((dest/"markets").glob("*.json"))),27)
             self.assertEqual(len(list((dest/"fx").glob("*.json"))),3)
             self.assertTrue((dest/"series"/"bond.us.real_10y.json").exists())
             index=json.loads((dest/"index.json").read_text())

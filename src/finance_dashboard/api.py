@@ -15,6 +15,7 @@ from .database import IngestionRun, make_engine
 from .service import current_observations
 from .market import instruments
 from .market_service import MarketIngestionService
+from .market_analytics import rolling_gold_vs_global_etf
 from .database import MarketIngestionRun, FxIngestionRun
 
 
@@ -111,6 +112,17 @@ def create_app(engine=None) -> FastAPI:
         return {"series": result, "base_currency": "EUR",
                 "snapshot_kind": "app_first_seen_not_source_publication_vintage",
                 "calendar_alignment": "Native trading dates; no invented market closures or FX"}
+
+    @app.get("/api/market/gold-world-proxy")
+    def gold_world_proxy(currency: str = "USD", window_months: int = 36):
+        if currency not in ("USD", "EUR") or not 12 <= window_months <= 120:
+            raise HTTPException(422, "Invalid correlation currency or window")
+        service=MarketIngestionService(db,registry=market_registry)
+        gold=service.read_performance("gld")
+        world=service.read_performance("vt")
+        if gold["status"]!="ready" or world["status"]!="ready":
+            raise HTTPException(409, "Gold/VT proxy histories not yet ingested")
+        return rolling_gold_vs_global_etf(gold,world,months=window_months,currency=currency)
 
     @app.get("/api/market/status")
     def market_status():
