@@ -31,7 +31,8 @@ definitions/series.json + definitions/instruments.json + charts.json
 - An adapter maps a canonical ID to a *verified* provider endpoint. It cannot change units, provider, economic definition, index variant or geography without versioned catalog review.
 - Source identities are validated independently of filename/ticker appearance: venue MIC, currency, ISIN verification, corporate-action semantics, index code 892400 and NETR USD where relevant.
 - Source APIs have bounded timeouts/retries and explicit invalid/missing/error states. If a provider fails, preserve the last successful persisted data and log failure; the required full static export fails closed.
-- Yahoo Finance v8 chart is an **unofficial daily market data source**, not an index-constituent history API or an issuer NAV authority. Yahoo fundamental and holdings data, if integrated later, require separate adapters, provenance, coverage, and validation.
+- Macro sources have priority over market listing detail. World Bank world market capitalization and GDP are aligned by annual calendar year; Siblis index aggregate valuations and their reciprocals remain *different-universe* month-dated snapshots, without inferred intervening months.
+- Yahoo Finance v8 chart is an **optional** unofficial daily market data source, not an index-constituent history API or an issuer NAV authority. Yahoo fundamental and holdings data, if integrated later, require separate adapters, provenance, coverage, and validation.
 
 ## Boundary B — temporal and financial modelling
 
@@ -63,7 +64,7 @@ Original `profit.global.corporate_share` must use worldwide **listed-company** c
 
 ## Boundary E — scheduled collection and publication
 
-- Daily `.github/workflows/static-data.yml`: validated mapped macro/index + every registered asset + three FX feeds + separate correlations, browser-safe artifact.
+- Daily `.github/workflows/static-data.yml`: **all 36 mapped macro/index series are required**, plus the retained optional 24 registered assets and three FX feeds, in a browser-safe artifact. A future macro-first exporter may separate optional assets without affecting mandatory macro completeness.
 - Monthly `.github/workflows/wisesheets-refresh.yml`: free-tier quota-controlled confidential API collection; committed, audited `data/wisesheets/sec_filer_profit.json` aggregate only. No per-user request-time Wisesheets calls.
 - `FRED_API_KEY` and `WISESHEETS_API_KEY` live in Actions secrets; never log them or publish raw authenticated URLs.
 - Any new licensed historical MSCI, Worldscope, Compustat or Siblis provider must be isolated behind a new adapter and credential/rights policy; no provider-specific shortcut in the UI or existing Yahoo market adapter.
@@ -75,4 +76,4 @@ Every provider and derived series needs validation for units, chronology, duplic
 
 ## Decision change control
 
-Modify this architecture only with the owner's explicit change approval recorded against [issue #1](https://github.com/tpepels/finance_dashboard/issues/1) (or a linked architectural decision), with corresponding feature/implementation contract and migration/test updates. The design is a normative baseline, not a guarantee of deployed branch protection.
+The [owner-approved macro-first amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md) removes independent per-ETF NAV and historical ticker continuity audits as phase blockers, without deleting existing market code. Modify this architecture only with the owner's explicit change approval recorded against [issue #1](https://github.com/tpepels/finance_dashboard/issues/1) (or a linked architectural decision), with corresponding feature/implementation contract and migration/test updates. The design is a normative baseline, not a guarantee of deployed branch protection.
