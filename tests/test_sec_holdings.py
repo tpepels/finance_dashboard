@@ -66,6 +66,19 @@ class SecHoldingTests(unittest.TestCase):
         with self.assertRaisesRegex(HoldingsError,"CIK"):
             self.parse(metadata=submission(cik=1234568))
 
+    def test_derivative_issuer_is_not_inferred_as_underlying_country_exposure(self):
+        filing=xml().replace(
+            b"<payoffProfile>Long</payoffProfile><invCountry>JP",
+            b"<assetCat>DE</assetCat><payoffProfile>Long</payoffProfile><invCountry>JP",
+        )
+        result=parse_nport(filing,instrument_id="vt",accession=ACCESSION,
+            filing_url=URL,sec_metadata=submission(),
+            expected_series_id="S000000001")
+        self.assertEqual(result["classified_long_nav_percent"],"70")
+        self.assertEqual(result["positions_excluded_short_or_derivative"],1)
+        self.assertEqual([x["country"] for x in result["countries"]],["US"])
+        self.assertFalse(result["complete_share_of_nav"])
+
     def test_filing_received_later_is_absent_from_historical_asof_query(self):
         record=self.parse()
         with TemporaryDirectory() as tmp:
