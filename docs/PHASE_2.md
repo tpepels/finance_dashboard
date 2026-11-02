@@ -1,6 +1,6 @@
 # Phase 2 — Backend implementation and acceptance
 
-As of 2026-11-02, the backend implements **32** macro/index source series, **24** stock/ETF histories and **three** ECB FX feeds with two derived ETF correlation proxies, while retaining **two** unresolved original financial measures without invented proxies. See [the per-source audit](DATA_COVERAGE.md). The Phase 2 issue remains open because the original historical MSCI ACWI constituent-concentration and worldwide listed-company profit-share datasets remain unavailable at the required completeness.
+As of 2026-11-02, the backend implements **36** macro/index source series (original 32 plus four world aggregates), with **24** optional stock/ETF histories and **three** ECB FX feeds with two derived ETF correlation proxies, while retaining **two** unresolved original financial measures without invented proxies. See [the per-source audit](DATA_COVERAGE.md). The Phase 2 issue remains open because the original historical MSCI ACWI constituent-concentration and worldwide listed-company profit-share datasets remain unavailable at the required completeness.
 
 ## Architecture
 
@@ -47,4 +47,8 @@ The latest live acceptance and complete scheduled export pass. See [exact remain
 
 ## Pending exact indicators
 
-Worldwide **listed-company** profit share and historical MSCI ACWI free-float index top-ten constituent weights. Additional NAV reconciliation and historical ticker/venue continuity remain separately outstanding; the combined historical 32-series PostgreSQL backfill **passed**. The two original definition gaps require genuine historical sources and cannot be closed by the available proxies. See [locked feature contract](PHASE_2_FEATURE_CONTRACT.md), [architecture contract](PHASE_2_ARCHITECTURE_CONTRACT.md), [implementation contract](PHASE_2_IMPLEMENTATION_CONTRACT.md) and [Data coverage](DATA_COVERAGE.md).
+Worldwide **listed-company** profit share and historical MSCI ACWI free-float index top-ten constituent weights. Optional NAV reconciliation and historical ticker/venue continuity remain unverified but are **no longer Phase 2 macro blockers** per the [owner scope amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md); the combined historical original 32-series PostgreSQL backfill **passed**. The two original definition gaps require genuine historical sources and cannot be closed by the available proxies. See [locked feature contract](PHASE_2_FEATURE_CONTRACT.md), [architecture contract](PHASE_2_ARCHITECTURE_CONTRACT.md), [implementation contract](PHASE_2_IMPLEMENTATION_CONTRACT.md) and [Data coverage](DATA_COVERAGE.md).
+
+## Macro-first 2026-11-02 implementation extension
+
+The owner-prioritized [macro-first scope amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md) adds four global market valuation series without per-ETF holdings: WDI WLD annual listed capitalisation in USD and its ratio to WDI world GDP (51 years each), and Siblis world aggregate trailing P/E plus earnings yield on **11 public, sparse** observations each. The [36-macro complete static export passed](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778). Further 36-series full PostgreSQL acceptance is tracked in issue #1. The exact two original historical data gaps remain open; Siblis and WDI universes are not interchangeable for implied worldwide earnings.
