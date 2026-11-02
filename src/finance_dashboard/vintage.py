@@ -202,6 +202,37 @@ def _month_ends(start: date, end: date) -> list[date]:
     return result
 
 
+def capture_previous_month(root: Path = ROOT, *,
+                           today: date | None = None,
+                           api_key: str | None = None,
+                           client: httpx.Client | None = None) -> dict:
+    """Idempotent monthly ALFRED source capture in the existing refresh loop."""
+    day = today or date.today()
+    asof = day.replace(day=1) - timedelta(days=1)
+    key = api_key if api_key is not None else os.environ.get("FRED_API_KEY","")
+    if not key:
+        return {"asof":asof.isoformat(),"status":"disabled_no_key","captured":0,"errors":0}
+    owns = client is None
+    source = client or httpx.Client(timeout=25,headers={
+        "User-Agent":"GlobalCapitalMonitor/0.2"})
+    captured=0
+    errors=0
+    try:
+        for sid in SOURCES:
+            try:
+                fetch_snapshot(sid,asof,api_key=key,client=source,root=root)
+                captured+=1
+            except (httpx.HTTPError,ValueError,OSError,KeyError):
+                errors+=1
+            if owns:
+                time.sleep(.2)
+    finally:
+        if owns:
+            source.close()
+    return {"asof":asof.isoformat(),"status":"partial" if errors else "complete",
+            "captured":captured,"errors":errors}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch genuine dated ALFRED series snapshots")
     parser.add_argument("--start", type=date.fromisoformat, required=True)
