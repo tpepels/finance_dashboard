@@ -101,7 +101,7 @@ SQLite official online backup contract: https://sqlite.org/backup.html
 
 The default service remains LAN-accessible and **has no user login**. Neither licence metadata nor model analysis restricts local use. Do not forward port 5052 directly to the internet.
 
-If using an existing local Caddy proxy with authentication, configure `FINANCE_BIND_HOST=127.0.0.1` in the Compose environment, rebuild/recreate the finance service and proxy to local port 5052 with the proxy's TLS/authentication. Default `FINANCE_BIND_HOST=0.0.0.0` permits LAN access. This is an *optional* network control, not a new required container or a data-use gate.
+If using an existing local Caddy proxy with authentication, configure `FINANCE_BIND_HOST=127.0.0.1` in the Compose environment, rebuild/recreate the finance service and proxy to `finance-dashboard:8080` from Caddy in the same Docker Compose network (or `127.0.0.1:5052` from a host-networked Caddy). Keep TLS and authentication in that existing proxy. Default `FINANCE_BIND_HOST=0.0.0.0` permits LAN access. This is an *optional* network control, not a new required container or a data-use gate.
 
 ## Verification and remaining Phase 4 scope
 
