@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { chartOptions, createChart, numberLabel } from './viz';
 import type { PlottedSeries, SeriesDefinition } from './types';
+import OperationsStatus from './OperationsStatus';
 
 type Scope = 'world' | 'us' | 'europe' | 'japan';
 interface Signal {
@@ -317,5 +318,6 @@ export default function Phase4Panel() {
         onClick={() => setTab('assets')}>ETF, gold and portfolio comparison</button>
     </div>
     {tab === 'diagnostics' ? <DiagnosticView/> : <AssetComparison/>}
+    <OperationsStatus/>
   </section>;
 }
