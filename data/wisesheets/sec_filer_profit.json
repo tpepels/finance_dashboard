@@ -1,0 +1,204 @@
+{
+  "currency": "USD",
+  "description": "SEC-reporting US-listed issuer net income divided by nominal world GDP. NOT a global listed-company profit share.",
+  "excluded_invalid_fiscal_records": {
+    "future_fiscal_rows": 1,
+    "inconsistent_fiscal_year_rows": 0,
+    "ticker_alias_rows": 0,
+    "unmatched_issuer_rows": 3
+  },
+  "excluded_sparse_fiscal_years": [
+    {
+      "reporting_issuers": 2,
+      "usd_converted_issuers": 2,
+      "year": 2007
+    },
+    {
+      "reporting_issuers": 5,
+      "usd_converted_issuers": 4,
+      "year": 2008
+    },
+    {
+      "reporting_issuers": 12,
+      "usd_converted_issuers": 11,
+      "year": 2009
+    },
+    {
+      "reporting_issuers": 35,
+      "usd_converted_issuers": 34,
+      "year": 2010
+    },
+    {
+      "reporting_issuers": 58,
+      "usd_converted_issuers": 57,
+      "year": 2011
+    },
+    {
+      "reporting_issuers": 53,
+      "usd_converted_issuers": 52,
+      "year": 2012
+    },
+    {
+      "reporting_issuers": 63,
+      "usd_converted_issuers": 62,
+      "year": 2013
+    },
+    {
+      "reporting_issuers": 69,
+      "usd_converted_issuers": 68,
+      "year": 2014
+    },
+    {
+      "reporting_issuers": 72,
+      "usd_converted_issuers": 71,
+      "year": 2015
+    },
+    {
+      "reporting_issuers": 81,
+      "usd_converted_issuers": 78,
+      "year": 2016
+    },
+    {
+      "reporting_issuers": 102,
+      "usd_converted_issuers": 99,
+      "year": 2017
+    },
+    {
+      "reporting_issuers": 142,
+      "usd_converted_issuers": 137,
+      "year": 2018
+    },
+    {
+      "reporting_issuers": 199,
+      "usd_converted_issuers": 193,
+      "year": 2019
+    },
+    {
+      "reporting_issuers": 312,
+      "usd_converted_issuers": 307,
+      "year": 2020
+    }
+  ],
+  "frequency": "A",
+  "history_years_entitlement": 5,
+  "id": "profit.us_sec_filers.world_gdp_share",
+  "methodology": "Current SEC filer universe, one issuer per CIK and fiscal year. Use annual net_income including negative values and zeroes. Convert each annual reported-currency flow to USD at mean daily ECB USD/currency cross rate over the fiscal period ending on periodEnd. Divide by corresponding calendar-year world nominal GDP. Issuer fiscal years may not match calendar GDP exactly. No historical delisting adjustment; universe has survivorship bias. Unconvertible currency rows excluded and counted. This does not measure complete global listed-company profits.",
+  "observations": [
+    {
+      "current_universe_issuer_count": 8179,
+      "reporting_issuers": 4188,
+      "sec_filer_income_as_pct_of_world_gdp": "4.141195901347665061471151269",
+      "sec_filer_net_income_usd": "4090674900499.002190864806795",
+      "unconvertible_issuers_by_currency": {
+        "ARS": 9,
+        "CLP": 5,
+        "COP": 2,
+        "KZT": 1,
+        "PEN": 3,
+        "RUB": 1,
+        "TWD": 6,
+        "VND": 1
+      },
+      "untraceable_earnings_issuers": 141,
+      "usd_conversion_coverage_pct_of_reporting_issuers": "95.96466093600764087870105062",
+      "usd_converted_issuers": 4019,
+      "world_gdp_usd": "98780038374127.1",
+      "year": 2021
+    },
+    {
+      "current_universe_issuer_count": 8179,
+      "reporting_issuers": 5196,
+      "sec_filer_income_as_pct_of_world_gdp": "1.799992313359729801172214768",
+      "sec_filer_net_income_usd": "1851516577912.203091973959296",
+      "unconvertible_issuers_by_currency": {
+        "ARS": 11,
+        "CLP": 5,
+        "COP": 2,
+        "KZT": 1,
+        "PEN": 4,
+        "TWD": 6,
+        "VND": 1
+      },
+      "untraceable_earnings_issuers": 153,
+      "usd_conversion_coverage_pct_of_reporting_issuers": "96.47806004618937644341801386",
+      "usd_converted_issuers": 5013,
+      "world_gdp_usd": "102862471365575",
+      "year": 2022
+    },
+    {
+      "current_universe_issuer_count": 8179,
+      "reporting_issuers": 5547,
+      "sec_filer_income_as_pct_of_world_gdp": "-21.98855196014279983128710808",
+      "sec_filer_net_income_usd": "-23604405784011.73090244579256",
+      "unconvertible_issuers_by_currency": {
+        "AED": 1,
+        "ARS": 11,
+        "CLP": 4,
+        "COP": 3,
+        "KZT": 1,
+        "PEN": 4,
+        "TWD": 6,
+        "VND": 1
+      },
+      "untraceable_earnings_issuers": 140,
+      "usd_conversion_coverage_pct_of_reporting_issuers": "96.91725256895619253650621958",
+      "usd_converted_issuers": 5376,
+      "world_gdp_usd": "107348614073350",
+      "year": 2023
+    },
+    {
+      "current_universe_issuer_count": 8179,
+      "reporting_issuers": 5718,
+      "sec_filer_income_as_pct_of_world_gdp": "-29.43524234860590460133053470",
+      "sec_filer_net_income_usd": "-32870167970631.70438998992170",
+      "unconvertible_issuers_by_currency": {
+        "AED": 1,
+        "ARS": 11,
+        "CLP": 4,
+        "COP": 3,
+        "KZT": 1,
+        "PEN": 4,
+        "TWD": 6,
+        "VND": 1
+      },
+      "untraceable_earnings_issuers": 155,
+      "usd_conversion_coverage_pct_of_reporting_issuers": "96.74711437565582371458551941",
+      "usd_converted_issuers": 5532,
+      "world_gdp_usd": "111669432109121",
+      "year": 2024
+    },
+    {
+      "current_universe_issuer_count": 8179,
+      "reporting_issuers": 5725,
+      "sec_filer_income_as_pct_of_world_gdp": "-18.36002629679535861706957066",
+      "sec_filer_net_income_usd": "-21729121607134.07556348264069",
+      "unconvertible_issuers_by_currency": {
+        "ARS": 11,
+        "CLP": 4,
+        "COP": 3,
+        "KZT": 1,
+        "PEN": 4,
+        "TWD": 5,
+        "VND": 1
+      },
+      "untraceable_earnings_issuers": 168,
+      "usd_conversion_coverage_pct_of_reporting_issuers": "96.55895196506550218340611354",
+      "usd_converted_issuers": 5528,
+      "world_gdp_usd": "118350166039396",
+      "year": 2025
+    }
+  ],
+  "schema_version": 1,
+  "source": "Wisesheets SEC EDGAR XBRL, ECB FX, World Bank GDP",
+  "source_snapshot_at_utc": "2026-11-02T16:40:43.632446+00:00",
+  "source_urls": [
+    "https://www.wisesheets.io/api/docs",
+    "https://data.ecb.europa.eu/data/datasets/EXR",
+    "https://data.worldbank.org/indicator/NY.GDP.MKTP.CD"
+  ],
+  "status": "partial_us_sec_reporter_coverage",
+  "unique_issuers_with_any_earnings_row": 6270,
+  "unique_issuers_with_financials": 6161,
+  "wisesheets_plan_code": "free",
+  "wisesheets_requests_used_this_run": 150
+}
