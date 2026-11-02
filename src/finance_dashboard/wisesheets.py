@@ -107,7 +107,12 @@ def parse_financials(payload: dict, requested: dict[str, str], *, quality: dict 
         cik = str(row.get("cik") or "").lstrip("0")
         if requested.get(symbol) != cik:
             if cik not in set(requested.values()):
-                raise WisesheetsError("Returned financial issuer CIK mismatch")
+                # A vendor row may be attached to an incorrect ticker/CIK.
+                # Exclude it from the audited numerator rather than merge
+                # financials for a different company or abort every issuer.
+                if quality is not None:
+                    quality["unmatched_issuer_rows"] = quality.get("unmatched_issuer_rows", 0) + 1
+                continue
             if quality is not None:
                 quality["ticker_alias_rows"] = quality.get("ticker_alias_rows", 0) + 1
             # The vendor may normalize one exchange/share-class ticker to
@@ -301,7 +306,7 @@ class WisesheetsClient:
             key=lambda x: x["ticker"],
         )
         records = {}
-        self.quality_counts = {"future_fiscal_rows": 0, "inconsistent_fiscal_year_rows": 0, "ticker_alias_rows": 0}
+        self.quality_counts = {"future_fiscal_rows": 0, "inconsistent_fiscal_year_rows": 0, "ticker_alias_rows": 0, "unmatched_issuer_rows": 0}
         for index in range(0, len(chosen), batch_size):
             batch = chosen[index:index+batch_size]
             ticker_to_cik = {r["ticker"]: r["cik"] for r in batch}

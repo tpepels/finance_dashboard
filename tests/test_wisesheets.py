@@ -76,9 +76,12 @@ class WiseTests(unittest.TestCase):
                                 {"AAPL":"320193"},quality=quality)
         self.assertEqual(parsed[("320193",2024)]["amount"],D(100))
         self.assertEqual(quality["ticker_alias_rows"],1)
-        with self.assertRaisesRegex(WisesheetsError,"issuer CIK"):
-            parse_financials({"meta":{"layout":"long"},"data":[
-                {**row,"cik":"0000000123"}]}, {"AAPL":"320193"})
+        invalid_quality={}
+        invalid_rows=parse_financials({"meta":{"layout":"long"},"data":[
+            {**row,"cik":"0000000123"}]}, {"AAPL":"320193"},
+            quality=invalid_quality)
+        self.assertEqual(invalid_rows,{})
+        self.assertEqual(invalid_quality["unmatched_issuer_rows"],1)
 
     def test_future_and_inconsistent_fiscal_rows_are_counted_not_used(self):
         base={"ticker":"AAPL","cik":"0000320193","metric":"net_income",
