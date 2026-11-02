@@ -19,6 +19,14 @@ class ParserTests(unittest.TestCase):
         )
         self.assertEqual(values, {date(2026, 1, 2): Decimal("-0.125")})
 
+    def test_fred_quarterly_iso_periods(self):
+        html = """<div>Series ID NCBCEPNW</div><table>
+            <tr><th>DATE</th><th>VALUE</th></tr>
+            <tr><td>2026-01-01</td><td>214.8</td></tr>
+            <tr><td>2026-04-01</td><td>242.3</td></tr></table>"""
+        obs = parse_fred_table_html(html, "NCBCEPNW", "Q")
+        self.assertEqual(obs[date(2026,4,1)], Decimal("242.3"))
+
     def test_fred_html_table_and_source_identity(self):
         html = """<html><body><div>Series ID DFII10</div>
             <table><tr><th>DATE</th><th>VALUE</th></tr>

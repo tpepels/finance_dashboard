@@ -61,6 +61,11 @@ def _date(raw: str, frequency: str) -> date:
         if frequency == "M":
             return date.fromisoformat(raw + "-01") if len(raw) == 7 else date.fromisoformat(raw)
         if frequency == "Q":
+            if len(raw) == 10:
+                quarter_start = date.fromisoformat(raw)
+                if quarter_start.day != 1 or quarter_start.month not in (1, 4, 7, 10):
+                    raise ValueError("not a quarterly period start")
+                return quarter_start
             import re
             match = re.fullmatch(r"(\d{4})-?Q([1-4])", raw)
             if not match:
