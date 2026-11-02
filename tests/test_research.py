@@ -29,8 +29,8 @@ class ResearchIndicatorTests(unittest.TestCase):
         catalog, _ = load_documents()
         known = {s["id"]: s for s in catalog["series"]}
         self.assertEqual(len(SPECS), len(BY_ID))
-        self.assertEqual(len(SPECS), 42)
-        self.assertEqual(len(load_documents()[0]["series"]), 49)
+        self.assertEqual(len(SPECS), 46)
+        self.assertEqual(len(load_documents()[0]["series"]), 53)
         self.assertEqual(len({s["id"] for s in SPECS}), len(SPECS))
         self.assertEqual(set(s["region"] for s in SPECS), {r["id"] for r in REGIONS})
         for spec in SPECS:
@@ -42,6 +42,30 @@ class ResearchIndicatorTests(unittest.TestCase):
             if spec["kind"] == "raw" and len(spec["sources"]) > 1:
                 self.assertEqual(len({known[s]["unit"] for s in spec["sources"]}), 1)
                 self.assertEqual(len({known[s]["frequency"] for s in spec["sources"]}), 1)
+
+    def test_regional_pwt_labour_shares_keep_countries_and_denominators(self):
+        spec = BY_ID["compare_pwt_labour_shares"]
+        self.assertEqual(len(spec["sources"]), 5)
+        metadata = {sid: meta(sid, unit="ratio", frequency="A") for sid in spec["sources"]}
+        observed = {sid: [(date(2023,1,1), D(str(0.5 + i * 0.02)))]
+                    for i, sid in enumerate(spec["sources"])}
+        result = compile_indicator(spec, observed, metadata)
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["series"][0]["points"][0]["value"], "50.0")
+        self.assertEqual(result["series"][-1]["points"][0]["value"], "58.00")
+        self.assertEqual(result["headline"]["value"], "8.00")
+        self.assertIn("five countries", result["reading"])
+
+    def test_japan_labour_distribution_uses_japan_identity_not_us(self):
+        spec = BY_ID["jp_income_distribution"]
+        sid = spec["sources"][0]
+        result = compile_indicator(spec,
+            {sid: [(date(2023,1,1), D("0.58749"))]},
+            {sid: meta(sid, unit="ratio", frequency="A")})
+        self.assertEqual(result["series"][0]["id"], "derived.japan.labour_gdp_share")
+        self.assertEqual(result["series"][1]["id"], "derived.japan.gdp_nonlabour_residual")
+        self.assertEqual(result["series"][1]["points"][0]["value"], "41.25100")
+        self.assertIn("NOT corporate profit", result["caveat"])
 
     def test_distribution_complement_is_not_misrepresented_as_profits(self):
         spec = BY_ID["us_income_distribution"]
