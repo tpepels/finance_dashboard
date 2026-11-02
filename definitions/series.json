@@ -636,10 +636,10 @@
       "geography": "OECD38_MEMBERS_2026_GDP_WEIGHTED_REPORTING",
       "frequency": "A",
       "unit": "percent",
-      "measurement": "GDP-weighted mean of annual country ratios (S11 gross operating surplus B2G + S12 gross operating surplus B2G) / (S1 gross value added B1G + S1 net product taxes D21X31), from official OECD annual sector accounts; same-year WDI nominal USD GDP member weights",
+      "measurement": "GDP-weighted annual average of 38-current-OECD-member national ratios (S11 gross operating surplus B2G + S12 gross operating surplus B2G)/national GDP: OECD S1 GVA B1G + taxes on products less subsidies D21X31; for missing taxes only USA/JPN/CAN use same-year WDI nominal GDP LCU after currency and scale validation; weights are WDI nominal USD GDP by country/year",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Not an OECD-official published group total; fixed 38-country OECD membership as of 2026 projected historically. Excludes years with fewer than 35 member WDI GDP weights, fewer than 29 fully observed countries or <80% observed-member GDP weight coverage. No interpolated years. Corporate surplus includes unlisted companies; excludes household mixed income. Nominal GDP decomposition uses official OECD national-account components and its revisions; WDI USD nominal GDP used for country weighting only."
+      "notes": "Source OECD annual accounts for all corporate gross-surplus numerators; WDI nominal USD country GDP used for weighting, WDI local GDP denominator only for USD/JPY/CAD source-matched stable currencies USA/JPN/CAN lacking OECD product taxes. OECD 2026 38-member universe projected retrospectively; 25 accepted annual years (2000–2024). >=35 members with GDP weights, >=29 eligible full country components, >=80% OECD GDP weighting coverage. No extrapolation. Different from global listed-company net earnings and official OECD published aggregate."
     },
     {
       "id": "profit.oecd38.corporate_gross_surplus_gdp_coverage",
@@ -652,7 +652,7 @@
       "geography": "OECD38_MEMBERS_2026_GDP_WEIGHTED_REPORTING",
       "frequency": "A",
       "unit": "percent",
-      "measurement": "100 times nominal WDI USD GDP of OECD members with all four S11/S12/S1 national accounts components divided by GDP of OECD 38 current members with available WDI country GDP that year",
+      "measurement": "Nominal WDI USD GDP of current 38 OECD member countries with complete S11/S12 corporate gross surplus and national GDP (OECD GVA+net product taxes or restricted WDI local GDP denominator in USA/JPN/CAN) divided by GDP of OECD members with available WDI GDP weights, per year, times 100",
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "Coverage is share of GDP of OECD members for which WDI GDP exists, not global GDP; at least 35 of 38 weights required. Shares below 80% are excluded with the associated ratio rather than fabricated."
@@ -668,7 +668,7 @@
       "geography": "OECD38_MEMBERS_2026_GDP_WEIGHTED_REPORTING",
       "frequency": "A",
       "unit": "count",
-      "measurement": "Count of current 38 OECD member countries with annual matching nonfinancial + financial gross operating surplus, gross value added, net product taxes and WDI nominal GDP USD weight in a published composite year",
+      "measurement": "Count of 2026's 38 OECD member countries entering the GDP-weighted annual corporate surplus aggregate; source numerator OECD S11+S12 B2G, denominator OECD GVA+product taxes or tightly validated WDI local GDP for USA/JPN/CAN only, and WDI USD GDP weight",
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "Country count is denominator coverage metadata; minimum 29 member contributors, 35/38 WDI country weights and 80% OECD-known GDP coverage. Fixed 2026 membership, not time-varying OECD accession membership."
