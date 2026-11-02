@@ -29,6 +29,7 @@ interface MarxResult {
   assumed_surplus_to_variable_capital_pct: string | null;
   net_surplus_over_net_capital_stock_pct: string | null;
   capital_stock_coverage_complete: boolean; included_isic_sections: string[];
+  complete_assumed_industry_scope: boolean; unreported_in_scope_sections: string[];
   source_extract_sha256: string;
 }
 interface PredictionBacktest {
@@ -256,6 +257,11 @@ function MarxAccounts() {
             ? Number(result.net_surplus_over_net_capital_stock_pct).toFixed(2)+'%'
             : 'No source-complete capital stock; ratio unavailable'}</span>
         <span>Included ISIC sections: {result.included_isic_sections.join(', ')}</span>
+        <span>Country/year industry coverage: {result.complete_assumed_industry_scope
+          ? 'All sections of the selected assumption represented'
+          : 'Incomplete, observed sections only; no national-total claim'}</span>
+        {!result.complete_assumed_industry_scope && <span>Unreported industry sections:
+          {' '}{result.unreported_in_scope_sections.join(', ')}</span>}
       </div>
       <p>{result.limitation}</p>
       <a href={result.source_url} target="_blank" rel="noopener noreferrer">Original OECD IOT release</a>
