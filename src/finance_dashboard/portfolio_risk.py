@@ -64,6 +64,15 @@ def _drawdown(levels: list[tuple[int, float]]) -> dict[str, Any] | None:
             "recovery_month": recovered}
 
 
+def _drawdown_path(levels: list[tuple[int, float]]) -> dict[int, float]:
+    peak = 0.0
+    result = {}
+    for month, level in levels:
+        peak = max(peak, level)
+        result[month] = round((level / peak - 1) * 100, 6)
+    return result
+
+
 def _risk_measure(levels: list[tuple[int, float]]) -> dict[str, Any]:
     if len(levels) < 2:
         return {"annualized_return_pct": None, "annualized_volatility_pct": None,
@@ -176,6 +185,7 @@ def compare_market_histories(histories: dict[str, dict], definitions: dict[str, 
         levels = [(m, 100 * price[m][0] / begin) for m in chain]
         rets = [price[b][0] / price[a][0] - 1 for a, b in zip(chain, chain[1:])]
         series_returns[sid] = rets
+        drawdowns = _drawdown_path(levels)
         asset = {
             "id": sid, "name": definition["name"],
             "asset_class": definition["asset_class"],
@@ -188,7 +198,7 @@ def compare_market_histories(histories: dict[str, dict], definitions: dict[str, 
             "geographic_holdings_status": "not_verified",
             "observations": [
                 {"month": _label(m), "last_trade_date": price[m][1],
-                 "index_100": round(value, 6)}
+                 "index_100": round(value, 6), "drawdown_pct": drawdowns[m]}
                 for m, value in levels],
             **_risk_measure(levels),
         }
@@ -203,11 +213,13 @@ def compare_market_histories(histories: dict[str, dict], definitions: dict[str, 
             monthly_portfolio_return = sum(weights[sid] * series_returns[sid][i]
                                            for sid in keys)
             values.append((month, values[-1][1] * (1 + monthly_portfolio_return)))
+        portfolio_drawdowns = _drawdown_path(values)
         base["portfolio"] = {
             "weights_pct": {sid: round(weights[sid] * 100, 4) for sid in keys},
             "exposure_metadata": holdings,
             "holdings_country_weights": "not_available_without_verified_holdings_history",
-            "observations": [{"month": _label(month), "index_100": round(value, 6)}
+            "observations": [{"month": _label(month), "index_100": round(value, 6),
+                              "drawdown_pct": portfolio_drawdowns[month]}
                              for month, value in values],
             **_risk_measure(values),
         }
