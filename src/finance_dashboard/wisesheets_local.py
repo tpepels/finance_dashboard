@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from .wisesheets import WisesheetsClient, collect_wisesheets, load_sec_profit_snapshot
+from .wisesheets import WisesheetsClient, WisesheetsError, collect_wisesheets, load_sec_profit_snapshot
 
 log = logging.getLogger(__name__)
 COLLECT_EVERY = timedelta(days=30)
@@ -55,6 +55,26 @@ def _atomic_write(path: Path, text: str) -> None:
             tmp.unlink(missing_ok=True)
 
 
+def _write_validated_snapshot(path: Path, snapshot: dict) -> None:
+    """Validate a collected aggregate before replacing a last-known-good file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                                         prefix=".verified-sec-", suffix=".json",
+                                         dir=path.parent, delete=False) as stream:
+            json.dump(snapshot, stream, sort_keys=True, indent=2)
+            stream.write("\n")
+            tmp = Path(stream.name)
+        if load_sec_profit_snapshot(tmp) is None:
+            raise WisesheetsError("Collected SEC snapshot invalid")
+        os.replace(tmp, path)
+        tmp = None
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+
+
 def refresh_local_wisesheets(*, now: datetime | None = None,
                              destination: Path | None = None) -> str:
     """Return disabled, current, deferred, updated or failed; never expose key.
@@ -68,7 +88,10 @@ def refresh_local_wisesheets(*, now: datetime | None = None,
     target = destination or target_path()
     record = metadata_path(target)
     last_attempt, last_success = _read_attempt(record)
-    existing = load_sec_profit_snapshot(target)
+    try:
+        existing = load_sec_profit_snapshot(target)
+    except WisesheetsError:
+        existing = None
 
     # A preexisting successful snapshot may have been imported from another
     # deployment. Honor its timestamp to prevent a needless entire scan.
@@ -88,10 +111,7 @@ def refresh_local_wisesheets(*, now: datetime | None = None,
         # Keep the provider's full-universe and account quota/rate safety
         # requirements; they are correctness and cost protections.
         snapshot = collect_wisesheets(client, min_issuers=5000, max_requests=800)
-        _atomic_write(target, json.dumps(snapshot, sort_keys=True, indent=2) + "\n")
-        # Reader provides an independent payload validation before claiming success.
-        if load_sec_profit_snapshot(target) is None:
-            raise RuntimeError("Local Wisesheets aggregate did not validate")
+        _write_validated_snapshot(target, snapshot)
         _atomic_write(record, json.dumps({"at": now.isoformat(), "success": True}) + "\n")
         log.info("Local SEC earnings refresh completed: %s verified years", len(snapshot["observations"]))
         return "updated"
