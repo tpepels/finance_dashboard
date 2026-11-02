@@ -1,0 +1,16 @@
+name: Probe OECD annual and DBnomics mirror source
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/probe_oecd_annual.py
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: timeout 95s python scripts/probe_oecd_annual.py
