@@ -83,6 +83,24 @@ class WiseTests(unittest.TestCase):
         self.assertEqual(invalid_rows,{})
         self.assertEqual(invalid_quality["unmatched_issuer_rows"],1)
 
+    def test_snapshot_series_separates_us_issuer_earnings_from_global_profit(self):
+        from finance_dashboard.wisesheets import snapshot_series
+        sample={"id":"profit.us_sec_filers.world_gdp_share",
+                "observations":[
+                    {"year":2023,"sec_filer_net_income_usd":"-10",
+                     "sec_filer_income_as_pct_of_world_gdp":"-0.1",
+                     "usd_conversion_coverage_pct_of_reporting_issuers":"80"},
+                    {"year":2024,"sec_filer_net_income_usd":"120",
+                     "sec_filer_income_as_pct_of_world_gdp":"1.2",
+                     "usd_conversion_coverage_pct_of_reporting_issuers":"90"},
+                ]}
+        self.assertEqual(snapshot_series(sample,"SEC_US_FILER_NET_INCOME_USD",
+                              start=date(2024,1,1)),{date(2024,1,1):D(120)})
+        self.assertEqual(snapshot_series(sample,"SEC_US_FILER_WORLD_GDP_SHARE_PERCENT"),
+                         {date(2023,1,1):D("-0.1"),date(2024,1,1):D("1.2")})
+        with self.assertRaisesRegex(WisesheetsError,"Unrecognized"):
+            snapshot_series(sample,"WORLD_LISTED_NET_INCOME")
+
     def test_future_and_inconsistent_fiscal_rows_are_counted_not_used(self):
         base={"ticker":"AAPL","cik":"0000320193","metric":"net_income",
               "fiscalPeriod":"FY","unit":"USD","value":"900",

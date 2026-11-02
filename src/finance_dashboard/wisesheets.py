@@ -532,6 +532,33 @@ def load_sec_profit_snapshot(path: Path | None = None) -> dict | None:
     except (ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
         raise WisesheetsError("Invalid SEC annual earnings snapshot") from exc
 
+
+def snapshot_series(
+    snapshot: dict, source_key: str, *, start: date | None = None,
+) -> dict[date, Decimal]:
+    """Read separately named SEC issuer dataset from a verified local snapshot."""
+    fields = {
+        "SEC_US_FILER_NET_INCOME_USD": "sec_filer_net_income_usd",
+        "SEC_US_FILER_WORLD_GDP_SHARE_PERCENT": "sec_filer_income_as_pct_of_world_gdp",
+        "SEC_US_FILER_USD_CONVERSION_COVERAGE_PERCENT": "usd_conversion_coverage_pct_of_reporting_issuers",
+    }
+    if snapshot.get("id") != "profit.us_sec_filers.world_gdp_share":
+        raise WisesheetsError("Unknown source snapshot")
+    if source_key not in fields:
+        raise WisesheetsError("Unrecognized US filer financial measure")
+    observations = {}
+    for row in snapshot["observations"]:
+        day = date(int(row["year"]), 1, 1)
+        if start and day < start:
+            continue
+        value = _decimal(row[fields[source_key]])
+        if day in observations:
+            raise WisesheetsError("Duplicate SEC filer fiscal year")
+        observations[day] = value
+    if not observations:
+        raise WisesheetsError("No annual SEC filer earnings in source window")
+    return dict(sorted(observations.items()))
+
 def main() -> int:
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
