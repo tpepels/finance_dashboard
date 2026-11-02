@@ -1,6 +1,6 @@
 # Phase 2 — source coverage, provenance and blockers
 
-Verified 2026-11-02. **38 canonical macroeconomic/index series total: 36 mapped and live-source verified, two original economic definitions unresolved.** The 34 original entries are preserved; four additional global macro aggregates are implemented. Separately, **24 exchange-listed stock/ETF instruments and three ECB FX source series** are fully implemented in the market registry.
+Verified 2026-11-02. **39 active mapped macroeconomic/index series and no unresolved active definitions.** The two original inaccessible historic requirements are preserved in [the superseded archive](../definitions/superseded_series.json); the new public-source replacements have different scopes and do not reproduce the originals. Separately, **24 exchange-listed stock/ETF instruments and three ECB FX source series** are fully implemented in the market registry.
 
 An operational adapter can fetch and parse real source data into PostgreSQL; it is not an assertion that the provider grants public redistribution rights or that every derived comparison is methodologically valid.
 
@@ -45,16 +45,17 @@ and 36-month USD/EUR GLD-versus-VT investable-ETF proxy correlations.
 
 The GLD/VT fund-based correlations are **separate ETF proxies**. The original gold/global-equity correlation has since been implemented with real MSCI ACWI NETR USD index values and World Bank monthly gold. Likewise, BEA replacement-cost Tobin's Q is now implemented and distinguished from Fed NCBCEPNW.
 
-## The two remaining original indicators (updated 2026-11-02)
+## Free-source replacements and retained superseded requirements (2026-11-02)
 
-| Original series ID | Missing requirement | Treatment |
+The owner approved the [source-definition change](PHASE_2_FREE_SOURCE_REPLACEMENTS.md); the inaccessible original `profit.global.corporate_share` and `concentration.global.top10` are **archived**, not mapped active series. The 39-series active catalog has **zero unresolved** source mappings.
+
+| Mapped macro measure | Verified official/public source | Coverage / principal limitation |
 |---|---|---|
-| `profit.global.corporate_share` | Comprehensive worldwide consolidated listed-company net profits, including losses, cross-listing deduplication, multinational allocation, currency alignment and matching world GDP | **Unresolved.** The Wisesheets current SEC-filer aggregate is separately named and incomplete. MSCI cap/P-E implied earnings is an index-universe proxy, not a complete global net-income sum. |
-| `concentration.global.top10` | Historical monthly MSCI ACWI index 892400 security-level free-float constituent weights | **Unresolved.** MSCI contemporary factsheets and SEC/ACWI ETF holdings proxies cannot replace the historical index-constituent series. |
+| `concentration.global.msci_acwi_published_top10` | Public dated MSCI ACWI 892400 factsheets and published research with index top-ten constituent weights | 8 sparse documented snapshots, 2019–2026; no fabricated 2022 or other missing months; MSCI rights review |
+| `profit.eu27.corporate_operating_surplus_gdp` | Official Eurostat `nasa_10_nf_tr` S11 B2A3G + S12 B2A3G / S1 B1GQ | 24 matched annual 2002–2025 points, EU27 **only**, includes unlisted corporations, gross operating surplus not accounting net profits |
+| `profit.eu27.nonfinancial_gross_surplus_value_added` | Official Eurostat `nasa_10_ki` S11 `B2G_B3G_RAT_S11` | 27 annual observations; NFC surplus / NFC gross **value added**, NOT GDP |
 
-The other four original gaps are now implemented: official BEA Q1 replacement-cost Tobin's Q, ILO accounting-implied world output/labour-income hourly ratio, a documented weighted 43-country BIS private credit/GDP-gap composite with coverage, and a 36-month World Bank gold/MSCI ACWI NETR USD index correlation. See [locked feature contract](PHASE_2_FEATURE_CONTRACT.md) and [source history](ORIGINAL_GAPS.md).
-
-The two unresolved indicators must remain absent from chart-ready observations. A chart referencing a non-mapped series stays `draft`, and the API rejects unpopulated series rather than returning fake values.
+The originally proposed OECD sector source was probed and returned 403 in GitHub Actions; **Eurostat EU27 is a narrower regional substitute, not OECD/world**. None of these observations claims full worldwide listed-company net profits or a complete monthly historical MSCI universe. Both retired contracts are preserved with original source metadata in [`definitions/superseded_series.json`](../definitions/superseded_series.json).
 
 ## Provider verification
 
@@ -88,7 +89,7 @@ Sources:
 
 ### Full PostgreSQL macro/index acceptance
 
-All 32 mapped macro/index sources completed a combined real-data historical PostgreSQL backfill, with API readback for BEA Q1, ILO hourly ratio identity, 43-country BIS credit gap and coverage, MSCI ACWI NETR and monthly gold/index correlation: [live acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670). Only the two exact original source-dataset gaps remain unresolved.
+All 32 mapped macro/index sources completed a combined real-data historical PostgreSQL backfill, with API readback for BEA Q1, ILO hourly ratio identity, 43-country BIS credit gap and coverage, MSCI ACWI NETR and monthly gold/index correlation: [live acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670). Those original definitions have been explicitly superseded under the owner's approved amendment; they were not independently reconstructed.
 
 ### US SEC-reporting earnings supplementary source
 
@@ -96,7 +97,11 @@ The free Wisesheets key was tested live against AAPL, MSFT and ASML:
 five annual net-income records per company, including EUR and USD filing
 units, with SEC provenance. See [WISESHEETS.md](WISESHEETS.md).
 The monthly complete SEC-filer aggregation is **supplementary**;
-it is not a replacement for `profit.global.corporate_share` or a
+it is not a reconstruction of the superseded `profit.global.corporate_share` or a
 historically unbiased worldwide listed-company universe.
 
 **Wisesheets full source scan verified (2026-11-02):** 8,179 unique SEC issuers, 6,161 issuers with verified SEC-filing annual financials, 5 reporting years (2021–2025), 150 API requests. Separate `profit.us_sec_filers.world_gdp_share` aggregate committed in [data/wisesheets/sec_filer_profit.json](https://github.com/tpepels/finance_dashboard/blob/main/data/wisesheets/sec_filer_profit.json) and documented [here](WISESHEETS.md). It is SEC-reporting listed coverage, not all global listed companies.
+
+### 39-series source validation
+
+[**Full static export passed: 39 series + 24 optional markets**](https://github.com/tpepels/finance_dashboard/actions/runs/41498656329): eight MSCI published historical index concentration markers, 24 EU27 S11+S12/GDP observations and 27 NFC GVA profit-share observations. Source-named active definition coverage 39/39 with no unresolved IDs; source provenance/rights stay attached. See [second owner-approved amendment](PHASE_2_FREE_SOURCE_REPLACEMENTS.md).
