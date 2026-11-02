@@ -61,6 +61,18 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
             # A malformed provider response must not terminate the API or
             # silently kill refresh. Do not log URLs containing API keys.
             log.error("Background refresh cycle aborted (error redacted); preserving previous data")
+        if enabled("FINANCE_VINTAGE_REFRESH", "1") and not stopped.is_set():
+            try:
+                from .vintage import capture_previous_month
+                outcome = capture_previous_month()
+                if outcome["errors"]:
+                    log.warning("Historical ALFRED monthly collection partially failed; "
+                                "existing verified vintages retained")
+                elif outcome["status"] == "complete":
+                    log.info("Completed ALFRED month-end capture for %s",
+                             outcome["asof"])
+            except Exception:
+                log.warning("ALFRED month-end capture failed; source API credentials redacted")
         if enabled("FINANCE_AUTO_BACKUP", "1") and not stopped.is_set():
             try:
                 from .backup import backup_local, source_database_path
