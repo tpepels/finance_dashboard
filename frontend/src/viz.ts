@@ -5,7 +5,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 import type { EChartsCoreOption as EChartsOption, EChartsType } from 'echarts/core';
 import type { PlottedSeries, ViewMode } from './types';
 import { gapBreaks, isSparse } from './transform';
-import { HISTORY_EVENTS } from './events';
+import { NBER_CRISIS_WINDOWS } from './periods';
 
 echarts.use([LineChart, ScatterChart, GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent, LegendComponent, CanvasRenderer]);
 
@@ -24,7 +24,7 @@ export function numberLabel(value: number): string {
 export function chartOptions(
   plotted: PlottedSeries[],
   mode: ViewMode,
-  showEvents: boolean,
+  _showEvents: boolean,
   compact = false,
 ): EChartsOption {
   const active = plotted.filter(s => s.observations.length);
@@ -33,10 +33,12 @@ export function chartOptions(
   const earliest = recorded.at(0);
   const latest = recorded.at(-1);
   // Out-of-window markers must not stretch an economic chart's time axis.
-  const markLines = showEvents
-    ? HISTORY_EVENTS.filter(event => earliest && latest && event.date >= earliest && event.date <= latest)
-        .map(event => ({ xAxis: event.date, label: { show: false } }))
-    : [];
+  // Historical intervals always appear in quiet gray. The labels are not
+  // drawn on charts; their US-only definition is documented outside the plot.
+  const grayPeriods = NBER_CRISIS_WINDOWS.filter(p =>
+    earliest && latest && p.end >= earliest && p.start <= latest)
+    .map(p => [{ xAxis: p.start }, { xAxis: p.end }]);
+
   return {
     animation: false,
     color: palette,
@@ -87,10 +89,11 @@ export function chartOptions(
         data: gapBreaks(item.observations, item.definition.frequency),
         itemStyle: { color: palette[index % palette.length] },
         emphasis: { focus: 'series' as const },
-        markLine: index === 0 && markLines.length ? {
-          silent: true, symbol: 'none',
-          lineStyle: { type: 'dashed' as const, color: '#9caaa9', width: 1 },
-          data: markLines,
+        markArea: index === 0 && grayPeriods.length ? {
+          silent: true, z: -1,
+          itemStyle: { color: 'rgba(106,112,118,0.12)', borderWidth: 0 },
+          label: { show: false },
+          data: grayPeriods,
         } : undefined,
       };
       if (sparse) return {
