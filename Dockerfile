@@ -6,6 +6,7 @@ COPY frontend/src ./src
 # Explicitly build the same-origin API client, not the public static-data mode.
 ENV VITE_DATA_MODE=api
 RUN npm install --no-audit --no-fund \
+    && npm test \
     && npm run build
 
 FROM python:3.12-slim AS standalone
@@ -29,7 +30,10 @@ COPY migrations/ /app/migrations/
 COPY alembic.ini /app/alembic.ini
 COPY scripts/run-standalone.sh /app/run-standalone.sh
 COPY --from=frontend-build /build/frontend/dist/ /app/site/
-RUN pip install --no-cache-dir . && chmod 755 /app/run-standalone.sh
+RUN pip install --no-cache-dir . \
+    && python -m compileall -q /app/src \
+    && python -m finance_dashboard validate \
+    && chmod 755 /app/run-standalone.sh
 EXPOSE 8080
 VOLUME /data
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
