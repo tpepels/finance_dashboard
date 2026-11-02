@@ -7,13 +7,13 @@ A source-traceable financial and macroeconomic research application for global e
 | Phase | Deliverable | Status |
 |---|---|---|
 | 1 — Data contracts | Validated source and chart catalog, methodology/rights flags | Complete |
-| 2 — Macro data infrastructure | Macro feeds, worldwide capitalization/GDP and earnings-yield aggregates, optional 24 market listings/ECB FX, PostgreSQL, worker and FastAPI | **36 mapped macro/index series source-verified; two original historical definitions unresolved** |
+| 2 — Macro data infrastructure | Macro feeds, worldwide capitalization/GDP and earnings-yield aggregates, optional 24 market listings/ECB FX, PostgreSQL, worker and FastAPI | **39 mapped macro/index series source-verified; unavailable original definitions explicitly superseded and archived** |
 | 3 — Dashboard | React combined graphs, filtering and static GitHub Pages export with redistribution checks | Not started |
 | 4 — Analytics | Derived economic indicators, ETF/gold portfolio and risk comparison | Not started |
 
-The catalog now contains **38 series definitions**: 36 operational provider mappings and 2 unresolved original economic measures (34 original definitions plus four new world macro aggregates). “Mapped” does not imply the provider has granted public redistribution rights. The original 32 mapped series have been checked against live source responses, including the three BIS policy rates in a separate Docker/PostgreSQL acceptance run and all 23 other series through the source acceptance workflow.
+The active catalog now contains **39 mapped macro/index series**: 36 previously verified sources and three user-approved free public-source replacements. The two unavailable original series definitions are retained, with the exact change-of-scope rationale, in [`definitions/superseded_series.json`](definitions/superseded_series.json). “Mapped” does not imply the provider has granted public redistribution rights. The original 32 mapped series have been checked against live source responses, including the three BIS policy rates in a separate Docker/PostgreSQL acceptance run and all 23 other series through the source acceptance workflow.
 
-**Phase 2 remains open** because two original indicators still lack adequate historical sources: MSCI ACWI top-ten constituent concentration and comprehensive worldwide listed-company profits as a percentage of GDP. The four newly added world-market macro aggregates are separate measures and cannot close those originals. Independent ETF NAV and ticker-change audits are no longer macro Phase 2 exit gates, per the [owner-approved scope amendment](docs/PHASE_2_MACRO_SCOPE_AMENDMENT.md). The existing optional market-data layer is already integrated: 24 global/EU/US ETF and stock listings, three ECB FX feeds, source-adjusted closes, dividend and split history, EUR performance, and two labelled GLD/VT proxy correlations. See [market-data contracts](docs/MARKET_DATA.md) and [data coverage](docs/DATA_COVERAGE.md).
+**The owner approved replacements** for the original two inaccessible historical indicators: [publicly documented MSCI ACWI top-ten index snapshots](data/msci_acwi_published_snapshots.json), which are sparse rather than monthly, and [official Eurostat EU27 corporate operating surplus relative to EU GDP](docs/PHASE_2_FREE_SOURCE_REPLACEMENTS.md), which includes unlisted corporations and is not worldwide listed-company net profits. A second official Eurostat indicator measures nonfinancial corporate gross surplus/sector gross value added. No original global-earnings or complete monthly index-weight coverage is claimed. Independent ETF NAV and ticker-change audits are no longer macro Phase 2 exit gates, per the [owner-approved scope amendment](docs/PHASE_2_MACRO_SCOPE_AMENDMENT.md). The existing optional market-data layer is already integrated: 24 global/EU/US ETF and stock listings, three ECB FX feeds, source-adjusted closes, dividend and split history, EUR performance, and two labelled GLD/VT proxy correlations. See [market-data contracts](docs/MARKET_DATA.md) and [data coverage](docs/DATA_COVERAGE.md).
 
 ## Run locally
 
@@ -71,7 +71,7 @@ Raw and adjusted price returns, vendor-adjusted index, dividend-reinvested index
 A scheduled workflow now validates the repository secret **FRED_API_KEY**
 through the official FRED API, fetches all mapped series, and uploads a
 key-free **finance-dashboard-static-data** JSON artifact. It runs daily at
-06:20 UTC and on manual dispatch. The newest live static-data build exported **36 macro/index series**, including 51 annual world listed-cap and cap/GDP observations each and 11 published global P/E and earnings-yield snapshots each, alongside the optional 24 market histories, three ECB FX feeds and two ETF proxies: [successful 36-series export](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778).
+06:20 UTC and on manual dispatch. The newest complete public-source static-data build exported **39 macro/index series**, including 51 annual world listed-cap and cap/GDP observations each and 11 published global P/E and earnings-yield snapshots each, alongside the optional 24 market histories, three ECB FX feeds and two ETF proxies: [successful 39-series export](https://github.com/tpepels/finance_dashboard/actions/runs/41498656329).
 
 See [static export architecture and secret handling](docs/STATIC_DATA.md).
 This produces the data needed by a future GitHub Pages frontend; **Pages is
@@ -103,7 +103,7 @@ filers, deduplicates by CIK, retains losses, converts non-USD profits using
 ECB historical rates and compares the partial US-listed aggregate with
 World Bank world GDP. Incomplete SEC filing provenance, unavailable FX
 and source data quality are explicitly reported; the original
-`profit.global.corporate_share` remains unresolved.
+The superseded global listed-company net earnings/GDP original is retained as historical requirement provenance in [`definitions/superseded_series.json`](definitions/superseded_series.json); the active national-accounts replacement is EU27-only and separately labelled.
 
 The first complete scan **passed** on 2026-11-02: 8,179 distinct SEC issuer CIKs in the current universe; **6,161** issuers with filing-traceable historical annual earnings. Five annual aggregate years (2021–2025) were retained, using only 150 authenticated requests. [Successful full run](https://github.com/tpepels/finance_dashboard/actions/runs/41483503450). The aggregate is available through `GET /api/earnings/sec-filers` and the static export. It is not fetched by the browser and never
 contains your API key. See [Wisesheets methodology](docs/WISESHEETS.md).
@@ -123,7 +123,7 @@ Historical issuer NAV reconciliation, ticker rename continuity, and a permanent 
 
 ### Phase 2 locked project contracts
 
-The source-of-truth project baseline (features, component ownership, delivery acceptance and scope-change policy) is recorded in [feature contract](docs/PHASE_2_FEATURE_CONTRACT.md), [architecture contract](docs/PHASE_2_ARCHITECTURE_CONTRACT.md) and [implementation contract](docs/PHASE_2_IMPLEMENTATION_CONTRACT.md). These documents freeze the *agreed requirements*, not the code or GitHub branch permissions. [Remaining exact-data sources and Yahoo/aggregate alternatives](docs/ORIGINAL_GAPS.md#source-access-assessment-yahoo-finance-and-aggregated-alternatives-2026-11-02) are separately assessed. Phase 2 remains open until the exact originals and reconciliation checks pass or scope is explicitly amended by the owner.
+The source-of-truth project baseline (features, component ownership, delivery acceptance and scope-change policy) is recorded in [feature contract](docs/PHASE_2_FEATURE_CONTRACT.md), [architecture contract](docs/PHASE_2_ARCHITECTURE_CONTRACT.md) and [implementation contract](docs/PHASE_2_IMPLEMENTATION_CONTRACT.md). These documents freeze the *agreed requirements*, not the code or GitHub branch permissions. [Archived exact-data sources and Yahoo/aggregate alternatives](docs/ORIGINAL_GAPS.md#source-access-assessment-yahoo-finance-and-aggregated-alternatives-2026-11-02) are separately assessed. The owner explicitly approved the [free-source contract change](docs/PHASE_2_FREE_SOURCE_REPLACEMENTS.md), superseding two unavailable original datasets and optional per-ETF completion conditions.
 
 ## Macro-first scope and four new aggregate histories (2026-11-02)
 
@@ -137,3 +137,15 @@ The owner's [macro-first scope amendment](docs/PHASE_2_MACRO_SCOPE_AMENDMENT.md)
 | `valuation.world.global_earnings_yield` | 100 / preceding Siblis P/E; same index and date | 11 selected month-end observations |
 
 **Source-verified complete export:** [36 mapped macro sources](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778). All four are wired through the existing provider router, definitions, chart catalog, API-compatible observation storage and static export. [**All 36 mapped macro/index sources passed complete PostgreSQL ingestion and FastAPI readback**](https://github.com/tpepels/finance_dashboard/actions/runs/41494100275), including the new global aggregates. No full multi-decade Siblis source or worldwide listed-company profit measure is claimed. Do **not** multiply World Bank WFE market capitalization by Siblis index earnings yield to estimate total listed profits/GDP: these have different security universes and valuation accounting. Siblis data is proprietary and may not be redistributed on public Pages without permission.
+
+## Free public-source replacements — owner-approved 2026-11-02
+
+[Scope/definition contract](docs/PHASE_2_FREE_SOURCE_REPLACEMENTS.md) | [Original specifications archived](definitions/superseded_series.json) | [Dated MSCI index evidence](data/msci_acwi_published_snapshots.json).
+
+Three **new mapped** macro sources replace two inaccessible originals without using ETF holdings or proprietary data:
+
+- **MSCI ACWI index concentration:** eight explicitly source-dated top-ten index constituent weight totals (2019–2026). Not a complete monthly time series; no missing-month fills.
+- **EU27 corporate gross operating surplus / EU GDP:** official ESA2010 annual Eurostat S11+S12 corporate sectors' gross operating surplus, divided by matched EU27 S1 GDP, both current EUR (**24 annual years**).
+- **EU27 NFC gross operating surplus / NFC GVA:** independently published annual Eurostat nonfinancial-sector gross profit share (**27 annual observations**); different denominator from GDP.
+
+[Complete **39/39 mapped macro-series** public-source static export passed](https://github.com/tpepels/finance_dashboard/actions/runs/41498656329). [Full macro PostgreSQL/API integration acceptance](https://github.com/tpepels/finance_dashboard/actions/workflows/all-macro-postgres.yml) is tested separately. OECD SDMX returned 403 in GitHub CI, so **no OECD/world corporate-series coverage** is asserted. The two original global listed-company net earnings and uninterrupted historical MSCI concentration definitions are explicitly superseded, not fraudulently claimed as reproduced. MSCI and Siblis redistribution rights must still be cleared before public dashboard deployment.
