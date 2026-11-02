@@ -99,7 +99,9 @@ def summarize(
 
     spread = None
     usable = [(meta, readings) for meta, readings in full if readings]
-    if len(usable) >= 2:
+    # Never present a full-chart geographic range if a requested source is
+    # unavailable; partial participation would silently change the cohort.
+    if len(usable) >= 2 and len(usable) == len(records):
         units = {meta["unit"] for meta, _ in usable}
         frequencies = {meta["frequency"] for meta, _ in usable}
         if len(units) == 1 and len(frequencies) == 1:
