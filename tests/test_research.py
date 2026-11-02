@@ -1,5 +1,7 @@
 """Research indicators: actual-source definitions, exact alignment and scope."""
 import unittest
+import os
+from unittest.mock import patch
 from datetime import date
 from decimal import Decimal as D
 
@@ -120,15 +122,16 @@ class ResearchIndicatorTests(unittest.TestCase):
                                poolclass=StaticPool)
         Base.metadata.create_all(engine)
         try:
-            with TestClient(create_app(engine)) as api:
-                definitions = api.get("/api/research")
-                self.assertEqual(definitions.status_code, 200)
-                self.assertEqual(len(definitions.json()["indicators"]), len(SPECS))
-                response = api.get("/api/research/us_productivity_pay")
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json()["status"], "no_data")
-                self.assertEqual(api.get("/api/research/unknown").status_code, 404)
-                self.assertEqual(api.get("/api/research/us_yield_curve?start=2026-01-01&end=2025-01-01").status_code, 422)
+            with patch.dict(os.environ, {"FINANCE_AUTO_REFRESH": "0"}):
+                with TestClient(create_app(engine)) as api:
+                    definitions = api.get("/api/research")
+                    self.assertEqual(definitions.status_code, 200)
+                    self.assertEqual(len(definitions.json()["indicators"]), len(SPECS))
+                    response = api.get("/api/research/us_productivity_pay")
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.json()["status"], "no_data")
+                    self.assertEqual(api.get("/api/research/unknown").status_code, 404)
+                    self.assertEqual(api.get("/api/research/us_yield_curve?start=2026-01-01&end=2025-01-01").status_code, 422)
         finally:
             engine.dispose()
 
