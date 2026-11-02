@@ -51,3 +51,16 @@ The 24 instrument and three currency feeds are documented in [MARKET_DATA.md](MA
 ### Exact new index/valuation inputs
 
 The exported macro catalog now includes official BEA Q1 (replacement-cost Tobin Q), MSCI ACWI NETR USD index levels, a 36-month monthly-average gold/index return correlation, the ILO world GDP/labour-income hourly ratio identity and a 43-economy GDP-weighted BIS credit-gap composite with a separate world-GDP coverage series. The original historical MSCI top-ten constituent concentration and world listed-company earnings/GDP remain unresolved and explicitly listed in the JSON manifest.
+
+### Wisesheets supplementary earnings
+
+The nightly macro+ETF build never makes 20,000+ Wisesheets company API
+requests. A separate monthly Wisesheets Actions workflow uses the
+`WISESHEETS_API_KEY` secret, caps monthly requests, writes an audited
+annual aggregate, and stores it in `data/wisesheets/sec_filer_profit.json`.
+If present, that snapshot is included as
+`supplementary/sec_filer_profit.json` and listed in
+`index.json.supplementary_sources` with its real freshness status.
+Before the first verified complete scan, its status is `not_collected`.
+It is never mislabelled as the original global listed-company profits.
+See [WISESHEETS.md](WISESHEETS.md).

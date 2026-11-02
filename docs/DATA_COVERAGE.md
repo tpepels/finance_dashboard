@@ -82,3 +82,12 @@ Sources:
 ### Full PostgreSQL macro/index acceptance
 
 All 32 mapped macro/index sources completed a combined real-data historical PostgreSQL backfill, with API readback for BEA Q1, ILO hourly ratio identity, 43-country BIS credit gap and coverage, MSCI ACWI NETR and monthly gold/index correlation: [live acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670). Only the two exact original source-dataset gaps remain unresolved.
+
+### US SEC-reporting earnings supplementary source
+
+The free Wisesheets key was tested live against AAPL, MSFT and ASML:
+five annual net-income records per company, including EUR and USD filing
+units, with SEC provenance. See [WISESHEETS.md](WISESHEETS.md).
+The monthly complete SEC-filer aggregation is **supplementary**;
+it is not a replacement for `profit.global.corporate_share` or a
+historically unbiased worldwide listed-company universe.

@@ -75,6 +75,18 @@ not silently disappear or be converted to positive values. The platform
 should report investable market-cap share/universe size and the coverage
 of reported earnings in each time window.
 
+**Wisesheets assessment (2026-11-02):** The user's free
+`WISESHEETS_API_KEY` is working. The official Wisesheets API currently
+advertises 21,577 **US stocks**, based on US SEC EDGAR/XBRL, with five
+years of free annual fundamentals. It includes SEC-reporting foreign issuers
+with US listings (e.g., ASML), and non-USD reported currencies.
+This is not a complete world-listed issuer universe, so even a successful
+all-filer Wisesheets scan must remain a separately named partial numerator.
+The implemented [SEC-filer source collector](WISESHEETS.md) reports coverage,
+SEC CIK deduplication, verified SEC filing provenance, omitted records,
+currency conversions and world GDP comparisons. It does not close this
+original worldwide definition.
+
 **Why current public sources are insufficient:** MSCI ACWI provides
 market cap and aggregate index P/E and covers approximately 85% of global
 investable equity, not all listed companies; its aggregate valuation

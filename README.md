@@ -93,6 +93,23 @@ In the three-series BIS Docker test, 26,416 US, 10,130 euro-area, and 24,914 Jap
 The API does not offer trade instructions, generic market-data redistribution, a React dashboard, historical true-spot gold prices, or a consistent world financial-company profit aggregate. The Siblis ACWI CAPE free API supplies sparse proprietary snapshots for personal noncommercial research; **do not publish its data to GitHub Pages without separate rights**. See [Source policy](docs/DATA_POLICY.md), [architecture](docs/ARCHITECTURE.md), and [Phase 2 details](docs/PHASE_2.md).
 
 
+### Wisesheets SEC-reporting company profits (supplementary)
+
+The new GitHub Actions secret `WISESHEETS_API_KEY` is connected and
+live-verified. Wisesheets' free fundamentals service offers up to five annual
+observations for SEC-reporting, US-listed issuers, **not** a complete worldwide
+listed-company universe. An independent monthly pipeline enumerates SEC
+filers, deduplicates by CIK, retains losses, converts non-USD profits using
+ECB historical rates and compares the partial US-listed aggregate with
+World Bank world GDP. Incomplete SEC filing provenance, unavailable FX
+and source data quality are explicitly reported; the original
+`profit.global.corporate_share` remains unresolved.
+
+The supplementary aggregate is made available to
+`GET /api/earnings/sec-filers` and the static export once the first
+complete scan succeeds. It is not fetched by the browser and never
+contains your API key. See [Wisesheets methodology](docs/WISESHEETS.md).
+
 ## Four exact original indicators resolved (2026-11-02)
 
 The six Phase 2 data-definition gaps have been reduced to two:
