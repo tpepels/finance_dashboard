@@ -32,8 +32,8 @@ else:
 catalog=get("/api/series")["items"]
 mapped={row["id"] for row in catalog if row["status"]=="mapped"}
 statuses={row["series_id"]:row for row in get("/api/data-status")["items"]}
-if len(mapped)!=39 or len(catalog)!=39:
-    raise AssertionError(f"Expected all 39 mapped macro series, got {len(mapped)}/{len(catalog)}")
+if len(mapped)!=42 or len(catalog)!=42:
+    raise AssertionError(f"Expected all 42 mapped macro series, got {len(mapped)}/{len(catalog)}")
 failures={sid:statuses.get(sid,{}).get("status") for sid in sorted(mapped)
           if statuses.get(sid,{}).get("status")!="success"
           or statuses.get(sid,{}).get("received",0)<1}
@@ -48,7 +48,10 @@ for sid in ("valuation.us.tobins_q","labour.world.productivity_compensation",
             "valuation.world.global_earnings_yield",
             "concentration.global.msci_acwi_published_top10",
             "profit.eu27.corporate_operating_surplus_gdp",
-            "profit.eu27.nonfinancial_gross_surplus_value_added"):
+            "profit.eu27.nonfinancial_gross_surplus_value_added",
+            "profit.oecd38.corporate_gross_surplus_gdp",
+            "profit.oecd38.corporate_gross_surplus_gdp_coverage",
+            "profit.oecd38.corporate_gross_surplus_member_count"):
     dataset=query([sid])["series"][0]
     if dataset["status"]!="ready" or not dataset["observations"]:
         raise AssertionError(f"Original newly mapped source not available through API: {sid}")
