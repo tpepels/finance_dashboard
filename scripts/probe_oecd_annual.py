@@ -1,4 +1,4 @@
-"""Temporary live availability probe, intentionally bounded and never publishes datasets."""
+"""Temporary live availability probe, intentionally bounded; no dataset publication."""
 from urllib.request import urlopen,Request
 from urllib.error import HTTPError
 from urllib.parse import quote
