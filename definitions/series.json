@@ -624,6 +624,54 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "OFFICIAL profit-share ratio in corporate gross value added, NOT in GDP. Only EU27 nonfinancial corporations, not OECD/world and excludes financial corporations S12. Useful independent source cross-check on corporate profit margins and labour share."
+    },
+    {
+      "id": "profit.oecd38.corporate_gross_surplus_gdp",
+      "name": "GDP-weighted gross corporate operating surplus as share of GDP — OECD 38 members",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "OECD_CORPORATE_GDPWEIGHTED",
+      "source_key": "RATIO/OECD38_S11_S12_B2G_GDP_WDIWEIGHT",
+      "source_url": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1",
+      "geography": "OECD38_MEMBERS_2026_GDP_WEIGHTED_REPORTING",
+      "frequency": "A",
+      "unit": "percent",
+      "measurement": "GDP-weighted mean of annual country ratios (S11 gross operating surplus B2G + S12 gross operating surplus B2G) / (S1 gross value added B1G + S1 net product taxes D21X31), from official OECD annual sector accounts; same-year WDI nominal USD GDP member weights",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Not an OECD-official published group total; fixed 38-country OECD membership as of 2026 projected historically. Excludes years with fewer than 35 member WDI GDP weights, fewer than 29 fully observed countries or <80% observed-member GDP weight coverage. No interpolated years. Corporate surplus includes unlisted companies; excludes household mixed income. Nominal GDP decomposition uses official OECD national-account components and its revisions; WDI USD nominal GDP used for country weighting only."
+    },
+    {
+      "id": "profit.oecd38.corporate_gross_surplus_gdp_coverage",
+      "name": "Share of OECD 38-member nominal GDP with complete corporate-sector accounting",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "OECD_CORPORATE_GDPWEIGHTED",
+      "source_key": "COVERAGE/OECD38_S11_S12_B2G_GDP_WDIWEIGHT",
+      "source_url": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1",
+      "geography": "OECD38_MEMBERS_2026_GDP_WEIGHTED_REPORTING",
+      "frequency": "A",
+      "unit": "percent",
+      "measurement": "100 times nominal WDI USD GDP of OECD members with all four S11/S12/S1 national accounts components divided by GDP of OECD 38 current members with available WDI country GDP that year",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Coverage is share of GDP of OECD members for which WDI GDP exists, not global GDP; at least 35 of 38 weights required. Shares below 80% are excluded with the associated ratio rather than fabricated."
+    },
+    {
+      "id": "profit.oecd38.corporate_gross_surplus_member_count",
+      "name": "Contributing OECD member countries in corporate-surplus aggregate",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "OECD_CORPORATE_GDPWEIGHTED",
+      "source_key": "COUNT/OECD38_S11_S12_B2G_GDP_WDIWEIGHT",
+      "source_url": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1",
+      "geography": "OECD38_MEMBERS_2026_GDP_WEIGHTED_REPORTING",
+      "frequency": "A",
+      "unit": "count",
+      "measurement": "Count of current 38 OECD member countries with annual matching nonfinancial + financial gross operating surplus, gross value added, net product taxes and WDI nominal GDP USD weight in a published composite year",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Country count is denominator coverage metadata; minimum 29 member contributors, 35/38 WDI country weights and 80% OECD-known GDP coverage. Fixed 2026 membership, not time-varying OECD accession membership."
     }
   ]
 }
