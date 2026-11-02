@@ -2,17 +2,18 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from pathlib import Path
 from .wisesheets import load_sec_profit_snapshot
 from os import environ
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import select, text
+from sqlalchemy import select, text, func, distinct
 from sqlalchemy.orm import Session
 
 from .providers import ProviderRouter, PROVIDER_CODES
 from .catalog import load_documents, validate
-from .database import IngestionRun, make_engine
+from .database import IngestionRun, ObservationVersion, MarketPriceVersion, FxRateVersion, make_engine
 from .service import current_observations
 from .market import instruments
 from .market_service import MarketIngestionService
@@ -99,6 +100,46 @@ def create_app(engine=None) -> FastAPI:
         with db.connect() as conn:
             conn.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
+
+    @app.get("/api/operations")
+    def operations():
+        """Local source coverage and backup monitoring, without URLs or credentials."""
+        with Session(db) as session:
+            macro_count = session.scalar(
+                select(func.count(distinct(ObservationVersion.series_id)))) or 0
+            market_count = session.scalar(
+                select(func.count(distinct(MarketPriceVersion.instrument_id)))) or 0
+            fx_count = session.scalar(
+                select(func.count(distinct(FxRateVersion.currency)))) or 0
+            macro_failures = session.scalar(
+                select(func.count()).select_from(IngestionRun).where(
+                    IngestionRun.status == "failed")) or 0
+            most_recent = session.scalar(
+                select(func.max(IngestionRun.ended_at)).where(
+                    IngestionRun.status == "success"))
+        from .standalone import enabled
+        folder = Path(environ.get("FINANCE_BACKUP_DIR", "/data/backups"))
+        backups = sorted(
+            (p for p in folder.glob("finance-*Z.json") if p.is_file()),
+            reverse=True,
+        ) if folder.is_dir() else []
+        return {
+            "catalog_series": len(by_id),
+            "sources_with_at_least_one_observation": int(macro_count),
+            "registered_market_instruments": len(market_registry),
+            "market_instruments_with_prices": int(market_count),
+            "currencies_with_fx_history": int(fx_count),
+            "failed_macro_ingestion_runs_total": int(macro_failures),
+            "last_successful_macro_run_utc": most_recent.isoformat() if most_recent else None,
+            "macro_refresh_configured": enabled("FINANCE_AUTO_REFRESH", "1"),
+            "optional_market_refresh_configured": enabled("FINANCE_INCLUDE_MARKETS", "0"),
+            "automatic_backups_configured": enabled("FINANCE_AUTO_BACKUP", "1"),
+            "verified_local_backup_manifest_count": len(backups),
+            "most_recent_backup_manifest": backups[0].name if backups else None,
+            "limitations": ("Coverage counts indicate local data availability, not provider "
+                            "freshness or source publication vintage. Backup manifests must "
+                            "be copied to separate storage to survive disk failure."),
+        }
 
     @app.get("/api/research")
     def research_catalog():
