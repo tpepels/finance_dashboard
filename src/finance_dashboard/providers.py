@@ -314,7 +314,7 @@ class ProviderRouter:
             except (xlrd.XLRDError, ValueError, IndexError) as exc:
                 raise ProviderError("Invalid Shiller Excel workbook or Data sheet") from exc
             observations = {day: value for day, value in values.items()
-                            if start is None or day >= start}
+                            if day <= date.today() and (start is None or day >= start)}
             if not observations:
                 raise ProviderError("Shiller workbook has no values within requested period")
             return FetchedSeries(series_id, SHILLER_HOME, None, observations)
