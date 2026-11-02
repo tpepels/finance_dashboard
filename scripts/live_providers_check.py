@@ -1,7 +1,7 @@
-"""Bounded samples from each *mapped* non-BIS provider, not a full data backfill.
+"""Bounded, live source acceptance for every mapped non-FRED/non-BIS series.
 
-A failed sample fails CI so availability is not silently claimed. Live/periodic
-tests are deliberately separate from offline unit tests.
+FRED requires owner-supplied FRED_API_KEY; BIS has a separate full-Docker
+acceptance workflow. Missing values, future dates, and source IDs are validated.
 """
 from __future__ import annotations
 from datetime import date, timedelta
@@ -9,35 +9,27 @@ import json
 
 from finance_dashboard.providers import ProviderRouter
 
-SAMPLES = (
-    "policy_rate.ea.ecb_dfr",
-    "gdp.real_growth.us",
-    "gdp.real_growth.world",
-    "valuation.domestic_cap_gdp.us",
-    "valuation.domestic_cap_gdp.jp",
-    "fiscal.world.public_debt",
-    "valuation.us.cape",
-    "labour.world.income_share",
-    "gold.usd.monthly_average",
-)
-
 
 def main() -> int:
     router = ProviderRouter()
+    successful = 0
     try:
-        for sid in SAMPLES:
-            start = date.today() - timedelta(days=1100 if not sid.startswith("valuation.") else 2200)
+        sources = [sid for sid in router.supported_ids()
+                   if router.definitions[sid]["provider"] not in {"BIS", "FRED"}]
+        for sid in sources:
+            start = date.today() - timedelta(days=2200 if sid.startswith("valuation.domestic") else 1100)
             result = router.fetch(sid, start)
             assert result.observations, f"No observations for {sid}"
             assert min(result.observations) >= start, f"Upstream ignored window: {sid}"
             assert max(result.observations) <= date.today(), f"Future observation: {sid}"
+            successful += 1
             print(json.dumps({
                 "series_id": sid, "source_url": result.request_url.split("?")[0],
                 "count": len(result.observations), "latest": max(result.observations).isoformat(),
-            }))
+            }), flush=True)
     finally:
         router.close()
-    print("PHASE2_NONFRED_LIVE=PASS (FRED requires configured API key)")
+    print(f"PHASE2_NONFRED_LIVE=PASS (verified={successful}, FRED requires API key; BIS verified separately)")
     return 0
 
 
