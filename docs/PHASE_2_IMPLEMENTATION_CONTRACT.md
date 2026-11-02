@@ -36,7 +36,7 @@ Status: **baseline frozen on 2026-11-02**. This records the complete delivery ta
 |---|---|---|
 | Original 32/32 mapped macro + derived series | **PASS** | [complete original macro PostgreSQL ingestion and API](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670) |
 | 4 new macro aggregates, real public provider responses/static export | **PASS** | [36-series source-validated static export](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778) |
-| 36-series macro PostgreSQL ingestion and API | **OPEN pending fresh full acceptance** | Entire new mapped catalogue plus original series, not 32-only smoke test |
+| 36-series macro PostgreSQL ingestion and API | **PASS** | [All 36 mapped sources full historical ingestion and API readback](https://github.com/tpepels/finance_dashboard/actions/runs/41494100275) |
 | Optional 24/24 market histories + 3/3 ECB FX | **PASS — nonblocking** | [real market PostgreSQL/API](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707) |
 | Combined mapped static artifact | **PASS** | [36-series macro export plus optional markets](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778) |
 | Wisesheets SEC-filer supplementary history | **PASS — limited universe** | [full documented 2021–2025 scan](https://github.com/tpepels/finance_dashboard/actions/runs/41483503450) |
@@ -44,7 +44,7 @@ Status: **baseline frozen on 2026-11-02**. This records the complete delivery ta
 | `profit.global.corporate_share` | **OPEN** | Worldwide historical consolidated issuer earnings, consistent GDP formula, missing/delisted-issuer audit and API/static tests |
 | Historical instrument ticker/exchange continuity | **NONBLOCKING optional debt** | Already implemented instrument history remains; further per-ETF work removed from macro phase by owner |
 | Independent issuer NAV and distributions | **NONBLOCKING optional debt** | No claim of independent issuer audit; owner explicitly removed this Phase 2 condition |
-| Full Phase 2 macro regression | **OPEN** | 36 mapped macro series including 4 new sources, supplementary provenance and unresolved exact historical definitions in acceptance report |
+| Full Phase 2 macro regression | **PASS for all mapped sources; original two historical sources remain OPEN** | [36-source full macro PostgreSQL/API and static acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41494100275); exact profits/concentration definitions still blocked by source access |
 
 Tests must include complete source registries; no tests that pass on a hand-picked subset count as phase completion. Integrate both new original measures in *the existing* registry, persistence model, API and static export, including failure/staleness/rights semantics. Do not mark a definition `mapped` before live source evidence.
 
