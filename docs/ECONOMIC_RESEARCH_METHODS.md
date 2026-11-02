@@ -3,7 +3,7 @@
 
 ## What changed
 
-The main dashboard is now driven by `GET /api/research` and `GET /api/research/{id}`, and **not** by the original arbitrary source chart list. It displays **38 question-led indicators** in five clearly identified geographical and institutional scopes:
+The main dashboard is now driven by `GET /api/research` and `GET /api/research/{id}`, and **not** by the original arbitrary source chart list. It displays **42 question-led indicators** in five clearly identified geographical and institutional scopes:
 
 - **World & OECD**: World Bank/ILO/IMF worldwide aggregates, OECD38 *reporting-country* corporate-surplus estimates, and **separately labelled** global-equity index characteristics.
 - **United States**: BLS nonfarm business sector, PWT total-economy labour compensation/GDP, FRED/BIS monetary and credit indicators, domestic equity market value and nonfinancial replacement-cost Q. Those scopes cannot be casually combined.
