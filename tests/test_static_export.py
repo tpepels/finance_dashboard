@@ -39,7 +39,7 @@ class StaticExportTests(unittest.TestCase):
             with patch.dict(os.environ, {"FRED_API_KEY": "TOP_SECRET_SHOULD_NOT_LEAK"}):
                 result = export_static(
                     root, series_ids=["policy_rate.us.fed_upper", "bond.us.real_10y"],
-                    provider_factory=FakeRouter, max_workers=2,
+                    provider_factory=FakeRouter, max_workers=2, include_markets=False,
                 )
             self.assertEqual(result["series_count"], 2)
             self.assertEqual(
@@ -67,7 +67,7 @@ class StaticExportTests(unittest.TestCase):
             try:
                 with self.assertRaisesRegex(RuntimeError, "Static export failed"):
                     export_static(root, series_ids=["bond.us.real_10y"],
-                                  provider_factory=FakeRouter, max_workers=1)
+                                  provider_factory=FakeRouter, max_workers=1, include_markets=False)
                 self.assertEqual((root / "index.json").read_text(), '{"previous":"good"}')
                 self.assertEqual(list(root.iterdir()), [root / "index.json"])
             finally:
@@ -78,7 +78,7 @@ class StaticExportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unsupported or unresolved series"):
                 export_static(Path(directory) / "data",
                               series_ids=["profit.global.corporate_share"],
-                              provider_factory=FakeRouter)
+                              provider_factory=FakeRouter, include_markets=False)
 
     def test_authenticated_fred_request_uses_key_but_returns_public_source_url(self):
         def handler(request):

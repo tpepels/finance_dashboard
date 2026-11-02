@@ -18,6 +18,7 @@ import tempfile
 
 from .catalog import load_documents, validate
 from .providers import PROVIDER_CODES, ProviderRouter
+from .market_export import export_markets
 
 
 def _json_bytes(value: object) -> bytes:
@@ -73,6 +74,7 @@ def export_static(
     series_ids: list[str] | None = None,
     provider_factory=ProviderRouter,
     max_workers: int = 6,
+    include_markets: bool = True,
 ) -> dict:
     """Complete data export; no database, frontend, or secret in the output."""
     if max_workers < 1 or max_workers > 12:
@@ -109,11 +111,15 @@ def export_static(
                       file=sys.stderr, flush=True)
     if errors:
         raise RuntimeError(f"Static export failed for {len(errors)} series: {', '.join(sorted(errors))}")
+    market_manifest, market_files, fx_files = ({}, {}, {})
+    if include_markets:
+        market_manifest, market_files, fx_files = export_markets(max_workers=min(max_workers, 4))
     generated = datetime.now(timezone.utc).isoformat()
     manifest = {
         "schema_version": 1,
         "generated_at_utc": generated,
         "series_count": len(entries),
+        "market": market_manifest,
         "series": [entries[sid] for sid in sorted(entries)],
         "unresolved": [
             {"id": row["id"], "name": row["name"], "theme": row["theme"],
@@ -131,6 +137,14 @@ def export_static(
             (root / "series" / f"{sid}.json").write_bytes(_json_bytes(payload))
         (root / "index.json").write_bytes(_json_bytes(manifest))
         (root / "charts.json").write_bytes(_json_bytes(chart_definitions))
+        if include_markets:
+            (root / "markets").mkdir()
+            (root / "fx").mkdir()
+            (root / "markets" / "index.json").write_bytes(_json_bytes(market_manifest))
+            for sid, payload in market_files.items():
+                (root / "markets" / f"{sid}.json").write_bytes(_json_bytes(payload))
+            for currency, payload in fx_files.items():
+                (root / "fx" / f"{currency}.json").write_bytes(_json_bytes(payload))
         if destination.exists():
             shutil.rmtree(destination)
         shutil.copytree(root, destination)
@@ -164,12 +178,14 @@ def main() -> int:
     parser.add_argument("--max-workers", type=int, default=6)
     parser.add_argument("--series-id", action="append")
     parser.add_argument("--probe-fred-key", action="store_true")
+    parser.add_argument("--macro-only", action="store_true", help="Do not generate ETF/stock and FX data")
     args = parser.parse_args()
     if args.probe_fred_key:
         return probe_fred_key()
     result = export_static(Path(args.output_dir),
-                           series_ids=args.series_id, max_workers=args.max_workers)
-    print(f"STATIC_EXPORT_COMPLETE={result['series_count']}")
+                           series_ids=args.series_id, max_workers=args.max_workers,
+                           include_markets=not args.macro_only)
+    print(f"STATIC_EXPORT_COMPLETE={result['series_count']} MARKETS={result['market'].get('instrument_count', 0)}")
     return 0
 
 
