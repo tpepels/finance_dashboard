@@ -10,13 +10,13 @@ from sqlalchemy.orm import Session
 
 from .database import (
     FxIngestionRun, FxRateVersion, MarketIngestionRun,
-    MarketInstrumentRow, MarketPriceVersion, now_utc,
+    MarketInstrumentRow, MarketPriceVersion, MarketActionVersion, now_utc,
 )
 from .market import EcbFxClient, MarketDataError, MarketHistory, PriceBar, YahooMarketClient, instruments, performance
 
 
 def _price_values(row):
-    return (row.close, row.adjusted_close, row.volume, row.dividend, row.split_ratio)
+    return (row.close, row.adjusted_close, row.volume)
 
 
 def current_market_prices(session: Session, instrument_id: str,
@@ -34,6 +34,18 @@ def current_market_prices(session: Session, instrument_id: str,
     for row in rows:
         latest.setdefault(row.day, row)
     return list(latest.values())
+
+
+def current_market_actions(session: Session, instrument_id: str,
+                           snapshot_at: datetime | None = None) -> list[MarketActionVersion]:
+    statement = select(MarketActionVersion).where(MarketActionVersion.instrument_id == instrument_id)
+    if snapshot_at:
+        statement = statement.where(MarketActionVersion.first_seen_at <= snapshot_at)
+    rows = session.scalars(statement.order_by(MarketActionVersion.id.desc()))
+    latest = {}
+    for row in rows:
+        latest.setdefault((row.ex_date, row.action_type), row)
+    return sorted(latest.values(), key=lambda row: (row.ex_date, row.action_type))
 
 
 def current_fx(session: Session, currency: str, snapshot_at: datetime | None = None) -> dict[date, Decimal]:
@@ -96,21 +108,34 @@ class MarketIngestionService:
                 latest = {}
                 for row in previous:
                     latest.setdefault(row.day, _price_values(row))
+                action_rows = session.scalars(select(MarketActionVersion).where(
+                    MarketActionVersion.instrument_id == instrument_id)
+                    .order_by(MarketActionVersion.id.desc()))
+                latest_actions = {}
+                for action in action_rows:
+                    latest_actions.setdefault((action.ex_date, action.action_type), action.value)
                 added = 0
                 for day, bar in history.price_bars.items():
                     if (not bar.close.is_finite() or bar.close <= 0 or
                             not bar.adjusted_close.is_finite() or bar.adjusted_close <= 0):
                         raise MarketDataError("Invalid market EOD close")
-                    values = (bar.close, bar.adjusted_close, bar.volume,
-                              history.dividends.get(day), history.splits.get(day))
+                    values = (bar.close, bar.adjusted_close, bar.volume)
                     if values != latest.get(day):
                         session.add(MarketPriceVersion(
                             instrument_id=instrument_id, day=day, close=bar.close,
                             adjusted_close=bar.adjusted_close, volume=bar.volume,
-                            dividend=history.dividends.get(day),
-                            split_ratio=history.splits.get(day),
                             first_seen_at=now_utc(), ingestion_run_id=run_id))
                         added += 1
+                for action_type, actions in (("dividend", history.dividends),
+                                             ("split", history.splits)):
+                    for ex_date, value in actions.items():
+                        ident = (ex_date, action_type)
+                        if latest_actions.get(ident) != value:
+                            session.add(MarketActionVersion(
+                                instrument_id=instrument_id, ex_date=ex_date,
+                                action_type=action_type, value=value,
+                                first_seen_at=now_utc(), ingestion_run_id=run_id))
+                            added += 1
                 run = session.get(MarketIngestionRun, run_id)
                 run.status = "success"
                 run.ended_at = now_utc()
@@ -184,12 +209,15 @@ class MarketIngestionService:
             # Full pre-window history is required to normalize price and return
             # indices to a consistent inception/base point before filtering.
             rows=current_market_prices(session,instrument_id,end=end,snapshot_at=snapshot_at)
+            actions=current_market_actions(session,instrument_id,snapshot_at=snapshot_at)
             fx=current_fx(session,definition["trading_currency"],snapshot_at=snapshot_at)
         if not rows:
             return {"instrument_id":instrument_id,"status":"no_data","observations":[]}
         bars={row.day: PriceBar(row.day,row.close,row.adjusted_close,row.volume) for row in rows}
-        dividends={row.day:row.dividend for row in rows if row.dividend is not None}
-        splits={row.day:row.split_ratio for row in rows if row.split_ratio is not None}
+        dividends={row.ex_date:row.value for row in actions if row.action_type == "dividend"
+                   and row.ex_date <= max(bars)}
+        splits={row.ex_date:row.value for row in actions if row.action_type == "split"
+                and row.ex_date <= max(bars)}
         history=MarketHistory(definition["source_symbol"],definition["trading_currency"],
             bars,dividends,splits,f"https://query1.finance.yahoo.com/v8/finance/chart/{definition['source_symbol']}")
         dataset=performance(history,fx)

@@ -93,8 +93,18 @@ class MarketPriceVersion(Base):
     close: Mapped[Decimal] = mapped_column(Numeric(28, 12), nullable=False)
     adjusted_close: Mapped[Decimal] = mapped_column(Numeric(28, 12), nullable=False)
     volume: Mapped[int | None] = mapped_column(Integer())
-    dividend: Mapped[Decimal | None] = mapped_column(Numeric(28, 12))
-    split_ratio: Mapped[Decimal | None] = mapped_column(Numeric(28, 12))
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingestion_run_id: Mapped[str] = mapped_column(ForeignKey("market_ingestion_runs.id"), nullable=False)
+
+
+class MarketActionVersion(Base):
+    """Exact source corporate-action ex-date, even when the exchange was closed."""
+    __tablename__ = "market_action_versions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    instrument_id: Mapped[str] = mapped_column(ForeignKey("market_instruments.id"), index=True, nullable=False)
+    ex_date: Mapped[date] = mapped_column(Date(), index=True, nullable=False)
+    action_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(28, 12), nullable=False)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ingestion_run_id: Mapped[str] = mapped_column(ForeignKey("market_ingestion_runs.id"), nullable=False)
 
