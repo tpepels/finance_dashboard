@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 from collections import Counter
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-DEFAULT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_ROOT = Path(os.environ.get("FINANCE_DASHBOARD_ROOT", str(Path(__file__).resolve().parents[2])))
 THEMES = {
     "valuation", "labour_capital", "monetary_policy", "growth_inflation",
     "credit_recession", "market_concentration", "gold_currency",
