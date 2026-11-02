@@ -82,7 +82,7 @@ describe('minimal dashboard interactive acceptance', () => {
     await user.click(screen.getByRole('button', { name: /Close/ }));
     expect(await screen.findByRole('img', { name: /Preview chart: Fed, ECB and BOJ/ })).toBeTruthy();
     expect(screen.getByText(/How to read this:/)).toBeTruthy();
-    expect(screen.getAllByText(/Recorded evidence/).length).toBeGreaterThan(0);
+    expect(await screen.findByText('Recorded evidence')).toBeTruthy();
   });
 
 
