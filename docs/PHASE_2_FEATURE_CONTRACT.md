@@ -8,15 +8,15 @@ Provide source-traceable global macroeconomic, valuation and market datasets to 
 
 ### Required capabilities (all required; no sample-only completion)
 
-**F01 — Canonical macro/index catalogue.** Maintain all **34** agreed definitions in `definitions/series.json`, currently **32 mapped** and **2 open**. For each: stable ID, economic measure, provider/source key/URL, geography, native frequency, unit, provenance, revision semantics, rights and explicit source status. An unmapped item remains visible as unresolved; it must not return fabricated chart values.
+**F01 — Canonical macro/index catalogue.** Maintain the **34 original definitions**, now joined by **four additional macro aggregate valuation series** in `definitions/series.json`: **38 total, 36 mapped and 2 original sources open**. All 32 previously mapped definitions remain implemented. For each: stable ID, economic measure, provider/source key/URL, geography, native frequency, unit, provenance, revision semantics, rights and explicit source status. An unmapped item remains visible as unresolved; it must not return fabricated chart values.
 
 **F02 — Historical source ingestion.** Fetch and validate every mapped macro/index source (BIS, ECB, FRED, BEA, World Bank WDI/Pink Sheet, IMF, Shiller, ILO/UNSD, MSCI, Siblis, gold spot as applicable). Support full-history backfill, incremental refresh, explicit nulls, error isolation and source-specific observation periods. The three BIS harmonized US/euro-area/Japan policy feeds must work as real historical daily sources.
 
-**F03 — Full listed market catalogue.** Ingest **all 24** agreed global, US and European stocks/ETF exchange listings from `definitions/instruments.json`. Distinguish ticker, security, share class, exchange MIC, ISIN verification, trade currency, fund currency and accumulating/distributing policy. Never infer a missing ISIN or change venues silently.
+**F03 — Optional listed market catalogue (already implemented, not a blocking macro requirement).** Preserve the existing **24** global, US and European stocks/ETF exchange listings from `definitions/instruments.json`. Distinguish ticker, security, share class, exchange MIC, ISIN verification, trade currency, fund currency and accumulating/distributing policy. Never infer a missing ISIN or change venues silently.
 
-**F04 — Market price integrity.** Preserve daily raw close, vendor adjusted close, volume, cash dividends and original split ex-dates, including non-trading days. Expose price-only, vendor-adjusted and cash-dividend-reinvested returns as different methods. Retain adjusted-history revisions and historical actions. Validate ticker changes/venue continuity separately.
+**F04 — Optional market price integrity (existing feature).** Preserve daily raw close, vendor adjusted close, volume, cash dividends and original split ex-dates, including non-trading days. Expose price-only, vendor-adjusted and cash-dividend-reinvested returns as different methods. Retain adjusted-history revisions and historical actions. Validate ticker changes/venue continuity separately.
 
-**F05 — ECB FX and EUR performance.** Ingest USD/EUR, GBP/EUR and CHF/EUR ECB daily reference series, with correct foreign-currency-per-EUR orientation and limited historical lookback for holidays; calculate EUR-comparable returns only when valid rates exist. No synthetic FX history.
+**F05 — Optional investment FX performance, required FX methodology where used.** Preserve USD/EUR, GBP/EUR and CHF/EUR ECB daily reference series, with correct foreign-currency-per-EUR orientation and limited historical lookback for holidays; calculate EUR-comparable returns only when valid rates exist. No synthetic FX history.
 
 **F06 — Original economic measures.** Preserve all six source-definition commitments:
 - `valuation.us.tobins_q` — BEA Q1 replacement-cost valuation (implemented, 1960–2024 history).
@@ -30,11 +30,13 @@ Provide source-traceable global macroeconomic, valuation and market datasets to 
 
 **F08 — Auditable storage and read-only access.** Preserve original observations, revisions and ingest outcomes in PostgreSQL with migrations; expose canonical metadata, observations, status, market calculations and supplementary source metadata through documented FastAPI read-only endpoints.
 
-**F09 — Full reproducible static data.** Export all implemented mapped series, the 24 instruments, 3 FX feeds, original calculated measures and separately labelled proxies as browser-safe JSON; maintain unresolved manifest entries. Secret-bearing collection occurs only in scheduled jobs. Exports should fail on a missing required mapped source rather than presenting a silent subset.
+**F09 — Full reproducible static data.** Export all implemented mapped macro/index series (currently 36), derived aggregate calculations, original measures and separately labelled proxies; preserve the previously implemented 24 instruments and 3 FX feeds as optional export modules as browser-safe JSON; maintain unresolved manifest entries. Secret-bearing collection occurs only in scheduled jobs. Exports should fail on a missing required mapped source rather than presenting a silent subset.
 
 **F10 — Wisesheets monthly enrichment.** Use `WISESHEETS_API_KEY` only in Actions, enumerate the full *accessible* SEC-filer directory, deduplicate issuers by SEC CIK, preserve negative earnings, validate SEC provenance and non-USD reporting currencies, convert with ECB historical FX, align with World Bank nominal GDP and report year-by-year omissions/coverage and freshness. 2026-11-02 verified observation: 8,179 distinct CIKs, 6,161 with traceable net income, 2021–2025, 150 API requests. This is not proof of worldwide coverage or delisted-issuer completeness.
 
 **F11 — Provenance, safety and publishing policy.** Every returned value must carry source, time period, definition, revision/observation semantics and quality/rights metadata. Do not expose FRED or Wisesheets credentials. An Actions artifact is not a deployed Pages site; redistribution rights are evaluated before public hosting.
+
+**F12 — Macro-first global market aggregates.** Integrate World Bank WLD listed-market-capitalization USD, a same-year World Bank WLD market-cap-to-world-GDP derived ratio, Siblis published sparse year-end global trailing P/E, and the same Siblis universe's derived earnings yield. Preserve source coverage and rights; **never multiply a Siblis selected-index P/E by a World Bank all-market capitalization** to claim world corporate earnings. Include these as four separate, source-verified chart definitions.
 
 ## Explicit non-goals in Phase 2
 
@@ -42,18 +44,20 @@ The React/ECharts interactive dashboard (Phase 3), allocation/risk analytics and
 
 ## Exit checklist — all gates required
 
-- [x] All 32 mapped original macro/index series live-source checked, combined real PostgreSQL historical backfill and API readback completed.
-- [x] All 24 stock/ETF instruments and 3 ECB FX feeds verified in real PostgreSQL market ingestion, API and static export.
+- [x] Original 32 macro/index series live-source checked, combined real PostgreSQL historical backfill and API readback completed.
+- [x] Four new macro aggregates source-checked through a complete 36-series static export: two WDI 51-year annual series and two Siblis 11-snapshot valuations.
+- [ ] Combined PostgreSQL/API acceptance covering **all 36** macro/index series (not just the original 32).
+- [x] All 24 stock/ETF instruments and 3 ECB FX feeds have already passed historical market ingestion/API/static checks; these are retained as **optional supplementary infrastructure, not Phase 2 macro exit gates**.
 - [x] Four of the six originally missing economic definitions source-mapped and tested with explicit methodology.
 - [x] Wisesheets supplementary SEC-filer scan and API/static export completed with truthful coverage labelling.
 - [ ] **Full historical original `concentration.global.top10` dataset and series integration.** Isolated MSCI factsheets or ACWI ETF holdings alone do not pass.
 - [ ] **Full historical original `profit.global.corporate_share` dataset and series integration.** Wisesheets SEC current universe or a valuation-derived proxy alone does not pass.
-- [ ] Independent issuer NAV/distribution reconciliation for relevant ETFs.
-- [ ] Verified continuity across historical ticker/venue changes.
-- [ ] Full repeatable acceptance run including new original sources, revision and coverage checks, publication restrictions and API/export parity.
+- [ ] Full repeatable macro acceptance run including new original sources and 36-series integration, revisions, coverage checks, publication restrictions and API/export parity.
+
+**Nonblocking optional market-data debt:** issuer NAV/distribution reconciliation and historical ticker/venue continuity were removed from Phase 2 gates by the owner's [macro-first scope amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md). No claim is made that these optional audits passed.
 
 **Decision rule:** Phase 2 remains open until *every* unchecked requirement is complete, or the owner explicitly approves a documented amendment that changes the original scope. Partial examples, passing unit tests, or adding a proxy are insufficient.
 
 ## Change control and traceability
 
-This specification, [architecture contract](PHASE_2_ARCHITECTURE_CONTRACT.md), and [implementation contract](PHASE_2_IMPLEMENTATION_CONTRACT.md) are the baseline. Any future change must update the three contracts as appropriate and link a GitHub issue explaining the requirement delta, source semantics, migration/tests, and owner approval. The existing tracking issue is [#1](https://github.com/tpepels/finance_dashboard/issues/1). Related details: [Phase 2](PHASE_2.md), [original gaps](ORIGINAL_GAPS.md), [markets](MARKET_DATA.md), [Wisesheets](WISESHEETS.md).
+The owner-approved [macro-first Phase 2 amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md) supersedes earlier ETF-level completion conditions. This specification, [architecture contract](PHASE_2_ARCHITECTURE_CONTRACT.md), and [implementation contract](PHASE_2_IMPLEMENTATION_CONTRACT.md) are the baseline. Any future change must update the three contracts as appropriate and link a GitHub issue explaining the requirement delta, source semantics, migration/tests, and owner approval. The existing tracking issue is [#1](https://github.com/tpepels/finance_dashboard/issues/1). Related details: [Phase 2](PHASE_2.md), [original gaps](ORIGINAL_GAPS.md), [markets](MARKET_DATA.md), [Wisesheets](WISESHEETS.md).
