@@ -75,6 +75,17 @@ afterEach(() => {
 });
 
 describe('minimal dashboard interactive acceptance', () => {
+  it('renders a real chart preview and its interpretation without expanding controls', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole('img', { name: /Time series chart/ });
+    await user.click(screen.getByRole('button', { name: /Close/ }));
+    expect(await screen.findByRole('img', { name: /Preview chart: Fed, ECB and BOJ/ })).toBeTruthy();
+    expect(screen.getByText(/How to read this:/)).toBeTruthy();
+    expect(screen.getAllByText(/Recorded evidence/).length).toBeGreaterThan(0);
+  });
+
+
   it('renders original thematic page, opens BIS Fed/ECB/BOJ chart, and traces exact source rows', async () => {
     const user = userEvent.setup();
     render(<App />);
