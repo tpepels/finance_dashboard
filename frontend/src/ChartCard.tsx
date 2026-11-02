@@ -277,11 +277,11 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
           {rows.length ? <>
             <div className="table-scroll">
               <table>
-                <thead><tr><th>Date</th><th>Series</th><th>Source value</th><th>Display</th><th>Unit</th></tr></thead>
+                <thead><tr><th>Date</th><th>Series</th><th>Source value</th><th>Display</th><th>Unit</th><th>Ingestion run / snapshot</th></tr></thead>
                 <tbody>{rows.slice(page * pageSize, (page + 1) * pageSize).map((row, i) =>
                   <tr key={`${row.seriesId}-${row.date}-${i}`}>
                     <td>{row.date}</td><td>{row.geo} <small>{row.seriesId}</small></td>
-                    <td>{row.raw}</td><td>{numberLabel(row.display)}</td><td>{row.unit}</td>
+                    <td>{row.raw}</td><td>{numberLabel(row.display)}</td><td>{row.unit}</td><td>{row.run ?? (context.generatedAt ? `Static export ${context.generatedAt}` : 'Run not supplied')}</td>
                   </tr>)}</tbody>
               </table>
             </div>
