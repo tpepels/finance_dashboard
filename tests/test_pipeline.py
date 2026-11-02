@@ -85,7 +85,7 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(item["status"], "ready")
             self.assertEqual(len(item["observations"]), 2)
             self.assertEqual(item["observations"][1]["value"], "3.6250000000")
-            self.assertEqual(client.get("/api/data-status").json()["items"][0]["status"], "success")
+            self.assertEqual(next(row for row in client.get("/api/data-status").json()["items"] if row["series_id"] == ID)["status"], "success")
             self.assertEqual(client.post("/api/query", json={"series_ids": ["unknown"]}).status_code, 404)
             self.assertEqual(client.post("/api/query", json={"series_ids": ["valuation.us.cape"]}).status_code, 422)
 
