@@ -41,7 +41,7 @@ def upgrade():
         sa.Column("day", sa.Date(), nullable=False),
         sa.Column("close", sa.Numeric(28, 12), nullable=False),
         sa.Column("adjusted_close", sa.Numeric(28, 12), nullable=False),
-        sa.Column("volume", sa.Integer()),
+        sa.Column("volume", sa.BigInteger()),
         sa.Column("first_seen_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("ingestion_run_id", sa.String(36), sa.ForeignKey("market_ingestion_runs.id"), nullable=False),
     )

@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from os import environ
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, create_engine
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -92,7 +92,7 @@ class MarketPriceVersion(Base):
     day: Mapped[date] = mapped_column(Date(), index=True, nullable=False)
     close: Mapped[Decimal] = mapped_column(Numeric(28, 12), nullable=False)
     adjusted_close: Mapped[Decimal] = mapped_column(Numeric(28, 12), nullable=False)
-    volume: Mapped[int | None] = mapped_column(Integer())
+    volume: Mapped[int | None] = mapped_column(BigInteger())
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ingestion_run_id: Mapped[str] = mapped_column(ForeignKey("market_ingestion_runs.id"), nullable=False)
 
