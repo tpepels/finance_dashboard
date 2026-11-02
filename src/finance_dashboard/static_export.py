@@ -19,6 +19,7 @@ import tempfile
 from .catalog import load_documents, validate
 from .providers import PROVIDER_CODES, ProviderRouter
 from .market_export import export_markets
+from .wisesheets import load_sec_profit_snapshot
 
 
 def _json_bytes(value: object) -> bytes:
@@ -75,6 +76,7 @@ def export_static(
     provider_factory=ProviderRouter,
     max_workers: int = 6,
     include_markets: bool = True,
+    sec_snapshot_path: Path | None = None,
 ) -> dict:
     """Complete data export; no database, frontend, or secret in the output."""
     if max_workers < 1 or max_workers > 12:
@@ -114,12 +116,25 @@ def export_static(
     market_manifest, market_files, fx_files = ({}, {}, {})
     if include_markets:
         market_manifest, market_files, fx_files = export_markets(max_workers=min(max_workers, 4))
+    sec_snapshot = load_sec_profit_snapshot(sec_snapshot_path)
     generated = datetime.now(timezone.utc).isoformat()
     manifest = {
         "schema_version": 1,
         "generated_at_utc": generated,
         "series_count": len(entries),
         "market": market_manifest,
+        "supplementary_sources": ([{
+            "id": sec_snapshot["id"],
+            "file": "supplementary/sec_filer_profit.json",
+            "status": sec_snapshot["status"],
+            "snapshot_status": sec_snapshot["snapshot_status"],
+            "source_snapshot_at_utc": sec_snapshot["source_snapshot_at_utc"],
+            "description": sec_snapshot["description"],
+        }] if sec_snapshot is not None else [{
+            "id": "profit.us_sec_filers.world_gdp_share",
+            "status": "not_collected",
+            "description": "A separate US SEC-reporting company earnings source is not yet collected. This is not global listed profits.",
+        }]),
         "series": [entries[sid] for sid in sorted(entries)],
         "unresolved": [
             {"id": row["id"], "name": row["name"], "theme": row["theme"],
@@ -137,6 +152,9 @@ def export_static(
             (root / "series" / f"{sid}.json").write_bytes(_json_bytes(payload))
         (root / "index.json").write_bytes(_json_bytes(manifest))
         (root / "charts.json").write_bytes(_json_bytes(chart_definitions))
+        if sec_snapshot is not None:
+            (root / "supplementary").mkdir()
+            (root / "supplementary" / "sec_filer_profit.json").write_bytes(_json_bytes(sec_snapshot))
         if include_markets:
             (root / "markets").mkdir()
             (root / "fx").mkdir()

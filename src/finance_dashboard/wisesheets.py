@@ -456,6 +456,43 @@ def collect_wisesheets(
     return result
 
 
+
+def load_sec_profit_snapshot(path: Path | None = None) -> dict | None:
+    """Read validated local aggregate; never fall back to a live API fetch."""
+    from .catalog import DEFAULT_ROOT
+    path = Path(path) if path is not None else DEFAULT_ROOT / "data" / "wisesheets" / "sec_filer_profit.json"
+    if not path.is_file():
+        return None
+    try:
+        result = json.loads(path.read_text(encoding="utf-8"))
+        if (result.get("schema_version") != 1
+            or result.get("id") != "profit.us_sec_filers.world_gdp_share"
+            or result.get("status") != "partial_us_sec_reporter_coverage"
+            or result.get("currency") != "USD"):
+            raise ValueError("Incorrect SEC aggregate identity")
+        years = set()
+        for row in result["observations"]:
+            year = row["year"]
+            if year in years:
+                raise ValueError("Duplicate SEC net income year")
+            years.add(year)
+            if not Decimal(str(row["world_gdp_usd"])).is_finite():
+                raise ValueError("Invalid GDP")
+            if not Decimal(str(row["sec_filer_income_as_pct_of_world_gdp"])).is_finite():
+                raise ValueError("Invalid SEC profit/GDP ratio")
+        timestamp = datetime.fromisoformat(result["source_snapshot_at_utc"])
+        if timestamp.tzinfo is None:
+            raise ValueError("Missing snapshot timezone")
+        result["snapshot_age_days"] = max(0, (
+            datetime.now(timezone.utc) - timestamp
+        ).days)
+        result["snapshot_status"] = (
+            "stale" if result["snapshot_age_days"] > 45 else "current"
+        )
+        return result
+    except (ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+        raise WisesheetsError("Invalid SEC annual earnings snapshot") from exc
+
 def main() -> int:
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from .wisesheets import load_sec_profit_snapshot
 from os import environ
 
 from fastapi import FastAPI, HTTPException
@@ -77,6 +78,17 @@ def create_app(engine=None) -> FastAPI:
         return item
 
     market_registry = instruments()
+
+    @app.get("/api/earnings/sec-filers")
+    def sec_filer_earnings():
+        """Monthly snapshot of current SEC reporting-company universe, not world."""
+        try:
+            payload = load_sec_profit_snapshot()
+        except Exception:
+            raise HTTPException(503, "SEC earnings snapshot invalid") from None
+        if payload is None:
+            raise HTTPException(404, "SEC earnings full-universe scan not yet collected")
+        return payload
 
     @app.get("/api/markets")
     def markets():
