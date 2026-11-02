@@ -29,6 +29,20 @@ class ParserTests(unittest.TestCase):
         with self.assertRaisesRegex(ProviderError,"identify"):
             parse_fred_table_html(html, "DFEDTARU", "D")
 
+    def test_fred_html_extended_history(self):
+        html = """<div>Series ID DFII10</div>
+          <table><tr><th>DATE</th><th>VALUE</th></tr>
+          <tr><td>2003-01-02</td><td>2.1</td></tr></table>
+          <div id="extra-rows"> #2025-09-29| 1.80
+          #2025-09-30| 1.80 #2025-10-01| . #2025-10-02| 1.77 </div>"""
+        observed = parse_fred_table_html(html, "DFII10", "D")
+        self.assertEqual(observed[date(2003,1,2)], Decimal("2.1"))
+        self.assertEqual(observed[date(2025,10,2)], Decimal("1.77"))
+        self.assertEqual(len(observed), 4)
+        bad = html.replace("#2025-10-02| 1.77", "#wrong| 1.77")
+        with self.assertRaisesRegex(ProviderError, "Invalid observation period"):
+            parse_fred_table_html(bad,"DFII10","D")
+
     def test_fred_json_missing(self):
         values = parse_fred_json({"observations": [
             {"date": "2026-01-01", "value": "."},

@@ -104,8 +104,12 @@ class FredTableParser(HTMLParser):
         self.table = None
         self.row = None
         self.cell = None
+        self.extra = []
+        self.in_extra = False
 
     def handle_starttag(self, tag, attrs):
+        if tag == "div" and dict(attrs).get("id") == "extra-rows":
+            self.in_extra = True
         if tag == "table":
             self.table = []
         elif tag == "tr" and self.table is not None:
@@ -114,10 +118,14 @@ class FredTableParser(HTMLParser):
             self.cell = []
 
     def handle_data(self, data):
+        if self.in_extra:
+            self.extra.append(data)
         if self.cell is not None:
             self.cell.append(data)
 
     def handle_endtag(self, tag):
+        if tag == "div" and self.in_extra:
+            self.in_extra = False
         if tag in ("td","th") and self.cell is not None and self.row is not None:
             self.row.append("".join(self.cell).strip())
             self.cell = None
@@ -149,6 +157,20 @@ def parse_fred_table_html(html: str, identifier: str, frequency: str) -> dict[da
         if len(row) != 2:
             raise ProviderError("FRED DATE/VALUE table has an unexpected row")
         _put(result, _date(row[0], frequency), _value(row[1]))
+    # FRED HTML renders its first 1,000 observations as table rows.
+    # The rest are held as records #YYYY-MM-DD|VALUE in #extra-rows.
+    # Parse every record, or fail if a record is malformed; otherwise
+    # recent observations silently disappear for long histories.
+    extra = "".join(parser.extra)
+    if extra.strip():
+        for chunk in extra.split("#"):
+            if not chunk.strip():
+                continue
+            fields = chunk.strip().split("|")
+            if len(fields) != 2:
+                raise ProviderError("Malformed extended FRED observation row")
+            _put(result, _date(fields[0].strip(), frequency),
+                 _value(fields[1].strip()))
     if not result:
         raise ProviderError("FRED public table contains no usable observations")
     return result
