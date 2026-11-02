@@ -1,4 +1,4 @@
-"""Bounded no-secret end-to-end OECD provider diagnosis; remove after acceptance."""
+"""Bounded no-secret end-to-end OECD provider diagnosis; remove after verification."""
 import traceback
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.oecd_corporate import OECD_DATA_URL, oecd_annual_data_key, parse_oecd_annual_sector_csv
