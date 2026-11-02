@@ -49,14 +49,14 @@
       "id": "policy_instruments",
       "theme": "monetary_policy",
       "title": "Fed target upper bound versus ECB deposit facility",
-      "status": "mapped",
+      "status": "draft",
       "series_ids": [
         "policy_rate.us.fed_upper",
         "policy_rate.ea.ecb_dfr"
       ],
       "display_mode": "raw",
       "rationale": "Contrast different policy instruments while retaining explicit labels.",
-      "caveats": "Different monetary-policy instruments; do not call this harmonized policy."
+      "caveats": "Different monetary-policy instruments; do not call this harmonized policy. Not part of the validated research dashboard; its measures have different economic meanings."
     },
     {
       "id": "valuation_vs_real_yield",
@@ -128,14 +128,14 @@
       "id": "world_productivity_labour_income",
       "theme": "labour_capital",
       "title": "World productivity growth and labour income share",
-      "status": "mapped",
+      "status": "draft",
       "series_ids": [
         "labour.world.productivity_growth",
         "labour.world.income_share"
       ],
       "display_mode": "raw",
       "rationale": "Compare changes in global output per worker with workers' share of worldwide income, using two separately-labelled percentage measurements.",
-      "caveats": "Productivity is an annual growth rate and labour share is a level of income; levels are not directly comparable even though both use percentages. This does not constitute a wage/productivity-gap series."
+      "caveats": "Productivity is an annual growth rate and labour share is a level of income; levels are not directly comparable even though both use percentages. This does not constitute a wage/productivity-gap series. Not part of the validated research dashboard; its measures have different economic meanings."
     },
     {
       "id": "us_equity_net_worth_vs_cape",
@@ -305,6 +305,54 @@
       "display_mode": "raw",
       "rationale": "Show the number of countries entering the GDP-weighted corporate surplus series at each annual observation.",
       "caveats": "Count is of 2026's 38 current OECD member countries with complete annual matched OECD sector-account observations and GDP weights, not number of OECD members in the historical year. Excluded years are blank."
+    },
+    {
+      "id": "world_labour_income_share",
+      "theme": "labour_capital",
+      "title": "World labour income share",
+      "status": "mapped",
+      "series_ids": [
+        "labour.world.income_share"
+      ],
+      "display_mode": "raw",
+      "rationale": "Income share of labour, measured as a level (% of output).",
+      "caveats": "Do not compare on the same axis with productivity growth rates."
+    },
+    {
+      "id": "world_productivity_growth",
+      "theme": "labour_capital",
+      "title": "World labour productivity growth",
+      "status": "mapped",
+      "series_ids": [
+        "labour.world.productivity_growth"
+      ],
+      "display_mode": "raw",
+      "rationale": "Annual rate of change in world labour productivity.",
+      "caveats": "Annual percentage growth rate, distinct from labour share of income."
+    },
+    {
+      "id": "monthly_gold_prices",
+      "theme": "gold_currency",
+      "title": "Monthly gold average, USD per troy ounce",
+      "status": "mapped",
+      "series_ids": [
+        "gold.usd.monthly_average"
+      ],
+      "display_mode": "raw",
+      "rationale": "World Bank monthly nominal average gold prices.",
+      "caveats": "Monthly average prices are not daily gold spot or total returns."
+    },
+    {
+      "id": "world_public_debt",
+      "theme": "structural_risk",
+      "title": "Worldwide public debt",
+      "status": "mapped",
+      "series_ids": [
+        "fiscal.world.public_debt"
+      ],
+      "display_mode": "raw",
+      "rationale": "World aggregate of public debt as reported by the source.",
+      "caveats": "This is an annual/periodic debt measure, not a policy rate."
     }
   ]
 }
