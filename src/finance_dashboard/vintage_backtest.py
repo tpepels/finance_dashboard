@@ -129,12 +129,47 @@ def metrics(observations: list[dict]) -> dict | None:
             "roc_auc":round(auc,6), "calibration":bins}
 
 
+def independent_holdout_diagnostics(observations: list[dict], horizon: int) -> dict:
+    """Audit horizon overlap and approximate positive-event clustering.
+
+    The original full-month evaluation remains available. This secondary
+    pre-specified chronological subsample avoids shared future-label months,
+    but is not independently calibrated prospective model validation.
+    """
+    positives = sorted(_month(date.fromisoformat(row["asof"]))
+                       for row in observations if row["outcome"] == 1)
+    episodes, previous = 0, None
+    for month in positives:
+        if previous is None or month - previous > horizon:
+            episodes += 1
+        previous = month
+    selected, last = [], None
+    for row in sorted(observations, key=lambda item: item["asof"]):
+        month = _month(date.fromisoformat(row["asof"]))
+        if last is None or month - last >= horizon:
+            selected.append(row)
+            last = month
+    return {
+        "positive_event_episodes_approx": episodes,
+        "nonoverlapping_test_cases": len(selected),
+        "nonoverlapping_evaluation": metrics(selected),
+        "validation_status": "not_independently_validated",
+        "selection": "chronological_first_then_every_horizon_months",
+        "limitation": ("An event cluster groups overlapping positive future "
+                       "outcomes, not independently dated NBER recession cycles. "
+                       "Nonoverlapping evaluation reduces shared outcome months "
+                       "but does not remove serial correlation, hindsight dating "
+                       "or provide external prospective validation."),
+    }
+
+
 def walk_forward(root: Path, *, horizon: int=12) -> dict:
     if horizon not in HORIZONS:
         raise ValueError("Only pre-specified 6 and 12 month evaluation horizons supported")
     result = {
         "status":"insufficient_vintages", "version":VERSION,
         "horizon_months":horizon, "observations":[], "evaluation":None,
+        "independence": independent_holdout_diagnostics([], horizon),
         "input_series":[*FEATURES,TARGET],
         "interpretation":("Retrospectively evaluated, as-of ALFRED macro features and "
                           "as-of available training labels; not an independently "
@@ -195,6 +230,8 @@ def walk_forward(root: Path, *, horizon: int=12) -> dict:
             "last_training_origin":training[-1][0].isoformat(),
             "outcome":truth})
     result["evaluation"] = metrics(result["observations"])
+    result["independence"] = independent_holdout_diagnostics(
+        result["observations"], horizon)
     if result["evaluation"] is not None:
         result["status"] = "retrospective_evaluated"
     else:

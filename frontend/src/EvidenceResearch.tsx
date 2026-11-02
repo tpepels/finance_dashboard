@@ -38,6 +38,10 @@ interface PredictionBacktest {
   interpretation: string; limitations: string;
   observations: { asof: string; estimated_probability: number;
     outcome: number; past_prevalence_baseline: number; training_cases: number }[];
+  independence?: { positive_event_episodes_approx: number;
+    nonoverlapping_test_cases: number; validation_status: string;
+    limitation: string;
+    nonoverlapping_evaluation: null | { brier: number; roc_auc: number; cases: number } };
   evaluation: null | { cases: number; positives: number; negatives: number;
     brier: number; expanding_prevalence_brier: number;
     brier_skill: number | null; roc_auc: number; calibration: {
@@ -308,6 +312,17 @@ function Backtest() {
         No defensible model performance: insufficient source vintages,
         sufficiently old labelled outcomes, or balanced event/non-event cases.
         No crisis probability has been published.</p>}
+      {result.independence && <p>
+        Horizon-dependence audit: {result.independence.positive_event_episodes_approx}
+        {' '}approximate positive-event clusters, with
+        {' '}{result.independence.nonoverlapping_test_cases} pre-specified
+        nonoverlapping test windows. Validation status:
+        {' '}{result.independence.validation_status.replaceAll('_',' ')}.
+        {result.independence.nonoverlapping_evaluation
+          ? ' Nonoverlapping Brier: '+result.independence.nonoverlapping_evaluation.brier
+          : ' Too few independently spaced cases for a separate performance estimate.'}
+        {' '}{result.independence.limitation}
+      </p>}
       {result.evaluation && <div className="evidence-table"><table>
         <thead><tr><th>Predicted probability band</th><th>Test cases</th><th>Observed outcome fraction</th></tr></thead>
         <tbody>{result.evaluation.calibration.map((bin,i)=><tr key={i}>

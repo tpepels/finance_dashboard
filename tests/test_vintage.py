@@ -12,7 +12,9 @@ from finance_dashboard.vintage import (
     latest_asof_reading, available_snapshots, _month_ends,
     capture_previous_month, backfill_batch,
 )
-from finance_dashboard.vintage_backtest import target_after, fit_predict, metrics, walk_forward
+from finance_dashboard.vintage_backtest import (
+    target_after, fit_predict, metrics, walk_forward, independent_holdout_diagnostics,
+)
 
 
 class VintageTests(unittest.TestCase):
@@ -136,6 +138,18 @@ class VintageTests(unittest.TestCase):
         self.assertEqual(outcome["positives"],10)
         self.assertEqual(outcome["roc_auc"],1.0)
         self.assertLess(outcome["brier"],outcome["expanding_prevalence_brier"])
+
+    def test_overlapping_recession_windows_are_not_independent_events(self):
+        rows=[]
+        for i in range(48):
+            day=date(2010+i//12,i%12+1,28).isoformat()
+            rows.append({"asof":day,"outcome":int(10<=i<20 or 35<=i<43),
+                "estimated_probability":0.6,"past_prevalence_baseline":0.2})
+        audit=independent_holdout_diagnostics(rows,6)
+        self.assertEqual(audit["positive_event_episodes_approx"],2)
+        self.assertEqual(audit["nonoverlapping_test_cases"],8)
+        self.assertIsNone(audit["nonoverlapping_evaluation"])
+        self.assertEqual(audit["validation_status"],"not_independently_validated")
 
     def test_training_requires_past_event_cases_and_future_outcomes_mature(self):
         self.assertIsNone(target_after(date(2020,1,31),{2020*12+1:0},6))
