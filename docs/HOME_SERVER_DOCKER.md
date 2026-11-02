@@ -1,47 +1,30 @@
-# One-container finance dashboard inside your existing home-server Compose
+# Single Docker service in your existing home-server Compose
 
-This is a **single extra Docker container** called `finance-dashboard`. It bundles the React app, Python/FastAPI API, background data refresh and an on-disk SQLite database. It does not require a separate Docker Compose project, PostgreSQL container, migration container, worker container, Node runtime or reverse proxy.
+Only **one additional container**, `finance-dashboard`. The image includes the built React dashboard, Python/FastAPI, SQLite and an in-process daily macro refresh plus local monthly Wisesheets earnings collection. No PostgreSQL container, separate scheduler, Wisesheets GitHub fetch or separate Node server.
 
-**Do not combine Plex, Pi-hole, Transmission and all the other unrelated services into one container.** They remain separate services managed by your **one existing Compose file**. The finance dashboard needs only one additional service.
+Copy the [service snippet](home-server-finance-service.yml) under your existing `services:` section, alongside Monochrome, Plex, yt-dlp, Vinted etc. Clone `tpepels/finance_dashboard` as `./finance_dashboard` relative to the existing Compose file. Ensure that the host `/srv/finance-dashboard` directory is writable by the `UID/GID` defined in your media-server `.env`.
 
-## Install
-
-Place the [finance_dashboard repository](https://github.com/tpepels/finance_dashboard) next to your existing `monochrome/`, `yt-dlp-server/` and `vinted-dashboard/` directories so `./finance_dashboard` resolves inside the same Compose project:
+**Add the Wisesheets key to the existing server-side `.env`** (a GitHub Actions secret is not automatically available in Docker):
 
 ```sh
-git clone https://github.com/tpepels/finance_dashboard.git finance_dashboard
-sudo install -d -o "$(id -u)" -g "$(id -g)" /srv/finance-dashboard
+WISESHEETS_API_KEY=your_existing_key
+# FRED_API_KEY=...   # optional
 ```
 
-If the repository already exists, use `git -C finance_dashboard pull --ff-only`. If a different account runs Compose, ensure that `/srv/finance-dashboard` is writable by the UID/GID configured in the existing `.env`. The default service definition uses your existing `UID`, `GID` and `TZ` variables.
-
-**Paste** the service block from [home-server-finance-service.yml](home-server-finance-service.yml) inside the **existing** `services:` block. This file is only a snippet, not another Compose stack. It assigns host port **5052** (avoids your 5050 Vinted, 5051 playlists, 5001 Monochrome, 4545 downloads, 9091 Transmission).
-
-Run from the directory with your existing Compose file:
+Do not put credentials in Compose YAML, version-controlled files, browser code or URLs.
 
 ```sh
+git -C finance_dashboard pull --ff-only
+sudo install -d -o "$(id -u)" -g "$(id -g)" /srv/finance-dashboard
 docker compose config --quiet
 docker compose up -d --build finance-dashboard
-docker compose logs --tail=80 finance-dashboard
-docker compose ps finance-dashboard
+docker compose logs --tail=100 finance-dashboard
 ```
 
-Open `http://media-server:5052/` or `http://192.168.1.200:5052/` (only if that remains the server's current LAN address). `GET /api/health` validates the SQLite connection. On first startup, the app starts immediately and the background refresh imports historical observations one source at a time. Empty-source states are displayed until ingestion succeeds. Check `/api/data-status` for each source's last success/failure. Failure of one external provider leaves previous readings available.
+Open `http://media-server:5052/` and `http://media-server:5052/api/data-status`. The integrated SEC earnings dataset is available at `/api/earnings/sec-filers`.
 
-## Verified single-container acceptance
+The first startup migrates persistent SQLite and immediately starts asynchronous data ingestion in a Python thread. The page remains usable before all 42 sources have completed their first backfill, but individual charts may initially show missing-data states. Every 24 hours the existing macro refresh cycles again. If a Wisesheets key is configured, a *full accessible SEC filer scan* is performed only when due (roughly 30-day period), with retry cooldown, source-quality checks and bounded provider requests. The last valid snapshot persists at `/srv/finance-dashboard/wisesheets/sec_filer_profit.json`. Without a key, the bundled last verified snapshot is still readable but becomes stale.
 
-The [single-container Docker smoke run](https://github.com/tpepels/finance_dashboard/actions/runs/41513402528) passed on 2026-11-02. The workflow built a multi-stage image with React/TypeScript and Python, booted one container as the host UID/GID with a persistent SQLite bind mount, applied Alembic migrations, served the built frontend at `/`, served all 42 macro definitions and 24 chart definitions over the existing `/api` routes, and successfully restarted against the same SQLite file. Focused tests also verify SQLite WAL and a single background refresh thread; the smoke run disables external network ingestion so it completes quickly. Full external source ingestion was independently validated in Phase 2.
+The port is accessible on your LAN by default, with **no login**. Do not forward it to the public internet. Source attribution metadata does not block access in this local installation. Third-party licences still govern any external redistribution.
 
-## State and refresh
-
-- **SQLite**: persistent files `/srv/finance-dashboard/finance.sqlite3` and journal/WAL siblings. Auto-migrated with Alembic at every startup. Back up the directory (including WAL/SHM; for consistent hot backup use SQLite backup API).
-- **Automatic macro refresh:** at startup and then every 24h, using the **same existing source adapters**. One background thread in the FastAPI process, not another container or cron daemon.
-- **Wisesheets SEC filer earnings:** the monthly collector already runs through GitHub Actions using `WISESHEETS_API_KEY` stored in **GitHub Actions Secrets**. The one-container image **bundles the last committed verified aggregate** (2021–2025 fiscal years as of 2026-11-02) and the same refresh thread checks the fixed GitHub raw path once per daily cycle (`FINANCE_WISESHEETS_SYNC=1`), validating source ID, year records and snapshot timestamp before atomic installation in `/srv/finance-dashboard/wisesheets/sec_filer_profit.json`. No new service, cron job, local secret or additional Wisesheets API request. The current/last good aggregate is served at `http://media-server:5052/api/earnings/sec-filers`, and displayed in the *Supplementary company earnings* section. This source is **US SEC-reporting listed companies only**, not the complete world listed-company numerator. If remote GitHub access fails, the bundled or last persistent snapshot remains accessible. Set `FINANCE_WISESHEETS_SYNC: "0"` only to turn off the daily GitHub aggregate check.
-- **Optional market histories and FX:** set `FINANCE_INCLUDE_MARKETS: "1"` if you want the 24 optional stock/ETF histories and ECB FX feeds refreshed as well; they are not needed for the macro dashboard and are disabled by default to reduce load.
-- **WISESHEETS_API_KEY** is **not required in the home Compose**: it remains in GitHub Secrets for the existing monthly quota-bounded collector. Do not duplicate full-company scans locally. The container sync is an unauthenticated **read of the already-committed aggregate**, not a Wisesheets provider request.
-- **FRED_API_KEY** is optional in the local service; an Actions secret is not automatically copied to the home-server environment. If using the authenticated FRED API, add it to the server's existing `.env` (never to this source repository).
-- **Healthcheck** checks FastAPI + SQLite, not the success of all 42 external sources. Use `/api/data-status` for provider failures.
-- **Access:** `5052:8080` makes the site reachable on your LAN. No authentication is provided; do not expose port 5052 to the public internet without access controls.
-- **No public data redistribution:** the local UI uses your private service and all mapped observations; the rights-filtered public GitHub Pages workflow remains separate.
-
-The original multi-container `docker-compose.yml` remains in the finance repo for existing PostgreSQL development/integration workflows; **do not run it** as part of your media-server Compose project. The dedicated `Dockerfile.standalone` is the small home-server deployment target.
+If you use the repository as an independent Compose project instead, it now has a **single-service** `docker-compose.yml`, using `./data-local` by default. Do not run this separate stack alongside the same image in your main Compose; add the service to the existing project instead.
