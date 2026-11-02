@@ -134,7 +134,7 @@ def create_app(engine=None) -> FastAPI:
             "macro_refresh_configured": enabled("FINANCE_AUTO_REFRESH", "1"),
             "optional_market_refresh_configured": enabled("FINANCE_INCLUDE_MARKETS", "0"),
             "automatic_backups_configured": enabled("FINANCE_AUTO_BACKUP", "1"),
-            "verified_local_backup_manifest_count": len(backups),
+            "local_backup_manifest_count": len(backups),
             "most_recent_backup_manifest": backups[0].name if backups else None,
             "limitations": ("Coverage counts indicate local data availability, not provider "
                             "freshness or source publication vintage. Backup manifests must "
