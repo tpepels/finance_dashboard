@@ -1,0 +1,19 @@
+name: Contract checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate catalog
+        run: PYTHONPATH=src python -m finance_dashboard validate
+      - name: Run offline contract tests
+        run: PYTHONPATH=src python -m unittest discover -s tests -v

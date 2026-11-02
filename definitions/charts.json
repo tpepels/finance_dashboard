@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "charts": [
+    {
+      "id": "policy_rates_global",
+      "theme": "monetary_policy",
+      "title": "Fed, ECB and BOJ harmonized policy rates",
+      "status": "mapped",
+      "series_ids": [
+        "policy_rate.us.bis",
+        "policy_rate.ea.bis",
+        "policy_rate.jp.bis"
+      ],
+      "display_mode": "raw",
+      "rationale": "Daily BIS harmonized rates on a common axis; compare level and tightening cycles.",
+      "caveats": "BIS can splice instruments; rate corridor midpoints are not Fed upper bound."
+    },
+    {
+      "id": "gdp_growth_global",
+      "theme": "growth_inflation",
+      "title": "Global real GDP growth",
+      "status": "mapped",
+      "series_ids": [
+        "gdp.real_growth.world",
+        "gdp.real_growth.us",
+        "gdp.real_growth.eu",
+        "gdp.real_growth.cn",
+        "gdp.real_growth.in",
+        "gdp.real_growth.jp"
+      ],
+      "display_mode": "raw",
+      "rationale": "Compare annual constant-price real GDP growth across countries and the world.",
+      "caveats": "Country composition and revised annual data; avoid projecting onto daily dates."
+    },
+    {
+      "id": "domestic_equity_value",
+      "theme": "valuation",
+      "title": "Domestic listed-capitalization to GDP",
+      "status": "mapped",
+      "series_ids": [
+        "valuation.domestic_cap_gdp.us",
+        "valuation.domestic_cap_gdp.jp"
+      ],
+      "display_mode": "raw",
+      "rationale": "Compare listed equity capitalization relative to domestic output.",
+      "caveats": "Neither series is a perfect Buffett indicator; gaps and listing residence affect ratios."
+    },
+    {
+      "id": "policy_instruments",
+      "theme": "monetary_policy",
+      "title": "Fed target upper bound versus ECB deposit facility",
+      "status": "mapped",
+      "series_ids": [
+        "policy_rate.us.fed_upper",
+        "policy_rate.ea.ecb_dfr"
+      ],
+      "display_mode": "raw",
+      "rationale": "Contrast different policy instruments while retaining explicit labels.",
+      "caveats": "Different monetary-policy instruments; do not call this harmonized policy."
+    },
+    {
+      "id": "valuation_vs_real_yield",
+      "theme": "valuation",
+      "title": "CAPE versus 10-year real yield",
+      "status": "draft",
+      "series_ids": [
+        "valuation.us.cape",
+        "bond.us.real_10y"
+      ],
+      "display_mode": "indexed_100",
+      "rationale": "Examine whether changing discount rates accompany valuation changes.",
+      "caveats": "One valuation series is not yet mapped; incompatible units require explicit normalization."
+    },
+    {
+      "id": "labour_vs_profits",
+      "theme": "labour_capital",
+      "title": "Labour share and global listed profits",
+      "status": "draft",
+      "series_ids": [
+        "labour.world.income_share",
+        "profit.global.corporate_share"
+      ],
+      "display_mode": "raw",
+      "rationale": "Test capture of economic output by labour and listed companies.",
+      "caveats": "Measures have different coverage; source and definition unresolved."
+    },
+    {
+      "id": "crisis_signal",
+      "theme": "credit_recession",
+      "title": "US Sahm Rule and private credit stress",
+      "status": "draft",
+      "series_ids": [
+        "recession.us.sahm",
+        "credit.world.private_gdp_gap"
+      ],
+      "display_mode": "indexed_100",
+      "rationale": "Examine labour deterioration alongside financial leverage.",
+      "caveats": "Different frequencies and countries; meaningful alignment remains unspecified."
+    },
+    {
+      "id": "concentration_vs_valuation",
+      "theme": "market_concentration",
+      "title": "Concentration versus global valuation",
+      "status": "draft",
+      "series_ids": [
+        "concentration.global.top10",
+        "valuation.global.cape"
+      ],
+      "display_mode": "raw",
+      "rationale": "Study how concentrated global equity exposure relates to valuation.",
+      "caveats": "Both historical datasets require licensing and methodological decisions."
+    },
+    {
+      "id": "gold_vs_valuation",
+      "theme": "gold_currency",
+      "title": "Gold versus real yields",
+      "status": "draft",
+      "series_ids": [
+        "gold.usd.spot",
+        "bond.us.real_10y"
+      ],
+      "display_mode": "indexed_100",
+      "rationale": "Compare gold movements with inflation-indexed bond yields.",
+      "caveats": "Indexed mode can be meaningless for negative rates; prefer dual axes after validation."
+    },
+    {
+      "id": "public_debt_vs_rates",
+      "theme": "structural_risk",
+      "title": "Public debt versus policy rates",
+      "status": "draft",
+      "series_ids": [
+        "fiscal.world.public_debt",
+        "policy_rate.us.bis"
+      ],
+      "display_mode": "raw",
+      "rationale": "Compare long-term debt burdens and monetary policy.",
+      "caveats": "Country aggregation and mixing daily/annual measurements are unresolved."
+    }
+  ]
+}
