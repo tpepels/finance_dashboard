@@ -3,7 +3,7 @@
   finance-dashboard:
     build:
       context: ./finance_dashboard
-      dockerfile: Dockerfile.standalone
+      dockerfile: Dockerfile
     container_name: finance-dashboard
     user: "${UID}:${GID}"
     ports:
