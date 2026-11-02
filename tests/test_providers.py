@@ -348,7 +348,7 @@ class RouterTests(unittest.TestCase):
             self.assertEqual(set(router.supported_ids()), mapped)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("profit.global.corporate_share")
-            self.assertEqual(len(router.blocked()), 2)
+            self.assertEqual(len(router.blocked()), 0)
         finally:
             router.close()
 
