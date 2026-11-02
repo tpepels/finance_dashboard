@@ -6,7 +6,7 @@ Implemented for three BIS central bank policy rate series only. This document di
 
 API: \`https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/D.{US|XM|JP}\`
 
-Uses header \`Accept: application/vnd.sdmx.data+json;version=1.0.0\`. Official API documentation: https://stats.bis.org/api-doc/v2/. Country codes and daily observations are decoded from the SDMX structure's dimension-index mappings. All unexpected dimensions, duplicate series, mismatched countries, non-finite data and invalid dates cause an error, without database updates.
+Uses header \`Accept: application/vnd.sdmx.data+json;version=1.0.0\`. Official API documentation: https://stats.bis.org/api-doc/v2/. Country codes and daily observations are decoded from the SDMX structure's dimension-index mappings. Unexpected dimensions, duplicate series, mismatched countries, infinite values and invalid dates cause an error, without database updates. Historical BIS NaN/null values are treated as **missing observations** and skipped, never coerced to zero; a series containing only missing observations still fails.
 
 BIS response \`meta.prepared\` records response preparation, **not historical publication time**. No \`source_vintage\` is fabricated. The worker initially fetches full history, then performs daily polls with a 120-day overlap to catch corrections. Older revisions require \`worker --once --full\`; no claim of discovering all historical revisions automatically.
 

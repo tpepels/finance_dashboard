@@ -83,11 +83,18 @@ def parse_bis_json(payload: dict[str, Any], series_id: str) -> tuple[dict[date, 
                 period = _dimension_code(observation_dimensions, observation_index)["TIME_PERIOD"]
                 try:
                     day = date.fromisoformat(period)
-                    value = Decimal(str(raw[0]))
+                    raw_value = raw[0]
+                    # Historical euro-area rates contain absent values encoded as
+                    # null or NaN. These are genuine gaps: never turn them into zero.
+                    if raw_value is None:
+                        continue
+                    value = Decimal(str(raw_value))
                 except (TypeError, IndexError, ValueError, InvalidOperation) as exc:
                     raise ProviderError(f"Invalid daily observation: {period!r}") from exc
+                if value.is_nan():
+                    continue
                 if not value.is_finite():
-                    raise ProviderError("Non-finite BIS observation")
+                    raise ProviderError("Infinite BIS observation")
                 if day in output:
                     raise ProviderError(f"Duplicate BIS observation: {day}")
                 output[day] = value

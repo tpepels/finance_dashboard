@@ -40,9 +40,17 @@ class BisTests(unittest.TestCase):
         with self.assertRaisesRegex(ProviderError, "unexpected series"):
             parse_bis_json(fixture("JP"), "policy_rate.us.bis")
 
-    def test_non_finite_rejected(self):
-        with self.assertRaisesRegex(ProviderError, "Non-finite"):
-            parse_bis_json(fixture(values=("NaN", "3")), "policy_rate.us.bis")
+    def test_source_nan_is_missing_not_zero(self):
+        result, _ = parse_bis_json(fixture(values=("NaN", "3")), "policy_rate.us.bis")
+        self.assertEqual(result, {date(2026, 8, 18): Decimal("3")})
+
+    def test_source_null_is_missing_not_zero(self):
+        result, _ = parse_bis_json(fixture(values=(None, "3")), "policy_rate.us.bis")
+        self.assertEqual(result, {date(2026, 8, 18): Decimal("3")})
+
+    def test_infinite_value_rejected(self):
+        with self.assertRaisesRegex(ProviderError, "Infinite BIS observation"):
+            parse_bis_json(fixture(values=("Infinity", "3")), "policy_rate.us.bis")
 
     def test_malformed_index_rejected(self):
         data = fixture()
