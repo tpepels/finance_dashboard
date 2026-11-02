@@ -93,7 +93,7 @@ describe('minimal dashboard interactive acceptance', () => {
     const hide = screen.getByRole('button', { name: /Hide/ });
     await user.click(hide);
     expect(screen.queryByRole('img', { name: /Time series chart/ })).toBeNull();
-    await user.click(screen.getByRole('button', { name: /Show/ }));
+    await user.click(screen.getAllByRole('button', { name: /Show/ })[0]);
     await screen.findByRole('img', { name: /Time series chart/ });
 
     await user.click(screen.getByRole('button', { name: 'Custom' }));
