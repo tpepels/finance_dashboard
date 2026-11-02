@@ -322,38 +322,6 @@
       "notes": "Exact accounting identity, not two independently measured hourly series: using equal global hours denominators, GDP per hour / labour income per hour = GDP / labour income = 100 / world labour share percent. Labour income includes imputation for self-employed; it is wider than employee payroll, and must not be described as independently measured hourly wage growth. Annual changes measure the distributional wedge."
     },
     {
-      "id": "profit.global.corporate_share",
-      "name": "Global listed-company profit share",
-      "theme": "labour_capital",
-      "status": "unresolved",
-      "provider": "MARKET_DATA",
-      "source_key": null,
-      "source_url": "https://www.msci.com/indexes",
-      "geography": "WORLD",
-      "frequency": null,
-      "unit": null,
-      "measurement": "Listed-company profits as share of economic output",
-      "revision_policy": "not_established",
-      "rights": "unknown",
-      "notes": "Global earnings dataset and multinational geographic allocation unresolved"
-    },
-    {
-      "id": "concentration.global.top10",
-      "name": "Global equity index top-ten weight",
-      "theme": "market_concentration",
-      "status": "unresolved",
-      "provider": "MSCI",
-      "source_key": null,
-      "source_url": "https://www.msci.com/indexes",
-      "geography": "WORLD",
-      "frequency": null,
-      "unit": null,
-      "measurement": "Index share held by ten largest constituents",
-      "revision_policy": "not_established",
-      "rights": "unknown",
-      "notes": "Historical licensed constituent data unresolved"
-    },
-    {
       "id": "credit.world.private_gdp_gap",
       "name": "GDP-weighted international private credit-to-GDP gap (43 BIS economies)",
       "theme": "credit_recession",
@@ -608,6 +576,54 @@
       "revision_policy": "not_established",
       "rights": "review_required",
       "notes": "Sparse published year-end snapshots, not monthly historical coverage and not total global listed-company profits/GDP. Derived from the same universe's normalized aggregate P/E; proprietary, do not redistribute publicly."
+    },
+    {
+      "id": "concentration.global.msci_acwi_published_top10",
+      "name": "MSCI ACWI top-ten index-constituent weight (dated public snapshots)",
+      "theme": "market_concentration",
+      "status": "mapped",
+      "provider": "MSCI_PUBLISHED_TOP10",
+      "source_key": "892400/TOP10/PUBLISHED_SPARSE_SNAPSHOTS",
+      "source_url": "https://www.msci.com/indexes/index/892400/msci-acwi-index",
+      "geography": "MSCI_ACWI_DM_EM_892400",
+      "frequency": "M",
+      "unit": "percent",
+      "measurement": "Sum of weight of top ten separately listed index constituents/share classes in MSCI ACWI 892400, by exact as-of date, published public index snapshots; stored as month-indexed points",
+      "revision_policy": "not_established",
+      "rights": "review_required",
+      "notes": "Source-by-date provenance in data/msci_acwi_published_snapshots.json. Sparse public reports 2019-2026; no interpolation or inferred missing months. Unlike ETF holdings, this is actual index free-float weight. Top 10 share classes may represent fewer than 10 issuers. Historic sources include third-party-hosted original MSCI factsheets and independent research citing MSCI. Rights may restrict public redistribution."
+    },
+    {
+      "id": "profit.eu27.corporate_operating_surplus_gdp",
+      "name": "EU27 financial and non-financial corporations gross operating surplus / GDP",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "EUROSTAT_CORPORATE_GDP",
+      "source_key": "nasa_10_nf_tr/EU27_2020/S11+S12_B2A3G/S1_B1GQ",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/view/nasa_10_nf_tr/default/table?lang=en",
+      "geography": "EU27_2020",
+      "frequency": "A",
+      "unit": "percent",
+      "measurement": "100 × (EU27 institutional-sector S11 + S12 gross operating surplus ESA2010 B2A3G in current millions EUR) / EU27 whole-economy S1 nominal GDP B1GQ (same year, euro)",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Corporations include listed and unlisted financial/nonfinancial businesses. No individual firm profits, net earnings, global aggregate, or self-employment household mixed income. EU27_2020 coverage; 2002-2025 matched years in first verified source response. Missing GDP years omitted, no extrapolation. OECD SDMX access refused by CI; this is an explicitly geographically narrower replacement."
+    },
+    {
+      "id": "profit.eu27.nonfinancial_gross_surplus_value_added",
+      "name": "EU27 non-financial corporation gross operating surplus / sector value added",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "EUROSTAT_NFC_PROFIT_GVA",
+      "source_key": "nasa_10_ki/EU27_2020/S11/B2G_B3G_RAT_S11",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/view/nasa_10_ki/default/table?lang=en",
+      "geography": "EU27_2020",
+      "frequency": "A",
+      "unit": "percent",
+      "measurement": "Eurostat published gross profit share of non-financial corporations: 100 × (S11 B2G_B3G) / S11 B1G value added",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "OFFICIAL profit-share ratio in corporate gross value added, NOT in GDP. Only EU27 nonfinancial corporations, not OECD/world and excludes financial corporations S12. Useful independent source cross-check on corporate profit margins and labour share."
     }
   ]
 }
