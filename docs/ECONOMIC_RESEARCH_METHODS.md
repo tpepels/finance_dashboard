@@ -3,15 +3,15 @@
 
 ## What changed
 
-The main dashboard is now driven by `GET /api/research` and `GET /api/research/{id}`, and **not** by the original arbitrary source chart list. It displays **42 question-led indicators** in five clearly identified geographical and institutional scopes:
+The main dashboard is now driven by `GET /api/research` and `GET /api/research/{id}`, and **not** by the original arbitrary source chart list. It displays **46 question-led indicators** in five clearly identified geographical and institutional scopes:
 
 - **World & OECD**: World Bank/ILO/IMF worldwide aggregates, OECD38 *reporting-country* corporate-surplus estimates, and **separately labelled** global-equity index characteristics.
 - **United States**: BLS nonfarm business sector, PWT total-economy labour compensation/GDP, FRED/BIS monetary and credit indicators, domestic equity market value and nonfinancial replacement-cost Q. Those scopes cannot be casually combined.
-- **Euro area & EU27**: euro-area/EMU policy rates, real GDP and BIS credit gap; EU27 gross corporate surplus on national-accounts definitions. An EU27 observation is **not** a euro-area observation.
-- **Japan**: World Bank growth and listed domestic equity capitalization/GDP, BIS credit and policy rates.
+- **Euro area & EU27**: euro-area/EMU policy rates, real GDP and BIS credit gap; EU27 gross corporate surplus; separately country-level PWT labour/GDP shares in Germany, France and Italy. Neither national data nor the EU27 is the euro area.
+- **Japan**: Penn World Table labour/GDP share and its explicitly non-profit residual, World Bank growth and listed domestic equity capitalization/GDP, BIS credit and policy rates.
 - **Compare regions**: only equally defined and properly scaled real GDP growth, harmonized central bank rates, national BIS credit-to-GDP gaps and domestic equity market cap/GDP. No global aggregate is used as an equally weighted country.
 
-All source indicators are actually mapped in `definitions/series.json` and collected by existing provider adapters. Seven **additional** primary-source FRED/BLS/Penn World Table/FRED Treasury source mappings are included, bringing the catalogue to **49**. The original 21 source charts, detailed datasets and local Wisesheets SEC filer supplementary research remain available in the expandable source explorer.
+All source indicators are actually mapped in `definitions/series.json` and collected by existing provider adapters. Eleven **additional** primary-source FRED/BLS/Penn World Table/FRED Treasury source mappings are included, bringing the catalogue to **53**. The original 21 source charts, detailed datasets and local Wisesheets SEC filer supplementary research remain available in the expandable source explorer.
 
 ## New actual measured data
 
