@@ -1,13 +1,13 @@
 import * as echarts from 'echarts/core';
 import { LineChart, ScatterChart } from 'echarts/charts';
-import { GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent } from 'echarts/components';
+import { GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { EChartsCoreOption as EChartsOption, EChartsType } from 'echarts/core';
 import type { PlottedSeries, ViewMode } from './types';
 import { gapBreaks, isSparse } from './transform';
 import { HISTORY_EVENTS } from './events';
 
-echarts.use([LineChart, ScatterChart, GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent, CanvasRenderer]);
+echarts.use([LineChart, ScatterChart, GridComponent, TooltipComponent, DataZoomComponent, MarkLineComponent, LegendComponent, CanvasRenderer]);
 
 export type ChartInstance = EChartsType;
 export const createChart = (element: HTMLDivElement): EChartsType =>
@@ -25,6 +25,7 @@ export function chartOptions(
   plotted: PlottedSeries[],
   mode: ViewMode,
   showEvents: boolean,
+  compact = false,
 ): EChartsOption {
   const active = plotted.filter(s => s.observations.length);
   const palette = ['#174875', '#bc6b32', '#2f7168', '#90609c', '#73833b', '#a84b56'];
@@ -39,7 +40,9 @@ export function chartOptions(
   return {
     animation: false,
     color: palette,
-    grid: { left: 64, right: 24, top: 20, bottom: 80, containLabel: false },
+    legend: { top: 1, type: 'scroll', textStyle: { color: '#425761', fontSize: compact ? 10 : 11 },
+      itemHeight: 9, itemWidth: 16, padding: [4, 12, 0, 12] },
+    grid: { left: compact ? 56 : 64, right: 23, top: compact ? 42 : 58, bottom: compact ? 35 : 80, containLabel: false },
     xAxis: {
       type: 'time',
       axisLine: { lineStyle: { color: '#8f9b9e' } },
@@ -61,13 +64,13 @@ export function chartOptions(
       max: mode === 'percentile' ? 100 : undefined,
     },
     tooltip: {
-      trigger: 'item',
+      trigger: 'axis',
       confine: true,
       valueFormatter: (value: unknown) => Array.isArray(value)
         ? numberLabel(Number(value[1]))
         : numberLabel(Number(value)),
     },
-    dataZoom: [
+    dataZoom: compact ? [] : [
       { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
       {
         type: 'slider', xAxisIndex: 0, height: 17, bottom: 20,
@@ -95,7 +98,7 @@ export function chartOptions(
       };
       return {
         ...common, type: 'line' as const, symbol: 'circle',
-        symbolSize: 3, showSymbol: item.observations.length < 65,
+        symbolSize: compact ? 2 : 3, showSymbol: item.observations.length < 35,
         connectNulls: false, lineStyle: { width: 2 },
       };
     }),
