@@ -195,7 +195,7 @@ class RouterTests(unittest.TestCase):
                 "data":[{"trading_day (EOD)":"2025-12-31","value":31.25}]})
         router = self.router(handler)
         try:
-            result = router.fetch("profit.global.corporate_share")
+            result = router.fetch("valuation.global.cape")
             self.assertEqual(result.observations[date(2025,12,31)], Decimal("31.25"))
         finally:
             router.close()
@@ -274,7 +274,7 @@ class RouterTests(unittest.TestCase):
         try:
             self.assertEqual(len(router.supported_ids()), 23)
             with self.assertRaises(SourceUnavailable):
-                router.fetch("valuation.global.cape")
+                router.fetch("profit.global.corporate_share")
             self.assertEqual(len(router.blocked()), 7)
         finally:
             router.close()
