@@ -1,4 +1,6 @@
-# Phase 2 — stock, ETF and currency market data
+# Optional market-data infrastructure — stock, ETF and currency histories
+
+**Owner-approved macro-first decision:** Existing ETF listing data remains available, but per-ETF NAV reconciliation and ticker-history checks are nonblocking optional work for the macro dashboard. See [scope amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md).
 
 ## Implemented and verified (2026-11-02)
 
