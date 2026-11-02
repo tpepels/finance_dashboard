@@ -54,7 +54,7 @@ The React/ECharts interactive dashboard (Phase 3), allocation/risk analytics and
 - [x] Wisesheets supplementary SEC-filer scan and API/static export completed with truthful coverage labelling.
 - [x] Owner approved replacing the complete monthly index weights with **eight source-cited sparse historical MSCI ACWI index observations**; all original source semantics remain in the [superseded archive](../definitions/superseded_series.json).
 - [x] Owner approved a **corporate gross operating surplus** national-accounts measurement instead of listed-company net earnings, and the working public Eurostat EU27 implementation explicitly identifies its narrower geographic coverage. Original definition archived; no claim of world/OECD coverage.
-- [ ] Full repeatable **39-series** macro PostgreSQL/API/static acceptance including the two replacement families (three new IDs), revisions, historical gaps, rights and provenance; check only when full live run passes.
+- [x] Full repeatable **39-series** macro PostgreSQL/API/static acceptance including the two replacement families (three new IDs), revisions, historical gaps, rights and provenance. [39-series PostgreSQL/FastAPI acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41499045751) and [39-series static export](https://github.com/tpepels/finance_dashboard/actions/runs/41498656329) passed.
 
 **Nonblocking optional market-data debt:** issuer NAV/distribution reconciliation and historical ticker/venue continuity were removed from Phase 2 gates by the owner's [macro-first scope amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md). No claim is made that these optional audits passed.
 
