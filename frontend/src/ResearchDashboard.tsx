@@ -44,6 +44,28 @@ const GROUPS = [
   'Data coverage',
 ];
 
+/** Editorial relationships: concrete, measurement-aware hypotheses to inspect,
+ * not unsupported causal conclusions or financial recommendations. */
+const RELATIONSHIPS: Record<string, string> = {
+  'world|Growth and demand': 'Read global real output growth alongside world labour productivity growth, but keep GDP-weighted country output and output-per-worker measures separate.',
+  'world|Labour and distribution': 'Inspect whether labour’s GDP share rises when output per worker grows. OECD corporate gross operating surplus is shown beside, not numerically added to, the world labour share because the population and accounting boundary differ.',
+  'world|Debt and leverage': 'Use international BIS credit-gap trends with the separate coverage indicator and IMF public debt/GDP. These measure different sectors and should not be summed into an undifferentiated debt score.',
+  'world|Capital and equity valuation': 'Read global listed market capitalization/GDP next to index-based P/E; the two sources do not cover the same company universe, so multiplying them into a supposed worldwide profit figure would be invalid.',
+  'world|Ownership and concentration': 'Concentration is an equity-index holding-weight statistic. In a benchmark heavily weighted to US securities, rising concentration must not be presented as worldwide concentration of economic production.',
+  'world|Financial conditions': 'The gold/equity series is a historical return correlation; it tests how diversification behaved, not why money or wages moved.',
+  'us|Growth and demand': 'Growth in the whole US economy provides context for the nonfarm-business labour productivity series; do not combine their levels as if they used the same denominator.',
+  'us|Labour and distribution': 'Compare BLS output per hour with compensation deflated by the same production price series. The CPI-based pay series addresses purchasing power, while the PWT GDP labour share and BLS nonfarm labour share index address distribution in different populations.',
+  'us|Financial conditions': 'Read Treasury 10y–3m inversion alongside the Sahm labour-market measure, real 10-year TIPS yield and the nominal policy rate; these are distinct views of financing and recession conditions, not a mechanically summed forecast.',
+  'us|Capital and equity valuation': 'Separate Shiller CAPE (price relative to smoothed earnings), BEA Q1 (market value relative to produced-asset replacement cost) and domestic listed capitalization/GDP. They are different valuation lenses.',
+  'europe|Growth and demand': 'GDP growth uses the euro-area currency-union boundary; the corporate surplus measures below use EU27 national accounts. The cohorts are not identical.',
+  'europe|Labour and distribution': 'EU27 corporate operating surplus relative to GDP and nonfinancial corporate surplus relative to its own sector GVA describe distinct accounting margins. Keep both visible but off a shared comparison axis.',
+  'japan|Debt and leverage': 'Use Japan’s credit-to-GDP gap to study deviation from domestic credit trend, with policy stance and GDP growth as context rather than invented causal coefficients.',
+  'compare|Growth and demand': 'Only annual real GDP growth rates from the same World Bank indicator appear together; no GDP-size weighting is hidden in this geographical comparison.',
+  'compare|Financial conditions': 'Only BIS harmonized nominal central bank policy rates appear on this axis. A real rate comparison requires separately matched national inflation data.',
+  'compare|Debt and leverage': 'BIS national credit-to-GDP gaps share methodology and units, but country financial-system coverage still differs.',
+  'compare|Capital and equity valuation': 'World Bank listed-domestic-capitalization/GDP is the same indicator for US and Japan; differences can reflect listing structure as well as market prices.',
+};
+
 const YEARS = [
   { label: '15 years', value: '15' },
   { label: '30 years', value: '30' },
@@ -303,6 +325,8 @@ export default function ResearchDashboard() {
         <div className="research-chapter-heading">
           <h2>{group.theme}</h2><span>{group.items.length} {group.items.length === 1 ? 'measure' : 'measures'}</span>
         </div>
+        {RELATIONSHIPS[region + '|' + group.theme]
+          && <p className="research-relationship">{RELATIONSHIPS[region + '|' + group.theme]}</p>}
         {group.theme === 'Labour and distribution' && (region === 'world' || region === 'us')
           && <DistributionLens region={region} />}
         <div className="research-grid">
