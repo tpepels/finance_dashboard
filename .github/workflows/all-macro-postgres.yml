@@ -6,9 +6,11 @@ on:
       - scripts/all_macro_pg_smoke.py
       - .github/workflows/all-macro-postgres.yml
       - migrations/**
+      - src/finance_dashboard/database.py
       - src/finance_dashboard/providers.py
       - src/finance_dashboard/macro_aggregates.py
       - definitions/series.json
+      - tests/test_postgres.py
 jobs:
   all-macro:
     runs-on: ubuntu-latest
