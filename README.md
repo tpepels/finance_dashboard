@@ -6,7 +6,8 @@ A **local-only** macroeconomic research dashboard with source-traceable observat
 
 ```bash
 cp .env.example .env
-# Set UID/GID to the owner of your persistent data directory.
+mkdir -p data-local
+# Set UID/GID in .env to the owner of your persistent data directory.
 # Add WISESHEETS_API_KEY to .env if you want local monthly SEC filings refresh.
 docker compose up -d --build
 docker compose logs --tail=80 finance-dashboard
