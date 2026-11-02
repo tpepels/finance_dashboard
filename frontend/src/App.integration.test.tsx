@@ -24,7 +24,7 @@ const chart: ChartDefinition = {
   caveats: 'Central banks may use different rate instruments.',
 };
 const context: DataContext = {
-  series: definitions, charts: [chart], publicOnly: false,
+  series: definitions, charts: [chart],
   status: Object.fromEntries(definitions.map(d => [d.id, {
     status: 'success', last_success: '2026-11-02T10:00:00Z',
   }])),
@@ -43,7 +43,14 @@ vi.mock('./data', () => ({
   localApiMode: true,
   loadContext: vi.fn(async () => context),
   loadSeries: vi.fn(async (id: string) => source(id)),
+  loadInsight: vi.fn(async (ids: string[]) => ({
+    series: ids.map(id => ({ id, name: id, status: 'ready',
+      date: '2026-10-30', value: '3.25', unit: 'percent', count: 2,
+      year_change: null })),
+    matched_spread: null, method: 'Exact source observations only.',
+  })),
 }));
+vi.mock('./SupplementaryEarnings', () => ({ default: () => null }));
 vi.mock('./viz', () => ({
   chartOptions: vi.fn(() => ({})),
   numberLabel: (n: number) => String(n),
@@ -77,7 +84,7 @@ describe('minimal dashboard interactive acceptance', () => {
     })).toBeTruthy();
     // The first contract-defined chart is already expanded by default.
     await screen.findByRole('img', { name: /Time series chart/ });
-    expect(screen.getByText('Compare harmonized policy rates.')).toBeTruthy();
+    expect(screen.getByText(/Compare the common-date level and spread/)).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Data table' }));
     expect(screen.getAllByText('real-run-123').length).toBe(3);
     expect(screen.getAllByText('real-run-456').length).toBe(3);
@@ -90,7 +97,7 @@ describe('minimal dashboard interactive acceptance', () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByRole('img', { name: /Time series chart/ });
-    const hide = screen.getByRole('button', { name: /Hide/ });
+    const hide = screen.getAllByRole('button', { name: /Hide/ })[0];
     await user.click(hide);
     expect(screen.queryByRole('img', { name: /Time series chart/ })).toBeNull();
     await user.click(screen.getAllByRole('button', { name: /Show/ })[0]);
@@ -105,7 +112,8 @@ describe('minimal dashboard interactive acceptance', () => {
     expect(within(selector).queryByRole('option', { name: /real GDP/ })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Index 100' }));
-    expect(within(selector).getByRole('option', { name: /real GDP/ })).toBeTruthy();
+    expect(within(selector).queryByRole('option', { name: /real GDP/ })).toBeNull();
+    expect(screen.getByText(/Only equivalent economic measurements/)).toBeTruthy();
     await user.click(screen.getByRole('checkbox', { name: 'Historical markers' }));
     await user.click(screen.getByRole('button', { name: 'Copy chart link' }));
     await waitFor(() => {
