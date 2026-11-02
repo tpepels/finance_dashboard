@@ -120,3 +120,7 @@ The six Phase 2 data-definition gaps have been reduced to two:
 The two outstanding exact datasets are historical MSCI ACWI constituent free-float weights and consolidated worldwide **listed-company earnings** with defensible multinational allocation. A current index fact-sheet or index P/E snapshot cannot reconstruct either history. See [exact gap audit](docs/ORIGINAL_GAPS.md).
 
 Historical issuer NAV reconciliation, ticker rename continuity, and a permanent production deployment are separately tracked. A full 32-source historical PostgreSQL ingestion and read-only API smoke test passed in a disposable environment; [acceptance run](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670).
+
+### Phase 2 locked project contracts
+
+The source-of-truth project baseline (features, component ownership, delivery acceptance and scope-change policy) is recorded in [feature contract](docs/PHASE_2_FEATURE_CONTRACT.md), [architecture contract](docs/PHASE_2_ARCHITECTURE_CONTRACT.md) and [implementation contract](docs/PHASE_2_IMPLEMENTATION_CONTRACT.md). These documents freeze the *agreed requirements*, not the code or GitHub branch permissions. [Remaining exact-data sources and Yahoo/aggregate alternatives](docs/ORIGINAL_GAPS.md#source-access-assessment-yahoo-finance-and-aggregated-alternatives-2026-11-02) are separately assessed. Phase 2 remains open until the exact originals and reconciliation checks pass or scope is explicitly amended by the owner.
