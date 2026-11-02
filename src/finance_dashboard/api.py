@@ -17,6 +17,7 @@ from .service import current_observations
 from .market import instruments
 from .market_service import MarketIngestionService
 from .market_analytics import rolling_gold_vs_global_etf
+from .insights import same_measure, summarize
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
 from functools import partial
@@ -201,6 +202,22 @@ def create_app(engine=None) -> FastAPI:
                     ]
                 })
         return {"series": output, "snapshot_kind": "app_first_seen_not_publication_vintage"}
+
+    @app.post("/api/chart-insight")
+    def chart_insight(request: SeriesQuery):
+        """Backend-only descriptive statistics; compare like-for-like measures."""
+        for sid in request.series_ids:
+            if sid not in supported:
+                raise HTTPException(422, f"Unavailable source: {sid}")
+        if not same_measure(request.series_ids):
+            raise HTTPException(422, "Unrelated economic measurements cannot share an insight")
+        with Session(db) as session:
+            rows = [(by_id[sid], current_observations(
+                session, sid, request.start, request.end, request.snapshot_at))
+                    for sid in request.series_ids]
+        if any(len(points) > 100_000 for _, points in rows):
+            raise HTTPException(413, "Readout exceeds source observation limit")
+        return summarize(rows)
 
     @app.get("/api/data-status")
     def data_status():
