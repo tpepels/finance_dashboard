@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ChartCard from './ChartCard';
+import SupplementaryEarnings from './SupplementaryEarnings';
 import { loadContext, localApiMode } from './data';
 import type { ChartSettings, DataContext, RangePreset, ViewMode } from './types';
 
@@ -138,6 +139,7 @@ export default function App() {
                   deepLink={chart.id === link.id ? link.settings : undefined} />)}
             </div>}
           </section>)}
+        <SupplementaryEarnings publicOnly={context.publicOnly} />
         <section className="site-methods">
           <h2>Reading these charts</h2>
           <p>Values remain at the frequency recorded by each source. No absent days, months or years are filled. Source data can be revised; displayed histories represent the latest ingested observations, not necessarily values known to investors at an earlier date.</p>
