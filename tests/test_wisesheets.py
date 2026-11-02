@@ -66,6 +66,21 @@ class WiseTests(unittest.TestCase):
         self.assertEqual(aggregate["observations"][0]["untraceable_earnings_issuers"],1)
         self.assertEqual(D(aggregate["observations"][0]["sec_filer_net_income_usd"]),D(0))
 
+    def test_future_and_inconsistent_fiscal_rows_are_counted_not_used(self):
+        base={"ticker":"AAPL","cik":"0000320193","metric":"net_income",
+              "fiscalPeriod":"FY","unit":"USD","value":"900",
+              "source":{"kind":"reported","accession":"x","filingDate":"2026-10-31"}}
+        payload={"meta":{"layout":"long"},"data":[
+            {**base,"fiscalYear":2028,"periodEnd":"2028-12-31"},
+            {**base,"fiscalYear":2025,"periodEnd":"2020-12-31"},
+            {**base,"fiscalYear":2024,"periodEnd":"2024-09-30"},
+        ]}
+        quality={}
+        vals=parse_financials(payload,{"AAPL":"320193"},quality=quality)
+        self.assertEqual(len(vals),1)
+        self.assertEqual(quality["future_fiscal_rows"],1)
+        self.assertEqual(quality["inconsistent_fiscal_year_rows"],1)
+
     def test_ecb_cross_rate_and_partial_issuer_coverage(self):
         issuers={
             "1":{"cik":"1","ticker":"AAPL","has_financials":True},

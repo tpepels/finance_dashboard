@@ -92,7 +92,7 @@ def unique_issuers(rows: list[dict]) -> dict[str, dict]:
     return issuers
 
 
-def parse_financials(payload: dict, requested: dict[str, str]) -> dict[tuple[str, int], dict]:
+def parse_financials(payload: dict, requested: dict[str, str], *, quality: dict | None = None) -> dict[tuple[str, int], dict]:
     """Fiscal-year net income; retain losses and SEC XBRL provenance."""
     if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
         raise WisesheetsError("Financial response missing observations")
@@ -110,14 +110,24 @@ def parse_financials(payload: dict, requested: dict[str, str]) -> dict[tuple[str
         if row.get("metric") != "net_income" or row.get("fiscalPeriod") != "FY":
             raise WisesheetsError("Nonannual or wrong financial metric")
         year = row.get("fiscalYear")
-        if not isinstance(year, int) or not 2000 <= year <= date.today().year:
+        if not isinstance(year, int) or year < 2000:
             raise WisesheetsError("Invalid fiscal year")
+        if year > date.today().year:
+            if quality is not None:
+                quality["future_fiscal_rows"] = quality.get("future_fiscal_rows", 0) + 1
+            continue
         try:
             period_end = date.fromisoformat(str(row.get("periodEnd")))
         except (ValueError, TypeError) as exc:
             raise WisesheetsError("Invalid fiscal end date") from exc
-        if abs(period_end.year - year) > 1 or period_end > date.today():
-            raise WisesheetsError("Fiscal period unexpectedly distant or future")
+        if period_end > date.today():
+            if quality is not None:
+                quality["future_fiscal_rows"] = quality.get("future_fiscal_rows", 0) + 1
+            continue
+        if abs(period_end.year - year) > 1:
+            if quality is not None:
+                quality["inconsistent_fiscal_year_rows"] = quality.get("inconsistent_fiscal_year_rows", 0) + 1
+            continue
         unit = str(row.get("unit") or "").strip().upper()
         if not unit or len(unit) > 24:
             raise WisesheetsError("Financial currency is missing")
@@ -285,6 +295,7 @@ class WisesheetsClient:
             key=lambda x: x["ticker"],
         )
         records = {}
+        self.quality_counts = {"future_fiscal_rows": 0, "inconsistent_fiscal_year_rows": 0}
         for index in range(0, len(chosen), batch_size):
             batch = chosen[index:index+batch_size]
             ticker_to_cik = {r["ticker"]: r["cik"] for r in batch}
@@ -293,7 +304,7 @@ class WisesheetsClient:
                 "period": "last5y", "frequency": "annual",
                 "layout": "long", "include": "source",
             })
-            got = parse_financials(response, ticker_to_cik)
+            got = parse_financials(response, ticker_to_cik, quality=self.quality_counts)
             for key, record in got.items():
                 if key in records:
                     raise WisesheetsError("Issuer unexpectedly appears in multiple financial batches")
@@ -467,6 +478,7 @@ def collect_wisesheets(
     result["wisesheets_requests_used_this_run"] = client.requests_made
     result["unique_issuers_with_financials"] = len({cik for (cik, _), r in records.items() if r.get("source_is_verifiable", True)})
     result["unique_issuers_with_any_earnings_row"] = len({cik for cik, _ in records})
+    result["excluded_invalid_fiscal_records"] = getattr(client, "quality_counts", {})
     return result
 
 
