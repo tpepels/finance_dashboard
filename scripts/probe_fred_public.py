@@ -5,7 +5,7 @@ for sid in ("DFEDTARU","DFII10","SAHMREALTIME","NCBCEPNW"):
     for suffix in ("", ".txt"):
         url=f"https://fred.stlouisfed.org/data/{sid}{suffix}"
         try:
-            r=httpx.get(url,timeout=10,follow_redirects=False)
+            r=httpx.get(url,timeout=12,follow_redirects=True)
             text=r.text
             print(json.dumps({
                 "series":sid,"suffix":suffix,"status":r.status_code,
@@ -13,7 +13,14 @@ for sid in ("DFEDTARU","DFII10","SAHMREALTIME","NCBCEPNW"):
                 "content_type":r.headers.get("content-type"),
                 "has_header":"DATE" in text and "VALUE" in text,
                 "date_count":text.count("2026-"),
-                "snippet":text[:80].replace("\n"," ")
+                "snippet":text[:80].replace("\n"," "),
+                "final_url":str(r.url),
+                "date_last_pos":text.find("2026-10-29"),
+                "end_context":text[max(0,text.find("2026-10-29")-120):text.find("2026-10-29")+130].replace("\n"," ") if text.find("2026-10-29")>=0 else "",
+                "html_row_count":text.count("<tr"),
+                "text_row_count":text.count("2026-"),
+                "pre_count":text.count("<pre"),
+                "near_2025":text[max(0,text.find("2025-10-01")-90):text.find("2025-10-01")+120].replace("\n"," ") if text.find("2025-10-01")>=0 else ""
             }),flush=True)
         except Exception as exc:
             print(json.dumps({"series":sid,"suffix":suffix,"error":type(exc).__name__}),flush=True)
