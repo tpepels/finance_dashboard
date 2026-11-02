@@ -95,7 +95,9 @@ def fetch_snapshot(series_id: str, asof: date, *, api_key: str,
         return existing
     # One as-of date per request; fetch only a bounded history required for
     # feature look-back without resampling or fabricating observation dates.
-    start = asof - timedelta(days=430)
+    # Recession labels need complete earlier historical months for walk-forward
+    # training; financial features only need a recent bounded lookback.
+    start = date(1900, 1, 1) if series_id == 'USREC' else asof - timedelta(days=430)
     response = client.get(FRED_OBSERVATIONS, params={
         "series_id": series_id, "api_key": api_key, "file_type": "json",
         "realtime_start": asof.isoformat(), "realtime_end": asof.isoformat(),
