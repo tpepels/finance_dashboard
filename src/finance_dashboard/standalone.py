@@ -61,6 +61,20 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
             # A malformed provider response must not terminate the API or
             # silently kill refresh. Do not log URLs containing API keys.
             log.error("Background refresh cycle aborted (error redacted); preserving previous data")
+        if enabled("FINANCE_AUTO_BACKUP", "1") and not stopped.is_set():
+            try:
+                from .backup import backup_local, source_database_path
+                backup_local(
+                    Path(environ.get("FINANCE_BACKUP_DIR", "/data/backups")),
+                    source_db=source_database_path(),
+                    earnings_snapshot=Path(environ.get(
+                        "WISESHEETS_SNAPSHOT_PATH",
+                        "/data/wisesheets/sec_filer_profit.json")),
+                    keep=int(environ.get("FINANCE_BACKUP_KEEP", "14")),
+                )
+                log.info("Verified SQLite online backup created")
+            except Exception:
+                log.warning("SQLite online backup failed; latest verified backups retained")
         if stopped.wait(interval_seconds):
             break
 
