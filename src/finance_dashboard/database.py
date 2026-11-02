@@ -56,7 +56,7 @@ class ObservationVersion(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     series_id: Mapped[str] = mapped_column(ForeignKey("series.id"), index=True)
     period: Mapped[date] = mapped_column(Date(), index=True, nullable=False)
-    value: Mapped[Decimal] = mapped_column(Numeric(24, 10), nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(32, 10), nullable=False)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ingestion_run_id: Mapped[str] = mapped_column(ForeignKey("ingestion_runs.id"), nullable=False)
 
