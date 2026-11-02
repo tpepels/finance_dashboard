@@ -280,7 +280,7 @@
       ],
       "display_mode": "raw",
       "rationale": "Track corporate gross operating surplus as a share of national GDP across 2026's 38 OECD members, GDP weighted, without listing individual firms.",
-      "caveats": "OECD membership fixed retrospectively to 2026; GDP-weighted average is a documented researcher composite rather than an official aggregate published by OECD. Data only for years with at least 35/38 GDP weights, 29 country reports and >=80% GDP coverage. Two corporate sectors S11+S12, includes unlisted corporations, no households; WDI nominal USD GDP weighting, OECD country-local-account denominator."
+      "caveats": "OECD membership fixed retrospectively to 2026; GDP-weighted average is a documented researcher composite rather than an official aggregate published by OECD. Data only for years with at least 35/38 GDP weights, 29 country reports and >=80% GDP coverage. Two corporate sectors S11+S12, includes unlisted corporations, no households; WDI nominal USD GDP weighting, OECD country-local-account denominator. The US, Japan and Canada use currency-validated World Bank local nominal GDP when OECD product taxes are absent; all corporate numerators remain official OECD national accounts."
     },
     {
       "id": "oecd38_corporate_surplus_coverage",
