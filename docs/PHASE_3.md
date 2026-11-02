@@ -11,7 +11,7 @@ The owner's November 2, 2026 brief refined the original contract:
 
 ## Delivered implementation on `main`
 
-- **38 indicators** with actual source IDs and research questions, grouped across five regional tabs: World & OECD (12), United States (13), Euro area & EU27 (5), Japan (4), and Compare regions (4).
+- **42 indicators** with actual source IDs and research questions, grouped across five regional tabs: World & OECD (12), United States (14), Euro area & EU27 (5), Japan (4), and Compare regions (7).
 - Seven additional **FRED/BLS/Penn World Table** source contracts (`OPHNFB`, `COMPNFB`, `IPDNBS`, `PRS85006173`, `COMPRNFB`, `LABSHPUSA156NRUG`, `T10Y3M`), using the existing provider adapters. The canonical source catalogue now holds **49** mappings.
 - Dedicated Python `research.py` indicator registry and `GET /api/research` and `GET /api/research/{id}`, alongside unchanged `/api/series`, `/api/query`, `/api/charts`, and `/api/data-status` API.
 - Real source-dated latest readings and dated annual changes for each plotted series. Multi-country common-date high-low differences are calculated **only when every requested geography has a reading on an identical source date**.
