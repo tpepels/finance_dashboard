@@ -61,6 +61,10 @@ class StandaloneContainerTests(TestCase):
                         self.assertEqual(response.status_code, 200)
                         self.assertEqual(response.json()["series"][0]["status"], "no_data")
                         self.assertEqual(client.get("/docs").status_code, 200)
+                        aggregate = client.get("/api/earnings/sec-filers")
+                        self.assertEqual(aggregate.status_code, 200)
+                        self.assertEqual(aggregate.json()["id"], "profit.us_sec_filers.world_gdp_share")
+                        self.assertEqual(len(aggregate.json()["observations"]), 5)
             finally:
                 engine.dispose()
 
@@ -76,6 +80,7 @@ class StandaloneContainerTests(TestCase):
             Base.metadata.create_all(engine)
             try:
                 with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_INCLUDE_MARKETS="0",
+                              FINANCE_WISESHEETS_SYNC="0",
                               FINANCE_DASHBOARD_UI_DIR=None, REFRESH_INTERVAL_SECONDS="3600"),
                       patch("finance_dashboard.worker.refresh_all", side_effect=fake_refresh),
                       patch("finance_dashboard.worker.refresh_market_all") as market):
