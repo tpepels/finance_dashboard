@@ -73,6 +73,16 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                              outcome["asof"])
             except Exception:
                 log.warning("ALFRED month-end capture failed; source API credentials redacted")
+        if enabled("FINANCE_SEC_HOLDINGS_REFRESH", "0") and not stopped.is_set():
+            try:
+                from .sec_holdings_sync import collect_if_due
+                result=collect_if_due()
+                if result["status"] == "partial":
+                    log.warning("Official SEC N-PORT refresh partially failed; retaining stored filings")
+                elif result["status"] == "complete":
+                    log.info("Official SEC N-PORT monthly report collection completed")
+            except Exception:
+                log.warning("SEC N-PORT collection failed; preserving verified historical filings")
         if enabled("FINANCE_AUTO_BACKUP", "1") and not stopped.is_set():
             try:
                 from .backup import backup_local, source_database_path
