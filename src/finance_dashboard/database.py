@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from os import environ
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, create_engine
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -21,7 +21,22 @@ def database_url() -> str:
 
 
 def make_engine(url: str | None = None):
-    return create_engine(url or database_url(), pool_pre_ping=True)
+    target = url or database_url()
+    if not target.startswith("sqlite"):
+        return create_engine(target, pool_pre_ping=True)
+    # One persistent local DB serves refresh and HTTP reads concurrently.
+    engine = create_engine(target, pool_pre_ping=True, connect_args={"timeout": 30})
+
+    @event.listens_for(engine, "connect")
+    def configure_sqlite(connection, _record):
+        cur = connection.cursor()
+        try:
+            cur.execute("PRAGMA busy_timeout = 30000")
+            cur.execute("PRAGMA journal_mode = WAL")
+            cur.execute("PRAGMA synchronous = NORMAL")
+        finally:
+            cur.close()
+    return engine
 
 
 class Base(DeclarativeBase):
