@@ -10,7 +10,7 @@ interface Operations {
   last_successful_macro_run_utc: string | null;
   optional_market_refresh_configured: boolean;
   automatic_backups_configured: boolean;
-  verified_local_backup_manifest_count: number;
+  local_backup_manifest_count: number;
   most_recent_backup_manifest: string | null;
   limitations: string;
 }
@@ -46,7 +46,7 @@ export default function OperationsStatus() {
         <span>ECB reference FX histories</span></div>
       <div><strong>{data.failed_macro_ingestion_runs_total}</strong>
         <span>historical ingestion failures (all runs)</span></div>
-      <div><strong>{data.verified_local_backup_manifest_count}</strong>
+      <div><strong>{data.local_backup_manifest_count}</strong>
         <span>local backup manifests</span></div>
       <div><strong>{data.optional_market_refresh_configured ? 'Enabled' : 'Disabled'}</strong>
         <span>optional Yahoo/ECB refresh</span></div>
