@@ -112,3 +112,21 @@ The backend has verified all 24 investment instruments against live PostgreSQL i
 **Do not close Phase 2** until both original outstanding datasets and these
 agreed integration checks have been implemented and verified. Do not claim a
 premium dataset can be accessed merely by assuming usage permission.
+
+
+## Source-access assessment: Yahoo Finance and aggregated alternatives (2026-11-02)
+
+The original two indicators remain **unmapped**. These concrete sources offer partial or point-in-time historical evidence and are not authorized substitutes for their exact definitions:
+
+| Route | Verifiable public coverage | Use / limitation |
+|---|---|---|
+| MSCI Index Constituents API / Index Deep History | Historical MSCI index securities for entitled subscribers | **Exact route** to `concentration.global.top10`; index 892400 and float-adjusted weights must be verified. Requires entitlement. [API](https://developer.msci.com/apis/index-api), [history](https://dataexplorer.msci.com/ui/products/DM_Index_Deep_History) |
+| Official MSCI ACWI factsheets/profile | Source-dated top-ten totals and index capitalization/valuation; 24.62% April 2026, 25.40% September 2026 | Exact index *snapshots*, **not a complete monthly history**. [MSCI ACWI](https://www.msci.com/indexes/index/892400/msci-acwi-index) |
+| SEC N-PORT | Public fund portfolio holdings data Oct 2019–Sep 2026, quarterly dataset releases | A reconstructible *ACWI fund holdings* history from iShares fund records; **ETF proxy only**. Filter the correct fund series/registrant and observation date. [SEC datasets](https://www.sec.gov/data-research/sec-markets-data/form-n-port-data-sets) |
+| iShares holdings | Downloadable current/historical-as-of holdings selected by fund site | Reconcile with SEC N-PORT; benchmark weights may differ. [Fund source](https://www.ishares.com/us/products/239600/ishares-msci-acwi-imi-etf) |
+| Yahoo Finance | Current `ACWI` ETF top-ten holdings (retrieved snapshot: ~25.30%) and instrument financial/price histories | Useful third-party ETF cross-check; no verified complete historical MSCI security weights or world-listed issuer master. ETF P/E and index P/E cannot be used interchangeably. [Yahoo holdings](https://ca.finance.yahoo.com/quote/ACWI/holdings/) |
+| MSCI ACWI valuation | Sep 30 2026 index cap **USD 102.69T**, index P/E **21.35**, implying about **USD 4.81T** trailing earnings if this P/E is interpreted as cap/aggregate earnings | **Index-implied earnings proxy**, not all worldwide listed-company net income. Publish provider P/E methodology, exclusions and reference date; no unsupported assumption of exact net-profit accounting. [MSCI ACWI](https://www.msci.com/indexes/index/892400/msci-acwi-index) |
+| Siblis global-market P/E | Public global aggregate P/E for year-ends 2016–2025 plus Sep 2026; fuller historical data commercial | Source provides *aggregate* index cap/normalized net income methodology rather than an average P/E, but P/E alone is not an absolute profit series without **same-universe, same-date capitalization**. Full series and reuse rights require provider terms. [Global index P/E](https://siblisresearch.com/data/global-markets-pe/), [API](https://siblisresearch.com/financial-data-api/), [licensing](https://siblisresearch.com/data-licensing/) |
+| Existing Wisesheets supplementary | 8,179 current SEC CIKs; 6,161 traceable financial filers; 2021–2025 | Useful measured SEC-listed partial universe, not global or survivorship-free. [Collector](WISESHEETS.md) |
+
+**Implementation decision:** retain exact `concentration.global.top10` and `profit.global.corporate_share` as unresolved until their required source histories pass the contracts. New approaches can be implemented as separately labelled `proxy.*` or supplementary series after a source/rights review; no implicit replacement is approved. Do not combine one provider's index cap with another provider's P/E unless constituent universe, date and valuation methodology have been independently reconciled. If the owner elects to change the original scope, record an explicit change to the [locked feature contract](PHASE_2_FEATURE_CONTRACT.md) and [implementation contract](PHASE_2_IMPLEMENTATION_CONTRACT.md).
