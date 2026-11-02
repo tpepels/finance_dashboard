@@ -11,14 +11,14 @@ The owner's November 2, 2026 brief refined the original contract:
 
 ## Delivered implementation on `main`
 
-- **42 indicators** with actual source IDs and research questions, grouped across five regional tabs: World & OECD (12), United States (14), Euro area & EU27 (5), Japan (4), and Compare regions (7).
-- Seven additional **FRED/BLS/Penn World Table** source contracts (`OPHNFB`, `COMPNFB`, `IPDNBS`, `PRS85006173`, `COMPRNFB`, `LABSHPUSA156NRUG`, `T10Y3M`), using the existing provider adapters. The canonical source catalogue now holds **49** mappings.
+- **46 indicators** with actual source IDs and research questions, grouped across five regional tabs: World & OECD (12), United States (14), Euro area & EU27 (6), Japan (6), and Compare regions (8).
+- Seven additional **FRED/BLS/Penn World Table** source contracts (`OPHNFB`, `COMPNFB`, `IPDNBS`, `PRS85006173`, `COMPRNFB`, `LABSHPUSA156NRUG`, `T10Y3M`), using the existing provider adapters. The canonical source catalogue now holds **53** mappings.
 - Dedicated Python `research.py` indicator registry and `GET /api/research` and `GET /api/research/{id}`, alongside unchanged `/api/series`, `/api/query`, `/api/charts`, and `/api/data-status` API.
 - Real source-dated latest readings and dated annual changes for each plotted series. Multi-country common-date high-low differences are calculated **only when every requested geography has a reading on an identical source date**.
 - `us_productivity_pay` joins BLS quarterly nonfarm business output/hour and hourly compensation deflated by the **same-sector output deflator**, with a 2017=100 index and an explicit baseline-relative ratio gap. CPI compensation is separately displayed.
 - `us_labour_share_gdp` converts the **annual PWT fractional GDP labour share into percent**, preserving source chronology and warning this is not the BLS sector index or a direct exploitation measure.
 - The research frontend renders graph cards as the user scrolls, not after clicking. Each exposes the source data and methodology and includes an explicitly bounded economic interpretation and limitation.
-- Original 21 source charts, the source library, 49 source definitions, source provenance, Wisesheets US SEC filings supplemental panel and original chart interaction controls are available inside **Source data & chart explorer** at the bottom, collapsed by default. No losing source functionality for the editorial page.
+- Original 21 source charts, the source library, 53 source definitions, source provenance, Wisesheets US SEC filings supplemental panel and original chart interaction controls are available inside **Source data & chart explorer** at the bottom, collapsed by default. No losing source functionality for the editorial page.
 - Shared ECharts rendering shades **2001-04 through 2001-11, 2008-01 through 2009-06, 2020-03 through 2020-04** in flat gray with **no text, dotted lines or event labels**. These are NBER-dated US contraction months and remain explicitly US-only even on World/OECD/Japan graphs.
 - One local Docker service bundles React, FastAPI, SQLite WAL and in-process macro/Wisesheets updates. No GitHub Actions, Pages or local source-use gates.
 
