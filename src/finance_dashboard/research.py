@@ -76,7 +76,7 @@ SPECS: tuple[dict[str, Any], ...] = (
          title="Largest ten firms' ACWI index weight", sources=["concentration.global.msci_acwi_published_top10"],
          kind="raw", question="How concentrated is the global equity benchmark?",
          reading="MSCI ACWI actual published top-ten company weights at dated snapshots.",
-         caveat="The US makes up roughly 63% of MSCI ACWI in its April 2026 factsheet, so this is NOT a geographically balanced world economy indicator."),
+         caveat="The US was 64.21% of MSCI ACWI in the September 30, 2026 factsheet; a capitalization-weighted equity index is NOT a geographically balanced world economy measure."),
     dict(id="global_gold_equity", region="world", theme="Financial conditions",
          title="Gold vs global-equity historical return correlation", sources=["gold.world.equity_correlation"],
          kind="raw", question="Has gold diversified global equity returns?",
