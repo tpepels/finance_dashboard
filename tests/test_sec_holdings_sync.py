@@ -8,7 +8,7 @@ import httpx
 
 from finance_dashboard.sec_holdings_sync import (
     read_verified_config,collect_configured,collect_if_due,
-    SEC_FILE, PAGE,
+    SEC_FILE, PAGE, VERIFIED_DEFAULT_FUNDS, VERIFICATION_FILINGS, import_fund,
 )
 from finance_dashboard.sec_holdings import HoldingsError, list_holdings
 
@@ -61,6 +61,45 @@ class SecSyncTests(unittest.TestCase):
             self.assertEqual(list_holdings(root,"vt",asof=date(2026,5,21))["records"],[])
             self.assertEqual(len(list_holdings(root,"vt",asof=date(2026,5,24))["records"]),1)
             self.assertEqual(len(calls),2)
+
+    def test_builtin_verified_funds_do_not_need_placeholder_identifiers(self):
+        with TemporaryDirectory() as tmp:
+            mappings = read_verified_config(Path(tmp)/"not-configured.json")
+        self.assertEqual({item["instrument_id"] for item in mappings},
+                         {"vt", "bnd"})
+        self.assertEqual({item["series_id"] for item in mappings},
+                         {"S000022482", "S000002564"})
+        self.assertTrue(all("www.sec.gov/Archives/" in url
+                            for url in VERIFICATION_FILINGS.values()))
+
+    def test_limit_counts_verified_matching_fund_not_just_registrant_attempts(self):
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            mapping={"instrument_id":"vt","cik":"1234567",
+                     "series_id":"S000000001"}
+            acc=["0001234567-26-00012"+str(i) for i in range(4)]
+            recent={"accessionNumber":acc,
+                    "form":["NPORT-P"]*4,
+                    "filingDate":["2026-05-21"]*4,
+                    "acceptanceDateTime":["2026-05-21T18:30:00"]*4,
+                    "primaryDocument":["primary_doc.xml"]*4}
+            other=XML.replace(b"S000000001",b"S000000002")
+            def handler(request):
+                url=str(request.url)
+                if "data.sec.gov" in url:
+                    return httpx.Response(200,json={"cik":1234567,
+                        "filings":{"recent":recent,"files":[]}})
+                if url.endswith("/primary_doc.xml"):
+                    accession=url.split("/")[-2]
+                    number=int(accession[-1])
+                    return httpx.Response(200,content=(other if number >= 2 else XML))
+                return httpx.Response(404)
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result=import_fund(mapping,client=client,root=root,max_filings=2)
+            self.assertEqual(result["attempted"],4)
+            self.assertEqual(result["other_series_skipped"],2)
+            self.assertEqual(result["stored_or_already_present"],2)
+            self.assertTrue(result["matching_target_reached"])
 
     def test_unmapped_irish_fund_cannot_be_falsely_imported_as_us_sec(self):
         with TemporaryDirectory() as tmp:

@@ -28,10 +28,22 @@ SEC_FILE = re.compile(r"^[A-Za-z0-9_.-]+\.xml$")
 PAGE = re.compile(r"^CIK[0-9]{10}-submissions-[0-9]+\.json$")
 
 
+# Official SEC N-PORT filing indexes confirm both fund and ETF-share identity.
+# All other fund mappings require their own SEC source verification.
+VERIFIED_DEFAULT_FUNDS = (
+    {"instrument_id": "vt", "cik": "857489", "series_id": "S000022482"},
+    {"instrument_id": "bnd", "cik": "794105", "series_id": "S000002564"},
+)
+VERIFICATION_FILINGS = {
+    "vt": "https://www.sec.gov/Archives/edgar/data/857489/000085748926000275/0000857489-26-000275-index.htm",
+    "bnd": "https://www.sec.gov/Archives/edgar/data/794105/000079410525000080/0000794105-25-000080-index.htm",
+}
+
+
 def read_verified_config(path: Path = CONFIG) -> list[dict]:
-    if not path.is_file():
-        return []
-    values = json.loads(path.read_text(encoding="utf-8"))
+    # A user-created file deliberately replaces the built-in verified funds.
+    values = (json.loads(path.read_text(encoding="utf-8"))
+              if path.is_file() else list(VERIFIED_DEFAULT_FUNDS))
     if not isinstance(values, list) or len(values)>24:
         raise HoldingsError("SEC fund mapping must be an explicit list of at most 24 verified ETFs")
     known = instruments()
@@ -110,8 +122,12 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         seen.add(accession)
         candidates.append(item)
     tried, imported, skipped_series, errors = 0, 0, 0, 0
-    # Bounded attempts including other fund series in the same registrant.
-    for entry in candidates[:max_filings]:
+    # A limit counts MATCHING fund series, not arbitrary registrant filings.
+    # For a multi-fund SEC registrant, safely inspect more than max_filings.
+    attempt_cap = min(60, max(24, max_filings * 6))
+    for entry in candidates[:attempt_cap]:
+        if imported >= max_filings:
+            break
         accession=entry["accession"]
         url=(EDGAR_URL+str(int(cik))+"/"+
              accession.replace("-","")+"/"+entry["document"])
@@ -138,6 +154,11 @@ def import_fund(mapping: dict, *, client: httpx.Client,
             errors+=1
         time.sleep(.35)
     return {"instrument_id":fund,"attempted":tried,"stored_or_already_present":imported,
+            "requested_matching_filings":max_filings,
+            "matching_target_reached":imported >= max_filings,
+            "candidate_attempt_cap":attempt_cap,
+            "unexamined_candidate_filings":max(0,len(candidates)-tried),
+            "verification_filing":VERIFICATION_FILINGS.get(fund),
             "other_series_skipped":skipped_series,"errors":errors,
             "status":("complete" if errors == 0 and imported > 0
                       else "no_matching_series" if errors == 0
@@ -177,8 +198,9 @@ def collect_if_due(*, config: Path = CONFIG, root: Path | None = None,
     """Do not re-download the same SEC submissions on every daily refresh."""
     target = root or Path(os.environ.get("FINANCE_HOLDINGS_DIR","/data/holdings"))
     day = today or datetime.now(timezone.utc).date()
-    if not config.is_file():
-        return {"status":"unconfigured","funds":[]}
+    # Built-in SEC identities can be used without local mapping files.
+    # Network activity is still guarded by the opt-in refresh flag and a
+    # real SEC_USER_AGENT contact, never an invented address.
     marker = target / ".sec-refresh-state.json"
     if marker.exists():
         try:
