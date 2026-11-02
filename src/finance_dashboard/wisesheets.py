@@ -383,8 +383,11 @@ def calculate_sec_earnings(
     historical_filers = defaultdict(set)
     fx_cache = {}
     for (cik, year), row in financials.items():
-        if cik not in issuers or year < date.today().year - 6:
-            raise WisesheetsError("Unexpected issuer or historical period")
+        if cik not in issuers:
+            raise WisesheetsError("Unexpected issuer not present in SEC universe")
+        # The source sometimes supplies older restated fiscal years than
+        # the plan's nominal five-year window. Retain valid reported history
+        # rather than imposing an artificial cutoff at collection time.
         historical_filers[year].add(cik)
         if row.get("source_is_verifiable") is False:
             untraceable[year] += 1
