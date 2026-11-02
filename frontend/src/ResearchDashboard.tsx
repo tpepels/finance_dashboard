@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { chartOptions, createChart, numberLabel } from './viz';
-import type { ChartInstance } from './viz';
 import type { PlottedSeries, SeriesDefinition } from './types';
 import { NBER_SHADE_CAPTION } from './periods';
 
@@ -105,7 +104,6 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
   const [visible, setVisible] = useState(false);
   const [result, setResult] = useState<ResearchResult | null>(null);
   const [error, setError] = useState('');
-  const chartRef = useRef<ChartInstance | null>(null);
 
   useEffect(() => {
     const target = root.current;
@@ -146,7 +144,6 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
     if (!host.current || !hasPoints) return;
     const element = host.current;
     const chart = createChart(element);
-    chartRef.current = chart;
     chart.setOption(options, true);
     const observer = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => chart.resize())
@@ -155,7 +152,6 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
     return () => {
       observer?.disconnect();
       chart.dispose();
-      chartRef.current = null;
     };
   }, [options, hasPoints]);
 
