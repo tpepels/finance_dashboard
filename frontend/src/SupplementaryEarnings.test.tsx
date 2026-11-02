@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
-vi.mock('./data', () => ({ localApiMode: true }));
 vi.mock('./viz', () => ({
   chartOptions: vi.fn(() => ({})),
   numberLabel: (n: number) => String(n),
@@ -46,10 +44,8 @@ describe('Wisesheets supplementary source is not a global company-profit estimat
     const fetched = vi.fn(async (_url: string) => ({ ok: true, status: 200,
       json: async () => response }));
     vi.stubGlobal('fetch', fetched);
-    const user = userEvent.setup();
-    render(<SupplementaryEarnings publicOnly={false} />);
+    render(<SupplementaryEarnings />);
     expect(screen.getByRole('heading', { name: 'Supplementary company earnings' })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: /Show/ }));
     expect(await screen.findByText('US SEC-filer net income relative to world GDP')).toBeTruthy();
     expect(await screen.findByRole('img', { name: /Annual SEC-filer USD net income/ })).toBeTruthy();
     expect(screen.getByText('5,500')).toBeTruthy();
@@ -60,14 +56,14 @@ describe('Wisesheets supplementary source is not a global company-profit estimat
     expect(fetched.mock.calls[0][0]).toBe('/api/earnings/sec-filers');
   });
 
-  it('does not fetch restricted Wisesheets aggregate on the public-only site', async () => {
-    const fetched = vi.fn();
+  it('reads local data without a public rights gate or GitHub dependency', async () => {
+    const fetched = vi.fn(async (_url: string) => ({ ok: true, status: 200,
+      json: async () => response }));
     vi.stubGlobal('fetch', fetched);
-    const user = userEvent.setup();
-    render(<SupplementaryEarnings publicOnly />);
-    await user.click(screen.getByRole('button', { name: /Show/ }));
-    expect(await screen.findByText(/withheld from the public dashboard/)).toBeTruthy();
-    expect(fetched).not.toHaveBeenCalled();
+    render(<SupplementaryEarnings />);
+    expect(await screen.findByRole('img', { name: /Annual SEC-filer USD net income/ })).toBeTruthy();
+    expect(fetched).toHaveBeenCalledTimes(1);
+    expect(fetched.mock.calls[0][0]).toBe('/api/earnings/sec-filers');
   });
 
   it('surfaces missing collection rather than fabricating observed years', async () => {
