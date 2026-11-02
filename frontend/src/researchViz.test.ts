@@ -31,6 +31,7 @@ describe('phase 3 analytical visualization contract', () => {
     expect(series(analyticalOptions({id:'global_growth'}, [plotted('x','A',[2,-3,4])], 'annual-bars'))[0].type).toBe('bar');
   });
   it('stacks complementary shares to an explicit 0–100 percent accounting axis', () => {
+    expect(geometryFor('global_labour_share', 'A', 2)).toBe('composition');
     const options = analyticalOptions({id:'jp_income_distribution'},
       [plotted('labour','A',[60,58]), plotted('residual','A',[40,42])], 'composition');
     expect(series(options).map(row => row.stack)).toEqual(['gdp','gdp']);

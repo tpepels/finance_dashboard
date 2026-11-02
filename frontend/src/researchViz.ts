@@ -17,7 +17,7 @@ export type AnalyticalGeometry =
 
 export function geometryFor(id: string, frequency: string, count: number): AnalyticalGeometry {
   if (id === 'us_productivity_pay') return 'productivity';
-  if (id.endsWith('_income_distribution')) return 'composition';
+  if (id.endsWith('_income_distribution') || id === 'global_labour_share') return 'composition';
   if (id.endsWith('_differential')) return 'difference';
   if (id === 'compare_credit_dispersion') return 'dispersion';
   if (count > 1) return 'country-bars';

@@ -34,7 +34,7 @@ SPECS: tuple[dict[str, Any], ...] = (
          caveat="GDP-weighted world growth is not the median country's growth."),
     dict(id="global_labour_share", region="world", theme="Labour and distribution",
          title="Labour's share of world income", sources=["labour.world.income_share"],
-         kind="raw", question="What share of output goes to labour?",
+         kind="labour_percent_residual", question="What share of global GDP accrues to labour versus other value added?",
          reading="UN SDG 10.4.1 estimated labour income share, accounting for self-employment.",
          caveat="The non-labour remainder includes depreciation, taxes and mixed incomes; it is not an observed Marxian surplus-value rate."),
     dict(id="global_productivity", region="world", theme="Labour and distribution",
@@ -333,13 +333,14 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
         if len({entry["frequency"] for entry in used}) > 1:
             raise ValueError("PWT cross-country comparison requires one annual frequency")
         headline = None
-    elif kind == "labour_residual":
+    elif kind in {"labour_residual", "labour_percent_residual"}:
         base = values[sources[0]]
         share, residual = [], []
         for day, fraction in sorted(base.items()):
-            if not Decimal("0") <= fraction <= Decimal("1"):
+            upper = Decimal("100") if kind == "labour_percent_residual" else Decimal("1")
+            if not Decimal("0") <= fraction <= upper:
                 continue
-            labour = fraction * Decimal("100")
+            labour = fraction if kind == "labour_percent_residual" else fraction * Decimal("100")
             share.append({"date": day.isoformat(), "value": str(labour)})
             residual.append({"date": day.isoformat(), "value": str(Decimal("100") - labour)})
         used = [
@@ -350,7 +351,9 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
         ]
         headline = ({"date": share[-1]["date"], "value": share[-1]["value"],
                      "unit": "percent", "label": "Labour compensation share / GDP",
-                     "explanation": "100 × PWT labour compensation share (ratio). Complement is 100 minus labour share, not the profit rate."}
+                     "explanation": ("Reported ILO/UNSD labour share already uses percent; complement is 100 minus labour share, not profit."
+                                      if kind == "labour_percent_residual" else
+                                      "100 × PWT labour compensation share (ratio). Complement is 100 minus labour share, not the profit rate.")}
                     if share else None)
     elif kind in {"pair_differential", "cross_country_dispersion"}:
         common = sorted(set.intersection(*(set(values[src]) for src in sources)))

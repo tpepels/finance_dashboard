@@ -56,6 +56,22 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertEqual(result["headline"]["value"], "8.00")
         self.assertIn("five countries", result["reading"])
 
+    def test_world_labour_distribution_uses_source_percentage_without_rescaling(self):
+        spec = BY_ID["global_labour_share"]
+        sid = spec["sources"][0]
+        self.assertEqual(spec["kind"], "labour_percent_residual")
+        result = compile_indicator(spec,
+            {sid: [(date(2022, 1, 1), D("53.4")),
+                   (date(2023, 1, 1), D("52.5")),
+                   (date(2024, 1, 1), D("105"))]},
+            {sid: meta(sid, unit="percent", frequency="A")})
+        self.assertEqual([D(row["value"]) for row in result["series"][0]["points"]],
+                         [D("53.4"), D("52.5")])
+        self.assertEqual([D(row["value"]) for row in result["series"][1]["points"]],
+                         [D("46.6"), D("47.5")])
+        self.assertIn("not corporate", result["caveat"].lower())
+        self.assertEqual(D(result["headline"]["value"]), D("52.5"))
+
     def test_japan_labour_distribution_uses_japan_identity_not_us(self):
         spec = BY_ID["jp_income_distribution"]
         sid = spec["sources"][0]

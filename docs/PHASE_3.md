@@ -63,3 +63,5 @@ The former generic graph-only default failed the research/dashboard acceptance g
 
 An interactive dashboard does not itself close remaining empirical validation. Models require independent historical release data, original N-PORT filings, and authenticated OECD sector/capital-stock accounts. Source-aware empty states remain required when these data are not imported.
 
+
+World labour income share is provided by UNSD/ILO **as a percent**, so the World & OECD comparison now plots the original measured labour share with its strictly arithmetic `100 − share` non-labour remainder as a stacked composition. US/Japan Penn World Table shares remain fractions converted to percent. These are deliberately distinct unit-handling branches.
