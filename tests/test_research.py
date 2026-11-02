@@ -5,6 +5,8 @@ from decimal import Decimal as D
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
+from finance_dashboard.database import Base
 
 from finance_dashboard.api import create_app
 from finance_dashboard.catalog import load_documents
@@ -113,7 +115,10 @@ class ResearchIndicatorTests(unittest.TestCase):
                          "https://www.nber.org/research/data/us-business-cycle-expansions-and-contractions")
 
     def test_real_fastapi_research_routes_with_empty_database(self):
-        engine = create_engine("sqlite+pysqlite:///:memory:")
+        engine = create_engine("sqlite+pysqlite:///:memory:",
+                               connect_args={"check_same_thread": False},
+                               poolclass=StaticPool)
+        Base.metadata.create_all(engine)
         try:
             with TestClient(create_app(engine)) as api:
                 definitions = api.get("/api/research")
