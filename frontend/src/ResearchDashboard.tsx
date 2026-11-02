@@ -22,6 +22,10 @@ interface SourceEvidence {
 interface ResearchSeries {
   id: string; name: string; frequency: 'D'|'M'|'Q'|'A'; unit: string;
   points: { date: string; value: string }[];
+  latest?: { date: string; value: string } | null;
+  year_change?: {
+    start: string; end: string; difference: string; unit: string;
+  } | null;
 }
 interface ResearchResult extends IndicatorDef {
   status: 'ready' | 'no_data';
@@ -65,6 +69,7 @@ function readableValue(value: string | number, unit?: string) {
     case 'usd': return '$' + formatted;
     case 'usd_per_oz': return '$' + formatted + '/oz';
     case 'index': return formatted;
+    case 'index_points': return formatted + ' index pts';
     default: return formatted + (unit ? ' ' + unit : '');
   }
 }
@@ -175,6 +180,20 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
       {hasPoints && <div ref={host} className="research-plot" role="img"
         aria-label={'Measured economic graph: ' + spec.title} />}
     </div>
+
+    {result?.status === 'ready' && <div className="research-source-strip">
+      {result.series.map(series => <div key={series.id} className="research-source-reading">
+        <span>{series.name}</span>
+        <strong>{series.latest ? readableValue(series.latest.value, series.unit) : '—'}</strong>
+        <small>{series.latest?.date ?? 'No recorded date'}
+          {series.year_change && <span>
+            {' · '}{Number(series.year_change.difference) > 0 ? '+' : ''}
+            {readableValue(series.year_change.difference, series.year_change.unit)}
+            {' since '}{series.year_change.start}
+          </span>}
+        </small>
+      </div>)}
+    </div>}
     <div className="research-interpretation">
       <p>{spec.reading}</p>
       <p className="research-caveat">{spec.caveat}</p>
@@ -291,7 +310,7 @@ export default function ResearchDashboard() {
         {group.theme === 'Labour and distribution' && (region === 'world' || region === 'us')
           && <DistributionLens region={region} />}
         <div className="research-grid">
-          {group.items.map((item, idx) => <Indicator key={item.id + ':' + range}
+          {group.items.map(item => <Indicator key={item.id + ':' + range}
             spec={item} start={start} />)}
         </div>
       </section>)}
