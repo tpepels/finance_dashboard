@@ -22,7 +22,7 @@ from .wisesheets import load_sec_profit_snapshot, snapshot_series
 from .world_credit import (BIS_COMPOSITE_URL, WORLD_GDP_URL,
     parse_bis_national_credit_gaps, parse_wdi_gdp_all, country_weighted_bis_gap)
 from .oecd_corporate import (
-    OECD_DATA_URL, OECD_WDI_URL, oecd_annual_data_key,
+    OECD_DATA_URL, OECD_WDI_URL, OECD_WDI_LOCAL_GDP_URL, oecd_annual_data_key,
     parse_oecd_annual_sector_csv, parse_oecd_gdp_weights,
     compute_oecd_corporate_surplus,
 )
@@ -638,11 +638,18 @@ class ProviderRouter:
                 params={"format": "json", "per_page": 20000,
                         "date": f"{first_year}:{date.today().year}"})
             nominal_usd = parse_oecd_gdp_weights(wdi_response.json())
+            local_response = self._get(
+                OECD_WDI_LOCAL_GDP_URL,
+                params={"format":"json", "per_page":20000,
+                        "date": f"{first_year}:{date.today().year}"})
+            nominal_local = parse_oecd_gdp_weights(
+                local_response.json(), indicator="NY.GDP.MKTP.CN")
             sets = compute_oecd_corporate_surplus(
-                sectors, nominal_usd, start=start)
+                sectors, nominal_usd, nominal_gdp_lcu=nominal_local, start=start)
             return FetchedSeries(
                 series_id, str(oecd_response.request.url) + " + " +
-                str(wdi_response.request.url), None, sets[lookup[key]])
+                str(wdi_response.request.url) + " + " +
+                str(local_response.request.url), None, sets[lookup[key]])
         if provider == "EUROSTAT_CORPORATE_GDP":
             if key != "nasa_10_nf_tr/EU27_2020/S11+S12_B2A3G/S1_B1GQ":
                 raise SourceUnavailable("Invalid Eurostat corporation GDP methodology")
