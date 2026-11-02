@@ -100,7 +100,7 @@ class ParserTests(unittest.TestCase):
 
     def test_gold_spot_mid_quote_provenance(self):
         from datetime import datetime, timezone
-        payload={"data":{"metal":"gold","symbol":"XAU","price_usd":3900.25,
+        payload={"data":{"metal":"gold","symbol":"XAU","price_usd":{"per_oz":3900.25,"per_gram":125.4,"per_kg":125400},
                          "as_of":datetime.now(timezone.utc).isoformat()},
                  "meta":{"unit":"USD / troy oz","source":"Swissquote bid/ask midpoint"}}
         expected={date.today():Decimal("3900.25")}
@@ -177,7 +177,7 @@ class RouterTests(unittest.TestCase):
         def handler(request):
             self.assertIn("api/v1/latest", str(request.url))
             return httpx.Response(200, json={
-                "data":{"metal":"gold","symbol":"XAU","price_usd":3900.25,
+                "data":{"metal":"gold","symbol":"XAU","price_usd":{"per_oz":3900.25,"per_gram":125.4,"per_kg":125400},
                         "as_of":datetime.now(timezone.utc).isoformat()},
                 "meta":{"unit":"USD / troy oz","source":"Swissquote midpoint"}
             })

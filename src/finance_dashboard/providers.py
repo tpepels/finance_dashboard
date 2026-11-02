@@ -180,7 +180,10 @@ def parse_corgano_gold(payload: Any, start: date | None = None) -> dict[date, De
     day = at.date()
     if start and day < start:
         raise ProviderError("Gold spot quote is older than requested start period")
-    value = _value(row.get("price_usd"))
+    usd_prices = row.get("price_usd")
+    if not isinstance(usd_prices, dict) or "per_oz" not in usd_prices:
+        raise ProviderError("Gold USD quote must contain price_usd.per_oz")
+    value = _value(usd_prices["per_oz"])
     if value is None or value <= 0:
         raise ProviderError("Invalid current gold spot price")
     return {day:value}
