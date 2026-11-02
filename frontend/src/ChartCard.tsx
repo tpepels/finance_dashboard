@@ -87,22 +87,24 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
     return () => { cancelled = true; };
   }, [visible, expanded, ids.join('|')]);
 
-  useEffect(() => {
-    if (!(visible || expanded) || !ids.length || !semanticallyCompatible(ids)) return;
-    let cancelled = false;
-    loadInsight(ids).then(result => {
-      if (!cancelled) { setInsight(result); setInsightError(''); }
-    }).catch(error => {
-      if (!cancelled) setInsightError(error instanceof Error ? error.message : 'Unable to read insights');
-    });
-    return () => { cancelled = true; };
-  }, [visible, expanded, ids.join('|')]);
 
   const activeLoaded = useMemo(() => ids.map(id => loaded.find(s => s.id === id))
     .filter((s): s is LoadedSeries => Boolean(s)), [ids, loaded]);
   const window = useMemo(() => windowFor(activeLoaded, range, from, to),
     [activeLoaded, range, from, to]);
   const invalidRange = range === 'custom' && Boolean(from && to && from > to);
+  useEffect(() => {
+    if (!(visible || expanded) || !ids.length || !semanticallyCompatible(ids)
+        || activeLoaded.length !== ids.length || invalidRange) return;
+    let cancelled = false;
+    loadInsight(ids, window.start, window.end).then(result => {
+      if (!cancelled) { setInsight(result); setInsightError(''); }
+    }).catch(error => {
+      if (!cancelled) setInsightError(error instanceof Error ? error.message : 'Unable to read insights');
+    });
+    return () => { cancelled = true; };
+  }, [visible, expanded, ids.join('|'), activeLoaded.length, window.start, window.end, invalidRange]);
+
   const incompatibleRaw = !semanticallyCompatible(ids) || (mode === 'raw' && !rawCompatible(activeLoaded));
   const plotted = useMemo(() => invalidRange || incompatibleRaw ? [] :
     activeLoaded.map(s => transformSeries(s, mode, window.start, window.end)),
