@@ -114,6 +114,29 @@ class WiseTests(unittest.TestCase):
             client.close()
         self.assertEqual(len(requests),2)
 
+    def test_snapshot_reader_reports_staleness_without_live_api(self):
+        from finance_dashboard.wisesheets import load_sec_profit_snapshot
+        import tempfile, json
+        from pathlib import Path
+        from datetime import datetime, timezone
+        with tempfile.TemporaryDirectory() as tmp:
+            dest=Path(tmp)/"data.json"
+            self.assertIsNone(load_sec_profit_snapshot(dest))
+            dest.write_text(json.dumps({
+                "schema_version":1,"id":"profit.us_sec_filers.world_gdp_share",
+                "status":"partial_us_sec_reporter_coverage",
+                "currency":"USD",
+                "source_snapshot_at_utc":"2024-01-01T00:00:00+00:00",
+                "observations":[{"year":2024,"world_gdp_usd":"100",
+                    "sec_filer_income_as_pct_of_world_gdp":"5"}],
+            }))
+            result=load_sec_profit_snapshot(dest)
+            self.assertEqual(result["snapshot_status"],"stale")
+            self.assertGreater(result["snapshot_age_days"],45)
+            dest.write_text('{"id":"wrong"}')
+            with self.assertRaisesRegex(WisesheetsError,"snapshot"):
+                load_sec_profit_snapshot(dest)
+
     def test_collect_keeps_world_label_out_of_numerator(self):
         class FakeClient:
             requests_made=2
