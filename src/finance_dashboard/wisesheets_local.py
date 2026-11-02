@@ -17,7 +17,7 @@ from .wisesheets import WisesheetsClient, collect_wisesheets, load_sec_profit_sn
 
 log = logging.getLogger(__name__)
 COLLECT_EVERY = timedelta(days=30)
-FAILED_RETRY_AFTER = timedelta(hours=24)
+FAILED_RETRY_AFTER = timedelta(days=7)
 
 
 def target_path() -> Path:
