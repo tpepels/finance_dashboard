@@ -175,6 +175,15 @@ SPECS: tuple[dict[str, Any], ...] = (
          title="Euro-area private credit gap", sources=["credit_gap.ea.bis"], kind="raw",
          question="Is euro-area private credit above its historical trend?",
          reading="BIS euro-area one-sided credit-to-GDP gap.", caveat="Euro area, not European Union."),
+    dict(id="europe_pwt_member_labour_shares", region="europe",
+         theme="Labour and distribution",
+         title="Labour income share in Germany, France and Italy (PWT)",
+         sources=["labour.de.pwt_labour_share", "labour.fr.pwt_labour_share",
+                  "labour.it.pwt_labour_share"],
+         kind="fraction_percent_multi",
+         question="How does labour's portion of GDP differ among three large EU member economies?",
+         reading="Penn World Table 11.0 labour compensation divided by each country's GDP at current national prices. The annual fractional ratios are multiplied by 100 before comparing on a percentage axis.",
+         caveat="These are Germany, France and Italy individually, NOT EU27 or euro-area labour-share aggregates; data currently end in 2023. PWT self-employment assumptions differ from national sector accounts."),
     dict(id="eu27_corporate_surplus", region="europe", theme="Labour and distribution",
          title="EU27 corporate gross operating surplus / GDP",
          sources=["profit.eu27.corporate_operating_surplus_gdp"], kind="raw",
@@ -188,6 +197,18 @@ SPECS: tuple[dict[str, Any], ...] = (
          reading="Eurostat nonfinancial corporate sector surplus relative to the same sector's value added.",
          caveat="Sector GVA denominator differs from EU-wide GDP; do not graph the two surplus percentages as one common variable."),
     # Japan.
+    dict(id="jp_labour_share", region="japan", theme="Labour and distribution",
+         title="Japan labour compensation / GDP (PWT)",
+         sources=["labour.jp.pwt_labour_share"], kind="fraction_percent",
+         question="What share of Japan's national output accrues to labour?",
+         reading="Penn World Table 11.0 whole-economy labour income share of GDP, source ratio converted to percent.",
+         caveat="Annual PWT data end in 2023. Not a corporate-sector operating margin or Marxian rate of exploitation."),
+    dict(id="jp_income_distribution", region="japan", theme="Labour and distribution",
+         title="Japan GDP: labour and non-labour residual shares",
+         sources=["labour.jp.pwt_labour_share"], kind="labour_residual",
+         question="How much of Japanese GDP is recorded as labour income?",
+         reading="The PWT Japan labour-income share and its arithmetic complement, both derived from the same annual national-account denominator.",
+         caveat="100 − labour income share is NOT corporate profit or Marxian surplus value: depreciation, taxes and other income components remain."),
     dict(id="jp_growth", region="japan", theme="Growth and demand",
          title="Japan real GDP growth", sources=["gdp.real_growth.jp"], kind="raw",
          question="What is Japan's annual real output growth?",
@@ -207,6 +228,15 @@ SPECS: tuple[dict[str, Any], ...] = (
          reading="World Bank end-year domestic listed equity capitalization as a share of annual Japanese GDP.",
          caveat="Issuer residency/listings affect country comparisons; it is not a direct cross-country asset valuation."),
     # Cross-country within identical methodology, no 'world' masquerading as an equally weighted country.
+    dict(id="compare_pwt_labour_shares", region="compare", theme="Labour and distribution",
+         title="Labour's GDP income share: US, Japan, Germany, France and Italy",
+         sources=["labour.us.pwt_labour_share", "labour.jp.pwt_labour_share",
+                  "labour.de.pwt_labour_share", "labour.fr.pwt_labour_share",
+                  "labour.it.pwt_labour_share"],
+         kind="fraction_percent_multi",
+         question="How do whole-economy labour income shares differ across major countries?",
+         reading="One consistent Penn World Table 11.0 annual GDP labour-compensation definition across five countries, converted from fractions to percentages. Common-date differences are computed only where all five countries report.",
+         caveat="Country labour share is not inequality among workers, productive-labour surplus value or an EU aggregate; data are latest-revised histories through 2023."),
     dict(id="compare_growth", region="compare", theme="Growth and demand",
          title="Real growth: US / euro area / Japan / China / India",
          sources=["gdp.real_growth.us", "gdp.real_growth.eu",
@@ -285,7 +315,25 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
     kind = spec["kind"]
     used: list[dict[str, Any]] = []
 
-    if kind == "labour_residual":
+    if kind == "fraction_percent_multi":
+        used = []
+        for source in sources:
+            rows = []
+            for day, fraction in sorted(values[source].items()):
+                if Decimal("0") <= fraction <= Decimal("1"):
+                    rows.append({"date": day.isoformat(),
+                                 "value": str(Decimal("100") * fraction)})
+            used.append({
+                "id": source,
+                "name": metadata[source]["name"],
+                "unit": "percent",
+                "frequency": metadata[source]["frequency"],
+                "points": rows,
+            })
+        if len({entry["frequency"] for entry in used}) > 1:
+            raise ValueError("PWT cross-country comparison requires one annual frequency")
+        headline = None
+    elif kind == "labour_residual":
         base = values[sources[0]]
         share, residual = [], []
         for day, fraction in sorted(base.items()):
@@ -295,9 +343,9 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
             share.append({"date": day.isoformat(), "value": str(labour)})
             residual.append({"date": day.isoformat(), "value": str(Decimal("100") - labour)})
         used = [
-            {"id": "derived.us.labour_gdp_share", "name": "Labour compensation / GDP",
+            {"id": "derived." + spec["region"] + ".labour_gdp_share", "name": "Labour compensation / GDP",
              "unit": "percent", "frequency": "A", "points": share},
-            {"id": "derived.us.gdp_nonlabour_residual", "name": "Non-labour GDP residual (not profits)",
+            {"id": "derived." + spec["region"] + ".gdp_nonlabour_residual", "name": "Non-labour GDP residual (not profits)",
              "unit": "percent", "frequency": "A", "points": residual},
         ]
         headline = ({"date": share[-1]["date"], "value": share[-1]["value"],
@@ -414,7 +462,7 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
 
     # Country comparisons require an EXACT shared source date. If one of the
     # requested countries has no data, do not silently compare a smaller set.
-    if len(used) > 1 and kind == "raw":
+    if len(used) > 1 and kind in ("raw", "fraction_percent_multi"):
         maps = [{row["date"]: Decimal(row["value"]) for row in line["points"]}
                 for line in used]
         shared = set.intersection(*(set(row) for row in maps))
