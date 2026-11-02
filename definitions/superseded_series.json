@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "decision_date": "2026-11-02",
+  "decision": "Superseded original definitions, not current ingestible data. No mathematical equivalence to replacements is claimed.",
+  "original_series": [
+    {
+      "old_id": "concentration.global.top10",
+      "replacement_id": "concentration.global.msci_acwi_published_top10",
+      "decision": "Owner-approved free/public snapshot history in lieu of licensed complete constituent archive; retains exact index and top-ten security weights but is sparse.",
+      "original": {
+        "id": "concentration.global.top10",
+        "name": "Global equity index top-ten weight",
+        "theme": "market_concentration",
+        "status": "unresolved",
+        "provider": "MSCI",
+        "source_key": null,
+        "source_url": "https://www.msci.com/indexes",
+        "geography": "WORLD",
+        "frequency": null,
+        "unit": null,
+        "measurement": "Index share held by ten largest constituents",
+        "revision_policy": "not_established",
+        "rights": "unknown",
+        "notes": "Historical licensed constituent data unresolved"
+      }
+    },
+    {
+      "old_id": "profit.global.corporate_share",
+      "replacement_id": "profit.eu27.corporate_operating_surplus_gdp",
+      "decision": "Owner-approved shift to national-accounts operating surplus instead of listed-only earnings; OECD SDMX not accessible from CI (403), so Eurostat EU27 published ESA2010 series is an explicit geographically narrower fallback.",
+      "original": {
+        "id": "profit.global.corporate_share",
+        "name": "Global listed-company profit share",
+        "theme": "labour_capital",
+        "status": "unresolved",
+        "provider": "MARKET_DATA",
+        "source_key": null,
+        "source_url": "https://www.msci.com/indexes",
+        "geography": "WORLD",
+        "frequency": null,
+        "unit": null,
+        "measurement": "Listed-company profits as share of economic output",
+        "revision_policy": "not_established",
+        "rights": "unknown",
+        "notes": "Global earnings dataset and multinational geographic allocation unresolved"
+      }
+    }
+  ]
+}
