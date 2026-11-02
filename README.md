@@ -44,6 +44,25 @@ Three unobtrusive, **unlabeled gray bands** appear on eligible charts for NBER-d
 
 The original source catalogue and 21 original charts remain available. The browser retains CSV/PNG export, native source history, provenance, share links and optional per-chart normalized display in the secondary explorer.
 
+## Phase 4: publisher-defined risk and EUR investment comparison
+
+The main research page now includes **Risk evidence and observed market outcomes** above the original source explorer, with two separate views.
+
+**Economic risk evidence:** source-defined FRED Sahm unemployment deterioration ≥0.50 pp, US Treasury 10-year minus 3-month yield inversion below zero, BIS national credit-to-GDP gap compared with the +2 pp Basel **guide**, Shiller US CAPE's descriptive recorded-history percentile and a separately scoped international credit composite. These statistics explicitly show latest source dates, stale/missing observations, and limitations; none creates a crisis probability or combined score. Read [Phase 4 methodology](docs/PHASE_4.md).
+
+**Optional asset history:** compare 2–5 source-registered ETFs/stocks or gold ETFs in **EUR or USD** with matched actual months, vendor-adjusted price indexes, drawdowns, peak/trough/recovery, monthly-return correlation and sample annualized return/volatility. Optional holdings weights produce a transparently defined monthly-rebalanced *scenario* with no fees/taxes. **True dated fund look-through geographic/sector holdings are not supplied** and are never guessed.
+
+The original macro-first `FINANCE_INCLUDE_MARKETS=0` default remains. To enable asset comparisons, set `FINANCE_INCLUDE_MARKETS=1` on the **existing service** and restart. The existing collector will attempt 24 Yahoo histories and ECB FX; upstream rate limits or missing observations remain visible. In EUR mode, only actually stored ECB-convertible observations are used; mixed-currency USD comparisons are rejected rather than inventing conversion data.
+
+**Resilience:** `GET /api/operations` reports source/market/FX coverage, ingestion failures and the latest verified backup. The existing daily refresh process now creates SQLite **online backups** after ingestion, keeping 14 bundles under `/data/backups` by default. Backups must also be copied to an independent disk. Manual run and check:
+
+```bash
+docker compose exec finance-dashboard python -m finance_dashboard.backup --output-dir /data/backups
+docker compose exec finance-dashboard python -m finance_dashboard.backup --verify-manifest /data/backups/ACTUAL_FINANCE_MANIFEST.json
+```
+
+The second command requires the exact filename emitted by the first (replace the example). The server defaults to LAN binding; `FINANCE_BIND_HOST=127.0.0.1` optionally confines it behind your existing reverse proxy. The service has no built-in user authentication; do not forward its port to the public internet.
+
 ## Phase boundaries
 
 **Phase 3:** permanently visible dashboard, ordered chart layout, original source explorer, meaningful geographic divisions, subdued recession backgrounds, documentation and presentation of descriptive findings.
