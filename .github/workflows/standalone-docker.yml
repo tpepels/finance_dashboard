@@ -31,7 +31,7 @@ jobs:
         run: |
           printf "services:\n" > /tmp/finance-service-check.yml
           cat docs/home-server-finance-service.yml >> /tmp/finance-service-check.yml
-          UID="$(id -u)" GID="$(id -g)" TZ="UTC" docker compose -f /tmp/finance-service-check.yml config --quiet
+          env UID="$(id -u)" GID="$(id -g)" TZ="UTC" docker compose -f /tmp/finance-service-check.yml config --quiet
       - name: Build single image with React, API and SQLite
         run: docker build -f Dockerfile.standalone -t finance-dashboard:one .
       - name: Launch one running container (no PostgreSQL/worker/frontend dependencies)
