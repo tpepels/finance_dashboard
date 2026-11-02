@@ -38,11 +38,11 @@ class WiseTests(unittest.TestCase):
                 {"ticker":"AAPL", "cik":"0000320193", "metric":"net_income",
                  "fiscalPeriod":"FY", "fiscalYear":2024,"periodEnd":"2024-09-28",
                  "unit":"USD","value":"-700000000",
-                 "source":{"accession":"0000320193-24-000001","filingDate":"2024-10-01"}},
+                 "source":{"accession":"0000320193-24-000001","filingDate":"2024-10-01","kind":"reported"}},
                 {"ticker":"MSFT","cik":"0000789019","metric":"net_income",
                  "fiscalPeriod":"FY", "fiscalYear":2024,"periodEnd":"2024-06-30",
                  "unit":"USD","value":"90000000",
-                 "source":{"accession":"0000789019-24-000001","filingDate":"2024-08-01"}},
+                 "source":{"accession":"0000789019-24-000001","filingDate":"2024-08-01","kind":"reported"}},
             ],
         }
         values=parse_financials(sample,request)
@@ -51,6 +51,20 @@ class WiseTests(unittest.TestCase):
         sample["data"][1]["metric"]="revenue"
         with self.assertRaisesRegex(WisesheetsError,"wrong financial metric"):
             parse_financials(sample,request)
+
+    def test_missing_original_filing_is_excluded_not_fabricated(self):
+        sample={"data":[{"ticker":"AAPL","cik":"0000320193",
+            "metric":"net_income","fiscalPeriod":"FY","fiscalYear":2024,
+            "periodEnd":"2024-09-28","unit":"USD","value":"500",
+            "source":{"kind":"calculated","accession":None,"filingDate":None}}],
+            "meta":{"layout":"long"}}
+        rows=parse_financials(sample,{"AAPL":"320193"})
+        self.assertFalse(rows[("320193",2024)]["source_is_verifiable"])
+        aggregate=calculate_sec_earnings(
+            {"320193":{"cik":"320193","ticker":"AAPL","has_financials":True}},
+            rows,{}, {2024:D(1000)})
+        self.assertEqual(aggregate["observations"][0]["untraceable_earnings_issuers"],1)
+        self.assertEqual(D(aggregate["observations"][0]["sec_filer_net_income_usd"]),D(0))
 
     def test_ecb_cross_rate_and_partial_issuer_coverage(self):
         issuers={

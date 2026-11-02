@@ -122,23 +122,31 @@ def parse_financials(payload: dict, requested: dict[str, str]) -> dict[tuple[str
         if not unit or len(unit) > 24:
             raise WisesheetsError("Financial currency is missing")
         source = row.get("source")
-        if not isinstance(source, dict) or not source.get("accession") or not source.get("filingDate"):
-            raise WisesheetsError("SEC filing traceability missing")
+        source = source if isinstance(source, dict) else {}
         if source.get("isSuperseded") is True:
             continue
-        try:
-            filed = date.fromisoformat(str(source["filingDate"]))
-        except ValueError as exc:
-            raise WisesheetsError("Invalid source filing date") from exc
+        verifiable = bool(source.get("accession") and source.get("filingDate")
+                          and source.get("kind") == "reported")
+        if verifiable:
+            try:
+                filed = date.fromisoformat(str(source["filingDate"]))
+            except ValueError as exc:
+                raise WisesheetsError("Invalid source filing date") from exc
+        else:
+            # Some free-tier rows have no SEC accession. Preserve as a
+            # coverage diagnostic but exclude them from verified totals.
+            filed = date.min
         record = {
             "cik": cik, "year": year, "period_end": period_end,
             "unit": unit, "amount": _decimal(row.get("value")),
-            "filing_date": filed, "accession": str(source["accession"]),
+            "filing_date": filed, "accession": str(source.get("accession") or ""),
+            "source_is_verifiable": verifiable,
         }
         key = (cik, year)
         older = records.get(key)
-        if older is None or (record["period_end"], filed, record["accession"]) > (
-            older["period_end"], older["filing_date"], older["accession"]
+        if older is None or (verifiable, record["period_end"], filed, record["accession"]) > (
+            older["source_is_verifiable"], older["period_end"],
+            older["filing_date"], older["accession"]
         ):
             records[key] = record
     return records
@@ -347,12 +355,16 @@ def calculate_sec_earnings(
     included = defaultdict(set)
     excluded_units = defaultdict(lambda: defaultdict(int))
     missing_financials = defaultdict(int)
+    untraceable = defaultdict(int)
     historical_filers = defaultdict(set)
     fx_cache = {}
     for (cik, year), row in financials.items():
         if cik not in issuers or year < date.today().year - 6:
             raise WisesheetsError("Unexpected issuer or historical period")
         historical_filers[year].add(cik)
+        if row.get("source_is_verifiable") is False:
+            untraceable[year] += 1
+            continue
         unit = row["unit"]
         if unit not in CURRENCIES:
             excluded_units[year][unit] += 1
@@ -383,6 +395,7 @@ def calculate_sec_earnings(
             "reporting_issuers": len(historical_filers[year]),
             "usd_converted_issuers": len(included[year]),
             "unconvertible_issuers_by_currency": dict(sorted(excluded_units[year].items())),
+            "untraceable_earnings_issuers": untraceable[year],
             "usd_conversion_coverage_pct_of_reporting_issuers": str(
                 Decimal(100) * len(included[year]) / len(historical_filers[year])
             ),
@@ -452,7 +465,8 @@ def collect_wisesheets(
     result["wisesheets_plan_code"] = plan["code"]
     result["history_years_entitlement"] = plan["history_years"]
     result["wisesheets_requests_used_this_run"] = client.requests_made
-    result["unique_issuers_with_financials"] = len({cik for cik, _ in records})
+    result["unique_issuers_with_financials"] = len({cik for (cik, _), r in records.items() if r["source_is_verifiable"]})
+    result["unique_issuers_with_any_earnings_row"] = len({cik for cik, _ in records})
     return result
 
 
