@@ -63,6 +63,17 @@ docker compose exec finance-dashboard python -m finance_dashboard.backup --verif
 
 The second command requires the exact filename emitted by the first (replace the example). The server defaults to LAN binding; `FINANCE_BIND_HOST=127.0.0.1` optionally confines it behind your existing reverse proxy. The service has no built-in user authentication; do not forward its port to the public internet.
 
+## Historical-research evidence: original vintages, fund filings, national accounts
+
+Phase 4 now also exposes a **Historical data and methods** panel with four independent primary-source workflows:
+
+- **ALFRED as-of comparison:** original historical FRED release-time series and revision differences. Three source IDs are supported: T10Y3M, SAHMREALTIME and USREC. The in-process collector automatically captures the previous completed month when `FRED_API_KEY` is present. Backfill older historical vintages using the bounded `python -m finance_dashboard.vintage` CLI.
+- **SEC dated ETF holdings:** exact public N-PORT accession, verified CIK and fund series, original filing XML, issuer-country weights and missing-weight coverage. Historical eligibility uses a disclosed conservative filing-date buffer, **not** an invented actual publication timestamp. Irish UCITS are excluded rather than misidentified as US registered funds.
+- **OECD 2025 industry accounts:** explicitly source-normalized value-added and depreciation accounting, theory-dependent ISIC scenarios and optional imputed self-employment. Capital-stock profit-rate analogues remain unavailable without complete corresponding capital-stock observations. A national-account accounting ratio is not an observed Marxian exploitation rate.
+- **Recession backtest:** a predetermined expanding-window logistic model using **ALFRED as-of source features and labels actually known when training**, evaluated only on complete later recession windows. Brier, AUC and calibration are **withheld** until the source sample has adequate event and non-event coverage. Retrospective evaluation never becomes a claim of validated live crisis probability.
+
+Full source data acquisition, responsible issuer/CIK identification, dataset limitations, verification gates and example local commands: **[Phase 4 primary-source research workflow](docs/PHASE_4_RESEARCH_SOURCES.md)**. The four integrations are source-data-gated; these are research capabilities, **not a claim that the home server has already imported and scientifically validated the historical datasets**.
+
 ## Phase boundaries
 
 **Phase 3:** permanently visible dashboard, ordered chart layout, original source explorer, meaningful geographic divisions, subdued recession backgrounds, documentation and presentation of descriptive findings.
