@@ -165,7 +165,7 @@ def parse_corgano_gold(payload: Any, start: date | None = None) -> dict[date, De
     source = str(meta.get("source", "")).lower()
     if not source or any(x in source for x in ("futures", "comex", "gc=f")):
         raise ProviderError("Gold provider is missing spot provenance or substituted a futures price")
-    if "oz" not in str(meta.get("unit", "")).lower():
+    if "usd" not in str(meta.get("unit", "")).lower() or not any(x in str(meta.get("unit", "")).lower() for x in ("oz", "ounce")):
         raise ProviderError("Gold price must be quoted per troy ounce")
     try:
         at = datetime.fromisoformat(str(row["as_of"]).replace("Z","+00:00"))
