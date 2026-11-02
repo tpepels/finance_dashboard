@@ -45,7 +45,7 @@ class IngestionRun(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     requested_from: Mapped[date | None] = mapped_column(Date())
     request_url: Mapped[str | None] = mapped_column(Text())
-    response_prepared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    response_prepared_at: Mapped[str | None] = mapped_column(Text())
     observations_received: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     versions_added: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     error: Mapped[str | None] = mapped_column(Text())

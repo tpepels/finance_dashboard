@@ -82,7 +82,7 @@ class IngestionService:
                 run.ended_at = now_utc()
                 run.status = "success"
                 run.request_url = fetched.request_url
-                run.response_prepared_at = fetched.prepared_at
+                run.response_prepared_at = fetched.prepared_at.isoformat() if fetched.prepared_at else None
                 run.observations_received = len(fetched.observations)
                 run.versions_added = added
                 session.get(SeriesRow, series_id).updated_at = now_utc()

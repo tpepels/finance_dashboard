@@ -28,7 +28,7 @@ def upgrade():
         sa.Column("status", sa.String(length=16), nullable=False),
         sa.Column("requested_from", sa.Date()),
         sa.Column("request_url", sa.Text()),
-        sa.Column("response_prepared_at", sa.DateTime(timezone=True)),
+        sa.Column("response_prepared_at", sa.Text()),
         sa.Column("observations_received", sa.Integer(), nullable=False),
         sa.Column("versions_added", sa.Integer(), nullable=False),
         sa.Column("error", sa.Text()),
