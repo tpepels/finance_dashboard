@@ -18,6 +18,8 @@ from .market import instruments
 from .market_service import MarketIngestionService
 from .market_analytics import rolling_gold_vs_global_etf
 from .database import MarketIngestionRun, FxIngestionRun
+from .standalone import mount_built_dashboard, standalone_lifespan
+from functools import partial
 
 
 class SeriesQuery(BaseModel):
@@ -51,8 +53,9 @@ class MarketQuery(BaseModel):
 
 
 def create_app(engine=None) -> FastAPI:
-    app = FastAPI(title="Global Capital Monitor", version="0.2.0")
     db = engine or make_engine()
+    app = FastAPI(title="Global Capital Monitor", version="0.2.0",
+                  lifespan=partial(standalone_lifespan, engine=db))
     catalog, chart_catalog = load_documents()
     errors = validate(catalog, chart_catalog)
     if errors:
@@ -230,6 +233,8 @@ def create_app(engine=None) -> FastAPI:
                 result[-1]["last_success"] = success.ended_at.isoformat() if success and success.ended_at else None
         return {"items": result}
 
+    # Existing API routes always take priority over bundled Vite assets.
+    mount_built_dashboard(app)
     return app
 
 
