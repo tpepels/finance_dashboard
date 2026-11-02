@@ -35,6 +35,8 @@ class MarxAccountsTests(unittest.TestCase):
         self.assertEqual(result["status"],"accounting_sensitivity_not_marxian_exploitation_rate")
         self.assertEqual(result["employee_compensation"],"300")
         self.assertEqual(result["net_operating_surplus"],"140")
+        self.assertFalse(result["complete_assumed_industry_scope"])
+        self.assertIn("A",result["unreported_in_scope_sections"])
         self.assertIsNone(result["net_surplus_over_net_capital_stock_pct"])
         self.assertFalse(result["capital_stock_coverage_complete"])
         self.assertIn("not observed Marxian surplus",result["limitation"])
