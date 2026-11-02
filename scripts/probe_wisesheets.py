@@ -49,6 +49,10 @@ with httpx.Client(timeout=15, follow_redirects=False, headers=HEADERS) as client
                         if label == "history":
                             status["identities"] = sorted(set(str(x.get("ticker")) for x in data))
                             status["periods"] = sorted(set(str(x.get("period")) for x in data))
+                            status["units_by_ticker"] = {str(t): sorted(set(str(x.get("unit")) for x in data if str(x.get("ticker"))==t)) for t in status["identities"]}
+                            status["fiscal_period_examples"] = sorted(set(str(x.get("fiscalPeriod")) for x in data))
+                            status["period_end_examples"] = sorted(set(str(x.get("periodEnd")) for x in data))
+                            status["filing_kinds"] = sorted(set(str((x.get("source") or {}).get("kind")) for x in data))
                     elif isinstance(data, dict):
                         status["data_fields"] = sorted(data)
                         if label in ("us_company", "foreign_company"):
@@ -58,6 +62,10 @@ with httpx.Client(timeout=15, follow_redirects=False, headers=HEADERS) as client
                     status["meta_fields"] = sorted(meta) if isinstance(meta, dict) else []
                     if label == "me":
                         status["account_plan_fields"] = sorted(k for k in payload if k not in ("key", "token", "apiKey"))
+                        plan = payload.get("plan") or {}
+                        status["plan_code"] = plan.get("planCode")
+                        status["plan_features"] = sorted(plan.get("features", [])) if isinstance(plan.get("features"), list) else list(plan.get("features", {}))
+                        status["plan_limits"] = {str(k):v for k,v in (plan.get("limits") or {}).items() if isinstance(v,(int,float,str,bool))} if isinstance(plan.get("limits"),dict) else {}
                         for obj in (payload, data, meta):
                             if isinstance(obj, dict):
                                 for k in ("plan", "tier", "features", "limits"):
