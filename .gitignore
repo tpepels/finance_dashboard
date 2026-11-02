@@ -10,3 +10,9 @@ build/
 *.egg-info/
 .coverage
 node_modules/
+
+# Phase 3 local/private frontend artifacts (never commit source-licensed observations)
+frontend/node_modules/
+frontend/dist/
+frontend/public/data/
+frontend/.vite/
