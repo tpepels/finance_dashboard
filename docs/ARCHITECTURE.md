@@ -10,12 +10,12 @@ FastAPI is served on container port 8080; the host maps port 5052. `FINANCE_BIND
 
 ## Responsibility boundaries
 
-1. **Catalog / definitions**: `definitions/series.json` maps 49 native macro source IDs and institutions, `definitions/charts.json` retains 21 original source charts, `definitions/instruments.json` enumerates 24 validated ETFs/stocks with exchange/quote currency metadata.
+1. **Catalog / definitions**: `definitions/series.json` maps 53 native macro source IDs and institutions, `definitions/charts.json` retains 21 original source charts, `definitions/instruments.json` enumerates 24 validated ETFs/stocks with exchange/quote currency metadata.
 2. **Acquisition**: `providers.py`, `market.py`, `wisesheets.py` and attached data-specific adapter modules. No frontend directly contacts FRED, BIS, OECD, Yahoo or external providers. Lack of live data remains explicit; no placeholder observations are invented.
 3. **Persistence**: `database.py` contains append-only observations, ingestion runs, equity/FX prices and source corrections in **SQLite WAL**. Alembic migrations run before FastAPI starts. The `/data` bind volume survives image updates. An app-ingestion timestamp does **not** establish when a historical statistic was publicly released.
 4. **Background data updates**: `standalone.py` launches **one in-process daemon thread** when configured. `worker.py` contains the shared macro/optional market ingestion functions but does not launch another container. SEC Wisesheets full-universe collection is monthly and quota-aware.
 5. **Economic analytics**:
-   - `research.py` defines 42 question-led macro series/relationships across world/OECD, United States, euro area/EU27, Japan and cross-economy comparisons.
+   - `research.py` defines 46 question-led macro series/relationships across world/OECD, United States, euro area/EU27, Japan and cross-economy comparisons.
    - `insights.py` provides source-native annual differences and exact-common-date country spreads, with no synthetic matching.
    - `risk_diagnostics.py` provides source-defined Sahm, Treasury inversion, BIS credit-gap and valuation historical-rank research; no opaque or probabilistic scores.
    - `portfolio_risk.py` computes consecutive-common-calendar-month ETF returns, max drawdown, EUR FX translation, volatility and optional monthly-rebalanced portfolio metrics. Requires actual stored Yahoo/ECB data; no holdings-history or issuer NAV claims.
