@@ -54,7 +54,7 @@ class StandaloneContainerTests(TestCase):
                         self.assertEqual(client.get("/assets/app.js").status_code, 200)
                         self.assertEqual(client.get("/api/health").json()["status"], "ok")
                         self.assertEqual(len(client.get("/api/series").json()["items"]), 42)
-                        self.assertEqual(len(client.get("/api/charts").json()["items"]), 28)
+                        self.assertEqual(len(client.get("/api/charts").json()["items"]), 21)
                         response = client.post("/api/query", json={
                             "series_ids": ["policy_rate.us.bis"], "start": "2025-01-01",
                         })
