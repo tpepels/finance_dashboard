@@ -104,4 +104,4 @@ The six Phase 2 data-definition gaps have been reduced to two:
 
 The two outstanding exact datasets are historical MSCI ACWI constituent free-float weights and consolidated worldwide **listed-company earnings** with defensible multinational allocation. A current index fact-sheet or index P/E snapshot cannot reconstruct either history. See [exact gap audit](docs/ORIGINAL_GAPS.md).
 
-Historical issuer NAV reconciliation, ticker rename continuity, and a combined 32-source PostgreSQL production backfill are also separately tracked as remaining Phase 2 acceptance criteria.
+Historical issuer NAV reconciliation, ticker rename continuity, and a permanent production deployment are separately tracked. A full 32-source historical PostgreSQL ingestion and read-only API smoke test passed in a disposable environment; [acceptance run](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670).

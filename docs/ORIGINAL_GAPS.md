@@ -95,11 +95,8 @@ geography. Source access, not a FRED key, is missing.
 ## Further implementation/acceptance debt
 
 Independent issuer NAV/dividend reconciliation, historical ticker-change
-identity continuity, and a single combined live PostgreSQL macro backfill
-across the 32 mapped series remain outside what has already been proven.
-The backend already verified all 24 investment instruments against live
-PostgreSQL ingestion and every mapped macro/index series against live
-provider responses and static export.
+identity continuity, remain outside what has already been proven. The combined live PostgreSQL backfill of all 32 mapped macro/index series **passed** on 2026-11-02.
+The backend has verified all 24 investment instruments against live PostgreSQL ingestion and all 32 mapped macro/index sources against live PostgreSQL ingestion, live API readback, and static export. [All-macro full-historical PostgreSQL acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670), [market PostgreSQL acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707).
 
 **Do not close Phase 2** until both original outstanding datasets and these
 agreed integration checks have been implemented and verified. Do not claim a

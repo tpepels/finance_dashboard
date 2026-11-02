@@ -78,3 +78,7 @@ Sources:
 ### Recent additional live acceptance
 
 [Full mapped-source check: 29 non-BIS policy sources](https://github.com/tpepels/finance_dashboard/actions/runs/41474846685), [complete 32-series static export](https://github.com/tpepels/finance_dashboard/actions/runs/41474846662), [short PostgreSQL/pytest suite](https://github.com/tpepels/finance_dashboard/actions/runs/41474846646).
+
+### Full PostgreSQL macro/index acceptance
+
+All 32 mapped macro/index sources completed a combined real-data historical PostgreSQL backfill, with API readback for BEA Q1, ILO hourly ratio identity, 43-country BIS credit gap and coverage, MSCI ACWI NETR and monthly gold/index correlation: [live acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670). Only the two exact original source-dataset gaps remain unresolved.
