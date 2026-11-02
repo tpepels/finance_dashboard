@@ -6,7 +6,8 @@ __pycache__
 .env
 .env.*
 !.env.example
-tests
+# Focused Python tests are copied into the build stage for local verification.
+# Do not exclude tests here: Dockerfile runs them during image build.
 node_modules
 
 frontend/node_modules/
