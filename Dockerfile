@@ -42,6 +42,7 @@ RUN pip install --no-cache-dir . \
     && python -m unittest discover -s tests -p 'test_backup.py' -v \
     && python -m unittest discover -s tests -p 'test_vintage.py' -v \
     && python -m unittest discover -s tests -p 'test_sec_holdings.py' -v \
+    && python -m unittest discover -s tests -p 'test_sec_holdings_sync.py' -v \
     && python -m unittest discover -s tests -p 'test_marx_accounts.py' -v \
     && python -m unittest discover -s tests -p 'test_historical_research_api.py' -v \
     && chmod 755 /app/run-standalone.sh
