@@ -38,7 +38,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None) -
                         log.info("refreshed: %s", json.dumps(report))
                     except Exception:
                         failures += 1
-                        log.exception("refresh failed: %s", series_id)
+                        log.error("macro refresh failed: %s (provider error redacted to protect credentials)", series_id)
             finally:
                 if engine.dialect.name == "postgresql":
                     conn.execute(text("SELECT pg_advisory_unlock(75390812)"))

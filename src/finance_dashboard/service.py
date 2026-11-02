@@ -92,7 +92,7 @@ class IngestionService:
                 run = session.get(IngestionRun, run_id)
                 run.status = "failed"
                 run.ended_at = now_utc()
-                run.error = f"{type(exc).__name__}: {str(exc)[:1500]}"
+                run.error = f"{type(exc).__name__}: provider error details redacted"
             raise
 
 
