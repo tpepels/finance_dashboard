@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from hashlib import sha256
+from decimal import Decimal
 
 from finance_dashboard.marx_accounts import (
     AccountingError, parse_oecd_normalized_csv, compute_country_year,
@@ -52,7 +53,7 @@ class MarxAccountsTests(unittest.TestCase):
                                     scenario="market_narrow",adjust_selfemployment=True)
         self.assertEqual(broad["selfemployment_imputed"],"15")
         self.assertEqual(broad["net_surplus_over_net_capital_stock_pct"],
-                         str((140-15)/800*100))
+                         str(Decimal('125')/Decimal('800')*Decimal('100')))
         self.assertEqual(narrow["included_isic_sections"],["C"])
         self.assertEqual(narrow["net_operating_surplus"],"80")
         self.assertEqual(narrow["employee_compensation"],"100")
