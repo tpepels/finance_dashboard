@@ -465,7 +465,7 @@ def collect_wisesheets(
     result["wisesheets_plan_code"] = plan["code"]
     result["history_years_entitlement"] = plan["history_years"]
     result["wisesheets_requests_used_this_run"] = client.requests_made
-    result["unique_issuers_with_financials"] = len({cik for (cik, _), r in records.items() if r["source_is_verifiable"]})
+    result["unique_issuers_with_financials"] = len({cik for (cik, _), r in records.items() if r.get("source_is_verifiable", True)})
     result["unique_issuers_with_any_earnings_row"] = len({cik for cik, _ in records})
     return result
 
