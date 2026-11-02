@@ -1,5 +1,8 @@
 # Phase 3 — original dashboard scope and minimal implementation contract
 
+> **Local-only scope amendment — 2026-11-02:** The owner subsequently rejected GitHub Actions/Pages and any public-only source gating. The live implementation is now a **single local Docker container**, with on-device source collection and no GitHub-dependent jobs. The earlier Pages checks in this historical contract are **superseded**, not remaining acceptance criteria. The owner also required a genuine readable research dashboard: source-backed graphs visible without opening cards, question-led grouping, comparable economics only and descriptive interpretive readouts. See [the current Phase 3 specification](PHASE_3.md).
+
+
 **Reviewed:** 2026-11-02, against the user's original finance-dashboard planning conversation, [Phase 3 issue #2](https://github.com/tpepels/finance_dashboard/issues/2), [Phase 1 architecture](ARCHITECTURE.md), [Phase 2 feature contract](PHASE_2_FEATURE_CONTRACT.md), and the [macro-first decision](PHASE_2_MACRO_SCOPE_AMENDMENT.md).
 
 ## Original user experience, in order of priority
