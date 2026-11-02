@@ -520,7 +520,16 @@ def collect_wisesheets(
 def load_sec_profit_snapshot(path: Path | None = None) -> dict | None:
     """Read validated local aggregate; never fall back to a live API fetch."""
     from .catalog import DEFAULT_ROOT
-    path = Path(path) if path is not None else DEFAULT_ROOT / "data" / "wisesheets" / "sec_filer_profit.json"
+    if path is None:
+        # Home-server snapshots are persistent, but the image also contains the
+        # latest GitHub Actions-verified aggregate. No Wisesheets key required
+        # for the FastAPI reader or the browser.
+        preferred = os.environ.get("WISESHEETS_SNAPSHOT_PATH")
+        persistent = Path(preferred) if preferred else None
+        bundled = DEFAULT_ROOT / "data" / "wisesheets" / "sec_filer_profit.json"
+        path = persistent if persistent and persistent.is_file() else bundled
+    else:
+        path = Path(path)
     if not path.is_file():
         return None
     try:
