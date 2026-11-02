@@ -61,6 +61,29 @@ class MarxAccountsTests(unittest.TestCase):
         self.assertEqual(narrow["employee_compensation"],"100")
         self.assertEqual(narrow["net_surplus_over_net_capital_stock_pct"],"14.00")
 
+    def test_accounting_identity_audit_detects_mismapped_source_components(self):
+        original=csv_rows([row("C",100,20,80)])
+        header,values=original.decode().splitlines()
+        cols=header.split(",")+["gross_value_added","net_taxes_on_production"]
+        valid=((",".join(cols)+"\n")+
+               (values+",205,5\n")).encode()
+        data=parse_oecd_normalized_csv(valid)
+        self.assertEqual(data["accounting_identity_rows"],1)
+        self.assertIn("not_independently_authenticated",
+                      data["source_authentication"])
+        measured=compute_country_year(data,country="US",year=2020,
+                                      scenario="market_narrow")
+        self.assertTrue(measured["accounting_identity_coverage_complete"])
+        self.assertEqual(measured["accounting_identity_reconciled_sections"],["C"])
+        invalid=((",".join(cols)+"\n")+
+                 (values+",215,5\n")).encode()
+        with self.assertRaisesRegex(AccountingError,"does not reconcile"):
+            parse_oecd_normalized_csv(invalid)
+        absent=((",".join(cols)+"\n")+
+                (values+",205,\n")).encode()
+        with self.assertRaisesRegex(AccountingError,"supplied together"):
+            parse_oecd_normalized_csv(absent)
+
     def test_missing_imputation_must_block_adjusted_result(self):
         data=parse_oecd_normalized_csv(csv_rows([row("C",100,20,50)]))
         with self.assertRaisesRegex(AccountingError,"requires documented"):

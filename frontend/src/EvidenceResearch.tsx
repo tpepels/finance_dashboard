@@ -31,6 +31,9 @@ interface MarxResult {
   capital_stock_coverage_complete: boolean; included_isic_sections: string[];
   complete_assumed_industry_scope: boolean; unreported_in_scope_sections: string[];
   source_extract_sha256: string;
+  accounting_identity_coverage_complete?: boolean;
+  accounting_identity_reconciled_sections?: string[];
+  source_authentication?: string;
 }
 interface PredictionBacktest {
   status: string; model_version?: string; version: string; horizon_months: number;
@@ -221,7 +224,7 @@ function MarxAccounts() {
   }
   return <div className="evidence-space">
     <h4>National-accounts surplus and profit-rate accounting</h4>
-    <p>Uses audited OECD harmonized input-output components, 1995–2022. Actual net operating
+    <p>Uses operator-normalized OECD harmonized input-output components, 1995–2022, only when imported. Recorded net operating
       surplus, compensation and depreciation are recorded inputs. Sector inclusion and any
       self-employment imputation are explicit assumptions; accounting ratios are not
       directly observed Marxian surplus value or an exploitation rate.</p>
@@ -261,6 +264,11 @@ function MarxAccounts() {
             ? Number(result.net_surplus_over_net_capital_stock_pct).toFixed(2)+'%'
             : 'No source-complete capital stock; ratio unavailable'}</span>
         <span>Included ISIC sections: {result.included_isic_sections.join(', ')}</span>
+        <span>Original-account identity reconciled for all included sectors:
+          {' '}{result.accounting_identity_coverage_complete ? 'Yes' : 'No, optional source-account rows missing'}
+        </span>
+        <span>Source authentication: {result.source_authentication?.replaceAll('_',' ') ??
+          'Not independently verified'}</span>
         <span>Country/year industry coverage: {result.complete_assumed_industry_scope
           ? 'All sections of the selected assumption represented'
           : 'Incomplete, observed sections only; no national-total claim'}</span>

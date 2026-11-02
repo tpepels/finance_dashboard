@@ -31,7 +31,8 @@ SCENARIOS = {
 NUMBERS = ("employee_compensation","consumption_fixed_capital",
            "net_operating_surplus")
 OPTIONAL = ("imputed_selfemployed_compensation","net_fixed_capital_stock")
-ALLOWED = set(NUMBERS) | set(OPTIONAL) | {
+ACCOUNT_IDENTITY = ("gross_value_added","net_taxes_on_production")
+ALLOWED = set(NUMBERS) | set(OPTIONAL) | set(ACCOUNT_IDENTITY) | {
     "country","year","isic_section","unit","currency","source_release",
     "original_table","source_url","imputation_method","capital_stock_source"}
 MAX_ROWS = 100_000
@@ -102,6 +103,22 @@ def parse_oecd_normalized_csv(source: bytes, *, expected_sha256: str | None=None
             raise AccountingError("Missing reported currency")
         numeric = {key:number(row.get(key),key) for key in NUMBERS}
         optional = {key:number(row.get(key),key,required=False) for key in OPTIONAL}
+        identity = {key:number(row.get(key),key,required=False)
+                    for key in ACCOUNT_IDENTITY}
+        if (identity["gross_value_added"] is None) != (identity["net_taxes_on_production"] is None):
+            raise AccountingError("Gross value added and net taxes must be supplied together")
+        if identity["gross_value_added"] is not None:
+            # OECD IOT identities are in identical current-price reporting units.
+            # Optional original-account balancing detects extraction/mapping mistakes;
+            # it does not authenticate the publisher ZIP or provenance.
+            gva = identity["gross_value_added"]
+            calculated = (numeric["employee_compensation"] +
+                          numeric["consumption_fixed_capital"] +
+                          numeric["net_operating_surplus"] +
+                          identity["net_taxes_on_production"])
+            tolerance = max(Decimal("0.01"),abs(gva)*Decimal("0.000001"))
+            if gva < 0 or abs(calculated-gva) > tolerance:
+                raise AccountingError("OECD value-added component identity does not reconcile")
         if numeric["employee_compensation"] < 0 or numeric["consumption_fixed_capital"] < 0:
             raise AccountingError("Employee pay and depreciation cannot be negative")
         if (optional["imputed_selfemployed_compensation"] is not None
@@ -119,7 +136,7 @@ def parse_oecd_normalized_csv(source: bytes, *, expected_sha256: str | None=None
             "source_release":SOURCE,"source_url":REFERENCE,
             "imputation_method":row.get("imputation_method",""),
             "capital_stock_source":row.get("capital_stock_source",""),
-            **{key: str(v) for key,v in {**numeric,**optional}.items()
+            **{key: str(v) for key,v in {**numeric,**optional,**identity}.items()
                if v is not None},
         })
     if not rows:
@@ -129,6 +146,8 @@ def parse_oecd_normalized_csv(source: bytes, *, expected_sha256: str | None=None
         "normalized_extract_sha256":checksum,
         "rows":rows,"record_count":len(rows),
         "classification":"OECD IOT 2025 national-industry ISIC Rev4 components",
+        "source_authentication":"operator_supplied_csv_hash_only_not_independently_authenticated",
+        "accounting_identity_rows":sum("gross_value_added" in x for x in rows),
         "caveat":("Net operating surplus is a national-accounts aggregate. "
                   "The Marxian distinction productive/unproductive labour "
                   "and self-employed value/capital cannot be read directly "
@@ -160,6 +179,8 @@ def compute_country_year(dataset: dict, *, country: str, year: int,
                           if "imputed_selfemployed_compensation" not in x]
     missing_stock = [x["isic_section"] for x in rows
                      if "net_fixed_capital_stock" not in x]
+    identity_rows = [x["isic_section"] for x in rows
+                     if "gross_value_added" in x]
     imputed = sum((Decimal(x.get("imputed_selfemployed_compensation","0"))
                    for x in rows), Decimal(0))
     if adjust_selfemployment and missing_imputation:
@@ -198,6 +219,11 @@ def compute_country_year(dataset: dict, *, country: str, year: int,
         "missing_capital_stock_sectors":missing_stock,
         "missing_selfemployment_imputation_sectors":missing_imputation,
         "source_extract_sha256":dataset["normalized_extract_sha256"],
+        "source_authentication":dataset.get(
+            "source_authentication",
+            "operator_supplied_csv_hash_only_not_independently_authenticated"),
+        "accounting_identity_reconciled_sections":sorted(identity_rows),
+        "accounting_identity_coverage_complete":len(identity_rows)==len(rows),
         "limitation":("Sector inclusion is a user-visible theoretical assumption; reported "
                       "industry totals cover only the actually supplied ISIC rows, "
                       "and omitted industries cannot be treated as zero. "
