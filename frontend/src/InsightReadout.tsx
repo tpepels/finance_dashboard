@@ -20,7 +20,7 @@ export default function InsightReadout({ result, error, compact = false }: {
   if (error) return <p className="data-warning">Recorded-data readout unavailable: {error}</p>;
   if (!result) return <p className="insight-loading">Reading recorded source history…</p>;
   const ready = result.series.filter(s => s.status === 'ready');
-  if (!ready.length) return <p className="insight-loading">Source observations are not loaded yet; no interpretation is generated.</p>;
+  if (!ready.length) return <p className="insight-loading">No recorded observations for the selected sources in this period; no interpretation is generated.</p>;
   const display = compact ? ready.slice(0, 3) : ready;
   return <div className={`insight-readout ${compact ? 'insight-compact' : ''}`}>
     <div className="readout-label">Recorded evidence</div>
