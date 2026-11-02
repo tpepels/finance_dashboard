@@ -1,52 +1,28 @@
+# Local-only deployment. One container: React + FastAPI + SQLite +
+# scheduled macro source updates and monthly SEC-filer Wisesheets collection.
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: capital_monitor
-      POSTGRES_USER: capital_monitor
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U capital_monitor -d capital_monitor"]
-      interval: 5s
-      timeout: 3s
-      retries: 15
-
-  migrate:
-    build: .
-    environment:
-      DATABASE_URL: postgresql+psycopg://capital_monitor:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/capital_monitor
-    command: ["alembic", "upgrade", "head"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: "no"
-
-  app:
-    build: .
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql+psycopg://capital_monitor:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/capital_monitor
+  finance-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.standalone
+    container_name: finance-dashboard
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "127.0.0.1:8080:8080"
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-
-  worker:
-    build: .
-    restart: unless-stopped
+      - "${FINANCE_PORT:-5052}:8080"
     environment:
-      DATABASE_URL: postgresql+psycopg://capital_monitor:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/capital_monitor
-      REFRESH_INTERVAL_SECONDS: "86400"
+      TZ: ${TZ:-Europe/Lisbon}
       FRED_API_KEY: ${FRED_API_KEY:-}
-      FRED_PUBLIC_CSV_FALLBACK: ${FRED_PUBLIC_CSV_FALLBACK:-0}
-    command: ["python", "-m", "finance_dashboard.worker"]
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-
-volumes:
-  postgres_data:
+      WISESHEETS_API_KEY: ${WISESHEETS_API_KEY:-}
+      FINANCE_AUTO_REFRESH: "1"
+      FINANCE_INCLUDE_MARKETS: "${FINANCE_INCLUDE_MARKETS:-0}"
+      FINANCE_WISESHEETS_REFRESH: "1"
+      REFRESH_INTERVAL_SECONDS: "86400"
+    volumes:
+      - ${FINANCE_DATA_DIR:-./data-local}:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
