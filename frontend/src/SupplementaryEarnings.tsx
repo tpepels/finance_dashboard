@@ -3,7 +3,6 @@ import type { ChartInstance } from './viz';
 import { chartOptions, createChart } from './viz';
 import type { LoadedSeries, SeriesDefinition } from './types';
 import { transformSeries } from './transform';
-import { localApiMode } from './data';
 
 interface EarningsRow {
   year: number;
@@ -38,7 +37,6 @@ const sourceDefinition: SeriesDefinition = {
   status: 'mapped',
   source_url: 'https://www.wisesheets.io/api/docs',
   measurement: 'Sum of filing-verified USD-converted annual SEC-reporting company net income divided by the corresponding annual World Bank world nominal GDP. Incomplete US-listed SEC reporting universe, not total world listed-company profits.',
-  rights: 'review_required',
 };
 
 const percent = (value: string) => {
@@ -54,12 +52,8 @@ const billions = (value: string) => {
     : 'Unavailable';
 };
 
-async function loadSnapshot(publicOnly: boolean): Promise<EarningsSnapshot> {
-  if (publicOnly) throw new Error('The Wisesheets aggregate is withheld from the public dashboard; its redistribution rights have not been cleared.');
-  const endpoint = localApiMode
-    ? '/api/earnings/sec-filers'
-    : `${import.meta.env.BASE_URL}data/supplementary/sec_filer_profit.json`;
-  const response = await fetch(endpoint, { cache: 'no-store' });
+async function loadSnapshot(): Promise<EarningsSnapshot> {
+  const response = await fetch('/api/earnings/sec-filers', { cache: 'no-store' });
   if (response.status === 404) throw new Error('No verified Wisesheets annual earnings snapshot has been collected.');
   if (!response.ok) throw new Error(`Wisesheets snapshot unavailable (HTTP ${response.status}).`);
   const result = await response.json() as EarningsSnapshot;
@@ -69,8 +63,8 @@ async function loadSnapshot(publicOnly: boolean): Promise<EarningsSnapshot> {
   return result;
 }
 
-export default function SupplementaryEarnings({ publicOnly }: { publicOnly: boolean }) {
-  const [expanded, setExpanded] = useState(false);
+export default function SupplementaryEarnings() {
+  const [expanded, setExpanded] = useState(true);
   const [snapshot, setSnapshot] = useState<EarningsSnapshot | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -81,14 +75,14 @@ export default function SupplementaryEarnings({ publicOnly }: { publicOnly: bool
     if (!expanded || snapshot || error) return;
     let mounted = true;
     setLoading(true);
-    loadSnapshot(publicOnly)
+    loadSnapshot()
       .then(value => { if (mounted) setSnapshot(value); })
       .catch((issue: unknown) => {
         if (mounted) setError(issue instanceof Error ? issue.message : 'Snapshot could not be read.');
       })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, [expanded, snapshot, error, publicOnly]);
+  }, [expanded, snapshot, error]);
 
   const rows = useMemo(() => (snapshot?.observations ?? []).slice()
     .sort((a, b) => a.year - b.year), [snapshot]);
@@ -171,8 +165,8 @@ export default function SupplementaryEarnings({ publicOnly }: { publicOnly: bool
           <details className="source-details">
             <summary>Methodology, snapshot date and original sources</summary>
             <p>{snapshot.description}</p>
-            <p>Wisesheets scan timestamp: {snapshot.source_snapshot_at_utc}. Status: {snapshot.snapshot_status ?? snapshot.status}.</p>
-            <p>Source data is a monthly GitHub Actions aggregate, not a live Wisesheets query per page view; no Wisesheets API key is sent to this application.</p>
+            <p>Local Wisesheets scan timestamp: {snapshot.source_snapshot_at_utc}. Status: {snapshot.snapshot_status ?? snapshot.status}.</p>
+            <p>Source data is collected locally about once per month by the existing container refresh thread. Page views never trigger Wisesheets API requests or expose the key.</p>
             <p><a href={sourceDefinition.source_url} target="_blank" rel="noopener noreferrer">Wisesheets API documentation</a></p>
             <p><a href="https://github.com/tpepels/finance_dashboard/blob/main/docs/WISESHEETS.md" target="_blank" rel="noopener noreferrer">Collection methodology and source limitations</a></p>
           </details>
