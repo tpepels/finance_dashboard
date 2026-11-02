@@ -30,7 +30,7 @@ def utc(y,m,d):
 def yahoo_fixture(symbol="VWCE.DE", currency="EUR", instrument_type="ETF"):
     return {"chart":{"error":None,"result":[{
         "meta":{"symbol":symbol,"currency":currency,"exchangeTimezoneName":"Europe/Berlin",
-                "instrumentType":instrument_type},
+                "instrumentType":instrument_type,"exchangeName":"GER"},
         "timestamp":[utc(2025,1,2),utc(2025,1,3),utc(2025,1,6)],
         "indicators":{"quote":[{"close":[100.0,51.0,53.0],"volume":[100,200,300]}],
                       "adjclose":[{"adjclose":[48.0,50.0,53.0]}]},
@@ -52,6 +52,13 @@ class MarketAdapterTests(unittest.TestCase):
         self.assertNotEqual(registry["vwce.de"]["isin"],registry["vwrl.as"]["isin"])
         self.assertTrue(all(x["quote_scale"]=="1" for x in registry.values()))
         self.assertTrue(all(x["source_symbol"] for x in registry.values()))
+
+    def test_exchange_venue_mismatch_rejected(self):
+        instrument=instruments()["vwce.de"]
+        payload=yahoo_fixture()
+        payload["chart"]["result"][0]["meta"]["exchangeName"]="AMS"
+        with self.assertRaisesRegex(MarketDataError,"exchange identity"):
+            parse_yahoo_chart(payload,instrument)
 
     def test_yahoo_corporate_actions_date_alignment(self):
         inst=instruments()["vwce.de"]

@@ -23,6 +23,7 @@ YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart"
 ECB_FX = "https://data-api.ecb.europa.eu/service/data/EXR"
 CURRENCIES = ("EUR", "USD", "GBP", "CHF")
 MIC_CODES = {"XETR", "XAMS", "ARCX", "XNAS", "XNYS"}
+EXCHANGE_ALIAS = {"XETR": "GER", "XAMS": "AMS", "ARCX": "PCX", "XNAS": "NMS", "XNYS": "NYQ"}
 D = Decimal
 
 
@@ -123,6 +124,8 @@ def parse_yahoo_chart(payload: dict, instrument: dict, *, start: date | None = N
         raise MarketDataError("Malformed market chart response") from exc
     if ticker != instrument["source_symbol"] or currency != instrument["trading_currency"]:
         raise MarketDataError("Market symbol or trading currency does not match registry")
+    if meta.get("exchangeName") != EXCHANGE_ALIAS[instrument["exchange_mic"]]:
+        raise MarketDataError("Market exchange identity mismatch")
     expected_type = "ETF" if instrument["kind"] == "etf" else "EQUITY"
     if meta.get("instrumentType") != expected_type:
         raise MarketDataError("Market instrument category mismatch")

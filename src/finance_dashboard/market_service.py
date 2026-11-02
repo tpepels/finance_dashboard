@@ -62,8 +62,8 @@ def current_fx(session: Session, currency: str, snapshot_at: datetime | None = N
 class MarketIngestionService:
     def __init__(self, engine, market_client=None, fx_client=None, registry=None):
         self.engine = engine
-        self.market_client = market_client or YahooMarketClient()
-        self.fx_client = fx_client or EcbFxClient()
+        self.market_client = market_client
+        self.fx_client = fx_client
         self.registry = registry if registry is not None else instruments()
 
     def refresh_instrument(self, instrument_id: str, *, full: bool = False,
@@ -94,7 +94,12 @@ class MarketIngestionService:
                   started_at=now_utc(), status="running",
                   requested_from=start, observations_received=0, versions_added=0))
         try:
-            history = self.market_client.fetch(definition, start=start)
+            source_client = self.market_client or YahooMarketClient()
+            try:
+                history = source_client.fetch(definition, start=start)
+            finally:
+                if self.market_client is None:
+                    source_client.close()
             if not history.price_bars or history.currency != definition["trading_currency"]:
                 raise MarketDataError("Market feed returned wrong currency or no observations")
             if any(day > (today or date.today()) for day in history.price_bars):
@@ -166,7 +171,12 @@ class MarketIngestionService:
             session.add(FxIngestionRun(id=run_id,currency=currency,started_at=now_utc(),
                 status="running",observations_received=0,versions_added=0))
         try:
-            values = self.fx_client.fetch(currency,start)
+            fx_source = self.fx_client or EcbFxClient()
+            try:
+                values = fx_source.fetch(currency,start)
+            finally:
+                if self.fx_client is None:
+                    fx_source.close()
             if not values:
                 raise MarketDataError("ECB FX response empty")
             with Session(self.engine) as session, session.begin():
