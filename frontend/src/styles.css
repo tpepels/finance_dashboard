@@ -292,3 +292,46 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .research-source-reading > small span { color: #55736f; }
 
 .research-relationship { color: #60777d; font-size: 12px; line-height: 1.65; max-width: 1120px; margin: 0 0 13px; }
+
+/* Phase 4: observed source risk evidence and optional market outcome comparisons. */
+.phase4-container { max-width: 1420px; padding: 32px 36px 45px; margin: 0 auto 30px; border-top: 2px solid #b4c9c5; }
+.phase4-container > header h2 { font-size: 25px; letter-spacing: -.03em; color: #23454c; margin: 7px 0 10px; }
+.phase4-container > header p { font-size: 13px; line-height: 1.65; color: #617b80; max-width: 930px; margin-bottom: 18px; }
+.p4-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid #d7e0de; padding-bottom: 10px; }
+.p4-tabs button { background: #f0f4f2; color: #3b5961; border: 1px solid #dce5e1; border-radius: 4px; font-size: 12px; font-weight: 650; padding: 9px 13px; }
+.p4-tabs button[aria-pressed="true"] { background: #274e57; color: #fff; border-color: #274e57; }
+.p4-method { max-width: 1050px; color: #708387; font-size: 12px; line-height: 1.65; margin: 11px 0 19px; }
+.p4-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin-bottom: 16px; }
+.p4-card { border: 1px solid #dce4e1; background: #fff; border-radius: 4px; padding: 19px 20px; min-width: 0; }
+.p4-card h4 { margin: 0 0 12px; color: #234c55; font-size: 15px; line-height: 1.35; }
+.p4-card p { color: #536c74; line-height: 1.6; font-size: 11px; }
+.p4-card small { color: #82979a; font-size: 11px; }
+.p4-card .p4-caveat { color: #819295; }
+.p4-card a { font-size: 11px; color: #397377; }
+.p4-value { font-size: 25px; letter-spacing: -.03em; color: #1f525b; font-variant-numeric: tabular-nums; font-weight: 730; padding-bottom: 7px; }
+.p4-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(205px, 1fr)); gap: 13px; margin: 18px 0; }
+.p4-inputs label, .p4-weights label { display: flex; gap: 7px; flex-direction: column; color: #526d73; font-size: 11px; font-weight: 650; }
+.p4-inputs select, .p4-weights input { border: 1px solid #ccdcd7; border-radius: 3px; background: #fff; padding: 10px; font-size: 12px; color: #264d57; max-width: 100%; }
+.p4-controls { display: flex; gap: 8px; margin: 12px 0; }
+.p4-controls button { color: #345e65; background: #eaf1ee; border: 1px solid #dae3df; padding: 9px 11px; border-radius: 3px; font-size: 12px; }
+.p4-check { display: inline-flex; align-items: center; gap: 9px; color: #4e6b70; font-size: 12px; margin: 12px 0; }
+.p4-weights { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 9px 0 16px; }
+.p4-weights label { max-width: 120px; }
+.p4-weights span { font-size: 11px; color: #71868b; padding-bottom: 7px; }
+.p4-submit { display: block; background: #234e56; border: none; border-radius: 3px; color: #fff; font-size: 13px; padding: 12px 17px; font-weight: 680; margin: 15px 0 24px; }
+.p4-plots { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 15px 0; }
+.p4-chart { min-width: 0; background: #fff; border: 1px solid #dce4e1; padding: 17px 10px 12px; }
+.p4-chart h4 { margin: 2px 9px 10px; color: #2a5360; font-size: 13px; }
+.p4-plot { height: 285px; width: 100%; }
+.p4-stats { display: grid; grid-template-columns: auto auto; font-size: 11px; gap: 7px 10px; }
+.p4-stats dt { color: #819397; }
+.p4-stats dd { margin: 0; color: #36565f; font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+.p4-correlation { margin: 17px 0; border-top: 1px solid #dce4e0; padding-top: 11px; font-size: 12px; color: #5f7379; }
+.p4-correlation h4 { font-size: 14px; color: #355964; }
+.p4-correlation p { margin: 7px 0; }
+@media (max-width: 1040px) { .p4-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) {
+  .phase4-container { padding: 28px 14px; }
+  .p4-card-grid, .p4-plots { grid-template-columns: 1fr; }
+  .p4-plot { height: 270px; }
+}
