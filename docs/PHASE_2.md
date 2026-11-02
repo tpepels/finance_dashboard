@@ -1,6 +1,6 @@
 # Phase 2 — Backend implementation and acceptance
 
-As of 2026-11-02, the backend implements **26** macro source series, **24** stock/ETF histories and **three** ECB FX feeds with two derived ETF correlation proxies, while retaining **six** unresolved original macro measurements without invented proxies. See [the per-source audit](DATA_COVERAGE.md). The Phase 2 issue remains open because the agreed full indicator scope is not yet satisfied.
+As of 2026-11-02, the backend implements **32** macro/index source series, **24** stock/ETF histories and **three** ECB FX feeds with two derived ETF correlation proxies, while retaining **two** unresolved original financial measures without invented proxies. See [the per-source audit](DATA_COVERAGE.md). The Phase 2 issue remains open because the original historical MSCI ACWI constituent-concentration and worldwide listed-company profit-share datasets remain unavailable at the required completeness.
 
 ## Architecture
 
@@ -36,6 +36,15 @@ The live macro source checks validate actual provider responses and parsers. The
 
 All 24 instruments and three FX series are integrated into the scheduled worker, versioned PostgreSQL schema, read-only API, secret-protected static export and bounded live acceptance. Full source details: [MARKET_DATA.md](MARKET_DATA.md).
 
+## Four originally missing definitions now integrated
+
+- BEA official annual replacement-cost equity Q1 ratio.
+- ILO all-labour-income/output-per-hour accounting-identity ratio.
+- GDP-weighted 43-economy BIS gap composite with separate world-GDP coverage measure.
+- USD World Bank monthly gold vs MSCI ACWI NETR index 36-month rolling return correlation, **not** the ETF proxy.
+
+The latest live acceptance and complete scheduled export pass. See [exact remaining gaps](ORIGINAL_GAPS.md).
+
 ## Pending exact indicators
 
-Tobin Q; global productivity-compensation gap; global **listed-company** profit share; licensed historical index top-ten weights; a defensible world credit gap aggregate; and gold/global equity total-return correlation. These need genuine source/licence definitions, as documented in [Data coverage](DATA_COVERAGE.md).
+Worldwide **listed-company** profit share and historical MSCI ACWI free-float index top-ten constituent weights. Additional NAV/ticker continuity and all-macro PostgreSQL backfill audits remain separately outstanding. These need genuine source/licence definitions, as documented in [Data coverage](DATA_COVERAGE.md).

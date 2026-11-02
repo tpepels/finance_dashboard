@@ -20,7 +20,7 @@ The workflow runs at 06:20 UTC each day, can be run manually, and is triggered b
 4. Generates index.json, charts.json, one series/<canonical-id>.json for each mapped macro series, markets/index.json, markets/<listing-id>.json, fx/<ISO-currency>.json and two gold/VT ETF proxy files.
 5. Uploads the complete data as the **finance-dashboard-static-data** Actions artifact.
 
-A failed macro, market, or FX source fails the entire job; no partial artifact is published. Six unresolved indicator definitions remain explicitly flagged in the manifest. Observations and decimal values preserve native frequencies and source attribution; no invented values are added.
+A failed macro, market, or FX source fails the entire job; no partial artifact is published. Two unresolved indicator definitions remain explicitly flagged in the manifest. Observations and decimal values preserve native frequencies and source attribution; no invented values are added.
 
 The manifest uses an allowlist of catalog metadata. Secrets, raw authenticated URLs, headers, arbitrary API response bodies and exception strings are never written into the artifact. Full-history refreshes produce latest-known values but cannot reconstruct genuine historical release vintages.
 
@@ -47,3 +47,7 @@ See **docs/DATA_COVERAGE.md** for the exact source catalog and remaining methodo
 ## Market coverage
 
 The 24 instrument and three currency feeds are documented in [MARKET_DATA.md](MARKET_DATA.md). Both raw and corporate-action-adjusted histories, exchange venue identity, ETF share-class currency, EUR conversion and two labelled ETF proxy correlations are included in the generated artifact. The first successful full-market run is [Actions run 41470215544](https://github.com/tpepels/finance_dashboard/actions/runs/41470215544). The separate [live PostgreSQL/API acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707) verified all 24 instruments and the three currencies end to end.
+
+### Exact new index/valuation inputs
+
+The exported macro catalog now includes official BEA Q1 (replacement-cost Tobin Q), MSCI ACWI NETR USD index levels, a 36-month monthly-average gold/index return correlation, the ILO world GDP/labour-income hourly ratio identity and a 43-economy GDP-weighted BIS credit-gap composite with a separate world-GDP coverage series. The original historical MSCI top-ten constituent concentration and world listed-company earnings/GDP remain unresolved and explicitly listed in the JSON manifest.

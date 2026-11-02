@@ -1,6 +1,6 @@
 # Phase 2 — source coverage, provenance and blockers
 
-Verified 2026-11-02. **32 canonical macroeconomic series total: 26 mapped and live-source verified; six original economic definitions unresolved.** Separately, **24 exchange-listed stock/ETF instruments and three ECB FX source series** are fully implemented in the market registry.
+Verified 2026-11-02. **34 canonical macroeconomic/index series total: 32 mapped and live-source verified; two original economic definitions unresolved.** Separately, **24 exchange-listed stock/ETF instruments and three ECB FX source series** are fully implemented in the market registry.
 
 An operational adapter can fetch and parse real source data into PostgreSQL; it is not an assertion that the provider grants public redistribution rights or that every derived comparison is methodologically valid.
 
@@ -36,7 +36,7 @@ The GLD/VT fund-based correlations are **separate** from the original
 unresolved world-equity-index total-return/spot-gold correlation, just as
 NCBCEPNW is separate from replacement-cost Tobin's Q.
 
-## The six remaining original indicators
+## The two remaining original indicators
 
 | Original series ID | Missing requirement | Treatment |
 |---|---|---|
@@ -51,7 +51,7 @@ These indicators are intentionally absent from chart-ready data. A chart referen
 
 ## Provider verification
 
-- [23 non-BIS policy sources live](https://github.com/tpepels/finance_dashboard/actions/runs/41459407905).
+- [29 non-BIS policy sources live](https://github.com/tpepels/finance_dashboard/actions/runs/41459407905).
 - [3 BIS policy rates, full PostgreSQL/API integration](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048).
 - [Offline and PostgreSQL tests](https://github.com/tpepels/finance_dashboard/actions/runs/41459407973).
 
@@ -74,3 +74,7 @@ Sources:
 - Shiller: https://shillerdata.com/
 - Siblis free API: https://siblisresearch.supabase.co/functions/v1/free-data-api/v1/ACWI/cape
 - Siblis licence: https://siblisresearch.com/data-licensing/
+
+### Recent additional live acceptance
+
+[Full mapped-source check: 29 non-BIS policy sources](https://github.com/tpepels/finance_dashboard/actions/runs/41474846685), [complete 32-series static export](https://github.com/tpepels/finance_dashboard/actions/runs/41474846662), [short PostgreSQL/pytest suite](https://github.com/tpepels/finance_dashboard/actions/runs/41474846646).
