@@ -21,6 +21,11 @@ from .catalog import load_documents
 from .wisesheets import load_sec_profit_snapshot, snapshot_series
 from .world_credit import (BIS_COMPOSITE_URL, WORLD_GDP_URL,
     parse_bis_national_credit_gaps, parse_wdi_gdp_all, country_weighted_bis_gap)
+from .oecd_corporate import (
+    OECD_DATA_URL, OECD_WDI_URL, oecd_annual_data_key,
+    parse_oecd_annual_sector_csv, parse_oecd_gdp_weights,
+    compute_oecd_corporate_surplus,
+)
 from .concentration_snapshots import load_msci_concentration_snapshots
 from .eurostat_corporate import (
     EUROSTAT_JSON_URL, EUROSTAT_KI_URL, EU27,
@@ -48,7 +53,7 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA", "OECD_CORPORATE_GDPWEIGHTED"))
 
 
 class SourceUnavailable(ProviderError):
@@ -614,6 +619,30 @@ class ProviderRouter:
             return FetchedSeries(series_id,
                 "https://www.msci.com/indexes/index/892400/msci-acwi-index",
                 None, values)
+        if provider == "OECD_CORPORATE_GDPWEIGHTED":
+            lookup = {
+                "RATIO/OECD38_S11_S12_B2G_GDP_WDIWEIGHT": 0,
+                "COVERAGE/OECD38_S11_S12_B2G_GDP_WDIWEIGHT": 1,
+                "COUNT/OECD38_S11_S12_B2G_GDP_WDIWEIGHT": 2,
+            }
+            if key not in lookup:
+                raise SourceUnavailable("Unapproved OECD composite or coverage source key")
+            first_year = max(1990, start.year) if start else 1990
+            oecd_response = self._get(
+                f"{OECD_DATA_URL}/{oecd_annual_data_key()}",
+                params={"format": "csvfile", "startPeriod": str(first_year)},
+                headers={"Accept": "*/*"})
+            sectors = parse_oecd_annual_sector_csv(oecd_response.text)
+            wdi_response = self._get(
+                OECD_WDI_URL,
+                params={"format": "json", "per_page": 20000,
+                        "date": f"{first_year}:{date.today().year}"})
+            nominal_usd = parse_oecd_gdp_weights(wdi_response.json())
+            sets = compute_oecd_corporate_surplus(
+                sectors, nominal_usd, start=start)
+            return FetchedSeries(
+                series_id, str(oecd_response.request.url) + " + " +
+                str(wdi_response.request.url), None, sets[lookup[key]])
         if provider == "EUROSTAT_CORPORATE_GDP":
             if key != "nasa_10_nf_tr/EU27_2020/S11+S12_B2A3G/S1_B1GQ":
                 raise SourceUnavailable("Invalid Eurostat corporation GDP methodology")
