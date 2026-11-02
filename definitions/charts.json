@@ -72,19 +72,6 @@
       "caveats": "One valuation series is not yet mapped; incompatible units require explicit normalization."
     },
     {
-      "id": "labour_vs_profits",
-      "theme": "labour_capital",
-      "title": "Labour share and global listed profits",
-      "status": "draft",
-      "series_ids": [
-        "labour.world.income_share",
-        "profit.global.corporate_share"
-      ],
-      "display_mode": "raw",
-      "rationale": "Test capture of economic output by labour and listed companies.",
-      "caveats": "Measures have different coverage; source and definition unresolved."
-    },
-    {
       "id": "crisis_signal",
       "theme": "credit_recession",
       "title": "US Sahm Rule and private credit stress",
@@ -96,19 +83,6 @@
       "display_mode": "indexed_100",
       "rationale": "Examine labour deterioration alongside financial leverage.",
       "caveats": "Different frequencies and countries; meaningful alignment remains unspecified."
-    },
-    {
-      "id": "concentration_vs_valuation",
-      "theme": "market_concentration",
-      "title": "Concentration versus global valuation",
-      "status": "draft",
-      "series_ids": [
-        "concentration.global.top10",
-        "valuation.global.cape"
-      ],
-      "display_mode": "raw",
-      "rationale": "Study how concentrated global equity exposure relates to valuation.",
-      "caveats": "Both historical datasets require licensing and methodological decisions."
     },
     {
       "id": "gold_vs_valuation",
@@ -259,6 +233,42 @@
       "display_mode": "raw",
       "rationale": "Measure the inverse of the globally published Siblis index P/E as earnings relative to that index's capitalization.",
       "caveats": "Not corporate net profits as a share of global GDP. Sparse year-end snapshots and distinct index universe; proprietary data require separate publishing permission."
+    },
+    {
+      "id": "global_msci_acwi_top10_snapshots",
+      "theme": "market_concentration",
+      "title": "MSCI ACWI concentration — documented top-ten index weights",
+      "status": "mapped",
+      "series_ids": [
+        "concentration.global.msci_acwi_published_top10"
+      ],
+      "display_mode": "raw",
+      "rationale": "Show actual MSCI ACWI top-ten constituent-weight trends using only date-stamped public index evidence, without any ETF holdings substitution.",
+      "caveats": "Sparse, nonuniformly spaced dated factsheet/research observations in monthly coordinates, NOT a continuous monthly history. Missing years/months are real gaps. Source provenance and exact report dates in data/msci_acwi_published_snapshots.json; rights review required."
+    },
+    {
+      "id": "eu27_corporate_gos_gdp",
+      "theme": "labour_capital",
+      "title": "EU27 corporate gross operating surplus as share of GDP",
+      "status": "mapped",
+      "series_ids": [
+        "profit.eu27.corporate_operating_surplus_gdp"
+      ],
+      "display_mode": "raw",
+      "rationale": "Track financial and non-financial corporation gross operating surplus relative to the entire EU economy, using matched official Eurostat annual ESA2010 sector accounts and GDP.",
+      "caveats": "EU27 only: includes unlisted corporations and excludes the rest of the world. Gross before fixed-capital consumption, not listed-company net profits or global GDP. Sector S11+S12 numerator against S1 GDP, both nominal million EUR."
+    },
+    {
+      "id": "eu27_nfc_operating_surplus_gva",
+      "theme": "labour_capital",
+      "title": "EU27 non-financial corporations: gross operating-surplus share of value added",
+      "status": "mapped",
+      "series_ids": [
+        "profit.eu27.nonfinancial_gross_surplus_value_added"
+      ],
+      "display_mode": "raw",
+      "rationale": "Official Eurostat macro indicator of how much nonfinancial corporate value added accrues as gross operating surplus instead of employee pay, taxes and subsidies.",
+      "caveats": "This official gross-profit-share denominator is NFC sector GVA, NOT GDP. Excludes financial corporations and households. Separate from the S11+S12/whole GDP series."
     }
   ]
 }
