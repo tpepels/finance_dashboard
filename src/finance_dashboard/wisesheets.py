@@ -488,6 +488,24 @@ def collect_wisesheets(
             continue
     gdp = client.world_gdp()
     result = calculate_sec_earnings(companies, records, fx, gdp)
+    # A free account may expose isolated older fiscal records via later
+    # restatements. Do not publish sparsely represented years as if they
+    # were a complete cross-sectional historic annual universe.
+    min_year_issuers = min(1000, min_issuers)
+    years = result["observations"]
+    result["excluded_sparse_fiscal_years"] = [
+        {"year": row["year"], "reporting_issuers": row["reporting_issuers"],
+         "usd_converted_issuers": row["usd_converted_issuers"]}
+        for row in years
+        if row["reporting_issuers"] < min_year_issuers
+        or row["usd_converted_issuers"] < max(1, min_year_issuers // 2)
+    ]
+    result["observations"] = [
+        row for row in years if row["reporting_issuers"] >= min_year_issuers
+        and row["usd_converted_issuers"] >= max(1, min_year_issuers // 2)
+    ]
+    if not result["observations"]:
+        raise WisesheetsError("No sufficiently covered SEC filer fiscal years")
     result["source_snapshot_at_utc"] = datetime.now(timezone.utc).isoformat()
     result["wisesheets_plan_code"] = plan["code"]
     result["history_years_entitlement"] = plan["history_years"]
