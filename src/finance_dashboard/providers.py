@@ -8,6 +8,8 @@ from __future__ import annotations
 import csv
 import io
 import os
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlparse
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -21,8 +23,9 @@ FRED_ROOT = "https://api.stlouisfed.org/fred/series/observations"
 FRED_CSV_ROOT = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 ECB_ROOT = "https://data-api.ecb.europa.eu/service/data"
 WORLD_BANK_ROOT = "https://api.worldbank.org/v2"
+SHILLER_HOME = "https://shillerdata.com/"
 IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER"))
 
 
 class SourceUnavailable(ProviderError):
@@ -154,6 +157,49 @@ def parse_world_bank(payload: Any, country: str, indicator: str, start: date | N
     return output
 
 
+class ShillerDownloadLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.links = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "a":
+            return
+        url = dict(attrs).get("href", "")
+        if urlparse(url).path.lower().endswith("/ie_data.xls"):
+            self.links.append(url)
+
+
+def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
+    """Shiller workbook has prose above the Date/CAPE header and Excel year.month dates."""
+    header_row = None
+    date_col = cape_col = None
+    for row in range(min(60, sheet.nrows)):
+        cells = [str(sheet.cell_value(row, col)).strip().upper() for col in range(sheet.ncols)]
+        if "DATE" in cells and "CAPE" in cells:
+            header_row = row
+            date_col, cape_col = cells.index("DATE"), cells.index("CAPE")
+            break
+    if header_row is None:
+        raise ProviderError("Shiller workbook does not contain recognizable DATE/CAPE columns")
+    output = {}
+    for row in range(header_row + 1, sheet.nrows):
+        raw_date = sheet.cell_value(row, date_col)
+        try:
+            num = Decimal(str(raw_date))
+            year = int(num)
+            month = int((num - year) * 100 + Decimal("0.5"))
+            if year < 1871 or month < 1 or month > 12:
+                continue
+            day = date(year, month, 1)
+        except (TypeError, ValueError, InvalidOperation):
+            continue
+        _put(output, day, _value(sheet.cell_value(row, cape_col)))
+    if not output:
+        raise ProviderError("Shiller workbook contains no CAPE observations")
+    return output
+
+
 class ProviderRouter:
     """One configured client shared across the run. Explicitly refuse unresolved datasets."""
 
@@ -251,6 +297,27 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "SHILLER":
+            import xlrd
+            homepage = self._get(SHILLER_HOME, follow_redirects=True)
+            parser = ShillerDownloadLinks()
+            parser.feed(homepage.text)
+            if len(parser.links) != 1:
+                raise ProviderError("Cannot identify a unique Shiller ie_data.xls download")
+            url = urljoin(SHILLER_HOME, parser.links[0])
+            if urlparse(url).hostname not in ("img1.wsimg.com", "shillerdata.com", "www.econ.yale.edu"):
+                raise ProviderError("Shiller workbook link points to an unapproved host")
+            response = self._get(url, follow_redirects=True)
+            try:
+                workbook = xlrd.open_workbook(file_contents=response.content)
+                values = parse_shiller_sheet(workbook.sheet_by_name("Data"))
+            except (xlrd.XLRDError, ValueError, IndexError) as exc:
+                raise ProviderError("Invalid Shiller Excel workbook or Data sheet") from exc
+            observations = {day: value for day, value in values.items()
+                            if start is None or day >= start}
+            if not observations:
+                raise ProviderError("Shiller workbook has no values within requested period")
+            return FetchedSeries(series_id, SHILLER_HOME, None, observations)
         if provider == "IMF_DATAMAPPER":
             region, identifier = key.split("/", 1)
             url = f"{IMF_MAPPER_ROOT}/{identifier}"

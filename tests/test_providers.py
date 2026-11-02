@@ -7,7 +7,7 @@ import httpx
 
 from finance_dashboard.providers import (
     ProviderRouter, ProviderError, SourceUnavailable,
-    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper,
+    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet,
 )
 
 
@@ -58,6 +58,22 @@ class ParserTests(unittest.TestCase):
             values = parse_imf_mapper(raw, "WEOWORLD", "GGXWDG_NGDP")
             self.assertEqual(values[date(2025, 1, 1)], Decimal("91.234"))
             self.assertNotIn(date(2026, 1, 1), values)
+
+    def test_shiller_month_dates_and_cape(self):
+        class Sheet:
+            ncols = 3
+            nrows = 5
+            data = [
+                ("Title", "", ""), ("Date", "P", "CAPE"),
+                (1871.01, 1.0, 12.25), (1871.11, 1.3, 13.4),
+                (1871.12, 1.4, ""),
+            ]
+            def cell_value(self, row, col):
+                return self.data[row][col]
+        observations = parse_shiller_sheet(Sheet())
+        self.assertEqual(observations[date(1871, 1, 1)], Decimal("12.25"))
+        self.assertEqual(observations[date(1871, 11, 1)], Decimal("13.4"))
+        self.assertNotIn(date(1871, 12, 1), observations)
 
     def test_world_bank_bad_geo_fails(self):
         data = [{"page": 1, "pages": 1}, [
@@ -152,10 +168,10 @@ class RouterTests(unittest.TestCase):
     def test_unresolved_never_fabricated(self):
         router = self.router(lambda request: self.fail("No network for unresolved"))
         try:
-            self.assertEqual(len(router.supported_ids()), 16)
+            self.assertEqual(len(router.supported_ids()), 17)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("valuation.global.cape")
-            self.assertEqual(len(router.blocked()), 10)
+            self.assertEqual(len(router.blocked()), 9)
         finally:
             router.close()
 

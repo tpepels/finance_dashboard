@@ -13,13 +13,13 @@ republish data to GitHub Pages.
 | IMF world general-government debt | 1 mapped via DataMapper, adapter | April 2026 WEO DataMapper, not October WEO; current and future projection years excluded; methodology and vintage flag explicit |
 | ILO global labour share | Unresolved | ILO publishes SDG 10.4.1, but a world aggregate/series key and provenance have not yet been established |
 | BIS global private credit gap | Unresolved | There is no single well-defined worldwide country-comparable credit-gap series; individual geographies must be specified |
-| Yale Shiller CAPE | Unresolved | Public workbook exists but download/version format and rights need confirmation |
+| Robert Shiller US CAPE | 1 mapped, adapter | Official Shiller workbook, dynamic link discovery, Excel header checks; redistribution rights still need review |
 | MSCI/global profit/concentration | Unresolved | Complete histories and redistribution rights generally require licensed index data |
 | Gold spot and correlations | Unresolved | Source licence and precise convention (fixing/spot/total return, currency) need defining |
 | Productivity versus compensation | Unresolved | World aggregate with harmonized wages/output coverage not selected |
 | US Tobin's Q | Unresolved | Valuation methodology and source definition not selected |
 
-All 16 mapped entries can now enter the ingestion worker. The other 10 are
+All 17 mapped entries can now enter the ingestion worker. The other 9 are
 **blocked source specifications**, never silently substituted with a US series or
 an invented global aggregate.
 
