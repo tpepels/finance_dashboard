@@ -18,7 +18,7 @@ from finance_dashboard.market import (
     EcbFxClient, MarketDataError, MarketHistory, PriceBar, YahooMarketClient,
     currency_to_eur, instruments, parse_ecb_fx_csv, parse_yahoo_chart, performance,
 )
-from finance_dashboard.database import Base, MarketPriceVersion, FxRateVersion
+from finance_dashboard.database import Base, MarketPriceVersion, MarketActionVersion, FxRateVersion
 from finance_dashboard.market_service import MarketIngestionService, current_market_prices, current_fx
 
 
@@ -74,6 +74,21 @@ class MarketAdapterTests(unittest.TestCase):
         del raw["chart"]["result"][0]["indicators"]["adjclose"]
         with self.assertRaisesRegex(MarketDataError,"Malformed"):
             parse_yahoo_chart(raw,inst)
+
+    def test_split_during_exchange_closure_is_preserved(self):
+        item=instruments()["vwce.de"]
+        data=yahoo_fixture()
+        # A split event is recorded on an exchange closure between Jan 3
+        # and Jan 6; it must not be reassigned to a fake trading session.
+        split=data["chart"]["result"][0]["events"]["splits"]["one"]
+        split["date"]=utc(2025,1,4)
+        hist=parse_yahoo_chart(data,item)
+        self.assertIn(date(2025,1,4),hist.splits)
+        self.assertNotIn(date(2025,1,4),hist.price_bars)
+        result=performance(hist)
+        byday={r["date"]:r for r in result["observations"]}
+        self.assertEqual(byday["2025-01-06"]["split_ratio"],"2")
+        self.assertEqual(result["corporate_actions"][0]["ex_date"],"2025-01-04")
 
     def test_yahoo_mock_transport(self):
         def handler(request):
@@ -152,7 +167,7 @@ class MarketPersistenceTests(unittest.TestCase):
 
     def test_market_revision_idempotence_and_failed_ingest(self):
         r=self.service.refresh_instrument("vwce.de")
-        self.assertEqual(r["versions_added"],3)
+        self.assertEqual(r["versions_added"],5)
         self.assertEqual(self.service.refresh_instrument("vwce.de")["versions_added"],0)
         h=self.yahoo.history
         bars=dict(h.price_bars)
@@ -162,6 +177,7 @@ class MarketPersistenceTests(unittest.TestCase):
         self.assertEqual(self.service.refresh_instrument("vwce.de")["versions_added"],1)
         with Session(self.engine) as session:
             self.assertEqual(session.scalar(select(func.count()).select_from(MarketPriceVersion)),4)
+            self.assertEqual(session.scalar(select(func.count()).select_from(MarketActionVersion)),2)
             self.assertEqual(current_market_prices(session,"vwce.de")[1].close,D("51.5"))
         self.yahoo.fail=True
         with self.assertRaises(MarketDataError):
