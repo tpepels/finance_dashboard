@@ -378,6 +378,7 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
         overlap = sorted(set(p) & set(n) & set(d))
         points_output = []
         points_pay = []
+        points_gap = []
         for day in overlap:
             if n[day] <= 0 or d[day] <= 0 or p[day] <= 0:
                 continue
@@ -386,11 +387,15 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
                 continue
             points_output.append({"date": day.isoformat(), "value": str(p[day])})
             points_pay.append({"date": day.isoformat(), "value": str(adjusted)})
+            points_gap.append({"date": day.isoformat(),
+                               "value": str(Decimal("100") * (p[day] / adjusted - 1))})
         used = [
             {"id": "derived.us.nonfarm_output", "name": "Output per hour (2017=100)",
              "unit": "index", "frequency": "Q", "points": points_output},
             {"id": "derived.us.output_price_real_pay", "name": "Output-price-adjusted hourly pay (2017=100)",
              "unit": "index", "frequency": "Q", "points": points_pay},
+            {"id": "derived.us.productivity_pay_gap", "name": "Output per hour / real hourly pay − 1",
+             "unit": "percent", "frequency": "Q", "points": points_gap},
         ]
         if points_output and points_pay:
             last_out = Decimal(points_output[-1]["value"])
@@ -482,7 +487,51 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
         else:
             headline = None
 
+    # Distribution context is calculated only from the actual selected-window
+    # observations. Percentile ranks are suppressed for sparse histories; this
+    # avoids implying a stable reference distribution from a few snapshots.
+    for series in used:
+        rows = series["points"]
+        series["historical_context"] = None
+        if len(rows) < 12:
+            continue
+        amounts = sorted(Decimal(row["value"]) for row in rows)
+        latest = Decimal(rows[-1]["value"])
+        n = len(amounts)
+        median = ((amounts[(n - 1) // 2] + amounts[n // 2]) / 2)
+        less = sum(value < latest for value in amounts)
+        equal = sum(value == latest for value in amounts)
+        series["historical_context"] = {
+            "count": n, "first_date": rows[0]["date"],
+            "last_date": rows[-1]["date"],
+            "minimum": str(amounts[0]), "median": str(median),
+            "maximum": str(amounts[-1]),
+            "latest_midrank_pct": str(Decimal("100") * (
+                Decimal(less) + Decimal(equal) / 2) / n),
+            "latest_minus_median": str(latest - median),
+        }
+
+    # No cross-country comparison unless all required sources reported
+    # observations for exactly the same reference date.
+    comparison = None
+    if len(used) > 1 and kind in ("raw", "fraction_percent_multi"):
+        by_series = [{row["date"]: Decimal(row["value"]) for row in part["points"]}
+                     for part in used]
+        common_dates = set.intersection(*(set(rows) for rows in by_series))
+        if common_dates:
+            common_day = max(common_dates)
+            ranked = sorted(
+                ({"id": part["id"], "name": part["name"],
+                  "value": str(values[common_day])}
+                 for part, values in zip(used, by_series)),
+                key=lambda row: Decimal(row["value"]), reverse=True)
+            comparison = {"date": common_day, "common_date_count": len(common_dates),
+                          "unit": used[0]["unit"], "ranked": ranked,
+                          "range": str(Decimal(ranked[0]["value"]) -
+                                       Decimal(ranked[-1]["value"]))}
+
     return {
+        "comparison": comparison,
         "id": spec["id"], "region": spec["region"], "theme": spec["theme"],
         "title": spec["title"], "question": spec["question"],
         "reading": spec["reading"], "caveat": spec["caveat"],
