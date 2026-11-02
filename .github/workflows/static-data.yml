@@ -46,6 +46,8 @@ jobs:
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python -m finance_dashboard.static_export --output-dir build/static-data --max-workers 6
+      - name: Check committed Wisesheets aggregate appears in static JSON
+        run: python scripts/verify_static_wisesheets.py
       - name: Upload key-free data artifact for the future Pages frontend
         uses: actions/upload-artifact@v4
         with:
