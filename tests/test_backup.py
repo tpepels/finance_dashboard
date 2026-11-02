@@ -4,11 +4,35 @@ from pathlib import Path
 import sqlite3
 from tempfile import TemporaryDirectory
 import unittest
+import os
+from unittest.mock import patch
 
 from finance_dashboard.backup import backup_local, verify_manifest, _hash
 
 
 class LocalBackupTests(unittest.TestCase):
+    def test_existing_background_refresh_schedules_one_daily_backup_without_worker(self):
+        from finance_dashboard.standalone import refresh_loop
+        class OneCycle:
+            def is_set(self):
+                return False
+            def wait(self, _seconds):
+                return True
+        with patch.dict(os.environ, {
+            "FINANCE_AUTO_BACKUP": "1",
+            "FINANCE_BACKUP_DIR": "/data/backups",
+            "FINANCE_BACKUP_KEEP": "14",
+        }):
+            with patch("finance_dashboard.worker.refresh_all", return_value=0) as macro, \\
+                 patch("finance_dashboard.backup.backup_local") as backup, \\
+                 patch("finance_dashboard.backup.source_database_path",
+                       return_value=Path("/data/finance.sqlite3")):
+                refresh_loop(None, OneCycle(), interval_seconds=86400,
+                             include_markets=False, refresh_wisesheets=False)
+                self.assertEqual(macro.call_count, 1)
+                self.assertEqual(backup.call_count, 1)
+                self.assertEqual(backup.call_args.kwargs["keep"], 14)
+
     def test_wal_online_copy_is_consistent_and_retains_local_source(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
