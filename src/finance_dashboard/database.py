@@ -31,7 +31,7 @@ class Base(DeclarativeBase):
 class SeriesRow(Base):
     __tablename__ = "series"
     id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    provider: Mapped[str] = mapped_column(String(24), nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
     source_key: Mapped[str] = mapped_column(String(160), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
