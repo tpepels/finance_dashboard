@@ -21,6 +21,11 @@ from .market_analytics import rolling_gold_vs_global_etf
 from .insights import same_measure, summarize
 from .risk_diagnostics import diagnostic_catalog, read_diagnostics, SCOPES as RISK_SCOPES
 from .portfolio_risk import compare_market_histories
+from .vintage import SOURCES as VINTAGE_SOURCES, read_snapshot as read_alfred_snapshot, available_snapshots, latest_asof_reading
+from .vintage_backtest import walk_forward
+from .sec_holdings import list_holdings, HoldingsError
+from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCENARIOS as MARX_SCENARIOS, AccountingError
+
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
@@ -182,6 +187,76 @@ def create_app(engine=None) -> FastAPI:
         if payload is None:
             raise HTTPException(404, "SEC earnings full-universe scan not yet collected")
         return payload
+
+    @app.get("/api/vintages")
+    def vintage_inventory():
+        """Official ALFRED point-in-time cache; never a substitute for app snapshots."""
+        return available_snapshots(Path(environ.get("FINANCE_VINTAGE_DIR","/data/vintages")))
+
+    @app.get("/api/vintages/{series_id}")
+    def vintage_series(series_id: str, asof: date):
+        if series_id not in VINTAGE_SOURCES:
+            raise HTTPException(404, "Unrecognized ALFRED series")
+        if asof > date.today():
+            raise HTTPException(422, "No future historical source vintages")
+        try:
+            data = read_alfred_snapshot(
+                Path(environ.get("FINANCE_VINTAGE_DIR","/data/vintages")),
+                series_id, asof)
+        except (ValueError, KeyError):
+            raise HTTPException(422, "Invalid source-vintage cache") from None
+        if data is None:
+            raise HTTPException(404, "No verified ALFRED vintage stored for this source date")
+        return {**data, "latest_asof_reading":latest_asof_reading(data)}
+
+    @app.get("/api/vintage/backtest")
+    def vintage_recession_backtest(horizon_months: int = 12):
+        if horizon_months not in (6,12):
+            raise HTTPException(422, "Only pre-registered 6/12 month horizons are supported")
+        return walk_forward(Path(environ.get("FINANCE_VINTAGE_DIR","/data/vintages")),
+                            horizon=horizon_months)
+
+    @app.get("/api/holdings/{instrument_id:path}")
+    def dated_etf_holdings(instrument_id: str, asof: date | None = None):
+        if instrument_id not in market_registry:
+            raise HTTPException(404,"Unknown registered instrument")
+        if asof and asof > date.today():
+            raise HTTPException(422,"Future holdings availability date")
+        try:
+            return list_holdings(
+                Path(environ.get("FINANCE_HOLDINGS_DIR","/data/holdings")),
+                instrument_id, asof=asof)
+        except HoldingsError:
+            raise HTTPException(422, "No official SEC holdings contract for this asset") from None
+
+    @app.get("/api/marx")
+    def marx_data_availability():
+        dataset = read_oecd_accounts(Path(environ.get("FINANCE_SURPLUS_DIR","/data/surplus")))
+        if dataset is None:
+            return {"status":"not_ingested","source":"OECD_IOT_2025_VALUE_ADDED_COMPONENTS",
+                    "scenarios":list(MARX_SCENARIOS),
+                    "warning":"No audited OECD IOT extract; never manufacture a surplus-value rate."}
+        return {"status":"source_extract_available","source":dataset["release"],
+                "country_years":sorted(set((r["country"],r["year"]) for r in dataset["rows"])),
+                "scenarios":list(MARX_SCENARIOS),
+                "source_extract_sha256":dataset["normalized_extract_sha256"],
+                "warning":"National accounts accounting sensitivity, not an observed Marxian exploitation rate."}
+
+    @app.get("/api/marx/{country}/{year}")
+    def marx_accounting(country: str,year: int,scenario: str = "all_industries",
+                        adjust_selfemployment: bool = False):
+        if (scenario not in MARX_SCENARIOS or len(country) != 2
+            or not country.isalpha() or year<1995 or year>2022):
+            raise HTTPException(422,"Unsupported country/year/classification scope")
+        data = read_oecd_accounts(Path(environ.get("FINANCE_SURPLUS_DIR","/data/surplus")))
+        if data is None:
+            raise HTTPException(404,"Audited OECD IOT extract not yet ingested")
+        try:
+            return compute_country_year(data,country=country.upper(),year=year,
+                                        scenario=scenario,
+                                        adjust_selfemployment=adjust_selfemployment)
+        except AccountingError:
+            raise HTTPException(422,"OECD source components incomplete or inconsistent") from None
 
     @app.get("/api/risk")
     def risk_catalog():
