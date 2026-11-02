@@ -79,8 +79,8 @@ describe('minimal dashboard interactive acceptance', () => {
     await screen.findByRole('img', { name: /Time series chart/ });
     expect(screen.getByText('Compare harmonized policy rates.')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Data table' }));
-    expect(screen.getByText('real-run-123')).toBeTruthy();
-    expect(screen.getByText('real-run-456')).toBeTruthy();
+    expect(screen.getAllByText('real-run-123').length).toBe(3);
+    expect(screen.getAllByText('real-run-456').length).toBe(3);
     expect(screen.getAllByText('2025-01-01').length).toBeGreaterThan(0);
     await user.click(screen.getByText('Sources, definitions & freshness'));
     expect(screen.getAllByRole('link', { name: 'Original source' }).length).toBe(3);
