@@ -18,6 +18,8 @@ from .market import instruments
 from .market_service import MarketIngestionService
 from .market_analytics import rolling_gold_vs_global_etf
 from .insights import same_measure, summarize
+from .risk_diagnostics import diagnostic_catalog, read_diagnostics, SCOPES as RISK_SCOPES
+from .portfolio_risk import compare_market_histories
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
@@ -36,6 +38,33 @@ class SeriesQuery(BaseModel):
             raise ValueError("Duplicate series IDs")
         if self.start and self.end and self.start > self.end:
             raise ValueError("start must be on or before end")
+        return self
+
+
+class PortfolioComparison(BaseModel):
+    instrument_ids: list[str] = Field(min_length=2, max_length=5)
+    currency: str = "EUR"
+    start: date | None = None
+    end: date | None = None
+    snapshot_at: datetime | None = None
+    weights_pct: dict[str, float] | None = None
+
+    @model_validator(mode="after")
+    def validate_comparison(self):
+        if len(self.instrument_ids) != len(set(self.instrument_ids)):
+            raise ValueError("Duplicate portfolio assets")
+        if self.currency not in ("EUR", "USD"):
+            raise ValueError("Only EUR or USD analysis is available")
+        if self.start and self.end and self.start > self.end:
+            raise ValueError("Invalid comparison date window")
+        if self.weights_pct is not None:
+            from math import isfinite
+            if set(self.weights_pct) != set(self.instrument_ids):
+                raise ValueError("Weights must cover exactly the selected assets")
+            if any(not isfinite(x) or x < 0 or x > 100 for x in self.weights_pct.values()):
+                raise ValueError("Each asset weight must be between zero and 100")
+            if abs(sum(self.weights_pct.values()) - 100) > 1e-6:
+                raise ValueError("The selected weights must total 100 percent")
         return self
 
 
@@ -113,6 +142,19 @@ def create_app(engine=None) -> FastAPI:
             raise HTTPException(404, "SEC earnings full-universe scan not yet collected")
         return payload
 
+    @app.get("/api/risk")
+    def risk_catalog():
+        """Source-defined diagnostic criteria; no composite scores."""
+        return diagnostic_catalog()
+
+    @app.get("/api/risk/{scope}")
+    def risk_view(scope: str, start: date | None = None, end: date | None = None):
+        if scope not in RISK_SCOPES:
+            raise HTTPException(404, "Unknown risk scope")
+        if start and end and start > end:
+            raise HTTPException(422, "Invalid period")
+        return read_diagnostics(db, scope, start=start, end=end)
+
     @app.get("/api/markets")
     def markets():
         return {"items": [market_registry[sid] for sid in sorted(market_registry)],
@@ -147,6 +189,37 @@ def create_app(engine=None) -> FastAPI:
         return {"series": result, "base_currency": "EUR",
                 "snapshot_kind": "app_first_seen_not_source_publication_vintage",
                 "calendar_alignment": "Native trading dates; no invented market closures or FX"}
+
+    @app.post("/api/market/compare")
+    def market_comparison(request: PortfolioComparison):
+        """Actual stored market/ECB histories, currency-aligned common months."""
+        invalid = [sid for sid in request.instrument_ids if sid not in market_registry]
+        if invalid:
+            raise HTTPException(404, "Unknown selected market instruments")
+        if request.currency == "USD" and any(
+            market_registry[sid]["trading_currency"] != "USD"
+            for sid in request.instrument_ids
+        ):
+            raise HTTPException(
+                422, "USD comparison requires USD-quoted assets; EUR-to-USD conversion is not provided"
+            )
+        service = MarketIngestionService(db, registry=market_registry)
+        histories = {
+            sid: service.read_performance(sid, start=request.start,
+                                          end=request.end, snapshot_at=request.snapshot_at)
+            for sid in request.instrument_ids
+        }
+        if any(len(item.get("observations", [])) > 100_000
+               for item in histories.values()):
+            raise HTTPException(413, "Market comparison exceeds source observation limit")
+        try:
+            weights = ({k: v / 100 for k, v in request.weights_pct.items()}
+                       if request.weights_pct is not None else None)
+            return compare_market_histories(
+                histories, market_registry, currency=request.currency, weights=weights,
+            )
+        except ValueError:
+            raise HTTPException(422, "Invalid market/currency comparison inputs") from None
 
     @app.get("/api/market/gold-world-proxy")
     def gold_world_proxy(currency: str = "USD", window_months: int = 36):
