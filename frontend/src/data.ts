@@ -88,14 +88,14 @@ export function loadSeries(id: string): Promise<LoadedSeries> {
   return task;
 }
 
-export function loadInsight(ids: string[]): Promise<InsightResponse> {
-  const key = ids.join('|');
+export function loadInsight(ids: string[], start?: string, end?: string): Promise<InsightResponse> {
+  const key = JSON.stringify([ids, start ?? null, end ?? null]);
   const cached = insightCache.get(key);
   if (cached) return cached;
   const request = json<InsightResponse>('/api/chart-insight', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ series_ids: ids }),
+    body: JSON.stringify({ series_ids: ids, start, end }),
   });
   insightCache.set(key, request);
   return request.catch(error => {
