@@ -1,6 +1,6 @@
 # Data coverage and blockers (Phase 2 expanded)
 
-The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **19 mapped**, 3 FRED credential-gated, 16 live verified; **8 unresolved**. This document distinguishes
+The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **20 mapped**, 3 FRED credential-gated, 16 previously live verified; **7 unresolved**. This document distinguishes
 an implementable adapter from verified observations and legal permission to
 republish data to GitHub Pages.
 
@@ -11,6 +11,7 @@ republish data to GitHub Pages.
 | ECB deposit facility | 1 mapped, adapter | Official ECB CSV format |
 | World Bank real GDP and listed-cap/GDP | 8 mapped, live verified | Indicators v2 JSON API, all 6 GDP geographies plus both capitalization ratios verified |
 | IMF world general-government debt | 1 mapped, live verified | April 2026 WEO DataMapper, not October WEO; current and future calendar years excluded |
+| Siblis global ACWI CAPE | 1 mapped, live endpoint verified | Sparse proprietary free-tier snapshot series, noncommercial use. Public GitHub Pages redistribution **not permitted without separate licence**; no interpolated history |
 | ILO / UNSD world labour share | 1 mapped, live verified | Official UN SDG 10.4.1 `SL_EMP_GTOTL` world (M49=1), ILO-custodied; filter global reporting and all ages |
 | BIS global private credit gap | Unresolved | There is no single well-defined worldwide country-comparable credit-gap series; individual geographies must be specified |
 | Robert Shiller US CAPE | 1 mapped, live verified | Official Shiller workbook, dynamic link discovery, Excel header checks; redistribution rights still need review |
@@ -19,7 +20,7 @@ republish data to GitHub Pages.
 | Productivity versus compensation | Unresolved | World aggregate with harmonized wages/output coverage not selected |
 | US Tobin's Q | Unresolved | Valuation methodology and source definition not selected |
 
-All 19 mapped entries can now enter the ingestion worker. The other 8 are; one additional monthly gold average source has been introduced separately
+All 20 mapped entries can now enter the ingestion worker. The other 7 are; one additional monthly gold average source has been introduced separately
 **blocked source specifications**, never silently substituted with a US series or
 an invented global aggregate.
 
@@ -46,3 +47,7 @@ the series; complete rights reviews before enabling public JSON export.
 - All **3 BIS** rates plus full PostgreSQL ingestion/API: [Docker acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048).
 - **3 FRED** sources have parser/transport tests but no verified authenticated production call because no FRED_API_KEY was supplied.
 - 8 other original indicator definitions remain unresolved. The original `gold.usd.spot` remains unresolved: monthly-average gold has a separate canonical series ID.
+
+## Global CAPE licensing
+
+The free Siblis ACWI CAPE API is authenticated-free but proprietary. Provider permits non-commercial personal research; public-site reproduction of complete datasets or API-powered charts requires a separate redistribution agreement. The original series ID now maps to a genuine ACWI CAPE dataset, but no public Pages export is authorized. Source: https://siblisresearch.com/data-licensing/.

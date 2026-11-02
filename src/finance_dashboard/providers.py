@@ -27,7 +27,8 @@ SHILLER_HOME = "https://shillerdata.com/"
 UN_SDG_ROOT = "https://unstats.un.org/SDGAPI/v1/sdg/Series"
 PINK_SHEET_URL = "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx"
 IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET"))
+SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE"))
 
 
 class SourceUnavailable(ProviderError):
@@ -165,6 +166,31 @@ def parse_un_sdg(payload: Any, series_code: str, area_code: str,
     if not out:
         raise ProviderError("UN SDG no usable world labour share observations")
     return out
+
+
+def parse_siblis_cape(payload: Any, ticker: str, start: date | None = None) -> dict[date, Decimal]:
+    """Preserve exact sparse month-end snapshots; not interpolated monthly history.
+
+    Siblis free API is proprietary and its returned observations must not be
+    redistributed via a public/static site without a separate licence.
+    """
+    if not isinstance(payload, dict) or payload.get("ticker") != ticker or payload.get("ratio") != "cape":
+        raise ProviderError("Siblis CAPE identity mismatch")
+    rows = payload.get("data")
+    if not isinstance(rows, list):
+        raise ProviderError("Siblis response lacks data array")
+    output = {}
+    for row in rows:
+        day = _date(row.get("trading_day (EOD)"), "M")
+        if day > date.today() or (start and day < start):
+            continue
+        value = _value(row.get("value"))
+        if value is not None and value <= 0:
+            raise ProviderError("Non-positive CAPE is not a meaningful valuation ratio")
+        _put(output, day, value)
+    if not output:
+        raise ProviderError("No historical Siblis CAPE snapshots in requested window")
+    return output
 
 
 def parse_imf_mapper(payload: Any, region: str, indicator: str, start: date | None = None) -> dict[date, Decimal]:
@@ -353,6 +379,14 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "SIBLIS_FREE":
+            ticker, ratio = key.split("/", 1)
+            if ticker not in {"ACWI"} or ratio != "cape":
+                raise SourceUnavailable("Siblis API ticker/metric not approved by catalog")
+            url = f"{SIBLIS_FREE_ROOT}/{ticker}/{ratio}"
+            response = self._get(url)
+            observations = parse_siblis_cape(response.json(), ticker, start)
+            return FetchedSeries(series_id, url, None, observations)
         if provider == "WORLD_BANK_PINK_SHEET":
             from io import BytesIO
             from python_calamine import CalamineWorkbook

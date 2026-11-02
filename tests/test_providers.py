@@ -7,7 +7,7 @@ import httpx
 
 from finance_dashboard.providers import (
     ProviderRouter, ProviderError, SourceUnavailable,
-    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold,
+    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape,
 )
 
 
@@ -45,6 +45,15 @@ class ParserTests(unittest.TestCase):
         ]
         result = parse_world_bank(data, "USA", "NY.GDP.MKTP.KD.ZG")
         self.assertEqual(result, {date(2025, 1, 1): Decimal("2.4")})
+
+    def test_global_cape_sparse_free_snapshots(self):
+        raw = {"ticker":"ACWI","ratio":"cape","data":[
+            {"trading_day (EOD)":"2025-09-30","value":30.75},
+            {"trading_day (EOD)":"2025-12-31","value":31.25}]}
+        result = parse_siblis_cape(raw, "ACWI", start=date(2025, 10, 1))
+        self.assertEqual(result, {date(2025,12,31):Decimal("31.25")})
+        with self.assertRaisesRegex(ProviderError, "identity mismatch"):
+            parse_siblis_cape({**raw,"ticker":"WORLD"}, "ACWI")
 
     def test_imf_mapper_historical_only(self):
         from unittest.mock import patch
@@ -137,6 +146,18 @@ class RouterTests(unittest.TestCase):
         finally:
             router.close()
 
+    def test_siblis_transport(self):
+        def handler(request):
+            self.assertTrue(str(request.url).endswith("/ACWI/cape"))
+            return httpx.Response(200, json={"ticker":"ACWI","ratio":"cape",
+                "data":[{"trading_day (EOD)":"2025-12-31","value":31.25}]})
+        router = self.router(handler)
+        try:
+            result = router.fetch("valuation.global.cape")
+            self.assertEqual(result.observations[date(2025,12,31)], Decimal("31.25"))
+        finally:
+            router.close()
+
     def test_imf_transport(self):
         def handler(request):
             self.assertTrue(str(request.url).endswith("/GGXWDG_NGDP"))
@@ -209,10 +230,10 @@ class RouterTests(unittest.TestCase):
     def test_unresolved_never_fabricated(self):
         router = self.router(lambda request: self.fail("No network for unresolved"))
         try:
-            self.assertEqual(len(router.supported_ids()), 19)
+            self.assertEqual(len(router.supported_ids()), 20)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("valuation.global.cape")
-            self.assertEqual(len(router.blocked()), 8)
+            self.assertEqual(len(router.blocked()), 7)
         finally:
             router.close()
 
