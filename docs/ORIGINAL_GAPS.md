@@ -106,11 +106,10 @@ geography. Source access, not a FRED key, is missing.
 
 ## Further implementation/acceptance debt
 
-Independent issuer NAV/dividend reconciliation and historical ticker-change identity continuity remain unverified. The combined live PostgreSQL backfill of all 32 mapped macro/index series **passed** on 2026-11-02.
+Independent issuer NAV/dividend reconciliation and historical ticker-change identity continuity remain unverified **optional market-data audits**, no longer macro Phase 2 gates. The combined live PostgreSQL backfill of all 32 mapped macro/index series **passed** on 2026-11-02.
 The backend has verified all 24 investment instruments against live PostgreSQL ingestion and all 32 mapped macro/index sources against live PostgreSQL ingestion, live API readback, and static export. [All-macro full-historical PostgreSQL acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670), [market PostgreSQL acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707).
 
-**Do not close Phase 2** until both original outstanding datasets and these
-agreed integration checks have been implemented and verified. Do not claim a
+**Do not close Phase 2** until both original outstanding historical datasets and the macro acceptance tests have been implemented and verified, unless the owner approves an explicit change to the two original definitions. Do not claim a
 premium dataset can be accessed merely by assuming usage permission.
 
 
@@ -130,3 +129,11 @@ The original two indicators remain **unmapped**. These concrete sources offer pa
 | Existing Wisesheets supplementary | 8,179 current SEC CIKs; 6,161 traceable financial filers; 2021–2025 | Useful measured SEC-listed partial universe, not global or survivorship-free. [Collector](WISESHEETS.md) |
 
 **Implementation decision:** retain exact `concentration.global.top10` and `profit.global.corporate_share` as unresolved until their required source histories pass the contracts. New approaches can be implemented as separately labelled `proxy.*` or supplementary series after a source/rights review; no implicit replacement is approved. Do not combine one provider's index cap with another provider's P/E unless constituent universe, date and valuation methodology have been independently reconciled. If the owner elects to change the original scope, record an explicit change to the [locked feature contract](PHASE_2_FEATURE_CONTRACT.md) and [implementation contract](PHASE_2_IMPLEMENTATION_CONTRACT.md).
+
+## Macro-first aggregate histories added without ETF holdings (2026-11-02)
+
+The owner deprioritized per-ETF analysis. Four **separately named** global macro measures were implemented and source-validated in the [36-series live static export](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778): World Bank WDI WLD listed domestic market capitalization in USD (51 years), a same-calendar-year capitalization / WLD GDP ratio (51 years), Siblis global-index aggregate trailing P/E (11 published snapshots, 2016–2026), and the same-index reciprocal earnings yield (11 snapshots). Source code: [macro_aggregates.py](../src/finance_dashboard/macro_aggregates.py). An Alembic numeric-precision migration stores large USD world totals.
+
+The World Bank WLD ratio is calculated from its WLD USD capitalization and WLD world GDP values; it differs from the WDI published *country-weighted* market capitalization/GDP aggregate. Index earnings yield is relative to **Siblis's index market cap**, not world GDP. The sources have different corporate universes; cross-multiplying them does **not** yield worldwide consolidated net profits.
+
+Under the [recorded macro-first scope amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md), individual issuer NAV reconciliation and historical ticker continuity are optional market-data debt, **not blockers** to macro Phase 2. The original `profit.global.corporate_share` and `concentration.global.top10` historical contracts remain unresolved.
