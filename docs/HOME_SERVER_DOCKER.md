@@ -28,3 +28,38 @@ The first startup migrates persistent SQLite and immediately starts asynchronous
 The port is accessible on your LAN by default, with **no login**. Do not forward it to the public internet. Source attribution metadata does not block access in this local installation. Third-party licences still govern any external redistribution.
 
 If you use the repository as an independent Compose project instead, it now has a **single-service** `docker-compose.yml`, using `./data-local` by default. Do not run this separate stack alongside the same image in your main Compose; add the service to the existing project instead.
+
+
+## Phase 4 market research and observability
+
+The same single `finance-dashboard` container now includes **Phase 4 economic risk evidence** and an **optional** ETF/equity/gold historical comparison under the main economic research page. The market comparison needs prices and EUR FX; the earlier macro-first default leaves them uncollected.
+
+To enable local price research, add to the **existing** service's environment:
+
+```yaml
+FINANCE_INCLUDE_MARKETS: "1"
+```
+
+Then recreate only this container with `docker compose up -d finance-dashboard`. The existing local refresh thread will collect 24 registered Yahoo instrument histories and three ECB FX histories; failures remain visible under `http://media-server:5052/api/market/status`. Do not add a worker or another database container. The market feed is unofficial, so incomplete histories are not replaced with invented quotes.
+
+The new **operational status** route is `http://media-server:5052/api/operations`. It reports local source and market history counts, ingestion failures, optional collection settings, and the most recent verified backup manifest.
+
+### Daily SQLite backups
+
+The same refresh thread now creates SQLite **online-backup API** snapshots once per cycle (24 hours by default) after macro collection, with integrity checks and SHA-256 manifests in `/srv/finance-dashboard/backups` on the host (mounted as `/data/backups`). The default keeps 14 bundles. They remain vulnerable to loss of the same disk; copy to a second physical device/off-site encrypted backup.
+
+Create and verify one immediately:
+
+```bash
+docker compose exec finance-dashboard python -m finance_dashboard.backup --output-dir /data/backups --keep 14
+# Replace the path below with the real manifest file created above.
+docker compose exec finance-dashboard python -m finance_dashboard.backup --verify-manifest /data/backups/finance-REAL_TIMESTAMPZ.json
+```
+
+Only restore while the finance service is **stopped**, after verifying checksum and integrity and retaining a copy of the damaged database.
+
+### Optional network access policy
+
+The default port 5052 remains reachable from your LAN **without any authentication**. Do not port-forward it to the internet. For use through an already-existing authenticated Caddy reverse proxy, set `FINANCE_BIND_HOST=127.0.0.1` in Compose and recreate the finance container. This changes only which host interface accepts the port; it does not add another container or restrict local data retrieval in the application.
+
+Source formulas, assumptions and remaining Phase 4 limitations: [PHASE_4.md](PHASE_4.md).
