@@ -21,6 +21,10 @@ from .catalog import load_documents
 from .wisesheets import load_sec_profit_snapshot, snapshot_series
 from .world_credit import (BIS_COMPOSITE_URL, WORLD_GDP_URL,
     parse_bis_national_credit_gaps, parse_wdi_gdp_all, country_weighted_bis_gap)
+from .macro_aggregates import (
+    SIBLIS_WORLD_PE_URL, parse_siblis_world_pe, aggregate_earnings_yield,
+    world_listed_market_cap_gdp,
+)
 from .remaining_sources import (
     BEA_Q_URL, MSCI_LEVELS_URL, MSCI_ACWI_INDEX_CODE,
     parse_bea_q1, parse_msci_acwi, gold_acwi_rolling_correlation,
@@ -39,7 +43,7 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD"))
 
 
 class SourceUnavailable(ProviderError):
@@ -575,6 +579,29 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "WORLD_LISTED_CAP_SHARE":
+            if key != "WLD/CM.MKT.LCAP.CD:WLD/NY.GDP.MKTP.CD":
+                raise SourceUnavailable("Unapproved world-listed capitalization formula")
+            cap_url = f"{WORLD_BANK_ROOT}/country/WLD/indicator/CM.MKT.LCAP.CD"
+            gdp_url = f"{WORLD_BANK_ROOT}/country/WLD/indicator/NY.GDP.MKTP.CD"
+            params = {"format": "json", "per_page": 150}
+            if start:
+                params["date"] = f"{start.year}:{date.today().year}"
+            cap_response = self._get(cap_url, params=params)
+            gdp_response = self._get(gdp_url, params=params)
+            cap = parse_world_bank(cap_response.json(), "WLD", "CM.MKT.LCAP.CD", start)
+            gdp = parse_world_bank(gdp_response.json(), "WLD", "NY.GDP.MKTP.CD", start)
+            observations = world_listed_market_cap_gdp(cap, gdp, start=start)
+            return FetchedSeries(series_id, str(cap_response.request.url) + " + " +
+                                 str(gdp_response.request.url), None, observations)
+        if provider in ("SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD"):
+            if key != "GLOBAL/PT12M":
+                raise SourceUnavailable("Unapproved Siblis global valuation source key")
+            response = self._get(SIBLIS_WORLD_PE_URL)
+            observations = parse_siblis_world_pe(response.text, start=start)
+            if provider == "SIBLIS_WORLD_EARNINGS_YIELD":
+                observations = aggregate_earnings_yield(observations)
+            return FetchedSeries(series_id, SIBLIS_WORLD_PE_URL, None, observations)
         if provider == "BIS_WORLD_WEIGHTED":
             if key not in ("GAP/43_COUNTRIES_PRIOR_YEAR_GDP_80PCT",
                            "COVERAGE/43_COUNTRIES_PRIOR_YEAR_GDP_80PCT"):
