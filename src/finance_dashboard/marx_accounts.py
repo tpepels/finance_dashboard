@@ -180,6 +180,11 @@ def compute_country_year(dataset: dict, *, country: str, year: int,
         "currency":rows[0]["currency"],"unit":rows[0]["unit"],
         "source_release":SOURCE, "source_url":REFERENCE,
         "sectors_observed":len(rows),
+        "reported_isic_sections":sorted({x["isic_section"] for x in rows}),
+        "unreported_in_scope_sections":sorted(
+            SCENARIOS[scenario] - {x["isic_section"] for x in rows}),
+        "complete_assumed_industry_scope":(
+            {x["isic_section"] for x in rows} == SCENARIOS[scenario]),
         "employee_compensation":str(sum_comp),
         "net_operating_surplus":str(sum_surplus),
         "consumption_fixed_capital":str(sum_cfc),
@@ -193,7 +198,9 @@ def compute_country_year(dataset: dict, *, country: str, year: int,
         "missing_capital_stock_sectors":missing_stock,
         "missing_selfemployment_imputation_sectors":missing_imputation,
         "source_extract_sha256":dataset["normalized_extract_sha256"],
-        "limitation":("Sector inclusion is a user-visible theoretical assumption. "
+        "limitation":("Sector inclusion is a user-visible theoretical assumption; reported "
+                      "industry totals cover only the actually supplied ISIC rows, "
+                      "and omitted industries cannot be treated as zero. "
                       "OECD net operating surplus is not observed Marxian surplus "
                       "value; nominal net fixed capital stock is not the complete "
                       "Marxian capital advanced. Unpaid domestic labour, productive "
