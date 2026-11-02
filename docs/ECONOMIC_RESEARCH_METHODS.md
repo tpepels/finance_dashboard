@@ -113,3 +113,16 @@ docker compose up -d --build finance-dashboard
 ```
 
 Source and transform contracts have been committed. The application is **not declared visually or runtime verified** until these tests/build and real-data browser inspection have been performed locally. The Docker build runs frontend tests, TypeScript compile and Python catalogue checks without GitHub Actions.
+
+## Multinational labour-income-share measurements: same PWT, not a synthetic EU series
+
+Phase 4 now also uses the exact Penn World Table 11.0 **annual fractional compensation/GDP shares** for Japan, Germany, France and Italy, through 2023. It retains the already implemented US PWT series:
+
+- Japan: [LABSHPJPA156NRUG](https://fred.stlouisfed.org/series/LABSHPJPA156NRUG)
+- Germany: [LABSHPDEA156NRUG](https://fred.stlouisfed.org/series/LABSHPDEA156NRUG)
+- France: [LABSHPFRA156NRUG](https://fred.stlouisfed.org/series/LABSHPFRA156NRUG)
+- Italy: [LABSHPITA156NRUG](https://fred.stlouisfed.org/series/LABSHPITA156NRUG)
+- United States: [LABSHPUSA156NRUG](https://fred.stlouisfed.org/series/LABSHPUSA156NRUG)
+
+Each series is multiplied by 100 to display percent. The comparative view overlays all **five countries** on an identical PWT methodology and uses exact shared years to calculate any high-minus-low range. The European research page displays Germany, France and Italy **individually**; no fake EU27 total or unverified euro-area aggregate is synthesized. Japan's labour/non-labour GDP split uses one Japanese PWT denominator and labels the complement as **not corporate profits or Marxian surplus value**. These observations currently end in 2023, and revised historical PWT data are not genuine publication vintages.
+
