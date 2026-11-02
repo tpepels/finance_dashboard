@@ -40,6 +40,6 @@ with httpx.Client(timeout=12,follow_redirects=True) as client:
             obj=r.json() if r.status_code==200 else {}
             rows=(obj.get("indexes") or {}).get("INDEX_LEVELS") or []
             print(json.dumps({"source":"msci","index":code,"status":r.status_code,
-                "root_keys":list(obj),"currency":obj.get("ISO_currency_symbol"),"count":len(rows),
+                "root_keys":list(obj),"currency":obj.get("ISO_currency_symbol"),"variant":obj.get("index_variant_type"),"source_index":obj.get("msci_index_code"),"count":len(rows),
                 "first":rows[:1],"last":rows[-1:]}),flush=True)
         except Exception as exc:print(json.dumps({"source":"msci","index":code,"error":type(exc).__name__}),flush=True)
