@@ -16,7 +16,7 @@ ACCESSION = "0001234567-26-000123"
 def submission(form="NPORT-P", cik=1234567, time="2026-05-21T17:12:15"):
     return {"cik":cik, "filings":{"recent":{
         "accessionNumber":[ACCESSION], "form":[form],
-        "acceptanceDateTime":[time],
+        "acceptanceDateTime":[time], "filingDate":["2026-05-21"],
     }}}
 
 
@@ -46,7 +46,8 @@ class SecHoldingTests(unittest.TestCase):
     def test_primary_filing_has_valid_issuer_country_weights_and_public_date(self):
         record=self.parse()
         self.assertEqual(record["holdings_date"],"2026-03-31")
-        self.assertTrue(record["available_at_utc"].startswith("2026-05-21"))
+        self.assertTrue(record["available_at_utc"].startswith("2026-05-23"))
+        self.assertIn("conservative", record["availability_time_quality"])
         self.assertEqual(record["classified_long_nav_percent"],"100.0")
         self.assertTrue(record["complete_share_of_nav"])
         self.assertEqual(record["countries"][0]["country"],"US")
