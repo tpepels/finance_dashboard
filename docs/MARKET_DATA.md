@@ -124,13 +124,8 @@ unless protected by another hosting layer.
   split with exact 2001 ex-date, 186 monthly gold/VT correlations.
 - Short offline, migration and PostgreSQL CI on main.
 
-## Still outside the complete original Phase 2 scope
+## Remaining original Phase 2 source scope (current status)
 
-Six original macro definitions remain unresolved: US replacement-cost Tobin
-Q, global productivity-versus-pay, worldwide listed-company profit share,
-historical top-ten free-float MSCI concentration, a defensible aggregate world
-credit-to-GDP gap, and correlation against a genuine global equity **index**
-total-return history rather than the implemented GLD/VT fund proxy.
+The initial six missing economic definitions were reduced to **two** on 2026-11-02: historical MSCI ACWI security-level top-ten free-float concentration and comprehensive worldwide listed-company net profits/GDP. BEA replacement-cost Q1, the explicitly implied ILO labour/output ratio, the GDP-weighted BIS credit-gap composite and the real MSCI ACWI NETR/gold correlation have since been mapped and verified. GLD/VT ETF correlations remain separate investable proxies and are not the genuine MSCI index series. Wisesheets SEC-filer earnings are an additional incomplete benchmark and cannot close the original global profits measure. See [locked feature contract](PHASE_2_FEATURE_CONTRACT.md) and [exact remaining gaps](ORIGINAL_GAPS.md).
 
-No original definition is automatically relabelled as mapped due to the
-availability of a separately named proxy. Phase 2 remains open.
+No original definition is automatically relabelled as mapped due to the availability of a differently defined proxy. Phase 2 remains open.
