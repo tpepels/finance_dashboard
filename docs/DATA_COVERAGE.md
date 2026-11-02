@@ -32,22 +32,18 @@ and 36-month USD/EUR GLD-versus-VT investable-ETF proxy correlations.
 - [Actual full 24-instrument PostgreSQL/FX/API ingestion acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707)
 - [Source registry, methodology and caveats](MARKET_DATA.md)
 
-The GLD/VT fund-based correlations are **separate** from the original
-unresolved world-equity-index total-return/spot-gold correlation, just as
-NCBCEPNW is separate from replacement-cost Tobin's Q.
+The GLD/VT fund-based correlations are **separate ETF proxies**. The original gold/global-equity correlation has since been implemented with real MSCI ACWI NETR USD index values and World Bank monthly gold. Likewise, BEA replacement-cost Tobin's Q is now implemented and distinguished from Fed NCBCEPNW.
 
-## The two remaining original indicators
+## The two remaining original indicators (updated 2026-11-02)
 
 | Original series ID | Missing requirement | Treatment |
 |---|---|---|
-| `valuation.us.tobins_q` | Exact, versioned replacement-cost asset numerator/denominator (e.g. BEA Q1/Q3 definitions) | Keep unresolved. The new `valuation.us.equity_net_worth` (FRED NCBCEPNW) is a **separately labelled proxy**, not Tobin's Q |
-| `labour.world.productivity_compensation` | Comparable global hourly productivity and real labour compensation series, weighting and coverage | Keep unresolved. `labour.world.productivity_growth` supplies only global output-per-worker growth |
-| `profit.global.corporate_share` | Worldwide profits **attributable to listed companies** with non-duplicated multinational geographic allocation | Keep unresolved. National-accounts total corporate profits are not listed-company profits |
-| `concentration.global.top10` | Licensed historical constituent and free-float market-cap weights for a defined global equity index | Keep unresolved. Public current top-ten lists are not sufficient for historical concentration analysis |
-| `credit.world.private_gdp_gap` | Economically justified global aggregate credit gap and country/denominator weights | Keep unresolved. Three **country-level BIS gaps** are implemented and comparable on a combined chart |
-| `gold.world.equity_correlation` | Historical world equity **total-return** series with defined currency, price/return conventions and rights | Keep unresolved. World Bank monthly gold and live spot quote are available, but no licensed world equity return series |
+| `profit.global.corporate_share` | Comprehensive worldwide consolidated listed-company net profits, including losses, cross-listing deduplication, multinational allocation, currency alignment and matching world GDP | **Unresolved.** The Wisesheets current SEC-filer aggregate is separately named and incomplete. MSCI cap/P-E implied earnings is an index-universe proxy, not a complete global net-income sum. |
+| `concentration.global.top10` | Historical monthly MSCI ACWI index 892400 security-level free-float constituent weights | **Unresolved.** MSCI contemporary factsheets and SEC/ACWI ETF holdings proxies cannot replace the historical index-constituent series. |
 
-These indicators are intentionally absent from chart-ready data. A chart referencing a non-mapped series stays `draft`, and the API rejects unpopulated series rather than returning fake values.
+The other four original gaps are now implemented: official BEA Q1 replacement-cost Tobin's Q, ILO accounting-implied world output/labour-income hourly ratio, a documented weighted 43-country BIS private credit/GDP-gap composite with coverage, and a 36-month World Bank gold/MSCI ACWI NETR USD index correlation. See [locked feature contract](PHASE_2_FEATURE_CONTRACT.md) and [source history](ORIGINAL_GAPS.md).
+
+The two unresolved indicators must remain absent from chart-ready observations. A chart referencing a non-mapped series stays `draft`, and the API rejects unpopulated series rather than returning fake values.
 
 ## Provider verification
 
