@@ -32,8 +32,8 @@ else:
 catalog=get("/api/series")["items"]
 mapped={row["id"] for row in catalog if row["status"]=="mapped"}
 statuses={row["series_id"]:row for row in get("/api/data-status")["items"]}
-if len(mapped)!=32 or len(catalog)!=34:
-    raise AssertionError(f"Expected 32 mapped from 34, got {len(mapped)}/{len(catalog)}")
+if len(mapped)!=36 or len(catalog)!=38:
+    raise AssertionError(f"Expected all 36 mapped from 38 including four new aggregates, got {len(mapped)}/{len(catalog)}")
 failures={sid:statuses.get(sid,{}).get("status") for sid in sorted(mapped)
           if statuses.get(sid,{}).get("status")!="success"
           or statuses.get(sid,{}).get("received",0)<1}
@@ -41,7 +41,11 @@ if failures:
     raise AssertionError(f"Mapped source ingestion incomplete: {failures}")
 for sid in ("valuation.us.tobins_q","labour.world.productivity_compensation",
             "credit.world.private_gdp_gap","credit.world.private_gdp_gap_coverage",
-            "gold.world.equity_correlation","equity.world.msci_acwi_netr_usd"):
+            "gold.world.equity_correlation","equity.world.msci_acwi_netr_usd",
+            "valuation.world.listed_market_cap_usd",
+            "valuation.world.listed_market_cap_world_gdp",
+            "valuation.world.global_trailing_pe",
+            "valuation.world.global_earnings_yield"):
     dataset=query([sid])["series"][0]
     if dataset["status"]!="ready" or not dataset["observations"]:
         raise AssertionError(f"Original newly mapped source not available through API: {sid}")
