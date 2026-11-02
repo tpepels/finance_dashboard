@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChartDefinition, ChartSettings, DataContext, LoadedSeries, RangePreset, ViewMode } from './types';
-import { loadSeries } from './data';
+import { loadInsight, loadSeries } from './data';
+import type { InsightResponse } from './data';
+import { EDITORIAL, semanticallyCompatible } from './editorial';
+import InsightReadout from './InsightReadout';
 import { chartCsv, compareCompatible, rawCompatible, transformSeries, VIEW_MODE_LABELS, windowFor } from './transform';
 import { chartOptions, createChart, numberLabel } from './viz';
 import type { ChartInstance } from './viz';
@@ -31,8 +34,7 @@ function imageDownload(name: string, url: string) {
   link.click();
 }
 function validIds(input: string[], context: DataContext) {
-  // Preserve catalog entries even when public license filtering removed their
-  // observations; they will show an explicit withheld-data message.
+  // Only source-catalog identities are selectable on a local dashboard.
   return [...new Set(input)].slice(0, 6).filter(id =>
     context.series.some(s => s.id === id) ||
     context.charts.some(c => c.series_ids.includes(id)));
@@ -46,7 +48,11 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
   const [from, setFrom] = useState(deepLink?.from ?? '');
   const [to, setTo] = useState(deepLink?.to ?? '');
   const [showEvents, setShowEvents] = useState(deepLink?.events ?? false);
+  const root = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(expanded);
   const [loaded, setLoaded] = useState<LoadedSeries[]>([]);
+  const [insight, setInsight] = useState<InsightResponse | null>(null);
+  const [insightError, setInsightError] = useState('');
   const [loading, setLoading] = useState(false);
   const [tableVisible, setTableVisible] = useState(false);
   const [tablePage, setTablePage] = useState(0);
@@ -55,29 +61,57 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
   const chart = useRef<ChartInstance | null>(null);
 
   useEffect(() => {
-    if (!expanded || !ids.length) return;
+    const element = root.current;
+    if (!element) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '300px' });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!(visible || expanded) || !ids.length) return;
     let cancelled = false;
     setLoading(true);
     Promise.all(ids.map(loadSeries)).then(results => {
       if (!cancelled) { setLoaded(results); setLoading(false); }
     });
     return () => { cancelled = true; };
-  }, [expanded, ids.join('|')]);
+  }, [visible, expanded, ids.join('|')]);
+
+  useEffect(() => {
+    if (!(visible || expanded) || !ids.length || !semanticallyCompatible(ids)) return;
+    let cancelled = false;
+    loadInsight(ids).then(result => {
+      if (!cancelled) { setInsight(result); setInsightError(''); }
+    }).catch(error => {
+      if (!cancelled) setInsightError(error instanceof Error ? error.message : 'Unable to read insights');
+    });
+    return () => { cancelled = true; };
+  }, [visible, expanded, ids.join('|')]);
 
   const activeLoaded = useMemo(() => ids.map(id => loaded.find(s => s.id === id))
     .filter((s): s is LoadedSeries => Boolean(s)), [ids, loaded]);
   const window = useMemo(() => windowFor(activeLoaded, range, from, to),
     [activeLoaded, range, from, to]);
   const invalidRange = range === 'custom' && Boolean(from && to && from > to);
-  const incompatibleRaw = mode === 'raw' && !rawCompatible(activeLoaded);
+  const incompatibleRaw = !semanticallyCompatible(ids) || (mode === 'raw' && !rawCompatible(activeLoaded));
   const plotted = useMemo(() => invalidRange || incompatibleRaw ? [] :
     activeLoaded.map(s => transformSeries(s, mode, window.start, window.end)),
     [activeLoaded, mode, window.start, window.end, invalidRange, incompatibleRaw]);
-  const options = useMemo(() => chartOptions(plotted, mode, showEvents),
-    [plotted, mode, showEvents]);
+  const options = useMemo(() => chartOptions(plotted, mode, showEvents, !expanded),
+    [plotted, mode, showEvents, expanded]);
 
   useEffect(() => {
-    if (!expanded || !host.current || !plotted.some(p => p.observations.length)) return;
+    if (!host.current || !plotted.some(p => p.observations.length)) return;
     const element = host.current;
     const instance = createChart(element);
     chart.current = instance;
@@ -142,12 +176,12 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
         first_observation: s.observations[0]?.date,
         last_observation: s.observations.at(-1)?.date,
       })),
-      explanation: 'View settings and source references; no observations or dataset rights are embedded.',
+      explanation: 'Local chart display settings and original source references.',
     }, null, 2) + '\n', 'application/json');
   }
 
   return (
-    <article className={`chart-card ${expanded ? 'is-expanded' : ''}`} id={`chart-${definition.id}`}>
+    <article ref={root} className={`chart-card ${expanded ? 'is-expanded' : ''}`} id={`chart-${definition.id}`}>
       <div className="chart-heading">
         <div>
           <div className="chart-meta">
@@ -155,7 +189,7 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
             <span>{definition.series_ids.length} source{definition.series_ids.length === 1 ? '' : 's'}</span>
           </div>
           <h3>{definition.title}</h3>
-          {!expanded && <p>{definition.rationale}</p>}
+          {!expanded && <p>{EDITORIAL[definition.id]?.question ?? definition.rationale}</p>}
         </div>
         <button type="button" className="expand-button" onClick={onToggle}
           aria-expanded={expanded} aria-controls={`body-${definition.id}`}>
@@ -163,8 +197,24 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
         </button>
       </div>
 
+      {!expanded && <div className="preview-body">
+        {(visible || expanded) && <>
+          {loading && <p role="status" className="insight-loading">Loading source history…</p>}
+          {!loading && plotted.some(p => p.observations.length)
+            ? <div ref={host} className="plot plot-preview" role="img"
+                aria-label={`Preview chart: ${definition.title}`} />
+            : !loading && <p className="notice">No source observations yet. Open the chart to inspect the provider status.</p>}
+          <InsightReadout result={insight} error={insightError} compact />
+        </>}
+        {EDITORIAL[definition.id] && <p className="preview-interpretation">
+          <strong>How to read this:</strong> {EDITORIAL[definition.id].reading}
+        </p>}
+        <p className="preview-limitation">{EDITORIAL[definition.id]?.limitation ?? definition.caveats}</p>
+      </div>}
+
       {expanded && <div className="chart-body" id={`body-${definition.id}`}>
-        <p className="chart-rationale">{definition.rationale}</p>
+        <p className="chart-rationale">{EDITORIAL[definition.id]?.reading ?? definition.rationale}</p>
+        <InsightReadout result={insight} error={insightError} />
         <div className="controls">
           <fieldset className="compact-field">
             <legend>Range</legend>
@@ -202,7 +252,7 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
                 <span className="series-dot" style={{ backgroundColor: colors[index % colors.length] }} />
                 <span className="series-chip-text">
                   <strong>{meta?.name ?? id}</strong>
-                  <small>{meta?.geography ?? 'Source withheld'} · {meta?.frequency ?? '—'} · {meta?.unit ?? '—'}</small>
+                  <small>{meta?.geography ?? '—'} · {meta?.frequency ?? '—'} · {meta?.unit ?? '—'}</small>
                 </span>
                 <button type="button" aria-label={`Remove ${meta?.name ?? id}`} title="Remove comparison"
                   onClick={() => setIds(old => old.filter(v => v !== id))}>×</button>
@@ -218,10 +268,10 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
               </option>)}
             </select>
           </label>}
-          {mode === 'raw' && <small className="control-hint">Raw comparisons require matching units and native frequency. Index/percentile permit different frequencies without resampling.</small>}
+          <small className="control-hint">Only equivalent economic measurements can be overlaid. Raw comparisons also require matching units and native frequency; normalization does not make unlike measures comparable.</small>
         </div>
 
-        {incompatibleRaw && <p role="alert" className="notice">These series have different units or frequencies. Select Index 100 or Percentile, or remove incompatible comparisons.</p>}
+        {incompatibleRaw && <p role="alert" className="notice">Series must represent the same economic measurement; raw views also require matching units and source frequency. Remove incompatible readings.</p>}
         {invalidRange && <p role="alert" className="notice">Invalid custom period.</p>}
         {loading && <p role="status" className="notice">Loading actual source observations…</p>}
         {!loading && plotted.some(s => s.observations.length) &&
@@ -286,7 +336,7 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
                 <tbody>{rows.slice(page * pageSize, (page + 1) * pageSize).map((row, i) =>
                   <tr key={`${row.seriesId}-${row.date}-${i}`}>
                     <td>{row.date}</td><td>{row.geo} <small>{row.seriesId}</small></td>
-                    <td>{row.raw}</td><td>{numberLabel(row.display)}</td><td>{row.unit}</td><td>{row.run ?? (context.generatedAt ? `Static export ${context.generatedAt}` : 'Run not supplied')}</td>
+                    <td>{row.raw}</td><td>{numberLabel(row.display)}</td><td>{row.unit}</td><td>{row.run ?? 'Ingestion run not supplied'}</td>
                   </tr>)}</tbody>
               </table>
             </div>
@@ -312,13 +362,11 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
               <p>Geography: {def?.geography ?? '—'} · Frequency: {def?.frequency ?? '—'} ·
                 Unit: {def?.unit ?? '—'} · Provider: {def?.provider ?? '—'}</p>
               <p>Last observation: {last ?? 'Unavailable'} ·
-                Last successful ingestion: {status?.last_success ?? (context.generatedAt
-                  ? `Static snapshot ${context.generatedAt}` : 'Not supplied')} ·
-                Source rights: {def?.rights ?? 'Review required'}</p>
+                Last successful ingestion: {status?.last_success ?? 'Not supplied'}</p>
               {def?.notes && <p>{def.notes}</p>}
               {def?.source_url && <a href={def.source_url} target="_blank"
                 rel="noopener noreferrer">Original source</a>}
-              {!s?.observations.length && <p>Data unavailable or not licensed for this view.</p>}
+              {!s?.observations.length && <p>No observations currently stored for this source.</p>}
             </div>;
           })}
           <p>Source-native dates are stored as annual/quarterly/monthly/daily period keys.
