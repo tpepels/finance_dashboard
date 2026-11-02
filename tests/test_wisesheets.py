@@ -66,6 +66,20 @@ class WiseTests(unittest.TestCase):
         self.assertEqual(aggregate["observations"][0]["untraceable_earnings_issuers"],1)
         self.assertEqual(D(aggregate["observations"][0]["sec_filer_net_income_usd"]),D(0))
 
+    def test_sec_cik_alias_resolves_only_same_reporter(self):
+        row={"ticker":"ALIAS","cik":"0000320193","metric":"net_income",
+             "fiscalPeriod":"FY","fiscalYear":2024,"periodEnd":"2024-09-30",
+             "unit":"USD","value":"100",
+             "source":{"kind":"reported","accession":"111","filingDate":"2024-10-15"}}
+        quality={}
+        parsed=parse_financials({"meta":{"layout":"long"},"data":[row]},
+                                {"AAPL":"320193"},quality=quality)
+        self.assertEqual(parsed[("320193",2024)]["amount"],D(100))
+        self.assertEqual(quality["ticker_alias_rows"],1)
+        with self.assertRaisesRegex(WisesheetsError,"issuer CIK"):
+            parse_financials({"meta":{"layout":"long"},"data":[
+                {**row,"cik":"0000000123"}]}, {"AAPL":"320193"})
+
     def test_future_and_inconsistent_fiscal_rows_are_counted_not_used(self):
         base={"ticker":"AAPL","cik":"0000320193","metric":"net_income",
               "fiscalPeriod":"FY","unit":"USD","value":"900",

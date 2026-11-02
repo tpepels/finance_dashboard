@@ -106,7 +106,13 @@ def parse_financials(payload: dict, requested: dict[str, str], *, quality: dict 
         symbol = str(row.get("ticker") or "").upper()
         cik = str(row.get("cik") or "").lstrip("0")
         if requested.get(symbol) != cik:
-            raise WisesheetsError("Returned financial company identity mismatch")
+            if cik not in set(requested.values()):
+                raise WisesheetsError("Returned financial issuer CIK mismatch")
+            if quality is not None:
+                quality["ticker_alias_rows"] = quality.get("ticker_alias_rows", 0) + 1
+            # The vendor may normalize one exchange/share-class ticker to
+            # another symbol for exactly the same SEC reporting issuer CIK.
+            # Accept *only* the independently matching CIK.
         if row.get("metric") != "net_income" or row.get("fiscalPeriod") != "FY":
             raise WisesheetsError("Nonannual or wrong financial metric")
         year = row.get("fiscalYear")
@@ -295,7 +301,7 @@ class WisesheetsClient:
             key=lambda x: x["ticker"],
         )
         records = {}
-        self.quality_counts = {"future_fiscal_rows": 0, "inconsistent_fiscal_year_rows": 0}
+        self.quality_counts = {"future_fiscal_rows": 0, "inconsistent_fiscal_year_rows": 0, "ticker_alias_rows": 0}
         for index in range(0, len(chosen), batch_size):
             batch = chosen[index:index+batch_size]
             ticker_to_cik = {r["ticker"]: r["cik"] for r in batch}
@@ -305,6 +311,8 @@ class WisesheetsClient:
                 "layout": "long", "include": "source",
             })
             got = parse_financials(response, ticker_to_cik, quality=self.quality_counts)
+            if index and index % 2500 == 0:
+                print(f"SEC annual financial batches: {index // batch_size} verified (issuer IDs only)", flush=True)
             for key, record in got.items():
                 if key in records:
                     raise WisesheetsError("Issuer unexpectedly appears in multiple financial batches")
