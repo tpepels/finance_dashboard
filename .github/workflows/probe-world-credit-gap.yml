@@ -1,0 +1,18 @@
+name: World credit-gap source verification
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/probe_world_credit_gap.py
+      - .github/workflows/probe-world-credit-gap.yml
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install httpx
+      - run: python scripts/probe_world_credit_gap.py
