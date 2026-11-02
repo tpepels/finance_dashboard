@@ -1,27 +1,50 @@
-# Phase 3 — completed frontend scope, local-only implementation
+# Phase 3 dashboard and requested Phase 4 research indicators
 
-**Scope:** a compact, scrollable, research-oriented macro dashboard with immediate combined graphs, coherent source comparisons and source-checked interpretation. This replaces the previous click-only chart list. Read the [original contract](PHASE_3_CONTRACT.md) for history and this revision for the approved local-only adaptation.
+The owner's November 2, 2026 brief refined the original contract:
 
-## Why the initial UI was incomplete
+1. **Actual verified economic measurements**, not merely charted source snapshots.
+2. Meaningful *relationships* (only matched sector, geography, output price definitions or explicit denominators), backed by source math.
+3. Main economic graphs in an **always-visible, logically ordered responsive grid**. Raw series charts remain available separately.
+4. Geographic and institutional scope must be explicit: World, OECD38, United States, Euro area/EMU, EU27 and Japan are different aggregates. MSCI ACWI is US-capitalization dominated, **not an equal-weighted global economy**.
+5. Labor distribution and Marxian political economy belong to the dashboard **alongside** growth, credit, yield curves, valuation and concentration, with data/methodology caveats.
+6. Three **unlabeled light gray NBER US recession windows**, not named stock-crash annotations on the graphs.
 
-- The default catalogue required a user click before each chart could be seen.
-- `world_productivity_labour_income` incorrectly graphed the **growth rate** of productivity alongside the **level** of labour share, since both appeared in percent units. The draft debt/rate, gold/yield and recession/gap overlays also lacked a defensible alignment or normalization method. They are not part of the curated dashboard.
-- No systematic question-led layout, visible interpretation or recorded date/value readouts were provided.
+## Delivered implementation on `main`
 
-## Revised functional layout
+- **38 indicators** with actual source IDs and research questions, grouped across five regional tabs: World & OECD (12), United States (13), Euro area & EU27 (5), Japan (4), and Compare regions (4).
+- Seven additional **FRED/BLS/Penn World Table** source contracts (`OPHNFB`, `COMPNFB`, `IPDNBS`, `PRS85006173`, `COMPRNFB`, `LABSHPUSA156NRUG`, `T10Y3M`), using the existing provider adapters. The canonical source catalogue now holds **49** mappings.
+- Dedicated Python `research.py` indicator registry and `GET /api/research` and `GET /api/research/{id}`, alongside unchanged `/api/series`, `/api/query`, `/api/charts`, and `/api/data-status` API.
+- Real source-dated latest readings and dated annual changes for each plotted series. Multi-country common-date high-low differences are calculated **only when every requested geography has a reading on an identical source date**.
+- `us_productivity_pay` joins BLS quarterly nonfarm business output/hour and hourly compensation deflated by the **same-sector output deflator**, with a 2017=100 index and an explicit baseline-relative ratio gap. CPI compensation is separately displayed.
+- `us_labour_share_gdp` converts the **annual PWT fractional GDP labour share into percent**, preserving source chronology and warning this is not the BLS sector index or a direct exploitation measure.
+- The research frontend renders graph cards as the user scrolls, not after clicking. Each exposes the source data and methodology and includes an explicitly bounded economic interpretation and limitation.
+- Original 21 source charts, the source library, 49 source definitions, source provenance, Wisesheets US SEC filings supplemental panel and original chart interaction controls are available inside **Source data & chart explorer** at the bottom, collapsed by default. No losing source functionality for the editorial page.
+- Shared ECharts rendering shades **2001-04 through 2001-11, 2008-01 through 2009-06, 2020-03 through 2020-04** in flat gray with **no text, dotted lines or event labels**. These are NBER-dated US contraction months and remain explicitly US-only even on World/OECD/Japan graphs.
+- One local Docker service bundles React, FastAPI, SQLite WAL and in-process macro/Wisesheets updates. No GitHub Actions, Pages or local source-use gates.
 
-[frontend/src/editorial.ts](../frontend/src/editorial.ts) defines eight clear economic chapters and source-by-source research questions, explanations and caveats. The first multi-country chart per applicable chapter is featured, with other charts in a responsive grid and **visible native-date previews**. Charts are lazily loaded near the viewport and expanded only for controls, source observation table, provider freshness and exports.
+**Source and methods:** [ECONOMIC_RESEARCH_METHODS.md](ECONOMIC_RESEARCH_METHODS.md) provides formulas, primary links, limitations, measurement scope, NBER definition and academic context.
 
-The backend [insights.py](../src/finance_dashboard/insights.py) and `POST /api/chart-insight` produce local, deterministic descriptive readouts: latest observed values and source dates, approximate one-year observed changes (exact comparison dates displayed), and high/low geographic spreads only where **every series has an observation on the same source date**. No resampling or cross-universe inference. Insufficient evidence produces no interpretation. Chart-specific educational context and limitations remain visible. These are **Phase 3** features.
+## Explicit Phase 3/4 boundary
 
-Only semantically identical measurements may be overlaid. The source identity family is checked in both the frontend and Python backend; indexing to 100 or percentile display cannot override that restriction. Original unit/frequency checks remain. Every canonical source absent from featured chapters can still be examined individually through the source library.
+**Phase 3 work requested and implemented here:** meaningful geographic filters, always-on layout, visible charts, primary-source provenance and metadata, macroeconomic chart taxonomy, source explorer, descriptive narrative, 2001/2008/COVID recession shading.
 
-The source collection, all charts and analysis run entirely inside your local FastAPI/SQLite container. No public-only/source-licence feature gates are present. The optional Wisesheets monthly local collector uses `WISESHEETS_API_KEY` from your server's `.env`; the supplementary earnings panel shows actual annual US SEC filer net income/world GDP plus FX and issuer coverage separately from OECD/EU national corporate gross-surplus measures.
+**Phase 4 work requested and implemented here:** newly **calculated** economic relationships (US productivity/output-price-real compensation and indexed ratio gap), source-aligned changes and multi-country comparisons, national-accounts labour distribution interpretation with actual indicators.
 
-## What remains Phase 4
+**Still outside this work (remaining Phase 4):** any formal Marxian surplus-value rate estimated from harmonized national input-output accounts, systematic profit-rate estimation, decomposition of economic causes, recession forecast probabilities, historical multi-factor backtests, numerical risk score validation, scenario/portfolio models and strategy recommendation. Source-based descriptive insights do **not** establish these.
 
-Derived standardized risk indicators, cross-frequency models, historically sourced multi-indicator regressions, probabilistic interpretation, instrument/portfolio exposures, gold/ETF performance attribution, investment decision logic and economic forecasting. The descriptive source commentary and changes on the dashboard are not those features and do **not** justify delaying the UI to Phase 4.
+## Acceptance and verification
 
-## Validation and deployment
+New [Python research contract tests](../tests/test_research.py), [frontend view tests](../frontend/src/App.integration.test.tsx) and [gray-band rendering tests](../frontend/src/viz.test.ts) cover actual source mappings, exact-quarter deflator calculations, no fabricated rows, geographic tab switching, source explorer and NBER periods.
 
-No GitHub Actions workflows, Pages deployment, public-data filters, GitHub-sourced Wisesheets sync or extra Docker services remain. Run [local tests](../README.md) and the one-service Docker setup yourself; do not claim Docker/browser checks after the local-only refactor until run on your machine. Source-catalog and previous live-source evidence are preserved in [Phase 2](PHASE_2.md). The [one-service Compose snippet](home-server-finance-service.yml) adds the dashboard to the existing home-server stack.
+The one-container [Dockerfile](../Dockerfile) now runs short frontend tests/TS build and focused Python research/insight tests during the local build. **No GitHub CI** exists. Since the assistant does not have access to the home server or its source database, the revised container and physical browser have **not yet been validated on the user's machine**. A local build and live-source graphical inspection are needed before closing acceptance; no completion claim is based solely on repository changes.
+
+### Run
+
+```bash
+git -C finance_dashboard pull --ff-only
+docker compose up -d --build finance-dashboard
+docker compose logs --tail=100 finance-dashboard
+```
+
+Use **http://media-server:5052** to inspect the research tabs, or the new `/api/research` endpoint to verify the research definitions. Original Phase 3 requirements and subsequent superseding local-only decisions are archived in [PHASE_3_CONTRACT.md](PHASE_3_CONTRACT.md).
+
