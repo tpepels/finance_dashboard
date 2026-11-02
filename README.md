@@ -7,13 +7,13 @@ A source-traceable financial and macroeconomic research application for global e
 | Phase | Deliverable | Status |
 |---|---|---|
 | 1 — Data contracts | Validated source and chart catalog, methodology/rights flags | Complete |
-| 2 — Data infrastructure | Macro feeds, 24 stock/ETF listings, ECB FX, adjusted returns, corporate actions, PostgreSQL, worker and FastAPI | **32 mapped macro/index series + 24 market + 3 FX verified; two originals unresolved** |
+| 2 — Macro data infrastructure | Macro feeds, worldwide capitalization/GDP and earnings-yield aggregates, optional 24 market listings/ECB FX, PostgreSQL, worker and FastAPI | **36 mapped macro/index series source-verified; two original historical definitions unresolved** |
 | 3 — Dashboard | React combined graphs, filtering and static GitHub Pages export with redistribution checks | Not started |
 | 4 — Analytics | Derived economic indicators, ETF/gold portfolio and risk comparison | Not started |
 
-The catalog now contains **34 series definitions**: 32 operational provider mappings and 2 unresolved economic measures. “Mapped” does not imply the provider has granted public redistribution rights. The 32 mapped series have been checked against live source responses, including the three BIS policy rates in a separate Docker/PostgreSQL acceptance run and all 23 other series through the source acceptance workflow.
+The catalog now contains **38 series definitions**: 36 operational provider mappings and 2 unresolved original economic measures (34 original definitions plus four new world macro aggregates). “Mapped” does not imply the provider has granted public redistribution rights. The original 32 mapped series have been checked against live source responses, including the three BIS policy rates in a separate Docker/PostgreSQL acceptance run and all 23 other series through the source acceptance workflow.
 
-**Phase 2 remains open** because two original indicators still lack full defensible historical source data: MSCI ACWI historical top-ten constituent concentration and worldwide listed-company profits as a percentage of GDP. The previously missing market-data layer is now fully integrated: 24 global/EU/US ETF and stock listings, three ECB FX feeds, source-adjusted closes, dividend and split history, EUR performance, and two labelled GLD/VT proxy correlations. See [market-data contracts](docs/MARKET_DATA.md) and [data coverage](docs/DATA_COVERAGE.md).
+**Phase 2 remains open** because two original indicators still lack adequate historical sources: MSCI ACWI top-ten constituent concentration and comprehensive worldwide listed-company profits as a percentage of GDP. The four newly added world-market macro aggregates are separate measures and cannot close those originals. Independent ETF NAV and ticker-change audits are no longer macro Phase 2 exit gates, per the [owner-approved scope amendment](docs/PHASE_2_MACRO_SCOPE_AMENDMENT.md). The existing optional market-data layer is already integrated: 24 global/EU/US ETF and stock listings, three ECB FX feeds, source-adjusted closes, dividend and split history, EUR performance, and two labelled GLD/VT proxy correlations. See [market-data contracts](docs/MARKET_DATA.md) and [data coverage](docs/DATA_COVERAGE.md).
 
 ## Run locally
 
@@ -71,7 +71,7 @@ Raw and adjusted price returns, vendor-adjusted index, dividend-reinvested index
 A scheduled workflow now validates the repository secret **FRED_API_KEY**
 through the official FRED API, fetches all mapped series, and uploads a
 key-free **finance-dashboard-static-data** JSON artifact. It runs daily at
-06:20 UTC and on manual dispatch. The expanded build successfully exported **32 macro/index series + 24 ETF/stock histories + three ECB FX feeds + two ETF proxy correlations**: [successful full-market static build](https://github.com/tpepels/finance_dashboard/actions/runs/41470215544).
+06:20 UTC and on manual dispatch. The newest live static-data build exported **36 macro/index series**, including 51 annual world listed-cap and cap/GDP observations each and 11 published global P/E and earnings-yield snapshots each, alongside the optional 24 market histories, three ECB FX feeds and two ETF proxies: [successful 36-series export](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778).
 
 See [static export architecture and secret handling](docs/STATIC_DATA.md).
 This produces the data needed by a future GitHub Pages frontend; **Pages is
@@ -117,10 +117,23 @@ The six Phase 2 data-definition gaps have been reduced to two:
 - **International credit-gap composite:** 43 individual BIS national private credit/GDP gaps, GDP-weighted using previous-year nominal USD WDI GDP. Excludes euro-area aggregate to avoid double counting. Releases quarters only when countries with data cover at least 80% of world GDP. **Not an official BIS-published world gap.**
 - **Gold/global equity index:** World Bank monthly mean gold vs real **MSCI ACWI NETR USD index** levels, both averaged over each month, Pearson rolling on 36 consecutive monthly returns; not the GLD/VT ETF proxy.
 
-The two outstanding exact datasets are historical MSCI ACWI constituent free-float weights and consolidated worldwide **listed-company earnings** with defensible multinational allocation. A current index fact-sheet or index P/E snapshot cannot reconstruct either history. See [exact gap audit](docs/ORIGINAL_GAPS.md).
+The two outstanding exact datasets remain historical MSCI ACWI constituent free-float weights and consolidated worldwide **listed-company earnings** with defensible multinational allocation. A current index fact-sheet or index P/E snapshot cannot reconstruct either history. See [exact gap audit](docs/ORIGINAL_GAPS.md).
 
 Historical issuer NAV reconciliation, ticker rename continuity, and a permanent production deployment are separately tracked. A full 32-source historical PostgreSQL ingestion and read-only API smoke test passed in a disposable environment; [acceptance run](https://github.com/tpepels/finance_dashboard/actions/runs/41476599670).
 
 ### Phase 2 locked project contracts
 
 The source-of-truth project baseline (features, component ownership, delivery acceptance and scope-change policy) is recorded in [feature contract](docs/PHASE_2_FEATURE_CONTRACT.md), [architecture contract](docs/PHASE_2_ARCHITECTURE_CONTRACT.md) and [implementation contract](docs/PHASE_2_IMPLEMENTATION_CONTRACT.md). These documents freeze the *agreed requirements*, not the code or GitHub branch permissions. [Remaining exact-data sources and Yahoo/aggregate alternatives](docs/ORIGINAL_GAPS.md#source-access-assessment-yahoo-finance-and-aggregated-alternatives-2026-11-02) are separately assessed. Phase 2 remains open until the exact originals and reconciliation checks pass or scope is explicitly amended by the owner.
+
+## Macro-first scope and four new aggregate histories (2026-11-02)
+
+The owner's [macro-first scope amendment](docs/PHASE_2_MACRO_SCOPE_AMENDMENT.md) makes aggregate macroeconomics and structural-financial risk the product priority. Individual ETF holdings, independent issuer NAV audits and ticker-change continuity are **not required to complete macro Phase 2**. Existing market APIs remain available and were not removed.
+
+| New world macro series | Data and method | Verified public source sample |
+|---|---|---|
+| `valuation.world.listed_market_cap_usd` | WDI WLD listed-domestic-company market capitalization, current USD; WFE-derived | 51 annual years (1975–2025) |
+| `valuation.world.listed_market_cap_world_gdp` | 100 × WDI WLD capitalization in USD / WDI WLD nominal GDP in USD, matched annual years | 51 annual years (1975–2025); note narrower changing capital-market coverage |
+| `valuation.world.global_trailing_pe` | Siblis ~3,000-company Global index normalized trailing P/E | 11 selected month-end observations: 2016–2025 Dec plus September 2026 |
+| `valuation.world.global_earnings_yield` | 100 / preceding Siblis P/E; same index and date | 11 selected month-end observations |
+
+**Source-verified complete export:** [36 mapped macro sources](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778). All four are wired through the existing provider router, definitions, chart catalog, API-compatible observation storage and static export. A dedicated full 36-series PostgreSQL acceptance is separately tracked; no full multi-decade Siblis series or worldwide listed-company profit measure is claimed. Do **not** multiply World Bank WFE market capitalization by Siblis index earnings yield to estimate total listed profits/GDP: these have different security universes and valuation accounting. Siblis data is proprietary and may not be redistributed on public Pages without permission.
