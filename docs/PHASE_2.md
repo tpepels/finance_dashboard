@@ -1,6 +1,6 @@
 # Phase 2 — Backend implementation and acceptance
 
-As of 2026-11-02, the backend implements **26** operational source series and retains **six** unsupported original measurements without invented proxies. See [the per-source audit](DATA_COVERAGE.md). The Phase 2 issue remains open because the agreed full indicator scope is not yet satisfied.
+As of 2026-11-02, the backend implements **26** macro source series, **24** stock/ETF histories and **three** ECB FX feeds with two derived ETF correlation proxies, while retaining **six** unresolved original macro measurements without invented proxies. See [the per-source audit](DATA_COVERAGE.md). The Phase 2 issue remains open because the agreed full indicator scope is not yet satisfied.
 
 ## Architecture
 
@@ -30,7 +30,11 @@ The scheduled worker shares the same Python codebase, runs separately from the F
 - [23 other live source checks](https://github.com/tpepels/finance_dashboard/actions/runs/41459407905), including all four FRED series without a key.
 - [Fast offline/PostgreSQL tests](https://github.com/tpepels/finance_dashboard/actions/runs/41459407973).
 
-The live source checks validate the actual provider responses and parsers. A combined 26-source production Docker backfill and public GitHub Pages deployment have **not** occurred, and should not be claimed. Data-rights clearance is needed before any public static export.
+The live macro source checks validate actual provider responses and parsers. The separate full-market PostgreSQL/API end-to-end run verified all 24 assets, three FX feeds and EUR calculation, documented in [MARKET_DATA.md](MARKET_DATA.md). A combined permanent production deployment and public GitHub Pages site have **not** occurred, and should not be claimed. Data-rights clearance is needed before any public static export.
+
+## Markets and FX
+
+All 24 instruments and three FX series are integrated into the scheduled worker, versioned PostgreSQL schema, read-only API, secret-protected static export and bounded live acceptance. Full source details: [MARKET_DATA.md](MARKET_DATA.md).
 
 ## Pending exact indicators
 

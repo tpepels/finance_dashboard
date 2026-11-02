@@ -1,6 +1,6 @@
 # Phase 2 — source coverage, provenance and blockers
 
-Verified 2026-11-02. **32 canonical series total: 26 mapped and live-source verified; 6 unresolved original definitions.**
+Verified 2026-11-02. **32 canonical macroeconomic series total: 26 mapped and live-source verified; six original economic definitions unresolved.** Separately, **24 exchange-listed stock/ETF instruments and three ECB FX source series** are fully implemented in the market registry.
 
 An operational adapter can fetch and parse real source data into PostgreSQL; it is not an assertion that the provider grants public redistribution rights or that every derived comparison is methodologically valid.
 
@@ -19,6 +19,22 @@ An operational adapter can fetch and parse real source data into PostgreSQL; it 
 | Gold spot quote | 1 | Live Corgano XAU/USD quote | One current indicative spot midpoint/oz; historical API provides futures, not spot |
 
 All mapped source IDs are referenced from `definitions/series.json`. The relevant open-source calculations and provider validation functions are in `src/finance_dashboard/providers.py` and `src/finance_dashboard/bis.py`.
+
+## Stock, ETF and foreign-exchange coverage
+
+**Implemented and end-to-end verified:** 24 exchange-listed assets (six European
+UCITS ETFs, 16 US ETFs/stocks, two EU stocks), three ECB USD/GBP/CHF FX
+reference series, raw/adjusted close and volume history, distributions,
+splits (including non-trading-day ex-dates), EUR total-return calculations
+and 36-month USD/EUR GLD-versus-VT investable-ETF proxy correlations.
+
+- [Actual 24-instrument historical static data build](https://github.com/tpepels/finance_dashboard/actions/runs/41470215544)
+- [Actual full 24-instrument PostgreSQL/FX/API ingestion acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41470443707)
+- [Source registry, methodology and caveats](MARKET_DATA.md)
+
+The GLD/VT fund-based correlations are **separate** from the original
+unresolved world-equity-index total-return/spot-gold correlation, just as
+NCBCEPNW is separate from replacement-cost Tobin's Q.
 
 ## The six remaining original indicators
 
