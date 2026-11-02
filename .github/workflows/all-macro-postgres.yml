@@ -6,6 +6,7 @@ on:
       - scripts/all_macro_pg_smoke.py
       - .github/workflows/all-macro-postgres.yml
       - migrations/**
+      - src/finance_dashboard/catalog.py
       - src/finance_dashboard/database.py
       - src/finance_dashboard/providers.py
       - src/finance_dashboard/macro_aggregates.py
@@ -16,6 +17,7 @@ on:
       - src/finance_dashboard/eurostat_corporate.py
       - src/finance_dashboard/concentration_snapshots.py
       - tests/test_postgres.py
+      - tests/test_oecd_corporate.py
 jobs:
   all-macro:
     runs-on: ubuntu-latest
@@ -33,7 +35,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify all 36 mapped sources persisted and API queryable
+      - name: Verify all 42 mapped sources persisted and API queryable
         run: python scripts/all_macro_pg_smoke.py
       - name: Display bounded service logs on failure
         if: failure()
