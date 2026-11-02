@@ -371,19 +371,19 @@
     },
     {
       "id": "gold.usd.spot",
-      "name": "Gold spot USD per troy ounce",
+      "name": "Live XAU/USD spot mid-price snapshot",
       "theme": "gold_currency",
-      "status": "unresolved",
-      "provider": "MARKET_DATA",
-      "source_key": null,
-      "source_url": "https://www.gold.org/goldhub/data",
+      "status": "mapped",
+      "provider": "CORGANO_SPOT",
+      "source_key": "api/v1/latest:data.price_usd",
+      "source_url": "https://goldprice.corgano.com/api/v1/latest",
       "geography": "WORLD",
-      "frequency": null,
-      "unit": null,
-      "measurement": "Gold USD spot price",
-      "revision_policy": "not_established",
-      "rights": "unknown",
-      "notes": "Historical licence and data source selection unresolved"
+      "frequency": "D",
+      "unit": "usd_per_oz",
+      "measurement": "Current indicative USD per troy ounce gold spot quote from Corgano (Swissquote bid/ask midpoint primary feed, fallback sources)",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Only the current live spot quote is available. Daily historical values advertised by this provider are COMEX front-month futures closes, NOT spot and must never be used for historical spot backfill. UTC as_of required; no public redistribution without upstream terms review."
     },
     {
       "id": "gold.world.equity_correlation",
@@ -480,6 +480,22 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "Country/area-specific BIS Basel III early-warning indicator. Cannot be summed into a legitimate worldwide gap; other CG_DTYPE codes are credit/GDP actual (A) or trend (B)."
+    },
+    {
+      "id": "labour.world.productivity_growth",
+      "name": "World real GDP per employed person growth",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "UN_SDG",
+      "source_key": "SL_EMP_PCAP/1",
+      "source_url": "https://unstats.un.org/SDGAPI/v1/sdg/Series/SL_EMP_PCAP/GeoArea/1/DataSlice",
+      "geography": "WORLD",
+      "frequency": "A",
+      "unit": "percent",
+      "measurement": "UN SDG 8.2.1 annual growth rate of real GDP per employed person, world aggregate, ages 15+",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "ILO-custodied worldwide productivity growth. Does not represent wage growth or productivity-compensation divergence."
     }
   ]
 }

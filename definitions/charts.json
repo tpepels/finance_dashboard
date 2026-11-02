@@ -149,6 +149,19 @@
       "display_mode": "raw",
       "rationale": "Compare credit booms and deleveraging using the same BIS one-sided HP methodology across geographies.",
       "caveats": "Percentage-point gap of private nonfinancial-sector credit to GDP; cross-country comparability depends on statistical definitions and coverage; not a world gap."
+    },
+    {
+      "id": "world_productivity_labour_income",
+      "theme": "labour_capital",
+      "title": "World productivity growth and labour income share",
+      "status": "mapped",
+      "series_ids": [
+        "labour.world.productivity_growth",
+        "labour.world.income_share"
+      ],
+      "display_mode": "raw",
+      "rationale": "Compare changes in global output per worker with workers' share of worldwide income, using two separately-labelled percentage measurements.",
+      "caveats": "Productivity is an annual growth rate and labour share is a level of income; levels are not directly comparable even though both use percentages. This does not constitute a wage/productivity-gap series."
     }
   ]
 }

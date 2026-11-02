@@ -29,7 +29,8 @@ PINK_SHEET_URL = "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2
 IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP"))
+CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "CORGANO_SPOT"))
 
 
 class SourceUnavailable(ProviderError):
@@ -152,6 +153,38 @@ def parse_pink_sheet_gold(rows: list[list], start: date | None = None) -> dict[d
     return output
 
 
+def parse_corgano_gold(payload: Any, start: date | None = None) -> dict[date, Decimal]:
+    """Snapshot the current published spot *quote*, not futures-derived daily history."""
+    if not isinstance(payload, dict):
+        raise ProviderError("Gold spot response malformed")
+    row, meta = payload.get("data"), payload.get("meta")
+    if not isinstance(row, dict) or not isinstance(meta, dict):
+        raise ProviderError("Gold spot price or metadata unavailable")
+    if str(row.get("metal", "")).lower() != "gold" or str(row.get("symbol", "")).upper() not in ("XAU", "XAUUSD"):
+        raise ProviderError("Gold spot identity mismatch")
+    source = str(meta.get("source", "")).lower()
+    if not source or any(x in source for x in ("futures", "comex", "gc=f")):
+        raise ProviderError("Gold provider is missing spot provenance or substituted a futures price")
+    if "oz" not in str(meta.get("unit", "")).lower():
+        raise ProviderError("Gold price must be quoted per troy ounce")
+    try:
+        at = datetime.fromisoformat(str(row["as_of"]).replace("Z","+00:00"))
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ProviderError("Gold spot quote lacks valid timestamp") from exc
+    if at.tzinfo is None:
+        raise ProviderError("Gold spot quote must carry its timezone")
+    from datetime import timezone, timedelta
+    if at > datetime.now(timezone.utc) + timedelta(minutes=5):
+        raise ProviderError("Gold spot quote future-dated")
+    day = at.date()
+    if start and day < start:
+        raise ProviderError("Gold spot quote is older than requested start period")
+    value = _value(row.get("price_usd"))
+    if value is None or value <= 0:
+        raise ProviderError("Invalid current gold spot price")
+    return {day:value}
+
+
 def parse_un_sdg(payload: Any, series_code: str, area_code: str,
                  start: date | None = None) -> dict[date, Decimal]:
     """UNSD official ILO-custodied global labour share; only unbroken annual global slice."""
@@ -164,7 +197,8 @@ def parse_un_sdg(payload: Any, series_code: str, area_code: str,
         raise ProviderError("UN SDG missing observation dimensions")
     out: dict[date, Decimal] = {}
     for row in rows:
-        if row.get("Reporting Type") != "G" or row.get("Age") != "ALLAGE":
+        expected_age = "15+" if series_code == "SL_EMP_PCAP" else "ALLAGE"
+        if row.get("Reporting Type") != "G" or row.get("Age") != expected_age:
             continue
         day = _date(str(row.get("timePeriodStart")), "A")
         if day.year > date.today().year or start and day < start:
@@ -435,6 +469,10 @@ class ProviderRouter:
             response = self._get(url, params=params)
             observations = parse_world_bank(response.json(), country, identifier, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
+        if provider == "CORGANO_SPOT":
+            response = self._get(CORGANO_GOLD_LATEST)
+            observations = parse_corgano_gold(response.json(), start)
+            return FetchedSeries(series_id, CORGANO_GOLD_LATEST, None, observations)
         if provider == "BIS_CREDIT_GAP":
             # The API is queried with a country code then exact dimensions
             # are selected from the SDMX structure, not assumed by series position.

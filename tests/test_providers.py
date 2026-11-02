@@ -7,7 +7,7 @@ import httpx
 
 from finance_dashboard.providers import (
     ProviderRouter, ProviderError, SourceUnavailable,
-    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape, parse_bis_credit_gap,
+    parse_fred_csv, parse_fred_json, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape, parse_bis_credit_gap, parse_corgano_gold,
 )
 
 
@@ -91,6 +91,24 @@ class ParserTests(unittest.TestCase):
             self.assertEqual(values[date(2025, 1, 1)], Decimal("91.234"))
             self.assertNotIn(date(2026, 1, 1), values)
 
+    def test_world_productivity_reporting_and_age(self):
+        raw = {"series":"SL_EMP_PCAP","geoAreaCode":1,"dimensions":[
+            {"value":"2.63","timePeriodStart":"2000","Age":"15+","Reporting Type":"G"},
+            {"value":"9.1","timePeriodStart":"2001","Age":"ALLAGE","Reporting Type":"G"}]}
+        values=parse_un_sdg(raw,"SL_EMP_PCAP","1")
+        self.assertEqual(values,{date(2000,1,1):Decimal("2.63")})
+
+    def test_gold_spot_mid_quote_provenance(self):
+        from datetime import datetime, timezone
+        payload={"data":{"metal":"gold","symbol":"XAU","price_usd":3900.25,
+                         "as_of":datetime.now(timezone.utc).isoformat()},
+                 "meta":{"unit":"USD / troy oz","source":"Swissquote bid/ask midpoint"}}
+        expected={date.today():Decimal("3900.25")}
+        self.assertEqual(parse_corgano_gold(payload),expected)
+        payload["meta"]["source"]="COMEX futures"
+        with self.assertRaisesRegex(ProviderError,"futures price"):
+            parse_corgano_gold(payload)
+
     def test_world_bank_pink_sheet_gold(self):
         rows = [
           ["monthly prices in nominal US dollars"], ["metadata"], ["metadata"], [""],
@@ -153,6 +171,21 @@ class ParserTests(unittest.TestCase):
 class RouterTests(unittest.TestCase):
     def router(self, handler):
         return ProviderRouter(httpx.Client(transport=httpx.MockTransport(handler)))
+
+    def test_corgano_spot_transport(self):
+        from datetime import datetime,timezone
+        def handler(request):
+            self.assertIn("api/v1/latest", str(request.url))
+            return httpx.Response(200, json={
+                "data":{"metal":"gold","symbol":"XAU","price_usd":3900.25,
+                        "as_of":datetime.now(timezone.utc).isoformat()},
+                "meta":{"unit":"USD / troy oz","source":"Swissquote midpoint"}
+            })
+        router=self.router(handler)
+        try:
+            self.assertIn(date.today(),router.fetch("gold.usd.spot").observations)
+        finally:
+            router.close()
 
     def test_un_transport(self):
         def handler(request):
@@ -272,10 +305,10 @@ class RouterTests(unittest.TestCase):
     def test_unresolved_never_fabricated(self):
         router = self.router(lambda request: self.fail("No network for unresolved"))
         try:
-            self.assertEqual(len(router.supported_ids()), 23)
+            self.assertEqual(len(router.supported_ids()), 25)
             with self.assertRaises(SourceUnavailable):
                 router.fetch("profit.global.corporate_share")
-            self.assertEqual(len(router.blocked()), 7)
+            self.assertEqual(len(router.blocked()), 6)
         finally:
             router.close()
 

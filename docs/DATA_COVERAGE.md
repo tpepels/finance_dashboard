@@ -1,6 +1,6 @@
 # Data coverage and blockers (Phase 2 expanded)
 
-The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **23 mapped** (including 3 additional country-level BIS credit gaps), 3 FRED credential-gated; **7 original series unresolved**. This document distinguishes
+The source catalog has **27** indicator definitions (26 original + 1 separately named World Bank monthly-gold measure): **25 mapped** (including 3 BIS credit gaps and a separate worldwide productivity series), 3 FRED credential-gated; **6 original series unresolved**. This document distinguishes
 an implementable adapter from verified observations and legal permission to
 republish data to GitHub Pages.
 
@@ -17,6 +17,8 @@ republish data to GitHub Pages.
 | BIS global private credit gap | Unresolved | There is no single well-defined worldwide country-comparable credit-gap series; individual geographies must be specified |
 | Robert Shiller US CAPE | 1 mapped, live verified | Official Shiller workbook, dynamic link discovery, Excel header checks; redistribution rights still need review |
 | MSCI/global profit/concentration | Unresolved | Complete histories and redistribution rights generally require licensed index data |
+| Live XAU/USD spot quote | 1 mapped, indicative quote | Corgano gold spot midpoint, provenance-gated, daily latest only. Historical API offers **futures**, not spot; never substitute it |
+| UN SDG global productivity growth | 1 mapped | SL_EMP_PCAP, world, age 15+; wage growth and wage/productivity divergence still unresolved |
 | World Bank monthly gold price | 1 mapped, live verified | Pink Sheet monthly average USD/troy oz since 1960; openly licensed CC BY 4.0 with attribution. Daily spot and total returns remain separate unresolved series |
 | Productivity versus compensation | Unresolved | World aggregate with harmonized wages/output coverage not selected |
 | US Tobin's Q | Unresolved | Valuation methodology and source definition not selected |
@@ -47,7 +49,7 @@ the series; complete rights reviews before enabling public JSON export.
 - All **13 mapped non-FRED/non-BIS** series: [live acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41453185610).
 - All **3 BIS** rates plus full PostgreSQL ingestion/API: [Docker acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41449348048).
 - **3 FRED** sources have parser/transport tests but no verified authenticated production call because no FRED_API_KEY was supplied.
-- 8 other original indicator definitions remain unresolved. The original `gold.usd.spot` remains unresolved: monthly-average gold has a separate canonical series ID.
+- 8 other original indicator definitions remain unresolved. The original `gold.usd.spot` is now a live-only spot snapshot (no historic spot backfill): monthly-average gold has a separate canonical series ID.
 
 ## Global CAPE licensing
 
