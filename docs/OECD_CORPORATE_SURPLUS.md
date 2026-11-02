@@ -1,6 +1,6 @@
 # OECD corporate gross operating surplus: official-source methodology
 
-**Status (2026-11-02):** OECD annual source and the three new catalogued series are implemented; full 42-series live acceptance is checked separately. This document does **not** equate an incomplete-country sample to an official OECD-published aggregate.
+**Status (2026-11-02): VERIFIED.** [42/42-source historical PostgreSQL/FastAPI ingestion passed](https://github.com/tpepels/finance_dashboard/actions/runs/41503545569), with [42-series full static export](https://github.com/tpepels/finance_dashboard/actions/runs/41503489558). The OECD composite and each quality companion contain **25 annual observations, 2000–2024**. This document does **not** equate an incomplete-country sample to an official OECD-published aggregate.
 
 ## Purpose and economic interpretation
 
@@ -32,7 +32,7 @@ GOS_{it} = GOS(S11)_{it} + GOS(S12)_{it}
 GDP^{OECD}_{it} = GVA(S1)_{it} + (taxes\ on\ products - subsidies\ on\ products)_{it}
 ]
 
-When the OECD S1 product-tax item is unavailable, use WDI **local nominal GDP divided by 1,000,000** only for three stable currencies: **USA/USD, Japan/JPY, Canada/CAD**; the currency observed in the OECD sector record must match, and WDI GDP must be within a bounded plausible ratio of OECD S1 GVA (0.9×–1.35×). The US/Japan/Canada original source gross-surplus numerators must still be observed; there is **no** imputation of sector profits. No other geographic fallback is accepted, notably no historical FRF-versus-EUR mix.
+When the OECD S1 product-tax item is unavailable, use WDI **local nominal GDP divided by 1,000,000** only for three stable currencies: **USA/USD, Japan/JPY, Canada/CAD**; the currency observed in the OECD sector record must match, and WDI GDP must be within a bounded plausible ratio of OECD S1 GVA (0.9×–1.35×). The US/Japan/Canada original source gross-surplus numerators must still be observed; there is **no** imputation of sector profits. The controlled fallback recovers economically significant OECD coverage (US, Japan and Canada) missing from the OECD source's GDP decomposition, but **does not** extrapolate any other missing countries. No other geographic fallback is accepted, notably no historical FRF-versus-EUR mix.
 
 Define (r_{it} = GOS_{it} / GDP_{it}), with (0\le r_{it}\le 1). Let (w_{it}) be WDI nominal USD GDP for member (i), year (t). The GDP-weighted OECD-reporting-country aggregate is
 
@@ -55,3 +55,7 @@ Source-code ownership: [oecd_corporate.py](../src/finance_dashboard/oecd_corpora
 **Provenance and limits:** Source OECD national accounts are revised; WDI weights/LCU denominators may have a different release vintage. OECD's public service limits requests to 60 downloads/hour, so routine extraction should be batched/cached. OECD data reuse rules apply; review publication attribution and licensing before any public deployment.
 
 This expanded OECD data layer is intended to resolve the earlier OECD-versus-EU27 coverage deviation in the [free-source amendment](PHASE_2_FREE_SOURCE_REPLACEMENTS.md). **The existing EU27 indicators remain available and are not relabelled or overwritten.**
+
+## Final 2026-11-02 acceptance record
+
+[Full 42/42 mapped historical PostgreSQL and FastAPI verification](https://github.com/tpepels/finance_dashboard/actions/runs/41503545569) returned **25 years (2000–2024)** for the GDP-weighted OECD member aggregate, GDP share of participating countries and member count, and `PHASE2_ALL_MACRO_POSTGRES=PASS mapped=42 unresolved=0`. [Live complete static export](https://github.com/tpepels/finance_dashboard/actions/runs/41503489558) returned the same **25 + 25 + 25** observations with `STATIC_EXPORT_COMPLETE=42 MARKETS=24`. The full short offline backend/DB suite also passed after the local-GDP fallback fix. The previously open [OECD geographic-scope gate](PHASE_2_FEATURE_CONTRACT.md) is satisfied for the **defined GDP-weighted OECD member reporting coverage**, not for universal 38/38 country accounting completeness. The EU27 indicators remain mapped and independently available.
