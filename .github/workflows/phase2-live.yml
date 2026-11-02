@@ -9,6 +9,10 @@ on:
       - .github/workflows/phase2-live.yml
       - scripts/live_bis_check.py
       - scripts/deployment_smoke.py
+      - src/finance_dashboard/bis.py
+      - src/finance_dashboard/service.py
+      - docker-compose.yml
+      - Dockerfile
 
 jobs:
   live-acceptance:
