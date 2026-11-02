@@ -1,80 +1,80 @@
 # Global Capital Monitor
 
-A **local-only** macroeconomic research dashboard with source-traceable observations, curated comparative charts and recorded-data interpretation. One Docker container serves the React interface and FastAPI, migrates a persistent SQLite database, and refreshes macroeconomic sources automatically. No GitHub Actions, GitHub Pages, PostgreSQL container, separate frontend container or separate worker service is required.
+A **single-container, local-only economic research dashboard**. It combines actual public statistical measurements, defensible relationships and economic interpretations in a visible layout. The original raw source chart explorer is available below the main research page.
 
-## Run locally
+## Run
 
 ```bash
 cp .env.example .env
 mkdir -p data-local
-# Set UID/GID in .env to the owner of your persistent data directory.
-# Add WISESHEETS_API_KEY to .env if you want local monthly SEC filings refresh.
-docker compose up -d --build
-docker compose logs --tail=80 finance-dashboard
+# Enter your WISESHEETS_API_KEY and optional FRED_API_KEY in .env.
+docker compose up -d --build finance-dashboard
+docker compose logs --tail=90 finance-dashboard
 ```
 
-Open **http://localhost:5052/** (or `http://media-server:5052/` on your LAN). The bundled React interface and all `/api/*` endpoints share the same origin. The default persistent volume is `./data-local:/data`, or set `FINANCE_DATA_DIR=/srv/finance-dashboard` in `.env`. The database is SQLite in WAL mode, backed up under that directory.
+Open `http://localhost:5052/` (or `http://media-server:5052/` on your LAN).
 
-**Already using a home-server Compose with Plex/Monochrome/Vinted?** Add the [single finance-dashboard service](docs/home-server-finance-service.yml) under your existing `services:` block and clone this repo alongside the other application directories. Do not launch a separate finance Compose stack. See [home server instructions](docs/HOME_SERVER_DOCKER.md).
+The container includes React/ECharts, Python/FastAPI, persistent SQLite, automatic macro updates and optionally monthly local Wisesheets SEC-company earnings aggregation. **There are no GitHub Actions jobs, Pages sites, extra database containers, or separate workers.** Full source history requires successful initial local ingestion; missing data are shown as missing rather than fabricated.
 
-## What the dashboard shows
+**Using your existing media-server Docker Compose?** Add only [the finance service snippet](docs/home-server-finance-service.yml) under its `services:` block, clone this repo at `./finance_dashboard`, and set the key in that server's existing `.env`. See [deployment instructions](docs/HOME_SERVER_DOCKER.md).
 
-Eight deliberately ordered research chapters, followed by locally collected SEC filer earnings:
+## Economic research dashboard
 
-1. Monetary policy — BIS harmonized Fed/euro-area/Japan rates, same frequency and economic measure.
-2. Economic growth — world and major-country annual real GDP growth.
-3. Credit cycle — comparable BIS national credit-to-GDP gaps; separate world composite and data coverage.
-4. Equity valuations — comparable domestic market cap/GDP, followed by separate world listed-capitalization and P/E or earnings-yield measurements.
-5. Labour and corporate income — *separate* labour share and productivity-growth views; OECD and EU corporate surplus with visibly distinct denominator/coverage definitions.
-6. Equity concentration — real sparse MSCI ACWI top-ten weight snapshots.
-7. Gold and equities — monthly gold series and separately the published 36-month index/gold return correlation.
-8. Public debt — own source series, no nonsensical overlap with daily policy rates.
-9. Supplementary US SEC filer earnings — annual SEC-reporting-company profits as a share of world GDP, never relabelled as total world listed-company profits.
+The main interface is **always visible**: geographically scoped research tabs, responsive two-column chart layout, source-measured latest readings, actual previous-year changes when valid, economics-focused explanations and original source links. Source observations appear in their native frequency; no smoothing or fictitious periods.
 
-The first row of each chapter renders its charts **immediately**; other charts appear in an editorial two-column scroll. Expand any chart to change its range (5Y/10Y/20Y/Max/Custom), choose original/index-100/percentile display, inspect exact dates, source and ingestion runs, and export CSV, PNG, configuration or a deep link.
+| Geographic/institutional scope | Main economic questions |
+|---|---|
+| **World & OECD** | Real GDP growth, labour income share, productivity growth, OECD corporate gross surplus/GDP and coverage, global debt, 43-economy BIS credit gap, world listed capitalization/GDP, global equity-index P/E/concentration, gold/equity correlation |
+| **United States** | Output-price-adjusted productivity versus hourly pay, PWT labour/GDP share, BLS labour share index, consumer purchasing power, policy and real yields, 10y–3m yield curve, Sahm labour stress, BIS credit, Shiller CAPE, BEA Q1 market/replacement-cost valuation, output growth |
+| **Euro area & EU27** | Euro-area growth, policy and credit; separately EU27 gross corporate surplus relative to GDP and nonfinancial-sector value added |
+| **Japan** | Real GDP growth, BIS rates and private-credit gap, domestic listed market-cap/GDP |
+| **Compare regions** | Identically defined country GDP growth, BIS policy rates, BIS national credit gaps and comparable World Bank domestic capitalization/GDP |
 
-An **Additional source histories** picker exposes all otherwise uncategorized mapped series separately. Unrelated economic measurements cannot be overlaid solely because they share a unit or can be indexed to 100.
+**34 original economic research indicator definitions are now 38**, after adding US growth, monetary policy, real yields and nonfinancial replacement-cost valuation. All 38 are based on mapped source series; the source catalogue has **49 datasets**, including seven newly researched BLS/Penn World Table/FRED series. Initial ingestion may take time. The existing **21 original curated graphs** remain accessible in **Source data & chart explorer**. US SEC-reporting-company Wisesheets earnings are included in the supplementary explorer but are never presented as worldwide corporate net profits.
 
-The Python `POST /api/chart-insight` endpoint calculates source-dated latest values, approximately one-year comparisons where adequate observations exist, and cross-country high/low spreads **only on exact common source dates**. Every chart includes its economic interpretation and explicit limitations; no interpolation, causal attribution or unsupported investment signals are generated. The chart commentary is descriptive research, not a Phase 4 risk model.
+Three unobtrusive, **unlabeled gray bands** appear on eligible charts for NBER-defined US contraction months associated with the dot-com crash (April–November 2001), global financial crisis (January 2008–June 2009) and COVID (March–April 2020). These are **US recession dates**, not dates of the European or world recessions.
 
-## Data and local collection
+### Evidence over narrative
 
-- **42 mapped canonical macro/index series** in [definitions/series.json](definitions/series.json), from BIS, FRED, World Bank, Eurostat, OECD, MSCI, IMF, ILO, ECB and other documented sources. Full historical ingestion can take time. `GET /api/data-status` reports pending, stale and failed sources; failed updates leave prior observations available.
-- **Wisesheets:** set `WISESHEETS_API_KEY=...` in **your local `.env`**. One bounded full-accessible-SEC-filer collection runs on startup when no recent local snapshot exists and then at most approximately monthly. A seven-day retry cooldown prevents repeated full API scans on failure. The existing bundled snapshot (2021–2025) remains a fallback. `GET /api/earnings/sec-filers` serves the actual aggregate. See [Wisesheets methodology](docs/WISESHEETS.md).
-- **FRED:** `FRED_API_KEY` is optional; authenticated access is preferred. The local public observations fallback is supported.
-- **Markets:** 24 optional stock/ETF histories and ECB FX collection remain available through `FINANCE_INCLUDE_MARKETS=1` but are not part of the macro dashboard's main navigation.
-- Source rights remain in catalog **metadata for provenance**. There are **no UI usage gates or rights-based restrictions in this local application**. Independent third-party source licensing terms still apply if you redistribute their observations publicly.
+- **US labour productivity/pay** uses BLS quarterly `OPHNFB`, `COMPNFB` and output deflator `IPDNBS` with exact source-quarter matching. Output-price-adjusted pay is `100 × COMPNFB/IPDNBS` (both source indices 2017=100); the percentage ratio gap is `100 × (OPHNFB/adjusted_pay−1)`. The separately graphed CPI-compensation series measures consumer purchasing power and must not be substituted.
+- **Labour distribution / Marxian analysis:** ILO world labour income share, Penn World Table US GDP labour share, BLS nonfarm labour share, EU27/OECD gross corporate operating surplus, and a peer-reviewed Marxian accounting interpretation with clearly stated limitations. These observable data **do not directly measure Marx's surplus value / variable capital**, and the non-labour GDP residual cannot simply be relabelled as profits or exploitation.
+- **Global equities ≠ world output:** MSCI ACWI was **64.21% US** by index country weight on September 30, 2026. Global equity-weighted data and world GDP aggregates are explicitly distinguished.
+- **No synthetic facts:** Derived graphs join observations only at precisely matching source dates, and geopolitical/cohort boundaries stay named. Annual changes use actual nearby dates with a documented tolerance; common-date country comparisons do not invent or carry forward missing data.
+- **Explicit data sources:** Each research chart shows original source URLs, methodology, exact source dates and missing-data states. All methods and independent research references are documented in [Economic research methods](docs/ECONOMIC_RESEARCH_METHODS.md).
 
-No API credentials are sent to the frontend. No GitHub Actions workflows or GitHub-hosted data refreshes remain in the repo.
+The original source catalogue and 21 original charts remain available. The browser retains CSV/PNG export, native source history, provenance, share links and optional per-chart normalized display in the secondary explorer.
 
-## Develop and test locally
+## Phase boundaries
 
-The Docker image uses a Node build stage and a Python runtime stage. To work on the UI with the same local API:
+**Phase 3:** permanently visible dashboard, ordered chart layout, original source explorer, meaningful geographic divisions, subdued recession backgrounds, documentation and presentation of descriptive findings.
+
+**Phase 4 (the portion implemented here):** an analytically derived BLS same-sector compensation/productivity comparison and indexed distribution gap, exact-date comparative differences and consistent year-change statistics. The broader planned Phase 4—predictive macroeconomic models, causal attribution, formal surplus-value accounting, validated scenario models and robust economic risk scores—**is not complete** and is not claimed.
+
+## Local tests
+
+No GitHub CI is configured. The local Docker build runs quick Python research/insight tests, frontend Vitest tests, TypeScript checks and production bundling:
 
 ```bash
-cd frontend
-npm install
-npm run dev
-npm test
-npm run build
+docker compose up -d --build finance-dashboard
+docker compose ps finance-dashboard
+docker compose logs --tail=90 finance-dashboard
 ```
 
-The dev server proxies `/api` to the existing container's `127.0.0.1:8080` by default. The single-container deployment exposes port 5052 externally; use `docker compose exec finance-dashboard` for local CLI data checks if the standalone API is not also bound to 8080 on the host.
-
-Python offline tests:
+For direct development:
 
 ```bash
 python -m pip install -e .
-python -m unittest discover -s tests -v
-python -m finance_dashboard validate
+python -m unittest discover -s tests -p 'test_research.py' -v
+python -m unittest discover -s tests -p 'test_insights.py' -v
+cd frontend
+npm install
+npm test
+npm run build
+npm run dev
 ```
 
-The local Docker build is **not asserted tested on your machine**. Historical [Phase 2 data acceptance](docs/PHASE_2.md) and source definitions remain documented. [Phase 3 scope](docs/PHASE_3.md) explains the difference between descriptive interpretation and advanced Phase 4 risk calculations.
+Vite proxies `/api` to `http://127.0.0.1:5052` by default; set `VITE_API_PROXY_TARGET` if your Docker port differs. `/api/health`, `/api/research`, `/api/data-status` and `/api/earnings/sec-filers` are available under the same-origin local API.
 
-## Boundaries
+**Verification:** Source IDs, documentation and tests have been added to the repository, but the revised code has not been run in a real graphical browser or deployed on your machine through this chat. The local Docker build and your real-data visual inspection remain necessary before closing acceptance.
 
-- Current data observations are not genuine historical publication vintages unless a source provides them.
-- OECD gross corporate operating surplus/GDP is a GDP-weighted reporting-country composite with explicit coverage, not a consolidated world listed-company profit series.
-- US SEC-reporting-company earnings exclude most foreign-only listed firms and historically delisted companies.
-- Sparse MSCI/Siblis source snapshots remain sparse.
-- No economic data are fabricated to fill empty charts, and there is no portfolio advice, trading execution, alerts or causal model.
+Third-party provider copyright and redistribution rights still apply outside this local application; no local source rights gating is implemented.
