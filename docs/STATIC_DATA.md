@@ -1,6 +1,6 @@
 # Scheduled static-data pipeline for GitHub Pages
 
-The backend generates source-traceable JSON from **every mapped catalog series** (currently **39 macro/index sources**) without a permanent FastAPI or PostgreSQL instance.
+The backend generates source-traceable JSON from **every mapped catalog series** (currently **42 macro/index sources**) without a permanent FastAPI or PostgreSQL instance.
 
 ## FRED authentication
 
@@ -68,3 +68,7 @@ See [WISESHEETS.md](WISESHEETS.md).
 ### Final macro scope amendment and static export 2026-11-02
 
 The [approved free-public-source replacement](PHASE_2_FREE_SOURCE_REPLACEMENTS.md) provides the following **three** mapped additional datasets, included in the passing [39/39-series static export](https://github.com/tpepels/finance_dashboard/actions/runs/41498656329): `concentration.global.msci_acwi_published_top10` (8 documented **sparse** index snapshots with exact dates/URL archive); `profit.eu27.corporate_operating_surplus_gdp` (24 annual 2002–2025 matched EU27 nominal corporate gross surplus/GDP readings); and `profit.eu27.nonfinancial_gross_surplus_value_added` (27 official NFC gross profit/GVA year readings). Neither original unavailable world-listed net-earnings series nor a fabricated monthly MSCI history is published as though observed. An export without required mapped data fails atomically. Publication rights for MSCI and Siblis remain subject to review. [39-source PostgreSQL/API integration passed](https://github.com/tpepels/finance_dashboard/actions/runs/41499045751).
+
+## OECD source expansion — 42/42 live static export accepted
+
+[Complete 42-series source and 24 optional market static build](https://github.com/tpepels/finance_dashboard/actions/runs/41503489558) includes three separate official-OECD-sourced data-layer outputs: 25 years (2000–2024) of **GDP-weighted 38-current-member OECD reporting-country corporate gross-surplus/GDP**, 25 corresponding annual GDP coverage percentages (>=80%), and 25 participating-member counts (>=29). Country GDP denominators come from same-year OECD GVA + product taxes, with a narrowly matched World Bank current-local-currency GDP fallback for USA/JPN/CAN when OECD tax components are absent; WDI current USD GDP provides weights. Original EU27 and all 39 previous series remain. This does not license public reproduction of restricted MSCI/Siblis material. [42-series PostgreSQL/FastAPI verification](https://github.com/tpepels/finance_dashboard/actions/runs/41503545569) and [methodology](OECD_CORPORATE_SURPLUS.md).
