@@ -5,7 +5,7 @@ import sqlite3
 from tempfile import TemporaryDirectory
 import unittest
 
-from finance_dashboard.backup import backup_local, _hash
+from finance_dashboard.backup import backup_local, verify_manifest, _hash
 
 
 class LocalBackupTests(unittest.TestCase):
@@ -57,6 +57,12 @@ class LocalBackupTests(unittest.TestCase):
             self.assertEqual((out / "unrelated.txt").read_text(), "retain me")
             self.assertTrue((out / second["database"]["file"]).is_file())
             self.assertTrue((out / second["earnings_snapshot"]["file"]).is_file())
+            manifest = list(out.glob("finance-*Z.json"))[0]
+            self.assertTrue(verify_manifest(manifest)["verified"])
+            backup_db = out / second["database"]["file"]
+            backup_db.write_bytes(backup_db.read_bytes() + b"corrupted")
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                verify_manifest(manifest)
 
     def test_malformed_snapshot_cannot_replace_verified_database_backup(self):
         with TemporaryDirectory() as tmp:
