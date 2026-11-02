@@ -1,6 +1,6 @@
 # Scheduled static-data pipeline for GitHub Pages
 
-The backend generates source-traceable JSON from **every mapped catalog series** (currently 36 macro/index sources) without a permanent FastAPI or PostgreSQL instance.
+The backend generates source-traceable JSON from **every mapped catalog series** (currently **39 macro/index sources**) without a permanent FastAPI or PostgreSQL instance.
 
 ## FRED authentication
 
@@ -50,7 +50,7 @@ The 24 instrument and three currency feeds are documented in [MARKET_DATA.md](MA
 
 ### Exact new index/valuation inputs
 
-The exported macro catalog now includes official BEA Q1 (replacement-cost Tobin Q), MSCI ACWI NETR USD index levels, a 36-month monthly-average gold/index return correlation, the ILO world GDP/labour-income hourly ratio identity and a 43-economy GDP-weighted BIS credit-gap composite with a separate world-GDP coverage series. The original historical MSCI top-ten constituent concentration and world listed-company earnings/GDP remain unresolved and explicitly listed in the JSON manifest. Four world valuation macro sources are now mapped and exported: 51 WDI world capitalization USD observations, 51 matched WDI capitalization/world-GDP ratios, and 11 public Siblis global-index trailing P/E plus 11 same-universe earnings-yield snapshots. The [complete 36-series static export passed](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778). Siblis remains proprietary and must not automatically be published to Pages.
+The exported macro catalog now includes official BEA Q1 (replacement-cost Tobin Q), MSCI ACWI NETR USD index levels, a 36-month monthly-average gold/index return correlation, the ILO world GDP/labour-income hourly ratio identity and a 43-economy GDP-weighted BIS credit-gap composite with a separate world-GDP coverage series. The original complete historical monthly MSCI top-ten index-weight history and worldwide listed-company earnings/GDP are **superseded and archived**, not claimed as mapped. The user-approved sources provide sparse **MSCI ACWI index** concentration snapshots and **EU27** corporate gross surplus percentages, not the unavailable original economic definitions; see [amendment](PHASE_2_FREE_SOURCE_REPLACEMENTS.md). Four world valuation macro sources are now mapped and exported: 51 WDI world capitalization USD observations, 51 matched WDI capitalization/world-GDP ratios, and 11 public Siblis global-index trailing P/E plus 11 same-universe earnings-yield snapshots. The [complete **39-series** static export passed](https://github.com/tpepels/finance_dashboard/actions/runs/41498656329), including eight dated MSCI ACWI index concentration points, 24 matched annual EU27 corporate surplus/GDP points and 27 Eurostat NFC/GVA profit-share points. Siblis remains proprietary and must not automatically be published to Pages.
 
 ### Wisesheets supplementary earnings
 
@@ -64,3 +64,7 @@ If present, that snapshot is included as
 Before the first verified complete scan, its status is `not_collected`.
 It is never mislabelled as the original global listed-company profits.
 See [WISESHEETS.md](WISESHEETS.md).
+
+### Final macro scope amendment and static export 2026-11-02
+
+The [approved free-public-source replacement](PHASE_2_FREE_SOURCE_REPLACEMENTS.md) provides the following **three** mapped additional datasets, included in the passing [39/39-series static export](https://github.com/tpepels/finance_dashboard/actions/runs/41498656329): `concentration.global.msci_acwi_published_top10` (8 documented **sparse** index snapshots with exact dates/URL archive); `profit.eu27.corporate_operating_surplus_gdp` (24 annual 2002–2025 matched EU27 nominal corporate gross surplus/GDP readings); and `profit.eu27.nonfinancial_gross_surplus_value_added` (27 official NFC gross profit/GVA year readings). Neither original unavailable world-listed net-earnings series nor a fabricated monthly MSCI history is published as though observed. An export without required mapped data fails atomically. Publication rights for MSCI and Siblis remain subject to review. [39-source PostgreSQL/API integration passed](https://github.com/tpepels/finance_dashboard/actions/runs/41499045751).
