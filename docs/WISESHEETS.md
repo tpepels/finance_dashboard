@@ -80,3 +80,11 @@ The observed 8,179 unique CIKs are fewer than Wisesheets' advertised 21,577 US-l
   https://github.com/tpepels/finance_dashboard/actions/runs/41480398749
 - Complete full-universe scan: track
   https://github.com/tpepels/finance_dashboard/actions/workflows/wisesheets-refresh.yml
+
+## Single-container home-server integration (2026-11-02)
+
+The existing monthly Wisesheets Actions workflow **remains the only full-universe SEC company collector**. Its `WISESHEETS_API_KEY` GitHub Actions secret is not available inside home-server Compose and need **not** be copied there. A revised [one-container Dockerfile](../Dockerfile.standalone) now bundles `data/wisesheets/sec_filer_profit.json` as a validated initial fallback. The single FastAPI+SQLite container reads a volume-mounted newer aggregate at `/data/wisesheets/sec_filer_profit.json` when present; otherwise it uses the bundled version.
+
+A small [snapshot sync](../src/finance_dashboard/wisesheets_sync.py) runs in the **existing daily refresh thread** (not a separate container). It performs one **unauthenticated** read of the *committed* GitHub JSON aggregate, checks schema, identity, available annual observations and UTC source-snapshot timestamp, and atomically writes it only when newer. On failure the last-good or bundled snapshot remains intact. This does **not** spend Wisesheets API requests. Disable with `FINANCE_WISESHEETS_SYNC=0` if desired.
+
+The existing `GET /api/earnings/sec-filers` endpoint serves the exact validated aggregate and snapshot freshness; the [Phase 3 frontend](../frontend/src/SupplementaryEarnings.tsx) provides one separate collapsible annual chart of **US SEC-reporting filer net income/world nominal GDP**, plus filing-company and FX-conversion coverage. It is *not* inserted into the 42 canonical macro-source catalog or relabelled as the unavailable world listed-company profit series. Public Pages builds explicitly withhold this supplementary data until redistribution rights are cleared.
