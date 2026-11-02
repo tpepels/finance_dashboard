@@ -48,3 +48,18 @@ docker compose logs --tail=100 finance-dashboard
 
 Use **http://media-server:5052** to inspect the research tabs, or the new `/api/research` endpoint to verify the research definitions. Original Phase 3 requirements and subsequent superseding local-only decisions are archived in [PHASE_3_CONTRACT.md](PHASE_3_CONTRACT.md).
 
+
+## November 2026: analytical UI correction
+
+The former generic graph-only default failed the research/dashboard acceptance goal. Current work replaces it with a calculation-aware presentation:
+
+- Historical BLS output-price-deflated pay/productivity ratio gap, **at every exact common quarter**, displayed separately from the original two 2017=100 index levels. The gap is explicitly baseline-relative, not a wage/profit accounting ratio.
+- Paired GDP labour/non-labour residuals are displayed as stacked 0–100% compositions. The residual is explicitly **not** gross corporate profit.
+- Multi-country charts display **ranked bars at the latest fully common source date** and source-native historical trends separately. No ranking from mixed source dates.
+- Annual GDP growth and matched annual differentials use diverging bars with a zero reference. Other quarterly/daily differences retain a continuous source-time axis and zero reference. Credit dispersion has a nonnegative axis.
+- Single-series raw source graphs now include a sample-bounded historical min/median/max and latest midrank, where at least twelve real observations exist. Short source snapshots are never interpolated or given artificial historical percentiles.
+- Phase 4 risk diagnostics expose their source-history rank and signed distance from original published criteria. ETF comparisons display a correlation matrix, and recession backtests plot observed outcome frequencies versus **mean predicted probabilities** from test cases.
+- New frontend rendering contracts verify type-specific chart geometry, stacked accounting relationships, common-date ranking, and the computed productivity-gap panel.
+
+An interactive dashboard does not itself close remaining empirical validation. Models require independent historical release data, original N-PORT filings, and authenticated OECD sector/capital-stock accounts. Source-aware empty states remain required when these data are not imported.
+

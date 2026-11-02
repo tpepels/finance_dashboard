@@ -168,6 +168,58 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertEqual(data["series"][1]["points"][0]["date"], "2026-01-03")
         self.assertEqual(data["series"][2]["points"], [])
 
+    def test_productivity_gap_history_is_computed_for_every_matched_quarter(self):
+        spec = BY_ID["us_productivity_pay"]
+        a, b, c = spec["sources"]
+        data = compile_indicator(spec, {
+            a: [(date(2017, 1, 1), D("100")), (date(2024, 1, 1), D("125")),
+                (date(2024, 4, 1), D("130"))],
+            b: [(date(2017, 1, 1), D("100")), (date(2024, 1, 1), D("120")),
+                (date(2024, 4, 1), D("130"))],
+            c: [(date(2017, 1, 1), D("100")), (date(2024, 1, 1), D("120"))],
+        }, {sid: meta(sid) for sid in spec["sources"]})
+        gap = data["series"][2]
+        self.assertEqual(gap["id"], "derived.us.productivity_pay_gap")
+        self.assertEqual(gap["unit"], "percent")
+        self.assertEqual([row["date"] for row in gap["points"]],
+                         ["2017-01-01", "2024-01-01"])
+        self.assertEqual([D(row["value"]) for row in gap["points"]], [D(0), D(25)])
+        self.assertEqual(D(data["headline"]["value"]), D(25))
+
+    def test_historical_midrank_is_sample_bounded_and_reproducible(self):
+        spec = BY_ID["global_growth"]
+        sid = spec["sources"][0]
+        observed = [(date(year, 1, 1), D(year - 2010)) for year in range(2010, 2024)]
+        result = compile_indicator(spec, {sid: observed},
+                                   {sid: meta(sid, unit="percent", frequency="A")})
+        ctx = result["series"][0]["historical_context"]
+        self.assertEqual(ctx["count"], 14)
+        self.assertEqual(D(ctx["median"]), D("6.5"))
+        self.assertEqual(D(ctx["latest_midrank_pct"]), D(100) * D("13.5") / D(14))
+        self.assertEqual(ctx["first_date"], "2010-01-01")
+        self.assertEqual(ctx["last_date"], "2023-01-01")
+        # A sparse published index factsheet is never given a fake distribution.
+        short = compile_indicator(spec, {sid: observed[-8:]},
+                                  {sid: meta(sid, unit="percent", frequency="A")})
+        self.assertIsNone(short["series"][0]["historical_context"])
+
+    def test_country_comparison_is_ranked_only_at_full_common_source_date(self):
+        spec = BY_ID["compare_growth"]
+        sources = spec["sources"]
+        metadata = {sid: meta(sid, unit="percent", frequency="A") for sid in sources}
+        values = {sid: [(date(2024, 1, 1), D(index)),
+                        (date(2025, 1, 1), D(index + 1))]
+                  for index, sid in enumerate(sources)}
+        values[sources[-1]].pop()
+        result = compile_indicator(spec, values, metadata)
+        comparison = result["comparison"]
+        self.assertEqual(comparison["date"], "2024-01-01")
+        self.assertEqual(comparison["common_date_count"], 1)
+        self.assertEqual(comparison["ranked"][0]["value"], "4")
+        values[sources[-1]] = []
+        partial = compile_indicator(spec, values, metadata)
+        self.assertIsNone(partial["comparison"])
+
     def test_nber_periods_are_source_dated_not_arbitrary_crash_window(self):
         data = list_research()
         self.assertEqual([(x["start"], x["end"]) for x in data["periods"]], [

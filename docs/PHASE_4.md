@@ -169,3 +169,11 @@ but **have not been executed in the production Docker environment**:
 
 **Acceptance remains open.** Do not display any of the uncollected source
 measurements as historical facts. See [the acquisition and audit commands](PHASE_4_RESEARCH_SOURCES.md).
+
+## Comparative visual evidence integration
+
+The main presentation now integrates accounting composition, independently calculated quarterly productivity/pay ratio history, historical observation ranks (minimum twelve actual periods), and exact-period country comparisons. The Phase 4 research panel adds a pairwise monthly-return correlation matrix and empirical walk-forward probability calibration plot. All use existing API observations; no new securities, fake source series, or post-hoc filled values are introduced.
+
+The calibration plot compares actual per-bin **mean forecast probabilities** from the underlying scored cases against per-bin realized outcome shares. This is not a prospective probability guarantee; overlapping recession horizons reduce effective independent-event samples and are separately audited. Missing vintage models do not render calibration data.
+
+These changes address visual/comparative functionality; original authentic-data acceptance remains open wherever the required historical sources have not been imported and independently verified.
