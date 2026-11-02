@@ -18,6 +18,7 @@ from .market import instruments
 from .market_service import MarketIngestionService
 from .market_analytics import rolling_gold_vs_global_etf
 from .insights import same_measure, summarize
+from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
 from functools import partial
@@ -69,6 +70,24 @@ def create_app(engine=None) -> FastAPI:
         with db.connect() as conn:
             conn.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
+
+    @app.get("/api/research")
+    def research_catalog():
+        """Documented economic questions, actual source contracts and scoped regions."""
+        return list_research()
+
+    @app.get("/api/research/{indicator_id}")
+    def research_indicator(indicator_id: str, start: date | None = None,
+                           end: date | None = None):
+        """Measured source series and validated same-period economic transformations."""
+        if indicator_id not in RESEARCH_INDICATORS:
+            raise HTTPException(404, "Unknown research indicator")
+        if start and end and start > end:
+            raise HTTPException(422, "Invalid analysis date range")
+        try:
+            return load_indicator(db, indicator_id, start=start, end=end)
+        except ValueError:
+            raise HTTPException(422, "Research source combination invalid") from None
 
     @app.get("/api/series")
     def list_series():
