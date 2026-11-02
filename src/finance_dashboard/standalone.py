@@ -43,13 +43,10 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
     while not stopped.is_set():
         if sync_wisesheets:
             try:
-                from .wisesheets_sync import sync_wisesheets_snapshot
-                if sync_wisesheets_snapshot():
-                    log.info("Installed newer verified monthly SEC earnings aggregate")
+                from .wisesheets_local import refresh_local_wisesheets
+                refresh_local_wisesheets()
             except Exception:
-                # The bundled snapshot and last successful /data copy remain readable.
-                # Never expose provider URLs, private credentials or raw response.
-                log.warning("Monthly SEC earnings aggregate sync failed; retaining snapshot")
+                log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
         try:
             macro_failures = refresh_all(engine)
             if macro_failures:
@@ -75,7 +72,7 @@ async def standalone_lifespan(app: FastAPI, *, engine: Engine) -> AsyncIterator[
         return
     interval_seconds = refresh_interval()
     include_markets = enabled("FINANCE_INCLUDE_MARKETS")
-    sync_wisesheets = enabled("FINANCE_WISESHEETS_SYNC", "1")
+    sync_wisesheets = enabled("FINANCE_WISESHEETS_REFRESH", "1")
     stopped = Event()
     thread = Thread(target=refresh_loop, name="finance-macro-refresh",
                     args=(engine, stopped),
