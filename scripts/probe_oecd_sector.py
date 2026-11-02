@@ -61,3 +61,15 @@ for name, query in [
   print("EU_VAL",name,list(obj.get("value",{}).items())[:20],flush=True)
  except Exception as exc:
   print("EU_META_ERROR",name,type(exc).__name__,str(exc)[:240],flush=True)
+
+# Confirm the actual Eurostat transacting balancing-item keys and full yearly coverage.
+for area in ["EU27_2020","EA20"]:
+ for sector,code in [("S11","B2A3G"),("S12","B2A3G"),("S1","B1GQ")]:
+  from urllib.parse import urlencode
+  url="https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/nasa_10_nf_tr?"+urlencode({"geo":area,"sector":sector,"na_item":code,"direct":"RECV","unit":"CP_MEUR","sinceTimePeriod":"2000"})
+  try:
+   req=urllib.request.Request(url,headers={"User-Agent":"CapitalMonitor/1.0"})
+   with urllib.request.urlopen(req,timeout=8) as response: obj=json.loads(response.read(1200000))
+   print("EU_CANDIDATE",area,sector,code,"size",obj.get("size"),"years",str(obj.get("dimension",{}).get("time",{}).get("category",{}).get("index"))[:250],"points",len(obj.get("value",{})), "first",list(obj.get("value",{}).items())[:3],flush=True)
+  except Exception as exc:
+   print("EU_CANDIDATE_ERROR",area,sector,code,str(exc)[:220],flush=True)
