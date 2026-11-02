@@ -46,7 +46,7 @@ The React/ECharts interactive dashboard (Phase 3), allocation/risk analytics and
 
 - [x] Original 32 macro/index series live-source checked, combined real PostgreSQL historical backfill and API readback completed.
 - [x] Four new macro aggregates source-checked through a complete 36-series static export: two WDI 51-year annual series and two Siblis 11-snapshot valuations.
-- [ ] Combined PostgreSQL/API acceptance covering **all 36** macro/index series (not just the original 32).
+- [x] Combined PostgreSQL/API acceptance covering **all 36** macro/index series (not just the original 32): [successful live PostgreSQL ingestion and API readback](https://github.com/tpepels/finance_dashboard/actions/runs/41494100275).
 - [x] All 24 stock/ETF instruments and 3 ECB FX feeds have already passed historical market ingestion/API/static checks; these are retained as **optional supplementary infrastructure, not Phase 2 macro exit gates**.
 - [x] Four of the six originally missing economic definitions source-mapped and tested with explicit methodology.
 - [x] Wisesheets supplementary SEC-filer scan and API/static export completed with truthful coverage labelling.
