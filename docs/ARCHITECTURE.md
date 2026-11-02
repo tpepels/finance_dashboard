@@ -1,6 +1,6 @@
 # Architecture baseline (decision record)
 
-Status: proposed and scoped; only Phase 1 contracts are implemented.
+Status: Phase 1 contracts and Phase 2 ingestion/storage/API implementation committed. Live BIS and deployed Compose verification remain outstanding.
 
 ## System boundaries
 
@@ -11,7 +11,7 @@ Status: proposed and scoped; only Phase 1 contracts are implemented.
 5. **UI**: React/TypeScript and Apache ECharts render declarative multi-series charts; no economic calculations in the browser.
 6. **Worker**: separate scheduled process in the same backend package. Bounded retries and last-known-good data. No Celery/Redis/Kafka.
 
-Compose services in Phase 2+: app, worker, postgres. The frontend is compiled into the app container for self-hosting.
+Phase 2 Docker Compose services: app, worker, postgres, plus a one-shot Alembic migration service. There is no frontend yet; React/ECharts are Phase 3.
 
 ## Temporal semantics
 
