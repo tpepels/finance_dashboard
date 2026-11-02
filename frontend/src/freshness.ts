@@ -7,7 +7,6 @@ const THRESHOLDS_DAYS: Record<string, number> = {
 };
 
 export function recencyMessage(series: LoadedSeries, reference = new Date()): string | null {
-  if (series.status === 'blocked') return 'Observations withheld by public rights policy.';
   if (series.status === 'error') return series.message ?? 'Source failed to load.';
   if (!series.observations.length) return 'No observations available.';
   const last = series.observations.map(x => x.date).sort().at(-1);
