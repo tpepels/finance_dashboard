@@ -36,6 +36,10 @@ RUN pip install --no-cache-dir . \
     && python -m finance_dashboard validate \
     && python -m unittest discover -s tests -p 'test_research.py' -v \
     && python -m unittest discover -s tests -p 'test_insights.py' -v \
+    && python -m unittest discover -s tests -p 'test_risk_diagnostics.py' -v \
+    && python -m unittest discover -s tests -p 'test_portfolio_risk.py' -v \
+    && python -m unittest discover -s tests -p 'test_phase4_api.py' -v \
+    && python -m unittest discover -s tests -p 'test_backup.py' -v \
     && chmod 755 /app/run-standalone.sh
 EXPOSE 8080
 VOLUME /data
