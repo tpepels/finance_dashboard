@@ -3,7 +3,7 @@
 
 ## Scope and implementation
 
-The primary [economic research dashboard](ECONOMIC_RESEARCH_METHODS.md) still leads with 42 curated economic questions based on 49 canonical macro sources. Phase 4 adds a permanently accessible **Risk evidence and observed market outcomes** section, directly under the primary visible economic research graphs and before the original source explorer.
+The primary [economic research dashboard](ECONOMIC_RESEARCH_METHODS.md) still leads with 46 curated economic questions based on 53 canonical macro sources. Phase 4 adds a permanently accessible **Risk evidence and observed market outcomes** section, directly under the primary visible economic research graphs and before the original source explorer.
 
 Phase 4 now has two independent analytical surfaces:
 
