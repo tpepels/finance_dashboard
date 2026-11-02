@@ -1,6 +1,6 @@
 # Phase 2 — source coverage, provenance and blockers
 
-Verified 2026-11-02. **34 canonical macroeconomic/index series total: 32 mapped and live-source verified; two original economic definitions unresolved.** Separately, **24 exchange-listed stock/ETF instruments and three ECB FX source series** are fully implemented in the market registry.
+Verified 2026-11-02. **38 canonical macroeconomic/index series total: 36 mapped and live-source verified, two original economic definitions unresolved.** The 34 original entries are preserved; four additional global macro aggregates are implemented. Separately, **24 exchange-listed stock/ETF instruments and three ECB FX source series** are fully implemented in the market registry.
 
 An operational adapter can fetch and parse real source data into PostgreSQL; it is not an assertion that the provider grants public redistribution rights or that every derived comparison is methodologically valid.
 
@@ -19,6 +19,17 @@ An operational adapter can fetch and parse real source data into PostgreSQL; it 
 | Gold spot quote | 1 | Live Corgano XAU/USD quote | One current indicative spot midpoint/oz; historical API provides futures, not spot |
 
 All mapped source IDs are referenced from `definitions/series.json`. The relevant open-source calculations and provider validation functions are in `src/finance_dashboard/providers.py` and `src/finance_dashboard/bis.py`.
+
+## New macro-first global equity aggregates (2026-11-02)
+
+| Provider and scope | Canonical series | Verified input history | Rights / coverage caveat |
+|---|---|---|---|
+| World Bank WDI WLD, WFE-sourced | `valuation.world.listed_market_cap_usd` | 51 years, 1975–2025 | WDI CC BY 4.0, varying exchange/geographic coverage; current USD, not profits |
+| WDI WLD market cap + WLD GDP, both USD | `valuation.world.listed_market_cap_world_gdp` | 51 matched years | True WLD cap/WLD GDP ratio, **not** the separate WDI weighted national capitalization/GDP series |
+| Siblis public global valuation year ends | `valuation.world.global_trailing_pe` | 11 sparse dates, 2016–2025 Dec and Sep 2026 | Normalized aggregate 3,000-company index P/E, proprietary; no redistributed public website without permission |
+| Same Siblis observations | `valuation.world.global_earnings_yield` | 11 sparse dates | 100/P-E in percent of **index** market capitalization; not global net income/GDP |
+
+[Successful 36-series static source validation](https://github.com/tpepels/finance_dashboard/actions/runs/41492850778). The original 32 macro series were previously accepted into PostgreSQL; new 36-series PostgreSQL verification is separately tracked. [Macro-first amendment](PHASE_2_MACRO_SCOPE_AMENDMENT.md). **No cross-universe WDI capitalization × Siblis earnings-yield fabrication.**
 
 ## Stock, ETF and foreign-exchange coverage
 
