@@ -24,6 +24,8 @@ try:
                   if k in gdp and {"nfc","fc","gva","net_product_taxes"}.issubset(v)]
         covered=sum((gdp[k] for k in eligible),0)
         total=sum(gdp.values(),0)
+        if yr == 2023:
+            print("MISSING_COMPONENTS",[(k, sorted(blocks.get(k,{}))) for k in ("USA","JPN","CAN","NZL","CHE","NOR","CRI","SVK")],flush=True)
         print("AUDIT",yr,"components",len(blocks),"wdi",len(gdp),
               "eligible",len(eligible),
               "coverage",(float(covered/total) if total else None),
