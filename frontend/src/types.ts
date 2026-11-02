@@ -27,7 +27,7 @@ export interface LoadedSeries {
   id: string;
   definition: SeriesDefinition;
   observations: Observation[];
-  status: 'ready' | 'no_data' | 'blocked' | 'error';
+  status: 'ready' | 'no_data' | 'error';
   message?: string;
 }
 export interface ChartDefinition {
@@ -43,8 +43,6 @@ export interface ChartDefinition {
 export interface DataContext {
   series: SeriesDefinition[];
   charts: ChartDefinition[];
-  generatedAt?: string;
-  publicOnly: boolean;
   status: Record<string, { status: string; last_success?: string | null }>;
 }
 export interface PlotPoint {
