@@ -6,8 +6,8 @@ Status: **baseline frozen on 2026-11-02**. This records the complete delivery ta
 
 | Component | Authoritative paths | Required behaviour |
 |---|---|---|
-| Catalog / validation | `definitions/series.json`, `definitions/charts.json`, `src/finance_dashboard/catalog.py` | 39 active mapped definitions plus two archived, superseded originals; exact source/frequency/unit validation; source/frequency/unit validation |
-| Macro providers | `providers.py`, `bis.py`, `remaining_sources.py`, `world_credit.py`, `macro_aggregates.py`, `concentration_snapshots.py`, `eurostat_corporate.py` | Complete 39 mapped sources: 36 previously verified + eight-snapshot genuine MSCI ACWI index concentration + EU27 S11+S12 gross operating surplus/GDP + official Eurostat NFC profit share of GVA |
+| Catalog / validation | `definitions/series.json`, `definitions/charts.json`, `src/finance_dashboard/catalog.py` | 42 active mapped definitions plus two archived, superseded originals; exact source/frequency/unit validation |
+| Macro providers | `providers.py`, `bis.py`, `remaining_sources.py`, `world_credit.py`, `macro_aggregates.py`, `concentration_snapshots.py`, `eurostat_corporate.py`, `oecd_corporate.py` | Complete 42 mapped sources: previous 39 plus OECD GDP-weighted financial and nonfinancial corporate gross-surplus/GDP, independently recorded GDP coverage and member counts (25 annual years, 2000–2024) |
 | Optional market registry / ingestion | `definitions/instruments.json`, `market.py`, `market_service.py` | Retain all 24 implemented listings, raw/adjusted prices, dividends, splits, proper historical ex-dates and exchange/currency checks |
 | Optional market analytics / export | `market_analytics.py`, `market_export.py` | Four distinct return conventions, ECB USD/GBP/CHF FX conversion, explicitly labelled GLD/VT 36m proxies |
 | Persistence | `database.py`, `service.py`, `migrations/` | Append-only versioned records, ingestion runs, transactions, date/type fidelity, previous successful values on failure |
@@ -32,6 +32,8 @@ Status: **baseline frozen on 2026-11-02**. This records the complete delivery ta
 
 10. **Superseded source archive and container packaging:** two original unavailable definitions are stored verbatim in `definitions/superseded_series.json` with approved replacements. `data/msci_acwi_published_snapshots.json` is the canonical dated-document archive; its exact file must be copied into the production Docker image and never silently regenerated from a partial Yahoo/ETF holdings sample.
 
+11. **OECD-member corporate gross-surplus composite (implemented and live accepted):** [full source and formula specification](OECD_CORPORATE_SURPLUS.md). Use OECD national sector accounts (S11+S12 B2G), OECD S1 GVA plus net product taxes for national GDP where reported, and only for USA/USD, JPN/JPY, CAN/CAD use source-validated same-year WDI local GDP as a denominator fallback. The weighted OECD reporting-country mean uses WDI nominal USD GDP member weights; require >=35/38 member GDP weights, >=29 complete reporting members, >=80% included GDP. Publish ratio, GDP-coverage share and count separately. 25 2000–2024 annual points were accepted in all three datasets. OECD is not the world, nor is this a published OECD aggregate.
+
 ## Definition and completion gates
 
 | Gate | State as of baseline | Evidence / outstanding requirement |
@@ -44,10 +46,10 @@ Status: **baseline frozen on 2026-11-02**. This records the complete delivery ta
 | Wisesheets SEC-filer supplementary history | **PASS — limited universe** | [full documented 2021–2025 scan](https://github.com/tpepels/finance_dashboard/actions/runs/41483503450) |
 | MSCI published top-ten concentration replacement | **PASS — 8 documented live source snapshots, storage/API/static** | Eight actual MSCI ACWI 892400 top-ten historical snapshots with source archive and no fabricated monthly observations. Original archived. |
 | Eurostat EU27 S11+S12 gross surplus/GDP + S11 GVA profit-share | **PASS — 24 + 27 real annual records, storage/API/static** | Official Eurostat EU27_2020 corporate sectors, matched current EUR GDP, NFC gross-profit-share publication. This does not measure OECD/global listed net earnings. Original archived. |
-| OECD geographic coverage of corporate surplus | **OPEN — owner geographic scope gate** | Eurostat EU27 is independently verified and technically integrated, but the original proposal's OECD breadth is not present; requires OECD/UN coverage or owner approval for EU27-only. |
+| OECD geographic coverage of corporate surplus | **PASS — OECD38 GDP-weighted reporting aggregate** | Official OECD annual corporate source with WDI GDP weights and restricted local-currency GDP fallback for USA/JPN/CAN; 25 eligible years with >=80% of OECD-member GDP and explicit participation/count. [42-series full live acceptance](https://github.com/tpepels/finance_dashboard/actions/runs/41503545569). |
 | Historical instrument ticker/exchange continuity | **NONBLOCKING optional debt** | Already implemented instrument history remains; further per-ETF work removed from macro phase by owner |
 | Independent issuer NAV and distributions | **NONBLOCKING optional debt** | No claim of independent issuer audit; owner explicitly removed this Phase 2 condition |
-| Full amended Phase 2 macro regression | **PASS — 39/39 mapped, zero unresolved** | [39-source PostgreSQL/API](https://github.com/tpepels/finance_dashboard/actions/runs/41499045751) and [39-source static export](https://github.com/tpepels/finance_dashboard/actions/runs/41498656329), including all three amended indicators. |
+| Full amended Phase 2 macro regression | **PASS — 42/42 mapped, zero unresolved** | [42-source historical PostgreSQL/API](https://github.com/tpepels/finance_dashboard/actions/runs/41503545569), [42-source live static export](https://github.com/tpepels/finance_dashboard/actions/runs/41503489558), and offline tests. |
 
 Tests must include complete source registries; no tests that pass on a hand-picked subset count as phase completion. Integrate the three owner-approved replacement measures in *the existing* registry, persistence model, API and static export, including failure/staleness/rights semantics. Do not mark a definition `mapped` before live source evidence.
 
@@ -58,7 +60,7 @@ Tests must include complete source registries; no tests that pass on a hand-pick
 3. Integrate and validate API and static export; use the same calculation service, not duplicated browser formulas.
 4. Run bounded unit/property tests for all variations and short real-source/PostgreSQL acceptance; do not block on long CI. Store links/results in issue #1.
 5. Record the macro-first owner amendment and remove ETF NAV/ticker audits from mandatory completion; optional market data remains operational.
-6. Close issue #1 when all **39 owner-amended active source contracts** have passed full ingestion/API/static acceptance, and archive the original inaccessible definitions with the explicit differences in meaning and geography. Do not claim exact worldwide profits or a full monthly concentration series.
+6. Close issue #1 when all **42 owner-amended active source contracts** have passed full ingestion/API/static acceptance, and archive the original inaccessible definitions with the explicit differences in meaning and geography. Do not claim exact worldwide profits or a full monthly concentration series.
 
 ## Contract-change policy
 
