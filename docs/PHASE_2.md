@@ -47,4 +47,4 @@ The latest live acceptance and complete scheduled export pass. See [exact remain
 
 ## Pending exact indicators
 
-Worldwide **listed-company** profit share and historical MSCI ACWI free-float index top-ten constituent weights. Additional NAV/ticker continuity and all-macro PostgreSQL backfill audits remain separately outstanding. These need genuine source/licence definitions, as documented in [Data coverage](DATA_COVERAGE.md).
+Worldwide **listed-company** profit share and historical MSCI ACWI free-float index top-ten constituent weights. Additional NAV reconciliation and historical ticker/venue continuity remain separately outstanding; the combined historical 32-series PostgreSQL backfill **passed**. The two original definition gaps require genuine historical sources and cannot be closed by the available proxies. See [locked feature contract](PHASE_2_FEATURE_CONTRACT.md), [architecture contract](PHASE_2_ARCHITECTURE_CONTRACT.md), [implementation contract](PHASE_2_IMPLEMENTATION_CONTRACT.md) and [Data coverage](DATA_COVERAGE.md).
