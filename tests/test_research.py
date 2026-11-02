@@ -29,6 +29,8 @@ class ResearchIndicatorTests(unittest.TestCase):
         catalog, _ = load_documents()
         known = {s["id"]: s for s in catalog["series"]}
         self.assertEqual(len(SPECS), len(BY_ID))
+        self.assertEqual(len(SPECS), 42)
+        self.assertEqual(len(load_documents()[0]["series"]), 49)
         self.assertEqual(len({s["id"] for s in SPECS}), len(SPECS))
         self.assertEqual(set(s["region"] for s in SPECS), {r["id"] for r in REGIONS})
         for spec in SPECS:
