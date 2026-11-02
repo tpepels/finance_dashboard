@@ -84,6 +84,28 @@ class VintageTests(unittest.TestCase):
         self.assertEqual(_month_ends(date(2020,1,1),date(2020,3,31)),
                          [date(2020,1,31),date(2020,2,29),date(2020,3,31)])
 
+    def test_walk_forward_model_math_is_deterministic_and_evaluates_only_observed_events(self):
+        # Synthetic inputs exercise the implementation; these are NOT claims
+        # of historical skill, independent validation or genuine ALFRED data.
+        training=[(date(2000+i//12,i%12+1,1),
+                   (float((i%14)-7), float((i%11)/10)),
+                   int(i%11<3)) for i in range(96)]
+        first, prior=fit_predict(training,(-1.5,0.2))
+        second, same_prior=fit_predict(training,(-1.5,0.2))
+        self.assertEqual((first,prior),(second,same_prior))
+        self.assertTrue(0<=first<=1)
+        self.assertTrue(0<prior<1)
+        test=[{"outcome":int(i%4==0),
+               "estimated_probability":0.8 if i%4==0 else 0.2,
+               "past_prevalence_baseline":0.25}
+              for i in range(40)]
+        outcome=metrics(test)
+        self.assertIsNotNone(outcome)
+        self.assertEqual(outcome["cases"],40)
+        self.assertEqual(outcome["positives"],10)
+        self.assertEqual(outcome["roc_auc"],1.0)
+        self.assertLess(outcome["brier"],outcome["expanding_prevalence_brier"])
+
     def test_training_requires_past_event_cases_and_future_outcomes_mature(self):
         self.assertIsNone(target_after(date(2020,1,31),{2020*12+1:0},6))
         with self.assertRaisesRegex(ValueError,"Insufficient"):
