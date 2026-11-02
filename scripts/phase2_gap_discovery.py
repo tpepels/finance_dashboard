@@ -41,9 +41,10 @@ with httpx.Client(timeout=9, follow_redirects=False) as client:
                 if isinstance(structures,dict): structures=[structures]
                 if structures:
                     dims=structures[0].get("dimensions",{})
-                    report["series_dimensions"]=[(v.get("id"),len(v.get("values",[])), [z.get("id") for z in v.get("values",[])[:8]]) for v in dims.get("series",[])]
+                    report["series_dimensions"]=[(v.get("id"),len(v.get("values",[])), [(z.get("id"),z.get("name")) for z in v.get("values",[])[:8]]) for v in dims.get("series",[])]
                     report["obs_dimensions"]=[(v.get("id"), len(v.get("values",[]))) for v in dims.get("observation",[])]
                 report["series_keys"]=[list(ds.get("series",{}))[:6] for ds in data.get("dataSets",[])]
+                report["sample_values"]={k:list(v.get("observations",{}).items())[:1] for ds in data.get("dataSets",[]) for k,v in list(ds.get("series",{}).items())[:3]}
             if name.startswith("bis_") and r.status_code in (200,400,404):
                 report["preview"]=r.text[:220].replace("\n"," ")
             print(json.dumps(report),flush=True)
