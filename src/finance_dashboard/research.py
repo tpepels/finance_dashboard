@@ -126,6 +126,12 @@ SPECS: tuple[dict[str, Any], ...] = (
          kind="fraction_percent", question="What share of US national output is attributable to labour?",
          reading="Penn World Table labour-compensation share of GDP in current prices; official FRED series is a fractional ratio and is converted to percentage by multiplying by 100.",
          caveat="Total-economy annual PWT ratio (through 2023) is not the BLS nonfarm business labour share or a surplus-value measure."),
+    dict(id="us_income_distribution", region="us", theme="Labour and distribution",
+         title="US GDP distribution: labour share and non-labour residual",
+         sources=["labour.us.pwt_labour_share"], kind="labour_residual",
+         question="How is US GDP divided between labour income and the remaining value added?",
+         reading="Penn World Table total-economy labour compensation share, and the arithmetic residual 100 minus that same share, both from the exact annual source observation.",
+         caveat="The residual includes depreciation, net taxes, mixed income and other non-labour components; it is NOT corporate profit, Marx's surplus value, or an exploitation-rate estimate."),
     dict(id="us_labour_share_nonfarm", region="us", theme="Labour and distribution",
          title="US nonfarm business labour share, index", sources=["labour.us.nonfarm_labour_share_index"],
          kind="raw", question="How has the share going to labour moved since 2017?",
@@ -208,18 +214,37 @@ SPECS: tuple[dict[str, Any], ...] = (
          kind="raw", question="Which large economies are expanding fastest?",
          reading="Five World Bank annual real GDP growth rates, displayed on native source years.",
          caveat="World aggregate deliberately excluded; countries have very different economic size and population."),
+    dict(id="compare_growth_differential", region="compare", theme="Growth and demand",
+         title="US minus euro-area real GDP growth",
+         sources=["gdp.real_growth.us", "gdp.real_growth.eu"], kind="pair_differential",
+         question="How much faster or slower is real US output growth than the euro area's?",
+         reading="Year-by-year difference in matched annual World Bank constant-price GDP growth, in percentage points, US minus euro area.",
+         caveat="A growth-rate difference is not the difference in country GDP level, living standards or the size of output."),
     dict(id="compare_policy", region="compare", theme="Financial conditions",
          title="Comparable policy rates: US / euro area / Japan",
          sources=["policy_rate.us.bis", "policy_rate.ea.bis", "policy_rate.jp.bis"],
          kind="raw", question="How different are major monetary policy stances?",
          reading="BIS harmonized daily policy rates on the same numeric scale.",
          caveat="Nominal rates; country-specific price inflation and corridor regimes differ."),
+    dict(id="compare_policy_differential", region="compare", theme="Financial conditions",
+         title="US minus euro-area harmonized policy-rate spread",
+         sources=["policy_rate.us.bis", "policy_rate.ea.bis"], kind="pair_differential",
+         question="How wide is the US–euro-area nominal policy stance differential?",
+         reading="Daily US minus euro-area BIS harmonized policy rates on exact common source dates, percentage points.",
+         caveat="Nominal-rate differential does not establish exchange-rate forecasts, covered interest parity or real monetary restrictiveness."),
     dict(id="compare_credit", region="compare", theme="Debt and leverage",
          title="Comparable credit-to-GDP trend gaps", sources=[
              "credit_gap.us.bis", "credit_gap.ea.bis", "credit_gap.jp.bis"],
          kind="raw", question="Which major economies show credit expansion relative to their trend?",
          reading="Country BIS private nonfinancial credit-to-GDP gaps in percentage points.",
          caveat="A BIS credit gap is not comparable to the level of private debt or default rates."),
+    dict(id="compare_credit_dispersion", region="compare", theme="Debt and leverage",
+         title="Cross-economy dispersion of credit-to-GDP gaps",
+         sources=["credit_gap.us.bis", "credit_gap.ea.bis", "credit_gap.jp.bis"],
+         kind="cross_country_dispersion",
+         question="How far apart are credit-cycle deviations across the three economies?",
+         reading="Highest minus lowest national BIS credit-gap observation within the same quarter (US, euro area and Japan), expressed in percentage points.",
+         caveat="Statistical dispersion is not a crisis-probability score and requires observations for all three economies in the same quarter."),
     dict(id="compare_market_cap", region="compare", theme="Capital and equity valuation",
          title="Domestic listed capitalization / GDP: US vs Japan",
          sources=["valuation.domestic_cap_gdp.us", "valuation.domestic_cap_gdp.jp"],
@@ -260,7 +285,47 @@ def compile_indicator(spec: dict[str, Any], observed: dict[str, list[Any]],
     kind = spec["kind"]
     used: list[dict[str, Any]] = []
 
-    if kind == "us_productivity_pay":
+    if kind == "labour_residual":
+        base = values[sources[0]]
+        share, residual = [], []
+        for day, fraction in sorted(base.items()):
+            if not Decimal("0") <= fraction <= Decimal("1"):
+                continue
+            labour = fraction * Decimal("100")
+            share.append({"date": day.isoformat(), "value": str(labour)})
+            residual.append({"date": day.isoformat(), "value": str(Decimal("100") - labour)})
+        used = [
+            {"id": "derived.us.labour_gdp_share", "name": "Labour compensation / GDP",
+             "unit": "percent", "frequency": "A", "points": share},
+            {"id": "derived.us.gdp_nonlabour_residual", "name": "Non-labour GDP residual (not profits)",
+             "unit": "percent", "frequency": "A", "points": residual},
+        ]
+        headline = ({"date": share[-1]["date"], "value": share[-1]["value"],
+                     "unit": "percent", "label": "Labour compensation share / GDP",
+                     "explanation": "100 × PWT labour compensation share (ratio). Complement is 100 minus labour share, not the profit rate."}
+                    if share else None)
+    elif kind in {"pair_differential", "cross_country_dispersion"}:
+        common = sorted(set.intersection(*(set(values[src]) for src in sources)))
+        result = []
+        for day in common:
+            readings = [values[src][day] for src in sources]
+            diff = (readings[0] - readings[1] if kind == "pair_differential"
+                    else max(readings) - min(readings))
+            result.append({"date": day.isoformat(), "value": str(diff)})
+        used = [{
+            "id": "derived." + spec["id"],
+            "name": ("US minus euro area (percentage points)"
+                     if kind == "pair_differential"
+                     else "Maximum minus minimum country credit gap (percentage points)"),
+            "unit": "percentage_points",
+            "frequency": names[0]["frequency"],
+            "points": result,
+        }]
+        headline = ({"date": result[-1]["date"], "value": result[-1]["value"],
+                     "unit": "percentage_points", "label": used[0]["name"],
+                     "explanation": "Observed measures at identical source reference dates; no nearest-date matching, smoothing or forward filling."}
+                    if result else None)
+    elif kind == "us_productivity_pay":
         p, n, d = (values[source] for source in sources)
         overlap = sorted(set(p) & set(n) & set(d))
         points_output = []
