@@ -36,7 +36,7 @@ SPECS: tuple[dict[str, Any], ...] = (
          title="Labour's share of world income", sources=["labour.world.income_share"],
          kind="labour_percent_residual", question="What share of global GDP accrues to labour versus other value added?",
          reading="UN SDG 10.4.1 estimated labour income share, accounting for self-employment.",
-         caveat="The non-labour remainder includes depreciation, taxes and mixed incomes; it is not an observed Marxian surplus-value rate."),
+         caveat="The non-labour remainder includes depreciation, taxes and mixed incomes; it is not corporate profits or an observed Marxian surplus-value rate."),
     dict(id="global_productivity", region="world", theme="Labour and distribution",
          title="World labour productivity growth", sources=["labour.world.productivity_growth"],
          kind="raw", question="Is world output per worker growing?",
