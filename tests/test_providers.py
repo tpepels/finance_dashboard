@@ -293,6 +293,37 @@ class RouterTests(unittest.TestCase):
         finally:
             router.close()
 
+    def test_pwt_germany_france_italy_are_real_fred_ratio_series(self):
+        registered = {
+            "labour.de.pwt_labour_share": ("LABSHPDEA156NRUG", "0.63735"),
+            "labour.fr.pwt_labour_share": ("LABSHPFRA156NRUG", "0.63098"),
+            "labour.it.pwt_labour_share": ("LABSHPITA156NRUG", "0.51165"),
+        }
+        requested = []
+        def handler(request):
+            sid = request.url.params["series_id"]
+            requested.append(sid)
+            self.assertEqual(request.url.params["api_key"], "a" * 32)
+            official = {row[0]: row[1] for row in registered.values()}
+            self.assertIn(sid, official)
+            return httpx.Response(200, json={"observations":[
+                {"date": "2022-01-01", "value":"0.64"},
+                {"date": "2023-01-01", "value":official[sid]},
+            ]})
+        router = self.router(handler)
+        try:
+            with patch.dict("os.environ", {"FRED_API_KEY": "a"*32}):
+                for source_id, (fred_id, value) in registered.items():
+                    with self.subTest(source_id=source_id):
+                        row=router.fetch(source_id)
+                        self.assertEqual(row.series_id, source_id)
+                        self.assertEqual(row.observations[date(2023,1,1)],Decimal(value))
+                        self.assertEqual(row.request_url,
+                            "https://fred.stlouisfed.org/series/" + fred_id)
+            self.assertEqual(set(requested), {r[0] for r in registered.values()})
+        finally:
+            router.close()
+
     def test_fred_public_csv(self):
         def handler(request):
             self.assertEqual(request.url.params["id"], "DFII10")
