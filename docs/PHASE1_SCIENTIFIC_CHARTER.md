@@ -1,6 +1,6 @@
-# Phase 1 scientific research charter — draft for owner decisions
+# Phase 1 scientific research charter — approved product intent, scientific scope in review
 
-**Status: PROPOSED, NOT APPROVED.** Governed by [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). This is a normative description of the desired application, not an audit of current features/data. Research reference URLs are methodological starting points, not proof of import eligibility or complete empirical results.
+**Status: ALL TEN OWNER PRODUCT DECISIONS APPROVED on 2026-11-03; full scientific charter and individual analytical methods NOT YET ACCEPTED.** Governed by [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). This is a normative description of the desired application, not an audit of current features/data. Research reference URLs are methodological starting points, not proof of import eligibility or complete empirical results.
 
 ## Mission, audience and primary use
 
@@ -45,20 +45,47 @@ The official NBER 2020 recession is **March–April 2020**, following the Februa
 
 Every analysis should yield an evidence statement of the form **measurement → comparative pattern → historical context → limits/alternatives**. It must not auto-generate causal explanations from coincident lines. Forecasts are not displayed as "probability of market crash" without independently replicated skill and calibrated horizon. No arbitrary universal composite risk score: any index must disclose normalization, weights, sensitivity, uncertainty and its own predictive evaluation ([R15]).
 
-## Ten decisions for the owner (assistant default unless explicitly changed; do not mark unanswered as approved)
+## Ten approved owner decisions — binding product intent (2026-11-03)
 
-1. **Primary outcome:** default understand long-term risks to ETF allocations; secondary macroeconomic research.
-2. **Reader profile:** default serious self-directed investor/researcher, one concise reading layer and one scholarly methods layer.
-3. **Overview density:** default six curated *comparative* analyses visible on entry, with ~30+ in the research library.
-4. **Scope balance:** default genuinely global question set with US/Europe/Japan and other countries added per-chart when source definitions permit.
-5. **Political-economy place:** default a full distinct research domain, integrated where theoretically meaningful rather than forced into every chart.
-6. **Portfolio role:** default optional actual holdings input/import, with no compulsory connection, and neutral historical scenario research, no buy/sell calls.
-7. **Narrative depth:** default brief factual evidence summary + expandable detailed method/source/contradictions, never generic prose.
-8. **Customization freedom:** default independent per-graph chart type, country, indicators, transforms and saved views, with statistically invalid combinations disabled.
-9. **Historical overlays:** default muted official NBER recession shading (US only), independent per-chart optional pandemic shock/recovery/crisis annotations with sourced dates.
-10. **Product form:** default local single-user desktop-first responsive interface with light/dark, overview + research workbench + portfolio + sources/admin, operations secondary; no dashboard-global country switch.
+The user explicitly accepted **all ten assistant recommendations**, without overrides. These choices are now binding product intent; they do not approve individual research hypotheses, datasets or figures.
 
-Questions are for **user intent**, not asking the user to choose empirical methods. A missing answer is provisionally the assistant default, subject to review.
+| # | Approved product choice | Resulting design constraint |
+|---|---|---|
+| 1 | Macro-financial vulnerabilities and consequences for long-term diversified ETF investing are primary; economics research is substantive | Lead with comparative scientific questions, never trading tips |
+| 2 | Economically literate reader, with academic-grade inspectable methods | Concise observed-evidence summary plus full reference, data and reproducibility layer |
+| 3 | Medium-term cycles (~6 months–5 years) and structural decades-long developments | Horizons are analysis-specific; no universal forecast horizon |
+| 4 | Globally oriented, comparing US/Europe/Japan plus China/other economies with compatible concepts | Country/region belongs to each graph, no global dashboard country mode; reporting-country proxies cannot masquerade as world statistics |
+| 5 | Political economy is a first-class research domain | Labour, productivity, surplus, profitability, wealth, productive-sector assumptions and competing Marxian methods are substantive |
+| 6 | Six curated comparative analyses on the default overview; approximately 35 question-led analyses in the library | Editorial relevance and complementarity determine the overview; catalogue size is not a graph quota |
+| 7 | Full per-graph customization and saved views alongside expert-defined defaults | Independently change series, countries, horizons, transforms, chart types, event overlays; prevent scientifically invalid combinations |
+| 8 | Brief evidence summary, contradictions and uncertainty, expandable scholarly methodology | No confident causal prose from coincident lines, no decorative risk gauges |
+| 9 | Optional holdings/ETF exposure analysis, historical stress scenarios, no automated buy/sell advice | Maintain currency, total-return, vintage, cost and concentration transparency |
+| 10 | Quiet monitoring, source updates and optional research summaries; no unvalidated alarms | Notify about observed research/data changes only; forecasts require independent validation |
+
+**No further product-preference interview is needed to start methodology work.** The assistant owns selection and verification of literature, formulas, sources, theoretical alternatives, uncertainty and chart design. Any actual methodological fork must be documented with the case for and against, not outsourced as an unexplained technical preference.
+
+## Binding research editorial method
+
+Every analysis specifies: **question → research basis → original source variables → harmonized comparison → permitted inference → alternative explanations → practical significance**. This must be reviewable independently of whether the application already has the data.
+
+Evidence categories are **(A)** direct primary measurement, **(B)** transparent derived relation, **(C)** model-dependent estimate, **(D)** explicitly scoped proxy, **(E)** historically validated predictor, and **(F)** scientifically unresolved hypothesis. A paper may validate one component but not an original synthesis of multiple components.
+
+**Research distinctions confirmed against original publications:**
+- BIS national credit gaps are deviations of private credit/GDP from a **recursive one-sided trend**. A weighted average of national gap values is not a published world credit-gap statistic ([R02], [R25]).
+- BIS debt-service ratio **changes relative to each country's own history** are generally more comparable internationally than directly ranking raw country DSR levels ([R03], [R24]).
+- OECD composite leading indicators address **growth-cycle deviations from trend**, not official NBER recession dating or calibrated GDP-level predictions ([R04], [R26]).
+- Productivity–pay comparisons need **the same industry scope**, output per hour, hourly labour compensation and the **same value-added deflator**; CPI-adjusted pay and median pay answer different questions ([R17], [R18]).
+- BEA has **three distinct domestic nonfinancial-company Q measures**. Q1 divides market equity value by net current-cost produced assets, Q2 adds book bonds and Q3 includes market bonds and net liquid assets; none is identical to an arbitrary Fed net-worth ratio ([R19]).
+- Marxian rate-of-surplus/profit approaches require explicit productive/unproductive industry, capital stock/valuation and labour imputation assumptions; published world-input-output estimates are scholarly research, not theory-free measurements ([R10], [R11], [R20]).
+- Markowitz portfolio covariance and the Brinson–Hood–Beebower benchmark attribution framework support diversification/asset-allocation analysis, not universal constant hedge correlations or deterministic portfolio prescriptions ([R21], [R22]).
+- NBER labels February 2020 as the **peak** and April 2020 as the trough, hence two recession months March–April. Pandemic economic shock and output/employment recovery are separate sourced events/thresholds ([R05]).
+- A valid world total requires a declared economic universe, non-overlapping aggregation units, currency basis, source vintage and coverage. Never silently conflate market-index weights, national GDP, world listed profits and issuer revenues.
+- Sources must separate original observation period, first knowledge/release date, any revision effective interval, and retrieval time ([R14]).
+- Chart selection follows comparison task and perceptual evidence, not whichever bar/line style is available ([R27]); composite scores additionally need weights/normalization/sensitivity and independent performance tests ([R28]).
+
+## Phase 1 science review criterion
+
+For all 35 candidate questions, specify source-authoritative definitions, exact numerator/denominator (where relevant), units and population, matched time/frequency, proposed comparison, referenced theoretical basis, formula or descriptive rule, alternatives and counterarguments, source availability/rights constraints in **principle**, uncertainty, a clear invalid-inference example, default graph type and acceptance tests. Do not conduct the code/data/UI gap analysis until the owner explicitly accepts the whole ideal-state specification. Being listed in a peer-reviewed or official reference is a **research basis**, not proof of today's values or forecast usefulness.
 
 ## Methodological reference register (primary/authoritative links)
 
@@ -80,3 +107,19 @@ Questions are for **user intent**, not asking the user to choose empirical metho
 - **[R16] Cleveland and McGill** (1984), *Graphical Perception* (quantitative chart encoding): https://faculty.washington.edu/aragon/classes/hcde511/s12/readings/cleveland84.pdf
 
 Research sign-off must expand references for **each** accepted formula, especially alternative Marxian empirical profit-rate methods, portfolio return/covariance methods and geopolitical shock-event classifications. The above are confirmed source leads, not invented empirical results.
+
+## Reviewed original research and authoritative methodology — additions (2026-11-03)
+
+- **[R17] Schwellnus, Kappeler & Pionnier (2017)**, *Decoupling of wages from productivity: Macro-level facts*, OECD Economics Working Paper 1373, https://doi.org/10.1787/d4764493-en — decomposes the decoupling into labour share and median/average compensation; not a globally harmonized hourly wage series.
+- **[R18] OECD (2024)**, *Labour income and productivity*, https://www.oecd.org/en/publications/oecd-compendium-of-productivity-indicators-2024_b96cd88a-en/full-report/component-9.html — aligned sector, hours, compensation, output deflator; CPI-real and median labour pay are distinct.
+- **[R19] BEA (2026)**, *Returns for Domestic Nonfinancial Business*, https://apps.bea.gov/scb/issues/2026/05-may/0526-domestic-returns.htm — Q1/Q2/Q3 and current-cost net produced-assets denominator.
+- **[R20] *Was Marx right? Development and exploitation in 43 countries, 2000–2014* (2024)**, Structural Change and Economic Dynamics, https://doi.org/10.1016/j.strueco.2023.12.001 — theoretical world-input-output/national-account estimates, not directly observed Marxian values.
+- **[R21] Markowitz (1952)**, *Portfolio Selection*, Journal of Finance, https://doi.org/10.1111/j.1540-6261.1952.tb01525.x — diversification/covariance.
+- **[R22] Brinson, Hood & Beebower (1986)**, *Determinants of Portfolio Performance*, Financial Analysts Journal, https://doi.org/10.2469/faj.v42.n4.39 — benchmark attribution, not a universal individual expected-return identity.
+- **[R23] ESRB**, *Risk Dashboard* and indicator-methodology annexes, https://www.esrb.europa.eu/pub/rd/html/index.en.html — domain-oriented macroprudential research indicators.
+- **[R24] BIS**, DSR methodology and FAQ, https://data.bis.org/topics/DSR and https://data.bis.org/faq — DSR estimates and cross-country interpretation.
+- **[R25] BIS**, *The credit-to-GDP gap and countercyclical capital buffers: questions and answers* (2014), https://www.bis.org/publications/qr-201403/credit-to-gdp-gap-and-countercyclical-capital-buffers-questions-and-answers — one-sided trend and horizon interpretation.
+- **[R26] OECD**, CLI methodology and growth-cycle semantics, https://www.oecd.org/en/data/datasets/oecd-composite-leading-indicators-clis.html.
+- **[R27] Cleveland & McGill (1984)**, *Graphical Perception*, JASA, https://doi.org/10.1080/01621459.1984.10478080.
+- **[R28] OECD/JRC (2008)**, *Handbook on Constructing Composite Indicators*, https://doi.org/10.1787/9789264043466-en.
+

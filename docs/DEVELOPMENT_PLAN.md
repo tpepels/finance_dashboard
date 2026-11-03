@@ -1,6 +1,6 @@
 # Development plan — authoritative, reset to research-first Phase 1
 
-**Decision date:** 2026-11-03. **Branch:** `main`. **State:** DEVELOPMENT PAUSED FOR PRODUCT/SCIENTIFIC REDESIGN. **Only documentation/specification work is authorized until Phase 1 approval.**
+**Decision date:** 2026-11-03. **Branch:** `main`. **State:** DEVELOPMENT PAUSED FOR PRODUCT/SCIENTIFIC REDESIGN. **Only documentation/specification work is authorized until Phase 1 approval.** All ten owner product-intent decisions are explicitly approved (2026-11-03); the full scientific content, method and design contract remains unapproved.
 
 ## Binding decision
 
@@ -27,7 +27,7 @@ Do **not** create a gap analysis, implementation backlog, detailed phase status 
 
 **Research content first, UI derived from that content.** Define (a) target economic/portfolio questions and distinctions, (b) literature review with primary research and recognized methodologies, (c) fully enumerated analytical comparisons and chart defaults, (d) metadata/evidence/interpretation contracts, (e) independent per-chart controls and saved research views, (f) complete information architecture, accessibility and screen hierarchy, (g) negative requirements, editorial relevance and methodological review rubric.
 
-**Required deliverables:** approved [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md), approved [analysis catalogue](PHASE1_ANALYSIS_CATALOGUE.md), approved [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md), a research reference register and ten user scope decisions incorporated into these artifacts. No arbitrary indicator counts or source-driven UI.
+**Required deliverables:** approved [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md), approved [analysis catalogue](PHASE1_ANALYSIS_CATALOGUE.md), approved [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md), a source-backed research reference register and the ten **approved** user scope decisions incorporated into these artifacts. No arbitrary indicator counts or source-driven UI.
 
 **Acceptance gate:** user approves the entire intended 100%-ideal product and evidence framework, including representative comparative analysis definitions, research references, global-versus-national scope, per-graph authoring semantics, interpretive boundaries, default overview composition and explicit exclusions. Each catalogue analysis has primary question, expected paired/multiple measures, scientific motivation, default plot, comparison-validity test and interpretive limitation. No gap analysis in Phase 1.
 
@@ -51,7 +51,7 @@ Phases define **outcomes**, not token commits. Each future phase includes full t
 
 ## Phase 1 decision protocol
 
-The assistant owns technical and scientific proposals, evidence review and rigorous defaults; the user decides only **product intent, audience and presentation tradeoffs**. Start with the ten questions listed in the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md). Each has a recommended default; unanswered questions adopt the documented default provisionally, and never become silent approval. Incorporate answers into the charter/catalogue/visualization contract. Then present the complete ideal-state proposal for **explicit** acceptance. Only after approval compare current implementation and data against that target.
+The assistant owns technical and scientific proposals, evidence review and rigorous defaults; the user decides only **product intent, audience and presentation tradeoffs**. **Completed on 2026-11-03:** all ten user decisions adopted as recommended, without overrides; see [charter](PHASE1_SCIENTIFIC_CHARTER.md). Next, the assistant completes exact literature-grounded methods and 35 candidate analyses, refines the scientific UI contract, and presents the **entire ideal-state specification for explicit acceptance**. Do not conduct implementation gap analysis or change application code before that full Phase 1 approval. Only after approval compare current implementation and data against that target.
 
 ## Evidence and methodological standards
 
@@ -68,3 +68,9 @@ The assistant owns technical and scientific proposals, evidence review and rigor
 ## Historical evidence (preserved, not active acceptance)
 
 The November 3 18:14 UTC diagnostics reported **80/80 sources with saved observations, 0 active issues, completed current/history sync, 0 missing requested ALFRED vintages within 580 prepublication exclusions, and VT/BND 28/29 verified matching SEC filings**. This demonstrates historic ingestion operations, not product/methodological success. Prior original phase progress, source obstacles, provider repairs, URLs, tested scripts and caveats are preserved in the archived roadmap and current data/source reference documents.
+
+## Approved decisions — Phase 1 research continuation, 2026-11-03
+
+All ten product defaults were accepted: global comparative macro-financial research for long-term ETF decisions; informed reader with scholarly methods; medium/structural horizons; US/Europe/Japan and other comparable geographies; first-class political economy; about six overview analyses and 35 research-library analyses; independent per-graph custom views; concise evidence/uncertainty; optional holdings and non-prescriptive stress analysis; quiet monitoring. The scientific charter now documents original-source methods for BIS national credit gaps and DSRs, OECD productivity/pay matching, BEA Q variants, Marxian industry-accounting research, portfolio diversification and NBER/COVID dates.
+
+**Status distinction:** owner **product intent accepted**; Phase 1 **scientific specification open**; no approval of existing content, code or data. The catalogue and visualization contract are normative research/design documents, not observed implementation. No production code, ingestion change, data edit or migration in this phase.

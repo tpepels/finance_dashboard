@@ -1,6 +1,6 @@
 # Global Capital Monitor
 
-> **DEVELOPMENT PAUSED — PHASE 1 REOPENED (2026-11-03).** The scientific content, comparative analyses and interface are being specified from first principles. No feature development or code changes until the ideal-state Phase 1 charter and content catalogue are approved. The existing Docker application/data are preserved; its current screen arrangement is **not** the design target.
+> **DEVELOPMENT PAUSED — PHASE 1 REOPENED (2026-11-03).** All ten product-intent decisions have been **explicitly approved**. The complete scientific methods, 35 comparative research questions and interface contract remain under expert-led specification; no implementation or gap analysis until Phase 1 sign-off. The existing Docker application/data are preserved; its current screen arrangement is **not** the design target.
 
 ## Current authoritative documents
 
