@@ -94,10 +94,34 @@ describe('local research-first dashboard acceptance', () => {
     expect(await screen.findByRole('heading', { name: 'World & OECD' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'World real output growth' })).toBeTruthy();
     expect(await screen.findByRole('img', { name: /Measured economic graph: World real output growth/ })).toBeTruthy();
-    expect(screen.getByText('Actual World Bank growth.')).toBeTruthy();
-    expect(screen.getByText(/NBER-dated US contractions/)).toBeTruthy();
+    expect(screen.getByText('Actual World Bank growth.').closest('details')?.open).toBe(false);
+    expect(screen.getByText(/NBER-dated US contractions/).closest('details')?.open).toBe(false);
     await waitFor(() => expect(createChart).toHaveBeenCalled());
     expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith('/api/research/global_growth'))).toBe(true);
+  });
+
+  it('puts scope controls and a single heading immediately before charts; details start closed', async () => {
+    render(<App />);
+    const title = await screen.findByRole('heading', { level: 1, name: 'World & OECD' });
+    expect(title).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.queryByText('How is the economy actually changing?')).toBeNull();
+    expect(screen.queryByText(/Economic structure, financial cycles and distribution/)).toBeNull();
+    const growth = screen.getByRole('heading', { name: 'Growth and demand' });
+    const graph = await screen.findByRole('img', { name: /Measured economic graph: World real output growth/ });
+    expect(growth.compareDocumentPosition(graph) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('Actual World Bank growth.').closest('details')?.open).toBe(false);
+    expect(screen.getByText(/Global GDP weights are not equal country weights/).closest('details')?.open).toBe(false);
+  });
+
+  it('switches theme without destroying visible charts or re-fetching source histories', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const graph = await screen.findByRole('img', { name: /Measured economic graph: World real output growth/ });
+    const before = fetchMock.mock.calls.length;
+    await user.click(screen.getByRole('button', { name: 'Use dark appearance' }));
+    expect(await screen.findByRole('img', { name: /Measured economic graph: World real output growth/ })).toBe(graph);
+    expect(fetchMock.mock.calls.length).toBe(before);
   });
 
   it('has a persistent dark appearance switch and no development-phase heading', async () => {
