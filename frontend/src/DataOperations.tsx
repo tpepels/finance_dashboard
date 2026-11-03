@@ -9,7 +9,9 @@ type Part = {
   requested?: number;
   source_state?: string;
   funds?: { id: string; status: string; stored: number; errors: number;
-    historical_coverage_limited?: boolean }[];
+    historical_coverage_limited?: boolean; reason?: string | null;
+    http_status?: number | null; examined?: number; candidates?: number }[];
+  http_status?: number | null;
   note?: string;
   reason?: string;
 };
@@ -38,6 +40,26 @@ async function json(response: Response): Promise<unknown> {
   }
   return response.json() as Promise<unknown>;
 }
+function failureReason(reason: string): string {
+  const messages: Record<string,string> = {
+    fred_key_format_invalid: 'FRED API key has an invalid format',
+    fred_api_key_rejected: 'FRED API rejected the configured key',
+    fred_rate_limited: 'FRED has rate-limited requests',
+    fred_access_denied: 'FRED denied historical access',
+    fred_bad_request: 'FRED rejected the historical request',
+    fred_network_error: 'Could not reach FRED',
+    fred_response_not_observations: 'FRED returned an unexpected response',
+    fred_historical_asof_mismatch: 'FRED did not return the requested historical period',
+    fred_response_not_json: 'FRED returned invalid JSON',
+    fred_series_or_endpoint_unavailable: 'The historical FRED series or API is unavailable',
+    provider_blocked: 'The source provider blocked access',
+    missing_credential: 'Required source contact credentials are missing',
+    backup_failed: 'Backup verification failed',
+    no_progress: 'No additional historical records were obtained',
+  };
+  return messages[reason] ?? reason.replaceAll('_',' ');
+}
+
 function description(status: string): string {
   if (status === 'complete') return 'Updated';
   if (status === 'skipped') return 'Already current or scheduled later';
@@ -148,8 +170,18 @@ export default function DataOperations() {
             {value.downloaded != null && ' · ' + value.downloaded + ' downloaded'}
             {value.missing != null && value.missing > 0 && ' · ' + value.missing + ' missing'}
             {value.source_state === 'deferred' && ' · provider quota deferred'}
-            {value.reason && ' · ' + value.reason}
-            {value.funds && ' · ' + value.funds.length + ' funds checked'}
+            {value.reason && ' · ' + failureReason(value.reason)}
+            {value.http_status != null && ' · HTTP ' + value.http_status}
+            {value.funds && <ul className="data-sync-funds">
+              {value.funds.map(fund => <li key={fund.id}>
+                {fund.id.toUpperCase()} · {description(fund.status)}
+                {' · '}{fund.stored} filings recorded
+                {fund.errors > 0 && ' · ' + fund.errors + ' errors'}
+                {fund.reason && ' · ' + failureReason(fund.reason)}
+                {fund.http_status != null && ' · HTTP ' + fund.http_status}
+                {fund.historical_coverage_limited && ' · additional older filings not scanned'}
+              </li>)}
+            </ul>}
             {value.note && <small className="data-sync-caveat">{value.note}</small>}
           </li>)}</ul>
       </details>}

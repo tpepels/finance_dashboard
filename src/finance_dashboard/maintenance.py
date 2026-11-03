@@ -333,7 +333,9 @@ class MaintenanceManager:
                     check = probe_access(api_key=key, client=client)
                     if check["status"] != "ready":
                         record("alfred", {"status":"blocked",
-                            "reason":"provider_blocked"})
+                            "reason":check.get("reason","provider_blocked"),
+                            "http_status":check.get("http_status"),
+                            "requests":check.get("requests",0)})
                     else:
                         end = date.today().replace(day=1)-timedelta(days=1)
                         start = date(2000,1,1)
@@ -364,7 +366,8 @@ class MaintenanceManager:
                             "downloaded": downloaded,
                             "missing": result["missing_after_run"],
                             "requested": result["source_vintages_requested"],
-                            "reason": ("provider_blocked" if result["status"] == "blocked"
+                            "reason": (result.get("halted_reason")
+                                       if result["status"] == "blocked"
                                        else "no_progress" if result["failed_now"]
                                        else None),
                         })
@@ -397,6 +400,10 @@ class MaintenanceManager:
                             "id":row["instrument_id"],"status":row["status"],
                             "stored":row.get("stored_or_already_present",0),
                             "errors":row.get("errors",0),
+                            "reason":row.get("halted_reason"),
+                            "http_status":row.get("http_status"),
+                            "examined":row.get("index_candidates_examined",0),
+                            "candidates":row.get("source_candidates_found",0),
                             "historical_coverage_limited": (
                                 row.get("unexamined_candidate_filings",0)>0),
                         } for row in funds],
