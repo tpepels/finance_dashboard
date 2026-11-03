@@ -88,7 +88,13 @@ export default function SourceCoveragePanel() {
   const needsAttention = report
     ? Object.values(report.summary).reduce((count, group) => count + group.needs_attention, 0)
     : 0;
-  return <details className="research-source-health" ref={ref} id="source-coverage">
+  return <details className="research-source-health" ref={ref} id="source-coverage"
+    onToggle={event => {
+      if (!event.currentTarget.open) {
+        setDiagnosticsOpen(false);
+        setLogsOpen(false);
+      }
+    }}>
     <summary aria-label="Data & sync">
       <span>Data &amp; sync</span>
       {report && needsAttention > 0 && <small> · {needsAttention} sources need attention</small>}
@@ -97,7 +103,10 @@ export default function SourceCoveragePanel() {
     <div className="research-coverage-detail">
       <DataOperations/>
       <details className="research-source-diagnostics"
-        onToggle={e => setDiagnosticsOpen(e.currentTarget.open)}>
+        onToggle={e => {
+          setDiagnosticsOpen(e.currentTarget.open);
+          if (!e.currentTarget.open) setLogsOpen(false);
+        }}>
         <summary>Source diagnostics {report ? '· ' + (needsAttention || 'no') + ' issues' : ''}</summary>
         {diagnosticsOpen && <div className="research-source-diagnostics-body">
         {error && <p role="alert">{error}</p>}
