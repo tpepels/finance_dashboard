@@ -133,6 +133,38 @@ class SecSyncTests(unittest.TestCase):
                 self.assertEqual(len([x for x in seen
                     if x.endswith("/primary_doc.xml")]),1)
 
+    def test_missing_submissions_primary_filename_uses_official_index(self):
+        mapping = {"instrument_id":"vt","cik":"1234567","series_id":"S000000001"}
+        source = {"cik":1234567,"filings":{"recent":{
+            "accessionNumber":[ACC],"form":["NPORT-P"],
+            "filingDate":["2026-05-21"],
+            "acceptanceDateTime":["2026-05-21T18:30:00"],
+            "primaryDocument":[""],
+        }, "files":[]}}
+        urls = []
+        def handler(request):
+            url = str(request.url)
+            urls.append(url)
+            if "data.sec.gov" in url:
+                return httpx.Response(200,json=source)
+            if url.endswith("-index.htm"):
+                return httpx.Response(404)
+            if url.endswith("-index.html"):
+                return httpx.Response(200,text=(
+                    '<html><a href="primary_doc.xml">XML</a>'
+                    '<span>S000000001</span></html>'))
+            if url.endswith("primary_doc.xml"):
+                return httpx.Response(200,content=XML)
+            return httpx.Response(404)
+        with TemporaryDirectory() as tmp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result = import_fund(mapping,client=client,root=Path(tmp),
+                                     max_filings=1)
+        self.assertEqual(result["status"],"complete")
+        self.assertEqual(result["attempted"],1)
+        self.assertTrue(any(url.endswith("-index.html") for url in urls))
+        self.assertEqual(result["stored_or_already_present"],1)
+
     def test_index_with_ambiguous_xml_never_guesses_a_filing(self):
         from finance_dashboard.sec_holdings_sync import _xml_in_filing_index
         doc, reason = _xml_in_filing_index(
