@@ -2,6 +2,10 @@
 
 **Status: ALL TEN PRODUCT-INTENT DECISIONS APPROVED 2026-11-03; detailed design remains Phase 1 proposal until formal acceptance.** [Authoritative plan](DEVELOPMENT_PLAN.md). Design and scientific analysis remain intertwined; UI is derived from research questions and data comparison validity.
 
+## Editorial and scientific interaction review (pending final approval)
+
+The [critical scientific/UX review](PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) adds a required sequence of question → comparative measurement → supporting contradiction → methodology/alternatives → optional portfolio consequence. Six content-connected research experiences replace the idea of six unrelated charts, *subject to final user approval*. No global country mode. Free-source limitations are visible at analysis level, never hidden behind proxy renaming.
+
 ## Information architecture
 
 **Primary navigation:** (1) **Overview** — 6–8 curated, editorially chosen multi-measure research analyses with evidence summaries; (2) **Research workbench** — searchable catalogue of the approved questions, save, duplicate and compare chart variants; (3) **Portfolio** — optional actual holdings/fund exposure analysis, stress and diversification; (4) **Research & data** — source/method registry and research transparency, expandable background sync/admin diagnostics. Domain chips/filters narrow *which analyses are listed*, never change their graphs silently.

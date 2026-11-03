@@ -2,6 +2,10 @@
 
 **Status: USER-APPROVED PRODUCT INTENT; 35 ANALYSES REQUIRE SCIENTIFIC REVIEW AND FINAL PHASE 1 SIGN-OFF.** An **ideal research product** catalogue; it is **not** a current feature inventory or gap report. All entries need their own formal research record and peer-reviewed/official source review before Phase 1 sign-off. IDs are stable proposed question identities, not chart or database IDs. Citation keys R01–R28 point to the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md); a source for one method never certifies every related derived inference.
 
+## Research/product review and strict free-data policy (pending scope approval)
+
+The [critical coherence and free-data research review](PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) critiques **all 35** original questions, identifies five overlaps and five missing subjects, and recommends changing the six overview units to a connected economic reading flow. The original 35 specifications are preserved, not accepted/replaced. **No required paid subscription/API data sources**; narrower available measures retain their true names rather than passing as full original indexes or global profit.
+
 ## Design rules
 
 - Curated **six** analyses on first launch by default; the full approved catalogue stays available in the research library. Same question can have multiple saved chart specifications.
