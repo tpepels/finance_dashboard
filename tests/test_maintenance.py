@@ -192,6 +192,123 @@ class MaintenanceApiTests(unittest.TestCase):
             self.assertEqual(result["status"],"partial")
             self.assertEqual(result["result"]["source_state"],"deferred")
 
+    def test_single_current_sync_collects_all_economic_market_fx_and_earnings(self):
+        tracked = []
+        def macro(engine, *, full, series_ids, progress, stopped):
+            self.assertFalse(full)
+            self.assertEqual(len(series_ids), 53)
+            progress(53,53,"labour.de.pwt_labour_share")
+            tracked.append("macro")
+            return 0
+        def market(engine, *, full, instrument_ids, currencies, progress, stopped):
+            self.assertFalse(full)
+            self.assertEqual(len(instrument_ids),24)
+            self.assertEqual(currencies,{"USD","GBP","CHF"})
+            progress(27,27,"FX:USD")
+            tracked.append("market")
+            return 0
+        with patch("finance_dashboard.worker.refresh_all",side_effect=macro), \
+             patch("finance_dashboard.worker.refresh_market_all",side_effect=market), \
+             patch("finance_dashboard.wisesheets_local.refresh_local_wisesheets",
+                   side_effect=lambda: tracked.append("earnings") or "updated"):
+            r=self.client.post("/api/maintenance",json={"action":"sync_current"},
+                               headers=HEADERS)
+            self.assertEqual(r.status_code,202,r.text)
+            done=self.wait(r.json()["id"])
+        self.assertEqual(tracked,["macro","market","earnings"])
+        self.assertEqual(done["status"],"complete")
+        self.assertEqual((done["completed"],done["total"]),(3,3))
+        self.assertEqual(set(done["result"]["parts"]),{"macro","markets","earnings"})
+
+    def test_current_sync_continues_after_source_errors_and_reports_partial(self):
+        calls=[]
+        with patch("finance_dashboard.worker.refresh_all",return_value=7), \
+             patch("finance_dashboard.worker.refresh_market_all",side_effect=lambda *a,**kw:
+                   calls.append("markets") or 3), \
+             patch("finance_dashboard.wisesheets_local.refresh_local_wisesheets",
+                   return_value="deferred"):
+            r=self.client.post("/api/maintenance",json={"action":"sync_current"},
+                               headers=HEADERS)
+            self.assertEqual(r.status_code,202)
+            done=self.wait(r.json()["id"])
+        self.assertEqual(done["status"],"partial")
+        self.assertEqual(calls,["markets"])
+        self.assertEqual(done["result"]["parts"]["macro"]["failed"],7)
+        self.assertEqual(done["result"]["parts"]["markets"]["failed"],3)
+        self.assertEqual(done["result"]["parts"]["earnings"]["status"],"skipped")
+
+    def test_history_sync_runs_full_source_backfill_alfred_and_sec(self):
+        calls=[]
+        def macro(engine, *, full, series_ids, progress, stopped):
+            self.assertTrue(full)
+            self.assertEqual(len(series_ids),53)
+            progress(53,53,"labour.de.pwt_labour_share")
+            calls.append("macro")
+            return 0
+        def market(engine, *, full, instrument_ids, currencies, progress, stopped):
+            self.assertTrue(full)
+            self.assertEqual(len(instrument_ids),24)
+            progress(27,27,"FX:USD")
+            calls.append("markets")
+            return 0
+        batch={"status":"complete","source_vintages_requested":12,
+               "missing_after_run":0,"downloaded_now":12,"failed_now":[],
+               "next_missing":None,"halted_reason":None}
+        def sec(*,max_filings_per_fund,stopped,progress):
+            self.assertEqual(max_filings_per_fund,50)
+            progress(1,1,"vt")
+            calls.append("sec")
+            return {"status":"complete","funds":[{
+                "instrument_id":"vt","status":"complete","errors":0,
+                "stored_or_already_present":50,
+                "unexamined_candidate_filings":0}]}
+        with patch.dict("os.environ",{"FRED_API_KEY":"a"*32}), \
+             patch("finance_dashboard.worker.refresh_all",side_effect=macro), \
+             patch("finance_dashboard.worker.refresh_market_all",side_effect=market), \
+             patch("finance_dashboard.vintage.probe_access",
+                   return_value={"status":"ready","requests":1}), \
+             patch("finance_dashboard.vintage.backfill_batch",return_value=batch) as alfred, \
+             patch("finance_dashboard.sec_holdings_sync.collect_configured",
+                   side_effect=sec):
+            r=self.client.post("/api/maintenance",json={"action":"sync_history"},
+                               headers=HEADERS)
+            self.assertEqual(r.status_code,202,r.text)
+            done=self.wait(r.json()["id"])
+        self.assertEqual(done["status"],"complete")
+        self.assertEqual((done["completed"],done["total"]),(4,4))
+        self.assertEqual(calls,["macro","markets","sec"])
+        self.assertEqual(done["result"]["parts"]["alfred"]["downloaded"],12)
+        self.assertEqual(alfred.call_count,1)
+        self.assertEqual(sorted(done["result"]["parts"]),
+                         ["alfred","macro","markets","sec"])
+        self.assertNotIn("a"*32,json.dumps(done))
+
+    def test_history_sync_reports_blocked_origins_without_skipping_sec(self):
+        calls=[]
+        with patch("finance_dashboard.worker.refresh_all",return_value=0), \
+             patch("finance_dashboard.worker.refresh_market_all",return_value=0), \
+             patch("finance_dashboard.vintage.probe_access",
+                   return_value={"status":"blocked","reason":"invalid_api_key"}), \
+             patch("finance_dashboard.sec_holdings_sync.collect_configured",
+                   side_effect=lambda **kw:calls.append("sec") or
+                   {"status":"disabled_missing_SEC_USER_AGENT","funds":[]}):
+            r=self.client.post("/api/maintenance",json={"action":"sync_history"},
+                               headers=HEADERS)
+            self.assertEqual(r.status_code,202)
+            done=self.wait(r.json()["id"])
+        self.assertEqual(done["status"],"partial")
+        self.assertEqual(calls,["sec"])
+        self.assertEqual(done["result"]["parts"]["alfred"]["status"],"blocked")
+        self.assertEqual(done["result"]["parts"]["sec"]["status"],"blocked")
+        self.assertEqual(done["result"]["parts"]["sec"]["reason"],"missing_credential")
+
+    def test_two_sync_actions_reject_manual_options(self):
+        for action in ("sync_current","sync_history"):
+            r=self.client.post("/api/maintenance",headers=HEADERS,json={
+                "action":action,"series_ids":PWT})
+            self.assertEqual(r.status_code,422)
+        self.assertIsNone(self.client.get("/api/maintenance").json()["active_job_id"])
+
     def test_interrupted_jobs_are_recoverable_without_false_success(self):
         path=Path(self.tmp.name,"jobs.json")
         path.write_text(json.dumps({"version":1,"jobs":[
