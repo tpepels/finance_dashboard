@@ -1,0 +1,62 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import SourceCoveragePanel from './SourceCoveragePanel';
+
+const recorded = {
+  family: 'macro', id: 'gdp.real_growth.world', name: 'World growth',
+  provider: 'WORLD_BANK', frequency: 'A', state: 'available',
+  collection_enabled: true, mapped: true, stored_periods: 25,
+  oldest_source_date: '2000-01-01', latest_source_date: '2025-01-01',
+  last_attempt_state: 'success', last_failure_code: null, last_success_utc: '2026-11-03',
+};
+const missing = {
+  ...recorded, id: 'labour.de.pwt_labour_share', name: 'Germany PWT',
+  state: 'collection_failed', stored_periods: 0,
+  oldest_source_date: null, latest_source_date: null,
+  last_attempt_state: 'failed', last_failure_code: 'provider_http_429',
+};
+const market = {
+  ...recorded, family: 'markets', id: 'vt', name: 'World ETF',
+  state: 'collection_disabled', stored_periods: 0,
+  latest_source_date: null,
+};
+const payload = {
+  summary: {
+    macro: { total: 53, with_data: 52, without_data: 1, needs_attention: 1 },
+    markets: { total: 24, with_data: 0, without_data: 24, needs_attention: 24 },
+    fx: { total: 3, with_data: 3, without_data: 0, needs_attention: 0 },
+  },
+  items: [recorded,missing,market],
+  asof: '2026-11-03', method: 'Native source periods',
+};
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => payload })));
+});
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+describe('single-page source completeness panel', () => {
+  it('shows only concise missing-data counts before opening technical detail', async () => {
+    render(<SourceCoveragePanel/>);
+    expect(await screen.findByText(/25 missing/)).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByText('Germany PWT')).toBeNull();
+  });
+
+  it('offers original dates, precise failure status and all families on request', async () => {
+    const user = userEvent.setup();
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/25 missing/));
+    expect(screen.getByRole('table', { name: /Source observations/ })).toBeTruthy();
+    expect(screen.getByText('Germany PWT')).toBeTruthy();
+    expect(screen.getByText('provider_http_429')).toBeTruthy();
+    expect(screen.queryByText('World growth')).toBeNull();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Coverage status' }), 'all');
+    expect(screen.getByText('World growth')).toBeTruthy();
+    expect(screen.getByText('2025-01-01')).toBeTruthy();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Source family' }), 'fx');
+    expect(screen.queryByText('World ETF')).toBeNull();
+    expect(screen.queryByText('Germany PWT')).toBeNull();
+  });
+});
