@@ -89,9 +89,15 @@ describe('two-action data synchronization',()=>{
     })));
     const user=userEvent.setup();
     render(<DataOperations/>);
-    expect(await screen.findByText(/Completed with issues/)).toBeTruthy();
-    expect(screen.queryByText(/2 failed/)).toBeNull();
-    await user.click(screen.getByText('Sync results'));
-    expect(screen.getByText(/2 failed/)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toContain('Current data');
+      expect(screen.getByRole('status').textContent).toContain('Completed with issues');
+    });
+    const resultSummary = screen.getByText('Sync results');
+    const resultDetails = resultSummary.closest('details');
+    expect(resultDetails?.open).toBe(false);
+    await user.click(resultSummary);
+    expect(resultDetails?.open).toBe(true);
+    expect(screen.getByText(/2 failed/).closest('details')).toBe(resultDetails);
   });
 });
