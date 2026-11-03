@@ -46,10 +46,26 @@ def _summary(items: list[dict]) -> dict:
     return result
 
 
+def _internal_calendar_gaps(first: date | None, last: date | None,
+                            frequency: str, recorded: int) -> int | None:
+    # No daily gap guessing: weekends, closures, exchange holidays and irregular
+    # releases require a publisher-specific calendar.
+    if first is None or last is None or frequency not in ("A","Q","M"):
+        return None
+    span_months = (last.year-first.year)*12 + last.month-first.month
+    if frequency == "A":
+        slots = last.year-first.year+1
+    elif frequency == "Q":
+        slots = span_months//3+1
+    else:
+        slots = span_months+1
+    return max(0, slots-recorded)
+
+
 def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str,
                configured: bool, mapped: bool, counts: dict,
                runs: dict, successes: dict, asof: date) -> dict:
-    count, oldest, latest = counts.get(id, (0, None, None))
+    count, oldest, latest, versions = counts.get(id, (0, None, None, 0))
     last = runs.get(id)
     successful = successes.get(id)
     lag = (asof - latest).days if latest is not None else None
@@ -75,6 +91,14 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         "oldest_source_date": oldest.isoformat() if oldest else None,
         "latest_source_date": latest.isoformat() if latest else None,
         "days_since_latest_observation": lag,
+        # Revisions are legitimate append-only versions, not corrupt duplicates.
+        "stored_versions": int(versions),
+        "additional_revisions": max(0, int(versions)-int(count)),
+        "unobserved_internal_periods": _internal_calendar_gaps(
+            oldest, latest, frequency, int(count)),
+        "cadence_validated": provider not in (
+            "MSCI_PUBLISHED_TOP10", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
+            "SIBLIS_WORLD_EARNINGS_YIELD", "CORGANO_SPOT"),
         "last_attempt_utc": last["started_at"].isoformat() if last else None,
         "last_attempt_state": last["status"] if last else "never",
         "last_success_utc": successful["ended_at"].isoformat()
@@ -102,9 +126,10 @@ def _runs(session: Session, model, key) -> tuple[dict, dict]:
 
 def _counts(session: Session, model, key, period) -> dict:
     stmt = select(key, func.count(distinct(period)),
-                  func.min(period), func.max(period)).group_by(key)
-    return {sid: (count, first, last)
-            for sid, count, first, last in session.execute(stmt)}
+                  func.min(period), func.max(period),
+                  func.count()).group_by(key)
+    return {sid: (count, first, last, revisions)
+            for sid, count, first, last, revisions in session.execute(stmt)}
 
 
 def build_coverage(engine, catalog: list[dict], market_registry: dict[str, dict],
@@ -155,6 +180,8 @@ def build_coverage(engine, catalog: list[dict], market_registry: dict[str, dict]
         "method": ("Distinct source reference periods with first and last stored dates. "
                    "Latest failed attempts do not erase previous data. Currency and market "
                    "source freshness is measured against source days, not application refresh. "
-                   "Annual and quarterly lag thresholds are descriptive; some published "
-                   "sources intentionally stop before the current year."),
+                   "Internal calendar gaps are diagnostic only for regular annual, "
+                   "quarterly and monthly sources; irregular publications may "
+                   "legitimately omit years, and daily exchange holidays are not "
+                   "interpreted as missing data. Additional versions preserve source revisions."),
     }
