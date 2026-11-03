@@ -1,6 +1,12 @@
 # Phase 1 — scientific specifications for all 35 comparative analyses
 
-**Status: full first-pass scientific specification for review; product intent approved, Phase 1 scientific sign-off still open.** Decision date: 2026-11-03. This is the **100%-ideal research definition**, not an implementation gap audit, a claim that any series is imported, or a statement that all proposed global data already exist. It supplements the [analysis catalogue](PHASE1_ANALYSIS_CATALOGUE.md) and follows the only active [development plan](DEVELOPMENT_PLAN.md).
+**Status: owner approved the six connected overview stories and exact 35-question editorial membership on 2026-11-03. Scientific methodological integration and final Phase 1 acceptance remain open.** Decision date: 2026-11-03. This is the **100%-ideal research definition**, not an implementation gap audit, a claim that any series is imported, or a statement that all proposed global data already exist. It supplements the [analysis catalogue](PHASE1_ANALYSIS_CATALOGUE.md) and follows the only active [development plan](DEVELOPMENT_PLAN.md).
+
+## Owner-approved catalogue, preserved submethods and zero-fee source rule
+
+The five former headline identities **C04, M03, V04, L06, G04** are now subordinate scientific methods, retained below with original source-variable and inference contracts. The five new first-class research questions are **C06, F06, F07, L07, G06**. This makes 35 active headline questions plus 5 explicit supporting methods and matches the owner-approved [catalogue](PHASE1_ANALYSIS_CATALOGUE.md). Six connected multi-analysis stories replace six one-to-one homepage cards.
+
+**Every required source must be legally usable at zero subscription/API cost.** Historical MSCI constituent weights, UCITS holdings history, global consolidated listed-parent profit panels and global original stock/bond net-total-return indexes remain conditional original-data research targets, not sources automatically implied by the specification. A narrower free proxy requires a **different honest analysis name and explicit population/method/rights label**.
 
 ## Specification standard and reproducibility
 
@@ -63,7 +69,7 @@ Each record specifies (1) original measured variable/source or source-defined pr
 
 **Recommended figure.** Multi-country annual lines plus a separate composition/dispersion chart.
 
-### C04 — Is economic weakness spreading across industries?
+#### C04 — Is economic weakness spreading across industries? (supporting scientific method; no longer first-class catalogue question)
 
 **Published variables and exact source identity.** Federal Reserve G.17 Table 6 industrial-production diffusion indexes (published); industry IP series and sector weights from G.17; US BLS PAYEMS total nonfarm employment (monthly); BEA real PCE and real private fixed investment by NIPA component (quarterly).
 
@@ -94,6 +100,22 @@ Each record specifies (1) original measured variable/source or source-defined pr
 **Interpretation boundary.** Recovery to past level is not recovery to a trend, welfare or employment quality; COVID recession is March–April 2020, shock can extend beyond [S02].
 
 **Recommended figure.** Aligned pre-shock=100 lines, US recession gray, separately labelled shock/recovery annotations.
+
+### C06 — Are inflation and commodity shocks affecting global growth?
+
+**Published variables and exact source identity.** IMF WEO original country-year `PCPIPCH` average consumer-price inflation (% change) and `NGDP_RPCH` real GDP growth (%), historical/forecast flags and WEO release vintage [S08]. World Bank monthly Commodity Markets Pink Sheet original `Crude oil, Brent` (USD/barrel) plus independently named gas/food series [S43].
+
+**Original research/method.** IMF WEO inflation/GDP definitions [S08]; World Bank Commodity Markets monthly source documentation [S43]. Combining both into a comparative inflation/growth panel is an original **descriptive research synthesis**; identifying exogenous supply shocks would require a separate published identification model.
+
+**Reproducible calculation and comparison.** Keep published IMF PCPIPCH as annual %, and WEO forecasts separated from observed periods. Brent monthly 12-month price change `100×(P_m/P_(m−12)−1)`; annual commodity growth from `Pbar_y=mean(P_m for 12 documented months in year y)`, `100×(Pbar_y/Pbar_(y−1)−1)`. Country real GDP comparisons use original `NGDP_RPCH` on matching annual source vintages.
+
+**Method alternatives.** National CPI headline vs core, GDP deflator vs CPI, Brent versus published aggregate energy basket, true identified oil supply-shock studies rather than time-series co-movement.
+
+**Conditions for a valid comparison.** Country CPI basket/population, annual vs monthly time bases, USD commodity quote, raw versus forecast release status, missing monthly prices and actual economic geography. Different units require separate synchronized panels.
+
+**Interpretation boundary.** Energy and CPI co-movement alone cannot establish an exogenous causal supply shock, predict the next recession or measure household purchasing-power incidence.
+
+**Recommended figure.** IMF multi-country inflation lines with aligned World Bank energy-price changes and separate real growth/reference-time panels.
 
 ## M — Monetary policy, yields and currency
 
@@ -129,7 +151,7 @@ Each record specifies (1) original measured variable/source or source-defined pr
 
 **Recommended figure.** Three matched-market date lines and a verified decomposition/small multiples.
 
-### M03 — Why are different yield curves steepening or flattening?
+#### M03 — Why are different yield curves steepening or flattening? (supporting scientific method; no longer first-class catalogue question)
 
 **Published variables and exact source identity.** FRED DGS10, DGS2, DGS3MO (% nominal Treasury constant maturity); T10Y3M published derived spread; EFFR when discussing short policy rates.
 
@@ -243,6 +265,38 @@ Each record specifies (1) original measured variable/source or source-defined pr
 
 **Recommended figure.** Sector small multiples with units and country scope.
 
+### F06 — Do property-market valuations compound credit vulnerabilities?
+
+**Published variables and exact source identity.** BIS Residential Property Prices (RPP) [S44] country/quarter original nominal and, where published, real property-price indexes; BIS Commercial Property Prices (CPP) [S45] named market-property categories and source release periods; BIS country credit gap [S16] (percentage points) and total/household debt-service ratio [S17] (% of income).
+
+**Original research/method.** BIS original property coverage and price-quality adjustments [S44,S45], BIS gap/DSR measurement and horizon distinctions [S16,S17], Fed valuation/leverage financial stability framework [S23].
+
+**Reproducible calculation and comparison.** Prefer source-published BIS real residential index. Where only nominal P and matched CPI exist, explicitly construct `R_q=100×(P_q/CPI_q)/(P_q0/CPI_q0)` relative to a stated common base quarter. Real property growth `100×(R_q/R_(q−1)−1)`, and credit-gap/DSR shown on **separate** axes/panels and correctly matched source quarters.
+
+**Method alternatives.** Price-to-rent and price-to-income where publisher has compatible sources; transactions vs valuations; original commercial office vs retail/other property segments.
+
+**Conditions for a valid comparison.** Same geography/quarter for housing, credit, CPI, DSR; explicit quality-adjustment and index bases; heterogeneous commercial sector histories and gaps never interpolated. Between-country index levels require a common meaningful reference base.
+
+**Interpretation boundary.** Property price acceleration concurrent with borrowing suggests vulnerabilities; this does not establish mortgage default risk or a calibrated crisis probability.
+
+**Recommended figure.** Residential and commercial real prices in source-labelled line panels with credit-gap and DSR supporting panels.
+
+### F07 — Are nonbank leverage and short-term funding raising fragility?
+
+**Published variables and exact source identity.** US Federal Reserve Financial Accounts (Z.1) original sector balance sheets [S46] for named broker-dealer, money market fund, finance-company and fund populations; OFR Financial Stress Index original standardized daily index [S21]; Fed Financial Stability Report original financial leverage/funding definitions [S23].
+
+**Original research/method.** Fed original Z.1 sector accounting definitions [S46] and funding-risk vulnerability framework [S23]. Market stress from OFR [S21] is separate from latent nonbank vulnerability.
+
+**Reproducible calculation and comparison.** For an institution sector with source-defined meaningful positive equity E, `leverage=A/E` where A is assets from same accounting perimeter. Where source ST and total financial obligations L are genuinely commensurable, `short_funding_share=100×ST/L` with instrument list and excluded NAV/redemptions recorded. Never compute for sectors lacking valid debt/equity values; never add OFR FSI to leverage as a synthetic composite.
+
+**Method alternatives.** Repo reliance, short-term funding share, sector liquid-asset mismatch, FSB publicly reported cross-economy nonbank classifications (only if source definitions/rights verified).
+
+**Conditions for a valid comparison.** US country scope, institution classes and reporting perimeter, NAV vs liabilities, Z.1 accounting revisions, derivative leverage coverage, stress index original statistical scaling and release dates.
+
+**Interpretation boundary.** Z.1 sector averages do not identify an individual fund's run probability or a comparable worldwide aggregate for nonbank leverage.
+
+**Recommended figure.** Sector-separated funding/leverage evolution with independent contemporaneous OFR stress subplot.
+
 ## V — Asset valuation and long-horizon returns
 
 ### V01 — Are US equity prices historically stretched relative to fundamentals?
@@ -293,7 +347,7 @@ Each record specifies (1) original measured variable/source or source-defined pr
 
 **Recommended figure.** Aligned regional multiples/yields, plus sector mix diagnostic.
 
-### V04 — How do equity valuation yields and bond yields relate?
+#### V04 — How do equity valuation yields and bond yields relate? (supporting scientific method; no longer first-class catalogue question)
 
 **Published variables and exact source identity.** Shiller CAPE ordinary and 100/CAPE earnings yield [S24]; US DFII10 real ten-year Treasury yield (%); source-defined dividend yield and 10-year nominal Treasury yield DGS10 (%).
 
@@ -407,7 +461,7 @@ Each record specifies (1) original measured variable/source or source-defined pr
 
 **Recommended figure.** Group share lines plus 100%-stacked wealth composition when components reconcile.
 
-### L06 — Are pay, output and corporate surplus moving differently?
+#### L06 — Are pay, output and corporate surplus moving differently? (supporting scientific method; no longer first-class catalogue question)
 
 **Published variables and exact source identity.** Same-sector real GVA/hour, hourly compensation deflated by GVA deflator, net operating surplus, GVA, CE, CFC, industry unit labour costs ULC (nominal compensation per unit real output), matched annual industry inputs.
 
@@ -422,6 +476,22 @@ Each record specifies (1) original measured variable/source or source-defined pr
 **Interpretation boundary.** A rising surplus ratio does not prove the cause or quantify unpaid labour without a separate identifiable model.
 
 **Recommended figure.** Aligned indexed line panels, not additive disparate index stacks.
+
+### L07 — What are the trends in global income and wealth inequality?
+
+**Published variables and exact source identity.** Original World Inequality Database (WID) [S47] published country/year **pre-tax national income shares** for top 1%, top 10%, bottom 50% (record exact WID original variable, population and release when obtaining inputs); UNU-WIDER WIID/Companion [S48] original country-survey Gini and documented income/consumption welfare measure; US Fed DFA original net household wealth by group [S35], as a **different stock**.
+
+**Original research/method.** WID distributional national accounts, adjustments and modeling methods [S47]; UNU-WIDER original WIID survey comparability and source metadata [S48]; Fed distributional balance-sheet method [S35].
+
+**Reproducible calculation and comparison.** Use original publisher WID share in its stated percent/fraction unit. For original group sum if components exist, `share_g=100×income_g/total_pretax_national_income` with source-defined adult/country. Convert WIID Gini 0-to-1 to 0–100 **only** if original units confirm this: `Gini100=100×Gini01`. Plot WID income shares and WIID Gini as **distinct** small multiples, never sum them or compare directly to US wealth share values.
+
+**Method alternatives.** Survey disposable income vs national-account pretax income; relative vs absolute poverty/income distribution; WID world model aggregate vs country-level harmonized survey panels; wealth stock vs income flow.
+
+**Conditions for a valid comparison.** Income vs wealth, adult/individual/household, geographic source coverage, survey equivalence scales, source selection, missing years, national-account model imputation, top-tail uncertainty and published release vintages.
+
+**Interpretation boundary.** Differences in inequality methods can drive apparent trends; no direct Marxian exploitation rate or global wealth concentration may be inferred from an incompatible income survey.
+
+**Recommended figure.** Country top/bottom income-group share lines, WIID Gini panels, separately labelled original WID world estimates with methods.
 
 ## G — Global market concentration and capital transmission
 
@@ -473,7 +543,7 @@ Each record specifies (1) original measured variable/source or source-defined pr
 
 **Recommended figure.** Full denominator/numerator provenance panel + history/coverage plot, only when defined.
 
-### G04 — How much of diversified equity-market risk is shared across regions?
+#### G04 — How much of diversified equity-market risk is shared across regions? (supporting scientific method; no longer first-class catalogue question)
 
 **Published variables and exact source identity.** Matched-date country/regional MSCI equity net total-return indexes for named regions with explicit currency; region/sector FX rates; full index inclusion history and dated country membership; optional Kenneth French published developed/emerging portfolio total returns.
 
@@ -504,6 +574,22 @@ Each record specifies (1) original measured variable/source or source-defined pr
 **Interpretation boundary.** Correlation across credit and external accounts does not prove capital flight, global profit transfer or a financial crisis.
 
 **Recommended figure.** Matched-country annual/quarterly panels with clear flow-versus-stock axis distinctions.
+
+### G06 — How do cross-border supply chains transmit value-added exposure?
+
+**Published variables and exact source identity.** OECD original ICIO 2025 [S34] country×industry intermediate production transaction matrix `Z`, gross output `x`, original final-demand by purchasing country `f`, and industry gross value added `VA`. OECD original Trade in Value Added (TiVA) indicators [S49] for source-defined domestic value added embodied in foreign final demand as comparison.
+
+**Original research/method.** OECD ICIO/Leontief value-added accounting [S34] and official TiVA reporting methodology [S49]. An exposure matrix is an accounting relationship, not a validated causal disruption simulation.
+
+**Reproducible calculation and comparison.** With identical source year and real-positive country×industry gross outputs, `A=Z×diag(x)^(−1)`; `L=(I−A)^(−1)`; `v=VA/x`. Exposure of each origin industry to foreign final demand is `E=diag(v)×L×f_foreign`; normalize country aggregate `100×sum(E_country)/sum(VA_country)` for a named world/country set. Avoid adding gross intermediary flows as gross output, and reconcile OECD official source TiVA when method precisely matches.
+
+**Method alternatives.** Published TiVA trade-in-value-added ratios, original gross exports and bilateral intermediate inputs (non-additive compared with VA), scenario propagation using independently estimated elasticities (separate scientific model).
+
+**Conditions for a valid comparison.** Full matrices with reconciled output and value-added identities, original country-industry concordance, rest-of-world treatment, currency/prices, positive outputs, comparable years and independently validated foreign-final-demand scope.
+
+**Interpretation boundary.** Value added embodied in foreign demand measures dependence; it does not determine how a specific pandemic/sanction/weather shock changes real GDP without a causal/behavioural model.
+
+**Recommended figure.** Country-industry exposure heatmap plus cross-country value-added dependence trends and coverage information.
 
 ## P — Portfolio exposure and historical resilience
 
@@ -635,6 +721,14 @@ The following are original publisher, data-producer or scholarly publication pag
 | S40 | IMF balance of payments dataset BPM6/BPM7 accounts | https://data.imf.org/Datasets/BOP |
 | S41 | SEC Form N-PORT official source | https://www.sec.gov/data-research/sec-markets-data/form-n-port-data-sets |
 | S42 | Brinson Hood & Beebower (1986), Determinants of Portfolio Performance | https://doi.org/10.2469/faj.v42.n4.39 |
+
+| S43 | World Bank original Commodity Markets Pink Sheet historical monthly commodity prices | https://www.worldbank.org/en/research/commodity-markets |
+| S44 | BIS original Residential Property Price indices (country/quarter) | https://data.bis.org/topics/RPP |
+| S45 | BIS Commercial Property Prices, original market-specific reported indexes | https://data.bis.org/topics/CPP |
+| S46 | US Federal Reserve Financial Accounts Z.1 original sector balance sheets | https://www.federalreserve.gov/datadownload/choose.aspx?rel=z1 |
+| S47 | World Inequality Database original national income and wealth data/methodology | https://wid.world/data/ |
+| S48 | UNU-WIDER World Income Inequality Database and Companion methodology | https://www.wider.unu.edu/database/world-income-inequality-database-wiid |
+| S49 | OECD original Trade in Value Added (TiVA) publisher methods and variables | https://www.oecd.org/en/data/datasets/trade-in-value-added.html |
 
 ## Scientific acceptance test for these 35 *definitions*
 
