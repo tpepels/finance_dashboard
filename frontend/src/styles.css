@@ -636,3 +636,16 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 @media(prefers-reduced-motion:reduce) {
   .research-app *, .research-app *::before, .research-app *::after { transition: none; animation: none; }
 }
+
+/* Reserve title/metric geometry before asynchronous observations load. */
+.research-card-head { display: grid; grid-template-columns: minmax(0,1fr) 120px;
+  align-items: start; gap: 12px; }
+.research-card-head h3 { min-width: 0; width: 100%; }
+.research-card-head .research-observation { margin: 0; min-width: 0;
+  overflow-wrap: normal; text-align: right; }
+@media(max-width:700px) {
+  .research-card-head { grid-template-columns: minmax(0,1fr) 108px; gap: 8px; }
+  .research-card-head h3 { flex-basis: auto; }
+  .research-card-head .research-observation { display: flex; flex-direction: column; align-items: flex-end; }
+  .research-card-head .research-observation strong { font-size: 19px; }
+}

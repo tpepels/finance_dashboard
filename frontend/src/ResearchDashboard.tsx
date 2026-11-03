@@ -253,10 +253,11 @@ function Indicator({ spec, start, theme }: { spec: IndicatorDef; start?: string;
   return <article className="research-card" ref={root} id={'research-' + spec.id}>
     <div className="research-card-head">
       <h3>{spec.title}</h3>
-      {result?.headline && <div className="research-observation">
-        <strong>{readableValue(result.headline.value, result.headline.unit)}</strong>
-        <span>{result.headline.date}</span>
-      </div>}
+      <div className="research-observation" aria-label="Latest recorded value">
+        <strong>{result?.headline
+          ? readableValue(result.headline.value, result.headline.unit) : ' '}</strong>
+        <span>{result?.headline?.date ?? ' '}</span>
+      </div>
     </div>
     <div className="research-visual">
       {!visible && <p className="research-placeholder">Chart loads when scrolled into view</p>}
