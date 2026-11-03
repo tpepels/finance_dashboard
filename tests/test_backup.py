@@ -91,12 +91,12 @@ class LocalBackupTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "SHA-256"):
                 verify_manifest(manifest)
 
-    def test_backup_includes_and_verifies_alfred_sec_and_oecd_source_evidence(self):
+    def test_backup_includes_and_verifies_alfred_sec_oecd_and_maintenance_evidence(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             db = root / "database.sqlite3"
             sqlite3.connect(db).close()
-            roots = {name: root / name for name in ("vintages","holdings","surplus")}
+            roots = {name: root / name for name in ("vintages","holdings","surplus","maintenance")}
             for path in roots.values():
                 path.mkdir()
             (roots["vintages"] / "USREC").mkdir()
@@ -104,13 +104,16 @@ class LocalBackupTests(unittest.TestCase):
                 '{"series_id":"USREC","asof":"2008-01-31"}')
             (roots["holdings"] / "sec_funds.json").write_text('[]')
             (roots["surplus"] / "oecd_iot_2025_normalized.json").write_text('{"records":[]}')
+            (roots["maintenance"] / "jobs.json").write_text(
+                '{"version":1,"jobs":[{"id":"test","status":"running"}]}')
             manifest = backup_local(root / "backups", source_db=db,
                                     evidence_roots=roots)
             archive_path = root / "backups" / manifest["evidence_archive"]["file"]
-            self.assertEqual(manifest["evidence_archive"]["source_files"], 3)
+            self.assertEqual(manifest["evidence_archive"]["source_files"], 4)
             with tarfile.open(archive_path, "r:gz") as archive:
                 self.assertEqual(sorted(archive.getnames()), [
                     "holdings/sec_funds.json",
+                    "maintenance/jobs.json",
                     "surplus/oecd_iot_2025_normalized.json",
                     "vintages/USREC/2008-01-31.json"])
             manifest_path = next((root / "backups").glob("finance-*Z.json"))
