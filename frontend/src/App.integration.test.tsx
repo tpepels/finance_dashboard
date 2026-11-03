@@ -181,10 +181,9 @@ describe('local research-first dashboard acceptance', () => {
     render(<App />);
     await screen.findByRole('heading',{name:'World & OECD'});
     await user.click(screen.getByRole('button',{name:'Data & sync'}));
-    expect(await screen.findByRole('button',{
-      name:'Import Germany, France and Italy PWT histories',
-    })).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Check historical FRED access'})).toBeTruthy();
+    expect(await screen.findByRole('button',{name:'Sync current data'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Sync history'})).toBeTruthy();
+    expect(screen.queryByRole('combobox',{name:'Individual macro source'})).toBeNull();
   });
 
   it('shows source values but no graph when database is empty', async () => {

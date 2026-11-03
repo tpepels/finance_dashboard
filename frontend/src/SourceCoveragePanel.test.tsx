@@ -32,14 +32,19 @@ const payload = {
   asof: '2026-11-03', method: 'Native source periods',
 };
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => payload })));
+  vi.stubGlobal('fetch', vi.fn(async (url:string) => ({
+    ok: true,
+    json: async () => String(url)==='/api/maintenance'
+      ? {active_job_id:null,jobs:[],operations:['sync_current','sync_history']}
+      : payload,
+  })));
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('single-page source completeness panel', () => {
   it('shows only concise missing-data counts before opening technical detail', async () => {
     render(<SourceCoveragePanel/>);
-    expect(await screen.findByText(/25 missing/)).toBeTruthy();
+    expect(await screen.findByText(/25 sources need attention/)).toBeTruthy();
     expect(screen.queryByRole('table')).toBeNull();
     expect(screen.queryByText('Germany PWT')).toBeNull();
   });
@@ -47,7 +52,11 @@ describe('single-page source completeness panel', () => {
   it('offers original dates, precise failure status and all families on request', async () => {
     const user = userEvent.setup();
     render(<SourceCoveragePanel/>);
-    await user.click(await screen.findByText(/25 missing/));
+    await user.click(await screen.findByText(/25 sources need attention/));
+    expect(screen.getByRole('button',{name:'Sync current data'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Sync history'})).toBeTruthy();
+    expect(screen.queryByRole('table',{name:/Source observations/})).toBeNull();
+    await user.click(screen.getByText(/Source diagnostics/));
     expect(screen.getByRole('table', { name: /Source observations/ })).toBeTruthy();
     expect(screen.getByText('Germany PWT')).toBeTruthy();
     expect(screen.getByText('provider_http_429')).toBeTruthy();
