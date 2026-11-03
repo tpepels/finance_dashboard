@@ -44,6 +44,11 @@ const regions = [
 
 const baseFetchMock = async (input: string): Promise<{ ok: boolean; status?: number; json?: () => Promise<unknown> }> => {
   const path = String(input);
+  if (path === '/api/maintenance') return {
+    ok: true, json: async () => ({
+      active_job_id: null, jobs: [], operations: ['refresh_sources','backfill_alfred'],
+    }),
+  };
   if (path === '/api/source-coverage') return {
     ok: true, json: async () => ({
       summary: {
@@ -169,6 +174,17 @@ describe('local research-first dashboard acceptance', () => {
     expect(screen.queryByText('Original source appendix loaded')).toBeNull();
     await user.click(screen.getByText('Source data & chart explorer'));
     expect(await screen.findByText('Original source appendix loaded')).toBeTruthy();
+  });
+
+  it('opens dashboard data maintenance directly from the utility bar', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole('heading',{name:'World & OECD'});
+    await user.click(screen.getByRole('button',{name:'Data & sync'}));
+    expect(await screen.findByRole('button',{
+      name:'Import Germany, France and Italy PWT histories',
+    })).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Check historical FRED access'})).toBeTruthy();
   });
 
   it('shows source values but no graph when database is empty', async () => {
