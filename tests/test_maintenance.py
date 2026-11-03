@@ -15,6 +15,7 @@ from sqlalchemy.pool import StaticPool
 from finance_dashboard.api import create_app
 from finance_dashboard.database import Base
 from finance_dashboard.maintenance import MaintenanceManager
+from finance_dashboard.developer_logs import read_events
 
 
 PWT = ["labour.de.pwt_labour_share","labour.fr.pwt_labour_share",
@@ -235,6 +236,13 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(set(done["result"]["parts"]),{
             "macro","markets","earnings","backup"})
         self.assertTrue(done["result"]["parts"]["backup"]["verified"])
+        journal = read_events()
+        self.assertTrue(any(row.get("event")=="queued" and
+                            row.get("action")=="sync_current" for row in journal))
+        self.assertTrue(any(row.get("event")=="stage_finished" and
+                            row.get("stage")=="macro" for row in journal))
+        self.assertTrue(any(row.get("event")=="finished" and
+                            row.get("action")=="sync_current" for row in journal))
 
     def test_current_sync_continues_after_source_errors_and_reports_partial(self):
         calls=[]

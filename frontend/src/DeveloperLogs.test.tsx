@@ -51,6 +51,23 @@ describe('developer log hidden support console',()=>{
     expect(String(writeText.mock.calls[0][0])).toContain('sync.started');
     expect(String(writeText.mock.calls[0][0])).toContain('valuation.us.cape');
   });
+  it('downloads the full report as a text file', async()=>{
+    const createObjectURL=vi.fn((_blob:Blob)=>'blob:diagnostics-test');
+    const revokeObjectURL=vi.fn();
+    Object.defineProperty(URL,'createObjectURL',{configurable:true,
+      value:createObjectURL});
+    Object.defineProperty(URL,'revokeObjectURL',{configurable:true,
+      value:revokeObjectURL});
+    const click=vi.spyOn(HTMLAnchorElement.prototype,'click')
+      .mockImplementation(()=>undefined);
+    const user=userEvent.setup();
+    render(<DeveloperLogs/>);
+    await screen.findByText('80/80 sources with data');
+    await user.click(screen.getByRole('button',{name:'Download .txt'}));
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status').textContent).toContain('prepared for download');
+  });
   it('reports unavailable diagnostics without displaying fabricated log entries',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status:503})));
     render(<DeveloperLogs/>);
