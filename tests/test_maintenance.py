@@ -291,7 +291,9 @@ class MaintenanceApiTests(unittest.TestCase):
             progress(27,27,"FX:USD")
             calls.append("markets")
             return 0
+        bounds={sid: date(2000, 1, 1) for sid in ("T10Y3M","SAHMREALTIME","USREC")}
         batch={"status":"complete","source_vintages_requested":12,
+               "prepublication_excluded":0,
                "missing_after_run":0,"downloaded_now":12,"failed_now":[],
                "next_missing":None,"halted_reason":None}
         def sec(*,max_filings_per_fund,stopped,progress):
@@ -307,6 +309,8 @@ class MaintenanceApiTests(unittest.TestCase):
              patch("finance_dashboard.worker.refresh_market_all",side_effect=market), \
              patch("finance_dashboard.vintage.probe_access",
                    return_value={"status":"ready","requests":1}), \
+             patch("finance_dashboard.vintage.first_available_vintages",
+                   return_value=bounds) as availability, \
              patch("finance_dashboard.vintage.backfill_batch",return_value=batch) as alfred, \
              patch("finance_dashboard.sec_holdings_sync.collect_configured",
                    side_effect=sec):
@@ -319,13 +323,18 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(calls,["macro","markets","sec"])
         self.assertEqual(done["result"]["parts"]["alfred"]["downloaded"],12)
         self.assertEqual(alfred.call_count,1)
+        availability.assert_called_once()
+        self.assertEqual(alfred.call_args.kwargs["first_available"],bounds)
+        self.assertEqual(done["result"]["parts"]["alfred"]["prepublication_excluded"],0)
         self.assertEqual(sorted(done["result"]["parts"]),
                          ["alfred","backup","macro","markets","sec"])
         self.assertNotIn("a"*32,json.dumps(done))
 
     def test_history_backfill_exposes_first_failed_source_and_date(self):
+        bounds={sid: date(2000, 1, 1) for sid in ("T10Y3M","SAHMREALTIME","USREC")}
         failure = {
             "status":"blocked","source_vintages_requested":964,
+            "prepublication_excluded":0,
             "missing_after_run":964,"downloaded_now":0,
             "failed_now":[{
                 "series_id":"SAHMREALTIME","asof":"2000-01-31",
@@ -338,8 +347,10 @@ class MaintenanceApiTests(unittest.TestCase):
              patch("finance_dashboard.worker.refresh_market_all",return_value=0), \
              patch("finance_dashboard.vintage.probe_access",
                    return_value={"status":"ready","requests":1}), \
+             patch("finance_dashboard.vintage.first_available_vintages",
+                   return_value=bounds) as availability, \
              patch("finance_dashboard.vintage.backfill_batch",
-                   return_value=failure), \
+                   return_value=failure) as backfill, \
              patch("finance_dashboard.sec_holdings_sync.collect_configured",
                    return_value={"status":"complete","funds":[]}):
             job = self.client.post("/api/maintenance",
@@ -347,6 +358,8 @@ class MaintenanceApiTests(unittest.TestCase):
             self.assertEqual(job.status_code,202)
             done=self.wait(job.json()["id"])
         part=done["result"]["parts"]["alfred"]
+        availability.assert_called_once()
+        self.assertEqual(backfill.call_args.kwargs["first_available"],bounds)
         self.assertEqual(part["first_failed_series"],"SAHMREALTIME")
         self.assertEqual(part["first_failed_asof"],"2000-01-31")
         self.assertEqual(part["http_status"],400)

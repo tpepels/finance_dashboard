@@ -188,20 +188,20 @@ class VintageTests(unittest.TestCase):
                 "realtime_start":"2020-02-15",
                 "realtime_end":"9999-12-31"}]})
         with TemporaryDirectory() as tmp:
+            root = Path(tmp)
             with httpx.Client(transport=httpx.MockTransport(handler)) as client:
                 bounds = first_available_vintages(
                     ["T10Y3M"], api_key="a" * 32, client=client)
                 result = backfill_batch(date(2020,1,1), date(2020,3,31),
                     ["T10Y3M"], api_key="a" * 32, client=client,
-                    root=Path(tmp), max_requests=4, pause_seconds=0,
+                    root=root, max_requests=4, pause_seconds=0,
                     first_available=bounds)
+            self.assertFalse((root/"T10Y3M"/"2020-01-31.json").exists())
             self.assertEqual(result["prepublication_excluded"], 1)
             self.assertEqual(result["source_vintages_requested"], 2)
             self.assertEqual(result["downloaded_now"], 2)
             self.assertEqual(result["missing_after_run"], 0)
             self.assertEqual(len(calls), 3)
-            self.assertEqual(result["prepublication_excluded"], 1)
-            self.assertFalse((root/"T10Y3M"/"2020-01-31.json").exists())
 
     def test_refuses_future_or_after_vintage_observation(self):
         def handler(_):
