@@ -649,3 +649,13 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
   .research-card-head .research-observation { display: flex; flex-direction: column; align-items: flex-end; }
   .research-card-head .research-observation strong { font-size: 19px; }
 }
+
+/* Semantic colors distinguish risk criteria without implying probabilities. */
+.p4-signal-card { border-left: 4px solid #287d85; }
+.p4-signal-card.signal-alert { border-left-color: #c64d63; }
+.p4-signal-card.signal-stale { border-left-color: #c28a37; }
+.p4-signal-card.signal-missing { border-left-color: #8c9ca5; }
+.research-app[data-theme="dark"] .p4-signal-card { border-left-color: #60cabb; }
+.research-app[data-theme="dark"] .p4-signal-card.signal-alert { border-left-color: #ff8294; }
+.research-app[data-theme="dark"] .p4-signal-card.signal-stale { border-left-color: #f1bf69; }
+.research-app[data-theme="dark"] .p4-signal-card.signal-missing { border-left-color: #879daa; }

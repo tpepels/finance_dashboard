@@ -264,7 +264,7 @@ function Indicator({ spec, start, theme }: { spec: IndicatorDef; start?: string;
       {visible && !result && !error && <p className="research-placeholder" role="status">Loading observations…</p>}
       {error && <p role="status" className="data-warning">{error}</p>}
       {result && !hasPoints && <p className="research-placeholder" role="status">
-        No recorded observations for this indicator yet. Check local ingestion under source data.
+        No observations available for this measure. See source coverage for details.
       </p>}
       {hasPoints && <div ref={host} className="research-plot" role="img"
         aria-label={'Measured economic graph: ' + spec.title} />}

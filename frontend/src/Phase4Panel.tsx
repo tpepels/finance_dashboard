@@ -111,7 +111,12 @@ function DiagnosticView() {
       <p className="p4-method">{method}</p></details>
       {items.length === 0 && <p>No publisher-defined thresholds for this region;
         inspect its economic research data instead.</p>}
-      <div className="p4-card-grid">{items.map(item => <article className="p4-card" key={item.id}>
+      <div className="p4-card-grid">{items.map(item => <article
+        className={'p4-card p4-signal-card ' +
+          (item.status === 'no_data' ? 'signal-missing'
+            : item.status === 'stale' ? 'signal-stale'
+            : item.threshold_crossed ? 'signal-alert' : 'signal-normal')}
+        key={item.id}>
         <h4>{item.title}</h4>
         <div className="p4-value">{fmt(item.latest?.value,
           item.unit === 'percentage_points' ? ' pp' : item.unit === 'percent' ? '%' : '')}</div>
