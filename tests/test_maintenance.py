@@ -124,6 +124,72 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(finished["status"],"complete")
         self.assertEqual(calls,[(set(),{"USD"})])
 
+    def test_historical_asof_import_resumes_batches_and_keeps_secrets_out(self):
+        batch=[
+            {"status":"partial","source_vintages_requested":3,"missing_after_run":1,
+             "downloaded_now":2,"failed_now":[],
+             "next_missing":{"series_id":"T10Y3M"},"halted_reason":None},
+            {"status":"complete","source_vintages_requested":3,"missing_after_run":0,
+             "downloaded_now":1,"failed_now":[],"next_missing":None,"halted_reason":None},
+        ]
+        with patch.dict("os.environ",{"FRED_API_KEY":"a"*32}), \
+             patch("finance_dashboard.vintage.probe_access",
+                   return_value={"status":"ready","requests":1}), \
+             patch("finance_dashboard.vintage.backfill_batch",side_effect=batch) as backfill:
+            request=self.client.post("/api/maintenance",headers=HEADERS,json={
+                "action":"backfill_alfred","start":"2020-01-01",
+                "end":"2020-03-31","series_ids":["T10Y3M"],
+                "max_requests":2,"complete_range":True})
+            self.assertEqual(request.status_code,202,request.text)
+            result=self.wait(request.json()["id"])
+        self.assertEqual(result["status"],"complete")
+        self.assertEqual(result["completed"],3)
+        self.assertEqual(result["total"],3)
+        self.assertEqual(result["result"]["downloaded_now"],3)
+        self.assertEqual(backfill.call_count,2)
+        self.assertNotIn("a"*32,
+            Path(self.tmp.name,"jobs.json").read_text(encoding="utf-8"))
+
+    def test_sec_access_and_historical_filing_import_can_run_from_ui(self):
+        with patch("finance_dashboard.sec_holdings_sync.check_sec_sources",
+                   return_value={"status":"ready","funds":[{
+                       "instrument_id":"vt","status":"ready","reason":"index_verified"}]}):
+            preflight=self.client.post("/api/maintenance",headers=HEADERS,
+                                       json={"action":"check_sec"})
+            self.assertEqual(preflight.status_code,202)
+            self.assertEqual(self.wait(preflight.json()["id"])["status"],"complete")
+        with patch("finance_dashboard.sec_holdings_sync.collect_configured",
+                   return_value={"status":"complete","funds":[{
+                       "instrument_id":"vt","status":"complete",
+                       "stored_or_already_present":1,"attempted":1,"errors":0}]}) as collector:
+            import_job=self.client.post("/api/maintenance",headers=HEADERS,
+                                        json={"action":"collect_sec","limit":1})
+            self.assertEqual(import_job.status_code,202)
+            result=self.wait(import_job.json()["id"])
+            self.assertEqual(result["status"],"complete")
+            self.assertEqual(result["result"]["funds"][0]["stored"],1)
+            collector.assert_called_once_with(max_filings_per_fund=1)
+
+    def test_missing_sec_contact_cannot_be_reported_as_success(self):
+        with patch("finance_dashboard.sec_holdings_sync.collect_configured",
+                   return_value={"status":"disabled_missing_SEC_USER_AGENT","funds":[]}):
+            job=self.client.post("/api/maintenance",headers=HEADERS,
+                                 json={"action":"collect_sec","limit":1})
+            self.assertEqual(job.status_code,202)
+            result=self.wait(job.json()["id"])
+            self.assertEqual(result["status"],"blocked")
+            self.assertEqual(result["error_code"],"missing_credential")
+
+    def test_quota_deferred_earnings_is_not_reported_as_success(self):
+        with patch("finance_dashboard.wisesheets_local.refresh_local_wisesheets",
+                   return_value="deferred"):
+            job=self.client.post("/api/maintenance",headers=HEADERS,
+                                 json={"action":"refresh_earnings"})
+            self.assertEqual(job.status_code,202)
+            result=self.wait(job.json()["id"])
+            self.assertEqual(result["status"],"partial")
+            self.assertEqual(result["result"]["source_state"],"deferred")
+
     def test_interrupted_jobs_are_recoverable_without_false_success(self):
         path=Path(self.tmp.name,"jobs.json")
         path.write_text(json.dumps({"version":1,"jobs":[
