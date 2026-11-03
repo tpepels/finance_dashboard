@@ -327,14 +327,16 @@ class MaintenanceManager:
                     else "blocked" if outcome == "disabled" else "partial",
                     "source_state": outcome}
         if action == "backup":
-            from .backup import backup_local, source_database_path
+            from .backup import backup_local, source_database_path, verify_manifest
+            folder=Path(os.environ.get("FINANCE_BACKUP_DIR","/data/backups"))
             output=backup_local(
-                Path(os.environ.get("FINANCE_BACKUP_DIR","/data/backups")),
-                source_db=source_database_path(),
+                folder, source_db=source_database_path(),
                 earnings_snapshot=Path(os.environ.get("WISESHEETS_SNAPSHOT_PATH",
                                                     "/data/wisesheets/sec_filer_profit.json")),
                 keep=int(os.environ.get("FINANCE_BACKUP_KEEP","14")))
-            return {"status": "complete",
-                    "verified_manifest": output.get("manifest", {}).get("filename")
-                    if isinstance(output.get("manifest"), dict) else None}
+            manifest=folder / output["database"]["file"].replace(".sqlite3",".json")
+            confirmed=verify_manifest(manifest)
+            return {"status": "complete", "verified": confirmed["verified"],
+                    "manifest": manifest.name,
+                    "components": confirmed["components"]}
         raise MaintenanceBlocked("invalid_source")

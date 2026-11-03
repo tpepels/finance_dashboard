@@ -69,8 +69,10 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
             "vintages": Path(os.environ.get("FINANCE_VINTAGE_DIR", "/data/vintages")),
             "holdings": Path(os.environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings")),
             "surplus": Path(os.environ.get("FINANCE_SURPLUS_DIR", "/data/surplus")),
+            "maintenance": Path(os.environ.get(
+                "FINANCE_MAINTENANCE_STATE", "/data/maintenance/jobs.json")).parent,
         }
-    if set(evidence_roots) - {"vintages", "holdings", "surplus"}:
+    if set(evidence_roots) - {"vintages", "holdings", "surplus", "maintenance"}:
         raise ValueError("Unrecognized local evidence directory")
     # Microsecond suffix protects repeated manual runs and concurrent calls.
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
