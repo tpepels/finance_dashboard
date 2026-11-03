@@ -46,7 +46,7 @@ const baseFetchMock = async (input: string): Promise<{ ok: boolean; status?: num
   const path = String(input);
   if (path === '/api/maintenance') return {
     ok: true, json: async () => ({
-      active_job_id: null, jobs: [], operations: ['refresh_sources','backfill_alfred'],
+      active_job_id: null, jobs: [], operations: ['sync_current','sync_history'],
     }),
   };
   if (path === '/api/source-coverage') return {
@@ -134,10 +134,13 @@ describe('local research-first dashboard acceptance', () => {
     const user = userEvent.setup();
     render(<App />);
     const graph = await screen.findByRole('img', { name: /Measured economic graph: World real output growth/ });
-    const before = fetchMock.mock.calls.length;
+    const researchRequests = () => fetchMock.mock.calls
+      .filter(([input]) => String(input).startsWith('/api/research'));
+    const before = researchRequests().length;
     await user.click(screen.getByRole('button', { name: 'Use dark appearance' }));
     expect(await screen.findByRole('img', { name: /Measured economic graph: World real output growth/ })).toBe(graph);
-    expect(fetchMock.mock.calls.length).toBe(before);
+    // Background job-status polling does not count as a research refetch.
+    expect(researchRequests()).toHaveLength(before);
   });
 
   it('has a persistent dark appearance switch and no development-phase heading', async () => {
