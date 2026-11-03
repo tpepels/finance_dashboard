@@ -30,7 +30,7 @@ from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCE
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .source_coverage import build_coverage
 from .maintenance import MaintenanceManager, BusyMaintenance
-from .developer_logs import read_events, recent_jobs
+from .developer_logs import read_events, recent_jobs, record_event
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
 from functools import partial
@@ -118,6 +118,23 @@ def create_app(engine=None) -> FastAPI:
     supported = {sid for sid, s in by_id.items() if s["status"] == "mapped" and s["provider"] in PROVIDER_CODES}
     maintenance = MaintenanceManager(db)
     market_registry = instruments()
+
+    @app.middleware("http")
+    async def record_unexpected_api_failure(request: Request, call_next):
+        # Do not persist request paths, query parameters, headers or exception
+        # details. A 5xx code is enough to correlate a server fault with the
+        # time and a subsequent source/status inspection.
+        try:
+            response = await call_next(request)
+        except Exception:
+            record_event("system", "collector_failed", level="error",
+                         stage="api", reason="internal_error")
+            raise
+        if response.status_code >= 500:
+            record_event("system", "collector_failed", level="error",
+                         stage="api", reason="http_5xx",
+                         http_status=response.status_code)
+        return response
 
     @app.get("/api/health")
     def health():

@@ -81,6 +81,27 @@ class DiagnosticJournalTests(unittest.TestCase):
         self.assertEqual(safe[0]["parts"]["sec"]["funds"][0]["stored"], 2)
         self.assertNotIn("never-report-this", json.dumps(safe))
 
+    def test_unexpected_api_exception_logs_only_generic_error(self):
+        engine = create_engine("sqlite+pysqlite:///:memory:",
+            connect_args={"check_same_thread":False}, poolclass=StaticPool)
+        Base.metadata.create_all(engine)
+        try:
+            app = create_app(engine)
+            @app.get("/api/test-failure")
+            def _unsafe_failure():
+                raise RuntimeError("user-token-secret-123")
+            with TestClient(app, raise_server_exceptions=False) as client:
+                result = client.get("/api/test-failure")
+                self.assertEqual(result.status_code, 500)
+                log = client.get("/api/developer-log").json()
+            event = next(x for x in log["events"]
+                         if x.get("stage") == "api")
+            self.assertEqual(event["reason"], "internal_error")
+            self.assertNotIn("user-token-secret-123", json.dumps(log))
+            self.assertNotIn("/api/test-failure", json.dumps(log))
+        finally:
+            engine.dispose()
+
     def test_live_endpoint_contains_safe_jobs_issues_and_events(self):
         engine = create_engine("sqlite+pysqlite:///:memory:",
             connect_args={"check_same_thread":False}, poolclass=StaticPool)
