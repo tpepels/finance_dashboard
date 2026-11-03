@@ -259,7 +259,7 @@ class MaintenanceManager:
         """
         from .worker import refresh_all, refresh_market_all
 
-        stages = 4 if history else 3
+        stages = 5 if history else 4
         stage_results = {}
         issue_count = 0
 
@@ -346,7 +346,7 @@ class MaintenanceManager:
                                 start,end,sorted(VINTAGE_IDS),api_key=key,
                                 client=client,max_requests=180)
                             downloaded += result["downloaded_now"]
-                            self._change(job_id, completed=2,total=4,
+                            self._change(job_id, completed=2,total=stages,
                                 current_item="Historical releases",
                                 stage="ALFRED historical publication vintages",
                                 stage_completed=(result["source_vintages_requested"]
@@ -407,6 +407,24 @@ class MaintenanceManager:
                 record("sec", {"status":"failed","reason":"provider_failed"})
         if cancelled.is_set():
             raise MaintenanceBlocked("cancelled")
+        stage(stages-1, "Verified data backup")
+        try:
+            from .backup import backup_local, source_database_path, verify_manifest
+            folder = Path(os.environ.get("FINANCE_BACKUP_DIR","/data/backups"))
+            archive = backup_local(
+                folder, source_db=source_database_path(),
+                earnings_snapshot=Path(os.environ.get(
+                    "WISESHEETS_SNAPSHOT_PATH",
+                    "/data/wisesheets/sec_filer_profit.json")),
+                keep=int(os.environ.get("FINANCE_BACKUP_KEEP","14")))
+            manifest = folder / archive["database"]["file"].replace(".sqlite3",".json")
+            checked = verify_manifest(manifest)
+            if checked.get("verified") is not True:
+                raise ValueError("Backup failed verification")
+            record("backup", {"status":"complete","verified":True,
+                              "manifest":manifest.name})
+        except Exception:
+            record("backup", {"status":"failed","reason":"backup_failed"})
         self._change(job_id, completed=stages,total=stages,
                      stage_completed=None, stage_total=None)
         return {"status":"partial" if issue_count else "complete",
