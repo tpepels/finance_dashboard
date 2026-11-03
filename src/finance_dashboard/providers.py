@@ -581,6 +581,15 @@ class ProviderRouter:
                                 if start is None or day >= start}
                 if not observations:
                     raise ProviderError("FRED table has no observations in requested window")
+            # FRED may include older full-history observations in an overlap
+            # request. Apply the requested source-date boundary locally for all
+            # three FRED transports; the ingestion service keeps its strict
+            # rejection of unfiltered out-of-window data from other providers.
+            if start is not None:
+                observations = {day: value for day, value in observations.items()
+                                if day >= start}
+            if not observations:
+                raise ProviderError("FRED source has no observations in requested window")
             # Always report a non-secret source URI, even for authenticated requests.
             return FetchedSeries(series_id, f"https://fred.stlouisfed.org/series/{identifier}", None, observations)
         if provider == "ECB":

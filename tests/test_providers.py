@@ -352,6 +352,40 @@ class RouterTests(unittest.TestCase):
         finally:
             router.close()
 
+    def test_fred_authenticated_overlap_filters_only_older_returned_periods(self):
+        # Upstream returns full-history rows despite observation_start.
+        # Incremental ingestion must keep the original date boundary.
+        def handler(request):
+            self.assertEqual(request.url.params["series_id"], "LABSHPDEA156NRUG")
+            self.assertEqual(request.url.params["observation_start"], "2022-06-01")
+            return httpx.Response(200, json={"observations": [
+                {"date":"2010-01-01","value":"0.70"},
+                {"date":"2022-01-01","value":"0.65"},
+                {"date":"2023-01-01","value":"0.63"},
+            ]})
+        router = self.router(handler)
+        try:
+            with patch.dict("os.environ", {"FRED_API_KEY":"a"*32}):
+                row = router.fetch("labour.de.pwt_labour_share",date(2022,6,1))
+                self.assertEqual(row.observations,
+                                 {date(2023,1,1):Decimal("0.63")})
+        finally:
+            router.close()
+
+    def test_fred_authenticated_full_import_preserves_old_source_dates(self):
+        def handler(request):
+            self.assertNotIn("observation_start", request.url.params)
+            return httpx.Response(200,json={"observations":[
+                {"date":"1950-01-01","value":"0.70"},
+                {"date":"2023-01-01","value":"0.63"}]})
+        router = self.router(handler)
+        try:
+            with patch.dict("os.environ",{"FRED_API_KEY":"a"*32}):
+                self.assertEqual(len(router.fetch(
+                    "labour.de.pwt_labour_share").observations),2)
+        finally:
+            router.close()
+
     def test_fred_public_csv(self):
         def handler(request):
             self.assertEqual(request.url.params["id"], "DFII10")

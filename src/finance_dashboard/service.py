@@ -39,6 +39,13 @@ def safe_source_failure_code(exc: BaseException) -> str:
         reason = str(exc)
         known_prefixes = (
             ("FRED observations list missing", "fred_schema_invalid"),
+            ("FRED source has no observations in requested window", "fred_window_empty"),
+            ("Cannot identify a unique Shiller ie_data.xls download", "shiller_link_unavailable"),
+            ("Shiller workbook link points to an unapproved host", "shiller_download_unapproved"),
+            ("Invalid Shiller Excel workbook or Data sheet", "shiller_workbook_invalid"),
+            ("Shiller workbook does not contain recognizable DATE/CAPE columns", "shiller_header_invalid"),
+            ("Shiller workbook contains no CAPE observations", "shiller_empty"),
+            ("Shiller workbook has no values within requested period", "shiller_window_empty"),
             ("FRED response contains no usable observations", "fred_empty"),
             ("FRED public DATE/VALUE table missing or ambiguous", "fred_table_invalid"),
             ("FRED table page does not identify the expected series", "fred_table_invalid"),

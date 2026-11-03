@@ -41,6 +41,8 @@ class SourceFailureCodeTests(unittest.TestCase):
             ("Repeated observation: 2025-01-01", "source_duplicate_period"),
             ("Provider returned observations outside requested window", "source_window_invalid"),
             ("Shiller source workbook has incomplete monthly CAPE history", "shiller_incomplete"),
+            ("Invalid Shiller Excel workbook or Data sheet", "shiller_workbook_invalid"),
+            ("FRED source has no observations in requested window", "fred_window_empty"),
             ("ECB FX series identity mismatch", "fx_identity_mismatch"),
         ]
         for message, category in cases:

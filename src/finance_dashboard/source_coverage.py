@@ -52,7 +52,10 @@ SAFE_ERROR_CODES = {
     "fred_empty", "fred_table_invalid", "source_date_invalid",
     "source_duplicate_period", "source_value_invalid", "source_empty",
     "source_window_invalid", "source_future_date", "source_mapping_mismatch",
-    "shiller_incomplete", "shiller_schema_invalid", "fx_identity_mismatch",
+    "shiller_incomplete", "shiller_schema_invalid",
+    "shiller_link_unavailable", "shiller_download_unapproved",
+    "shiller_workbook_invalid", "shiller_header_invalid",
+    "shiller_empty", "shiller_window_empty", "fred_window_empty", "fx_identity_mismatch",
     "fx_schema_invalid", "fx_empty", "fx_value_invalid",
 }
 
