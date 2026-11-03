@@ -93,7 +93,8 @@ def _safe_http_diagnostic(response: httpx.Response) -> dict:
 _VINTAGE_VALIDATION_FAILURES = {
     "Malformed ALFRED response": "fred_response_schema_invalid",
     "Incorrect ALFRED realtime interval": "fred_realtime_mismatch",
-    "ALFRED response outside requested as-of range": "fred_observation_outside_asof",
+    "ALFRED observation precedes requested historical window": "fred_observation_before_window",
+    "ALFRED observation is after requested as-of date": "fred_observation_after_asof",
     "Response contains observation released after as-of date": "fred_observation_after_publication",
     "Observation ceased being valid before as-of date": "fred_observation_expired",
     "Invalid published ALFRED numeric value": "fred_observation_value_invalid",
@@ -236,11 +237,16 @@ def fetch_snapshot(series_id: str, asof: date, *, api_key: str,
     existing = read_snapshot(root, series_id, asof)
     if existing is not None:
         return existing
-    # One as-of date per request; fetch only a bounded history required for
-    # feature look-back without resampling or fabricating observation dates.
-    # Recession labels need complete earlier historical months for walk-forward
-    # training; financial features only need a recent bounded lookback.
-    start = date(1900, 1, 1) if series_id == 'USREC' else asof - timedelta(days=430)
+    # SAHMREALTIME has published monthly observations beginning in 1959-12.
+    # The 430-day market-feature lookback is too narrow for its historical
+    # recession-indicator series: request the original full historical span.
+    # This does not claim that early observations were available before the
+    # source's first ALFRED publication vintage (checked separately).
+    # USREC likewise requires long historical recession labels. Daily T10Y3M
+    # remains bounded to avoid truncation at the 10,000-observation API limit.
+    start = (date(1959, 12, 1) if series_id == "SAHMREALTIME"
+             else date(1900, 1, 1) if series_id == "USREC"
+             else asof - timedelta(days=430))
     response = client.get(FRED_OBSERVATIONS, params={
         "series_id": series_id, "api_key": api_key, "file_type": "json",
         "realtime_start": asof.isoformat(), "realtime_end": asof.isoformat(),
@@ -261,8 +267,10 @@ def fetch_snapshot(series_id: str, asof: date, *, api_key: str,
         if value in (".", "", None):
             continue
         day = date.fromisoformat(row["date"])
-        if day < start or day > asof:
-            raise VintageError("ALFRED response outside requested as-of range")
+        if day < start:
+            raise VintageError("ALFRED observation precedes requested historical window")
+        if day > asof:
+            raise VintageError("ALFRED observation is after requested as-of date")
         if row.get("realtime_start") and date.fromisoformat(row["realtime_start"]) > asof:
             raise VintageError("Response contains observation released after as-of date")
         if row.get("realtime_end") and date.fromisoformat(row["realtime_end"]) < asof:

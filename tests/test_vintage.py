@@ -48,6 +48,77 @@ class VintageTests(unittest.TestCase):
             self.assertEqual(latest_asof_reading(again)["age_days"],30)
             self.assertEqual(available_snapshots(root)["series"][1]["count"],1)
 
+    def test_sahm_vintage_preserves_source_history_since_1959_without_future_leakage(self):
+        asof = date(2019, 9, 30)
+        requests = []
+        def handler(request):
+            requests.append(request)
+            self.assertEqual(request.url.params["series_id"], "SAHMREALTIME")
+            self.assertEqual(request.url.params["observation_start"], "1959-12-01")
+            self.assertEqual(request.url.params["observation_end"], "2019-09-30")
+            self.assertEqual(request.url.params["realtime_start"], "2019-09-30")
+            self.assertEqual(request.url.params["realtime_end"], "2019-09-30")
+            return httpx.Response(200, json={
+                "realtime_start": "2019-09-30",
+                "realtime_end": "2019-09-30",
+                "observations": [
+                    {"date": "2019-09-01", "value": "0.0",
+                     "realtime_start": "2019-09-10",
+                     "realtime_end": "9999-12-31"},
+                    {"date": "1959-12-01", "value": "0.77",
+                     "realtime_start": "2019-09-10",
+                     "realtime_end": "9999-12-31"},
+                ]})
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result = fetch_snapshot("SAHMREALTIME", asof, api_key="secret",
+                                        client=client, root=root)
+                stored = read_snapshot(root, "SAHMREALTIME", asof)
+            self.assertEqual(len(requests), 1)
+            self.assertEqual(result["observations"], [
+                {"date": "1959-12-01", "value": "0.77"},
+                {"date": "2019-09-01", "value": "0.0"},
+            ])
+            self.assertEqual(stored["observations"], result["observations"])
+            self.assertEqual(result["asof"], "2019-09-30")
+            self.assertNotIn("secret", (root/"SAHMREALTIME"/"2019-09-30.json").read_text())
+
+    def test_sahm_future_observation_and_early_unpublished_revision_are_rejected(self):
+        asof = date(2019, 9, 30)
+        for date_text, revision_text, expected in [
+            ("2019-10-01", "2019-09-12", "after requested as-of"),
+            ("2019-09-01", "2019-10-01", "released after as-of"),
+            ("1959-11-01", "2019-09-12", "precedes requested historical window"),
+        ]:
+            with self.subTest(observation=date_text, revision=revision_text):
+                def handler(request):
+                    return httpx.Response(200, json={"observations":[{
+                        "date": date_text, "value": "0.77",
+                        "realtime_start": revision_text,
+                        "realtime_end": "9999-12-31",
+                    }]})
+                with TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                        with self.assertRaisesRegex(VintageError, expected):
+                            fetch_snapshot("SAHMREALTIME", asof, api_key="secret",
+                                           client=client, root=root)
+                    self.assertEqual(list(root.rglob("*.json")), [])
+
+    def test_daily_spread_retains_bounded_observation_history(self):
+        def handler(request):
+            self.assertNotEqual(request.url.params["observation_start"], "1959-12-01")
+            self.assertEqual(request.url.params["observation_end"], "2020-03-31")
+            return httpx.Response(200, json={"observations":[{
+                "date": "2020-03-30", "value": "0.5",
+            }]})
+        with TemporaryDirectory() as tmp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result = fetch_snapshot("T10Y3M", date(2020,3,31),
+                                        api_key="secret", client=client, root=Path(tmp))
+            self.assertEqual(result["status"], "ready")
+
     def test_probe_verifies_historical_alfred_parameters_not_just_authentication(self):
         requests = []
         def handler(request):
@@ -151,8 +222,10 @@ class VintageTests(unittest.TestCase):
     def test_invalid_asof_reasons_are_diagnostic_without_provider_text(self):
         from finance_dashboard.vintage import _snapshot_failure_diagnostic
         expected = {
-            "ALFRED response outside requested as-of range":
-                "fred_observation_outside_asof",
+            "ALFRED observation precedes requested historical window":
+                "fred_observation_before_window",
+            "ALFRED observation is after requested as-of date":
+                "fred_observation_after_asof",
             "Response contains observation released after as-of date":
                 "fred_observation_after_publication",
             "Incorrect ALFRED realtime interval": "fred_realtime_mismatch",
