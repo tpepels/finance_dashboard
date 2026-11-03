@@ -57,16 +57,21 @@ export default function DataOperations() {
   const [submitting, setSubmitting] = useState(false);
   const submitted = useRef(new Set<string>());
   const notified = useRef(new Set<string>());
+  const previouslySeen = useRef(new Map<string, string>());
 
   async function refresh() {
     const received = await json(await fetch('/api/maintenance', { cache: 'no-store' })) as Queue;
     setQueue(received);
     for (const job of received.jobs) {
-      if (submitted.current.has(job.id) && FINISHED.has(job.status)
-          && !notified.current.has(job.id)) {
+      const previous = previouslySeen.current.get(job.id);
+      const becameFinished = previous !== undefined && !FINISHED.has(previous)
+        && FINISHED.has(job.status);
+      if ((submitted.current.has(job.id) || becameFinished)
+          && FINISHED.has(job.status) && !notified.current.has(job.id)) {
         notified.current.add(job.id);
         window.dispatchEvent(new Event('gcm-data-updated'));
       }
+      previouslySeen.current.set(job.id, job.status);
     }
   }
   useEffect(() => {
