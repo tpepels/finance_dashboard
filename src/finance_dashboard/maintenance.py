@@ -6,7 +6,7 @@ as such and are deliberately resumable using existing append-only importers.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from threading import Event, Lock, Thread
 from uuid import uuid4
@@ -109,6 +109,19 @@ class MaintenanceManager:
                valid_sources: set[str], valid_markets: set[str]) -> dict:
         if action not in PUBLIC_ACTIONS:
             raise ValueError("Unknown maintenance operation")
+        allowed = {
+            "refresh_sources": {"series_ids"},
+            "refresh_markets": {"instrument_ids", "currencies"},
+            "check_alfred": set(),
+            "backfill_alfred": {"series_ids", "start", "end",
+                                "max_requests", "complete_range"},
+            "check_sec": set(),
+            "collect_sec": {"limit"},
+            "refresh_earnings": set(),
+            "backup": set(),
+        }
+        if not set(options) <= allowed[action]:
+            raise ValueError("Unexpected maintenance parameters")
         # All options are validated against an explicit allowlist. Never
         # accept a URL, file path, shell command or raw provider credential.
         if action == "refresh_sources":
@@ -130,7 +143,8 @@ class MaintenanceManager:
         elif action == "backfill_alfred":
             sources = options.get("series_ids") or sorted(VINTAGE_IDS)
             start = options.get("start", "2000-01-01")
-            end = options.get("end", date.today().replace(day=1).isoformat())
+            end = options.get("end", (date.today().replace(day=1) -
+                                       timedelta(days=1)).isoformat())
             limit = options.get("max_requests", 60)
             full = options.get("complete_range", True)
             try:
@@ -280,13 +294,19 @@ class MaintenanceManager:
             from .sec_holdings_sync import check_sec_sources
             result=check_sec_sources()
             return {"status": "complete" if result["status"] == "ready" else "blocked",
+                    "reason": result.get("reason") if not result["funds"] else None,
                     "funds": [{"id": f["instrument_id"], "status": f["status"],
                                "reason": f.get("reason"), "http_status": f.get("http_status")}
                               for f in result["funds"]]}
         if action == "collect_sec":
             from .sec_holdings_sync import collect_configured
             result=collect_configured(max_filings_per_fund=options["limit"])
-            return {"status": result["status"],
+            state = result["status"]
+            if state == "disabled_missing_SEC_USER_AGENT":
+                return {"status":"blocked", "reason":"missing_credential","funds":[]}
+            if state == "unconfigured":
+                return {"status":"blocked","reason":"invalid_source","funds":[]}
+            return {"status": state,
                     "funds": [{"id": f["instrument_id"], "status": f["status"],
                                "stored": f.get("stored_or_already_present", 0),
                                "attempted": f.get("attempted", 0),
