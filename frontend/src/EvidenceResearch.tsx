@@ -118,8 +118,10 @@ function Vintages() {
       Compare published vintages</button>
     {error && <p role="alert">{error}</p>}
     {inventory && !inventory.series.some(s=>s.count) && <p className="evidence-absence">
-      No ALFRED historical source vintages stored. Import with the local
-      <code> python -m finance_dashboard.vintage</code> CLI and a FRED API key.
+      No verified ALFRED historical source vintages stored.
+      Use <strong>Data &amp; sync → Sync history</strong> to check access and
+      import original historical releases. Open Sync results to see the
+      provider's specific failure if the import is blocked.
     </p>}
     {first && second && <div>
       <p>Earlier as-of {first.asof}: latest recorded observation
