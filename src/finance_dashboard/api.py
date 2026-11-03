@@ -29,6 +29,7 @@ from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCE
 
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .source_coverage import build_coverage
+from .research_corpus import load_research_corpus, validate_research_corpus, research_corpus_report
 from .maintenance import MaintenanceManager, BusyMaintenance
 from .developer_logs import read_events, recent_jobs, record_event
 from .database import MarketIngestionRun, FxIngestionRun
@@ -114,6 +115,10 @@ def create_app(engine=None) -> FastAPI:
     errors = validate(catalog, chart_catalog)
     if errors:
         raise RuntimeError("Catalog invalid: " + "; ".join(errors))
+    research_sources = load_research_corpus()
+    corpus_issues = validate_research_corpus(research_sources, catalog["series"])
+    if corpus_issues:
+        raise RuntimeError("Phase 2 research source inventory invalid: " + "; ".join(corpus_issues))
     by_id = {s["id"]: s for s in catalog["series"]}
     supported = {sid for sid, s in by_id.items() if s["status"] == "mapped" and s["provider"] in PROVIDER_CODES}
     maintenance = MaintenanceManager(db)
@@ -301,6 +306,22 @@ def create_app(engine=None) -> FastAPI:
     def source_coverage():
         """Complete safe inventory of all mapped macro, market and ECB FX histories."""
         return build_coverage(db, catalog["series"], market_registry)
+
+    @app.get("/api/research-corpus")
+    def source_research_corpus():
+        """Phase 2 approved-question source evidence, with actual stored-source periods."""
+        return research_corpus_report(
+            research_sources, build_coverage(db, catalog["series"], market_registry))
+
+    @app.get("/api/research-corpus/{analysis_id}")
+    def research_corpus_question(analysis_id: str):
+        """Return explicit source references, missing evidence and fallbacks."""
+        report = research_corpus_report(
+            research_sources, build_coverage(db, catalog["series"], market_registry))
+        match = next((row for row in report["analyses"] if row["id"] == analysis_id), None)
+        if match is None:
+            raise HTTPException(404, "Unknown approved scientific question")
+        return match
 
     @app.get("/api/research")
     def research_catalog():
