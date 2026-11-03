@@ -1,6 +1,6 @@
 # Phase 4 research data: actual historical releases, fund holdings and surplus accounts
 
-**Status:** Independently confirmed SEC identities for VT and BND are bundled with their official N-PORT filing-index references. No original ALFRED historical backfill, SEC holdings ingestion, OECD source-account extraction or independently validated predictive results have been observed on the target server. Dataset-dependent results must remain unavailable until collection and auditing.
+**Status:** Independently confirmed SEC identities for VT and BND are bundled with their official N-PORT filing-index references. The FRED API-key/basic endpoint preflight succeeded on the target server on 2026-11-03; the preceding 180-request historical backfill downloaded zero new snapshots. The initial SEC collector attempted zero XML downloads because its strict submissions-primary filename filter excluded eligible SEC index-based filings. These importers now have corrected discovery/diagnostics but successful local SEC holdings collection, ALFRED backfill, OECD account extraction and independently validated predictive results are not yet confirmed. Dataset-dependent results must remain unavailable until collection and auditing.
 
 The application remains **one** Docker service and stores data in its existing /data bind volume. All downloads run in a CLI or the one in-process background refresh; browsers never request arbitrary external URLs or send the FRED/SEC credentials.
 
@@ -67,7 +67,15 @@ For these two verified funds, no configuration file is needed. They do **not** h
 
 These are **placeholders**, not published mappings. Do not paste them as functional values. Use `SEC_USER_AGENT` with a **real organization/contact email**, as SEC requires declared bot identification; do not use invented contact details.
 
-Collect up to 12 **matching fund-series** filings per configured fund, while examining at most 60 candidate accession documents per registrant. The matching limit does not count filings belonging to other fund series:
+The SEC submissions JSON may identify an **HTML** `primaryDocument` even when the official filing index contains the original `primary_doc.xml`. The collector now scans each official filing index, checks its disclosed SEC series ID where available, and accepts only an explicitly linked, syntactically safe XML filename. Original XML is independently checked against CIK, accession, fund series, period and holdings fields before storage. A verified locally cached accession is reused without re-downloading its large XML. Index scanning is capped at `max(120, --limit × 50)` candidate filings per registrant (bounded by the actual SEC submission history), with up to `max(12, --limit × 3)` XML downloads. The requested limit counts **matching original fund-series filings**, not unrelated registrant filings; a short collection reports `partial`, not `complete`.
+
+Perform the two-index preflight first; this makes no holdings downloads:
+
+```bash
+docker compose exec finance-dashboard python -m finance_dashboard.sec_holdings_sync --check
+```
+
+Then collect up to 12 **matching fund-series** filings per configured fund:
 
 ```bash
 docker compose exec finance-dashboard python -m finance_dashboard.sec_holdings_sync --limit 12

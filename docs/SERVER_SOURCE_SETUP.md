@@ -87,13 +87,13 @@ The equivalent read-only endpoint is `http://media-server:5052/api/operations`; 
 
 ## Diagnose and import real ALFRED vintages
 
-**Do this before a full backfill**:
+**Do this before a full backfill**. The current preflight checks genuine 2020-01-31 historical `realtime_start=realtime_end` parameters (earlier revisions only checked basic FRED authentication):
 
 ```bash
 docker compose exec finance-dashboard python -m finance_dashboard.vintage --check
 ```
 
-This makes one bounded official FRED USREC request (or no request for an invalid key format), reports only HTTP status and fixed error classifications, and never prints the key, query URL, source response body or bearer token. HTTP 400/401/403/429 now stops a large backfill after the first failing request. A 400 can be an invalid registered key **or** invalid API parameters; the probe's classification is decisive only as far as the actual provider error supports.
+This makes one bounded official **historical ALFRED-as-of** USREC request (or no request for an invalid key format), reports only HTTP status and fixed error classifications, and never prints the key, query URL, source response body or bearer token. A previous `ready` from a plain FRED request established key validity, but was insufficient to verify historical request arguments. HTTP 400/401/403/429 now stops a large backfill after the first failing request. A 400 can be an invalid registered key **or** invalid API parameters; the probe's classification is decisive only as far as the actual provider error supports.
 
 When the probe reports `"status": "ready"`, import month-end source-publication snapshots from 2000 through October 2026:
 
@@ -110,7 +110,21 @@ Repeat the same command **only after successful batches** until `missing_after_r
 
 An SEC User-Agent is **not an API key**. Use a genuine identifying name/organization with a working contact email, e.g. replace `your-real-contact@example.org` above. SEC's fair-access guidance recommends efficient requests and limits automated access to 10 requests per second (https://www.sec.gov/about/developer-resources).
 
-Two vetted US fund identities are currently bundled: VT and BND. No arbitrary ticker is assumed to identify an SEC registrant. Run one explicit collection with:
+Two vetted US fund identities are currently bundled: VT and BND. No arbitrary ticker is assumed to identify an SEC registrant. Their official SEC filing indexes list `primary_doc.xml` alongside `primary_doc.html`. The collector now resolves XML from the original filing index and verifies the series before parsing; it no longer requires the submission's `primaryDocument` field to end in `.xml`.
+
+Probe official SEC index accessibility without downloading large holdings files:
+
+```bash
+docker compose exec finance-dashboard python -m finance_dashboard.sec_holdings_sync --check
+```
+
+If both report ready, import **one** real original filing per fund as a bounded first pass:
+
+```bash
+docker compose exec finance-dashboard python -m finance_dashboard.sec_holdings_sync --limit 1
+```
+
+Then resume collection of up to twelve verified filings per fund; already cached documents are preserved and reused:
 
 ```bash
 docker compose exec finance-dashboard \
