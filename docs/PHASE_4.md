@@ -8,7 +8,7 @@ The primary [economic research dashboard](ECONOMIC_RESEARCH_METHODS.md) still le
 Phase 4 now has two independent analytical surfaces:
 
 1. **Macro risk diagnostics:** `GET /api/risk` and `GET /api/risk/{world|us|europe|japan}`. Each rule has a documented provider, native unit/frequency, publisher-defined criterion (if one exists), exact source date, sample size, stale/no-data state and caveat.
-2. **EUR/USD ETF, equity, gold and portfolio comparison:** `POST /api/market/compare` for 2–5 registered assets, 3–20-year ranges, EUR or USD reporting, optional weights totaling exactly 100%. It uses the 24 *already registered* market instruments and the three ECB FX currencies; no additional financial-data product is required. Optional ingestion stays **off** by default on the macro-first server.
+2. **EUR/USD ETF, equity, gold and portfolio comparison:** `POST /api/market/compare` for 2–5 registered assets, 3–20-year ranges, EUR or USD reporting, optional weights totaling exactly 100%. It uses the 24 *already registered* market instruments and the three ECB FX currencies; no additional financial-data product is required. The full-source server configuration enables market ingestion; existing deployments with a literal `0` must explicitly enable it.
 
 Existing `/api/market/query`, `/api/market/gold-world-proxy`, macro research APIs, Wisesheets and source charts are retained.
 
@@ -69,7 +69,7 @@ environment:
   FINANCE_INCLUDE_MARKETS: "1"
 ```
 
-Then `docker compose up -d finance-dashboard`. The in-process daily refresh will attempt the existing 24 Yahoo instrument histories and three ECB FX histories. Yahoo is unofficial and can reject or rate-limit requests. Missing/failed instruments remain explicitly missing, with no substitute invented. The default `FINANCE_INCLUDE_MARKETS: "0"` preserves macro-first behavior.
+Then `docker compose up -d finance-dashboard`. The in-process daily refresh will attempt the existing 24 Yahoo instrument histories and three ECB FX histories. Yahoo is unofficial and can reject or rate-limit requests. Missing/failed instruments remain explicitly missing, with no substitute invented. The current complete-source Compose profile defaults to enabled; this does not guarantee the unofficial provider supplies every historical period.
 
 The Phase 4 frontend offers selecting 2–5 instruments, EUR/USD, a 3/5/10/20 year maximum window, a monthly rebalanced hypothetical portfolio and normalized performance, drawdown and correlation graphs. The data browser and market registry endpoints are available regardless of whether collection is enabled.
 
@@ -77,7 +77,7 @@ The Phase 4 frontend offers selecting 2–5 instruments, EUR/USD, a 3/5/10/20 ye
 
 `GET /api/operations` reports count of macro sources with recorded observations, market instruments with recorded prices, ECB currencies with observations, failed source-ingestion run count, last successful source run, optional collection settings and verified backup-manifest count. It **does not** expose API keys or raw provider error messages.
 
-The same process's existing daily refresh loop now makes a consistent online SQLite database copy after source ingestion (enabled by default), with the current separately validated SEC filer snapshot if present. Manifests record SHA-256 hashes and the SQLite integrity check result. By default **14** backup bundles are kept under `/data/backups`. Wisesheets collection retains its existing monthly quota-aware schedule.
+The same process's existing daily refresh loop now makes a consistent online SQLite database copy after source ingestion (enabled by default), with the current separately validated SEC filer snapshot and a source-evidence archive of ALFRED/SEC/OECD local files when present. Manifests record SHA-256 hashes and the SQLite integrity check result. By default **14** backup bundles are kept under `/data/backups`. Wisesheets collection retains its existing monthly quota-aware schedule.
 
 ### Manual backup and verification
 
@@ -91,7 +91,7 @@ docker compose exec finance-dashboard \
   --verify-manifest /data/backups/finance-YYYYMMDDThhmmssffffffZ.json
 ```
 
-The database is copied using **SQLite's online backup API**, safe with concurrent WAL activity. Never create an online backup using `cp finance.sqlite3` without handling its WAL. The verified database backup is then installed atomically. Independent SEC snapshot copied via atomic source-file read is recorded separately.
+The database is copied using **SQLite's online backup API**, safe with concurrent WAL activity. Never create an online backup using `cp finance.sqlite3` without handling its WAL. The verified database backup is then installed atomically. Independent SEC earnings snapshot copied via atomic source-file read is recorded separately. Dated ALFRED vintages, N-PORT holdings files and imported OECD national industry accounts are also archived separately and hashed; copy the whole bundle offsite.
 
 **Disaster recovery:** copy backup bundles to a different physical disk or remote encrypted archive. Backup bundles stored only in `/data/backups` will be lost with the original volume. To restore: stop the finance container, verify the manifest and SHA-256/integrity, preserve the damaged original database in a separate location, restore the verified `.sqlite3` with correct UID/GID into the bind-mounted data directory, restore the verified SEC snapshot if present, then restart the service. Remove stale database WAL/shm files only *after the application is stopped* and when restoring an intact standalone backup file. Do not overwrite a live database.
 

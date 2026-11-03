@@ -32,7 +32,7 @@ If you use the repository as an independent Compose project instead, it now has 
 
 ## Phase 4 market research and observability
 
-The same single `finance-dashboard` container now includes **Phase 4 economic risk evidence** and an **optional** ETF/equity/gold historical comparison under the main economic research page. The market comparison needs prices and EUR FX; the earlier macro-first default leaves them uncollected.
+The same single `finance-dashboard` container now includes **Phase 4 economic risk evidence** and an **optional** ETF/equity/gold historical comparison under the main economic research page. The market comparison needs prices and EUR FX; the full-collection configuration enables them. Older deployments may still have a literal disabled flag; verify the actual Compose service environment.
 
 To enable local price research, add to the **existing** service's environment:
 
@@ -46,7 +46,7 @@ The new **operational status** route is `http://media-server:5052/api/operations
 
 ### Daily SQLite backups
 
-The same refresh thread now creates SQLite **online-backup API** snapshots once per cycle (24 hours by default) after macro collection, with integrity checks and SHA-256 manifests in `/srv/finance-dashboard/backups` on the host (mounted as `/data/backups`). The default keeps 14 bundles. They remain vulnerable to loss of the same disk; copy to a second physical device/off-site encrypted backup.
+The same refresh thread now creates SQLite **online-backup API** snapshots once per cycle (24 hours by default), plus a separate verified archive of historical ALFRED, SEC filings and OECD industry accounts where present, with integrity checks and SHA-256 manifests in `/srv/finance-dashboard/backups` on the host (mounted as `/data/backups`). The default keeps 14 bundles. They remain vulnerable to loss of the same disk; copy to a second physical device/off-site encrypted backup.
 
 Create and verify one immediately:
 
