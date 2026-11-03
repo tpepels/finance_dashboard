@@ -86,7 +86,10 @@ class DiagnosticJournalTests(unittest.TestCase):
             connect_args={"check_same_thread":False}, poolclass=StaticPool)
         Base.metadata.create_all(engine)
         try:
-            app = create_app(engine)
+            # The test-only failing endpoint must not be shadowed by the built
+            # static dashboard mount (present in the production Docker image).
+            with patch.dict(os.environ, {"FINANCE_DASHBOARD_UI_DIR": ""}):
+                app = create_app(engine)
             @app.get("/api/test-failure")
             def _unsafe_failure():
                 raise RuntimeError("user-token-secret-123")
