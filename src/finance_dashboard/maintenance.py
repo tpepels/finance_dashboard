@@ -308,7 +308,8 @@ class MaintenanceManager:
         if action == "collect_sec":
             from .sec_holdings_sync import collect_configured
             result=collect_configured(max_filings_per_fund=options["limit"],
-                progress=lambda done,total,sid:self._progress(job_id,done,total,sid))
+                progress=lambda done,total,sid:self._progress(job_id,done,total,sid),
+                stopped=cancelled)
             state = result["status"]
             if state == "disabled_missing_SEC_USER_AGENT":
                 return {"status":"blocked", "reason":"missing_credential","funds":[]}

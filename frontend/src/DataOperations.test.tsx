@@ -92,7 +92,7 @@ describe('all source maintenance is accessible in the dashboard', () => {
     expect(await screen.findByText(/2 \/ 3 source periods\/items/)).toBeTruthy();
     expect(screen.getByRole('button',{
       name:'Import Germany, France and Italy PWT histories'}).hasAttribute('disabled')).toBe(true);
-    await user.click(screen.getByRole('button',{name:'Cancel after current request'}));
+    await user.click(screen.getByRole('button',{name:'Request cancellation'}));
     expect(runningFetch.mock.calls.some(([url,init])=>
       String(url).endsWith('/job1/cancel') && init?.method==='POST')).toBe(true);
   });

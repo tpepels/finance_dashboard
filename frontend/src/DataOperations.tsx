@@ -134,7 +134,7 @@ export default function DataOperations({ sources, initiallyOpen = false }:
           'Queued or waiting for collector'}
           {current?.current_item ? ' · ' + current.current_item : ''}</span>
         <button type="button" disabled={current?.status === 'cancelling'}
-          onClick={() => void stop()}>Cancel after current request</button>
+          onClick={() => void stop()}>Request cancellation</button>
       </div>}
       {latest && !active && <div className="data-operation-last" role="status">
         <strong>Last operation: {latest.action.replaceAll('_', ' ')} · {latest.status}</strong>

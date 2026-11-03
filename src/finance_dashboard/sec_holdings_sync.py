@@ -404,7 +404,7 @@ def check_sec_sources(*, config: Path = CONFIG,
 
 def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
                        user_agent: str|None=None,
-                       max_filings_per_fund: int=12, progress=None) -> dict:
+                       max_filings_per_fund: int=12, progress=None, stopped=None) -> dict:
     mappings=read_verified_config(config)
     if not mappings:
         return {"status":"unconfigured","funds":[]}
@@ -417,6 +417,8 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
     with httpx.Client(headers={"User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
                       timeout=45,follow_redirects=False) as client:
         for index, mapping in enumerate(mappings, 1):
+            if stopped is not None and stopped.is_set():
+                break
             try:
                 reports.append(import_fund(mapping,client=client,root=folder,
                                            max_filings=max_filings_per_fund))
