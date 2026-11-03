@@ -1,6 +1,6 @@
-# Phase 1 — proposed question-led analysis catalogue
+# Phase 1 — accepted scope and proposed scientific analysis catalogue
 
-**Status: CANDIDATE, NOT APPROVED.** An **ideal research product** catalogue; it is **not** a current feature inventory or gap report. All entries need their own formal research record and peer-reviewed/official source review before Phase 1 sign-off. IDs are stable proposed question identities, not chart or database IDs. Citation keys R01–R16 point to the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md); a source for one method never certifies every related derived inference.
+**Status: USER-APPROVED PRODUCT INTENT; 35 ANALYSES REQUIRE SCIENTIFIC REVIEW AND FINAL PHASE 1 SIGN-OFF.** An **ideal research product** catalogue; it is **not** a current feature inventory or gap report. All entries need their own formal research record and peer-reviewed/official source review before Phase 1 sign-off. IDs are stable proposed question identities, not chart or database IDs. Citation keys R01–R16 point to the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md); a source for one method never certifies every related derived inference.
 
 ## Design rules
 
@@ -63,11 +63,109 @@ Other research domains—particularly global concentration and Marxian profit-ra
 | **P04** | How sensitive is a portfolio to inflation, FX and rates? | Inflation; nominal vs real return; bond duration; currency exposure | Scenario small multiples + stress assumptions | [R01], [R13] | Conditional scenario analysis is not a forecast |
 | **P05** | How would plausible rebalancing choices affect historical resilience? | Portfolio weights; benchmark; transaction fees; FX conversions; tax scenarios | Comparable indexed portfolios and drawdown panels | [R13] | Backtests require actual available instruments, fees, no future leakage |
 
+## Detailed scientific design of the six curated overview analyses
+
+These are **normative analysis designs**; no dataset was read and no result is inferred. They demonstrate the analytical depth expected from each of the 35 research questions. The overview is not a fixed row of six singleton indicators; each tile expands into several scientifically related views, while remaining compact initially.
+
+### C02 — Do recession-warning indicators agree?
+
+- **Question and horizon:** Compare the historically published predictive information in the US nominal 10y–3m term spread with the Sahm labour-market deterioration signal, while showing official NBER recession outcomes as retrospective context. Estrella–Mishkin [R06] studied the term-structure slope at quarterly forecast horizons; this does **not** establish a calibrated probability for any specific pair of current indicators.
+- **Inputs:** date-aligned as-of market term spread in percentage points; Sahm Rule monthly 3-month moving-average unemployment deterioration in percentage points, as defined by its publisher; original NBER peak/trough dates **in their own chronology**, with announcement dates tracked separately [R05,R07,R14].
+- **Display:** synchronized **two line panels**, never one blended unit or a falsely common normalization. User can compare lead/lag, inspect the as-of timeline and open event-specific false alarms. Muted NBER band and optional independent shock overlay.
+- **Interpretive rule:** show whether each source strengthened, weakened or contradicted the other, **not** the phrase "recession certain"; a research probability requires a separately evaluated out-of-sample model with non-leaking release dates.
+- **Sources:** [R05] NBER, [R06] Estrella & Mishkin, [R07] Sahm source, [R14] FRED real-time intervals.
+
+### M01 — How do Fed, ECB and BoJ policy settings diverge?
+
+- **Question:** Examine the level and direction of short-term policy settings over common observation dates, not assume the institutions operate the same policy instrument.
+- **Inputs:** explicitly labelled central-bank target/effective or deposit-facility policy series, with rate-convention metadata and calendar/timezone; inflation-adjusted comparison is a separately selected, source-defined view rather than silently subtracting mixed CPI projections.
+- **Display:** **three-line chart** at official effective dates; optional aligned nominal–inflation panels and named pairwise interest-rate differences in percentage points, never an unexplained aggregate world rate.
+- **Interpretation:** report the size/direction of policy-rate divergence and competing inflation contexts; monetary-policy causation, exchange-rate forecasts and policy stance require distinct empirical models and theory.
+- **Method:** central-bank primary publications plus financial-stability research [R01]. The current charter's institutional framework is background, not an exact recipe for synthetic "harmonised policy" measures.
+
+### F03 — Are balance-sheet vulnerabilities accumulating across different horizons?
+
+- **Question:** Does the BIS private credit-to-GDP gap align with debt-service burdens in the **same economy**, and how do longer and shorter warning horizons differ? Drehmann & Juselius find different early-warning horizon strengths [R08].
+- **Inputs:** published BIS private nonfinancial-credit/GDP and one-sided trend gap in **percentage points** [R02,R25]; published BIS debt-service ratio in **income percent** with the documented country/sector and approximated maturity assumptions [R03,R24].
+- **Display:** synchronized **separate line panels**; DSR change relative to the *country's own historical baseline* is the recommended international-comparison view, rather than raw country-level rankings. Optional matched-date scatter is clearly exploratory, not a replacement for horizon-dependent early-warning validation.
+- **Interpretation:** show congruence or disagreement and their sample periods, using published threshold methodology only as a research reference; neither national series alone is a published global crisis probability.
+- **Evidence maturity:** vulnerability description is permitted from measurements; any new combined predictive score is prohibited until explicit decision-function and independent calibration are established.
+
+### V01 — Is equity valuation unusually high and how informative is it?
+
+- **Question and horizon:** Examine Shiller CAPE relative to its own distribution and compare the information in earnings valuations with real sovereign yields. Campbell & Shiller [R09] investigated *long-horizon* valuation/return relationships, not near-term crash timing.
+- **Inputs:** cyclically adjusted price/real earnings with the exact historical earnings adjustment, price-index and geographic universe; inverse CAPE as **adjusted earnings yield**; matched real yield as a distinct instrument and nominal/trailing earnings yields only when separately defined.
+- **Display:** dated CAPE line plus a **distribution/percentile reference** computed on a declared historical window; adjacent panel for real yields and inverse CAPE, **not** silently subtracting two unrelated quantities and labelling it an observed equity-risk premium. Country crossovers require comparable index methodology.
+- **Interpretation:** describe historical valuation extremeness and empirical uncertainty; high CAPE cannot uniquely determine the date of a bear market or guarantee future returns.
+
+### L01 — Are average real hourly pay and labour productivity diverging?
+
+- **Question:** Is production value added per hour rising faster or slower than average compensation per hour for the **same sector**? OECD [R17,R18] attributes aggregate decoupling to both labour-share and median-versus-average compensation effects.
+- **Inputs and transform:** `productivity_t = real_value_added_t / hours_t`; `real_pay_t = nominal_total_labour_compensation_t / (hours_t × value_added_deflator_t)`; index each to **100 in a declared common base period**. Comparable output-price adjustments and self-employment imputation must be disclosed. A consumer-price-adjusted pay or median wage variant is a **separate selectable research question**.
+- **Display:** two indexed **lines** plus a subordinate relative ratio `100 × (productivity_index / real_pay_index − 1)` or gap with explicit units, not unlabeled bars. Region-comparison views use the same industry sector and treatment of hours/compensation or display matched-country small multiples.
+- **Interpretation:** divergence suggests a changing distribution in the defined accounting sector; it does not directly measure exploitation, workers' median purchasing power or the global wage share.
+
+### P02 — Have equities, bonds and gold diversified one another?
+
+- **Question:** Assess the time variation in realized stock–bond, stock–gold and bond–gold comovement, in the intended portfolio reporting currency.
+- **Inputs:** comparable total-return stock and bond indexes with reinvested dividends/coupons, and a published investable/physical gold-price convention, matched monthly endpoints and FX conversion rules; real versus nominal versions are explicitly selected. Gold spot and equity ETF price-only return are *not* unconditionally comparable.
+- **Transforms:** `r_t = P_t / P_(t−1) − 1`; Pearson `corr(r_A,r_B)` on a documented complete matched rolling window (research default **36 months**, sensitivity **60 and 120**, never silently partial); normalized wealth curves start at 100 at common sample inception.
+- **Display:** three indexed lines for long-run wealth context; **three rolling-correlation lines or a heatmap**; a third synchronized drawdown panel only when requested. Clearly mark missing dates and changing sample lengths.
+- **Interpretation:** historical correlation is conditional on sample, currency and monetary regime; Markowitz [R21] motivates diversification but cannot guarantee its future stability. Investment-policy versus actual portfolio attribution can be separately investigated using Brinson–Hood–Beebower [R22].
+
+## Individual research method and comparison contracts for the complete 35-analysis library
+
+The contracts below supplement the earlier catalogue table, rather than replacing it. They define the **ideal calculation/relationship** at Phase 1 level. Exact original source code, journal citations, currency/sector coverage, metadata and tests must subsequently be itemized in the completed scientific research records for sign-off. These are not claims that the user's database already contains the series.
+
+| ID | Proposed analytic rule or transformation | Validity and alternative-model boundary |
+|---|---|---|
+| **C01** | Align OECD CLI deviation-from-trend with real industrial-production growth and unemployment in country-specific panels | CLI signals a **growth-cycle turning point**, not a national recession or GDP-level forecast [R04,R26] |
+| **C02** | Two panels: 10y−3m yield spread (pp); 3m-unemployment deterioration (pp); compare with later NBER outcome | No inferred combined recession probability without holdout, announcement-date and horizon validation [R05,R06,R07,R14] |
+| **C03** | Country-specific `100 × (real_GDP_t / real_GDP_(t−4quarters) − 1)` or same-frequency annual growth | Chain-linking, geopolitical boundary, population and currency rules; distinguish growth rate versus output level |
+| **C04** | Share of measured industries with negative comparable real-output growth; juxtapose employment and consumption | Breadth requires fixed/explicit industry universe and weighting, not an arbitrary mix of sectors |
+| **C05** | `100 × real_observed_value / pre_shock_baseline`; date first **sustained** recovery to that baseline | Recovery thresholds named for each variable; NBER recession and COVID shock are separate sources [R05] |
+| **M01** | Compare official short-policy instruments on effective dates; pairwise differences in percentage points | Define each central bank's operational instrument and term structure; a "world policy rate" is not implied |
+| **M02** | Same-maturity `nominal_yield − inflation_linked_real_yield` as breakeven, plus both underlying yields | Inflation-risk/liquidity premiums invalidate interpreting breakeven as pure expectations |
+| **M03** | `10y−3m`, `10y−2y` yield-curve slopes with named issue/maturity conventions and same-day matched observations | Different spreads and term premiums may convey different timing; don't unify thresholds |
+| **M04** | FX total percentage change versus signed, same-period comparable policy differential; separate aligned panels | Observed correlation ≠ causal uncovered-interest-parity test or currency forecast |
+| **F01** | BIS private nonfinancial credit / rolling four-quarter nominal GDP, then published `ratio − one_sided_trend` gap | No cross-country gap aggregation called the **global credit gap** [R02,R25] |
+| **F02** | Compare BIS DSR level and departure from **country-specific** historical baseline, by households/corporations | DSR approximation and institutional heterogeneity make raw international levels unreliable [R03,R24] |
+| **F03** | Two synchronized panels: private credit-gap (pp) + historical deviation of DSR; horizon-aware contrast | Longer/shorter crisis-warning roles remain distinct; no automatic sum or score [R08] |
+| **F04** | Align named spreads, market-liquidity measures and volatility against their own historical ranges | Market stress is immediate response; vulnerability stock is a different concept [R01] |
+| **F05** | Plot private household debt/income, corporate debt/income and public debt/GDP in separate panels | Different denominators and economic sectors preclude common numerical ranking |
+| **V01** | Shiller CAPE, `1/CAPE` adjusted earnings yield, real yield, documented sample quantiles | Valuation is long-horizon context, not short-horizon crash probability [R09] |
+| **V02** | BEA Q1/Q2/Q3 ratios with original market-value and net current-cost produced-asset inputs; compare CAPE in separate panel | Three Q variants use different debt/liquid asset treatments; proxy equity/net worth is **not** Q [R19] |
+| **V03** | Compare regional index P/E or earnings yield with matched price/index and accounting conventions | Different country sector composition, EPS normalization and float rules complicate direct level comparison [R13] |
+| **V04** | Equity earnings yield versus same-date real/nominal sovereign yields, with definitions explicit | Simple yield subtraction ≠ modelled forward excess equity return or a measured premium |
+| **V05** | Matched-date valuation against subsequently **matured** forward 10y real total returns | Overlapping 10-year outcomes reduce independence; vintage, horizon and selection leakage audited [R09,R14] |
+| **L01** | `real_value_added/hours` versus `total_compensation/(hours × output_deflator)`, common-base index | Match sector, deflator, compensation treatment; median/CPI measures are separate [R17,R18] |
+| **L02** | Labour compensation / matching-sector value added; separately examine reported corporate surplus | `100−labour_share` is not necessarily profit, surplus value, or a comparable world corporate rate |
+| **L03** | Net surplus / capital-stock and employee-pay ratios using same year/country/ISIC sectors | Fixed capital stock differs from original Marxian constant capital; gross/net surplus and currency basis matter [R10,R11] |
+| **L04** | Alternative productive-sector, self-employment and capital-value assumptions with scenario ranges | National-account estimates of Marxian `s/v`, `s/(c+v)` require explicit theoretical choices [R20] |
+| **L05** | Household top-1/next-9/bottom-50 wealth **shares** and assets composition over dated snapshots | Household wealth stock is distinct from income flows and investable-index concentration [R12] |
+| **L06** | Compare matched-sector productivity/pay growth with corporate net surplus and unit-labour costs | Apparent divergence alone cannot identify a causal profit transfer or exploitation |
+| **G01** | Sum original date-effective largest-ten ACWI free-float constituent weights with share-class deduplication | Never interpolate eight factsheet observations as a continuous full-history series [R13] |
+| **G02** | Compare investable market country weights versus global GDP-country weights in separate coherent views | Index investability ≠ GDP, sales location, legal domicile or investor ownership |
+| **G03** | `global consolidated listed-parent net_profit / world nominal_GDP` with full issuer/currency/fiscal crosswalk | National accounts gross operating surplus not substitutable; missing license/universe must be disclosed |
+| **G04** | Compute matched-currency monthly total-return 36/60/120m rolling correlation and drawdown by region | FX, index changes, survivorship and overlapping rolling windows affect conclusions [R21] |
+| **G05** | Present country current accounts/investment positions alongside comparable private-credit and output levels | Gross trade and gross credit sums double count; net imbalances cannot be called global profit |
+| **P01** | Fund weight × original as-of underlying security weights, with residual/unclassified exposure retained | Fund domicile, issuer country, company revenue and operational exposure are different concepts [R13] |
+| **P02** | Common-currency matched monthly total returns, indexed wealth, 36/60/120-month rolling correlations | Gold spot/index, bond coupons and equity dividends must use transparent return conventions [R21] |
+| **P03** | Running peak `M_t=max_(s≤t) wealth_s`; drawdown `wealth_t/M_t−1`; show original dated episodes | Recession/drawdown/shock periods remain distinct; no invented peak/trough outcomes |
+| **P04** | Currency- and inflation-aware conditional scenarios; bond-duration first-order `ΔP/P≈−D_mod×Δy` plus convexity limits | Rate/FX/stock moves are assumed conditional shocks, **not** predicted joint probabilities |
+| **P05** | Compare defined allocation/rebalancing benchmark with matched as-of holdings and time-stamped transaction costs | No survivorship/look-ahead, tax claims need jurisdiction, historical backtests are not guaranteed forward returns [R22] |
+
+### Three methodological forks retained for research, not owner preference
+
+1. **Global credit vulnerability:** prefer country-by-country BIS gap and DSR research; a separate constructed world stock-weighted gap is an original model requiring its own defensible trend/universe/FX method. A weighted-country-gap average is never labelled a published world gap.
+2. **Corporate profitability and Marxian rates:** distinguish BEA published Q variants, OECD surplus/capital returns and the published 43-country Marxian productive-sector model. They are not one interchangeable profit measure; reconcile conceptual relations before rendering a joint figure.
+3. **Portfolio valuation versus timing:** combine valuation with real discount-rate context and matured forward-return evidence where possible; do not treat the relationship as a near-term investment instruction. Alternative empirical specifications and nonstationarity are part of the analysis record.
+
 ## Analysis-record approval gate
 
 For **every** ID: (1) define population/geography; (2) choose source-original measures and exact units; (3) name one or more published papers/methodological sources and substantive disagreements; (4) supply date and revision semantics; (5) write calculations/valid comparisons and tests; (6) design default and allowed alternative chart types; (7) give one coherent example of its intended interpretive question **without inventing a result**; (8) define statistical uncertainty and source rights; (9) state what information would make the answer misleading; (10) identify whether actual exposure/portfolio context changes interpretation.
 
-**Source acquisition, feasibility analysis, implementation status and gap estimates do not belong in Phase 1**. The catalogue establishes the ideal research question first. Once the user approves it, subsequent phases may surface impossible/rights-blocked inputs without silently substituting narrower evidence.
+**Source acquisition, current-code feasibility analysis, implementation status and gap estimates do not belong in Phase 1**. The catalogue establishes the ideal research question first. Once the user approves it, subsequent phases may surface impossible/rights-blocked inputs without silently substituting narrower evidence.
 
 ## Catalogue coverage
 
