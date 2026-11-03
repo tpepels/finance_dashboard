@@ -41,6 +41,20 @@ A captured in-progress report shows **80/80 registered histories stored**, **15 
 
 **Acceptance:** rebuild Docker, run both manual sync actions, then share the final Developer logs after job completion. Verify the pending-vs-scheduled priority, which FRED mode is active, new source-specific codes, ALFRED HTTP denial code, SEC per-fund HTTP/reason codes, and whether failing sources now actually refresh. Do not mark source ingestion or historical acquisition complete until original observations independently verified.
 
+### Latest acceptance report — 2026-11-03 15:25 UTC
+
+User-provided developer export has **80/80 stored histories and one latest failed source**, `valuation.us.cape` with last native April 2026. This is **not** a cleanly validated monthly Shiller history. A manual history operation at 15:24 interrupted the scheduled refresh and started at 15:24:35, confirming that cooperative priority works in the deployed image. The earlier 15:09 job ended partial at 15:23:19: ALFRED `fred_bad_request` and 964 missing source-month vintages, SEC VT 28 found/cached records (partial), BND 21 found/cached records and HTTP 503 (blocked), macro one failure (Shiller) and market/FX complete. A following scheduled refresh produced `source_window_invalid` across the FRED PWT/BLS/valuation subset, whereas full manual refresh had imported those histories successfully. These are observation-window processing failures, not proof of data-source disappearance.
+
+**New corrections committed after the 15:25 export; build and live outcomes pending:**
+
+- Apply deterministic local requested-date filtering to every FRED adapter transport (authenticated JSON, public CSV/table), while retaining strict source-window validation in the ingestion service. A mock provider reproducing older rows verifies that only in-window data are ingested and a full import preserves all original dated observations.
+- Expand Shiller failure taxonomy to distinguish official link discovery, unapproved host, workbook corruption, missing CAPE headers, empty/incomplete monthly history and no values in the requested period. Keep the canonical workbook and last-good records; no invented monthly CAPE readings.
+- For ALFRED HTTP 400, classify only known parameter-family denials (historical realtime dates, observation window, series ID, limit) into fixed safe codes. Record **the first rejected source ID/as-of date and HTTP status** under `Sync results` and the Developer logs export. This identifies the actual failing original source request rather than guessing that the key is bad, or marking an unavailable pre-publication vintage as an observed no-data month. The 964 month/source combinations remain open until an authenticated successful response or accepted original provider absence evidence is obtained.
+- SEC HTTP 502/503/504 fetches now use at most three requests (two bounded delays) on submissions, original filing index and XML retrieval. 400/401/403/429 continue to stop without retry storms. This is a transient error recovery; VT/BND lifetime coverage and source rights remain unverified.
+- Added regression tests to the existing Docker Python and frontend suites and corrected test fixture imports.
+
+**Acceptance gate:** after rebuilding `main`, run **Sync current data** and **Sync history**, inspect the latest Shiller failure category and whether FRED source-window failures recur, inspect the first actual ALFRED failed source/date/code, verify whether SEC 503 clears, and audit original stored data. Any source gaps and valid original publication-vintage rights remain blocking, not automatically accepted.
+
 ## Current verified baseline
 
 | Evidence | Status at audit | What it proves | What it does not prove |
