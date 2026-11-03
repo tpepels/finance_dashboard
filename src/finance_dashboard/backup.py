@@ -149,9 +149,8 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
                     "bytes": archive_target.stat().st_size,
                     "sha256": _hash(archive_target),
                     "source_files": len(files),
-                    "source_roots": sorted({name for name, _ in
-                                            ((archive_name.split("/")[0], archive_name)
-                                             for _, archive_name in files)}),
+                    "source_roots": sorted({archive_name.split("/")[0]
+                                            for _, archive_name in files}),
                 }
         finally:
             temporary_archive.unlink(missing_ok=True)

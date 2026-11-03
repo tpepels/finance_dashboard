@@ -5,6 +5,7 @@ from datetime import date, datetime
 from pathlib import Path
 from .wisesheets import load_sec_profit_snapshot
 from os import environ
+import re
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, model_validator
@@ -146,7 +147,7 @@ def create_app(engine=None) -> FastAPI:
         return {
             "source_setup": {
                 "fred_key_present": bool(fred_key),
-                "fred_key_format_valid": bool(__import__("re").fullmatch(r"[a-z0-9]{32}", fred_key)),
+                "fred_key_format_valid": bool(re.fullmatch(r"[a-z0-9]{32}", fred_key)),
                 "wisesheets_key_present": bool(wisesheets_key),
                 "sec_contact_present": "@" in sec_agent and len(sec_agent) >= 10,
                 "macro_collection_enabled": enabled("FINANCE_AUTO_REFRESH", "1"),

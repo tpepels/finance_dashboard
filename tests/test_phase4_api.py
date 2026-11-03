@@ -67,6 +67,27 @@ class Phase4ApiTests(unittest.TestCase):
             "instrument_ids": ["vt", "unregistered"], "currency": "EUR",
         }).status_code, 404)
 
+    def test_source_readiness_distinguishes_env_configuration_and_on_disk_evidence(self):
+        with patch.dict(os.environ, {
+            "FRED_API_KEY": "a" * 32,
+            "WISESHEETS_API_KEY": "secret",
+            "SEC_USER_AGENT": "Research Group contact@example.org",
+            "FINANCE_INCLUDE_MARKETS": "1",
+            "FINANCE_SEC_HOLDINGS_REFRESH": "1",
+        }):
+            result = self.client.get("/api/operations")
+            self.assertEqual(result.status_code, 200)
+            readiness = result.json()["source_setup"]
+            self.assertTrue(readiness["fred_key_format_valid"])
+            self.assertTrue(readiness["wisesheets_key_present"])
+            self.assertTrue(readiness["sec_contact_present"])
+            self.assertTrue(readiness["market_collection_enabled"])
+            self.assertTrue(readiness["nport_collection_enabled"])
+            self.assertEqual(readiness["sec_nport_reports_stored"], 0)
+            self.assertNotIn("secret", result.text)
+            self.assertNotIn("contact@example.org", result.text)
+            self.assertNotIn("a" * 32, result.text)
+
     def test_operations_excludes_secrets_and_source_raw_errors(self):
         status = self.client.get("/api/operations")
         self.assertEqual(status.status_code, 200)

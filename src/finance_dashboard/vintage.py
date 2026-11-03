@@ -60,11 +60,11 @@ def _safe_http_diagnostic(response: httpx.Response) -> dict:
         message = str(payload.get("error_message", payload.get("message", ""))).lower()
     except (ValueError, TypeError, AttributeError):
         message = ""
-    if ("api_key" in message or "api key" in message or "api-key" in message or
-        "registered" in message or "unauthorized" in message or "authentication" in message):
-        reason = "fred_api_key_rejected"
-    elif status == 429:
+    if status == 429:
         reason = "fred_rate_limited"
+    elif ("api_key" in message or "api key" in message or "api-key" in message or
+          "registered" in message or "unauthorized" in message or "authentication" in message):
+        reason = "fred_api_key_rejected"
     elif status in (401, 403):
         reason = "fred_access_denied"
     elif status == 404:

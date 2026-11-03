@@ -77,6 +77,7 @@ const fetchMock = vi.fn(async (input: string): Promise<{ ok: boolean; status?: n
 });
 
 beforeEach(() => {
+  try { localStorage.removeItem('gcm-color-scheme'); } catch { /* restricted storage */ }
   fetchMock.mockClear();
   vi.stubGlobal('fetch', fetchMock);
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
@@ -93,6 +94,17 @@ describe('local research-first dashboard acceptance', () => {
     expect(screen.getByText(/NBER-dated US contractions/)).toBeTruthy();
     await waitFor(() => expect(createChart).toHaveBeenCalled());
     expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith('/api/research/global_growth'))).toBe(true);
+  });
+
+  it('has a persistent dark appearance switch and no development-phase heading', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const dark = screen.getByRole('button', { name: 'Use dark appearance' });
+    await user.click(dark);
+    expect(screen.getByRole('button', { name: 'Use light appearance' })).toBeTruthy();
+    expect(document.querySelector('.research-app')?.getAttribute('data-theme')).toBe('dark');
+    expect(localStorage.getItem('gcm-color-scheme')).toBe('dark');
+    expect(screen.queryByText(/Phase 4\s*\//)).toBeNull();
   });
 
   it('separates world/OECD, US BLS labour, Europe, Japan and comparisons', async () => {
