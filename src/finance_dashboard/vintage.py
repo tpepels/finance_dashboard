@@ -13,6 +13,7 @@ from hashlib import sha256
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import time
 
@@ -43,6 +44,64 @@ SOURCES = {
 
 class VintageError(ValueError):
     pass
+
+
+def _key_format_ok(key: str) -> bool:
+    """FRED V1 documents exactly 32 lowercase ASCII letters/digits."""
+    return bool(re.fullmatch(r"[a-z0-9]{32}", key))
+
+
+def _safe_http_diagnostic(response: httpx.Response) -> dict:
+    """Only fixed classifications and numeric HTTP status; never echo request URLs,
+    upstream text, authorization values, or the secret-bearing query string."""
+    status = response.status_code
+    try:
+        payload = response.json()
+        message = str(payload.get("error_message", payload.get("message", ""))).lower()
+    except (ValueError, TypeError, AttributeError):
+        message = ""
+    if ("api_key" in message or "api key" in message or "api-key" in message or
+        "registered" in message or "unauthorized" in message or "authentication" in message):
+        reason = "fred_api_key_rejected"
+    elif status == 429:
+        reason = "fred_rate_limited"
+    elif status in (401, 403):
+        reason = "fred_access_denied"
+    elif status == 404:
+        reason = "fred_series_or_endpoint_unavailable"
+    elif status == 400:
+        reason = "fred_bad_request"
+    elif status >= 500:
+        reason = "fred_server_error"
+    else:
+        reason = "fred_unexpected_response"
+    return {"http_status": status, "reason": reason}
+
+
+def probe_access(*, api_key: str, client: httpx.Client) -> dict:
+    """Single bounded request, no persisted writes, with redacted diagnostics."""
+    if not _key_format_ok(api_key):
+        return {"status": "blocked", "reason": "fred_key_format_invalid",
+                "key_format": "FRED V1 requires 32 lowercase alphanumeric characters",
+                "requests": 0}
+    try:
+        response = client.get(FRED_OBSERVATIONS, params={
+            "series_id": "USREC", "api_key": api_key, "file_type": "json",
+            "observation_start": "2020-01-01", "observation_end": "2020-01-31",
+            "limit": 2,
+        }, timeout=25)
+    except httpx.RequestError as exc:
+        return {"status": "blocked", "reason": "fred_network_error",
+                "error_type": type(exc).__name__, "requests": 1}
+    if response.status_code != 200:
+        return {"status": "blocked", **_safe_http_diagnostic(response), "requests": 1}
+    try:
+        if not isinstance(response.json().get("observations"), list):
+            return {"status": "blocked", "reason": "fred_response_not_observations", "requests": 1}
+    except (ValueError, AttributeError):
+        return {"status": "blocked", "reason": "fred_response_not_json", "requests": 1}
+    return {"status": "ready", "series_id": "USREC",
+            "requests": 1, "note": "Historical API authentication and basic source request succeeded"}
 
 
 def snapshot_path(root: Path, series_id: str, asof: date) -> Path:
@@ -252,20 +311,32 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
     pending = [(sid, day) for sid, day in periods
                if read_snapshot(root, sid, day) is None]
     fetched, failures = 0, []
+    halted = None
     for sid, day in pending[:max_requests]:
         try:
             fetch_snapshot(sid, day, api_key=api_key, client=client, root=root)
             fetched += 1
         except (VintageError, httpx.HTTPError, OSError, ValueError, KeyError) as exc:
-            # The upstream exception may contain a URL with a private API key.
-            failures.append({"series_id": sid, "asof": day.isoformat(),
-                             "error_type": type(exc).__name__})
+            # A failing provider request must not dump a secret-bearing URL.
+            failure = {"series_id": sid, "asof": day.isoformat(),
+                       "error_type": type(exc).__name__}
+            if isinstance(exc, httpx.HTTPStatusError):
+                failure.update(_safe_http_diagnostic(exc.response))
+                # 400/401/403 imply bad configuration or request schema;
+                # 429 means immediate retry would worsen rate limiting.
+                if exc.response.status_code in (400, 401, 403, 429):
+                    halted = failure["reason"]
+            failures.append(failure)
+            if halted:
+                break
         if pause_seconds:
             time.sleep(pause_seconds)
     outstanding = [(sid, day) for sid, day in periods
                    if read_snapshot(root, sid, day) is None]
     return {
-        "provider": "ALFRED", "status": "complete" if not outstanding else "partial",
+        "provider": "ALFRED",
+        "status": "blocked" if halted else "complete" if not outstanding else "partial",
+        "halted_reason": halted,
         "source_vintages_requested": len(periods),
         "already_cached_before_run": len(periods)-len(pending),
         "downloaded_now": fetched, "failed_now": failures,
@@ -274,23 +345,36 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
                           "asof": outstanding[0][1].isoformat()}
                          if outstanding else None),
         "max_requests_per_invocation": max_requests,
-        "notes": ("Repeat the identical --backfill command until missing_after_run "
+        "notes": ("Resolve FRED authentication/request failure before retrying. "
+                  "Already cached source snapshots are preserved."
+                  if halted else
+                  "Repeat the identical --backfill command until missing_after_run "
                   "is zero. A missing source snapshot is never interpolated."),
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch genuine dated ALFRED series snapshots")
-    parser.add_argument("--start", type=date.fromisoformat, required=True)
-    parser.add_argument("--end", type=date.fromisoformat, required=True)
+    parser.add_argument("--check", action="store_true",
+                        help="Probe one USREC request safely before a large historical import")
+    parser.add_argument("--start", type=date.fromisoformat)
+    parser.add_argument("--end", type=date.fromisoformat)
     parser.add_argument("--series", action="append", choices=sorted(SOURCES),
-                        required=True, help="Repeat to select multiple data series")
+                        help="Repeat to select multiple data series")
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--backfill", action="store_true",
                         help="Resume multi-year range, up to 180 missing requests per run")
     parser.add_argument("--max-requests", type=int, default=180,
                         help="Per-run backfill API budget (1–180)")
     args = parser.parse_args()
+    key = os.environ.get("FRED_API_KEY", "").strip()
+    if args.check:
+        with httpx.Client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
+            result = probe_access(api_key=key, client=client)
+        print(json.dumps(result, indent=2))
+        return 0 if result["status"] == "ready" else 1
+    if not args.start or not args.end or not args.series:
+        parser.error("--start, --end and at least one --series are required for import")
     if args.end > date.today() or args.start > args.end:
         parser.error("Historical as-of dates must be ordered and not in the future")
     if len(args.series) != len(set(args.series)):
@@ -300,9 +384,8 @@ def main() -> int:
         parser.error("At most 180 source requests per run; use --backfill for longer history")
     if not 1 <= args.max_requests <= 180:
         parser.error("--max-requests must be 1–180")
-    key = os.environ.get("FRED_API_KEY", "")
-    if not key:
-        parser.error("FRED_API_KEY is required for ALFRED")
+    if not _key_format_ok(key):
+        parser.error("FRED_API_KEY must be a registered 32-character lowercase alphanumeric key")
     if args.backfill:
         with httpx.Client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
             result = backfill_batch(args.start, args.end, args.series,

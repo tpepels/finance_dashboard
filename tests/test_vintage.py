@@ -10,7 +10,7 @@ import httpx
 from finance_dashboard.vintage import (
     SOURCES, VintageError, fetch_snapshot, read_snapshot,
     latest_asof_reading, available_snapshots, _month_ends,
-    capture_previous_month, backfill_batch,
+    capture_previous_month, backfill_batch, probe_access,
 )
 from finance_dashboard.vintage_backtest import (
     target_after, fit_predict, metrics, walk_forward, independent_holdout_diagnostics,
@@ -47,6 +47,40 @@ class VintageTests(unittest.TestCase):
             self.assertNotIn("syntheticsecret",(root/"SAHMREALTIME"/"2020-03-31.json").read_text())
             self.assertEqual(latest_asof_reading(again)["age_days"],30)
             self.assertEqual(available_snapshots(root)["series"][1]["count"],1)
+
+    def test_safe_probe_reports_rejected_api_key_without_leaking_request(self):
+        secret = "a" * 32
+        requests = []
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(400, json={
+                "error_code": 400,
+                "error_message": "The value for variable api_key is not registered"
+            })
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            blocked = probe_access(api_key=secret, client=client)
+            malformed = probe_access(api_key="placeholder", client=client)
+        self.assertEqual(blocked["reason"], "fred_api_key_rejected")
+        self.assertEqual(blocked["http_status"], 400)
+        self.assertEqual(len(requests), 1)
+        self.assertNotIn(secret, json.dumps(blocked))
+        self.assertEqual(malformed["requests"], 0)
+
+    def test_bulk_backfill_halts_immediately_on_systemic_http_errors(self):
+        calls = []
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(429, json={"error_message": "Rate limit exceeded"})
+        with TemporaryDirectory() as tmp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                batch = backfill_batch(date(2020,1,1),date(2024,12,31),
+                    list(SOURCES),api_key="a" * 32,client=client,root=Path(tmp),
+                    max_requests=180,pause_seconds=0)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(batch["status"], "blocked")
+            self.assertEqual(batch["halted_reason"], "fred_rate_limited")
+            self.assertEqual(batch["missing_after_run"], 180)
+            self.assertEqual(batch["downloaded_now"], 0)
 
     def test_month_end_retrieval_is_idempotent_and_requires_key(self):
         with TemporaryDirectory() as tmp:
