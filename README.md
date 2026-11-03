@@ -108,3 +108,7 @@ Vite proxies `/api` to `http://127.0.0.1:5052` by default; set `VITE_API_PROXY_T
 **Verification:** Source IDs, documentation and tests have been added to the repository, but the revised code has not been run in a real graphical browser or deployed on your machine through this chat. The local Docker build and your real-data visual inspection remain necessary before closing acceptance.
 
 Third-party provider copyright and redistribution rights still apply outside this local application; no local source rights gating is implemented.
+
+## Complete data-source setup, audit and indicator acceptance
+
+For the existing home-server deployment configure **all** collectors, source credentials, historical backfill and verified backup components with [the complete source checklist](docs/SERVER_SOURCE_SETUP.md). The [46-indicator acceptance matrix](docs/INDICATOR_ACCEPTANCE_MATRIX.md) separates implemented research views from evidence actually verified on the server. A GitHub Actions API secret does not configure the home-server container; keep the existing bind-mounted `/data` intact.
