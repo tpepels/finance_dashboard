@@ -17,7 +17,9 @@ export type DiagnosticJob = {
     downloaded?: number; sources?: number; http_status?: number;
     prepublication_excluded?: number;
     funds?: {id?: string; status?: string; stored?: number; errors?: number;
-      http_status?: number; reason?: string}[];
+      http_status?: number; reason?: string; first_error_reason?: string;
+      examined?: number; candidates?: number; unexamined?: number;
+      missing_verified_xml?: number; other_series_skipped?: number}[];
   }>;
 };
 export type DiagnosticReport = {
@@ -84,7 +86,12 @@ export function formatDeveloperLog(report: DiagnosticReport): string {
       for (const fund of part.funds ?? []) {
         lines.push('    fund=' + value(fund.id) + ' status=' + value(fund.status)
           + field('filings_found_or_cached_this_run',fund.stored) + field('errors',fund.errors)
-          + field('reason',fund.reason) + field('http',fund.http_status));
+          + field('reason',fund.reason) + field('first_error_reason',fund.first_error_reason)
+          + field('http',fund.http_status)
+          + field('examined',fund.examined) + field('candidates',fund.candidates)
+          + field('unexamined',fund.unexamined)
+          + field('missing_verified_xml',fund.missing_verified_xml)
+          + field('other_series_skipped',fund.other_series_skipped));
       }
     }
   }

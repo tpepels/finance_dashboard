@@ -244,6 +244,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
     known_accessions = _cached_verified_accessions(root, fund, expected)
     missing_xml = 0
     stopped_reason = None
+    first_error_reason = None
     status_code = None
     for entry in candidates[:index_scan_limit]:
         if imported >= max_filings or attempted_xml >= xml_download_limit:
@@ -273,14 +274,19 @@ def import_fund(mapping: dict, *, client: httpx.Client,
             except httpx.HTTPStatusError as exc:
                 errors += 1
                 status_code = exc.response.status_code
+                first_error_reason = (first_error_reason or
+                                      _candidate_status(status_code))
                 if status_code in (400, 401, 403, 429) or status_code >= 500:
                     stopped_reason = _candidate_status(status_code)
                     examined += 1
                     break
                 examined += 1
                 continue
-            except (httpx.HTTPError, HoldingsError, ValueError):
+            except (httpx.HTTPError, HoldingsError, ValueError) as exc:
                 errors += 1
+                first_error_reason = (first_error_reason or
+                    ("sec_index_network_failed" if isinstance(exc, httpx.HTTPError)
+                     else "sec_index_schema_invalid"))
                 examined += 1
                 continue
             if evidence == "other_series":
@@ -318,19 +324,32 @@ def import_fund(mapping: dict, *, client: httpx.Client,
                 skipped_series += 1
             else:
                 errors += 1
+                first_error_reason = (first_error_reason or
+                                      "sec_holdings_xml_invalid")
         except httpx.HTTPStatusError as exc:
             errors += 1
             status_code = exc.response.status_code
+            first_error_reason = (first_error_reason or
+                                  _candidate_status(status_code))
             if status_code in (400, 401, 403, 429) or status_code >= 500:
                 stopped_reason = _candidate_status(status_code)
                 break
-        except (httpx.HTTPError, ValueError, KeyError):
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
             errors += 1
+            first_error_reason = (first_error_reason or
+                ("sec_filing_network_failed" if isinstance(exc, httpx.HTTPError)
+                 else "sec_filing_response_invalid"))
         time.sleep(.25)
 
     target_met = imported >= max_filings
+    # Fewer than 50 verified source filings can still be complete when all
+    # eligible original candidate indexes were examined with no unresolved
+    # download/validation failures. Never call a capped incomplete scan full.
+    all_candidates_examined = examined == len(candidates)
+    source_exhausted = all_candidates_examined and missing_xml == 0
     status = ("blocked" if stopped_reason else
-              "complete" if target_met and errors == 0 else
+              "complete" if imported > 0 and errors == 0 and
+              (target_met or source_exhausted) else
               "no_eligible_submissions" if not candidates else
               "no_matching_series" if imported == 0 and
               skipped_series + missing_xml == examined and errors == 0 else
@@ -345,6 +364,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         "already_cached_in_selection": cached_reused,
         "requested_matching_filings": max_filings,
         "matching_target_reached": target_met,
+        "all_candidates_examined": all_candidates_examined,
         "candidate_attempt_cap": index_scan_limit,
         "xml_download_cap": xml_download_limit,
         "unexamined_candidate_filings": max(0, len(candidates) - examined),
@@ -352,6 +372,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         "other_series_skipped": skipped_series,
         "no_verified_xml_in_index": missing_xml,
         "errors": errors,
+        "first_error_reason": first_error_reason,
         "halted_reason": stopped_reason,
         "http_status": status_code if stopped_reason else None,
         "filing_source": SUBMISSIONS_URL,

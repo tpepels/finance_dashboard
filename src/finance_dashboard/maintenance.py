@@ -461,9 +461,13 @@ class MaintenanceManager:
                             "stored":row.get("stored_or_already_present",0),
                             "errors":row.get("errors",0),
                             "reason":row.get("halted_reason"),
+                            "first_error_reason":row.get("first_error_reason"),
                             "http_status":row.get("http_status"),
                             "examined":row.get("index_candidates_examined",0),
                             "candidates":row.get("source_candidates_found",0),
+                            "unexamined":row.get("unexamined_candidate_filings",0),
+                            "missing_verified_xml":row.get("no_verified_xml_in_index",0),
+                            "other_series_skipped":row.get("other_series_skipped",0),
                             "historical_coverage_limited": (
                                 row.get("unexamined_candidate_filings",0)>0),
                         } for row in funds],

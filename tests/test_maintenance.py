@@ -394,6 +394,9 @@ class MaintenanceApiTests(unittest.TestCase):
                  "stored_or_already_present":11,"source_candidates_found":150,
                  "index_candidates_examined":130,
                  "unexamined_candidate_filings":20,"halted_reason":"sec_rate_limited",
+                 "first_error_reason":"sec_rate_limited",
+                 "no_verified_xml_in_index":4,
+                 "other_series_skipped":104,
                  "http_status":429},
                 {"instrument_id":"bnd","status":"complete","errors":0,
                  "stored_or_already_present":50,"source_candidates_found":50,
@@ -421,6 +424,10 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(parts["sec"]["funds"][0]["reason"],"sec_rate_limited")
         self.assertEqual(parts["sec"]["funds"][0]["http_status"],429)
         self.assertTrue(parts["sec"]["funds"][0]["historical_coverage_limited"])
+        self.assertEqual(parts["sec"]["funds"][0]["unexamined"],20)
+        self.assertEqual(parts["sec"]["funds"][0]["missing_verified_xml"],4)
+        self.assertEqual(parts["sec"]["funds"][0]["first_error_reason"],
+                         "sec_rate_limited")
         self.assertNotIn("a"*32,json.dumps(result))
 
     def test_two_sync_actions_reject_manual_options(self):

@@ -193,11 +193,13 @@ def recent_jobs(jobs: list[dict]) -> list[dict]:
                             if not isinstance(fund, dict):
                                 continue
                             row = {}
-                            for field in ("id", "status", "reason"):
+                            for field in ("id", "status", "reason", "first_error_reason"):
                                 token = _token(fund.get(field))
                                 if token:
                                     row[field] = token
-                            for field in ("stored", "errors", "http_status"):
+                            for field in ("stored", "errors", "http_status",
+                                          "examined", "candidates", "unexamined",
+                                          "missing_verified_xml", "other_series_skipped"):
                                 number = _nonnegative(fund.get(field))
                                 if number is not None:
                                     row[field] = number

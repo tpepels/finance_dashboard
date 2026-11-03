@@ -75,7 +75,9 @@ class DiagnosticJournalTests(unittest.TestCase):
                                       "body": "never-report-this"},
                            "sec": {"status": "partial", "funds": [{
                                "id": "vt", "status": "partial", "stored": 2,
-                               "errors": 1,
+                               "errors": 1, "examined":120, "candidates":140,
+                               "unexamined":20, "first_error_reason":"sec_holdings_xml_invalid",
+                               "missing_verified_xml":4, "other_series_skipped":79,
                                "url": "https://example/never-report-this",
                            }]},
                        }},
@@ -90,6 +92,9 @@ class DiagnosticJournalTests(unittest.TestCase):
                          "fred_server_error")
         self.assertEqual(safe[0]["parts"]["alfred"]["failures_in_run"],2)
         self.assertEqual(safe[0]["parts"]["sec"]["funds"][0]["stored"], 2)
+        self.assertEqual(safe[0]["parts"]["sec"]["funds"][0]["unexamined"],20)
+        self.assertEqual(safe[0]["parts"]["sec"]["funds"][0]["first_error_reason"],
+                         "sec_holdings_xml_invalid")
         self.assertNotIn("never-report-this", json.dumps(safe))
 
     def test_unexpected_api_exception_logs_only_generic_error(self):

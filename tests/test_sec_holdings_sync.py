@@ -63,6 +63,43 @@ class SecSyncTests(unittest.TestCase):
             self.assertEqual(len(list_holdings(root,"vt",asof=date(2026,5,24))["records"]),1)
             self.assertEqual(len(calls),2)
 
+    def test_complete_source_exhaustion_requires_no_unverified_candidates(self):
+        mapping = {"instrument_id":"vt","cik":"1234567","series_id":"S000000001"}
+        def handler(request):
+            url = str(request.url)
+            if "data.sec.gov" in url:
+                return httpx.Response(200,json=payload(url))
+            if url.endswith("/primary_doc.xml"):
+                return httpx.Response(200,content=XML)
+            return httpx.Response(404)
+        with TemporaryDirectory() as tmp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result = import_fund(mapping, client=client,
+                                     root=Path(tmp), max_filings=50)
+            self.assertEqual(result["status"], "complete")
+            self.assertEqual(result["stored_or_already_present"], 1)
+            self.assertFalse(result["matching_target_reached"])
+            self.assertTrue(result["all_candidates_examined"])
+            self.assertEqual(result["unexamined_candidate_filings"], 0)
+
+    def test_failed_xml_keeps_source_partial_and_reports_safe_cause(self):
+        mapping = {"instrument_id":"vt","cik":"1234567","series_id":"S000000001"}
+        def handler(request):
+            url = str(request.url)
+            if "data.sec.gov" in url:
+                return httpx.Response(200,json=payload(url))
+            return httpx.Response(200,content=b"broken xml token")
+        with TemporaryDirectory() as tmp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                with patch("finance_dashboard.sec_holdings_sync.parse_nport",
+                           side_effect=HoldingsError("a private upstream body")):
+                    result = import_fund(mapping, client=client,
+                                         root=Path(tmp), max_filings=50)
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["errors"], 1)
+        self.assertEqual(result["first_error_reason"], "sec_holdings_xml_invalid")
+        self.assertNotIn("private", json.dumps(result))
+
     def test_sec_check_validates_official_reference_indexes_without_xml_fetch(self):
         urls = []
         def handler(request):

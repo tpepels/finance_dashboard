@@ -30,6 +30,10 @@ Batch retries previously always started with the same earliest 180 missing month
 
 **Still open:** `SAHMREALTIME` from 2019-09-30 is the first unresolved historical month in the user's latest report, but that report lacks an HTTP status or structured validation reason. Do not infer the cause or silently omit it. Production acceptance requires a subsequent complete history sync with explicit first-failure code, valid original snapshots and verified remaining missing counts.
 
+### SEC original-filing evidence — 2026-11-03
+
+SEC fund status no longer requires an arbitrary 50 filings when the original eligible filing index is genuinely exhausted without errors or missing XML. `matching_target_reached` remains separate from `all_candidates_examined`. A capped scan, missing verified XML or any failed parse keeps historical acceptance open. A safe `first_error_reason` distinguishes VT's first failed verified filing from access denial and transient transport failure; the developer export now reports examined, total candidates, unexamined, missing verified XML and excluded other-fund filings. No raw document body or SEC contact is logged. Live VT's 28 records/1 error and BND's 29 records/0 errors remain partial until these coverage counters are verified.
+
 ## Latest empirical acceptance evidence — user sync + 80-source CSV, 2026-11-03
 
 The user reports the Docker build and both sync actions work. The exported CSV contains exactly **80 registered source rows**: 53 macro, 24 market and 3 FX, **all with saved periods**. This demonstrates ingestion coverage, **not** complete observation sequences or independently validated definitions. Sync history reported macro and market success, while genuine ALFRED was blocked (**964 missing; zero newly downloaded**) and SEC returned partial for two verified funds. The verified local backup stage succeeded according to the user's sync result; off-server replication and restore rehearsal remain unverified.

@@ -16,7 +16,9 @@ const sample: DiagnosticReport = {
       prepublication_excluded:150,first_failed_reason:'fred_server_error',
       failures_in_run:18},
       sec:{status:'partial',funds:[{id:'vt',status:'partial',stored:11,errors:2,
-        reason:'sec_rate_limited',http_status:429}]}}}],
+        reason:'sec_rate_limited',first_error_reason:'sec_holdings_xml_invalid',
+        examined:100,candidates:150,unexamined:50,missing_verified_xml:3,
+        other_series_skipped:49,http_status:429}]}}}],
   events:[{at:'2026-11-03T14:10:00Z',level:'warning',scope:'alfred',event:'stage_finished',
     status:'blocked',reason:'fred_api_key_rejected',http_status:400}],
   retention:'Latest 400 structured events; latest 8 job summaries',
@@ -37,6 +39,9 @@ describe('shareable developer diagnostic report',()=>{
     expect(text).toContain('http=400');
     expect(text).toContain('fund=vt status=partial');
     expect(text).toContain('filings_found_or_cached_this_run=11');
+    expect(text).toContain('first_error_reason=sec_holdings_xml_invalid');
+    expect(text).toContain('examined=100 candidates=150 unexamined=50');
+    expect(text).toContain('missing_verified_xml=3');
   });
   it('never serializes unrecognized raw provider fields or secret URLs',()=>{
     const extra={...sample,raw_api_response:'secret-api-key',
