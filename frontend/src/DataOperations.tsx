@@ -175,7 +175,7 @@ export default function DataOperations() {
             {value.funds && <ul className="data-sync-funds">
               {value.funds.map(fund => <li key={fund.id}>
                 {fund.id.toUpperCase()} · {description(fund.status)}
-                {' · '}{fund.stored} filings recorded
+                {' · '}{fund.stored} filings found/cached in this run
                 {fund.errors > 0 && ' · ' + fund.errors + ' errors'}
                 {fund.reason && ' · ' + failureReason(fund.reason)}
                 {fund.http_status != null && ' · HTTP ' + fund.http_status}

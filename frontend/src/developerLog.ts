@@ -73,7 +73,7 @@ export function formatDeveloperLog(report: DiagnosticReport): string {
         + field('http',part.http_status));
       for (const fund of part.funds ?? []) {
         lines.push('    fund=' + value(fund.id) + ' status=' + value(fund.status)
-          + field('filings',fund.stored) + field('errors',fund.errors)
+          + field('filings_found_or_cached_this_run',fund.stored) + field('errors',fund.errors)
           + field('reason',fund.reason) + field('http',fund.http_status));
       }
     }

@@ -99,8 +99,8 @@ describe('two-action data synchronization',()=>{
     await user.click(summary);
     expect(screen.getByText(/FRED API rejected the configured key/)).toBeTruthy();
     expect(screen.getByText(/964 missing/)).toBeTruthy();
-    expect(screen.getByText(/11 filings recorded/)).toBeTruthy();
-    expect(screen.getByText(/50 filings recorded/)).toBeTruthy();
+    expect(screen.getByText(/11 filings found\/cached in this run/)).toBeTruthy();
+    expect(screen.getByText(/50 filings found\/cached in this run/)).toBeTruthy();
     expect(screen.getByText(/additional older filings not scanned/)).toBeTruthy();
   });
   it('keeps provider failures in a collapsed result section',async()=>{

@@ -28,6 +28,7 @@ describe('shareable developer diagnostic report',()=>{
     expect(text).toContain('fred_api_key_rejected');
     expect(text).toContain('http=400');
     expect(text).toContain('fund=vt status=partial');
+    expect(text).toContain('filings_found_or_cached_this_run=11');
   });
   it('never serializes unrecognized raw provider fields or secret URLs',()=>{
     const extra={...sample,raw_api_response:'secret-api-key',
