@@ -41,7 +41,7 @@ async function json(response: Response): Promise<unknown> {
 function description(status: string): string {
   if (status === 'complete') return 'Updated';
   if (status === 'skipped') return 'Already current or scheduled later';
-  if (status === 'partial') return 'Finished with some sources unavailable';
+  if (status === 'partial') return 'Completed with issues';
   if (status === 'blocked') return 'Source access blocked';
   if (status === 'failed') return 'Sync failed';
   if (status === 'cancelled') return 'Cancelled';
@@ -149,6 +149,8 @@ export default function DataOperations() {
             {value.missing != null && value.missing > 0 && ' · ' + value.missing + ' missing'}
             {value.source_state === 'deferred' && ' · provider quota deferred'}
             {value.reason && ' · ' + value.reason}
+            {value.funds && ' · ' + value.funds.length + ' funds checked'}
+            {value.note && <small className="data-sync-caveat">{value.note}</small>}
           </li>)}</ul>
       </details>}
     </div>}

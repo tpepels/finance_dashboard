@@ -89,7 +89,7 @@ describe('two-action data synchronization',()=>{
     })));
     const user=userEvent.setup();
     render(<DataOperations/>);
-    expect(await screen.findByText(/Finished with some sources unavailable/)).toBeTruthy();
+    expect(await screen.findByText(/Completed with issues/)).toBeTruthy();
     expect(screen.queryByText(/2 failed/)).toBeNull();
     await user.click(screen.getByText('Sync results'));
     expect(screen.getByText(/2 failed/)).toBeTruthy();
