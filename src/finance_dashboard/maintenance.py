@@ -18,7 +18,7 @@ import tempfile
 import httpx
 from sqlalchemy.engine import Engine
 
-from .standalone import maintenance_network_lock
+from .standalone import maintenance_network_lock, manual_sync_pending
 from .developer_logs import record_event
 
 PUBLIC_ACTIONS = frozenset((
@@ -194,6 +194,7 @@ class MaintenanceManager:
             self._active = job["id"]
             self._cancel = Event()
             _save_atomic(self.path, self._jobs)
+            manual_sync_pending.set()
         record_event("sync", "queued", action=action, job_id=job["id"],
                      status="queued")
         Thread(target=self._execute, args=(job["id"], action, options, self._cancel),
@@ -220,6 +221,7 @@ class MaintenanceManager:
                 if cancelled.is_set():
                     raise MaintenanceBlocked("cancelled")
             try:
+                manual_sync_pending.clear()
                 if cancelled.is_set():
                     raise MaintenanceBlocked("cancelled")
                 self._change(job_id, status="running", started_at=now(), current_item=None)
@@ -250,6 +252,7 @@ class MaintenanceManager:
                         break
                 if self._active == job_id:
                     self._active = None
+                manual_sync_pending.clear()
                 _save_atomic(self.path, self._jobs)
             record_event("sync", "finished",
                          level="info" if status == "complete" else "warning",

@@ -36,6 +36,43 @@ class LocalBackupTests(unittest.TestCase):
                 self.assertEqual(backup.call_count, 1)
                 self.assertEqual(backup.call_args.kwargs["keep"], 14)
 
+    def test_scheduled_refresh_yields_to_browser_sync_after_current_source(self):
+        from finance_dashboard.standalone import refresh_loop, manual_sync_pending
+
+        class OneCycle:
+            def is_set(self):
+                return False
+            def wait(self, _seconds):
+                return True
+
+        seen = []
+        def macro(_engine, *, stopped):
+            seen.append("macro")
+            self.assertFalse(stopped.is_set())
+            manual_sync_pending.set()
+            self.assertTrue(stopped.is_set())
+            return 0
+
+        manual_sync_pending.clear()
+        try:
+            with patch.dict(os.environ, {
+                "FINANCE_AUTO_BACKUP": "1",
+                "FINANCE_SEC_HOLDINGS_REFRESH": "0",
+                "FINANCE_VINTAGE_REFRESH": "0",
+            }), patch("finance_dashboard.worker.refresh_all",
+                     side_effect=macro), patch(
+                         "finance_dashboard.worker.refresh_market_all"
+                     ) as market, patch(
+                         "finance_dashboard.backup.backup_local"
+                     ) as backup:
+                refresh_loop(None, OneCycle(), interval_seconds=86400,
+                             include_markets=True, refresh_wisesheets=False)
+                self.assertEqual(seen, ["macro"])
+                market.assert_not_called()
+                backup.assert_not_called()
+        finally:
+            manual_sync_pending.clear()
+
     def test_wal_online_copy_is_consistent_and_retains_local_source(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

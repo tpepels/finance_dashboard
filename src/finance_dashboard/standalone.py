@@ -23,6 +23,16 @@ log = logging.getLogger(__name__)
 
 # Manual browser actions and scheduled refreshes never overlap network writes.
 maintenance_network_lock = Lock()
+# Manual browser sync preempts scheduled refresh between provider requests.
+# The shared lock still prevents concurrent writes.
+manual_sync_pending = Event()
+
+class _ScheduledStop:
+    def __init__(self, stopped):
+        self.stopped = stopped
+
+    def is_set(self) -> bool:
+        return self.stopped.is_set() or manual_sync_pending.is_set()
 
 
 def enabled(name: str, default: str = "0") -> bool:
@@ -45,7 +55,12 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
     # Import the already tested source adapters only when refresh is enabled.
     from .worker import refresh_all, refresh_market_all
 
+    scheduled_stop = _ScheduledStop(stopped)
     while not stopped.is_set():
+        if manual_sync_pending.is_set():
+            if stopped.wait(interval_seconds):
+                break
+            continue
         with maintenance_network_lock:
             cycle_failed = False
             record_event("system", "started", action="scheduled_refresh",
@@ -60,7 +75,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
             try:
-                macro_failures = refresh_all(engine)
+                macro_failures = refresh_all(engine, stopped=scheduled_stop)
                 if macro_failures:
                     cycle_failed = True
                     record_event("macro", "stage_finished", level="warning",
@@ -68,8 +83,8 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                                  failed=macro_failures)
                     log.warning("%d macro sources failed; retained last successful observations",
                                 macro_failures)
-                if include_markets and not stopped.is_set():
-                    market_failures = refresh_market_all(engine)
+                if include_markets and not scheduled_stop.is_set():
+                    market_failures = refresh_market_all(engine, stopped=scheduled_stop)
                     if market_failures:
                         cycle_failed = True
                         record_event("markets", "stage_finished", level="warning",
@@ -84,7 +99,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                 # A malformed provider response must not terminate the API or
                 # silently kill refresh. Do not log URLs containing API keys.
                 log.error("Background refresh cycle aborted (error redacted); preserving previous data")
-            if enabled("FINANCE_VINTAGE_REFRESH", "1") and not stopped.is_set():
+            if enabled("FINANCE_VINTAGE_REFRESH", "1") and not scheduled_stop.is_set():
                 try:
                     from .vintage import capture_previous_month
                     outcome = capture_previous_month()
@@ -103,7 +118,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     record_event("alfred", "collector_failed", level="warning",
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("ALFRED month-end capture failed; source API credentials redacted")
-            if enabled("FINANCE_SEC_HOLDINGS_REFRESH", "0") and not stopped.is_set():
+            if enabled("FINANCE_SEC_HOLDINGS_REFRESH", "0") and not scheduled_stop.is_set():
                 try:
                     from .sec_holdings_sync import collect_if_due
                     result=collect_if_due()
@@ -119,7 +134,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     record_event("sec", "collector_failed", level="warning",
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("SEC N-PORT collection failed; preserving verified historical filings")
-            if enabled("FINANCE_AUTO_BACKUP", "1") and not stopped.is_set():
+            if enabled("FINANCE_AUTO_BACKUP", "1") and not scheduled_stop.is_set():
                 try:
                     from .backup import backup_local, source_database_path
                     backup_local(
@@ -136,10 +151,12 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     record_event("backup", "collector_failed", level="error",
                                  action="scheduled_refresh", reason="backup_failed")
                     log.warning("SQLite online backup failed; latest verified backups retained")
+            interrupted = manual_sync_pending.is_set()
             record_event("system", "finished",
-                         level="warning" if cycle_failed else "info",
+                         level="warning" if cycle_failed or interrupted else "info",
                          action="scheduled_refresh",
-                         status="partial" if cycle_failed else "complete")
+                         status=("interrupted" if interrupted else
+                                 "partial" if cycle_failed else "complete"))
         if stopped.wait(interval_seconds):
             break
 
