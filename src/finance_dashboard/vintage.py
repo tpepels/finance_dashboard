@@ -86,9 +86,12 @@ def probe_access(*, api_key: str, client: httpx.Client) -> dict:
                 "requests": 0}
     try:
         response = client.get(FRED_OBSERVATIONS, params={
+            # Mirror actual ALFRED as-of parameters; a plain FRED request
+            # proves authentication but does not prove historical-vintage access.
             "series_id": "USREC", "api_key": api_key, "file_type": "json",
-            "observation_start": "2020-01-01", "observation_end": "2020-01-31",
-            "limit": 2,
+            "realtime_start": "2020-01-31", "realtime_end": "2020-01-31",
+            "observation_start": "2019-01-01", "observation_end": "2020-01-31",
+            "output_type": 1, "units": "lin", "limit": 10,
         }, timeout=25)
     except httpx.RequestError as exc:
         return {"status": "blocked", "reason": "fred_network_error",
@@ -96,12 +99,16 @@ def probe_access(*, api_key: str, client: httpx.Client) -> dict:
     if response.status_code != 200:
         return {"status": "blocked", **_safe_http_diagnostic(response), "requests": 1}
     try:
-        if not isinstance(response.json().get("observations"), list):
+        payload = response.json()
+        if not isinstance(payload.get("observations"), list):
             return {"status": "blocked", "reason": "fred_response_not_observations", "requests": 1}
+        if (payload.get("realtime_start") not in (None, "2020-01-31") or
+            payload.get("realtime_end") not in (None, "2020-01-31")):
+            return {"status": "blocked", "reason": "fred_historical_asof_mismatch", "requests": 1}
     except (ValueError, AttributeError):
         return {"status": "blocked", "reason": "fred_response_not_json", "requests": 1}
     return {"status": "ready", "series_id": "USREC",
-            "requests": 1, "note": "Historical API authentication and basic source request succeeded"}
+            "requests": 1, "note": "Historical ALFRED 2020-01-31 as-of endpoint and authentication succeeded"}
 
 
 def snapshot_path(root: Path, series_id: str, asof: date) -> Path:
