@@ -1,6 +1,6 @@
 # Phase 1 visualization and interaction contract — approved intent, detailed design for review
 
-**Status: ALL TEN PRODUCT-INTENT DECISIONS APPROVED 2026-11-03; detailed design remains Phase 1 proposal until formal acceptance.** [Authoritative plan](DEVELOPMENT_PLAN.md). Design and scientific analysis remain intertwined; UI is derived from research questions and data comparison validity.
+**Status: ten product choices, revised six-story editorial flow and 35-question no-fee-source direction APPROVED on 2026-11-03; final detailed UI/science acceptance remains OPEN.** [Authoritative plan](DEVELOPMENT_PLAN.md). Design and scientific analysis remain intertwined; UI is derived from research questions and data comparison validity.
 
 ## Approved editorial reading flow (2026-11-03); detailed design acceptance remains open
 

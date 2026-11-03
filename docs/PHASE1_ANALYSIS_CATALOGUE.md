@@ -1,6 +1,6 @@
 # Phase 1 — approved scientific/editorial catalogue
 
-**Status: six connected overview experiences, five substitutions and 35 first-class question IDs OWNER-APPROVED on 2026-11-03; final integrated Phase 1 scientific/visual acceptance OPEN.** An **ideal research product** catalogue; it is **not** a current feature inventory or gap report. All entries need their own formal research record and peer-reviewed/official source review before Phase 1 sign-off. IDs are stable proposed question identities, not chart or database IDs. Citation keys R01–R28 point to the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md); a source for one method never certifies every related derived inference.
+**Status: six connected overview experiences, five substitutions and 35 first-class question IDs OWNER-APPROVED on 2026-11-03; final integrated Phase 1 scientific/visual acceptance OPEN.** An **ideal research product** catalogue; it is **not** a current feature inventory or gap report. All entries need their own formal research record and peer-reviewed/official source review before Phase 1 sign-off. IDs are the approved stable first-class question identities, not chart or database IDs. Citation keys R01–R28 point to the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md); a source for one method never certifies every related derived inference.
 
 ## Owner-approved scientific/editorial changes and zero-fee dataset constraint
 
@@ -183,7 +183,7 @@ They retain original detailed records as supporting submethods in [scientific sp
 
 ## Full individual scientific specifications — Phase 1 research deliverable
 
-The [35-analysis scientific specification](PHASE1_ANALYSIS_SPECIFICATIONS.md) defines for **every stable ID** original published variables and verified identifiers, research methods, reproducible calculations, alternatives, comparisons and a strict inference boundary, with a **42-source primary-methodology reference register**. The catalogue table remains the index; the specifications are the proposed normative methodological detail.
+The [35-analysis scientific specification](PHASE1_ANALYSIS_SPECIFICATIONS.md) defines for **every stable ID** original published variables and verified identifiers, research methods, reproducible calculations, alternatives, comparisons and a strict inference boundary, with a **49-source primary-methodology reference register**. The catalogue table remains the index; the specifications are the proposed normative methodological detail.
 
 This is the complete **first-pass ideal-state research definition**; it is not an ingestion proof, license audit, existing-feature gap analysis, or full scientific/owner acceptance. Some worldwide original-source data have no single licensed public series; their intended economic universes are documented rather than replaced with similarly named proxies. Phase 1 closes only after the final integrated ideal product is accepted.
 
@@ -195,4 +195,4 @@ For **every** ID: (1) define population/geography; (2) choose source-original me
 
 ## Catalogue coverage
 
-35 proposed analysis identities across C=5, M=4, F=5, V=5, L=6, G=5, P=5. Counts describe only proposed research questions, not product completeness. The current 46 individual indicator views remain an historical implementation inventory; they do not automatically determine the new product.
+35 approved first-class analysis identities across C=5, M=4, F=5, V=5, L=6, G=5, P=5. Counts describe only proposed research questions, not product completeness. The current 46 individual indicator views remain an historical implementation inventory; they do not automatically determine the new product.

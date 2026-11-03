@@ -1,6 +1,6 @@
 # Phase 1 — critical coherence and free-dataset review
 
-**2026-11-03. Status: SCIENTIFIC/EDITORIAL RECOMMENDATIONS EXPLICITLY APPROVED BY OWNER; full scientific method and interface sign-off remains OPEN.** No assessment of existing code, UI or current data was performed. The prior 35 detailed methods and all owner-approved ten intentions remain unchanged pending final Phase 1 acceptance.
+**2026-11-03. Status: SCIENTIFIC/EDITORIAL RECOMMENDATIONS EXPLICITLY APPROVED BY OWNER; full scientific method and interface sign-off remains OPEN.** No assessment of existing code, UI or current data was performed. The former 35 method records have now been aligned with the approved membership: five original standalone records are retained as submethods, five newly researched analyses are first-class, and the ten prior product decisions remain binding. Final detailed Phase 1 science/UI acceptance is open.
 
 ## Verdict
 
