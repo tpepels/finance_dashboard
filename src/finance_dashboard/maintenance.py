@@ -388,8 +388,11 @@ class MaintenanceManager:
                         else "invalid_source"})
                 else:
                     funds = report.get("funds",[])
+                    incomplete_scan = any(
+                        row.get("unexamined_candidate_filings", 0) > 0 for row in funds)
                     record("sec", {
-                        "status": "complete" if state == "complete" else "partial",
+                        "status": ("complete" if state == "complete" and not
+                                   incomplete_scan else "partial"),
                         "funds": [{
                             "id":row["instrument_id"],"status":row["status"],
                             "stored":row.get("stored_or_already_present",0),

@@ -40,6 +40,7 @@ async function json(response: Response): Promise<unknown> {
 }
 function description(status: string): string {
   if (status === 'complete') return 'Updated';
+  if (status === 'skipped') return 'Already current or scheduled later';
   if (status === 'partial') return 'Finished with some sources unavailable';
   if (status === 'blocked') return 'Source access blocked';
   if (status === 'failed') return 'Sync failed';
@@ -132,7 +133,7 @@ export default function DataOperations() {
     {!active && last && <div className="data-sync-last" role="status">
       <span>{TITLES[last.action] ?? last.action} · {description(last.status)}</span>
       {last.finished_at && <small>{new Date(last.finished_at).toLocaleString()}</small>}
-      {last.error_code && <small>{last.error_code}</small>}
+      {last.error_code && last.status !== 'partial' && <small>{last.error_code}</small>}
       {last.result?.parts && <details className="data-sync-results">
         <summary>Sync results</summary>
         <ul>{Object.entries(last.result.parts).map(([key, value]) =>
