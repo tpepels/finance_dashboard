@@ -52,7 +52,7 @@ export default function App() {
           <span>Source data & chart explorer</span>
           <small>All original charts, ingestion records, Wisesheets, CSV and method details</small>
         </summary>
-        {showSources && <SourceExplorer />}
+        {showSources && <SourceExplorer theme={theme}/>} 
       </details>
     </div>
     </div>

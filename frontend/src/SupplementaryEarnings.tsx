@@ -63,7 +63,7 @@ async function loadSnapshot(): Promise<EarningsSnapshot> {
   return result;
 }
 
-export default function SupplementaryEarnings() {
+export default function SupplementaryEarnings({ theme }: { theme?: 'light' | 'dark' }) {
   const [expanded, setExpanded] = useState(true);
   const [snapshot, setSnapshot] = useState<EarningsSnapshot | null>(null);
   const [error, setError] = useState('');
@@ -98,7 +98,7 @@ export default function SupplementaryEarnings() {
   }), [rows, snapshot]);
 
   const plotted = useMemo(() => transformSeries(series, 'raw'), [series]);
-  const options = useMemo(() => chartOptions([plotted], 'raw', false), [plotted]);
+  const options = useMemo(() => chartOptions([plotted], 'raw', false, false, theme), [plotted, theme]);
 
   useEffect(() => {
     if (!expanded || !host.current || !plotted.observations.length) return;

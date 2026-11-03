@@ -15,6 +15,7 @@ interface Props {
   expanded: boolean;
   onToggle: () => void;
   deepLink?: ChartSettings;
+  theme?: 'light' | 'dark';
 }
 const colors = ['#174875', '#bc6b32', '#2f7168', '#90609c', '#73833b', '#a84b56'];
 
@@ -39,7 +40,7 @@ function validIds(input: string[], context: DataContext) {
     context.charts.some(c => c.series_ids.includes(id)));
 }
 
-export default function ChartCard({ definition, context, expanded, onToggle, deepLink }: Props) {
+export default function ChartCard({ definition, context, expanded, onToggle, deepLink, theme }: Props) {
   const [ids, setIds] = useState<string[]>(() => validIds(
     deepLink?.ids.length ? deepLink.ids : definition.series_ids, context));
   const [mode, setMode] = useState<ViewMode>(deepLink?.mode ?? definition.display_mode);
@@ -107,8 +108,8 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
   const plotted = useMemo(() => invalidRange || incompatibleRaw ? [] :
     activeLoaded.map(s => transformSeries(s, mode, window.start, window.end)),
     [activeLoaded, mode, window.start, window.end, invalidRange, incompatibleRaw]);
-  const options = useMemo(() => chartOptions(plotted, mode, false, !expanded),
-    [plotted, mode, expanded]);
+  const options = useMemo(() => chartOptions(plotted, mode, false, !expanded, theme),
+    [plotted, mode, expanded, theme]);
 
   useEffect(() => {
     if (!host.current || !plotted.some(p => p.observations.length)) return;
