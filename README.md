@@ -2,6 +2,8 @@
 
 Local economic research dashboard: one page, one existing Docker service, SQLite source history and transparent economic comparisons. The application distinguishes original source measurements, calculated relationships, explicitly scoped proxies and missing evidence.
 
+**All routine data collection and repair is done from the dashboard's Data & sync menu**—including PWT, individual/bulk macro and market histories, ALFRED vintages, SEC holdings, Wisesheets and local backups. The only normal shell use is updating/rebuilding the application image; no shell is needed to operate data sources.
+
 ## Current development status
 
 **The single authoritative status/implementation roadmap is [Development plan](docs/DEVELOPMENT_PLAN.md).** It maps the original four phases to five ordered source/research work packages, includes open critiques and blockers, and specifies acceptance checks. Legacy phase plans have been archived as historical evidence and are not active instructions.

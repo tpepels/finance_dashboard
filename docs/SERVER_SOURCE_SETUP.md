@@ -136,23 +136,26 @@ docker compose exec finance-dashboard \
 
 Check `/api/holdings/vt` and `/api/holdings/bnd` for original dated holdings. The scheduled collector runs when `FINANCE_SEC_HOLDINGS_REFRESH=1`; collection is guarded by a 28-day success marker. Importing **all** historical N-PORT documents for all registered funds has not been established: the current collector targets two verified identities and has a 50-filing-per-fund/manual cap. Irish UCITS such as VWCE are outside the SEC registry and require original European fund disclosure sources. Do not manufacture country weights from currency, ticker or ETF domicile. The optional `/data/holdings/sec_funds.json` is a **replacement list**, not an additive list: include VT/BND as well if creating this mapping.
 
-## Source-by-source audit and targeted PWT repair
+## Source-by-source audit and browser-managed PWT repair
 
 The `GET /api/source-coverage` endpoint returns all **53** registered macro source rows, **24** market instruments, and **3** ECB FX histories without losing previous observations. For each source it reports its stored original-date count, first/last source date, most recent run status, last successful run and a fixed credential-safe failure code. The dashboard displays only aggregate missing/stale counts until you open **Source coverage**.
 
 The public FRED sources for Germany, France and Italy are confirmed to be real PWT 11.0 annual **ratios** with latest source year 2023. Do not insert these numbers manually, and do not multiply values in the database by 100; the research view handles that presentation transformation.
 
-To repair the three exact missing data series while preserving existing history, after a successful Docker rebuild run:
+To repair the three exact missing PWT series **without a terminal**, open the dashboard and choose **Data & sync → Import Germany, France and Italy PWT histories**. The same panel supports:
 
-```bash
-docker compose exec finance-dashboard python -m finance_dashboard.worker \
-  --once --macro-only --full \
-  --series labour.de.pwt_labour_share \
-  --series labour.fr.pwt_labour_share \
-  --series labour.it.pwt_labour_share
-```
+- importing an individual macro series or repairing every missing/stale one;
+- refreshing all 53 macro streams, all 24 market histories and three ECB FX feeds, or a single market/FX series;
+- checking historical ALFRED API access, choosing series/dates and resuming bounded as-of imports automatically;
+- checking official SEC filing access and importing one or up to 50 matching N-PORT filings per verified fund;
+- running the monthly-quota-aware Wisesheets earnings refresh and creating a verified local database/source-evidence backup;
+- viewing running/blocked/completed job status, progress, cancellation and prior job history.
 
-The command refreshes only these three registered FRED sources. It retains all prior revisions, uses the configured server-side `FRED_API_KEY`, and exits nonzero if any import fails. Examine `/api/source-coverage` (filter to Macro) afterward: `stored_periods`, `latest_source_date` and `last_failure_code` distinguish real import success from an empty chart. Every other source should be audited from this endpoint; if another mapped source is empty, run the equivalent scoped `--series` command with its **actual canonical ID** rather than skipping it. Initial full macro bootstrap may be invoked with `--once --macro-only --full` when appropriate, but that deliberately fetches all macro definitions and can hit public provider limits.
+The browser never sends a provider key to its own job API. Job parameters are limited to known source identifiers and bounded ranges; work is serialized with the automatic collector. The durable job record is stored inside the existing `/data` volume and also included in the source-evidence backup. A provider failure does not delete previously verified data. Only one maintenance job runs at a time.
+
+For the PWT repair, verify the same page's **Source coverage** list afterward: `stored_periods`, `latest_source_date` and `last_failure_code` distinguish successful historical imports from empty charts. The server must already have the FRED provider key configured; the browser reports a blocked/credential state if it is absent. Original source fractions remain unchanged; percentages are a display transformation.
+
+**Developer-only recovery:** the underlying command-line importers still exist for automated tests and catastrophic recovery, but they are not required for normal data collection or troubleshooting. New data acquisition functions must be accessible from the dashboard before being declared complete.
 
 ## Wisesheets, markets and source-level coverage
 

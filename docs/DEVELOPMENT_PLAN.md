@@ -2,6 +2,8 @@
 
 **Updated:** 2026-11-03. **Scope:** Global Capital Monitor, a single-page local-only economic research dashboard and one existing Docker service. **Branch:** `main`. The original source definitions, saved observations and historical evidence must never be silently replaced, cleared, or declared complete from source-code coverage alone.
 
+**Binding operation policy:** Every routine source import, source repair, publication-vintage backfill, SEC holdings collection, earnings refresh, verification check, data-coverage inspection, and backup creation must be executable from the **single-page UI**, with readable status, progress, errors and retries. The terminal is for developer builds/recovery only, never the required way to operate data sources. UI actions must be bounded, source-ID validated, idempotent/resumable, credential-safe, and preserve original data. Do not regress this requirement in any phase. New research pipelines (including UCITS and OECD) must have UI workflows in the same increment as their backend collectors.
+
 **This is the only active development plan.** Historical phase contracts and changed decisions are retained as non-operative snapshots in `docs/archive/`. Technical documents such as `SERVER_SOURCE_SETUP.md`, `INDICATOR_ACCEPTANCE_MATRIX.md`, `PHASE_4_RESEARCH_SOURCES.md` and the scientific methodological references specify *how* the work is done; they do not define competing priorities or acceptance gates. If a historical note disagrees with this file, this file governs. No requirements are dropped by archival.
 
 ## Current verified baseline
@@ -11,10 +13,10 @@
 | 53 canonical macro source mappings | Implemented in `definitions/series.json` | Named source/series interface exists | Successful live historical import of every source |
 | 24 investment instruments and 3 ECB FX currencies | Registered | Collector contracts exist | Complete market-price, corporate-action or FX coverage |
 | 46 curated economic indicator views | Implemented in `src/finance_dashboard/research.py` and frontend | Definitions and relationships present | Original exact empirical definition or completed production data |
-| Source-by-source coverage API, error classifications and targeted PWT refresh | Committed to `main` | Audit instrumentation and scoped recovery path implemented | Local server successfully collected missing PWT observations |
+| Source coverage, browser maintenance and targeted PWT refresh | Committed to `main`; `Data & sync` UI provides per-source/bulk imports, ALFRED/SEC checks and collections, earnings and verified local backup | Data maintenance can be scheduled via safe same-origin API and a durable serialized job queue | Successful rebuilt container, historical/source imports and full visual inspection |
 | One-page light/dark UI and revised charts | Implemented in source | Chart-first hierarchy, disclosures, visible recession bands, dated sparse series | Human-reviewed dark/light desktop and mobile layouts |
-| Last user Docker build | **Failed on one frontend regression test**: 43 passing, 1 failing; the no-ranking test rejected legitimate dated sparse bars | Production image never built, container not recreated by the chained `&&` | A working deployment |
-| Follow-up UI regression correction | Commit `8a6f372` | The test now checks a real time axis, genuine dated source values and absence of invented ranked category axes | Passing subsequent Docker build or other newly exposed failures |
+| Last user Docker build | **Frontend passed**; Python provider tests failed on three FRED/PWT annual ISO dates, e.g. `2023-01-01` | PWT ingestion parser had a genuine annual-date defect; the chained `&&` prevented container replacement | A working deployment |
+| Follow-up parser fix | FRED annual values now accept either `YYYY` or `YYYY-01-01`, but reject non-year-start annual dates | Source parsing implementation and targeted regression tests updated | Successful rebuilt container and real FRED import |
 | ALFRED 2000–2026 | Last shared 180-request batch: 0 new; initial key-only check passed | Prior historical backfill blocked and FRED key likely accepted | Revised historical-as-of `--check` and backfill success |
 | Original SEC N-PORT VT/BND | Last shared attempt: 0 XML imports; official index discovery code improved since | Source identification and parser exist | Actual 1/12 filing imports, holdings accuracy or broader fund coverage |
 | OECD industry input–output and capital-stock research | Input contract and scenario calculations exist | Implementation can reject unsupported claims | Original audited IOT input, net stock and genuinely validated Marxian estimates |
@@ -37,10 +39,10 @@ The five agreed implementation workstreams below are **cross-phase work packages
 
 ### 0. Stabilize deployment and preserve existing data — immediate prerequisite
 
-**Status:** partially implemented; last observed image build failed. The original failure was corrected in test source; a new build result has not been supplied.
+**Status:** code repaired but deployment unverified. The latest supplied build passed the frontend, then stopped on three annual FRED/PWT parser errors; annual ISO handling has since been fixed. A new server build result has not been supplied. The browser maintenance API/UI has also been implemented and awaits runtime acceptance.
 
 **Do:**
-1. Run targeted frontend `researchViz.test.ts` and the full local Docker build, including newly added Python source-coverage, provider and PWT-refresh tests. Fix *actual* failures; do not weaken real source/date assertions.
+1. Run a full local Docker build, including frontend tests, Python source-coverage/provider tests, maintenance API tests and PWT annual ISO date tests. Fix *actual* failures; do not weaken real source/date assertions.
 2. Confirm the running image is new and its mounted `/data` path still points to the existing `/srv/finance-dashboard`. Keep the existing database, ALFRED snapshots, SEC N-PORT XML-derived records, Wisesheets snapshot, original OECD extracts and backups.
 3. Check the actual browser at mobile/desktop widths in light/dark, including texts, legend, scatter/bar geometry and the US-only NBER recession explanation. Only primary and secondary information should be visible initially.
 4. Confirm safe, verifiable independent/off-server backup of the database **and all source evidence**, with a restore drill and no credentials in output.
@@ -53,7 +55,7 @@ The five agreed implementation workstreams below are **cross-phase work packages
 
 **Complete scope:** 53 canonical macro series, 24 market instruments, 3 ECB FX currencies. Audit each for mapping, collector switch, provider availability, observation count, first/latest source date, latest attempt and fixed safe failure code. Separate a deliberately sparse annual source from missing data; check gaps, duplicates, unit stability, temporal availability and source revisions. Count cached valid data even after failed refreshes.
 
-**First fixes:** import Germany, France and Italy PWT share from official FRED annual `LABSHPDEA156NRUG`, `LABSHPFRA156NRUG`, `LABSHPITA156NRUG` using the precise scoped `python -m finance_dashboard.worker --once --macro-only --full --series ...` command in `SERVER_SOURCE_SETUP.md`; use FRED source fractions, multiply by 100 only for percent presentation. Verify the full 53/24/3 status rows from `/api/source-coverage`, reconcile `/api/data-status` and `/api/market/status`.
+**First fixes:** use the dashboard's **Data & sync → Import Germany, France and Italy PWT histories** action to fetch verified official FRED annual source fractions (`LABSHPDEA156NRUG`, `LABSHPFRA156NRUG`, `LABSHPITA156NRUG`). The dashboard handles fractional-to-percent presentation without modifying original stored values. Run per-source/full-source imports and inspect all 53/24/3 rows from the same UI; the server endpoints remain available for automated regression tests, not required manual commands. Verify every original date and provider result.
 
 **Gate:** all 80 registered source contracts have an evidence-backed state and correct source date; the three PWT series have independently checked nonempty history; any other absent/failed feed has a named blocker and owner action. No source is silently excluded.
 
@@ -61,9 +63,9 @@ The five agreed implementation workstreams below are **cross-phase work packages
 
 **Status:** importer/validator implemented; empirical acquisition open.
 
-**ALFRED:** verify historical `--check` (realtime_start=end), run a three-request smoke import, then resume bounded 2000–2026 T10Y3M, SAHMREALTIME and USREC month-end snapshots; audit HTTP statuses, input vintage availability, cache and random original-source spot checks. Keep no-data months explicit, not interpolated. Historical as-of prediction labels require actual information availability, not later-revised ex-post labels.
+**ALFRED:** from **Data & sync**, check historical as-of access (realtime_start=end), run a bounded smoke import, then automatically resume 2000–2026 T10Y3M, SAHMREALTIME and USREC month-end snapshots; audit HTTP statuses, input vintage availability, cache and random original-source spot checks. Keep no-data months explicit, not interpolated. Historical as-of prediction labels require actual information availability, not later-revised ex-post labels.
 
-**SEC:** execute official VT/BND index `--check`; import one then 12 original XML per fund with verified CIK/series and SHA, inspect filing coverage and issuer-country residuals. Add all user-requested US ETFs only with independently verified mappings; obtain separate primary, dated holdings/position disclosure sources for Irish/European UCITS. Distinguish legal fund domicile, issuer incorporation, revenue exposure and portfolio allocation; never infer one from another.
+**SEC:** use the dashboard to probe original VT/BND index access and import one then 12 original XML filings per fund with verified CIK/series and SHA, inspect filing coverage and issuer-country residuals. Add all user-requested US ETFs only with independently verified mappings; obtain separate primary, dated holdings/position disclosure sources for Irish/European UCITS. Distinguish legal fund domicile, issuer incorporation, revenue exposure and portfolio allocation; never infer one from another.
 
 **Gate:** complete checked vintage inventory and documented SEC/UCITS original-file coverage, point-in-time eligibility and source provenance; no missing historical record treated as observed.
 
@@ -117,9 +119,9 @@ The five agreed implementation workstreams below are **cross-phase work packages
 
 | Blocker | Resolution or research direction | Proof needed |
 |---|---|---|
-| Latest Docker build failed, chain did not recreate container | Pull the fixed `researchViz.test.ts`, rerun the Docker build and fix any subsequently revealed failures | Test suites and container health pass |
-| Server-side PWT/other mapped source histories empty or stale | Run targeted FRED refresh, inspect `/api/source-coverage`, identify source HTTP and parser errors; independently check source sample | Real observations and correct source dates |
-| Original ALFRED 180-request batch failed; generic FRED key test alone insufficient | Run updated historical as-of `--check`, smoke then bounded backfill | Every required historical source date accounted for |
+| Latest Docker build passed frontend but failed on FRED/PWT annual ISO parsing; chain did not recreate container | Pull annual-date parser fix and maintenance UI, rebuild, correct any newly exposed tests | Test suites, service health and in-browser PWT import pass |
+| Server-side PWT/other mapped source histories empty or stale | Use **Data & sync** to import PWT countries, repair other missing sources and inspect source-level HTTP errors; independently check source sample | Real observations, correct source dates and no CLI dependence |
+| Original ALFRED 180-request batch failed; generic FRED key test alone insufficient | Use the UI historical-as-of check, short backfill then the resumable full historical importer | Every required historical source date accounted for |
 | VT/BND original N-PORT collector previously found zero matching documents | Test official SEC index access with real User-Agent and XML mapping, 1/12 staged import, verify fund series | Original XML-derived holdings and hashes |
 | UCITS historical positions not represented by US SEC sources | Research official European fund annual/quarterly portfolio holdings, documents or licensed provider with dated positions | Original UCITS holdings with availability dates |
 | MSCI ACWI continuous constituent history may require a paid license | Approach MSCI / licensed index data vendors, evaluate research-use rights | Rights-cleared monthly weights and audit |
