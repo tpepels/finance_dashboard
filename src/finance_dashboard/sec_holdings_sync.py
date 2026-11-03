@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 import json
+from html.parser import HTMLParser
+from urllib.parse import urlsplit
 import os
 from pathlib import Path
 import re
@@ -25,6 +27,8 @@ CONFIG = Path(os.environ.get("FINANCE_SEC_FUND_MAPPING", "/data/holdings/sec_fun
 CIK = re.compile(r"^[0-9]{1,10}$")
 SERIES = re.compile(r"^S[0-9]{9}$")
 SEC_FILE = re.compile(r"^[A-Za-z0-9_.-]+\.xml$")
+SEC_PRIMARY = re.compile(r"^[A-Za-z0-9_.-]+\.(?:xml|html|htm)$", re.IGNORECASE)
+SEC_SERIES_IN_INDEX = re.compile(r"\bS[0-9]{9}\b")
 PAGE = re.compile(r"^CIK[0-9]{10}-submissions-[0-9]+\.json$")
 
 
@@ -88,6 +92,67 @@ def _rows(metadata: dict) -> list[dict]:
             for i in range(len(acc))]
 
 
+
+class _FilingIndex(HTMLParser):
+    """Read only SEC filing-index XML filenames and disclosed fund series IDs."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.xml_files: set[str] = set()
+        self.series_ids: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
+        if tag != "a":
+            return
+        href = dict(attrs).get("href") or ""
+        parsed = urlsplit(href)
+        if parsed.netloc and parsed.netloc not in {"www.sec.gov", "sec.gov"}:
+            return
+        name = parsed.path.rsplit("/", 1)[-1]
+        if SEC_FILE.fullmatch(name):
+            self.xml_files.add(name)
+
+    def handle_data(self, data: str):
+        self.series_ids.update(SEC_SERIES_IN_INDEX.findall(data))
+
+
+def _official_index_url(cik: str, accession: str) -> str:
+    return (EDGAR_URL + str(int(cik)) + "/" + accession.replace("-", "") +
+            "/" + accession + "-index.htm")
+
+
+def _xml_in_filing_index(index_html: str, expected_series: str,
+                         source_primary: str) -> tuple[str | None, str]:
+    """An index's series entry is cheap evidence to avoid unrelated multi-fund
+    XML downloads. Actual series identity is still checked inside source XML."""
+    if len(index_html) > 2_000_000:
+        raise HoldingsError("SEC filing index exceeded size limit")
+    found = _FilingIndex()
+    found.feed(index_html)
+    if found.series_ids and expected_series not in found.series_ids:
+        return None, "other_series"
+    if SEC_FILE.fullmatch(source_primary) and source_primary in found.xml_files:
+        return source_primary, "index_verified"
+    if "primary_doc.xml" in found.xml_files:
+        return "primary_doc.xml", "index_verified"
+    if len(found.xml_files) == 1:
+        return next(iter(found.xml_files)), "index_verified"
+    # Never guess among multiple XML attachments or transform an HTML
+    # filename into an unverified XML path.
+    return None, "no_verified_primary_xml"
+
+
+def _candidate_status(status: int) -> str:
+    if status == 429:
+        return "sec_rate_limited"
+    if status in (401, 403):
+        return "sec_access_denied"
+    if status >= 500:
+        return "sec_server_unavailable"
+    if status == 404:
+        return "sec_filing_index_missing"
+    return "sec_http_failure"
+
+
 def import_fund(mapping: dict, *, client: httpx.Client,
                 root: Path, max_filings: int=12,
                 earliest: date=date(2019,10,1)) -> dict:
@@ -112,61 +177,128 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         time.sleep(.2)
     candidates = []
     seen = set()
-    for item in sorted(rows,key=lambda row:(row["date"],row["accession"]),reverse=True):
-        accession = item["accession"]
-        doc = item["document"]
-        if (accession in seen or item["form"] not in ("NPORT-P","NPORT-P/A")
-            or item["date"]<earliest.isoformat()
-            or not SEC_FILE.fullmatch(doc)):
+    for item in sorted(rows, key=lambda row: (row["date"], row["accession"]), reverse=True):
+        accession, doc = item["accession"], item["document"]
+        if (accession in seen or item["form"] not in ("NPORT-P", "NPORT-P/A")
+            or item["date"] < earliest.isoformat()
+            or not isinstance(doc, str) or not SEC_PRIMARY.fullmatch(doc)):
             continue
         seen.add(accession)
         candidates.append(item)
-    tried, imported, skipped_series, errors = 0, 0, 0, 0
-    # A limit counts MATCHING fund series, not arbitrary registrant filings.
-    # For a multi-fund SEC registrant, safely inspect more than max_filings.
-    attempt_cap = min(60, max(24, max_filings * 6))
-    for entry in candidates[:attempt_cap]:
-        if imported >= max_filings:
+
+    # Each accession index is small, while Vanguard multi-series XML can exceed
+    # 20 MB. Scan a bounded set of original SEC filing indexes rather than
+    # assuming the submissions primaryDocument is itself an XML filename.
+    # A verified matching source XML is still required for every stored record.
+    index_scan_limit = min(len(candidates), max(120, max_filings * 50))
+    xml_download_limit = max(12, max_filings * 3)
+    examined = attempted_xml = imported = skipped_series = errors = 0
+    missing_xml = 0
+    stopped_reason = None
+    status_code = None
+    for entry in candidates[:index_scan_limit]:
+        if imported >= max_filings or attempted_xml >= xml_download_limit:
             break
-        accession=entry["accession"]
-        url=(EDGAR_URL+str(int(cik))+"/"+
-             accession.replace("-","")+"/"+entry["document"])
-        tried+=1
+        accession, primary = entry["accession"], entry["document"]
+        xml_name = None
+        if SEC_FILE.fullmatch(primary):
+            # Some original submissions explicitly designate the XML file.
+            xml_name = primary
+        else:
+            index_url = _official_index_url(cik, accession)
+            try:
+                response = client.get(index_url, timeout=25)
+                response.raise_for_status()
+                xml_name, evidence = _xml_in_filing_index(
+                    response.text, expected, primary)
+            except httpx.HTTPStatusError as exc:
+                errors += 1
+                status_code = exc.response.status_code
+                if status_code in (400, 401, 403, 429) or status_code >= 500:
+                    stopped_reason = _candidate_status(status_code)
+                    examined += 1
+                    break
+                examined += 1
+                continue
+            except (httpx.HTTPError, HoldingsError, ValueError):
+                errors += 1
+                examined += 1
+                continue
+            if evidence == "other_series":
+                skipped_series += 1
+                examined += 1
+                time.sleep(.18)
+                continue
+            if xml_name is None:
+                missing_xml += 1
+                examined += 1
+                time.sleep(.18)
+                continue
+
+        examined += 1
+        url = (EDGAR_URL + str(int(cik)) + "/" +
+               accession.replace("-", "") + "/" + xml_name)
+        attempted_xml += 1
         try:
-            response=client.get(url,timeout=45)
-            response.raise_for_status()
-            # Validator checks URL, CIK, accession, series and SEC metadata.
-            metadata={"cik":int(cik),"filings":{"recent":{
-                "accessionNumber":[accession],"form":[entry["form"]],
-                "filingDate":[entry["date"]],
-                "acceptanceDateTime":[entry["acceptance"]]}}}
-            filing=parse_nport(response.content,instrument_id=fund,
-                accession=accession,filing_url=url,sec_metadata=metadata,
-                expected_series_id=expected)
-            store_snapshot(filing,root=root)
-            imported+=1
+            xml = client.get(url, timeout=45)
+            xml.raise_for_status()
+            # Validator independently checks official CIK/accession, original
+            # reported SEC series, form, holdings-period and issuer countries.
+            metadata = {"cik": int(cik), "filings": {"recent": {
+                "accessionNumber": [accession], "form": [entry["form"]],
+                "filingDate": [entry["date"]],
+                "acceptanceDateTime": [entry["acceptance"]]}}}
+            filing = parse_nport(xml.content, instrument_id=fund,
+                                 accession=accession, filing_url=url,
+                                 sec_metadata=metadata,
+                                 expected_series_id=expected)
+            store_snapshot(filing, root=root)
+            imported += 1
         except HoldingsError as exc:
             if "series identity" in str(exc):
-                skipped_series+=1
+                skipped_series += 1
             else:
-                errors+=1
-        except (httpx.HTTPError,ValueError,KeyError):
-            errors+=1
-        time.sleep(.35)
-    return {"instrument_id":fund,"attempted":tried,"stored_or_already_present":imported,
-            "requested_matching_filings":max_filings,
-            "matching_target_reached":imported >= max_filings,
-            "candidate_attempt_cap":attempt_cap,
-            "unexamined_candidate_filings":max(0,len(candidates)-tried),
-            "verification_filing":VERIFICATION_FILINGS.get(fund),
-            "other_series_skipped":skipped_series,"errors":errors,
-            "status":("complete" if errors == 0 and imported > 0
-                      else "no_matching_series" if errors == 0
-                           else "partial"),
-            "filing_source":SUBMISSIONS_URL,
-            "lookback_from":earliest.isoformat(),
-            "note":"Accepted SEC disclosure dates are buffered conservatively; no unverifiable look-through."}
+                errors += 1
+        except httpx.HTTPStatusError as exc:
+            errors += 1
+            status_code = exc.response.status_code
+            if status_code in (400, 401, 403, 429) or status_code >= 500:
+                stopped_reason = _candidate_status(status_code)
+                break
+        except (httpx.HTTPError, ValueError, KeyError):
+            errors += 1
+        time.sleep(.25)
 
+    target_met = imported >= max_filings
+    status = ("blocked" if stopped_reason else
+              "complete" if target_met and errors == 0 else
+              "no_matching_series" if imported == 0 and
+              skipped_series + missing_xml == examined and errors == 0 else
+              "partial")
+    return {
+        "instrument_id": fund,
+        "status": status,
+        "attempted": attempted_xml,
+        "index_candidates_examined": examined,
+        "source_candidates_found": len(candidates),
+        "stored_or_already_present": imported,
+        "requested_matching_filings": max_filings,
+        "matching_target_reached": target_met,
+        "candidate_attempt_cap": index_scan_limit,
+        "xml_download_cap": xml_download_limit,
+        "unexamined_candidate_filings": max(0, len(candidates) - examined),
+        "verification_filing": VERIFICATION_FILINGS.get(fund),
+        "other_series_skipped": skipped_series,
+        "no_verified_xml_in_index": missing_xml,
+        "errors": errors,
+        "halted_reason": stopped_reason,
+        "http_status": status_code if stopped_reason else None,
+        "filing_source": SUBMISSIONS_URL,
+        "lookback_from": earliest.isoformat(),
+        "note": ("Matching source XML is checked against official fund series and "
+                 "original SEC accession; filingDate+2 days is a conservative "
+                 "research-eligibility convention, not a public-release timestamp.")
+    }
 
 def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
                        user_agent: str|None=None,
