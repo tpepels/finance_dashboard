@@ -39,7 +39,6 @@ export default function SourceCoveragePanel() {
   const [report, setReport] = useState<Coverage | null>(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
-  const [focusManagement, setFocusManagement] = useState(false);
   const ref = useRef<HTMLDetailsElement>(null);
   const [family, setFamily] = useState('all');
   const [selection, setSelection] = useState('issues');
@@ -57,7 +56,6 @@ export default function SourceCoveragePanel() {
     const manage = () => {
       if (ref.current) ref.current.open = true;
       setOpen(true);
-      setFocusManagement(true);
       if (typeof ref.current?.scrollIntoView === 'function')
         ref.current.scrollIntoView({block:'start', behavior:'smooth'});
     };
@@ -96,26 +94,30 @@ export default function SourceCoveragePanel() {
     (family === 'all' || item.family === family) &&
     (selection === 'all' || ATTENTION.has(item.state))),
     [report, family, selection]);
+  const needsAttention = report
+    ? Object.values(report.summary).reduce((count, group) => count + group.needs_attention, 0)
+    : 0;
   return <details className="research-source-health" ref={ref} id="source-coverage"
     onToggle={e => setOpen(e.currentTarget.open)}>
-    <summary aria-label="Source completeness">
-      {report ? <>{missing} missing · {stale} stale
-        {degraded ? ' · ' + degraded + ' failed refreshes' : ''}
-        <span> · Source coverage</span></> :
-        (error || 'Checking source coverage…')}
+    <summary aria-label="Data & sync">
+      <span>Data &amp; sync</span>
+      {report && needsAttention > 0 && <small> · {needsAttention} sources need attention</small>}
+      {!report && error && <small> · Status unavailable</small>}
     </summary>
     {open && <div className="research-coverage-detail">
-      <p>{report ? <>Stored observations: {report.summary.macro.with_data}/{report.summary.macro.total} macro,
-        {' '}{report.summary.markets.with_data}/{report.summary.markets.total} market,
-        {' '}{report.summary.fx.with_data}/{report.summary.fx.total} FX.
-        {' '}Last stored source date is reported independently of the latest refresh attempt.</>
-        : error || 'Reading local source data…'}</p>
-      {report && <>
-        <button type="button" className="research-export-audit" onClick={exportSourceAudit}>
-          Download all {report.items.length} source statuses (CSV)
-        </button>
-        <DataOperations sources={report.items.map(({family,id,name,state}) =>
-          ({family,id,name,state}))} initiallyOpen={focusManagement}/>
+      <DataOperations/>
+      <details className="research-source-diagnostics">
+        <summary>Source diagnostics {report ? '· ' + (needsAttention || 'no') + ' issues' : ''}</summary>
+        <div className="research-source-diagnostics-body">
+        {error && <p role="alert">{error}</p>}
+        {report && <>
+          <p>{report.summary.macro.with_data}/{report.summary.macro.total} economic,
+            {' '}{report.summary.markets.with_data}/{report.summary.markets.total} market,
+            {' '}{report.summary.fx.with_data}/{report.summary.fx.total} FX histories stored.
+            {' '}Existing observations are preserved when a refresh fails.</p>
+          <button type="button" className="research-export-audit" onClick={exportSourceAudit}>
+            Download full source audit (CSV)
+          </button>
         <div className="research-coverage-filters">
           <label>Source family
             <select aria-label="Source family" value={family} onChange={e => setFamily(e.target.value)}>
@@ -159,9 +161,11 @@ export default function SourceCoveragePanel() {
           </table>
           {rows.length === 0 && <p>No sources match these filters.</p>}
         </div>
-        <p className="research-coverage-method">{report.method} An annual source ending in 2023 may
-          be delayed by its publisher; a stale label alone does not establish a failed download.</p>
-      </>}
+        <p className="research-coverage-method">{report.method} Publication dates are
+          checked separately from refresh attempts.</p>
+        </>}
+        </div>
+      </details>
     </div>}
   </details>;
 }
