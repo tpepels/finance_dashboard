@@ -1,6 +1,6 @@
 # Global Capital Monitor
 
-> **DEVELOPMENT PAUSED — PHASE 1 REOPENED (2026-11-03).** All ten product-intent decisions have been **explicitly approved**. The complete scientific methods, 35 comparative research questions and interface contract remain under expert-led specification; no implementation or gap analysis until Phase 1 sign-off. The existing Docker application/data are preserved; its current screen arrangement is **not** the design target.
+> **DEVELOPMENT PAUSED — PHASE 1 REOPENED (2026-11-03).** All ten product-intent decisions **and the connected six-story / revised 35-question / free-source-only direction** are explicitly approved. Final detailed methods and integrated interface acceptance remain under expert-led specification; no implementation or gap analysis until Phase 1 sign-off. The existing Docker application/data are preserved; its current screen arrangement is **not** the design target.
 
 ## Current authoritative documents
 
@@ -9,7 +9,7 @@
 - [Phase 1 analysis catalogue](docs/PHASE1_ANALYSIS_CATALOGUE.md) — 35 question-led comparative analyses with recommended chart types and limits.
 - [35 scientific analysis specifications](docs/PHASE1_ANALYSIS_SPECIFICATIONS.md) — variables, original methodology, reproducible formulas, alternatives, validity, interpretation and 42 scholarly/statistical references.
 - [Phase 1 visualization contract](docs/PHASE1_VISUALIZATION_CONTRACT.md) — complete per-graph geography/series/chart type/method, saved research views, accessibility, monitoring and independent recession/shock/recovery overlays.
-- [Critical Phase 1 coherence/free-source review](docs/PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) — critiques the 35 analyses, proposes a six-story overview and lists no-cost source requirements.
+- [Approved critical Phase 1 coherence/free-source review](docs/PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) — binding six-story editorial structure, five reclassifications, five new scientific questions and no-fee source rule.
 - [Pre-redesign roadmap archive](docs/archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md) — prior operational fixes/empirical evidence; historical only.
 
 ## Existing implementation (preserved, not the approved product)

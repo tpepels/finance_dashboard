@@ -2,9 +2,9 @@
 
 **Status: ALL TEN PRODUCT-INTENT DECISIONS APPROVED 2026-11-03; detailed design remains Phase 1 proposal until formal acceptance.** [Authoritative plan](DEVELOPMENT_PLAN.md). Design and scientific analysis remain intertwined; UI is derived from research questions and data comparison validity.
 
-## Editorial and scientific interaction review (pending final approval)
+## Approved editorial reading flow (2026-11-03); detailed design acceptance remains open
 
-The [critical scientific/UX review](PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) adds a required sequence of question → comparative measurement → supporting contradiction → methodology/alternatives → optional portfolio consequence. Six content-connected research experiences replace the idea of six unrelated charts, *subject to final user approval*. No global country mode. Free-source limitations are visible at analysis level, never hidden behind proxy renaming.
+The user **approved** the [critical scientific/UX review](PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md). Its required reading sequence is question → primary comparative measurement → supporting/contradicting evidence → methodology/alternatives → relevant portfolio implications. The six connected research experiences are binding, replacing six unrelated cards. No global country mode. All required datasets must be legally usable at no cost; unavailable originals are clearly labelled rather than substituted under the original name.
 
 ## Information architecture
 
@@ -56,7 +56,7 @@ Every analysis comprises: meaningful **question title**; visual comparison with 
 
 ### Default overview and research workbench
 
-The approved default overview holds **six** complementary research views: C02 (term spread/Sahm), M01 (Fed/ECB/BoJ), F03 (national credit gaps/DSR), V01 (CAPE/real rates), L01 (productivity/pay) and P02 (stocks/bonds/gold). Each is a comparative analysis, not a one-indicator card. Each shows question, chart, short evidence paragraph, contrasting evidence when available, period/scope and inline **Configure / Method / Sources / More** actions. Unknown or unverified claims must not be replaced by decorative generated copy.
+The approved overview contains **six connected research experiences**: (1) global growth/inflation/commodities (C03/C01/C06), (2) policy/discount-rate transmission (M01/M02/M04), (3) debt/property/funding fragility (F01/F03/F06/F07), (4) valuation/concentration (V01/V03/G01 where free sources exist), (5) labour/capital/inequality (L01/L02/L07/L04), and (6) portfolio resilience (P02/P01/P03/P04). Each contains an editorially chosen primary comparison with related smaller subfigures, not a single data-source tile. Each shows question, chart, short evidence paragraph, contrasting evidence when available, period/scope and inline **Configure / Method / Sources / More** actions. Unknown or unverified claims must not be replaced by decorative generated copy.
 
 Research workbench allows:
 1. Find a question by topic, economic theory, indicator, region, source or analytical use; compare alternative method records, not just source-series names.

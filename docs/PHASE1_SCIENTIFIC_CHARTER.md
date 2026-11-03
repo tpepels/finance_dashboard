@@ -1,6 +1,14 @@
 # Phase 1 scientific research charter — approved product intent, scientific scope in review
 
-**Status: ALL TEN OWNER PRODUCT DECISIONS APPROVED on 2026-11-03; full scientific charter and individual analytical methods NOT YET ACCEPTED.** Governed by [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). This is a normative description of the desired application, not an audit of current features/data. Research reference URLs are methodological starting points, not proof of import eligibility or complete empirical results.
+**Status: all ten product-intent decisions plus the revised six-story / 35-question / free-data-only scientific direction are APPROVED on 2026-11-03. Full scientific/method and integrated interface acceptance remains OPEN.** Governed by [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). This is a normative description of the desired application, not an audit of current features/data. Research reference URLs are methodological starting points, not proof of import eligibility or complete empirical results.
+
+## Approved research direction, coverage and data-rights rule
+
+The user explicitly approved the [scientific coherence/free-source review](PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md). Six connected overview research experiences now govern the [active analysis catalogue](PHASE1_ANALYSIS_CATALOGUE.md); the former standalone C04/M03/V04/L06/G04 become preserved specialist subviews of C01/C02-M02/V01-M02/L01-L03/P02, and C06/F06/F07/L07/G06 become first-class analysis questions. All seven economic research domains remain represented.
+
+**Required inputs must be freely accessible and legally usable for the local noncommercial research application** (including any source-specific free API limits and attribution). Paid MSCI indexes, commercial terminals and paid market-data APIs may not become required. No source is silently substituted by a misleading proxy. Four original worldwide data needs remain unresolved research requests: dated historical ACWI/global index constituents, dated European UCITS holdings, consolidated global listed-parent profits, original world equity and bond total-return histories. Free narrower alternatives may appear only with distinct economically accurate names, source-universe labels and limitations.
+
+**Acceptance:** Approval of editorial structure does not establish empirically validated methodology, licensed dataset entitlement or implementation acceptance. No code gap analysis until final Phase 1 sign-off.
 
 ## Mission, audience and primary use
 

@@ -1,6 +1,6 @@
 # Phase 1 — critical coherence and free-dataset review
 
-**2026-11-03. Status: RECOMMENDED SCIENTIFIC/PRODUCT REVISION, NOT OWNER-APPROVED.** No assessment of existing code, UI or current data was performed. The prior 35 detailed methods and all owner-approved ten intentions remain unchanged pending final Phase 1 acceptance.
+**2026-11-03. Status: SCIENTIFIC/EDITORIAL RECOMMENDATIONS EXPLICITLY APPROVED BY OWNER; full scientific method and interface sign-off remains OPEN.** No assessment of existing code, UI or current data was performed. The prior 35 detailed methods and all owner-approved ten intentions remain unchanged pending final Phase 1 acceptance.
 
 ## Verdict
 
@@ -131,8 +131,8 @@ If a candidate is found, provide **original publisher landing URL, a real data d
 
 **Normative acceptance walkthrough:** Configure BIS credit-gap/DSR figure to Germany and Japan, add real estate context, inspect original population and source dates, save it. Fed/ECB/BoJ graph on the same overview retains independent region/series/period settings. All plots remain scientifically valid and explain missingness.
 
-## Phase 1 decisions still requiring final approval
+## Approved editorial decisions; remaining final scientific acceptance
 
 Owner-approved product intent remains: global comparative macro-financial monitoring, medium/long horizons, first-class political economy, roughly six overview experiences and 35 workbench questions, full per-chart control, optional portfolio, understated monitoring and academically inspectable methods.
 
-**The six new connected overview stories and five catalogue substitutions are *expert recommendations*, not yet accepted product scope.** No current-code gap analysis, source-data implementation work, migration or UI development is authorized by this review. Final Phase 1 acceptance requires integrated review of the entire ideal research+UI specification and the no-fee source policy.
+**The six connected overview research experiences and five fold/add catalogue substitutions were explicitly approved by the owner and are the binding product scope.** No current-code gap analysis, source-data implementation work, migration or UI development is authorized by this review. The active catalogue/specifications incorporate the approved revisions, while the four zero-fee original-source research questions remain unresolved. Final Phase 1 acceptance requires integrated review of the entire ideal research+UI specification and the no-fee source policy.
