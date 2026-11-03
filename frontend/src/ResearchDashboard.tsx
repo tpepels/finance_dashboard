@@ -3,6 +3,7 @@ import { createChart, numberLabel } from './viz';
 import { analyticalOptions, geometryFor } from './researchViz';
 import type { PlottedSeries, SeriesDefinition } from './types';
 import { NBER_SHADE_CAPTION } from './periods';
+import SourceCoveragePanel from './SourceCoveragePanel';
 
 interface Region { id: string; title: string; explanation: string }
 interface IndicatorDef {
@@ -437,6 +438,7 @@ export default function ResearchDashboard({ theme }: { theme: 'light' | 'dark' }
         <summary>Scope &amp; definitions</summary>
         <p>{current.explanation}</p>
       </details>}
+      <SourceCoveragePanel/>
       <span className="research-recession-key" aria-label="Chart shading key">
         <i aria-hidden="true"/> Shaded bands: US recessions
       </span>
