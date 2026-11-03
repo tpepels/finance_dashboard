@@ -336,6 +336,61 @@ def import_fund(mapping: dict, *, client: httpx.Client,
                  "research-eligibility convention, not a public-release timestamp.")
     }
 
+def check_sec_sources(*, config: Path = CONFIG,
+                      user_agent: str | None = None,
+                      client: httpx.Client | None = None) -> dict:
+    """One index request per verified default fund; never downloads or persists XML."""
+    mappings = read_verified_config(config)
+    agent = user_agent if user_agent is not None else os.environ.get("SEC_USER_AGENT", "")
+    if not agent or "@" not in agent or len(agent) < 10:
+        return {"status": "blocked", "reason": "missing_SEC_USER_AGENT",
+                "funds": [], "requests": 0}
+    owns = client is None
+    source = client or httpx.Client(
+        headers={"User-Agent": agent, "Accept-Encoding": "gzip, deflate"},
+        timeout=25, follow_redirects=False)
+    funds = []
+    try:
+        for mapping in mappings:
+            fund = mapping["instrument_id"]
+            index_url = VERIFICATION_FILINGS.get(fund)
+            if index_url is None:
+                funds.append({"instrument_id": fund, "status": "needs_source_index",
+                              "requests": 0})
+                continue
+            try:
+                response = source.get(index_url, timeout=25)
+                response.raise_for_status()
+                xml, method = _xml_in_filing_index(
+                    response.text, mapping["series_id"], "primary_doc.html")
+                funds.append({
+                    "instrument_id": fund, "status": "ready" if xml else "blocked",
+                    "index_series_verified": bool(xml),
+                    "xml_filename": xml,
+                    "reason": method, "requests": 1,
+                })
+            except httpx.HTTPStatusError as exc:
+                funds.append({"instrument_id": fund, "status": "blocked",
+                              "http_status": exc.response.status_code,
+                              "reason": _candidate_status(exc.response.status_code),
+                              "requests": 1})
+            except (httpx.RequestError, HoldingsError, ValueError):
+                funds.append({"instrument_id": fund, "status": "blocked",
+                              "reason": "sec_index_unavailable", "requests": 1})
+            if owns:
+                time.sleep(.2)
+    finally:
+        if owns:
+            source.close()
+    return {
+        "provider": "SEC_NPORT", "status": (
+            "ready" if funds and all(f["status"] == "ready" for f in funds)
+            else "partial"),
+        "funds": funds, "requests": sum(f["requests"] for f in funds),
+        "note": "Official index and expected series verified; original XML holdings not imported.",
+    }
+
+
 def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
                        user_agent: str|None=None,
                        max_filings_per_fund: int=12) -> dict:
@@ -354,6 +409,11 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
             try:
                 reports.append(import_fund(mapping,client=client,root=folder,
                                            max_filings=max_filings_per_fund))
+            except httpx.HTTPStatusError as exc:
+                reports.append({"instrument_id":mapping["instrument_id"],
+                                "status":"blocked","errors":1,
+                                "http_status":exc.response.status_code,
+                                "halted_reason":_candidate_status(exc.response.status_code)})
             except (HoldingsError,httpx.HTTPError,ValueError):
                 reports.append({"instrument_id":mapping["instrument_id"],
                                 "status":"failed","errors":1})
@@ -392,7 +452,13 @@ def main() -> int:
     parser.add_argument("--config",type=Path,default=CONFIG)
     parser.add_argument("--root",type=Path,default=Path(os.environ.get("FINANCE_HOLDINGS_DIR","/data/holdings")))
     parser.add_argument("--limit",type=int,default=12)
+    parser.add_argument("--check", action="store_true",
+                        help="Verify official SEC fund indexes and XML links without downloading holdings")
     args=parser.parse_args()
+    if args.check:
+        result=check_sec_sources(config=args.config)
+        print(json.dumps(result,indent=2))
+        return 0 if result["status"]=="ready" else 1
     result=collect_configured(config=args.config,root=args.root,
                               max_filings_per_fund=args.limit)
     print(json.dumps(result,indent=2))
