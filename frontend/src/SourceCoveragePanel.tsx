@@ -78,15 +78,15 @@ export default function SourceCoveragePanel() {
           <label>Source family
             <select aria-label="Source family" value={family} onChange={e => setFamily(e.target.value)}>
               <option value="all">All sources</option>
-              <option value="macro">Macro (53)</option>
-              <option value="markets">Markets (24)</option>
-              <option value="fx">ECB FX (3)</option>
+              <option value="macro">Macro ({report.summary.macro.total})</option>
+              <option value="markets">Markets ({report.summary.markets.total})</option>
+              <option value="fx">ECB FX ({report.summary.fx.total})</option>
             </select>
           </label>
           <label>Coverage status
             <select aria-label="Coverage status" value={selection} onChange={e => setSelection(e.target.value)}>
               <option value="issues">Missing, stale or failed</option>
-              <option value="all">All 80 sources</option>
+              <option value="all">All {report.items.length} sources</option>
             </select>
           </label>
         </div>

@@ -133,6 +133,24 @@ docker compose exec finance-dashboard \
 
 Check `/api/holdings/vt` and `/api/holdings/bnd` for original dated holdings. The scheduled collector runs when `FINANCE_SEC_HOLDINGS_REFRESH=1`; collection is guarded by a 28-day success marker. Importing **all** historical N-PORT documents for all registered funds has not been established: the current collector targets two verified identities and has a 50-filing-per-fund/manual cap. Irish UCITS such as VWCE are outside the SEC registry and require original European fund disclosure sources. Do not manufacture country weights from currency, ticker or ETF domicile. The optional `/data/holdings/sec_funds.json` is a **replacement list**, not an additive list: include VT/BND as well if creating this mapping.
 
+## Source-by-source audit and targeted PWT repair
+
+The `GET /api/source-coverage` endpoint returns all **53** registered macro source rows, **24** market instruments, and **3** ECB FX histories without losing previous observations. For each source it reports its stored original-date count, first/last source date, most recent run status, last successful run and a fixed credential-safe failure code. The dashboard displays only aggregate missing/stale counts until you open **Source coverage**.
+
+The public FRED sources for Germany, France and Italy are confirmed to be real PWT 11.0 annual **ratios** with latest source year 2023. Do not insert these numbers manually, and do not multiply values in the database by 100; the research view handles that presentation transformation.
+
+To repair the three exact missing data series while preserving existing history, after a successful Docker rebuild run:
+
+```bash
+docker compose exec finance-dashboard python -m finance_dashboard.worker \
+  --once --macro-only --full \
+  --series labour.de.pwt_labour_share \
+  --series labour.fr.pwt_labour_share \
+  --series labour.it.pwt_labour_share
+```
+
+The command refreshes only these three registered FRED sources. It retains all prior revisions, uses the configured server-side `FRED_API_KEY`, and exits nonzero if any import fails. Examine `/api/source-coverage` (filter to Macro) afterward: `stored_periods`, `latest_source_date` and `last_failure_code` distinguish real import success from an empty chart. Every other source should be audited from this endpoint; if another mapped source is empty, run the equivalent scoped `--series` command with its **actual canonical ID** rather than skipping it. Initial full macro bootstrap may be invoked with `--once --macro-only --full` when appropriate, but that deliberately fetches all macro definitions and can hit public provider limits.
+
 ## Wisesheets, markets and source-level coverage
 
 The Wisesheets key must be in this **server** Compose environment; a GitHub secret does not configure it. With the refresh toggle on, the app runs a quota-aware US SEC-filer earnings collector and persists the last valid snapshot under `/data/wisesheets/sec_filer_profit.json`. The bundled snapshot can be historical/stale and is not evidence that your new key authenticated. To make a non-secret authentication check:

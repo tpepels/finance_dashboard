@@ -11,6 +11,7 @@ import time
 from sqlalchemy import text
 
 from .providers import ProviderRouter, PROVIDER_CODES
+from .catalog import load_documents
 from .database import make_engine
 from .service import IngestionService
 
@@ -102,10 +103,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.market_only and (args.macro_only or args.provider or args.series):
         parser.error("--market-only cannot be combined with --macro-only, --provider or --series")
     if args.series:
-        known = set(ProviderRouter().supported_ids())
-        unknown = set(args.series) - known
+        known = {row["id"]: row for row in load_documents()[0]["series"]
+                 if row["status"] == "mapped" and row["provider"] in PROVIDER_CODES}
+        unknown = set(args.series) - set(known)
         if unknown:
             parser.error("Unknown mapped source: " + ", ".join(sorted(unknown)))
+        if args.provider and any(known[sid]["provider"] not in args.provider
+                                 for sid in args.series):
+            parser.error("--series contains an ID outside the selected provider")
     if args.interval_seconds < 3600:
         parser.error("interval must be at least 3600 seconds")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

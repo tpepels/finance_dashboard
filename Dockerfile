@@ -39,6 +39,9 @@ RUN pip install --no-cache-dir . \
     && python -m unittest discover -s tests -p 'test_risk_diagnostics.py' -v \
     && python -m unittest discover -s tests -p 'test_portfolio_risk.py' -v \
     && python -m unittest discover -s tests -p 'test_phase4_api.py' -v \
+    && python -m unittest discover -s tests -p 'test_source_coverage.py' -v \
+    && python -m unittest discover -s tests -p 'test_targeted_refresh.py' -v \
+    && python -m unittest discover -s tests -p 'test_source_failure_codes.py' -v \
     && python -m unittest discover -s tests -p 'test_backup.py' -v \
     && python -m unittest discover -s tests -p 'test_vintage.py' -v \
     && python -m unittest discover -s tests -p 'test_sec_holdings.py' -v \
