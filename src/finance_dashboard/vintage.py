@@ -70,7 +70,18 @@ def _safe_http_diagnostic(response: httpx.Response) -> dict:
     elif status == 404:
         reason = "fred_series_or_endpoint_unavailable"
     elif status == 400:
-        reason = "fred_bad_request"
+        # Map only well-defined FRED parameter names. Do not expose the
+        # upstream response body, which can echo the credential or URL.
+        if "realtime_start" in message or "realtime_end" in message:
+            reason = "fred_realtime_parameter_rejected"
+        elif "observation_start" in message or "observation_end" in message:
+            reason = "fred_observation_parameter_rejected"
+        elif "series_id" in message or "series id" in message:
+            reason = "fred_series_parameter_rejected"
+        elif "limit" in message:
+            reason = "fred_limit_rejected"
+        else:
+            reason = "fred_bad_request"
     elif status >= 500:
         reason = "fred_server_error"
     else:

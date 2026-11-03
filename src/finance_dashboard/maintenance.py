@@ -387,7 +387,15 @@ class MaintenanceManager:
                                 result["downloaded_now"] == 0):
                                 break
                         assert result is not None
+                        first_failure = (result.get("failed_now") or [None])[0]
+                        if not isinstance(first_failure, dict):
+                            first_failure = {}
                         record("alfred", {
+                            "first_failed_series": first_failure.get("series_id")
+                                if first_failure.get("series_id") in VINTAGE_IDS else None,
+                            "first_failed_asof": first_failure.get("asof")
+                                if isinstance(first_failure.get("asof"), str) else None,
+                            "http_status": first_failure.get("http_status"),
                             "status": ("complete" if result["missing_after_run"] == 0
                                        else "blocked" if result["status"] == "blocked"
                                        else "partial"),

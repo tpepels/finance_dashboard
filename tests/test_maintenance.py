@@ -323,6 +323,35 @@ class MaintenanceApiTests(unittest.TestCase):
                          ["alfred","backup","macro","markets","sec"])
         self.assertNotIn("a"*32,json.dumps(done))
 
+    def test_history_backfill_exposes_first_failed_source_and_date(self):
+        failure = {
+            "status":"blocked","source_vintages_requested":964,
+            "missing_after_run":964,"downloaded_now":0,
+            "failed_now":[{
+                "series_id":"SAHMREALTIME","asof":"2000-01-31",
+                "http_status":400,"reason":"fred_series_parameter_rejected",
+            }],
+            "halted_reason":"fred_series_parameter_rejected",
+        }
+        with patch.dict("os.environ",{"FRED_API_KEY":"a"*32}), \
+             patch("finance_dashboard.worker.refresh_all",return_value=0), \
+             patch("finance_dashboard.worker.refresh_market_all",return_value=0), \
+             patch("finance_dashboard.vintage.probe_access",
+                   return_value={"status":"ready","requests":1}), \
+             patch("finance_dashboard.vintage.backfill_batch",
+                   return_value=failure), \
+             patch("finance_dashboard.sec_holdings_sync.collect_configured",
+                   return_value={"status":"complete","funds":[]}):
+            job = self.client.post("/api/maintenance",
+                    json={"action":"sync_history"},headers=HEADERS)
+            self.assertEqual(job.status_code,202)
+            done=self.wait(job.json()["id"])
+        part=done["result"]["parts"]["alfred"]
+        self.assertEqual(part["first_failed_series"],"SAHMREALTIME")
+        self.assertEqual(part["first_failed_asof"],"2000-01-31")
+        self.assertEqual(part["http_status"],400)
+        self.assertNotIn("a"*32,json.dumps(done))
+
     def test_history_sync_reports_blocked_origins_without_skipping_sec(self):
         calls=[]
         with patch("finance_dashboard.worker.refresh_all",return_value=0), \

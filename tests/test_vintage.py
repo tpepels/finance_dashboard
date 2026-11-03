@@ -86,6 +86,24 @@ class VintageTests(unittest.TestCase):
         self.assertNotIn(secret, json.dumps(blocked))
         self.assertEqual(malformed["requests"], 0)
 
+    def test_alfred_bad_request_reports_only_controlled_parameter_category(self):
+        secret = "hidden-api-key"
+        cases = [
+            ("The value for variable realtime_start is invalid", "fred_realtime_parameter_rejected"),
+            ("Invalid observation_start", "fred_observation_parameter_rejected"),
+            ("The series_id is not available", "fred_series_parameter_rejected"),
+            ("Invalid limit parameter", "fred_limit_rejected"),
+            ("Bad request with " + secret, "fred_bad_request"),
+        ]
+        from finance_dashboard.vintage import _safe_http_diagnostic
+        for message, code in cases:
+            with self.subTest(category=code):
+                response = httpx.Response(400,json={"error_message":message},
+                    request=httpx.Request("GET","https://api.stlouisfed.org/fred/series/observations"))
+                item = _safe_http_diagnostic(response)
+                self.assertEqual(item["reason"],code)
+                self.assertNotIn(secret,json.dumps(item))
+
     def test_bulk_backfill_halts_immediately_on_systemic_http_errors(self):
         calls = []
         def handler(request):
