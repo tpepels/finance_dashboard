@@ -1,6 +1,6 @@
 # Global Capital Monitor
 
-> **DEVELOPMENT PAUSED — PHASE 1 REOPENED (2026-11-03).** All ten product-intent decisions **and the connected six-story / revised 35-question / free-source-only direction** are explicitly approved. Final detailed methods and integrated interface acceptance remain under expert-led specification; no implementation or gap analysis until Phase 1 sign-off. The existing Docker application/data are preserved; its current screen arrangement is **not** the design target.
+> **PHASE 1 APPROVED/CLOSED (2026-11-03) · PHASE 2 ACTIVE.** The user approved all 35 scientific questions, six connected research experiences, visualization contract and the no-fee source/fallback approach. Phase 2 covers actual source acquisition, provenance, histories and data-quality evidence. Existing local Docker data are preserved. Phase 3 analytical methods and Phase 4 interface redesign have not started.
 
 ## Current authoritative documents
 

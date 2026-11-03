@@ -1,6 +1,6 @@
-# Development plan — authoritative, reset to research-first Phase 1
+# Development plan — authoritative five-phase roadmap
 
-**Decision date:** 2026-11-03. **Branch:** `main`. **State:** DEVELOPMENT PAUSED FOR PRODUCT/SCIENTIFIC REDESIGN. **Only documentation/specification work is authorized until Phase 1 approval.** All ten owner product-intent decisions are explicitly approved (2026-11-03); the science/editorial direction is now approved; final integrated analysis-method and interface acceptance remains open.
+**Decision date:** 2026-11-03. **Branch:** `main`. **State:** **PHASE 1 APPROVED/CLOSED by explicit user instruction; PHASE 2 ACTIVE.** Existing application data and functionality are preserved. Phase 2 may analyze the code/data inventory and implement the approved data-source/provenance corpus. Phases 3–5 remain not started under the revised contract.
 
 ## Approved revised Phase 1 scientific direction — 2026-11-03
 
@@ -12,7 +12,7 @@
 
 **No paid sources or paid API dependency:** public/free use must comply with source rights and rate limits. Exact source coverage for global constituent weights, historical European UCITS holdings, global consolidated listed-issuer net profit and world equity/bond total-return benchmarks remains **research-unresolved**. The correct outcome when originals are unavailable is a narrowly labelled alternative research question or a conditional/blocked original, never an invented global statistic.
 
-**Phase acceptance boundary:** this approval finalizes scientific/editorial *direction and catalogue membership*. **Phase 1 as a whole remains OPEN** until the user approves the integrated, method-reviewed 35-analysis and UI contract. The pause on application implementation and existing-code/data gap analysis continues. Do not infer that any historical data have been collected, rights cleared or scientific models validated from this approval.
+**Phase acceptance boundary:** this approval finalizes scientific/editorial *direction and catalogue membership*. **Superseded approval boundary:** the user explicitly approved the complete Phase 1 on 2026-11-03 and requested Phase 2. The previously open review gate is now satisfied. This acceptance does not certify that old dataset histories are complete, that new source acquisitions succeed or that forecasts have been validated. Those are downstream phase responsibilities.
 
 ## New free-source discovery evidence — 2026-11-03
 
@@ -26,11 +26,17 @@ In response to the owner's clarification that source **reuse/licence restriction
 
 A four-target [preselected fallback and resolution matrix](PHASE1_FALLBACK_SOURCE_MATRIX.md) now specifies **exact target → lower-frequency primary data → narrower original data → openly named academic/reconstructed alternatives**, with source maturity, date ranges, explicit switch/stop tests and UI interpretation rules. Confirmed new backup evidence includes **OECD annual/quarterly institutional profit-surplus series, UN S11 corporate sector tables and Eurostat's official S11 gross-profit-share formula**; **Vanguard VT SEC 28 quarterly N-PORT filings since 2019 plus older original fund reports**; **iShares III published semi/annual schedules and a 2015 VWRL half-year report lead**; and **file-inspected** CC0 seven-country estimated monthly sovereign excess returns to Mar 2026 (4,538 records), **file-inspected** monthly US/ex-US/US Aggregate levels Dec 1969–Jul 2026 (680 rows), original ICE Global Broad Market annual TR 2015–2024 and BNDW/BNDX ETF benchmarks. Backup view definitions prevent later source unavailability from requiring a new scientific-method decision. **Original exact global data are still unverified.** No coding, old-product gap analysis or ingestion was performed.
 
+## Phase transition — explicit owner acceptance (2026-11-03)
+
+The user said **"Approve Phase 1 and proceed to Phase 2"**. This is full approval of the ideal scientific product charter, revised 35 first-class questions plus five retained supporting methods, six connected overview experiences, independent per-chart settings, source hierarchy and fallback definitions. **Phase 1 is CLOSED**, not merely editorially proposed. The 35 individual source records are source-contract specifications; empirical source availability and the old implementation were deliberately not accepted by Phase 1.
+
+**Phase 2 is ACTIVE; completion cannot be claimed without the full 35-analysis source/corpus acceptance gate.** Its ordered scope is: source/implementation inventory → 35/35 exact data/metadata and backup records → source acquisition/replication with historical coverage and release-time tracking → complete/missing/conditional decision matrix → validation and recovery → tests and verified publication of research corpus coverage. Avoid invented observations and false world/stock/bond equivalence. No scraping/auth/paywall bypass. All already functioning collected data and stored histories must be retained and backfilled or adapted in-place rather than resetting production data.
+
 ## Binding decision
 
 The original Phase 1 acceptance is **reopened**. Historical Phase 2/3/4 "done", status percentages, source-sync milestones, and 0–5 workstream ordering are **not acceptance or priorities under this plan**. They are archived, not erased. The prior exact roadmap is frozen at [archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md](archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md). Existing code, data, release snapshots, config, backups, historical studies and tested integrations must remain intact during the pause. No implementation, data migration, cleanup or deletion is authorized by this reset. Historical data collection success remains valid evidence only, not an acceptance gate for the new research product.
 
-**This file is the only authoritative lifecycle and phase plan.** The following are **supporting Phase 1 specification drafts, not parallel implementation roadmaps**:
+**This file is the only authoritative lifecycle and phase plan.** The following are **approved Phase 1 scientific/design references, not parallel implementation roadmaps**:
 - [PHASE1_SCIENTIFIC_CHARTER.md](PHASE1_SCIENTIFIC_CHARTER.md) — mission, evidence standards, methodology requirements, intended user decisions.
 - [PHASE1_ANALYSIS_CATALOGUE.md](PHASE1_ANALYSIS_CATALOGUE.md) — curated 35 comparative questions and six editorial overview defaults.
 - [PHASE1_ANALYSIS_SPECIFICATIONS.md](PHASE1_ANALYSIS_SPECIFICATIONS.md) — scientific specification for all 35: published variables, research sources, calculations, alternatives, comparable populations and inference limits.
@@ -45,11 +51,11 @@ A locally hosted **research-driven macro-financial and political-economy workben
 
 ## Deliberately deferred until Phase 1 approved
 
-Do **not** create a gap analysis, implementation backlog, detailed phase status or source repair plan against the new scope before the user has reviewed the **100%-ideal specification**. Do **not** resume frontend/backend coding, add indicators only because an API exists, produce design mockups that silently lock in content, or claim existing production functionality satisfies the newly revised product.
+**Historical gate (satisfied):** no gap analysis or coding was permitted before complete ideal-state Phase 1 approval. The user has now explicitly approved Phase 1 and authorized Phase 2. The current 35-analysis source audit, scientific acquisition and provenance implementation are authorized. Unrelated frontend redesign, Phase 3 comparative engine, and Phase 4 UX remain out of scope until their phases.
 
 ## New phases — independent responsibilities, complete acceptance
 
-### Phase 1 — Scientific charter, complete content and product design **(OPEN, ACTIVE)**
+### Phase 1 — Scientific charter, complete content and product design **(APPROVED, CLOSED 2026-11-03)**
 
 **Research content first, UI derived from that content.** Define (a) target economic/portfolio questions and distinctions, (b) literature review with primary research and recognized methodologies, (c) fully enumerated analytical comparisons and chart defaults, (d) metadata/evidence/interpretation contracts, (e) independent per-chart controls and saved research views, (f) complete information architecture, accessibility and screen hierarchy, (g) negative requirements, editorial relevance and methodological review rubric.
 
@@ -57,7 +63,7 @@ Do **not** create a gap analysis, implementation backlog, detailed phase status 
 
 **Acceptance gate:** user approves the entire intended 100%-ideal product and evidence framework, including representative comparative analysis definitions, research references, global-versus-national scope, per-graph authoring semantics, interpretive boundaries, default overview composition and explicit exclusions. Each catalogue analysis has primary question, expected paired/multiple measures, scientific motivation, default plot, comparison-validity test and interpretive limitation. No gap analysis in Phase 1.
 
-### Phase 2 — Reproducible data sources, provenance and research corpus **(NOT STARTED UNDER NEW CONTRACT)**
+### Phase 2 — Reproducible data sources, provenance and research corpus **(ACTIVE, NOT YET COMPLETE)**
 
 Implement scientifically exact source definitions, viable worldwide/regional coverage, quality validation, original observations and release vintages, legal usage rights, licensed/primary data identification, import and provenance, revisions/gaps, reconciliations, controlled source operation and durable recovery. Confirm both data fidelity and the resulting comparative research universe (including blocked estimates). **Acceptance:** reproducible end-to-end data corpus for all approved required analyses, with transparent unavailable/conditional data and no fabricated value.
 
@@ -77,7 +83,7 @@ Phases define **outcomes**, not token commits. Each future phase includes full t
 
 ## Phase 1 decision protocol
 
-The assistant owns technical and scientific proposals, evidence review and rigorous defaults; the user decides only **product intent, audience and presentation tradeoffs**. **Completed on 2026-11-03:** all ten user decisions adopted as recommended, without overrides; see [charter](PHASE1_SCIENTIFIC_CHARTER.md). Next, the assistant completes exact literature-grounded methods and 35 candidate analyses, refines the scientific UI contract, and presents the **entire ideal-state specification for explicit acceptance**. Do not conduct implementation gap analysis or change application code before that full Phase 1 approval. Only after approval compare current implementation and data against that target.
+The assistant owns technical and scientific proposals, evidence review and rigorous defaults; the user decides only **product intent, audience and presentation tradeoffs**. **Completed on 2026-11-03:** all ten user decisions adopted as recommended, without overrides; see [charter](PHASE1_SCIENTIFIC_CHARTER.md). Next, the assistant completes exact literature-grounded methods and 35 candidate analyses, refines the scientific UI contract, and presents the **entire ideal-state specification for explicit acceptance**. Phase 1 final owner approval was explicitly granted on 2026-11-03. A scientifically grounded source/data inventory and approved Phase 2 implementation may now proceed. Original analysis/fallback definitions remain binding.
 
 ## Evidence and methodological standards
 
@@ -99,7 +105,7 @@ The November 3 18:14 UTC diagnostics reported **80/80 sources with saved observa
 
 All ten product defaults were accepted: global comparative macro-financial research for long-term ETF decisions; informed reader with scholarly methods; medium/structural horizons; US/Europe/Japan and other comparable geographies; first-class political economy; about six overview analyses and 35 research-library analyses; independent per-graph custom views; concise evidence/uncertainty; optional holdings and non-prescriptive stress analysis; quiet monitoring. The scientific charter now documents original-source methods for BIS national credit gaps and DSRs, OECD productivity/pay matching, BEA Q variants, Marxian industry-accounting research, portfolio diversification and NBER/COVID dates.
 
-**Status distinction:** owner **product intent accepted**; Phase 1 **scientific specification open**; no approval of existing content, code or data. The catalogue and visualization contract are normative research/design documents, not observed implementation. No production code, ingestion change, data edit or migration in this phase.
+**Status at the time of the research record:** product intent accepted; Phase 1 specification was still open. The owner subsequently approved all Phase 1 and began Phase 2 on 2026-11-03. The catalogue and visualization contract are normative research/design documents, not observed implementation. No production code, ingestion change, data edit or migration in this phase.
 
 ## Phase 1 visualization-specification continuation (2026-11-03)
 
