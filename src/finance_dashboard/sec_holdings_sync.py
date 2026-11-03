@@ -141,6 +141,33 @@ def _xml_in_filing_index(index_html: str, expected_series: str,
     return None, "no_verified_primary_xml"
 
 
+def _cached_verified_accessions(root: Path, instrument_id: str,
+                                series_id: str) -> set[str]:
+    """Only previously validated, identity-consistent original XML imports count."""
+    folder = root / instrument_id
+    existing = set()
+    if not folder.is_dir():
+        return existing
+    for file in folder.glob("????-??-??--*.json"):
+        if not file.is_file() or file.is_symlink():
+            continue
+        try:
+            stored = json.loads(file.read_text(encoding="utf-8"))
+            accession = stored.get("accession")
+            if (stored.get("schema_version") == 1
+                and stored.get("source") == "SEC_NPORT_PRIMARY_XML"
+                and stored.get("instrument_id") == instrument_id
+                and stored.get("sec_series_id") == series_id
+                and isinstance(accession, str)
+                and file.name.endswith("--" + accession.replace("-", "") + ".json")
+                and re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession)
+                and re.fullmatch(r"[0-9a-f]{64}", stored.get("xml_sha256", ""))):
+                existing.add(accession)
+        except (ValueError, OSError, TypeError):
+            continue
+    return existing
+
+
 def _candidate_status(status: int) -> str:
     if status == 429:
         return "sec_rate_limited"
@@ -193,6 +220,8 @@ def import_fund(mapping: dict, *, client: httpx.Client,
     index_scan_limit = min(len(candidates), max(120, max_filings * 50))
     xml_download_limit = max(12, max_filings * 3)
     examined = attempted_xml = imported = skipped_series = errors = 0
+    cached_reused = 0
+    known_accessions = _cached_verified_accessions(root, fund, expected)
     missing_xml = 0
     stopped_reason = None
     status_code = None
@@ -200,6 +229,11 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         if imported >= max_filings or attempted_xml >= xml_download_limit:
             break
         accession, primary = entry["accession"], entry["document"]
+        if accession in known_accessions:
+            examined += 1
+            imported += 1
+            cached_reused += 1
+            continue
         xml_name = None
         if SEC_FILE.fullmatch(primary):
             # Some original submissions explicitly designate the XML file.
@@ -272,6 +306,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
     target_met = imported >= max_filings
     status = ("blocked" if stopped_reason else
               "complete" if target_met and errors == 0 else
+              "no_eligible_submissions" if not candidates else
               "no_matching_series" if imported == 0 and
               skipped_series + missing_xml == examined and errors == 0 else
               "partial")
@@ -282,6 +317,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         "index_candidates_examined": examined,
         "source_candidates_found": len(candidates),
         "stored_or_already_present": imported,
+        "already_cached_in_selection": cached_reused,
         "requested_matching_filings": max_filings,
         "matching_target_reached": target_met,
         "candidate_attempt_cap": index_scan_limit,
