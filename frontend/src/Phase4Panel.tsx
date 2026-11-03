@@ -133,7 +133,7 @@ function DiagnosticView() {
         {item.threshold !== null && item.latest && <p>
           Observed difference from published reference threshold:
           {' '}{fmt(Number(item.latest.value) - Number(item.threshold), item.unit === 'percentage_points' ? ' pp' : '%')}
-          . This is a distance from a criterion, not a calibrated probability.</p>
+          . This is a distance from a criterion, not a calibrated probability.</p>}
         <p>{item.meaning}</p><p className="p4-caveat">{item.caveat}</p>
         <a href={item.source_url} target="_blank" rel="noopener noreferrer">
           {item.provider} original evidence</a>
