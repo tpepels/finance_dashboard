@@ -15,6 +15,15 @@ class SourceFailureCodeTests(unittest.TestCase):
             RuntimeError("Provider HTTP 404 (api.stlouisfed.org)")),
             "provider_http_404")
 
+    def test_httpx_response_status_is_classified_without_exposing_signed_query(self):
+        request = httpx.Request("GET", "https://query1.finance.yahoo.com/example?secret=TOKEN")
+        response = httpx.Response(503,request=request)
+        exc = httpx.HTTPStatusError("Upstream failure TOKEN",request=request,response=response)
+        self.assertEqual(safe_source_failure_code(exc),"provider_http_503")
+        self.assertEqual(safe_source_failure_code(
+            RuntimeError("Provider HTTP 502 (api.provider.example)?key=TOKEN")),
+            "provider_http_502")
+
     def test_network_failure_and_unparseable_response_have_fixed_codes(self):
         self.assertEqual(safe_source_failure_code(httpx.ConnectTimeout("Bearer SECRET")),
                          "source_transport_failed")
