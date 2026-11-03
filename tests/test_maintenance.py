@@ -16,6 +16,7 @@ from finance_dashboard.api import create_app
 from finance_dashboard.database import Base
 from finance_dashboard.maintenance import MaintenanceManager
 from finance_dashboard.developer_logs import read_events
+from finance_dashboard.standalone import maintenance_network_lock, manual_sync_pending
 
 
 PWT = ["labour.de.pwt_labour_share","labour.fr.pwt_labour_share",
@@ -124,6 +125,21 @@ class MaintenanceApiTests(unittest.TestCase):
             result=self.wait(queued.json()["id"])
         self.assertEqual(result["status"],"cancelled")
         self.assertIsNone(self.client.get("/api/maintenance").json()["active_job_id"])
+
+    def test_browser_sync_preempts_scheduled_refresh_and_releases_priority(self):
+        with patch("finance_dashboard.worker.refresh_all", return_value=0):
+            maintenance_network_lock.acquire()
+            try:
+                job = self.client.post("/api/maintenance", json=ACTION, headers=HEADERS)
+                self.assertEqual(job.status_code, 202)
+                self.assertTrue(manual_sync_pending.is_set())
+                self.assertEqual(self.client.get("/api/maintenance").json()["active_job_id"],
+                                 job.json()["id"])
+            finally:
+                maintenance_network_lock.release()
+            result = self.wait(job.json()["id"])
+        self.assertEqual(result["status"], "complete")
+        self.assertFalse(manual_sync_pending.is_set())
 
     def test_single_fx_selection_never_implicitly_schedules_all_assets(self):
         calls=[]
