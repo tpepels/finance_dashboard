@@ -99,7 +99,31 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(row["unobserved_internal_periods"],0)
         self.assertEqual(row["oldest_source_date"],"2023-01-01")
         self.assertEqual(row["latest_source_date"],"2023-01-01")
-        self.assertEqual(row["state"],"stale")
+        self.assertEqual(row["state"],"available")
+        self.assertTrue(row["complete_for_pinned_release"])
+        self.assertEqual(row["published_through"],"2023-01-01")
+        self.assertEqual(row["published_release"],"Penn World Table 11.0")
+
+    def test_2022_pwt_history_is_still_stale_but_complete_2023_release_is_not(self):
+        self.add_macro("labour.de.pwt_labour_share", when=date(2022, 1, 1))
+        self.add_macro("labour.fr.pwt_labour_share", when=date(2023, 1, 1))
+        rows = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 3))["items"]}
+        self.assertEqual(rows["labour.de.pwt_labour_share"]["state"],"stale")
+        self.assertFalse(rows["labour.de.pwt_labour_share"]["complete_for_pinned_release"])
+        self.assertEqual(rows["labour.fr.pwt_labour_share"]["state"],"available")
+        self.assertTrue(rows["labour.fr.pwt_labour_share"]["complete_for_pinned_release"])
+
+    def test_publication_exception_is_not_applied_to_absent_source(self):
+        with patch.dict(os.environ, {"FINANCE_AUTO_REFRESH": "1"}):
+            rows={row["id"]: row for row in build_coverage(
+                self.engine,self.catalog,self.registry,
+                asof=date(2026,11,3))["items"]}
+        de=rows["labour.de.pwt_labour_share"]
+        self.assertEqual(de["state"],"not_ingested")
+        self.assertFalse(de["complete_for_pinned_release"])
+        self.assertEqual(de["published_through"],"2023-01-01")
 
     def test_annual_gap_diagnostic_does_not_label_revisions_as_missing_dates(self):
         sid = "labour.us.pwt_labour_share"

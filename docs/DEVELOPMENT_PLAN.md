@@ -51,7 +51,7 @@ The five agreed implementation workstreams below are **cross-phase work packages
 
 ### 1. Repair source coverage (original Phase 2, with Phase 3 source-status UI)
 
-**Status:** implementation code committed; real local census and PWT import **not accepted**.
+**Status:** implementation code committed; real local census and PWT import **not accepted**. The source audit now distinguishes genuinely old annual history from complete published PWT 11.0 history ending in 2023. It must continue to flag no observations and history ending in 2022 as incomplete. This exception is version-pinned to PWT 11.0 and must be reviewed when a new PWT contract is adopted.
 
 **Complete scope:** 53 canonical macro series, 24 market instruments, 3 ECB FX currencies. Audit each for mapping, collector switch, provider availability, observation count, first/latest source date, latest attempt and fixed safe failure code. Separate a deliberately sparse annual source from missing data; check gaps, duplicates, unit stability, temporal availability and source revisions. Count cached valid data even after failed refreshes.
 

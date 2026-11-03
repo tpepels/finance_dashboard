@@ -10,6 +10,8 @@ interface SourceRow {
   last_attempt_state: string; last_failure_code: string | null;
   additional_revisions?: number; unobserved_internal_periods?: number | null;
   regular_cadence_assumed?: boolean;
+  complete_for_pinned_release?: boolean;
+  published_through?: string | null; published_release?: string | null;
 }
 interface Coverage {
   asof: string;
@@ -132,6 +134,8 @@ export default function SourceCoveragePanel() {
                     {!item.regular_cadence_assumed ? ' · irregular source' : ''}</small>}
                 {!!item.additional_revisions &&
                   <small>{item.additional_revisions} retained revisions</small>}
+                {item.complete_for_pinned_release &&
+                  <small>Complete for {item.published_release} (through {item.published_through})</small>}
               </td>
               <td>{item.latest_source_date ?? '—'}</td>
               <td>{item.last_attempt_state}</td>

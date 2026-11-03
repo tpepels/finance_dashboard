@@ -19,6 +19,20 @@ from .database import (
 
 FX_CURRENCIES = ("USD", "GBP", "CHF")
 SOURCE_LAGS = {"D": 10, "M": 95, "Q": 220, "A": 1100}
+
+# Version-pinned official publication bounds, not a claim that the source
+# publishes each calendar year. PWT 11.0 (released 2025-10-07) ends in 2023.
+# Never use this exception for an empty history or an outdated 2022 history.
+# Review/update this mapping when the canonical source contract changes version.
+PUBLICATION_BOUNDS = {
+    "labour." + country + ".pwt_labour_share": {
+        "version": "Penn World Table 11.0",
+        "released": date(2025, 10, 7),
+        "through": date(2023, 1, 1),
+        "url": "https://www.rug.nl/ggdc/productivity/pwt/",
+    }
+    for country in ("us", "jp", "de", "fr", "it")
+}
 SAFE_ERROR_CODES = {
     "provider_http_400", "provider_http_401", "provider_http_403",
     "provider_http_404", "provider_http_429", "provider_http_500",
@@ -69,6 +83,13 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     last = runs.get(id)
     successful = successes.get(id)
     lag = (asof - latest).days if latest is not None else None
+    publication = PUBLICATION_BOUNDS.get(id) if family == "macro" else None
+    release_known = bool(publication and asof >= publication["released"])
+    published_through = publication["through"] if release_known else None
+    is_complete_for_release = bool(
+        latest is not None and published_through is not None
+        and latest >= published_through
+    )
     if not mapped:
         state = "source_unresolved"
     elif count == 0 and last is not None and last["status"] == "failed":
@@ -79,7 +100,7 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         state = "not_ingested"
     elif last is not None and last["status"] == "failed":
         state = "refresh_failed_with_data"
-    elif lag is not None and lag > SOURCE_LAGS[frequency]:
+    elif lag is not None and lag > SOURCE_LAGS[frequency] and not is_complete_for_release:
         state = "stale"
     else:
         state = "available"
@@ -91,6 +112,12 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         "oldest_source_date": oldest.isoformat() if oldest else None,
         "latest_source_date": latest.isoformat() if latest else None,
         "days_since_latest_observation": lag,
+        "published_through": published_through.isoformat()
+            if published_through else None,
+        "published_release": publication["version"] if release_known else None,
+        "published_release_date": publication["released"].isoformat()
+            if release_known else None,
+        "complete_for_pinned_release": is_complete_for_release,
         # Revisions are legitimate append-only versions, not corrupt duplicates.
         "stored_versions": int(versions),
         "additional_revisions": max(0, int(versions)-int(count)),
@@ -183,5 +210,7 @@ def build_coverage(engine, catalog: list[dict], market_registry: dict[str, dict]
                    "Internal calendar gaps are diagnostic only for regular annual, "
                    "quarterly and monthly sources; irregular publications may "
                    "legitimately omit years, and daily exchange holidays are not "
-                   "interpreted as missing data. Additional versions preserve source revisions."),
+                   "interpreted as missing data. Pinned published PWT 11.0 coverage "
+                   "through 2023 is considered current for that release, not stale. "
+                   "Additional versions preserve source revisions."),
     }
