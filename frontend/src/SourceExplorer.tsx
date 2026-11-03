@@ -57,7 +57,7 @@ export default function SourceExplorer({ theme, dataVersion }: {
     loadContext().then(data => { if (active) setContext(data); })
       .catch(error => { if (active) setFailure(error instanceof Error ? error.message : 'Local data load failed'); });
     return () => { active = false; };
-  }, []);
+  }, [dataVersion]);
 
   const chapters = useMemo(() => CHAPTERS.map(chapter => ({
     ...chapter, charts: curatedCharts(context?.charts ?? [], chapter.chartIds),

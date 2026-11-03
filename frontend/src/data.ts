@@ -37,6 +37,16 @@ export interface InsightResponse {
 }
 const insightCache = new Map<string, Promise<InsightResponse>>();
 
+/** Explicitly invalidate observation/readout caches after a confirmed local import.
+ * Never discard source history or user chart configuration.
+ */
+export function invalidateSourceCaches(): void {
+  contextPromise = undefined;
+  seriesCache.clear();
+  insightCache.clear();
+}
+
+
 export function loadContext(): Promise<DataContext> {
   if (!contextPromise) contextPromise = (async () => {
     const [series, charts, status] = await Promise.all([

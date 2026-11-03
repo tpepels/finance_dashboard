@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 import ResearchDashboard from './ResearchDashboard';
 import Phase4Panel from './Phase4Panel';
 import SourceExplorer from './SourceExplorer';
+import { invalidateSourceCaches } from './data';
 
 type Theme = 'light' | 'dark';
 const STORAGE_KEY = 'gcm-color-scheme';
@@ -21,7 +22,10 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [dataVersion, setDataVersion] = useState(0);
   useEffect(() => {
-    const update = () => setDataVersion(version => version + 1);
+    const update = () => {
+      invalidateSourceCaches();
+      setDataVersion(version => version + 1);
+    };
     window.addEventListener('gcm-data-updated', update);
     return () => window.removeEventListener('gcm-data-updated', update);
   }, []);
