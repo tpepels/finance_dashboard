@@ -33,8 +33,13 @@ async function responseJson(response: Response) {
 }
 const headers = { 'Content-Type': 'application/json', 'X-GCM-Action': 'dashboard' };
 
-export default function DataOperations({ sources }: { sources: SourceRow[] }) {
-  const [open, setOpen] = useState(false);
+export default function DataOperations({ sources, initiallyOpen = false }:
+  { sources: SourceRow[]; initiallyOpen?: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen);
+  const root = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (initiallyOpen && root.current) root.current.open = true;
+  }, [initiallyOpen]);
   const [queue, setQueue] = useState<Queue | null>(null);
   const [problem, setProblem] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -110,7 +115,7 @@ export default function DataOperations({ sources }: { sources: SourceRow[] }) {
     }
   }
   const disabled = submitting || Boolean(active);
-  return <details className="data-operations" id="data-management"
+  return <details className="data-operations" id="data-management" ref={root}
     onToggle={e => setOpen(e.currentTarget.open)}>
     <summary>Manage data imports and maintenance</summary>
     {open && <div className="data-operations-content">

@@ -34,6 +34,10 @@ export default function App() {
       <nav className="research-utility-actions" aria-label="Additional analyses">
         <a href="#phase4">Risk &amp; portfolios</a>
         <a href="#research-sources">Source data</a>
+        <button type="button" className="research-data-link"
+          onClick={() => window.dispatchEvent(new Event('gcm-open-data-manager'))}>
+          Data &amp; sync
+        </button>
       <button type="button" className="research-theme-toggle"
         aria-label={theme === 'dark' ? 'Use light appearance' : 'Use dark appearance'}
         aria-pressed={theme === 'dark'}

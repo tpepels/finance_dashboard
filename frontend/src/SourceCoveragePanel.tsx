@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import DataOperations from './DataOperations';
 
 interface SourceRow {
   family: 'macro' | 'markets' | 'fx';
@@ -33,18 +34,35 @@ export default function SourceCoveragePanel() {
   const [report, setReport] = useState<Coverage | null>(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
+  const [focusManagement, setFocusManagement] = useState(false);
+  const ref = useRef<HTMLDetailsElement>(null);
   const [family, setFamily] = useState('all');
   const [selection, setSelection] = useState('issues');
   useEffect(() => {
     let live = true;
-    fetch('/api/source-coverage', { cache: 'no-store' })
-      .then(async response => {
-        if (!response.ok) throw new Error('Coverage service HTTP ' + response.status);
-        return await response.json() as Coverage;
-      })
-      .then(data => { if (live) setReport(data); })
-      .catch(() => { if (live) setError('Source audit unavailable'); });
-    return () => { live = false; };
+    const refresh = () => {
+      fetch('/api/source-coverage', { cache: 'no-store' })
+        .then(async response => {
+          if (!response.ok) throw new Error('Coverage service HTTP ' + response.status);
+          return await response.json() as Coverage;
+        })
+        .then(data => { if (live) { setReport(data); setError(''); } })
+        .catch(() => { if (live) setError('Source audit unavailable'); });
+    };
+    const manage = () => {
+      if (ref.current) ref.current.open = true;
+      setOpen(true);
+      setFocusManagement(true);
+      ref.current?.scrollIntoView({block:'start', behavior:'smooth'});
+    };
+    refresh();
+    window.addEventListener('gcm-data-updated', refresh);
+    window.addEventListener('gcm-open-data-manager', manage);
+    return () => {
+      live = false;
+      window.removeEventListener('gcm-data-updated', refresh);
+      window.removeEventListener('gcm-open-data-manager', manage);
+    };
   }, []);
   const missing = report
     ? Object.values(report.summary).reduce((sum, group) => sum + group.without_data, 0)
@@ -60,7 +78,8 @@ export default function SourceCoveragePanel() {
     (family === 'all' || item.family === family) &&
     (selection === 'all' || ATTENTION.has(item.state))),
     [report, family, selection]);
-  return <details className="research-source-health" onToggle={e => setOpen(e.currentTarget.open)}>
+  return <details className="research-source-health" ref={ref} id="source-coverage"
+    onToggle={e => setOpen(e.currentTarget.open)}>
     <summary aria-label="Source completeness">
       {report ? <>{missing} missing · {stale} stale
         {degraded ? ' · ' + degraded + ' failed refreshes' : ''}
@@ -74,6 +93,8 @@ export default function SourceCoveragePanel() {
         {' '}Last stored source date is reported independently of the latest refresh attempt.</>
         : error || 'Reading local source data…'}</p>
       {report && <>
+        <DataOperations sources={report.items.map(({family,id,name,state}) =>
+          ({family,id,name,state}))} initiallyOpen={focusManagement}/>
         <div className="research-coverage-filters">
           <label>Source family
             <select aria-label="Source family" value={family} onChange={e => setFamily(e.target.value)}>

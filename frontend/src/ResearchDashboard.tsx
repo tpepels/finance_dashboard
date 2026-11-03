@@ -179,6 +179,12 @@ function Indicator({ spec, start, theme }: { spec: IndicatorDef; start?: string;
   const host = useRef<HTMLDivElement>(null);
   const secondaryHost = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0);
+  useEffect(() => {
+    const update = () => setDataVersion(v => v + 1);
+    window.addEventListener('gcm-data-updated', update);
+    return () => window.removeEventListener('gcm-data-updated', update);
+  }, []);
   const [showHistory, setShowHistory] = useState(false);
   const [result, setResult] = useState<ResearchResult | null>(null);
   const [error, setError] = useState('');
@@ -213,7 +219,7 @@ function Indicator({ spec, start, theme }: { spec: IndicatorDef; start?: string;
         if (!cancelled) setError(issue instanceof Error ? issue.message : 'Unknown local source error');
       });
     return () => { cancelled = true; };
-  }, [visible, spec.id, start]);
+  }, [visible, spec.id, start, dataVersion]);
 
   const plotted = useMemo(() => result ? preparePlot(result) : [], [result]);
   const geometry = geometryFor(spec.id, plotted[0]?.definition.frequency ?? 'A', plotted.length);
