@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 
 interface Operations {
+  source_setup?: {
+    fred_key_present: boolean; fred_key_format_valid: boolean;
+    wisesheets_key_present: boolean; sec_contact_present: boolean;
+    macro_collection_enabled: boolean; market_collection_enabled: boolean;
+    earnings_collection_enabled: boolean; alfred_collection_enabled: boolean;
+    nport_collection_enabled: boolean;
+    vintage_snapshots_by_series: Record<string, number>;
+    sec_nport_reports_stored: number; oecd_surplus_accounts_installed: boolean;
+    sec_earnings_snapshot_present: boolean;
+  };
   catalog_series: number;
   sources_with_at_least_one_observation: number;
   registered_market_instruments: number;
@@ -37,6 +47,35 @@ export default function OperationsStatus() {
     <summary>Local source coverage, refresh and backup status</summary>
     {!data && !error && <p role="status">Reading current local coverage…</p>}
     {error && <p role="alert">{error}</p>}
+    {data?.source_setup && <section className="source-setup-status">
+      <h4>Data collection and local evidence</h4>
+      <p>Configured access and stored data are reported separately.
+        Credentials are never returned by this endpoint.</p>
+      <div className="source-setup-grid">
+        {([
+          ['Economic-source refresh', data.source_setup.macro_collection_enabled, null],
+          ['FRED / ALFRED key', data.source_setup.fred_key_present && data.source_setup.fred_key_format_valid,
+            Object.values(data.source_setup.vintage_snapshots_by_series).reduce((a,b)=>a+b,0) + ' dated vintages'],
+          ['Wisesheets access', data.source_setup.wisesheets_key_present,
+            data.source_setup.sec_earnings_snapshot_present ? 'Local earnings snapshot present' : 'No local earnings snapshot'],
+          ['Markets and ECB foreign exchange', data.source_setup.market_collection_enabled, null],
+          ['SEC filing contact', data.source_setup.sec_contact_present,
+            data.source_setup.sec_nport_reports_stored + ' official filings stored'],
+          ['SEC filing collection', data.source_setup.nport_collection_enabled, null],
+          ['Historical monthly capture', data.source_setup.alfred_collection_enabled, null],
+          ['Wisesheets refresh', data.source_setup.earnings_collection_enabled, null],
+          ['OECD source accounts imported', data.source_setup.oecd_surplus_accounts_installed,
+            'Requires audited original industry accounts'],
+        ] as [string,boolean,string|null][]).map(([name,configured,note]) =>
+          <div key={name}>
+            <span>{name}</span><strong className={configured ? 'source-active' : 'source-missing'}>
+              {configured ? 'Configured / present' : 'Not configured / missing'}</strong>
+            {note && <small>{note}</small>}
+          </div>)}
+      </div>
+      <p>Configuration alone does not prove that collection succeeded.
+        Source availability, country coverage and publication dates must be checked separately.</p>
+    </section>}
     {data && <div className="p4-operations-grid">
       <div><strong>{data.sources_with_at_least_one_observation}/{data.catalog_series}</strong>
         <span>macro sources with actual observations</span></div>

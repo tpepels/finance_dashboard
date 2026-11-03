@@ -128,7 +128,37 @@ def create_app(engine=None) -> FastAPI:
             (p for p in folder.glob("finance-*Z.json") if p.is_file()),
             reverse=True,
         ) if folder.is_dir() else []
+        # Read-only source readiness. Report credentials as booleans only and
+        # preserve distinct states for configured collection and stored evidence.
+        vintage_folder = Path(environ.get("FINANCE_VINTAGE_DIR", "/data/vintages"))
+        vintage_counts = {item["series_id"]: item["count"]
+                          for item in available_snapshots(vintage_folder)["series"]}
+        holdings_folder = Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))
+        sec_reports = sum(1 for file in holdings_folder.glob("*/????-??-??--*.json")
+                          if file.is_file()) if holdings_folder.is_dir() else 0
+        surplus_exists = (Path(environ.get("FINANCE_SURPLUS_DIR", "/data/surplus"))
+                          / "oecd_iot_2025_normalized.json").is_file()
+        earnings_exists = Path(environ.get(
+            "WISESHEETS_SNAPSHOT_PATH", "/data/wisesheets/sec_filer_profit.json")).is_file()
+        fred_key = environ.get("FRED_API_KEY", "").strip()
+        wisesheets_key = environ.get("WISESHEETS_API_KEY", "").strip()
+        sec_agent = environ.get("SEC_USER_AGENT", "").strip()
         return {
+            "source_setup": {
+                "fred_key_present": bool(fred_key),
+                "fred_key_format_valid": bool(__import__("re").fullmatch(r"[a-z0-9]{32}", fred_key)),
+                "wisesheets_key_present": bool(wisesheets_key),
+                "sec_contact_present": "@" in sec_agent and len(sec_agent) >= 10,
+                "macro_collection_enabled": enabled("FINANCE_AUTO_REFRESH", "1"),
+                "market_collection_enabled": enabled("FINANCE_INCLUDE_MARKETS", "0"),
+                "earnings_collection_enabled": enabled("FINANCE_WISESHEETS_REFRESH", "1"),
+                "alfred_collection_enabled": enabled("FINANCE_VINTAGE_REFRESH", "1"),
+                "nport_collection_enabled": enabled("FINANCE_SEC_HOLDINGS_REFRESH", "0"),
+                "vintage_snapshots_by_series": vintage_counts,
+                "sec_nport_reports_stored": sec_reports,
+                "oecd_surplus_accounts_installed": surplus_exists,
+                "sec_earnings_snapshot_present": earnings_exists,
+            },
             "catalog_series": len(by_id),
             "sources_with_at_least_one_observation": int(macro_count),
             "registered_market_instruments": len(market_registry),
