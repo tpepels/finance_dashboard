@@ -72,6 +72,37 @@ describe('two-action data synchronization',()=>{
     expect(liveFetch.mock.calls.some(([url,init])=>
       String(url).endsWith('/job1/cancel') && init?.method==='POST')).toBe(true);
   });
+  it('shows precise historical access blocker and per-fund SEC coverage',async()=>{
+    vi.stubGlobal('fetch',vi.fn(async()=>({
+      ok:true,status:200,json:async()=>({
+        active_job_id:null,jobs:[{
+          id:'historical',action:'sync_history',status:'partial',
+          created_at:'2026-11-03T12:00:00Z',
+          finished_at:'2026-11-03T12:02:00Z',
+          result:{parts:{
+            alfred:{status:'blocked',missing:964,downloaded:0,
+              reason:'fred_api_key_rejected',http_status:400},
+            sec:{status:'partial',funds:[
+              {id:'vt',status:'partial',stored:11,errors:2,
+                reason:'sec_rate_limited',http_status:429,
+                historical_coverage_limited:true},
+              {id:'bnd',status:'complete',stored:50,errors:0,
+                historical_coverage_limited:false},
+            ]},
+          }},
+        }],
+      }),
+    })));
+    const user=userEvent.setup();
+    render(<DataOperations/>);
+    const summary=await screen.findByText('Sync results');
+    await user.click(summary);
+    expect(screen.getByText(/FRED API rejected the configured key/)).toBeTruthy();
+    expect(screen.getByText(/964 missing/)).toBeTruthy();
+    expect(screen.getByText(/11 filings recorded/)).toBeTruthy();
+    expect(screen.getByText(/50 filings recorded/)).toBeTruthy();
+    expect(screen.getByText(/additional older filings not scanned/)).toBeTruthy();
+  });
   it('keeps provider failures in a collapsed result section',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({
       ok:true,status:200,json:async()=>({
