@@ -125,6 +125,38 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertFalse(de["complete_for_pinned_release"])
         self.assertEqual(de["published_through"],"2023-01-01")
 
+    def test_official_bis_credit_release_is_not_mislabeled_stale(self):
+        bis_ids = [
+            "credit.world.private_gdp_gap",
+            "credit.world.private_gdp_gap_coverage",
+            "credit_gap.ea.bis",
+            "credit_gap.jp.bis",
+            "credit_gap.us.bis",
+        ]
+        for sid in bis_ids:
+            self.add_macro(sid, when=date(2026,1,1))
+        rows={x["id"]:x for x in build_coverage(
+            self.engine,self.catalog,self.registry,asof=date(2026,11,3))["items"]}
+        for sid in bis_ids:
+            with self.subTest(sid=sid):
+                self.assertEqual(rows[sid]["state"],"available")
+                self.assertEqual(rows[sid]["published_through"],"2026-01-01")
+                self.assertTrue(rows[sid]["complete_for_pinned_release"])
+
+    def test_bis_release_window_expires_and_older_quarter_is_still_stale(self):
+        current = "credit_gap.us.bis"
+        old = "credit_gap.jp.bis"
+        self.add_macro(current,when=date(2026,1,1))
+        self.add_macro(old,when=date(2025,10,1))
+        november={x["id"]:x for x in build_coverage(
+            self.engine,self.catalog,self.registry,asof=date(2026,11,3))["items"]}
+        self.assertEqual(november[current]["state"],"available")
+        self.assertEqual(november[old]["state"],"stale")
+        december={x["id"]:x for x in build_coverage(
+            self.engine,self.catalog,self.registry,asof=date(2026,12,7))["items"]}
+        self.assertEqual(december[current]["state"],"stale")
+        self.assertIsNone(december[current]["published_through"])
+
     def test_annual_gap_diagnostic_does_not_label_revisions_as_missing_dates(self):
         sid = "labour.us.pwt_labour_share"
         self.add_macro(sid, when=date(2020,1,1))

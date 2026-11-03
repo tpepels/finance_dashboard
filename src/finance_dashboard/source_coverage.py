@@ -18,6 +18,16 @@ from .database import (
 )
 
 FX_CURRENCIES = ("USD", "GBP", "CHF")
+# Official BIS credit-to-GDP gaps release 2026-09-14 contains 2026-Q1
+# observations; the next official release is scheduled for 2026-12-07.
+# This is a time-bounded bulletin, not a permanent publication-lag exemption.
+BIS_CREDIT_RELEASE = {
+    "version": "BIS credit-to-GDP gaps, 14 September 2026",
+    "released": date(2026, 9, 14),
+    "expires": date(2026, 12, 7),
+    "through": date(2026, 1, 1),
+    "url": "https://data.bis.org/topics/CREDIT_GAPS",
+}
 SOURCE_LAGS = {"D": 10, "M": 95, "Q": 220, "A": 1100}
 
 # Version-pinned official publication bounds, not a claim that the source
@@ -84,7 +94,11 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     successful = successes.get(id)
     lag = (asof - latest).days if latest is not None else None
     publication = PUBLICATION_BOUNDS.get(id) if family == "macro" else None
-    release_known = bool(publication and asof >= publication["released"])
+    if (family == "macro" and provider in ("BIS_CREDIT_GAP", "BIS_WORLD_WEIGHTED")
+            and BIS_CREDIT_RELEASE["released"] <= asof < BIS_CREDIT_RELEASE["expires"]):
+        publication = BIS_CREDIT_RELEASE
+    release_known = bool(publication and asof >= publication["released"]
+                         and asof < publication.get("expires", date.max))
     published_through = publication["through"] if release_known else None
     is_complete_for_release = bool(
         latest is not None and published_through is not None
@@ -212,5 +226,7 @@ def build_coverage(engine, catalog: list[dict], market_registry: dict[str, dict]
                    "legitimately omit years, and daily exchange holidays are not "
                    "interpreted as missing data. Pinned published PWT 11.0 coverage "
                    "through 2023 is considered current for that release, not stale. "
+                   "BIS credit-gap Q1 2026 is current only for its verified "
+                   "14 September to 6 December 2026 release window. "
                    "Additional versions preserve source revisions."),
     }
