@@ -659,3 +659,17 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .research-app[data-theme="dark"] .p4-signal-card.signal-alert { border-left-color: #ff8294; }
 .research-app[data-theme="dark"] .p4-signal-card.signal-stale { border-left-color: #f1bf69; }
 .research-app[data-theme="dark"] .p4-signal-card.signal-missing { border-left-color: #879daa; }
+
+/* Category accents create scan paths without color-coding numerical meaning. */
+.research-chapter-heading h2 { padding-left: 11px; border-left: 3px solid #6695aa; }
+.research-chapter[data-topic="Growth and demand"] .research-chapter-heading h2 { border-left-color: #2488bb; }
+.research-chapter[data-topic="Labour and distribution"] .research-chapter-heading h2 { border-left-color: #9b77c4; }
+.research-chapter[data-topic="Financial conditions"] .research-chapter-heading h2 { border-left-color: #348a9a; }
+.research-chapter[data-topic="Debt and leverage"] .research-chapter-heading h2 { border-left-color: #d78352; }
+.research-chapter[data-topic="Capital and equity valuation"] .research-chapter-heading h2 { border-left-color: #37a48b; }
+.research-chapter[data-topic="Ownership and concentration"] .research-chapter-heading h2 { border-left-color: #c9688b; }
+.research-chapter[data-topic="Data coverage"] .research-chapter-heading h2 { border-left-color: #899da8; }
+.research-app[data-theme="dark"] .research-chapter[data-topic="Growth and demand"] .research-chapter-heading h2 { border-left-color: #79c8f9; }
+.research-app[data-theme="dark"] .research-chapter[data-topic="Labour and distribution"] .research-chapter-heading h2 { border-left-color: #c4a6ff; }
+.research-app[data-theme="dark"] .research-chapter[data-topic="Debt and leverage"] .research-chapter-heading h2 { border-left-color: #ffb382; }
+.research-app[data-theme="dark"] .research-chapter[data-topic="Capital and equity valuation"] .research-chapter-heading h2 { border-left-color: #6bdcc1; }

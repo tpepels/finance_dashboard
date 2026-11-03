@@ -444,7 +444,8 @@ export default function ResearchDashboard({ theme }: { theme: 'light' | 'dark' }
     {!catalog && !error && <p className="research-loading" role="status">Loading economic research…</p>}
     {error && <section role="alert" className="system-error">{error}</section>}
     {catalog && <>
-      {grouped.map(group => <section className="research-chapter" key={region + group.theme}>
+      {grouped.map(group => <section className="research-chapter"
+        data-topic={group.theme} key={region + group.theme}>
         <div className="research-chapter-heading">
           <h2>{group.theme}</h2>
         </div>
