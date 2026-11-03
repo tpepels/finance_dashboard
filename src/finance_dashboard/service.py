@@ -24,7 +24,7 @@ def safe_source_failure_code(exc: BaseException) -> str:
     # Our controlled upstream wrappers use a few different fixed HTTP
     # prefixes; all must map to status-only codes before generic ValueError.
     match = re.search(
-        r"(?:Provider HTTP |ECB FX HTTP |Market feed rejected [^,\\n]{1,90}, HTTP )([0-9]{3})",
+        r"(?:Provider HTTP |ECB FX HTTP |Market feed rejected [^,\n]{1,90}, HTTP )([0-9]{3})",
         str(exc),
     )
     if match:
