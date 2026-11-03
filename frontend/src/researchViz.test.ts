@@ -56,9 +56,18 @@ describe('phase 3 analytical visualization contract', () => {
     expect(series(options)[0].type).toBe('bar');
     expect(series(options)[0].markLine).toBeDefined();
   });
-  it('does not fabricate a country ranking without one fully shared source period', () => {
+  it('keeps source-dated evidence rather than fabricating a country ranking without a shared period', () => {
     const options = analyticalOptions({id:'compare_policy', comparison: null},
       [plotted('a','D',[1]), plotted('b','D',[2])], 'country-bars');
-    expect(series(options).every(row => row.type !== 'bar')).toBe(true);
+    // Sparse samples are now dated bars. This must remain a time axis
+    // with each observation at its real date, never a fake category ranking.
+    expect((options as {xAxis:{type:string}}).xAxis.type).toBe('time');
+    expect((options as {yAxis:{type:string}}).yAxis.type).toBe('value');
+    const entries = series(options);
+    expect(entries).toHaveLength(2);
+    expect(entries.every(row => row.type === 'bar')).toBe(true);
+    expect(entries.map(row => row.data)).toEqual([
+      [['2000-01-01',1]], [['2000-01-01',2]],
+    ]);
   });
 });
