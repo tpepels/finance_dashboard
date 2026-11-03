@@ -47,9 +47,9 @@ function fmt(value: number | string | null | undefined, unit = ''): string {
   return numberLabel(Number(value)) + unit;
 }
 
-function Phase4Plot({ assets, metric, currency }: {
+function Phase4Plot({ assets, metric, currency, theme }: {
   assets: { id: string; name: string; observations: Point[] }[];
-  metric: 'index_100' | 'drawdown_pct'; currency: string;
+  metric: 'index_100' | 'drawdown_pct'; currency: string; theme?: 'light' | 'dark';
 }) {
   const element = useRef<HTMLDivElement>(null);
   const plotted = useMemo<PlottedSeries[]>(() => assets.map(asset => {
@@ -65,7 +65,7 @@ function Phase4Plot({ assets, metric, currency }: {
       return { date: monthEnd, raw: point[metric], display: point[metric] };
     }) };
   }), [assets, metric]);
-  const options = useMemo(() => chartOptions(plotted, 'raw', false, true), [plotted]);
+  const options = useMemo(() => chartOptions(plotted, 'raw', false, true), [plotted, theme]);
   useEffect(() => {
     if (!element.current || !assets.length) return;
     const chart = createChart(element.current);
@@ -107,7 +107,8 @@ function DiagnosticView() {
     </nav>
     {error && <p role="alert">{error}</p>}
     {!items && !error && <p role="status">Reading macro source observations…</p>}
-    {items && <><p className="p4-method">{method}</p>
+    {items && <><details className="p4-detail"><summary>How these signals are measured</summary>
+      <p className="p4-method">{method}</p></details>
       {items.length === 0 && <p>No publisher-defined thresholds for this region;
         inspect its economic research data instead.</p>}
       <div className="p4-card-grid">{items.map(item => <article className="p4-card" key={item.id}>
@@ -119,6 +120,8 @@ function DiagnosticView() {
           : item.threshold_crossed === true ? 'Reference criterion reached'
           : item.threshold_crossed === false ? 'Reference criterion not reached'
           : 'Descriptive reading, no threshold'} · {item.latest?.date ?? 'No period'}</small>
+        <details className="p4-detail">
+          <summary>Threshold, historical context &amp; source</summary>
         {item.threshold !== null && <p>Source reference: {item.direction === 'lt'
           ? 'below ' : 'at or above '}{fmt(item.threshold, ' pp')}.
           Consecutive qualifying source readings: {item.consecutive_source_observations}.</p>}
@@ -137,6 +140,7 @@ function DiagnosticView() {
         <p>{item.meaning}</p><p className="p4-caveat">{item.caveat}</p>
         <a href={item.source_url} target="_blank" rel="noopener noreferrer">
           {item.provider} original evidence</a>
+        </details>
       </article>)}</div>
     </>}
   </div>;
@@ -154,8 +158,9 @@ function StatRows({ stats }: { stats: Statistics }) {
 }
 
 /** Same-period risk/return trade-off; no Sharpe ratio without a risk-free series. */
-function RiskReturnView({ comparison }: { comparison: Comparison }) {
-  const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
+function RiskReturnView({ comparison, theme }: { comparison: Comparison; theme?: 'light' | 'dark' }) {
+  const dark = theme === 'dark' || (theme === undefined &&
+    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark');
   const host = useRef<HTMLDivElement>(null);
   const values = useMemo(() => [
     ...comparison.instruments.map(asset => ({ ...asset, portfolio: false })),
@@ -174,7 +179,8 @@ function RiskReturnView({ comparison }: { comparison: Comparison }) {
       xAxis: { type: 'value', min: 0, name: 'Annualized volatility (%)',
         nameLocation: 'middle', nameGap: 31, splitLine: { lineStyle: { color: dark ? '#324750' : '#e9efeb' } } },
       yAxis: { type: 'value', name: 'Annualized return (%)',
-        nameLocation: 'middle', nameGap: 45, splitLine: { lineStyle: { color: '#e9efeb' } } },
+        nameLocation: 'middle', nameGap: 45,
+        splitLine: { lineStyle: { color: dark ? '#324750' : '#e9efeb' } } },
       tooltip: { trigger: 'item', formatter: (item: any) =>
         item.name + '<br/>Volatility: ' + item.value[0].toFixed(2) +
         '%<br/>Annualized return: ' + item.value[1].toFixed(2) + '%' },
@@ -185,7 +191,8 @@ function RiskReturnView({ comparison }: { comparison: Comparison }) {
           name: asset.name, value: [
             Number(asset.annualized_volatility_pct),
             Number(asset.annualized_return_pct)],
-          itemStyle: { color: asset.portfolio ? '#ae704b' : '#3a7b73' },
+          itemStyle: { color: asset.portfolio
+            ? (dark ? '#ffbc78' : '#b65d35') : (dark ? '#7bbaff' : '#277cbb') },
         })),
       }],
     });
@@ -193,7 +200,7 @@ function RiskReturnView({ comparison }: { comparison: Comparison }) {
       new ResizeObserver(() => chart.resize());
     observer?.observe(host.current);
     return () => { observer?.disconnect(); chart.dispose(); };
-  }, [values]);
+  }, [values, theme]);
   if (!values.length) return <p className="p4-method">
     A comparable risk–return plot requires at least twelve contiguous monthly returns for
     each plotted instrument. There are no validated annualized statistics in this sample.
@@ -208,7 +215,7 @@ function RiskReturnView({ comparison }: { comparison: Comparison }) {
   </section>;
 }
 
-function AssetComparison() {
+function AssetComparison({ theme }: { theme?: 'light' | 'dark' }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [selected, setSelected] = useState<string[]>(['vt', 'gld']);
@@ -272,10 +279,12 @@ function AssetComparison() {
     ...(comparison.portfolio ? [{ id: 'portfolio', name: 'Monthly rebalanced model',
       observations: comparison.portfolio.observations }] : [])] : [], [comparison]);
   return <div>
-    <p className="p4-method">This is optional market-price analysis. The macro-first installation
-      leaves market ingestion off by default. Set <code>FINANCE_INCLUDE_MARKETS=1</code>
-      {' '}in the existing Docker service to collect the registered 24 ETF/equity histories and
-      ECB FX. Currency translation and returns use recorded prices, not estimated holdings.</p>
+    <details className="p4-detail">
+      <summary>Data source and assumptions</summary>
+      <p className="p4-method">Prices and ECB exchange rates must be collected using
+        <code> FINANCE_INCLUDE_MARKETS=1</code> on the server. Return comparisons use
+        recorded adjusted prices, not inferred ETF holdings.</p>
+    </details>
     {catalogError && <p role="alert">{catalogError}</p>}
     <div className="p4-inputs">
       <label>Investor currency
@@ -337,10 +346,10 @@ function AssetComparison() {
         {' '}({comparison.aligned_months.length}).
         {comparison.excluded_common_months > 0 &&
           ' Disconnected older common months excluded: ' + comparison.excluded_common_months + '.'}</p>
-      <RiskReturnView comparison={comparison}/>
+      <RiskReturnView comparison={comparison} theme={theme}/>
       <div className="p4-plots">
-        <Phase4Plot assets={lines} currency={currency} metric="index_100"/>
-        <Phase4Plot assets={lines} currency={currency} metric="drawdown_pct"/>
+        <Phase4Plot assets={lines} currency={currency} metric="index_100" theme={theme}/>
+        <Phase4Plot assets={lines} currency={currency} metric="drawdown_pct" theme={theme}/>
       </div>
       <div className="p4-card-grid">{comparison.instruments.map(asset =>
         <article className="p4-card" key={asset.id}>
@@ -388,15 +397,18 @@ function AssetComparison() {
   </div>;
 }
 
-export default function Phase4Panel() {
+export default function Phase4Panel({ theme }: { theme?: 'light' | 'dark' }) {
   const [tab, setTab] = useState<'diagnostics' | 'assets'>('diagnostics');
   return <section className="phase4-container" id="phase4">
     <header>
       <span className="research-eyebrow">Economic risk analysis</span>
       <h2>Risk evidence and observed market outcomes</h2>
-      <p>Separate publisher-defined macro diagnostics, EUR/USD investable proxies,
-        historical drawdowns and documented missing evidence. No opaque risk score
-        or claim that revised historical data were available at the time.</p>
+      <details className="p4-detail">
+        <summary>Methods and limitations</summary>
+        <p>Publisher-defined macro diagnostics, EUR/USD market comparisons,
+          observed drawdowns and separately dated historical evidence.
+          Retrospective data must not be treated as information available at the time.</p>
+      </details>
     </header>
     <div className="p4-tabs" aria-label="Economic risk analysis view">
       <button type="button" aria-pressed={tab === 'diagnostics'}
@@ -404,8 +416,11 @@ export default function Phase4Panel() {
       <button type="button" aria-pressed={tab === 'assets'}
         onClick={() => setTab('assets')}>ETF, gold and portfolio comparison</button>
     </div>
-    {tab === 'diagnostics' ? <DiagnosticView/> : <AssetComparison/>}
-    <EvidenceResearch/>
-    <OperationsStatus/>
+    {tab === 'diagnostics' ? <DiagnosticView/> : <AssetComparison theme={theme}/>}
+    <details className="p4-extra">
+      <summary>Historical evidence, validation &amp; source coverage</summary>
+      <EvidenceResearch theme={theme}/>
+      <OperationsStatus/>
+    </details>
   </section>;
 }

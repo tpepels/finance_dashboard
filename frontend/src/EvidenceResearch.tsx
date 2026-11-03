@@ -284,8 +284,11 @@ function MarxAccounts() {
 
 /** Reliability diagram uses the actual mean probability in each evaluation bin;
  * unlike bin midpoints, it is computed from the predictions being evaluated. */
-function CalibrationView({ result }: { result: PredictionBacktest }) {
-  const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
+function CalibrationView({ result, theme }: {
+  result: PredictionBacktest; theme?: 'light' | 'dark';
+}) {
+  const dark = theme === 'dark' || (theme === undefined &&
+    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark');
   const element = useRef<HTMLDivElement>(null);
   const rows = useMemo(() => (result.evaluation?.calibration ?? []).map((bin, index) => {
     const predictions = result.observations.filter(row =>
@@ -325,7 +328,7 @@ function CalibrationView({ result }: { result: PredictionBacktest }) {
       : new ResizeObserver(() => chart.resize());
     observer?.observe(element.current);
     return () => { observer?.disconnect(); chart.dispose(); };
-  }, [rows]);
+  }, [rows, theme]);
   if (!rows.length) return null;
   return <section className="evidence-calibration">
     <h5>Out-of-sample probability calibration (retrospective)</h5>
@@ -337,7 +340,7 @@ function CalibrationView({ result }: { result: PredictionBacktest }) {
   </section>;
 }
 
-function Backtest() {
+function Backtest({ theme }: { theme?: 'light' | 'dark' }) {
   const [horizon,setHorizon]=useState('12');
   const [result,setResult]=useState<PredictionBacktest|null>(null);
   const [error,setError]=useState('');
@@ -387,7 +390,7 @@ function Backtest() {
           : ' Too few independently spaced cases for a separate performance estimate.'}
         {' '}{result.independence.limitation}
       </p>}
-      {result.evaluation && <CalibrationView result={result}/>}
+      {result.evaluation && <CalibrationView result={result} theme={theme}/>} 
       {result.evaluation && <div className="evidence-table"><table>
         <thead><tr><th>Predicted probability band</th><th>Test cases</th><th>Observed outcome fraction</th></tr></thead>
         <tbody>{result.evaluation.calibration.map((bin,i)=><tr key={i}>
@@ -400,7 +403,7 @@ function Backtest() {
   </div>;
 }
 
-export default function EvidenceResearch() {
+export default function EvidenceResearch({ theme }: { theme?: 'light' | 'dark' }) {
   const [tab,setTab]=useState<View>('vintages');
   return <section className="evidence-research">
     <div className="research-chapter-heading">
@@ -418,6 +421,6 @@ export default function EvidenceResearch() {
     {tab==='vintages'&&<Vintages/>}
     {tab==='holdings'&&<Holdings/>}
     {tab==='surplus'&&<MarxAccounts/>}
-    {tab==='backtest'&&<Backtest/>}
+    {tab==='backtest'&&<Backtest theme={theme}/>} 
   </section>;
 }
