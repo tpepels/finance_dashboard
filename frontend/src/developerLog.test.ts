@@ -3,6 +3,9 @@ import { eventLine, formatDeveloperLog, type DiagnosticReport } from './develope
 
 const sample: DiagnosticReport = {
   schema_version:1, generated_at:'2026-11-03T14:12:00+00:00',
+  configuration:{fred_mode:'public_table',fred_key_present:false,
+    fred_key_format_valid:false,sec_contact_present:true,
+    scheduled_refresh_enabled:true},
   coverage:{registered:80,with_data:80,needs_attention:2},
   issues:[{family:'macro',id:'valuation.us.cape',state:'stale',
     latest_source_date:'2026-04-01',last_failure_code:'source_invalid'}],
@@ -19,6 +22,8 @@ describe('shareable developer diagnostic report',()=>{
   it('includes source evidence, current job outcomes and safe reasons',()=>{
     const text=formatDeveloperLog(sample);
     expect(text).toContain('80/80 sources stored');
+    expect(text).toContain('FRED mode: public_table');
+    expect(text).toContain('SEC contact configured: true');
     expect(text).toContain('valuation.us.cape');
     expect(text).toContain('fred_api_key_rejected');
     expect(text).toContain('http=400');

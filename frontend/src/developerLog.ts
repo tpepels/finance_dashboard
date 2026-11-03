@@ -18,6 +18,10 @@ export type DiagnosticJob = {
 };
 export type DiagnosticReport = {
   schema_version: number; generated_at: string;
+  configuration?: {
+    fred_mode: string; fred_key_present: boolean; fred_key_format_valid: boolean;
+    sec_contact_present: boolean; scheduled_refresh_enabled: boolean;
+  };
   coverage: { registered: number; with_data: number; needs_attention: number };
   issues: { family: string; id: string; state: string;
     latest_source_date: string | null; last_failure_code: string | null }[];
@@ -41,6 +45,13 @@ export function formatDeveloperLog(report: DiagnosticReport): string {
     'Coverage: ' + report.coverage.with_data + '/' + report.coverage.registered
       + ' sources stored, ' + report.coverage.needs_attention + ' attention items',
     'Retention: ' + report.retention,
+    ...(report.configuration ? [
+      'FRED mode: ' + report.configuration.fred_mode
+        + '; key present=' + report.configuration.fred_key_present
+        + '; key format valid=' + report.configuration.fred_key_format_valid,
+      'SEC contact configured: ' + report.configuration.sec_contact_present,
+      'Scheduled refresh enabled: ' + report.configuration.scheduled_refresh_enabled,
+    ] : []),
     '',
     'SOURCE ISSUES (' + report.issues.length + ')',
   ];

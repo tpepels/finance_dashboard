@@ -117,6 +117,9 @@ class DiagnosticJournalTests(unittest.TestCase):
                 self.assertEqual(result.status_code, 200, result.text)
                 obj = result.json()
                 self.assertEqual(obj["schema_version"], 1)
+                self.assertIn(obj["configuration"]["fred_mode"],
+                              ("authenticated_api","public_csv","public_table"))
+                self.assertIsInstance(obj["configuration"]["fred_key_present"],bool)
                 self.assertEqual(obj["coverage"]["registered"], 80)
                 self.assertTrue(obj["issues"])
                 self.assertEqual(obj["events"][-1]["source_id"], "credit_gap.us.bis")

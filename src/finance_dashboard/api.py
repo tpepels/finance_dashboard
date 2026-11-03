@@ -269,9 +269,22 @@ def create_app(engine=None) -> FastAPI:
             "latest_source_date": item["latest_source_date"],
             "last_failure_code": item["last_failure_code"],
         } for item in census["items"] if item["state"] != "available"]
+        fred_key = environ.get("FRED_API_KEY", "").strip()
+        sec_contact = environ.get("SEC_USER_AGENT", "").strip()
+        fred_mode = ("authenticated_api" if fred_key else
+                     "public_csv" if environ.get("FRED_PUBLIC_CSV_FALLBACK") == "1"
+                     else "public_table")
         return {
             "schema_version": 1,
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "configuration": {
+                "fred_mode": fred_mode,
+                "fred_key_present": bool(fred_key),
+                "fred_key_format_valid": bool(re.fullmatch(r"[a-z0-9]{32}", fred_key)),
+                "sec_contact_present": "@" in sec_contact and len(sec_contact) >= 10,
+                "scheduled_refresh_enabled": environ.get(
+                    "FINANCE_AUTO_REFRESH", "1").lower() in ("1","yes","true","on"),
+            },
             "coverage": {
                 "registered": len(census["items"]),
                 "with_data": sum(item["stored_periods"] > 0
