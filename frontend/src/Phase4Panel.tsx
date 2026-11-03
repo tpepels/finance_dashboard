@@ -391,7 +391,7 @@ export default function Phase4Panel() {
   const [tab, setTab] = useState<'diagnostics' | 'assets'>('diagnostics');
   return <section className="phase4-container" id="phase4">
     <header>
-      <span className="research-eyebrow">Phase 4 / Economic risk analysis</span>
+      <span className="research-eyebrow">Economic risk analysis</span>
       <h2>Risk evidence and observed market outcomes</h2>
       <p>Separate publisher-defined macro diagnostics, EUR/USD investable proxies,
         historical drawdowns and documented missing evidence. No opaque risk score

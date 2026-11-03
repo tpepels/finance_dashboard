@@ -429,7 +429,7 @@ export default function ResearchDashboard() {
           <h2>{current?.title}</h2>
           <p>{current?.explanation}</p>
         </div>
-        <div className="research-coverage">{grouped.reduce((sum, group) => sum + group.items.length, 0)} verified indicator definitions</div>
+        <div className="research-coverage">{grouped.reduce((sum, group) => sum + group.items.length, 0)} tracked economic indicators</div>
       </section>
       {grouped.map(group => <section className="research-chapter" key={region + group.theme}>
         <div className="research-chapter-heading">

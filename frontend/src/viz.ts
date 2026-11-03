@@ -11,7 +11,9 @@ echarts.use([LineChart, ScatterChart, BarChart, GridComponent, TooltipComponent,
 
 export type ChartInstance = EChartsType;
 export const createChart = (element: HTMLDivElement): EChartsType =>
-  echarts.init(element, undefined, { renderer: 'canvas' });
+  echarts.init(element,
+    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'dark' : undefined,
+    { renderer: 'canvas' });
 
 export function numberLabel(value: number): string {
   if (!Number.isFinite(value)) return '—';
@@ -28,7 +30,13 @@ export function chartOptions(
   compact = false,
 ): EChartsOption {
   const active = plotted.filter(s => s.observations.length);
-  const palette = ['#174875', '#bc6b32', '#2f7168', '#90609c', '#73833b', '#a84b56'];
+  const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
+  const palette = dark
+    ? ['#78b9d8', '#e4a077', '#7fc5af', '#c3a1d2', '#bdcb8c', '#dd8897']
+    : ['#174875', '#bc6b32', '#2f7168', '#90609c', '#73833b', '#a84b56'];
+  const ink = dark ? '#cbd9de' : '#425761';
+  const secondary = dark ? '#aabdc5' : '#5d666c';
+  const grid = dark ? '#354851' : '#e9eced';
   const recorded = active.flatMap(item => item.observations.map(point => point.date)).sort();
   const earliest = recorded.at(0);
   const latest = recorded.at(-1);
@@ -42,13 +50,13 @@ export function chartOptions(
   return {
     animation: false,
     color: palette,
-    legend: { top: 1, type: 'scroll', textStyle: { color: '#425761', fontSize: compact ? 10 : 11 },
+    legend: { top: 1, type: 'scroll', textStyle: { color: ink, fontSize: compact ? 10 : 11 },
       itemHeight: 9, itemWidth: 16, padding: [4, 12, 0, 12] },
     grid: { left: compact ? 56 : 64, right: 23, top: compact ? 42 : 58, bottom: compact ? 35 : 80, containLabel: false },
     xAxis: {
       type: 'time',
-      axisLine: { lineStyle: { color: '#8f9b9e' } },
-      axisLabel: { color: '#5d666c', hideOverlap: true },
+      axisLine: { lineStyle: { color: dark ? '#59727c' : '#8f9b9e' } },
+      axisLabel: { color: secondary, hideOverlap: true },
       splitLine: { show: false },
     },
     yAxis: {
@@ -56,12 +64,12 @@ export function chartOptions(
       scale: true,
       name: mode === 'indexed_100' ? 'Index (first observation = 100)' :
         mode === 'percentile' ? 'Empirical rank (%)' : (active[0]?.definition.unit ?? ''),
-      nameTextStyle: { color: '#566169', fontSize: 11 },
+      nameTextStyle: { color: secondary, fontSize: 11 },
       axisLabel: {
-        color: '#59636b',
+        color: secondary,
         formatter: (value: number) => numberLabel(value),
       },
-      splitLine: { show: true, lineStyle: { color: '#e9eced' } },
+      splitLine: { show: true, lineStyle: { color: grid } },
       min: mode === 'percentile' ? 0 : undefined,
       max: mode === 'percentile' ? 100 : undefined,
     },
@@ -76,8 +84,8 @@ export function chartOptions(
       { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
       {
         type: 'slider', xAxisIndex: 0, height: 17, bottom: 20,
-        borderColor: '#dfe5e5', fillerColor: '#cedfda',
-        backgroundColor: '#f2f4f4',
+        borderColor: dark ? '#42565a' : '#dfe5e5', fillerColor: dark ? '#355b58' : '#cedfda',
+        backgroundColor: dark ? '#273941' : '#f2f4f4',
         handleStyle: { color: '#3b6c67' },
         filterMode: 'none',
       },
