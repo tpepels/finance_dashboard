@@ -31,6 +31,9 @@ export default function App() {
   return <div className="research-app" data-theme={theme}>
     <div className="research-utility-bar">
       <span>GLOBAL CAPITAL MONITOR</span>
+      <nav className="research-utility-actions" aria-label="Additional analyses">
+        <a href="#phase4">Risk &amp; portfolios</a>
+        <a href="#research-sources">Source data</a>
       <button type="button" className="research-theme-toggle"
         aria-label={theme === 'dark' ? 'Use light appearance' : 'Use dark appearance'}
         aria-pressed={theme === 'dark'}
@@ -38,10 +41,11 @@ export default function App() {
         <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
         {theme === 'dark' ? 'Light' : 'Dark'}
       </button>
+      </nav>
     </div>
-    <div key={theme}>
-      <ResearchDashboard />
-      <Phase4Panel />
+    <div className="research-content">
+      <ResearchDashboard theme={theme}/>
+      <Phase4Panel theme={theme}/>
     <div className="research-source-shell" id="research-sources">
       <details onToggle={event => setShowSources(event.currentTarget.open)}>
         <summary className="research-explorer-toggle">

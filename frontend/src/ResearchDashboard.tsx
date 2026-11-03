@@ -173,11 +173,12 @@ function ObservedFinding({ result }: { result: ResearchResult }) {
   return null;
 }
 
-function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
+function Indicator({ spec, start, theme }: { spec: IndicatorDef; start?: string; theme: 'light' | 'dark' }) {
   const root = useRef<HTMLElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const secondaryHost = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [result, setResult] = useState<ResearchResult | null>(null);
   const [error, setError] = useState('');
 
@@ -218,11 +219,11 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
   const hasPoints = plotted.some(series => series.observations.length);
   const comparable = geometry === 'country-bars' && Boolean(result?.comparison);
   const options = useMemo(() => result
-    ? analyticalOptions(result, plotted, geometry, 'main') : null, [result, plotted, geometry]);
+    ? analyticalOptions(result, plotted, geometry, 'main') : null, [result, plotted, geometry, theme]);
   const detailOptions = useMemo(() => result && (
     geometry === 'productivity' || comparable)
     ? analyticalOptions(result, plotted, geometry, geometry === 'productivity' ? 'secondary' : 'history')
-    : null, [result, plotted, geometry, comparable]);
+    : null, [result, plotted, geometry, comparable, theme]);
   useEffect(() => {
     if (!host.current || !hasPoints || !options) return;
     const element = host.current;
@@ -234,7 +235,8 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
     return () => { observer?.disconnect(); chart.dispose(); };
   }, [options, hasPoints]);
   useEffect(() => {
-    if (!secondaryHost.current || !hasPoints || !detailOptions) return;
+    if (!secondaryHost.current || !hasPoints || !detailOptions ||
+        (geometry !== 'productivity' && !showHistory)) return;
     const element = secondaryHost.current;
     const chart = createChart(element);
     chart.setOption(detailOptions, true);
@@ -242,22 +244,22 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
       ? new ResizeObserver(() => chart.resize()) : null;
     observer?.observe(element);
     return () => { observer?.disconnect(); chart.dispose(); };
-  }, [detailOptions, hasPoints]);
+  }, [detailOptions, hasPoints, showHistory, geometry]);
 
   const sources = result?.provenance ?? [];
+  const historical = result?.series.some(series => series.historical_context);
+  const expandedChart = detailOptions && hasPoints && geometry !== 'productivity';
   return <article className="research-card" ref={root} id={'research-' + spec.id}>
     <div className="research-card-head">
-      <div className="research-card-kicker">{spec.theme} · {spec.sources.length === 1 ? '1 source' : spec.sources.length + ' underlying sources'}</div>
       <h3>{spec.title}</h3>
-      <p className="research-question">{spec.question}</p>
+      {result?.headline && <div className="research-observation">
+        <strong>{readableValue(result.headline.value, result.headline.unit)}</strong>
+        <span>{result.headline.date}</span>
+      </div>}
     </div>
-    {result?.headline && <div className="research-observation">
-      <strong>{readableValue(result.headline.value, result.headline.unit)}</strong>
-      <span>{result.headline.label} · {result.headline.date}</span>
-    </div>}
     <div className="research-visual">
-      {!visible && <p className="research-placeholder">Measured graph loads when scrolled into view</p>}
-      {visible && !result && !error && <p className="research-placeholder" role="status">Reading stored source observations…</p>}
+      {!visible && <p className="research-placeholder">Chart loads when scrolled into view</p>}
+      {visible && !result && !error && <p className="research-placeholder" role="status">Loading observations…</p>}
       {error && <p role="status" className="data-warning">{error}</p>}
       {result && !hasPoints && <p className="research-placeholder" role="status">
         No recorded observations for this indicator yet. Check local ingestion under source data.
@@ -265,75 +267,76 @@ function Indicator({ spec, start }: { spec: IndicatorDef; start?: string }) {
       {hasPoints && <div ref={host} className="research-plot" role="img"
         aria-label={'Measured economic graph: ' + spec.title} />}
     </div>
-    {result && comparable && <p className="research-measure-note">
-      Country ranking at the exact shared source date {result.comparison?.date};
-      {' '}{result.comparison?.common_date_count} fully matched dates in this selected window.
-    </p>}
     {result && geometry === 'country-bars' && !result.comparison && hasPoints &&
-      <p className="research-measure-note">No common observation date across all sources;
-        only original histories can be displayed.</p>}
-    {detailOptions && hasPoints && <section className="research-drilldown">
-      <h4>{geometry === 'productivity'
-        ? 'Calculated productivity / pay ratio gap · percent relative to 2017'
-        : 'Underlying historical country comparison'}</h4>
+      <p className="research-measure-note">No shared source date; historical source curves shown.</p>}
+    {detailOptions && hasPoints && geometry === 'productivity' && <section className="research-drilldown">
+      <h4>Productivity minus output-price-adjusted pay · indexed gap</h4>
       <div ref={secondaryHost} className="research-secondary-plot" role="img"
-        aria-label={geometry === 'productivity' ? 'Historical productivity pay ratio gap' :
-          'Country comparison historical trends'} />
+        aria-label="Historical productivity pay ratio gap"/>
     </section>}
-
-    {result?.status === 'ready' && result.series.some(series => series.historical_context) &&
-      <div className="research-history-context" aria-label="Observed historical positions">
-        {result.series.filter(series => series.historical_context).map(series => {
-          const history = series.historical_context!;
-          const position = Number(history.latest_midrank_pct);
-          return <div key={series.id} className="research-history-item">
-            <div className="research-history-description">
-              <strong>{series.name}</strong>
-              <span>Latest historical midrank: {readableValue(history.latest_midrank_pct, 'percent')}
-                {' '}from {history.count} observed periods, {history.first_date}–{history.last_date}</span>
-            </div>
-            <div className="research-percentile-track" role="img"
-              aria-label={'Latest midrank ' + position.toFixed(1) + ' percent for ' + series.name}>
-              <span style={{left: Math.max(0, Math.min(100, position)) + '%'}}/>
-            </div>
-            <div className="research-history-range">
-              <span>Low {readableValue(history.minimum, series.unit)}</span>
-              <span>Median {readableValue(history.median, series.unit)}</span>
-              <span>High {readableValue(history.maximum, series.unit)}</span>
-            </div>
-          </div>;
-        })}
-      </div>}
-    {result?.status === 'ready' && <div className="research-source-strip">
-      {result.series.map(series => <div key={series.id} className="research-source-reading">
-        <span>{series.name}</span>
-        <strong>{series.latest ? readableValue(series.latest.value, series.unit) : '—'}</strong>
-        <small>{series.latest?.date ?? 'No recorded date'}
-          {series.year_change && <span>
-            {' · '}{Number(series.year_change.difference) > 0 ? '+' : ''}
-            {readableValue(series.year_change.difference, series.year_change.unit)}
-            {' since '}{series.year_change.start}
-          </span>}
-        </small>
-      </div>)}
-    </div>}
-    {result?.status === 'ready' && <ObservedFinding result={result} />}
-    <div className="research-interpretation">
-      <p>{spec.reading}</p>
-      <p className="research-caveat">{spec.caveat}</p>
-    </div>
-    {result?.headline?.explanation && (spec.id === 'us_productivity_pay' || comparable)
-      && <p className="research-equation">{result.headline.explanation}</p>}
-    {result && <details className="research-source-details">
-      <summary>Source records and method</summary>
-      <p>{result.method}</p>
-      {sources.map(source => <div className="research-source" key={source.id}>
-        <strong>{source.name}</strong>
-        <span>{source.geography} · {source.frequency} · {source.unit}</span>
-        {source.measurement && <p>{source.measurement}</p>}
-        <a href={source.source_url} target="_blank" rel="noopener noreferrer">Original statistical series</a>
-      </div>)}
+    {expandedChart && <details className="research-secondary-details"
+      onToggle={event => setShowHistory(event.currentTarget.open)}>
+      <summary>View historical country trends</summary>
+      {showHistory && <div ref={secondaryHost} className="research-secondary-plot" role="img"
+        aria-label="Country comparison historical trends"/>}
     </details>}
+    <details className="research-analysis-details">
+      <summary>Interpretation &amp; evidence</summary>
+      <div className="research-analysis-body">
+        <p className="research-question">{spec.question}</p>
+        {result?.status === 'ready' && <ObservedFinding result={result}/>}
+        <p>{spec.reading}</p>
+        <p className="research-caveat">{spec.caveat}</p>
+        {result?.headline?.explanation && (spec.id === 'us_productivity_pay' || comparable)
+          && <p className="research-equation">{result.headline.explanation}</p>}
+        {historical && <div className="research-history-context" aria-label="Observed historical positions">
+          {result!.series.filter(series => series.historical_context).map(series => {
+            const history = series.historical_context!;
+            const position = Number(history.latest_midrank_pct);
+            return <div key={series.id} className="research-history-item">
+              <div className="research-history-description">
+                <strong>{series.name}</strong>
+                <span>Historical rank {readableValue(history.latest_midrank_pct, 'percent')}
+                  {' '}from {history.count} observations ({history.first_date}–{history.last_date})</span>
+              </div>
+              <div className="research-percentile-track" role="img"
+                aria-label={'Latest midrank ' + position.toFixed(1) + ' percent for ' + series.name}>
+                <span style={{left: Math.max(0, Math.min(100, position)) + '%'}}/>
+              </div>
+              <div className="research-history-range">
+                <span>Low {readableValue(history.minimum, series.unit)}</span>
+                <span>Median {readableValue(history.median, series.unit)}</span>
+                <span>High {readableValue(history.maximum, series.unit)}</span>
+              </div>
+            </div>;
+          })}
+        </div>}
+        {result?.status === 'ready' && <div className="research-source-strip">
+          {result.series.map(series => <div key={series.id} className="research-source-reading">
+            <span>{series.name}</span>
+            <strong>{series.latest ? readableValue(series.latest.value, series.unit) : '—'}</strong>
+            <small>{series.latest?.date ?? 'No recorded date'}
+              {series.year_change && <span>
+                {' · '}{Number(series.year_change.difference) > 0 ? '+' : ''}
+                {readableValue(series.year_change.difference, series.year_change.unit)}
+                {' since '}{series.year_change.start}
+              </span>}
+            </small>
+          </div>)}
+        </div>}
+        {result && <details className="research-source-details">
+          <summary>Original sources &amp; calculation</summary>
+          <p>{result.method}</p>
+          {sources.map(source => <div className="research-source" key={source.id}>
+            <strong>{source.name}</strong>
+            <span>{source.geography} · {source.frequency} · {source.unit}</span>
+            {source.measurement && <p>{source.measurement}</p>}
+            <a href={source.source_url} target="_blank" rel="noopener noreferrer">
+              Original statistical series</a>
+          </div>)}
+        </details>}
+      </div>
+    </details>
   </article>;
 }
 
@@ -366,7 +369,7 @@ function DistributionLens({ region }: { region: string }) {
   </div>;
 }
 
-export default function ResearchDashboard() {
+export default function ResearchDashboard({ theme }: { theme: 'light' | 'dark' }) {
   const [catalog, setCatalog] = useState<ResearchCatalog | null>(null);
   const [error, setError] = useState('');
   const [region, setRegion] = useState(() => {
@@ -406,24 +409,9 @@ export default function ResearchDashboard() {
   })).filter(group => group.items.length), [catalog, region]);
   const start = dateStart(range);
 
-  return <div className="research-main">
+  return <main className="research-main">
     <header className="research-masthead">
-      <div className="research-brand"><span>GCM</span> / Research</div>
-      <div className="research-eyebrow">Economic structure, financial cycles and distribution</div>
-      <h1>How is the economy actually changing?</h1>
-      <p className="research-lead">Source-dated economic measurements, defensible relationships and
-        explicit limits. Global aggregates, regional output and corporate sectors are
-        treated separately. Source graphs and raw observations remain available
-        in the explorer below.</p>
-      <nav className="research-primary-links" aria-label="Research sections">
-        <a href="#phase4">Advanced risk, portfolio and historical evidence</a>
-        <a href="#research-sources">Original source explorer</a>
-      </nav>
-    </header>
-    {!catalog && !error && <p className="research-loading" role="status">Loading economic research definitions…</p>}
-    {error && <section role="alert" className="system-error">{error}</section>}
-    {catalog && <>
-      <div className="research-sticky-controls">
+      {catalog && <div className="research-sticky-controls">
         <nav className="research-regions" aria-label="Geographic and institutional scope">
           {catalog.regions.map(item =>
             <button key={item.id} type="button" aria-pressed={item.id === region}
@@ -436,30 +424,48 @@ export default function ResearchDashboard() {
             {YEARS.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </div>
+      </div>}
+      <div className="research-heading-line">
+        <h1>{current?.title ?? 'Economic indicators'}</h1>
+        {catalog && <span className="research-coverage">
+          {grouped.reduce((sum, group) => sum + group.items.length, 0)} indicators
+        </span>}
       </div>
-      <section className="research-geography" aria-live="polite">
-        <div>
-          <span className="research-eyebrow">Scope / {current?.title}</span>
-          <h2>{current?.title}</h2>
-          <p>{current?.explanation}</p>
-        </div>
-        <div className="research-coverage">{grouped.reduce((sum, group) => sum + group.items.length, 0)} tracked economic indicators</div>
-      </section>
+      {current && <details className="research-scope-details">
+        <summary>Scope &amp; definitions</summary>
+        <p>{current.explanation}</p>
+      </details>}
+      <span className="research-recession-key" aria-label="Chart shading key">
+        <i aria-hidden="true"/> Shaded bands: US recessions
+      </span>
+    </header>
+    {!catalog && !error && <p className="research-loading" role="status">Loading economic research…</p>}
+    {error && <section role="alert" className="system-error">{error}</section>}
+    {catalog && <>
       {grouped.map(group => <section className="research-chapter" key={region + group.theme}>
         <div className="research-chapter-heading">
-          <h2>{group.theme}</h2><span>{group.items.length} {group.items.length === 1 ? 'measure' : 'measures'}</span>
+          <h2>{group.theme}</h2>
         </div>
-        {RELATIONSHIPS[region + '|' + group.theme]
-          && <p className="research-relationship">{RELATIONSHIPS[region + '|' + group.theme]}</p>}
-        {group.theme === 'Labour and distribution' && (region === 'world' || region === 'us')
-          && <DistributionLens region={region} />}
         <div className="research-grid">
           {group.items.map(item => <Indicator key={item.id + ':' + range}
-            spec={item} start={start} />)}
+            spec={item} start={start} theme={theme}/>)}
         </div>
+        {(RELATIONSHIPS[region + '|' + group.theme] ||
+          (group.theme === 'Labour and distribution' && (region === 'world' || region === 'us')))
+          && <details className="research-chapter-context">
+            <summary>About these measures</summary>
+            {RELATIONSHIPS[region + '|' + group.theme] &&
+              <p>{RELATIONSHIPS[region + '|' + group.theme]}</p>}
+            {group.theme === 'Labour and distribution' && (region === 'world' || region === 'us')
+              && <DistributionLens region={region}/>}
+          </details>}
       </section>)}
-      <p className="research-recession-note">{NBER_SHADE_CAPTION}{' '}
-        <a href={catalog.reference} target="_blank" rel="noopener noreferrer">NBER dates</a></p>
+      <details className="research-recession-note">
+        <summary>About recession shading</summary>
+        <p>{NBER_SHADE_CAPTION}{' '}
+          <a href={catalog.reference} target="_blank" rel="noopener noreferrer">NBER dates</a>
+        </p>
+      </details>
     </>}
-  </div>;
+  </main>;
 }
