@@ -222,11 +222,18 @@ class MaintenanceManager:
         except Exception:
             status, failure = "failed", "internal_error"
         finally:
-            self._change(job_id, status=status, finished_at=now(),
-                         result=result, current_item=None, error_code=failure)
+            # Publish terminal state and clear the active slot atomically so
+            # polling clients never see a finished job that is still busy.
             with self._mutex:
+                for item in self._jobs:
+                    if item["id"] == job_id:
+                        item.update(status=status, finished_at=now(),
+                                    result=result, current_item=None,
+                                    error_code=failure)
+                        break
                 if self._active == job_id:
                     self._active = None
+                _save_atomic(self.path, self._jobs)
 
     def _progress(self, job_id: str, count: int, total: int | None,
                   item: str | None = None) -> None:
