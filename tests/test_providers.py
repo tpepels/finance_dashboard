@@ -234,6 +234,41 @@ class ParserTests(unittest.TestCase):
         with self.assertRaisesRegex(ProviderError, "incomplete monthly CAPE history"):
             parse_shiller_sheet(rows)
 
+    def test_shiller_router_preserves_parser_error_code(self):
+        """A valid Excel container with an incomplete history is not corruption."""
+        from finance_dashboard.service import safe_source_failure_code
+        def handler(request):
+            if request.url.host == "shillerdata.com":
+                return httpx.Response(200, text=(
+                    '<a href="https://img1.wsimg.com/official/ie_data.xls">Download</a>'))
+            return httpx.Response(200, content=bytes.fromhex(
+                "D0CF11E0A1B11AE1") + b"\x00" * 40)
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            router = ProviderRouter(client=client)
+            with patch("python_calamine.CalamineWorkbook.from_filelike") as load:
+                load.return_value.get_sheet_by_name.return_value.to_python.return_value = [
+                    ["Date", "CAPE"],
+                    [1881.01, 12.0],
+                    [1980.01, 20.0],
+                    [2026.04, 35.0],
+                ]
+                with self.assertRaisesRegex(
+                        ProviderError, "incomplete monthly CAPE history") as caught:
+                    router.fetch("valuation.us.cape")
+        self.assertEqual(safe_source_failure_code(caught.exception),
+                         "shiller_incomplete")
+
+    def test_shiller_router_rejects_html_masquerading_as_workbook(self):
+        def handler(request):
+            if request.url.host == "shillerdata.com":
+                return httpx.Response(200, text=(
+                    '<a href="https://img1.wsimg.com/official/ie_data.xls">Download</a>'))
+            return httpx.Response(200, text="<html>download failed</html>")
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            with self.assertRaisesRegex(
+                    ProviderError, "not an Excel workbook"):
+                ProviderRouter(client=client).fetch("valuation.us.cape")
+
     def test_world_bank_bad_geo_fails(self):
         data = [{"page": 1, "pages": 1}, [
             {"countryiso3code": "FRA", "indicator": {"id": "NY.GDP.MKTP.KD.ZG"},
