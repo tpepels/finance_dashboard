@@ -42,6 +42,7 @@ class SourceFailureCodeTests(unittest.TestCase):
             ("Provider returned observations outside requested window", "source_window_invalid"),
             ("Shiller source workbook has incomplete monthly CAPE history", "shiller_incomplete"),
             ("Invalid Shiller Excel workbook or Data sheet", "shiller_workbook_invalid"),
+            ("Shiller download is not an Excel workbook", "shiller_download_invalid"),
             ("FRED source has no observations in requested window", "fred_window_empty"),
             ("ECB FX series identity mismatch", "fx_identity_mismatch"),
         ]

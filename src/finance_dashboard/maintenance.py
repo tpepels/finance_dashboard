@@ -413,6 +413,12 @@ class MaintenanceManager:
                         })
             except MaintenanceBlocked:
                 raise
+            except httpx.HTTPStatusError as exc:
+                from .vintage import _safe_http_diagnostic
+                record("alfred", {"status":"blocked",
+                    **_safe_http_diagnostic(exc.response)})
+            except httpx.RequestError:
+                record("alfred", {"status":"blocked","reason":"fred_network_error"})
             except Exception:
                 record("alfred", {"status":"failed","reason":"provider_failed"})
             if cancelled.is_set():

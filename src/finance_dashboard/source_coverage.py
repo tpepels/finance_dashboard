@@ -54,7 +54,7 @@ SAFE_ERROR_CODES = {
     "source_window_invalid", "source_future_date", "source_mapping_mismatch",
     "shiller_incomplete", "shiller_schema_invalid",
     "shiller_link_unavailable", "shiller_download_unapproved",
-    "shiller_workbook_invalid", "shiller_header_invalid",
+    "shiller_workbook_invalid", "shiller_download_invalid", "shiller_header_invalid",
     "shiller_empty", "shiller_window_empty", "fred_window_empty", "fx_identity_mismatch",
     "fx_schema_invalid", "fx_empty", "fx_value_invalid",
 }

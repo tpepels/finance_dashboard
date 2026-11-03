@@ -43,6 +43,7 @@ def safe_source_failure_code(exc: BaseException) -> str:
             ("Cannot identify a unique Shiller ie_data.xls download", "shiller_link_unavailable"),
             ("Shiller workbook link points to an unapproved host", "shiller_download_unapproved"),
             ("Invalid Shiller Excel workbook or Data sheet", "shiller_workbook_invalid"),
+            ("Shiller download is not an Excel workbook", "shiller_download_invalid"),
             ("Shiller workbook does not contain recognizable DATE/CAPE columns", "shiller_header_invalid"),
             ("Shiller workbook contains no CAPE observations", "shiller_empty"),
             ("Shiller workbook has no values within requested period", "shiller_window_empty"),

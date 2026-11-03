@@ -12,7 +12,8 @@ const sample: DiagnosticReport = {
   jobs:[{id:'abc',action:'sync_history',status:'partial',
     created_at:'2026-11-03T14:00:00Z',
     parts:{alfred:{status:'blocked',reason:'fred_api_key_rejected',http_status:400,
-      first_failed_series:'SAHMREALTIME',first_failed_asof:'2000-01-31',missing:964},
+      first_failed_series:'SAHMREALTIME',first_failed_asof:'2000-01-31',missing:964,
+      prepublication_excluded:150},
       sec:{status:'partial',funds:[{id:'vt',status:'partial',stored:11,errors:2,
         reason:'sec_rate_limited',http_status:429}]}}}],
   events:[{at:'2026-11-03T14:10:00Z',level:'warning',scope:'alfred',event:'stage_finished',
@@ -28,6 +29,7 @@ describe('shareable developer diagnostic report',()=>{
     expect(text).toContain('valuation.us.cape');
     expect(text).toContain('fred_api_key_rejected');
     expect(text).toContain('first_failed_series=SAHMREALTIME');
+    expect(text).toContain('prepublication_excluded=150');
     expect(text).toContain('first_failed_asof=2000-01-31');
     expect(text).toContain('http=400');
     expect(text).toContain('fund=vt status=partial');

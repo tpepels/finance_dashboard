@@ -200,7 +200,7 @@ class VintageTests(unittest.TestCase):
             self.assertEqual(result["downloaded_now"], 2)
             self.assertEqual(result["missing_after_run"], 0)
             self.assertEqual(len(calls), 3)
-            self.assertFalse((Path(tmp)/"T10Y3M"/"2020-01-31.json").exists())
+            self.assertEqual(result["prepublication_excluded"], 1)
 
     def test_refuses_future_or_after_vintage_observation(self):
         def handler(_):

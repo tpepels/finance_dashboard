@@ -14,6 +14,7 @@ export type DiagnosticJob = {
     first_failed_series?: string; first_failed_asof?: string;
     failed?: number; missing?: number;
     downloaded?: number; sources?: number; http_status?: number;
+    prepublication_excluded?: number;
     funds?: {id?: string; status?: string; stored?: number; errors?: number;
       http_status?: number; reason?: string}[];
   }>;
@@ -71,7 +72,9 @@ export function formatDeveloperLog(report: DiagnosticReport): string {
     for (const [key, part] of Object.entries(job.parts ?? {})) {
       lines.push('  ' + key + ' / ' + value(part.status)
         + field('reason',part.reason) + field('failed',part.failed)
-        + field('missing',part.missing) + field('downloaded',part.downloaded)
+        + field('missing',part.missing)
+        + field('prepublication_excluded',part.prepublication_excluded)
+        + field('downloaded',part.downloaded)
         + field('http',part.http_status)
         + field('first_failed_series',part.first_failed_series)
         + field('first_failed_asof',part.first_failed_asof));
