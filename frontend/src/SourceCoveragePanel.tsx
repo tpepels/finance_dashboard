@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DataOperations from './DataOperations';
+import { sourceAuditCsv } from './sourceAudit';
 
 interface SourceRow {
   family: 'macro' | 'markets' | 'fx';
@@ -79,6 +80,18 @@ export default function SourceCoveragePanel() {
     ? Object.values(report.summary).reduce((sum, group) =>
       sum + (group.refresh_failed_with_data ?? 0), 0)
     : 0;
+  function exportSourceAudit() {
+    if (!report) return;
+    const csv = sourceAuditCsv(report.items);
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'global-capital-monitor-source-audit-' + report.asof + '.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   const rows = useMemo(() => (report?.items ?? []).filter(item =>
     (family === 'all' || item.family === family) &&
     (selection === 'all' || ATTENTION.has(item.state))),
@@ -98,6 +111,9 @@ export default function SourceCoveragePanel() {
         {' '}Last stored source date is reported independently of the latest refresh attempt.</>
         : error || 'Reading local source data…'}</p>
       {report && <>
+        <button type="button" className="research-export-audit" onClick={exportSourceAudit}>
+          Download all {report.items.length} source statuses (CSV)
+        </button>
         <DataOperations sources={report.items.map(({family,id,name,state}) =>
           ({family,id,name,state}))} initiallyOpen={focusManagement}/>
         <div className="research-coverage-filters">

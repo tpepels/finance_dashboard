@@ -780,3 +780,12 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
   .data-operation-choice select { flex-basis: 100%; max-width: 100%; }
   .data-operations button { flex: 1; }
 }
+
+/* Source audit stays secondary to the primary economic charts. */
+.research-export-audit { display: inline-block; font: inherit; margin: 4px 0 8px;
+  padding: 6px 10px; background: transparent; border: 1px solid #95b8c8;
+  color: #2d6a81; border-radius: 5px; cursor: pointer; }
+.research-export-audit:hover { background: #dcecf1; }
+.research-app[data-theme="dark"] .research-export-audit {
+  color: #b2dff0; border-color: #658b9c; }
+.research-app[data-theme="dark"] .research-export-audit:hover { background: #304b58; }
