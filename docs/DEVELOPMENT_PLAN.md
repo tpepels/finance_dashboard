@@ -12,7 +12,7 @@
 
 **No paid sources or paid API dependency:** public/free use must comply with source rights and rate limits. Exact source coverage for global constituent weights, historical European UCITS holdings, global consolidated listed-issuer net profit and world equity/bond total-return benchmarks remains **research-unresolved**. The correct outcome when originals are unavailable is a narrowly labelled alternative research question or a conditional/blocked original, never an invented global statistic.
 
-**Phase acceptance boundary:** this approval finalizes scientific/editorial *direction and catalogue membership*. **Superseded approval boundary:** the user explicitly approved the complete Phase 1 on 2026-11-03 and requested Phase 2. The previously open review gate is now satisfied. This acceptance does not certify that old dataset histories are complete, that new source acquisitions succeed or that forecasts have been validated. Those are downstream phase responsibilities.
+**Phase acceptance boundary (final):** the user explicitly approved the complete Phase 1 on 2026-11-03 and requested Phase 2. The previously open review gate is now satisfied. This acceptance does not certify that old dataset histories are complete, that new source acquisitions succeed or that forecasts have been validated. Those are downstream phase responsibilities.
 
 ## New free-source discovery evidence — 2026-11-03
 
@@ -38,7 +38,7 @@ The [source/corpus audit](PHASE2_SOURCE_COVERAGE_AUDIT.md) lists every approved 
 
 ## Binding decision
 
-The original Phase 1 acceptance is **reopened**. Historical Phase 2/3/4 "done", status percentages, source-sync milestones, and 0–5 workstream ordering are **not acceptance or priorities under this plan**. They are archived, not erased. The prior exact roadmap is frozen at [archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md](archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md). Existing code, data, release snapshots, config, backups, historical studies and tested integrations must remain intact during the pause. No implementation, data migration, cleanup or deletion is authorized by this reset. Historical data collection success remains valid evidence only, not an acceptance gate for the new research product.
+The original Phase 1 acceptance was **reopened during redesign and subsequently CLOSED by the owner's explicit approval on 2026-11-03**. Historical Phase 2/3/4 "done", status percentages, source-sync milestones, and 0–5 workstream ordering are **not acceptance or priorities under this plan**. They are archived, not erased. The prior exact roadmap is frozen at [archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md](archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md). Existing code, data, release snapshots, config, backups, historical studies and tested integrations must remain intact. That Phase 1-only implementation pause has ended; Phase 2 source work is now authorized, but unrelated redesign, destructive migrations and deletion are not. Historical data collection success remains valid evidence only, not an acceptance gate for the new research product.
 
 **This file is the only authoritative lifecycle and phase plan.** The following are **approved Phase 1 scientific/design references, not parallel implementation roadmaps**:
 - [PHASE1_SCIENTIFIC_CHARTER.md](PHASE1_SCIENTIFIC_CHARTER.md) — mission, evidence standards, methodology requirements, intended user decisions.
@@ -87,7 +87,7 @@ Phases define **outcomes**, not token commits. Each future phase includes full t
 
 ## Phase 1 decision protocol
 
-The assistant owns technical and scientific proposals, evidence review and rigorous defaults; the user decides only **product intent, audience and presentation tradeoffs**. **Completed on 2026-11-03:** all ten user decisions adopted as recommended, without overrides; see [charter](PHASE1_SCIENTIFIC_CHARTER.md). Next, the assistant completes exact literature-grounded methods and 35 candidate analyses, refines the scientific UI contract, and presents the **entire ideal-state specification for explicit acceptance**. Phase 1 final owner approval was explicitly granted on 2026-11-03. A scientifically grounded source/data inventory and approved Phase 2 implementation may now proceed. Original analysis/fallback definitions remain binding.
+The assistant owns technical and scientific proposals, evidence review and rigorous defaults; the user decides only **product intent, audience and presentation tradeoffs**. **Completed on 2026-11-03:** all ten user decisions adopted as recommended, without overrides; see [charter](PHASE1_SCIENTIFIC_CHARTER.md). The assistant completed the literature-grounded methodology, revised 35-analysis catalogue, source fallback policy and interface specification before the owner accepted Phase 1. Phase 1 final owner approval was explicitly granted on 2026-11-03. A scientifically grounded source/data inventory and approved Phase 2 implementation may now proceed. Original analysis/fallback definitions remain binding.
 
 ## Evidence and methodological standards
 
@@ -119,7 +119,7 @@ The [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md) now specifies the
 
 The scientific [PHASE1_ANALYSIS_SPECIFICATIONS.md](PHASE1_ANALYSIS_SPECIFICATIONS.md) now contains **35/35 individual first-class question contracts**, **5 retained supporting methods** and **49 original scholarly/statistical source links**. Each has original/source-defined variables, methodological basis, reproducible calculation, meaningful alternatives, comparison-validity constraints, interpretation boundary and default graph. All six approved connected editorial research stories are defined, with component methods available. Source IDs are verified when available; proposed worldwide measurements without a single public publisher series retain explicit intended universes and may not be silently replaced by narrower data.
 
-This completes the requested **first-pass analysis-specification writing task**, but it does **not** close Phase 1, establish actual source licensing or validate research models. The complete ideal scientific UI/content specification still requires final expert review and explicit owner approval. Application code, sync systems and implementation-gap analysis remain paused.
+**Historical research status at the time of writing:** the 35 individual first-pass specifications alone did not close Phase 1. The user has since **closed Phase 1 by explicit acceptance**. Actual source histories, source release-time vintage and code/data validation are now authorized under **active Phase 2**; subsequent analytical methods/UI phases remain separately gated.
 
 ## Critical product/scientific review (2026-11-03)
 
