@@ -7,6 +7,7 @@
 - [New five-phase development plan](docs/DEVELOPMENT_PLAN.md) — **sole phase plan**; research-first Phase 1 active, later scope acceptance reset.
 - [Phase 1 scientific charter](docs/PHASE1_SCIENTIFIC_CHARTER.md) — ten approved product-intent decisions, seven research domains, 28 scientific/authoritative methodological references and source-validation rules.
 - [Phase 1 analysis catalogue](docs/PHASE1_ANALYSIS_CATALOGUE.md) — 35 question-led comparative analyses with recommended chart types and limits.
+- [35 scientific analysis specifications](docs/PHASE1_ANALYSIS_SPECIFICATIONS.md) — variables, original methodology, reproducible formulas, alternatives, validity, interpretation and 42 scholarly/statistical references.
 - [Phase 1 visualization contract](docs/PHASE1_VISUALIZATION_CONTRACT.md) — complete per-graph geography/series/chart type/method, saved research views, accessibility, monitoring and independent recession/shock/recovery overlays.
 - [Pre-redesign roadmap archive](docs/archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md) — prior operational fixes/empirical evidence; historical only.
 

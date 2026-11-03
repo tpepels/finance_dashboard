@@ -8,7 +8,8 @@ The original Phase 1 acceptance is **reopened**. Historical Phase 2/3/4 "done", 
 
 **This file is the only authoritative lifecycle and phase plan.** The following are **supporting Phase 1 specification drafts, not parallel implementation roadmaps**:
 - [PHASE1_SCIENTIFIC_CHARTER.md](PHASE1_SCIENTIFIC_CHARTER.md) — mission, evidence standards, methodology requirements, intended user decisions.
-- [PHASE1_ANALYSIS_CATALOGUE.md](PHASE1_ANALYSIS_CATALOGUE.md) — complete initial candidate set of question-led comparative analyses, scholarly grounding, chart defaults, evidence requirements.
+- [PHASE1_ANALYSIS_CATALOGUE.md](PHASE1_ANALYSIS_CATALOGUE.md) — curated 35 comparative questions and six editorial overview defaults.
+- [PHASE1_ANALYSIS_SPECIFICATIONS.md](PHASE1_ANALYSIS_SPECIFICATIONS.md) — scientific specification for all 35: published variables, research sources, calculations, alternatives, comparable populations and inference limits.
 - [PHASE1_VISUALIZATION_CONTRACT.md](PHASE1_VISUALIZATION_CONTRACT.md) — information architecture, independent per-graph configuration, chart grammar, annotation model and research workflow.
 
 The earlier source and economic method files remain **inventory/technical references to the existing system**, not an approved specification of what the new application must look like or contain. Any original requirement or data source is considered for the new scope by its scientific question, not by its presence in the former code.
@@ -78,3 +79,9 @@ All ten product defaults were accepted: global comparative macro-financial resea
 ## Phase 1 visualization-specification continuation (2026-11-03)
 
 The [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md) now specifies the full research navigation, six default comparative analyses, **per-figure** geography/indicator/type/method/event/view state, strict chart-type compatibility, historical event/recession distinction, versioned methodology panel, accessible figure grammar, quiet monitoring and 8 normatively testable walkthrough examples. These are **ideal-state design obligations, not already implemented functionality**. The owner has approved the product intentions; the complete visualization acceptance review remains part of the open Phase 1 gate.
+
+## Expert-led Phase 1 analysis specifications — 2026-11-03
+
+The scientific [PHASE1_ANALYSIS_SPECIFICATIONS.md](PHASE1_ANALYSIS_SPECIFICATIONS.md) now contains **35/35 individual question contracts** and **42 original scholarly/statistical source links**. Each has original/source-defined variables, methodological basis, reproducible calculation, meaningful alternatives, comparison-validity constraints, interpretation boundary and default graph. The six editorial analyses are included. Source IDs are verified when available; proposed worldwide measurements without a single public publisher series retain explicit intended universes and may not be silently replaced by narrower data.
+
+This completes the requested **first-pass analysis-specification writing task**, but it does **not** close Phase 1, establish actual source licensing or validate research models. The complete ideal scientific UI/content specification still requires final expert review and explicit owner approval. Application code, sync systems and implementation-gap analysis remain paused.

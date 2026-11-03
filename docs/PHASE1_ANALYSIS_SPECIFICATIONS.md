@@ -595,9 +595,9 @@ The following are original publisher, data-producer or scholarly publication pag
 |---|---|---|
 | S01 | OECD Composite Leading Indicators dataset/method | https://www.oecd.org/en/data/datasets/oecd-composite-leading-indicators-clis.html |
 | S02 | NBER Business Cycle Dating chronology | https://www.nber.org/research/business-cycle-dating |
-| S03 | OECD national accounts and quarterly real GDP | https://www.oecd.org/en/data/datasets/quarterly-national-accounts.html |
+| S03 | OECD national accounts and quarterly real GDP | https://www.oecd.org/en/data/datasets/gdp-and-non-financial-accounts.html |
 | S04 | Federal Reserve G.17 industrial production, including diffusion tables | https://www.federalreserve.gov/releases/g17/Current/ipdisk/alltables.htm |
-| S05 | Estrella & Mishkin (1996), Predicting U.S. Recessions, NBER w5379 | https://www.nber.org/papers/w5379 |
+| S05 | Estrella & Mishkin (1995), Predicting U.S. Recessions, NBER w5379; published 1998 | https://www.nber.org/papers/w5379 |
 | S06 | FRED SAHMREALTIME release and formula | https://alfred.stlouisfed.org/series?seid=SAHMREALTIME |
 | S07 | FRED ALFRED realtime vintage API and availability | https://fred.stlouisfed.org/docs/api/fred/realtime_period.html |
 | S08 | IMF World Economic Outlook: annual actuals/forecasts and variable codes | https://data.imf.org/Datasets/WEO |

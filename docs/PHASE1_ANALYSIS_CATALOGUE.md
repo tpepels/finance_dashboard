@@ -1,6 +1,6 @@
 # Phase 1 — accepted scope and proposed scientific analysis catalogue
 
-**Status: USER-APPROVED PRODUCT INTENT; 35 ANALYSES REQUIRE SCIENTIFIC REVIEW AND FINAL PHASE 1 SIGN-OFF.** An **ideal research product** catalogue; it is **not** a current feature inventory or gap report. All entries need their own formal research record and peer-reviewed/official source review before Phase 1 sign-off. IDs are stable proposed question identities, not chart or database IDs. Citation keys R01–R16 point to the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md); a source for one method never certifies every related derived inference.
+**Status: USER-APPROVED PRODUCT INTENT; 35 ANALYSES REQUIRE SCIENTIFIC REVIEW AND FINAL PHASE 1 SIGN-OFF.** An **ideal research product** catalogue; it is **not** a current feature inventory or gap report. All entries need their own formal research record and peer-reviewed/official source review before Phase 1 sign-off. IDs are stable proposed question identities, not chart or database IDs. Citation keys R01–R28 point to the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md); a source for one method never certifies every related derived inference.
 
 ## Design rules
 
@@ -160,6 +160,12 @@ The contracts below supplement the earlier catalogue table, rather than replacin
 1. **Global credit vulnerability:** prefer country-by-country BIS gap and DSR research; a separate constructed world stock-weighted gap is an original model requiring its own defensible trend/universe/FX method. A weighted-country-gap average is never labelled a published world gap.
 2. **Corporate profitability and Marxian rates:** distinguish BEA published Q variants, OECD surplus/capital returns and the published 43-country Marxian productive-sector model. They are not one interchangeable profit measure; reconcile conceptual relations before rendering a joint figure.
 3. **Portfolio valuation versus timing:** combine valuation with real discount-rate context and matured forward-return evidence where possible; do not treat the relationship as a near-term investment instruction. Alternative empirical specifications and nonstationarity are part of the analysis record.
+
+## Full individual scientific specifications — Phase 1 research deliverable
+
+The [35-analysis scientific specification](PHASE1_ANALYSIS_SPECIFICATIONS.md) defines for **every stable ID** original published variables and verified identifiers, research methods, reproducible calculations, alternatives, comparisons and a strict inference boundary, with a **42-source primary-methodology reference register**. The catalogue table remains the index; the specifications are the proposed normative methodological detail.
+
+This is the complete **first-pass ideal-state research definition**; it is not an ingestion proof, license audit, existing-feature gap analysis, or full scientific/owner acceptance. Some worldwide original-source data have no single licensed public series; their intended economic universes are documented rather than replaced with similarly named proxies. Phase 1 closes only after the final integrated ideal product is accepted.
 
 ## Analysis-record approval gate
 
