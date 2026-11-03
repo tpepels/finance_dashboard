@@ -94,9 +94,25 @@ class SourceCoverageTests(unittest.TestCase):
         report = build_coverage(self.engine,self.catalog,self.registry,asof=date(2026,11,3))
         row=next(item for item in report["items"] if item["id"]==sid)
         self.assertEqual(row["stored_periods"],1)
+        self.assertEqual(row["stored_versions"],2)
+        self.assertEqual(row["additional_revisions"],1)
+        self.assertEqual(row["unobserved_internal_periods"],0)
         self.assertEqual(row["oldest_source_date"],"2023-01-01")
         self.assertEqual(row["latest_source_date"],"2023-01-01")
         self.assertEqual(row["state"],"stale")
+
+    def test_annual_gap_diagnostic_does_not_label_revisions_as_missing_dates(self):
+        sid = "labour.us.pwt_labour_share"
+        self.add_macro(sid, when=date(2020,1,1))
+        with Session(self.engine) as session, session.begin():
+            session.add(ObservationVersion(series_id=sid,period=date(2022,1,1),
+                value=Decimal("0.52"),first_seen_at=NOW,ingestion_run_id="run-"+sid))
+        report = build_coverage(self.engine,self.catalog,self.registry,
+                                asof=date(2026,11,3))
+        row = next(x for x in report["items"] if x["id"] == sid)
+        self.assertEqual(row["stored_periods"],2)
+        self.assertEqual(row["unobserved_internal_periods"],1)
+        self.assertEqual(row["additional_revisions"],0)
 
     def test_market_and_fx_are_reported_with_actual_observation_dates(self):
         with Session(self.engine) as session, session.begin():
@@ -120,6 +136,8 @@ class SourceCoverageTests(unittest.TestCase):
                          (1,"2026-10-30","available"))
         self.assertEqual((fx["stored_periods"],fx["latest_source_date"],fx["state"]),
                          (1,"2026-11-02","available"))
+        self.assertIsNone(fx["unobserved_internal_periods"])
+        self.assertIsNone(market["unobserved_internal_periods"])
 
     def test_readonly_api_contains_complete_coverage_without_credentials(self):
         with patch.dict(os.environ,{"FINANCE_AUTO_REFRESH":"0","FRED_API_KEY":"a"*32,

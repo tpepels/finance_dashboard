@@ -96,7 +96,7 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         "additional_revisions": max(0, int(versions)-int(count)),
         "unobserved_internal_periods": _internal_calendar_gaps(
             oldest, latest, frequency, int(count)),
-        "cadence_validated": provider not in (
+        "regular_cadence_assumed": provider not in (
             "MSCI_PUBLISHED_TOP10", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
             "SIBLIS_WORLD_EARNINGS_YIELD", "CORGANO_SPOT"),
         "last_attempt_utc": last["started_at"].isoformat() if last else None,

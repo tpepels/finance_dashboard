@@ -8,6 +8,8 @@ interface SourceRow {
   stored_periods: number; oldest_source_date: string | null;
   latest_source_date: string | null;
   last_attempt_state: string; last_failure_code: string | null;
+  additional_revisions?: number; unobserved_internal_periods?: number | null;
+  regular_cadence_assumed?: boolean;
 }
 interface Coverage {
   asof: string;
@@ -124,7 +126,13 @@ export default function SourceCoveragePanel() {
                 {LABELS[item.state] || 'Unclassified source state'}</span>
                 {item.last_failure_code && <small>{item.last_failure_code}</small>}
               </td>
-              <td>{item.stored_periods}</td>
+              <td>{item.stored_periods}
+                {item.unobserved_internal_periods != null && item.unobserved_internal_periods > 0 &&
+                  <small>{item.unobserved_internal_periods} internal calendar gaps
+                    {!item.regular_cadence_assumed ? ' · irregular source' : ''}</small>}
+                {!!item.additional_revisions &&
+                  <small>{item.additional_revisions} retained revisions</small>}
+              </td>
               <td>{item.latest_source_date ?? '—'}</td>
               <td>{item.last_attempt_state}</td>
             </tr>)}</tbody>
