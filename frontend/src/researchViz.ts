@@ -43,7 +43,10 @@ export function analyticalOptions(
 ): EChartsCoreOption {
   const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
   const axisText = dark ? '#b6ccd2' : '#677b80';
-  const axisGrid = dark ? '#31464f' : '#edf0ee';
+  const axisGrid = dark ? '#354c56' : '#e0e8eb';
+  const colors = dark
+    ? ['#76baff', '#ffae77', '#66ddbd', '#c7a1ff', '#f0d279', '#fb889c']
+    : ['#1762a2', '#d66b3e', '#1f9679', '#8754b8', '#a37b14', '#b74366'];
   if (geometry === 'country-bars' && panel === 'main' && data.comparison) {
     const ranked = [...data.comparison.ranked].reverse();
     return {
@@ -60,8 +63,9 @@ export function analyticalOptions(
           ' ' + data.comparison?.unit;
       } },
       series: [{ name: 'Same-date comparison', type: 'bar', barMaxWidth: 26,
-        itemStyle: { color: dark ? '#77bfae' : '#397872' }, label: { show: true, position: 'right',
-          formatter: (params: any) => Number(params.value).toFixed(2), fontSize: 10 },
+        itemStyle: { color: (params: any) => colors[params.dataIndex % colors.length] },
+        label: { show: true, position: 'right',
+          color: axisText, formatter: (params: any) => Number(params.value).toFixed(2), fontSize: 11 },
         data: ranked.map(row => Number(row.value)) }],
     };
   }
@@ -74,9 +78,9 @@ export function analyticalOptions(
     base.series = (base.series ?? []).map((line: Record<string, any>) => ({
       ...line, type: dense ? 'line' : 'bar',
       barMaxWidth: 12, markLine: zeroReference(),
-      areaStyle: dense ? { color: '#c6dcd6', opacity: 0.25 } : undefined,
-      lineStyle: dense ? { width: 1.7 } : undefined,
-      itemStyle: { color: '#326f6c' },
+      areaStyle: dense ? { color: colors[2], opacity: 0.19 } : undefined,
+      lineStyle: dense ? { width: 2.3 } : undefined,
+      itemStyle: { color: colors[2] },
     }));
     base.legend = { show: false };
     base.grid = { left: 56, right: 20, top: 15, bottom: 35 };
@@ -92,15 +96,18 @@ export function analyticalOptions(
     base.yAxis = { ...base.yAxis, min: 0, max: 100, name: 'GDP distribution (%)' };
     base.series = (base.series ?? []).map((line: Record<string, any>) => ({
       ...line, type: 'line', stack: 'gdp', showSymbol: false,
-      areaStyle: { opacity: 0.87 },
-      lineStyle: { width: 1.2 },
+      areaStyle: { opacity: 0.48 },
+      lineStyle: { width: 2 },
     }));
   }
   if (geometry === 'annual-bars' || (geometry === 'difference' && series[0]?.definition.frequency === 'A')) {
     base.series = (base.series ?? []).map((line: Record<string, any>) => ({
       ...line, type: 'bar', barMaxWidth: 22,
       markLine: zeroReference(),
-      itemStyle: { color: '#367b71' },
+      itemStyle: { color: (params: any) => {
+        const value = Array.isArray(params.value) ? Number(params.value[1]) : Number(params.value);
+        return value < 0 ? (dark ? '#ff8e93' : '#c94b55') : colors[0];
+      } },
     }));
   }
   if (geometry === 'difference' && series[0]?.definition.frequency !== 'A') {

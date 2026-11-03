@@ -32,8 +32,8 @@ export function chartOptions(
   const active = plotted.filter(s => s.observations.length);
   const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
   const palette = dark
-    ? ['#78b9d8', '#e4a077', '#7fc5af', '#c3a1d2', '#bdcb8c', '#dd8897']
-    : ['#174875', '#bc6b32', '#2f7168', '#90609c', '#73833b', '#a84b56'];
+    ? ['#76baff', '#ffae77', '#66ddbd', '#c7a1ff', '#f0d279', '#fb889c']
+    : ['#1762a2', '#d66b3e', '#1f9679', '#8754b8', '#a37b14', '#b74366'];
   const ink = dark ? '#cbd9de' : '#425761';
   const secondary = dark ? '#aabdc5' : '#5d666c';
   const grid = dark ? '#354851' : '#e9eced';
@@ -49,6 +49,7 @@ export function chartOptions(
 
   return {
     animation: false,
+    backgroundColor: 'transparent',
     color: palette,
     legend: { top: 1, type: 'scroll', textStyle: { color: ink, fontSize: compact ? 10 : 11 },
       itemHeight: 9, itemWidth: 16, padding: [4, 12, 0, 12] },
@@ -98,19 +99,29 @@ export function chartOptions(
         itemStyle: { color: palette[index % palette.length] },
         emphasis: { focus: 'series' as const },
         markArea: index === 0 && grayPeriods.length ? {
-          silent: true, z: -1,
-          itemStyle: { color: 'rgba(106,112,118,0.12)', borderWidth: 0 },
+          silent: true, z: 0,
+          itemStyle: {
+            color: dark ? 'rgba(235,90,104,0.27)' : 'rgba(215,73,84,0.18)',
+            borderColor: dark ? 'rgba(255,131,140,0.58)' : 'rgba(188,58,73,0.40)',
+            borderWidth: 1,
+          },
           label: { show: false },
           data: grayPeriods,
         } : undefined,
       };
       if (sparse) return {
-        ...common, type: 'scatter' as const, symbolSize: 7,
+        ...common, type: 'bar' as const,
+        // Each sparse bar is an independently observed dated snapshot.
+        // An interpolated curve would imply nonexistent intermediate releases.
+        data: item.observations.map(point => [point.date, point.display] as const),
+        barMaxWidth: 28,
+        barMinHeight: 2,
+        itemStyle: { color: palette[index % palette.length], borderRadius: [3,3,0,0] },
       };
       return {
         ...common, type: 'line' as const, symbol: 'circle',
-        symbolSize: compact ? 2 : 3, showSymbol: item.observations.length < 35,
-        connectNulls: false, lineStyle: { width: 2 },
+        symbolSize: compact ? 3 : 4, showSymbol: item.observations.length < 35,
+        connectNulls: false, lineStyle: { width: compact ? 2.3 : 2.7 },
       };
     }),
   };
