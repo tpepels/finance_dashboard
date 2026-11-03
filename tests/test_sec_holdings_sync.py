@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 from datetime import date
 import json
 import unittest
+from unittest.mock import patch
 import httpx
 
 from finance_dashboard.sec_holdings_sync import (
