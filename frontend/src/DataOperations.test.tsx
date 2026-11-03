@@ -44,7 +44,7 @@ describe('all source maintenance is accessible in the dashboard', () => {
       'labour.it.pwt_labour_share',
     ]);
     expect(mockFetch.mock.calls.some(([,init]) =>
-      init?.headers?.['X-GCM-Action']==='dashboard')).toBe(true);
+      new Headers(init?.headers).get('X-GCM-Action') === 'dashboard')).toBe(true);
   });
 
   it('refreshes just a selected FX rate without also scheduling market instruments', async () => {
@@ -78,13 +78,14 @@ describe('all source maintenance is accessible in the dashboard', () => {
   });
 
   it('reports active progress and disables conflicting imports while allowing cancellation', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (request:string,init?:RequestInit)=>{
+    const runningFetch = vi.fn(async (request:string,init?:RequestInit)=>{
       if(init?.method==='POST') return {ok:true,status:202,json:async()=>({id:'job1'})};
       return {ok:true,status:200,json:async()=>({
         active_job_id:'job1',jobs:[{id:'job1',action:'refresh_sources',
           status:'running',completed:2,total:3,current_item:'France PWT'}],operations:[],
       })};
-    }));
+    });
+    vi.stubGlobal('fetch', runningFetch);
     const user=userEvent.setup();
     render(<DataOperations sources={sources}/>);
     await user.click(screen.getByText('Manage data imports and maintenance'));
@@ -92,7 +93,7 @@ describe('all source maintenance is accessible in the dashboard', () => {
     expect(screen.getByRole('button',{
       name:'Import Germany, France and Italy PWT histories'}).hasAttribute('disabled')).toBe(true);
     await user.click(screen.getByRole('button',{name:'Cancel after current request'}));
-    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([url,init])=>
+    expect(runningFetch.mock.calls.some(([url,init])=>
       String(url).endsWith('/job1/cancel') && init?.method==='POST')).toBe(true);
   });
 });
