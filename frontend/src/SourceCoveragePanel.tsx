@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DataOperations from './DataOperations';
+import DeveloperLogs from './DeveloperLogs';
 import { sourceAuditCsv } from './sourceAudit';
 
 interface SourceRow {
@@ -39,6 +40,7 @@ export default function SourceCoveragePanel() {
   const [report, setReport] = useState<Coverage | null>(null);
   const [error, setError] = useState('');
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
   const ref = useRef<HTMLDetailsElement>(null);
   const [family, setFamily] = useState('all');
   const [selection, setSelection] = useState('issues');
@@ -153,6 +155,11 @@ export default function SourceCoveragePanel() {
         <p className="research-coverage-method">{report.method} Publication dates are
           checked separately from refresh attempts.</p>
         </>}
+        <details className="research-devlog-disclosure"
+          onToggle={event => setLogsOpen(event.currentTarget.open)}>
+          <summary>Developer logs</summary>
+          {logsOpen && <DeveloperLogs/>}
+        </details>
         </div>}
       </details>
     </div>

@@ -776,3 +776,37 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .research-app[data-theme="dark"] .research-export-audit {
   color: #b2dff0; border-color: #658b9c; }
 .research-app[data-theme="dark"] .research-export-audit:hover { background: #304b58; }
+
+/* Optional technical timeline; all normal data controls remain above diagnostics. */
+.research-devlog-disclosure { border-top: 1px solid #c7d8de; padding-top: 12px;
+  margin-top: 16px; }
+.research-devlog-disclosure > summary { color: #365e70; font-size: 12px;
+  font-weight: 650; cursor: pointer; }
+.developer-log-panel { padding: 12px 0 4px; font-size: 12px; }
+.developer-log-panel > p { margin: 6px 0 12px; }
+.developer-log-actions { display: flex; flex-wrap: wrap; align-items: end;
+  gap: 8px; margin-bottom: 10px; }
+.developer-log-actions label { display: flex; flex-direction: column; gap: 4px;
+  color: inherit; font-size: 11px; }
+.developer-log-actions select, .developer-log-actions button {
+  font: inherit; font-size: 12px; color: #315b6b; border: 1px solid #a5bdc6;
+  border-radius: 4px; background: transparent; padding: 7px 10px; min-height: 33px; }
+.developer-log-actions select { background: #fff; }
+.developer-log-actions button { cursor: pointer; }
+.developer-log-actions button:disabled { opacity: .5; cursor: default; }
+.developer-log-overview { display: flex; flex-wrap: wrap; gap: 6px 15px;
+  margin: 10px 0; color: #527382; font-variant-numeric: tabular-nums; }
+.developer-log-output { background: #111a20; color: #cbd9e0; font-family:
+  ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px;
+  white-space: pre; overflow: auto; max-height: 340px; min-height: 105px;
+  padding: 14px; border-radius: 5px; border: 1px solid #3d5662;
+  line-height: 1.6; }
+.developer-log-panel > small { display: block; margin-top: 9px;
+  color: #607d89; line-height: 1.5; }
+.research-app[data-theme="dark"] .research-devlog-disclosure { border-color: #46616b; }
+.research-app[data-theme="dark"] .research-devlog-disclosure > summary { color: #bbdce8; }
+.research-app[data-theme="dark"] .developer-log-actions button,
+.research-app[data-theme="dark"] .developer-log-actions select {
+  color: #cce4ea; border-color: #597987; background: #213b48; }
+.research-app[data-theme="dark"] .developer-log-overview,
+.research-app[data-theme="dark"] .developer-log-panel > small { color: #b4cdd7; }
