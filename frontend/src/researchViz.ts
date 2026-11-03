@@ -41,23 +41,26 @@ export function analyticalOptions(
   geometry: AnalyticalGeometry,
   panel: 'main' | 'secondary' | 'history' = 'main',
 ): EChartsCoreOption {
+  const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
+  const axisText = dark ? '#b6ccd2' : '#677b80';
+  const axisGrid = dark ? '#31464f' : '#edf0ee';
   if (geometry === 'country-bars' && panel === 'main' && data.comparison) {
     const ranked = [...data.comparison.ranked].reverse();
     return {
       animation: false,
       grid: { left: 135, right: 57, top: 8, bottom: 37 },
       xAxis: { type: 'value', name: data.comparison.unit,
-        axisLabel: { color: '#677b80' }, splitLine: { lineStyle: { color: '#edf0ee' } } },
+        axisLabel: { color: axisText }, splitLine: { lineStyle: { color: axisGrid } } },
       yAxis: { type: 'category', data: ranked.map(row =>
         row.name.length > 27 ? row.name.slice(0, 25) + '…' : row.name),
-        axisLabel: { color: '#435f66', fontSize: 11, width: 124, overflow: 'truncate' } },
+        axisLabel: { color: axisText, fontSize: 11, width: 124, overflow: 'truncate' } },
       tooltip: { trigger: 'item', formatter: (params: any) => {
         const entry = ranked[params.dataIndex];
         return entry.name + '<br/>' + Number(entry.value).toLocaleString('en', { maximumFractionDigits: 3 }) +
           ' ' + data.comparison?.unit;
       } },
       series: [{ name: 'Same-date comparison', type: 'bar', barMaxWidth: 26,
-        itemStyle: { color: '#397872' }, label: { show: true, position: 'right',
+        itemStyle: { color: dark ? '#77bfae' : '#397872' }, label: { show: true, position: 'right',
           formatter: (params: any) => Number(params.value).toFixed(2), fontSize: 10 },
         data: ranked.map(row => Number(row.value)) }],
     };

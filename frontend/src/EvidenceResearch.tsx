@@ -285,6 +285,7 @@ function MarxAccounts() {
 /** Reliability diagram uses the actual mean probability in each evaluation bin;
  * unlike bin midpoints, it is computed from the predictions being evaluated. */
 function CalibrationView({ result }: { result: PredictionBacktest }) {
+  const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
   const element = useRef<HTMLDivElement>(null);
   const rows = useMemo(() => (result.evaluation?.calibration ?? []).map((bin, index) => {
     const predictions = result.observations.filter(row =>
@@ -310,7 +311,7 @@ function CalibrationView({ result }: { result: PredictionBacktest }) {
       legend: { top: 3, data: ['Average predicted probability', 'Observed outcome frequency'] },
       grid: { top: 54, right: 16, left: 54, bottom: 45 },
       xAxis: { type: 'category', data: rows.map(row => row.label),
-        axisLabel: { color: '#58737b' }, name: 'Predicted probability bin' },
+        axisLabel: { color: dark ? '#b7ced4' : '#58737b' }, name: 'Predicted probability bin' },
       yAxis: { type: 'value', min: 0, max: 100, name: 'Percent',
         axisLabel: { formatter: '{value}%' } },
       series: [

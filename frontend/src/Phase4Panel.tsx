@@ -155,6 +155,7 @@ function StatRows({ stats }: { stats: Statistics }) {
 
 /** Same-period risk/return trade-off; no Sharpe ratio without a risk-free series. */
 function RiskReturnView({ comparison }: { comparison: Comparison }) {
+  const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
   const host = useRef<HTMLDivElement>(null);
   const values = useMemo(() => [
     ...comparison.instruments.map(asset => ({ ...asset, portfolio: false })),
@@ -171,7 +172,7 @@ function RiskReturnView({ comparison }: { comparison: Comparison }) {
       animation: false,
       grid: { top: 22, left: 62, right: 28, bottom: 52 },
       xAxis: { type: 'value', min: 0, name: 'Annualized volatility (%)',
-        nameLocation: 'middle', nameGap: 31, splitLine: { lineStyle: { color: '#e9efeb' } } },
+        nameLocation: 'middle', nameGap: 31, splitLine: { lineStyle: { color: dark ? '#324750' : '#e9efeb' } } },
       yAxis: { type: 'value', name: 'Annualized return (%)',
         nameLocation: 'middle', nameGap: 45, splitLine: { lineStyle: { color: '#e9efeb' } } },
       tooltip: { trigger: 'item', formatter: (item: any) =>
@@ -179,7 +180,7 @@ function RiskReturnView({ comparison }: { comparison: Comparison }) {
         '%<br/>Annualized return: ' + item.value[1].toFixed(2) + '%' },
       series: [{ type: 'scatter', symbolSize: 14,
         label: { show: true, position: 'top', formatter: (item: any) => item.name,
-          fontSize: 10, color: '#4c6971' },
+          fontSize: 10, color: dark ? '#b3cbd0' : '#4c6971' },
         data: values.map(asset => ({
           name: asset.name, value: [
             Number(asset.annualized_volatility_pct),

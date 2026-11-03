@@ -108,7 +108,7 @@ describe('local research-first dashboard acceptance', () => {
     expect(screen.getByRole('button', { name: 'Use light appearance' })).toBeTruthy();
     expect(document.querySelector('.research-app')?.getAttribute('data-theme')).toBe('dark');
     expect(localStorage.getItem('gcm-color-scheme')).toBe('dark');
-    expect(screen.queryByText(/Phase 4\s*\//)).toBeNull();
+    expect(document.querySelector('.research-app')?.textContent).not.toMatch(/\bphase\s+[0-9]+\b/i);
   });
 
   it('separates world/OECD, US BLS labour, Europe, Japan and comparisons', async () => {
