@@ -1,6 +1,9 @@
 # Requested economic indicator acceptance matrix
 
-This inventory is generated from the 46 indicator declarations in `src/finance_dashboard/research.py` at the current revision. The 53 canonical macro-source contracts exist in `definitions/series.json`. **Code registration is not live-server source verification.** Latest user-supplied local ALFRED batch: 0 newly downloaded in 180 attempts, all HTTPStatusError; prior local source coverage cannot be certified from those logs.
+
+> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
+
+This inventory is generated from the 46 indicator declarations in `src/finance_dashboard/research.py` at the current revision. The 53 canonical macro-source contracts exist in `definitions/series.json`. **Code registration is not live-server source verification.** The active acceptance gates and ordered repairs are controlled by [Development plan](DEVELOPMENT_PLAN.md). Latest user-supplied local ALFRED batch: 0 newly downloaded in 180 attempts, all HTTPStatusError; prior local source coverage cannot be certified from those logs.
 
 | Scope | Research indicator | Implementation in code | Live source observations on user's server |
 |---|---|---|---|

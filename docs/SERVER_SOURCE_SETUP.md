@@ -1,5 +1,8 @@
 # Complete server data-source configuration
 
+
+> **Operator reference only.** This file describes source configuration, data-preserving imports and backups. Implementation order and original Phase 1–4 acceptance are defined **only** in [Development plan](DEVELOPMENT_PLAN.md).
+
 This is the operator checklist for the **single existing** finance-dashboard Docker service in the media-server Compose project. Every configured source has a distinct evidence state: mapping present, credential present, collection enabled, original observations stored, and scientifically validated are **not** synonymous.
 
 ## Preserve the existing data before changing configuration

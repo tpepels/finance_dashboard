@@ -1,4 +1,7 @@
 # Economic research indicators — definitions, interpretation and verification
+
+
+> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
 *Local-only finance dashboard, 2 November 2026*
 
 ## What changed
@@ -71,9 +74,9 @@ The World Bank **world domestic listed equity capitalization/GDP** is a differen
 - MSCI ACWI index: https://www.msci.com/indexes/index/892400/msci-acwi-index
 - MSCI September 2026 ACWI factsheet: https://www.msci.com/documents/10199/255599/msci-acwi.pdf
 
-## Three gray economic periods, no labels inside graphs
+## Three visible US NBER recession intervals, without labels inside the chart
 
-Every main chart and source chart can show only subtle gray unlabeled rectangles for US NBER-reported contraction months:
+Eligible time-series charts show readable red-tinted recession windows with a border, and no event text inside the plot. These bands are **US NBER contraction dates**, even when a European, Japanese or global series is plotted; they must not be interpreted as that region's official recession:
 
 | Context | NBER recession months actually shaded |
 |---|---|
@@ -98,11 +101,9 @@ The research API:
 
 All source data remain local. The official provider's copyright and licence terms still apply if someone redistributes raw observations externally. There are no GitHub workflows, cloud jobs or public-only data gates.
 
-### Scope: Phase 3 vs Phase 4
+### Scope of these calculations
 
-**Phase 3:** user-facing visible layout, geographical classification, usable source graph library, legends, crisis recession background shading, provenance and descriptive visual context.
-
-**Requested Phase 4 work now implemented:** real same-sector **derived productivity/output-price-pay index**, indexed ratio gap, source-aligned differences, separate national-accounts labour distribution lenses, and explicit economic relationships sourced and computed server-side. This does **not** constitute the whole planned Phase 4 (predictive modelling, formal theory-dependent surplus-value account estimation, robust macroeconomic risk scoring, historical backtesting and uncertainty quantification).
+These methods cover user-visible source graphs, geographical definitions, descriptive recession shading, and derived source-aligned economic relationships such as same-sector productivity/output-price-adjusted pay, national-account distribution and dated interregional differences. The original Phase 3 and Phase 4 scope and remaining empirical acceptance are controlled exclusively by [Development plan](DEVELOPMENT_PLAN.md); no model or original measure is accepted just because its calculation is documented here.
 
 ## Local checks
 

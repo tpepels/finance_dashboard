@@ -1,5 +1,8 @@
 # OECD corporate gross operating surplus: official-source methodology
 
+
+> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
+
 **Status (2026-11-02): VERIFIED.** [42/42-source historical PostgreSQL/FastAPI ingestion passed](https://github.com/tpepels/finance_dashboard/actions/runs/41503545569), with [42-series full static export](https://github.com/tpepels/finance_dashboard/actions/runs/41503489558). The OECD composite and each quality companion contain **25 annual observations, 2000–2024**. This document does **not** equate an incomplete-country sample to an official OECD-published aggregate.
 
 ## Purpose and economic interpretation

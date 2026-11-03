@@ -1,5 +1,8 @@
 # Single Docker service in your existing home-server Compose
 
+
+> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
+
 Only **one additional container**, `finance-dashboard`. The image includes the built React dashboard, Python/FastAPI, SQLite and an in-process daily macro refresh plus local monthly Wisesheets earnings collection. No PostgreSQL container, separate scheduler, Wisesheets GitHub fetch or separate Node server.
 
 Copy the [service snippet](home-server-finance-service.yml) under your existing `services:` section, alongside Monochrome, Plex, yt-dlp, Vinted etc. Clone `tpepels/finance_dashboard` as `./finance_dashboard` relative to the existing Compose file. Ensure that the host `/srv/finance-dashboard` directory is writable by the `UID/GID` defined in your media-server `.env`.
@@ -8,14 +11,14 @@ Copy the [service snippet](home-server-finance-service.yml) under your existing 
 
 ```sh
 WISESHEETS_API_KEY=your_existing_key
-# FRED_API_KEY=...   # optional
+FRED_API_KEY=your_registered_fred_key   # required for ALFRED historical vintages
 ```
 
 Do not put credentials in Compose YAML, version-controlled files, browser code or URLs.
 
 ```sh
 git -C finance_dashboard pull --ff-only
-sudo install -d -o "$(id -u)" -g "$(id -g)" /srv/finance-dashboard
+# Keep the existing /srv/finance-dashboard data mount; do not recreate or replace it.
 docker compose config --quiet
 docker compose up -d --build finance-dashboard
 docker compose logs --tail=100 finance-dashboard
@@ -30,9 +33,9 @@ The port is accessible on your LAN by default, with **no login**. Do not forward
 If you use the repository as an independent Compose project instead, it now has a **single-service** `docker-compose.yml`, using `./data-local` by default. Do not run this separate stack alongside the same image in your main Compose; add the service to the existing project instead.
 
 
-## Phase 4 market research and observability
+## Market research and data observability
 
-The same single `finance-dashboard` container now includes **Phase 4 economic risk evidence** and an **optional** ETF/equity/gold historical comparison under the main economic research page. The market comparison needs prices and EUR FX; the full-collection configuration enables them. Older deployments may still have a literal disabled flag; verify the actual Compose service environment.
+The same single `finance-dashboard` container now includes **economic risk evidence** and an **optional** ETF/equity/gold historical comparison under the main economic research page. The market comparison needs prices and EUR FX; the full-collection configuration enables them. Older deployments may still have a literal disabled flag; verify the actual Compose service environment.
 
 To enable local price research, add to the **existing** service's environment:
 
@@ -44,7 +47,7 @@ Then recreate only this container with `docker compose up -d finance-dashboard`.
 
 The new **operational status** route is `http://media-server:5052/api/operations`. It reports local source and market history counts, ingestion failures, optional collection settings, and the most recent verified backup manifest.
 
-### Daily SQLite backups
+### Daily verified SQLite and source-evidence backups
 
 The same refresh thread now creates SQLite **online-backup API** snapshots once per cycle (24 hours by default), plus a separate verified archive of historical ALFRED, SEC filings and OECD industry accounts where present, with integrity checks and SHA-256 manifests in `/srv/finance-dashboard/backups` on the host (mounted as `/data/backups`). The default keeps 14 bundles. They remain vulnerable to loss of the same disk; copy to a second physical device/off-site encrypted backup.
 

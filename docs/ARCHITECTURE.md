@@ -1,5 +1,8 @@
 # Current architecture — local finance research dashboard
 
+
+> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
+
 Updated 2026-11-02, incorporating owner's local-only deployment decision and Phase 4 additions.
 
 ## One-process deployment

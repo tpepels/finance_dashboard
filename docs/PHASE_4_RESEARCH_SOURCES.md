@@ -1,5 +1,8 @@
 # Phase 4 research data: actual historical releases, fund holdings and surplus accounts
 
+
+> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
+
 **Status:** Independently confirmed SEC identities for VT and BND are bundled with their official N-PORT filing-index references. The FRED API-key/basic endpoint preflight succeeded on the target server on 2026-11-03; the preceding 180-request historical backfill downloaded zero new snapshots. The initial SEC collector attempted zero XML downloads because its strict submissions-primary filename filter excluded eligible SEC index-based filings. These importers now have corrected discovery/diagnostics but successful local SEC holdings collection, ALFRED backfill, OECD account extraction and independently validated predictive results are not yet confirmed. Dataset-dependent results must remain unavailable until collection and auditing.
 
 The application remains **one** Docker service and stores data in its existing /data bind volume. All downloads run in a CLI or the one in-process background refresh; browsers never request arbitrary external URLs or send the FRED/SEC credentials.
