@@ -177,7 +177,8 @@ def recent_jobs(jobs: list[dict]) -> list[dict]:
                     if not isinstance(value, dict):
                         continue
                     safe = {}
-                    for field in ("status", "reason"):
+                    for field in ("status", "reason", "first_failed_series",
+                                  "first_failed_asof"):
                         token = _token(value.get(field))
                         if token:
                             safe[field] = token

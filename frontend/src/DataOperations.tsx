@@ -12,6 +12,8 @@ type Part = {
     historical_coverage_limited?: boolean; reason?: string | null;
     http_status?: number | null; examined?: number; candidates?: number }[];
   http_status?: number | null;
+  first_failed_series?: string | null;
+  first_failed_asof?: string | null;
   note?: string;
   reason?: string;
 };
@@ -47,6 +49,10 @@ function failureReason(reason: string): string {
     fred_rate_limited: 'FRED has rate-limited requests',
     fred_access_denied: 'FRED denied historical access',
     fred_bad_request: 'FRED rejected the historical request',
+    fred_realtime_parameter_rejected: 'FRED rejected the historical availability date',
+    fred_observation_parameter_rejected: 'FRED rejected the observation date window',
+    fred_series_parameter_rejected: 'FRED rejected the requested series',
+    fred_limit_rejected: 'FRED rejected the requested observation limit',
     fred_network_error: 'Could not reach FRED',
     fred_response_not_observations: 'FRED returned an unexpected response',
     fred_historical_asof_mismatch: 'FRED did not return the requested historical period',
@@ -172,6 +178,8 @@ export default function DataOperations() {
             {value.source_state === 'deferred' && ' · provider quota deferred'}
             {value.reason && ' · ' + failureReason(value.reason)}
             {value.http_status != null && ' · HTTP ' + value.http_status}
+            {value.first_failed_series && ' · first rejected source ' + value.first_failed_series}
+            {value.first_failed_asof && ' as of ' + value.first_failed_asof}
             {value.funds && <ul className="data-sync-funds">
               {value.funds.map(fund => <li key={fund.id}>
                 {fund.id.toUpperCase()} · {description(fund.status)}

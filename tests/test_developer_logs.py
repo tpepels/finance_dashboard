@@ -68,6 +68,8 @@ class DiagnosticJournalTests(unittest.TestCase):
                            "alfred": {"status": "blocked",
                                       "reason": "fred_bad_request",
                                       "http_status": 400,
+                                      "first_failed_series":"SAHMREALTIME",
+                                      "first_failed_asof":"2000-01-31",
                                       "body": "never-report-this"},
                            "sec": {"status": "partial", "funds": [{
                                "id": "vt", "status": "partial", "stored": 2,
@@ -78,6 +80,10 @@ class DiagnosticJournalTests(unittest.TestCase):
         }]
         safe = recent_jobs(jobs)
         self.assertEqual(safe[0]["parts"]["alfred"]["http_status"], 400)
+        self.assertEqual(safe[0]["parts"]["alfred"]["first_failed_series"],
+                         "SAHMREALTIME")
+        self.assertEqual(safe[0]["parts"]["alfred"]["first_failed_asof"],
+                         "2000-01-31")
         self.assertEqual(safe[0]["parts"]["sec"]["funds"][0]["stored"], 2)
         self.assertNotIn("never-report-this", json.dumps(safe))
 

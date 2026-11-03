@@ -81,7 +81,8 @@ describe('two-action data synchronization',()=>{
           finished_at:'2026-11-03T12:02:00Z',
           result:{parts:{
             alfred:{status:'blocked',missing:964,downloaded:0,
-              reason:'fred_api_key_rejected',http_status:400},
+              reason:'fred_api_key_rejected',http_status:400,
+              first_failed_series:'SAHMREALTIME',first_failed_asof:'2000-01-31'},
             sec:{status:'partial',funds:[
               {id:'vt',status:'partial',stored:11,errors:2,
                 reason:'sec_rate_limited',http_status:429,
@@ -99,6 +100,7 @@ describe('two-action data synchronization',()=>{
     await user.click(summary);
     expect(screen.getByText(/FRED API rejected the configured key/)).toBeTruthy();
     expect(screen.getByText(/964 missing/)).toBeTruthy();
+    expect(screen.getByText(/first rejected source SAHMREALTIME/)).toBeTruthy();
     expect(screen.getByText(/11 filings found\/cached in this run/)).toBeTruthy();
     expect(screen.getByText(/50 filings found\/cached in this run/)).toBeTruthy();
     expect(screen.getByText(/additional older filings not scanned/)).toBeTruthy();

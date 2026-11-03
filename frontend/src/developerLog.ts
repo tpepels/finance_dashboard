@@ -10,7 +10,9 @@ export type DiagnosticJob = {
   created_at?: string; finished_at?: string;
   completed?: number; total?: number;
   parts?: Record<string,{
-    status?: string; reason?: string; failed?: number; missing?: number;
+    status?: string; reason?: string;
+    first_failed_series?: string; first_failed_asof?: string;
+    failed?: number; missing?: number;
     downloaded?: number; sources?: number; http_status?: number;
     funds?: {id?: string; status?: string; stored?: number; errors?: number;
       http_status?: number; reason?: string}[];
@@ -70,7 +72,9 @@ export function formatDeveloperLog(report: DiagnosticReport): string {
       lines.push('  ' + key + ' / ' + value(part.status)
         + field('reason',part.reason) + field('failed',part.failed)
         + field('missing',part.missing) + field('downloaded',part.downloaded)
-        + field('http',part.http_status));
+        + field('http',part.http_status)
+        + field('first_failed_series',part.first_failed_series)
+        + field('first_failed_asof',part.first_failed_asof));
       for (const fund of part.funds ?? []) {
         lines.push('    fund=' + value(fund.id) + ' status=' + value(fund.status)
           + field('filings_found_or_cached_this_run',fund.stored) + field('errors',fund.errors)
