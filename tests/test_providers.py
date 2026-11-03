@@ -197,6 +197,20 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(observations[date(1871, 11, 1)], Decimal("13.4"))
         self.assertNotIn(date(1871, 12, 1), observations)
 
+    def test_shiller_refuses_severely_truncated_monthly_workbook(self):
+        class SparseSheet:
+            ncols = 2
+            nrows = 4
+            data = [
+                ("Date","CAPE"),(1881.01,12.0),
+                (1980.01,10.0),(2026.04,35.0),
+            ]
+            def cell_value(self,row,col):
+                return self.data[row][col]
+        with self.assertRaisesRegex(ProviderError,
+                                    "incomplete monthly CAPE history"):
+            parse_shiller_sheet(SparseSheet())
+
     def test_world_bank_bad_geo_fails(self):
         data = [{"page": 1, "pages": 1}, [
             {"countryiso3code": "FRA", "indicator": {"id": "NY.GDP.MKTP.KD.ZG"},

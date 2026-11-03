@@ -486,6 +486,14 @@ def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
         _put(output, day, _value(sheet.cell_value(row, cape_col)))
     if not output:
         raise ProviderError("Shiller workbook contains no CAPE observations")
+    # Shiller CAPE is monthly from 1881 onward. A malformed/truncated
+    # source workbook must never be marked as a successful full refresh.
+    # Do not synthesize missing months. Preserve last-known-good versions
+    # in the ingestion service if this validation rejects the download.
+    first, last = min(output), max(output)
+    expected_months = (last.year-first.year)*12 + last.month-first.month + 1
+    if expected_months >= 120 and len(output) < int(expected_months*0.90):
+        raise ProviderError("Shiller source workbook has incomplete monthly CAPE history")
     return output
 
 
