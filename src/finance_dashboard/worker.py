@@ -13,7 +13,8 @@ from sqlalchemy import text
 from .providers import ProviderRouter, PROVIDER_CODES
 from .catalog import load_documents
 from .database import make_engine
-from .service import IngestionService
+from .service import IngestionService, safe_source_failure_code
+from .developer_logs import record_event
 
 log = logging.getLogger(__name__)
 
@@ -45,8 +46,11 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                     try:
                         report = service.refresh(series_id, full=full)
                         log.info("refreshed: %s", json.dumps(report))
-                    except Exception:
+                    except Exception as exc:
                         failures += 1
+                        record_event("macro", "source_failed", level="warning",
+                                     source_id=series_id,
+                                     reason=safe_source_failure_code(exc))
                         log.error("macro refresh failed: %s (provider error redacted to protect credentials)", series_id)
                     if progress is not None:
                         progress(index, len(chosen), series_id)
@@ -84,8 +88,11 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
                 break
             try:
                 log.info("fx refresh: %s", json.dumps(service.refresh_fx(currency, full=full)))
-            except Exception:
+            except Exception as exc:
                 failures += 1
+                record_event("fx", "source_failed", level="warning",
+                             source_id=currency,
+                             reason=safe_source_failure_code(exc))
                 log.error("fx refresh failed: %s (source error redacted)", currency)
             completed += 1
             if progress is not None:
@@ -96,8 +103,11 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
                     break
                 try:
                     log.info("market refresh: %s", json.dumps(service.refresh_instrument(sid, full=full)))
-                except Exception:
+                except Exception as exc:
                     failures += 1
+                    record_event("markets", "source_failed", level="warning",
+                                 source_id=sid,
+                                 reason=safe_source_failure_code(exc))
                     log.error("market refresh failed: %s (source error redacted)", sid)
                 completed += 1
                 if progress is not None:

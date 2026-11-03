@@ -1,7 +1,7 @@
 """Read-only API: exposes actual stored observations, never synthetic chart values."""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from .wisesheets import load_sec_profit_snapshot
 from os import environ
@@ -30,6 +30,7 @@ from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCE
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .source_coverage import build_coverage
 from .maintenance import MaintenanceManager, BusyMaintenance
+from .developer_logs import read_events, recent_jobs
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
 from functools import partial
@@ -234,6 +235,37 @@ def create_app(engine=None) -> FastAPI:
             return maintenance.cancel(job_id)
         except ValueError:
             raise HTTPException(409, "This data operation is not active") from None
+
+    @app.get("/api/developer-log")
+    def developer_log():
+        """Small, non-sensitive browser diagnostic report; no raw server logs.
+
+        Generated only on request. The private LAN dashboard is not designed
+        for direct public exposure; this endpoint returns pre-whitelisted
+        status codes, never headers, exception text, provider payloads or URLs.
+        """
+        census = build_coverage(db, catalog["series"], market_registry)
+        issues = [{
+            "family": item["family"],
+            "id": item["id"],
+            "state": item["state"],
+            "latest_source_date": item["latest_source_date"],
+            "last_failure_code": item["last_failure_code"],
+        } for item in census["items"] if item["state"] != "available"]
+        return {
+            "schema_version": 1,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "coverage": {
+                "registered": len(census["items"]),
+                "with_data": sum(item["stored_periods"] > 0
+                                 for item in census["items"]),
+                "needs_attention": len(issues),
+            },
+            "issues": issues,
+            "jobs": recent_jobs(maintenance.list()["jobs"]),
+            "events": read_events(limit=250),
+            "retention": "Latest 400 structured events; latest 8 job summaries",
+        }
 
     @app.get("/api/source-coverage")
     def source_coverage():

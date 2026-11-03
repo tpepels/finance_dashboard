@@ -19,6 +19,7 @@ import httpx
 from sqlalchemy.engine import Engine
 
 from .standalone import maintenance_network_lock
+from .developer_logs import record_event
 
 PUBLIC_ACTIONS = frozenset((
     "sync_current", "sync_history",
@@ -193,6 +194,8 @@ class MaintenanceManager:
             self._active = job["id"]
             self._cancel = Event()
             _save_atomic(self.path, self._jobs)
+        record_event("sync", "queued", action=action, job_id=job["id"],
+                     status="queued")
         Thread(target=self._execute, args=(job["id"], action, options, self._cancel),
                name="gcm-manual-maintenance", daemon=True).start()
         return dict(job)
@@ -203,6 +206,7 @@ class MaintenanceManager:
                 raise ValueError("This job is not active")
             self._cancel.set()
         self._change(job_id, status="cancelling")
+        record_event("sync", "cancel_requested", job_id=job_id, status="running")
         return {"id": job_id, "status": "cancelling"}
 
     def _execute(self, job_id: str, action: str, options: dict,
@@ -219,6 +223,8 @@ class MaintenanceManager:
                 if cancelled.is_set():
                     raise MaintenanceBlocked("cancelled")
                 self._change(job_id, status="running", started_at=now(), current_item=None)
+                record_event("sync", "started", action=action, job_id=job_id,
+                             status="running")
                 result = self._perform(job_id, action, options, cancelled)
                 if cancelled.is_set():
                     raise MaintenanceBlocked("cancelled")
@@ -245,6 +251,10 @@ class MaintenanceManager:
                 if self._active == job_id:
                     self._active = None
                 _save_atomic(self.path, self._jobs)
+            record_event("sync", "finished",
+                         level="info" if status == "complete" else "warning",
+                         action=action, job_id=job_id, status=status,
+                         reason=failure)
 
     def _progress(self, job_id: str, count: int, total: int | None,
                   item: str | None = None) -> None:
@@ -281,6 +291,21 @@ class MaintenanceManager:
             if value.get("status") in ("partial", "blocked", "failed"):
                 issue_count += 1
             self._change(job_id, result={"parts":dict(stage_results)})
+            severity = ("info" if value.get("status") in ("complete", "skipped")
+                        else "warning")
+            record_event("sync", "stage_finished", level=severity,
+                         action="sync_history" if history else "sync_current",
+                         job_id=job_id, stage=key, status=value.get("status"),
+                         reason=value.get("reason"), failed=value.get("failed"),
+                         http_status=value.get("http_status"))
+            for fund in value.get("funds", []):
+                if fund.get("status") != "complete":
+                    record_event("sec", "stage_finished", level="warning",
+                                 action="sync_history", job_id=job_id,
+                                 source_id=fund.get("id"), status=fund.get("status"),
+                                 reason=fund.get("reason"),
+                                 http_status=fund.get("http_status"),
+                                 failed=fund.get("errors"))
 
         if cancelled.is_set():
             raise MaintenanceBlocked("cancelled")
