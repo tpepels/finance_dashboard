@@ -15,8 +15,8 @@
 | 46 curated economic indicator views | Implemented in `src/finance_dashboard/research.py` and frontend | Definitions and relationships present | Original exact empirical definition or completed production data |
 | Source coverage, browser maintenance and targeted PWT refresh | Committed to `main`; `Data & sync` UI provides per-source/bulk imports, ALFRED/SEC checks and collections, earnings and verified local backup | Data maintenance can be scheduled via safe same-origin API and a durable serialized job queue | Successful rebuilt container, historical/source imports and full visual inspection |
 | One-page light/dark UI and revised charts | Implemented in source | Chart-first hierarchy, disclosures, visible recession bands, dated sparse series | Human-reviewed dark/light desktop and mobile layouts |
-| Last user Docker build | **Frontend passed**; Python provider tests failed on three FRED/PWT annual ISO dates, e.g. `2023-01-01` | PWT ingestion parser had a genuine annual-date defect; the chained `&&` prevented container replacement | A working deployment |
-| Follow-up parser fix | FRED annual values now accept either `YYYY` or `YYYY-01-01`, but reject non-year-start annual dates | Source parsing implementation and targeted regression tests updated | Successful rebuilt container and real FRED import |
+| Latest user Docker build | **50/50 frontend tests passed**, then `tsc --noEmit` failed at `DataOperations.test.tsx:81` with TS6133 unused `request` parameter | Frontend test runtime passes; the production frontend image never built; Python test layer and redeployment were not reached | A working deployment |
+| Build and source-status corrections | The unused TypeScript test parameter was fixed on `main`; FRED annual ISO handling remains implemented; PWT 11.0 is recognized as officially ending in 2023; downloadable complete source audit added | Code-level fixes and regression tests committed | Successful next Docker build, live 80-source audit and real PWT import |
 | ALFRED 2000–2026 | Last shared 180-request batch: 0 new; initial key-only check passed | Prior historical backfill blocked and FRED key likely accepted | Revised historical-as-of `--check` and backfill success |
 | Original SEC N-PORT VT/BND | Last shared attempt: 0 XML imports; official index discovery code improved since | Source identification and parser exist | Actual 1/12 filing imports, holdings accuracy or broader fund coverage |
 | OECD industry input–output and capital-stock research | Input contract and scenario calculations exist | Implementation can reject unsupported claims | Original audited IOT input, net stock and genuinely validated Marxian estimates |
@@ -39,7 +39,7 @@ The five agreed implementation workstreams below are **cross-phase work packages
 
 ### 0. Stabilize deployment and preserve existing data — immediate prerequisite
 
-**Status:** code repaired but deployment unverified. The latest supplied build passed the frontend, then stopped on three annual FRED/PWT parser errors; annual ISO handling has since been fixed. A new server build result has not been supplied. The browser maintenance API/UI has also been implemented and awaits runtime acceptance.
+**Status:** code repaired but deployment unverified. Latest user build on `b060bfc`: all 50 frontend tests passed; strict TypeScript build failed because `DataOperations.test.tsx:81` declared unused `request`. This exact error was fixed in commit `0acbaf3`, but no subsequent build outcome is known. New source completeness metadata, CSV export and regression tests also await deployment. The previous PWT annual date parser defect has already been fixed.
 
 **Do:**
 1. Run a full local Docker build, including frontend tests, Python source-coverage/provider tests, maintenance API tests and PWT annual ISO date tests. Fix *actual* failures; do not weaken real source/date assertions.
@@ -51,7 +51,7 @@ The five agreed implementation workstreams below are **cross-phase work packages
 
 ### 1. Repair source coverage (original Phase 2, with Phase 3 source-status UI)
 
-**Status:** implementation code committed; real local census and PWT import **not accepted**. The source audit now distinguishes genuinely old annual history from complete published PWT 11.0 history ending in 2023. It must continue to flag no observations and history ending in 2022 as incomplete. This exception is version-pinned to PWT 11.0 and must be reviewed when a new PWT contract is adopted.
+**Status:** implementation code committed; real local census and PWT import **not accepted**. The source audit distinguishes genuinely old annual history from complete published PWT 11.0 history ending in 2023; absent histories and those ending in 2022 remain incomplete. The version-specific exception must be reviewed when a new PWT contract is adopted. The dashboard now offers a complete safe CSV export of all 80 source statuses, including first/last observation dates, stored revisions, calendar gaps, source release bounds and failure categories.
 
 **Complete scope:** 53 canonical macro series, 24 market instruments, 3 ECB FX currencies. Audit each for mapping, collector switch, provider availability, observation count, first/latest source date, latest attempt and fixed safe failure code. Separate a deliberately sparse annual source from missing data; check gaps, duplicates, unit stability, temporal availability and source revisions. Count cached valid data even after failed refreshes.
 
@@ -119,7 +119,7 @@ The five agreed implementation workstreams below are **cross-phase work packages
 
 | Blocker | Resolution or research direction | Proof needed |
 |---|---|---|
-| Latest Docker build passed frontend but failed on FRED/PWT annual ISO parsing; chain did not recreate container | Pull annual-date parser fix and maintenance UI, rebuild, correct any newly exposed tests | Test suites, service health and in-browser PWT import pass |
+| Latest Docker build passed 50 frontend tests but failed at strict TypeScript unused parameter (TS6133); chain did not recreate container | Pull `main` including commit `0acbaf3`, rebuild, then fix any newly exposed Python test failures | TypeScript build, all backend tests, service health and in-browser PWT import pass |
 | Server-side PWT/other mapped source histories empty or stale | Use **Data & sync** to import PWT countries, repair other missing sources and inspect source-level HTTP errors; independently check source sample | Real observations, correct source dates and no CLI dependence |
 | Original ALFRED 180-request batch failed; generic FRED key test alone insufficient | Use the UI historical-as-of check, short backfill then the resumable full historical importer | Every required historical source date accounted for |
 | VT/BND original N-PORT collector previously found zero matching documents | Test official SEC index access with real User-Agent and XML mapping, 1/12 staged import, verify fund series | Original XML-derived holdings and hashes |
@@ -161,4 +161,4 @@ Seven external directories/repos were inspected from user-supplied discovery lin
 
 **Prioritization:** after deployment/source acceptance, pursue **OECD IOT 2025 + STAN** under workstream 5 in parallel with the already ordered original-data acquisition checks; pursue **FRED-MD/QD historical vintages** under workstream 2 for the existing prediction-validation blocker; and use GLEIF only as a workstream 4 identity crosswalk. Optional gold and macro-shock indicators must not displace the original five required workstreams or turn the UI into a disconnected chart collection.
 
-**Next actual action:** rebuild the current main image with the fixed visualization assertion; inspect and repair any build test failures, validate mounted data retention, then run the 80-source census and the three PWT imports. Continue in order; do not start licensed-constituent research as a substitute for resolving immediate source failures.
+**Next actual action:** rebuild the current `main` image after the TS6133 correction and publication-bound / export changes; inspect and repair any further Python or frontend build failures, verify mounted data retention, then use **Data & sync** for the 80-source census and the three PWT imports. Confirm the source audit's export contains 80 genuine source rows. Continue in order; no production source has been certified by repository-only tests. Continue in order; do not start licensed-constituent research as a substitute for resolving immediate source failures.
