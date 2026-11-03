@@ -362,6 +362,8 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(backfill.call_args.kwargs["first_available"],bounds)
         self.assertEqual(part["first_failed_series"],"SAHMREALTIME")
         self.assertEqual(part["first_failed_asof"],"2000-01-31")
+        self.assertEqual(part["first_failed_reason"],"fred_series_parameter_rejected")
+        self.assertEqual(part["failures_in_run"],1)
         self.assertEqual(part["http_status"],400)
         self.assertNotIn("a"*32,json.dumps(done))
 

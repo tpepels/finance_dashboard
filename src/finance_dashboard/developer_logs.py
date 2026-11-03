@@ -178,11 +178,12 @@ def recent_jobs(jobs: list[dict]) -> list[dict]:
                         continue
                     safe = {}
                     for field in ("status", "reason", "first_failed_series",
-                                  "first_failed_asof"):
+                                  "first_failed_asof", "first_failed_reason"):
                         token = _token(value.get(field))
                         if token:
                             safe[field] = token
-                    for field in ("failed", "missing", "downloaded", "sources", "http_status", "prepublication_excluded"):
+                    for field in ("failed", "missing", "downloaded", "sources", "http_status",
+                                  "prepublication_excluded", "failures_in_run"):
                         number = _nonnegative(value.get(field))
                         if number is not None:
                             safe[field] = number

@@ -70,6 +70,8 @@ class DiagnosticJournalTests(unittest.TestCase):
                                       "http_status": 400,
                                       "first_failed_series":"SAHMREALTIME",
                                       "first_failed_asof":"2000-01-31",
+                                      "first_failed_reason":"fred_server_error",
+                                      "failures_in_run":2,
                                       "body": "never-report-this"},
                            "sec": {"status": "partial", "funds": [{
                                "id": "vt", "status": "partial", "stored": 2,
@@ -84,6 +86,9 @@ class DiagnosticJournalTests(unittest.TestCase):
                          "SAHMREALTIME")
         self.assertEqual(safe[0]["parts"]["alfred"]["first_failed_asof"],
                          "2000-01-31")
+        self.assertEqual(safe[0]["parts"]["alfred"]["first_failed_reason"],
+                         "fred_server_error")
+        self.assertEqual(safe[0]["parts"]["alfred"]["failures_in_run"],2)
         self.assertEqual(safe[0]["parts"]["sec"]["funds"][0]["stored"], 2)
         self.assertNotIn("never-report-this", json.dumps(safe))
 

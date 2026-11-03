@@ -120,6 +120,50 @@ class VintageTests(unittest.TestCase):
             self.assertEqual(batch["missing_after_run"], 180)
             self.assertEqual(batch["downloaded_now"], 0)
 
+    def test_failed_early_month_does_not_starve_later_valid_snapshot(self):
+        calls = []
+        def handler(request):
+            sid = request.url.params["series_id"]
+            asof = request.url.params["realtime_start"]
+            calls.append((sid, asof))
+            if sid == "SAHMREALTIME" and asof == "2020-01-31":
+                return httpx.Response(503, json={"error_message": "private " + "z" * 32})
+            return httpx.Response(200, json={"observations":[{
+                "date":"2020-01-01", "value":"1",
+                "realtime_start":"2020-01-01","realtime_end":"9999-12-31"}]})
+        with TemporaryDirectory() as tmp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                first = backfill_batch(date(2020,1,1), date(2020,2,29),
+                    ["T10Y3M","SAHMREALTIME"],api_key="a"*32,client=client,
+                    root=Path(tmp),max_requests=2,pause_seconds=0)
+                excluded = {("SAHMREALTIME", date(2020,1,31))}
+                second = backfill_batch(date(2020,1,1), date(2020,2,29),
+                    ["T10Y3M","SAHMREALTIME"],api_key="a"*32,client=client,
+                    root=Path(tmp),max_requests=2,pause_seconds=0,
+                    skip_failed=excluded)
+            self.assertEqual(first["failed_now"][0]["reason"],"fred_server_error")
+            self.assertNotIn("z"*32,json.dumps(first))
+            self.assertEqual(second["downloaded_now"],2)
+            self.assertEqual(second["missing_after_run"],1)
+            self.assertEqual(second["status"],"partial")
+            self.assertEqual(len(calls),4)
+
+    def test_invalid_asof_reasons_are_diagnostic_without_provider_text(self):
+        from finance_dashboard.vintage import _snapshot_failure_diagnostic
+        expected = {
+            "ALFRED response outside requested as-of range":
+                "fred_observation_outside_asof",
+            "Response contains observation released after as-of date":
+                "fred_observation_after_publication",
+            "Incorrect ALFRED realtime interval": "fred_realtime_mismatch",
+        }
+        for message, code in expected.items():
+            self.assertEqual(
+                _snapshot_failure_diagnostic(VintageError(message))["reason"],code)
+        self.assertEqual(
+            _snapshot_failure_diagnostic(VintageError("secret="+("x"*32)))["reason"],
+            "vintage_validation_failed")
+
     def test_month_end_retrieval_is_idempotent_and_requires_key(self):
         with TemporaryDirectory() as tmp:
             root=Path(tmp)

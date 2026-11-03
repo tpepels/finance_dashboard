@@ -90,6 +90,44 @@ def _safe_http_diagnostic(response: httpx.Response) -> dict:
     return {"http_status": status, "reason": reason}
 
 
+_VINTAGE_VALIDATION_FAILURES = {
+    "Malformed ALFRED response": "fred_response_schema_invalid",
+    "Incorrect ALFRED realtime interval": "fred_realtime_mismatch",
+    "ALFRED response outside requested as-of range": "fred_observation_outside_asof",
+    "Response contains observation released after as-of date": "fred_observation_after_publication",
+    "Observation ceased being valid before as-of date": "fred_observation_expired",
+    "Invalid published ALFRED numeric value": "fred_observation_value_invalid",
+    "Invalid nonfinite published ALFRED value": "fred_observation_value_invalid",
+    "Future or unordered point-in-time observation": "vintage_observation_unordered",
+    "Source vintage identity mismatch": "vintage_cache_identity_invalid",
+    "Nonfinite vintage observation": "vintage_observation_value_invalid",
+    "Claimed populated vintage has no observations": "vintage_cache_status_invalid",
+    "Invalid vintage status": "vintage_cache_status_invalid",
+}
+
+
+def _snapshot_failure_diagnostic(exc: Exception) -> dict:
+    """Classify a failed snapshot using only local, fixed codes.
+
+    Never return an HTTP exception's URL, response body, query parameters,
+    or free-form error text: FRED API keys are part of its request URL.
+    """
+    if isinstance(exc, httpx.HTTPStatusError):
+        return _safe_http_diagnostic(exc.response)
+    if isinstance(exc, httpx.HTTPError):
+        return {"reason": "fred_network_error"}
+    if isinstance(exc, OSError):
+        return {"reason": "vintage_storage_failed"}
+    if isinstance(exc, json.JSONDecodeError):
+        return {"reason": "fred_response_not_json"}
+    if isinstance(exc, KeyError):
+        return {"reason": "fred_response_schema_invalid"}
+    if isinstance(exc, VintageError):
+        return {"reason": _VINTAGE_VALIDATION_FAILURES.get(
+            str(exc), "vintage_validation_failed")}
+    return {"reason": "vintage_validation_failed"}
+
+
 def probe_access(*, api_key: str, client: httpx.Client) -> dict:
     """Single bounded request, no persisted writes, with redacted diagnostics."""
     if not _key_format_ok(api_key):
@@ -341,7 +379,8 @@ def capture_previous_month(root: Path = ROOT, *,
 def backfill_batch(start: date, end: date, series_ids: list[str], *,
                    api_key: str, client: httpx.Client, root: Path = ROOT,
                    max_requests: int = 180, pause_seconds: float = 0.2,
-                   first_available: dict[str, date] | None = None) -> dict:
+                   first_available: dict[str, date] | None = None,
+                   skip_failed: set[tuple[str, date]] | None = None) -> dict:
     """Resume full-range publication-vintage ingestion in bounded API batches.
 
     Missing dates remain missing after failures. Successful source snapshots
@@ -355,6 +394,10 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
         raise VintageError("ALFRED request budget must be between 1 and 180")
     if first_available is not None and set(first_available) != set(series_ids):
         raise VintageError("ALFRED publication bounds must cover every requested series")
+    if skip_failed and any(
+            sid not in series_ids or not isinstance(day, date)
+            for sid, day in skip_failed):
+        raise VintageError("Invalid ALFRED failed-month exclusion")
     requested_periods = [(sid, asof) for asof in _month_ends(start, end)
                          for sid in series_ids]
     periods = [(sid, asof) for sid, asof in requested_periods
@@ -362,18 +405,21 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
     excluded = len(requested_periods) - len(periods)
     pending = [(sid, day) for sid, day in periods
                if read_snapshot(root, sid, day) is None]
+    # Failures from an earlier batch of this *same* UI job are held aside,
+    # not treated as observed or erased. This prevents a failing month near
+    # the start of history from starving later valid historical months.
+    eligible = [item for item in pending if item not in (skip_failed or set())]
     fetched, failures = 0, []
     halted = None
-    for sid, day in pending[:max_requests]:
+    for sid, day in eligible[:max_requests]:
         try:
             fetch_snapshot(sid, day, api_key=api_key, client=client, root=root)
             fetched += 1
         except (VintageError, httpx.HTTPError, OSError, ValueError, KeyError) as exc:
             # A failing provider request must not dump a secret-bearing URL.
-            failure = {"series_id": sid, "asof": day.isoformat(),
-                       "error_type": type(exc).__name__}
+            failure = {"series_id": sid, "asof": day.isoformat()}
+            failure.update(_snapshot_failure_diagnostic(exc))
             if isinstance(exc, httpx.HTTPStatusError):
-                failure.update(_safe_http_diagnostic(exc.response))
                 # 400/401/403 imply bad configuration or request schema;
                 # 429 means immediate retry would worsen rate limiting.
                 if exc.response.status_code in (400, 401, 403, 429):
@@ -393,6 +439,7 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
         "prepublication_excluded": excluded,
         "already_cached_before_run": len(periods)-len(pending),
         "downloaded_now": fetched, "failed_now": failures,
+        "attempted_now": fetched + len(failures),
         "missing_after_run": len(outstanding),
         "next_missing": ({"series_id": outstanding[0][0],
                           "asof": outstanding[0][1].isoformat()}

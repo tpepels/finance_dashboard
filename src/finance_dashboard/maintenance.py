@@ -371,14 +371,26 @@ class MaintenanceManager:
                             sorted(VINTAGE_IDS), api_key=key, client=client)
                         downloaded = 0
                         result = None
+                        first_failure = None
+                        failures_in_run = 0
+                        attempted_failed: set[tuple[str, date]] = set()
                         for cycle in range(60):
                             if cancelled.is_set():
                                 raise MaintenanceBlocked("cancelled")
                             result = backfill_batch(
                                 start,end,sorted(VINTAGE_IDS),api_key=key,
                                 client=client,max_requests=180,
-                                first_available=available_since)
+                                first_available=available_since,
+                                skip_failed=attempted_failed)
                             downloaded += result["downloaded_now"]
+                            failed_now = result.get("failed_now") or []
+                            if first_failure is None and failed_now:
+                                first_failure = failed_now[0]
+                            failures_in_run += len(failed_now)
+                            for failed in failed_now:
+                                attempted_failed.add((
+                                    failed["series_id"],
+                                    date.fromisoformat(failed["asof"])))
                             self._change(job_id, completed=2,total=stages,
                                 current_item="Historical releases",
                                 stage="ALFRED historical publication vintages",
@@ -386,11 +398,10 @@ class MaintenanceManager:
                                                  -result["missing_after_run"]),
                                 stage_total=result["source_vintages_requested"])
                             if (result["status"] in ("complete","blocked") or
-                                result["failed_now"] or
-                                result["downloaded_now"] == 0):
+                                (result["downloaded_now"] == 0 and
+                                 not failed_now)):
                                 break
                         assert result is not None
-                        first_failure = (result.get("failed_now") or [None])[0]
                         if not isinstance(first_failure, dict):
                             first_failure = {}
                         record("alfred", {
@@ -399,6 +410,8 @@ class MaintenanceManager:
                             "first_failed_asof": first_failure.get("asof")
                                 if isinstance(first_failure.get("asof"), str) else None,
                             "http_status": first_failure.get("http_status"),
+                            "first_failed_reason": first_failure.get("reason"),
+                            "failures_in_run": failures_in_run,
                             "status": ("complete" if result["missing_after_run"] == 0
                                        else "blocked" if result["status"] == "blocked"
                                        else "partial"),
@@ -408,8 +421,9 @@ class MaintenanceManager:
                             "requested": result["source_vintages_requested"],
                             "reason": (result.get("halted_reason")
                                        if result["status"] == "blocked"
-                                       else "no_progress" if result["failed_now"]
-                                       else None),
+                                       else "unresolved_source_failures"
+                                       if failures_in_run else "no_progress"
+                                       if result["missing_after_run"] else None),
                         })
             except MaintenanceBlocked:
                 raise

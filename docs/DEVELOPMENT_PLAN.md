@@ -24,6 +24,12 @@ Developer export after the completed 16:49 history run: 80/80 registered sources
 
 Shiller now identifies columns from the complete multirow original worksheet headings, rejecting Date Fraction, total-return CAPE and Excess CAPE Yield; it no longer assumes an isolated `Date`/`CAPE` heading cell is unique. Test uses an official-shaped seven-row header and blank CAPE before 1881. Acceptance still requires a real sync and verifying a continuous source-authored CAPE history from January 1881.
 
+### ALFRED ingestion continuation — 2026-11-03
+
+Batch retries previously always started with the same earliest 180 missing month/source combinations. If individual snapshots repeatedly failed validation or upstream delivery, that prefix could prevent later valid months from being requested. The browser history job now retains failed month identities within the job and skips their **retries only during that run**, while keeping their persisted status missing, never treating a failure as a source observation. It continues through later months up to the same existing fixed job budget. The bounded Developer log records first failing source, as-of date, safe reason and total individual failures; upstream response bodies, URLs and API keys remain excluded. The original FRED vintagedates endpoint's ascending ordering and one-result limit are documented parameters. <https://fred.stlouisfed.org/docs/api/fred/series_vintagedates.html>.
+
+**Still open:** `SAHMREALTIME` from 2019-09-30 is the first unresolved historical month in the user's latest report, but that report lacks an HTTP status or structured validation reason. Do not infer the cause or silently omit it. Production acceptance requires a subsequent complete history sync with explicit first-failure code, valid original snapshots and verified remaining missing counts.
+
 ## Latest empirical acceptance evidence — user sync + 80-source CSV, 2026-11-03
 
 The user reports the Docker build and both sync actions work. The exported CSV contains exactly **80 registered source rows**: 53 macro, 24 market and 3 FX, **all with saved periods**. This demonstrates ingestion coverage, **not** complete observation sequences or independently validated definitions. Sync history reported macro and market success, while genuine ALFRED was blocked (**964 missing; zero newly downloaded**) and SEC returned partial for two verified funds. The verified local backup stage succeeded according to the user's sync result; off-server replication and restore rehearsal remain unverified.
