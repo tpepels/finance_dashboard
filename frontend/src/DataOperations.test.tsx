@@ -78,7 +78,7 @@ describe('all source maintenance is accessible in the dashboard', () => {
   });
 
   it('reports active progress and disables conflicting imports while allowing cancellation', async () => {
-    const runningFetch = vi.fn(async (request:string,init?:RequestInit)=>{
+    const runningFetch = vi.fn(async (_request:string,init?:RequestInit)=>{
       if(init?.method==='POST') return {ok:true,status:202,json:async()=>({id:'job1'})};
       return {ok:true,status:200,json:async()=>({
         active_job_id:'job1',jobs:[{id:'job1',action:'refresh_sources',
