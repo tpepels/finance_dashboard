@@ -2,7 +2,12 @@
 
 Local economic research dashboard: one page, one existing Docker service, SQLite source history and transparent economic comparisons. The application distinguishes original source measurements, calculated relationships, explicitly scoped proxies and missing evidence.
 
-**All routine data collection and repair is done from the dashboard's Data & sync menu**—including PWT, individual/bulk macro and market histories, ALFRED vintages, SEC holdings, Wisesheets and local backups. The only normal shell use is updating/rebuilding the application image; no shell is needed to operate data sources.
+**Routine operation uses just two buttons** under **Data & sync**:
+
+- **Sync current data** — refresh all registered macro series (including PWT countries), 24 market instruments, three ECB FX histories and quota-aware Wisesheets earnings. Verify a local backup afterward.
+- **Sync history** — request complete registered macro and market/FX histories, resume genuine dated ALFRED releases, collect original verified SEC holdings (bounded to 50 filings per fund), then verify a local backup. Missing sources and licensing gaps remain explicitly reported.
+
+One job runs at a time, with visible progress and an option to cancel. The 80-source table, raw source dates/failure codes and full CSV audit are behind **Source diagnostics**. No series IDs, batch sizes or provider options are needed in normal use. The only routine shell operation is deploying an updated application image.
 
 ## Current development status
 

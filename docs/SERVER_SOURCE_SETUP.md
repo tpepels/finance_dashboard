@@ -142,20 +142,16 @@ The `GET /api/source-coverage` endpoint returns all **53** registered macro sour
 
 The public FRED sources for Germany, France and Italy are confirmed to be real PWT 11.0 annual **ratios** with latest source year 2023. Do not insert these numbers manually, and do not multiply values in the database by 100; the research view handles that presentation transformation.
 
-To repair the three exact missing PWT series **without a terminal**, open the dashboard and choose **Data & sync → Import Germany, France and Italy PWT histories**. The same panel supports:
+For ordinary operation, open **Data & sync** in the dashboard. There are **two buttons**:
 
-- importing an individual macro series or repairing every missing/stale one;
-- refreshing all 53 macro streams, all 24 market histories and three ECB FX feeds, or a single market/FX series;
-- checking historical ALFRED API access, choosing series/dates and resuming bounded as-of imports automatically;
-- checking official SEC filing access and importing one or up to 50 matching N-PORT filings per verified fund;
-- running the monthly-quota-aware Wisesheets earnings refresh and creating a verified local database/source-evidence backup;
-- viewing running/blocked/completed job status, progress, cancellation and prior job history.
+- **Sync current data**: imports/refreshes all 53 mapped macro sources (including Germany/France/Italy PWT), 24 markets and three ECB FX rates, plus the current quota-aware earnings snapshot, then creates and verifies a local backup.
+- **Sync history**: requests complete source histories, continues genuine ALFRED monthly publication-vintage imports and collects original SEC holdings using independently verified fund series identities (up to 50 filings per fund), then verifies a local backup.
 
-The browser never sends a provider key to its own job API. Job parameters are limited to known source identifiers and bounded ranges; work is serialized with the automatic collector. The durable job record is stored inside the existing `/data` volume and also included in the source-evidence backup. A provider failure does not delete previously verified data. Only one maintenance job runs at a time.
+Both actions retain existing source observations, serialize with scheduled refreshes and show progress, completion or partial failures. There is no ordinary need to choose series IDs, providers, dates or request limits. The full 80-source table, source-period dates, original release boundaries, failure codes and CSV export are available only after opening **Source diagnostics**.
 
-For the PWT repair, verify the same page's **Source coverage** list afterward: `stored_periods`, `latest_source_date` and `last_failure_code` distinguish successful historical imports from empty charts. The server must already have the FRED provider key configured; the browser reports a blocked/credential state if it is absent. Original source fractions remain unchanged; percentages are a display transformation.
+**Historical coverage is not automatically complete:** SEC collection still has a 50-matching-filing limit per fund, UCITS sources are not yet integrated and licensed historical global index weights are missing. A successfully completed button press does not mean unresolved source definitions are verified.
 
-**Developer-only recovery:** the underlying command-line importers still exist for automated tests and catastrophic recovery, but they are not required for normal data collection or troubleshooting. New data acquisition functions must be accessible from the dashboard before being declared complete.
+The browser never receives provider API keys. Developer command-line diagnostics remain documented elsewhere in this file for emergency recovery, but are not the normal source-collection workflow.
 
 ## Wisesheets, markets and source-level coverage
 
