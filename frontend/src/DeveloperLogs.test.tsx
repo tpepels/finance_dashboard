@@ -39,17 +39,18 @@ describe('developer log hidden support console',()=>{
     expect(fetchMock).toHaveBeenCalledWith('/api/developer-log',{cache:'no-store'});
   });
   it('copies the complete report, including hidden severity entries', async()=>{
-    const writeText=vi.fn(async(_content:string)=>undefined);
-    Object.defineProperty(navigator,'clipboard',{configurable:true,
-      value:{writeText}});
     const user=userEvent.setup();
     render(<DeveloperLogs/>);
     await screen.findByText('80/80 sources with data');
     await user.selectOptions(screen.getByLabelText('Events'),'warning');
     await user.click(screen.getByRole('button',{name:'Copy report'}));
-    await waitFor(()=>expect(writeText).toHaveBeenCalled());
-    expect(String(writeText.mock.calls[0][0])).toContain('sync.started');
-    expect(String(writeText.mock.calls[0][0])).toContain('valuation.us.cape');
+    await waitFor(()=>expect(screen.getByRole('status').textContent)
+      .toContain('Diagnostic report copied'));
+    // userEvent installs a working clipboard stub. Verify the actual copied
+    // contents, not a mock replaced by userEvent.setup().
+    const copied=await navigator.clipboard.readText();
+    expect(copied).toContain('sync.started');
+    expect(copied).toContain('valuation.us.cape');
   });
   it('downloads the full report as a text file', async()=>{
     const createObjectURL=vi.fn((_blob:Blob)=>'blob:diagnostics-test');
