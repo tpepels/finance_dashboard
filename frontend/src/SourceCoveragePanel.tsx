@@ -68,16 +68,6 @@ export default function SourceCoveragePanel() {
       window.removeEventListener('gcm-open-data-manager', manage);
     };
   }, []);
-  const missing = report
-    ? Object.values(report.summary).reduce((sum, group) => sum + group.without_data, 0)
-    : 0;
-  const stale = report
-    ? Object.values(report.summary).reduce((sum, group) => sum + (group.stale ?? 0), 0)
-    : 0;
-  const degraded = report
-    ? Object.values(report.summary).reduce((sum, group) =>
-      sum + (group.refresh_failed_with_data ?? 0), 0)
-    : 0;
   function exportSourceAudit() {
     if (!report) return;
     const csv = sourceAuditCsv(report.items);
