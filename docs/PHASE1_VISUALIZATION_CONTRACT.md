@@ -1,6 +1,6 @@
-# Phase 1 visualization and interaction contract — proposed ideal state
+# Phase 1 visualization and interaction contract — approved intent, detailed design for review
 
-**Status: DRAFT.** User intent and research approval pending. [Authoritative plan](DEVELOPMENT_PLAN.md). Design and scientific analysis remain intertwined; UI is derived from research questions and data comparison validity.
+**Status: ALL TEN PRODUCT-INTENT DECISIONS APPROVED 2026-11-03; detailed design remains Phase 1 proposal until formal acceptance.** [Authoritative plan](DEVELOPMENT_PLAN.md). Design and scientific analysis remain intertwined; UI is derived from research questions and data comparison validity.
 
 ## Information architecture
 
@@ -45,6 +45,70 @@ Every analysis comprises: meaningful **question title**; visual comparison with 
 - OECD/JRC (2008) composite methodology: [handbook](https://www.oecd.org/content/dam/oecd/en/publications/reports/2008/08/handbook-on-constructing-composite-indicators-methodology-and-user-guide_g1gh9301/9789264043466-en.pdf). Explicitly disclose weights, normalization, uncertain rankings; never hide arbitrary composite choices in colors.
 - NBER original dating: https://www.nber.org/research/business-cycle-dating.
 - ALFRED original release availability: https://fred.stlouisfed.org/docs/api/fred/realtime_period.html.
+
+## Fully specified analytical interaction model
+
+**The unit of navigation is a scientific question; the unit of interaction is an independently configurable figure.** The overview is a small editorial selection of questions, and the workbench exposes the entire approved catalogue of approximately 35 analyses. Region filters for the *library* narrow displayed search results only. They must never mutate already-visible charts.
+
+### Default overview and research workbench
+
+The approved default overview holds **six** complementary research views: C02 (term spread/Sahm), M01 (Fed/ECB/BoJ), F03 (national credit gaps/DSR), V01 (CAPE/real rates), L01 (productivity/pay) and P02 (stocks/bonds/gold). Each is a comparative analysis, not a one-indicator card. Each shows question, chart, short evidence paragraph, contrasting evidence when available, period/scope and inline **Configure / Method / Sources / More** actions. Unknown or unverified claims must not be replaced by decorative generated copy.
+
+Research workbench allows:
+1. Find a question by topic, economic theory, indicator, region, source or analytical use; compare alternative method records, not just source-series names.
+2. Open, duplicate and configure an independent view of any approved analysis, while preserving the immutable curated reference definition.
+3. Select one or multiple geographies *inside that figure only*. Add/remove series only when they pass the method's explicit variable roles and comparable sampling constraints.
+4. Save and rename custom views with selected variables/geographies/transforms/periods/chart type/events; restore publication-based default independently of any other saved view.
+5. Inspect original observed values, source availability dates, revision versions, assumptions, sensitivity and reproducible formula; export the exact view specification with accompanying data/source citation and limitations.
+6. Coordinate viewports across *explicitly linked* charts for visual comparisons, without imposing a single global time range or country switch on unrelated research.
+
+### Figure scientific contract (conceptual)
+
+A saved figure definition includes stable question ID; view ID and default-method version; series identities and economic roles; named countries/regions and compatible comparison universe; exact original source and requested publication-vintage interpretation; transformation and unit dimensions; frequency and alignment; time window; chart encoding; per-axis semantics; missingness handling; event-overlay definitions and scope; visibility order and styling; chosen contrast/benchmark; source citation and method version; owner edits with a restore operation.
+
+This describes the desired **behavior and scientific semantics**, not a proposed database schema or implementation architecture. Two figures must be independently changed, independently saved and independently reset; another chart's country selection never changes unless the owner explicitly commands a multi-chart update.
+
+### Graph-type policy and explicit overrides
+
+| Analytical task | Primary default | Allowed alternative | Invalid/misleading combination |
+|---|---|---|---|
+| Historical level or rate | **Line**; stepped only for piecewise-constant policy series | Dot timeline for sparse releases | Bars for each crowded daily/weekly observation without categorical purpose |
+| Same-definition country comparisons | **Multi-line** (small set); aligned small multiples (many countries) | Heatmap of country×date equal-unit cells | Mixed country units on a shared unlabelled axis |
+| Different but jointly informative units | **Aligned small multiples** with synchronized time | Matched dated scatter if asking about association | Unexplained dual-y axis or false additive stacked area |
+| Explicit country/sector snapshot | **Dot or bar** with zero and comparability checks | Ranked table | Joined line connecting unrelated categories |
+| Additive budget, portfolio or value-added components | **Stacked bars/areas** only if components really sum to the whole and sign handling is defined | Small multiples | Stacking nonadditive ratios, independently normalized series, or opposite economic scopes |
+| Two-variable association | **Scatter**, with sample size and fitted model optional | Dated line panels | Trend-line regression portrayed as causal or significant without assumptions |
+| Correlations, long country/sector matrix | **Heatmap** or rolling-comparison lines | Bubble only if dimensions and size meaning are justified | Color scale hiding zero/direction or unsupported statistical precision |
+| Drawdown and recovery | **Underwater line** + indexed wealth | Event table | Incorrect “recession” band stretched to drawdown duration |
+
+The figure editor must show **why a graph type is unavailable** for that question rather than silently producing an illogical bar chart. It should preserve defaults when switching compatible types, avoid implying interpolation across sparse historical periods and label normalization bases.
+
+### Time and event semantics for every chart
+
+- The time axis distinguishes monthly **observation reference periods**, actual public-release availability and the date a later revision entered the research record. Users may compare "what we know now" and "what was known then", explicitly.
+- In the NBER convention the **February 2020 peak** is followed by **March–April 2020** contraction; show these two months only as US recession shading. Separate `COVID disruption` and `recovery of real output/employment` layers use their own explicitly sourced event start/end or a named pre-shock threshold. NBER dates must not be extended just to make the chart look better.
+- Country-specific research may have different official recession dating institutions or no accepted official chronology; never paint US NBER as global recession.
+- For a graph with yearly values, the period classification must be honest: do not invent monthly precision or treat a dated event overlay as creating observed monthly evidence.
+- All annotations are optional and **per graph**; synchronized comparative charts may share annotations only by explicit owner link. Preserve official grey recession fill, distinct nonrecession shock color/pattern, and series-dependent recovery line.
+- Multiple periods (2001 technology decline, 2007–09 financial crisis, 2020 pandemic) are separate historically grounded overlays; named events may overlap without implying economic causation.
+
+### Method, results and uncertainty presentation
+
+When opening **Method**, show: precise analytical question; reference(s) and identified studied population/horizon; what the source actually measures; original series IDs and URLs; current units/frequency, observation vs release vs latest revision; all arithmetic and statistical transforms; denominator and aggregation rules; comparison validity and missing data; competing explanations; historical forecasting skill *if independently tested*; and links to the reproducible values behind the active figure. The panel updates to reflect the **current chosen graph variant**, not only the curated default.
+
+A figure's **Evidence summary** has four parts at appropriate depth: observed comparison and date → agreement/disagreement → published contextual interpretation → material uncertainty/alternative hypothesis. No made-up source data or unjustified numerical threshold. The chart is still legible when the methods panel is closed.
+
+### Monitoring and privacy interaction
+
+Monitoring defaults to quiet: observed, source-verifiable material changes and incomplete/late releases, with optional periodic research digest. A change is not an automatically calibrated "red risk" notification. The optional holdings workflow can use manually entered holdings or explicit private import with separate permissions; the overview never assumes personal access. Administrative source sync, logs and developer diagnostics stay subordinate to research reading.
+
+### UI accessibility and full-coverage acceptance
+
+- Responsive desktop and mobile composition; neither a compressed multi-column graph nor a hidden chart-type selector counts as mobile support. Tables have accessible narrow-screen alternative and horizontal-scroll affordance.
+- Light/dark modes use one shared semantic typographic/color contract, with readable contrast and both line-color **and** line-pattern differentiation. Legends, labels, pointer targets and keyboard focus are inspected, not assumed.
+- Scatter/heatmap/bar/line and small-multiple geometry tested on positive, negative, zero, missing and outlier values, mixed frequencies, very long dates and many geographical series.
+- Navigation, chart editor, export, methodology, source inspection, saved-view restore and the independent-country property are covered in design walkthroughs before a code comparison is permitted.
+- The ideal experience can explain empty/unavailable data without replacing research with API status or a spinner.
 
 ## Phase 1 acceptance examples (normative)
 
