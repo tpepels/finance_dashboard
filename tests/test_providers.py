@@ -51,6 +51,20 @@ class ParserTests(unittest.TestCase):
         with self.assertRaisesRegex(ProviderError, "Invalid observation period"):
             parse_fred_table_html(bad,"DFII10","D")
 
+    def test_fred_annual_iso_dates_and_year_labels_are_equivalent(self):
+        observed = parse_fred_json({"observations": [
+            {"date": "2022-01-01", "value": "0.64"},
+            {"date": "2023", "value": "0.63"},
+        ]}, "A")
+        self.assertEqual(observed, {
+            date(2022, 1, 1): Decimal("0.64"),
+            date(2023, 1, 1): Decimal("0.63"),
+        })
+        with self.assertRaisesRegex(ProviderError, "Invalid observation period"):
+            parse_fred_json({"observations": [
+                {"date": "2023-07-01", "value": "0.63"}
+            ]}, "A")
+
     def test_fred_json_missing(self):
         values = parse_fred_json({"observations": [
             {"date": "2026-01-01", "value": "."},

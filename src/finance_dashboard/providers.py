@@ -77,9 +77,14 @@ def _value(raw: Any) -> Decimal | None:
 def _date(raw: str, frequency: str) -> date:
     try:
         if frequency == "A":
-            if not (len(raw) == 4 and raw.isdigit()):
-                raise ValueError("not an annual period")
-            return date(int(raw), 1, 1)
+            # FRED annual observations are ISO dates (YYYY-01-01); other
+            # providers may use the calendar-year label YYYY.
+            if len(raw) == 4 and raw.isdigit():
+                return date(int(raw), 1, 1)
+            observed = date.fromisoformat(raw)
+            if observed.month != 1 or observed.day != 1:
+                raise ValueError("annual observation must begin on January 1")
+            return observed
         if frequency == "M":
             return date.fromisoformat(raw + "-01") if len(raw) == 7 else date.fromisoformat(raw)
         if frequency == "Q":
