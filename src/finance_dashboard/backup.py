@@ -233,7 +233,7 @@ def verify_manifest(path: Path) -> dict:
                 for member in members:
                     parts = Path(member.name).parts
                     if (not member.isfile() or len(parts) < 2 or
-                        parts[0] not in {"vintages", "holdings", "surplus"} or
+                        parts[0] not in {"vintages", "holdings", "surplus", "maintenance"} or
                         ".." in parts or member.name.startswith("/")):
                         raise ValueError("Unsafe or unexpected evidence backup member")
     return {
