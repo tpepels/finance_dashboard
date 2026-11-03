@@ -1,4 +1,4 @@
-# Phase 4 research data: actual historical releases, fund holdings and surplus accounts
+# Historical Phase 4 implementation reference — research data: actual historical releases, fund holdings and surplus accounts
 
 
 > **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.

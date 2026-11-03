@@ -1,7 +1,7 @@
-# Economic research indicators — definitions, interpretation and verification
+# Historical economic research methods — existing implementation reference
 
 
-> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
+> **Historical methods for the preserved implementation, not the redesigned content contract.** The sole lifecycle plan is [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). New question-led analytic methods and visual behavior are proposed for approval in [Phase 1 scientific charter](PHASE1_SCIENTIFIC_CHARTER.md), [analysis catalogue](PHASE1_ANALYSIS_CATALOGUE.md) and [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md).
 *Local-only finance dashboard, 2 November 2026*
 
 ## What changed

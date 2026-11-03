@@ -1,7 +1,7 @@
-# Requested economic indicator acceptance matrix
+# Historical implemented-indicator inventory (not the new ideal-state scope)
 
 
-> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
+> **Pre-redesign implementation inventory, preserved only.** Phase 1 research-first reset is defined in [the sole authoritative development plan](DEVELOPMENT_PLAN.md) and the [proposed question-led research catalogue](PHASE1_ANALYSIS_CATALOGUE.md). This table describes pre-redesign source cards; it neither defines future dashboard content nor constitutes a Phase 1 gap analysis.
 
 This inventory is generated from the 46 indicator declarations in `src/finance_dashboard/research.py` at the current revision. The 53 canonical macro-source contracts exist in `definitions/series.json`. **Code registration is not live-server source verification.** The active acceptance gates and ordered repairs are controlled by [Development plan](DEVELOPMENT_PLAN.md). Latest live sync (2026-11-03 18:14 UTC): 80/80 registered source histories stored with 0 latest source issues; ALFRED has 0 remaining requested monthly vintages after 580 prepublication exclusions; VT/BND original SEC collection completed with 28/29 verified filings. **Scientific acceptance of original definitions, historical gaps, ETF exposures and independent prediction remains open.**
 
