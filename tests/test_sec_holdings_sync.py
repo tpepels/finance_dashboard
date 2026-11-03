@@ -7,7 +7,7 @@ import unittest
 import httpx
 
 from finance_dashboard.sec_holdings_sync import (
-    read_verified_config,collect_configured,collect_if_due,
+    read_verified_config,collect_configured,collect_if_due,check_sec_sources,
     SEC_FILE, PAGE, VERIFIED_DEFAULT_FUNDS, VERIFICATION_FILINGS, import_fund,
 )
 from finance_dashboard.sec_holdings import HoldingsError, list_holdings
@@ -61,6 +61,28 @@ class SecSyncTests(unittest.TestCase):
             self.assertEqual(list_holdings(root,"vt",asof=date(2026,5,21))["records"],[])
             self.assertEqual(len(list_holdings(root,"vt",asof=date(2026,5,24))["records"]),1)
             self.assertEqual(len(calls),2)
+
+    def test_sec_check_validates_official_reference_indexes_without_xml_fetch(self):
+        urls = []
+        def handler(request):
+            urls.append(str(request.url))
+            series = ("S000022482" if "857489" in str(request.url)
+                      else "S000002564")
+            return httpx.Response(200, text=(
+                '<html><a href="primary_doc.html">HTML</a>'
+                '<a href="primary_doc.xml">XML</a>'
+                '<a href="?series=' + series + '">' + series + '</a></html>'))
+        with TemporaryDirectory() as tmp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result = check_sec_sources(
+                    config=Path(tmp)/"nonexistent.json",
+                    user_agent="Research contact@example.org", client=client)
+        self.assertEqual(result["status"],"ready")
+        self.assertEqual(result["requests"],2)
+        self.assertEqual(len(urls),2)
+        self.assertTrue(all(url.endswith("-index.htm") for url in urls))
+        self.assertTrue(all(x["xml_filename"] == "primary_doc.xml"
+                            for x in result["funds"]))
 
     def test_html_primary_document_resolves_sec_index_xml_without_guessing(self):
         """Official SEC indexes commonly list HTML primary plus XML sibling."""
