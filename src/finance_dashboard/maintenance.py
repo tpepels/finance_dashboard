@@ -112,14 +112,14 @@ class MaintenanceManager:
         # All options are validated against an explicit allowlist. Never
         # accept a URL, file path, shell command or raw provider credential.
         if action == "refresh_sources":
-            ids = options.get("series_ids") or sorted(valid_sources)
+            ids = options["series_ids"] if "series_ids" in options else sorted(valid_sources)
             if (not isinstance(ids, list) or not 1 <= len(ids) <= 53 or
                 len(ids) != len(set(ids)) or not set(ids) <= valid_sources):
                 raise ValueError("Invalid canonical series selection")
             options = {"series_ids": sorted(ids)}
         elif action == "refresh_markets":
-            ids = options.get("instrument_ids") or sorted(valid_markets)
-            fx = options.get("currencies") or sorted(FX_IDS)
+            ids = options["instrument_ids"] if "instrument_ids" in options else sorted(valid_markets)
+            fx = options["currencies"] if "currencies" in options else sorted(FX_IDS)
             if (not isinstance(ids, list) or len(ids) > 24 or
                 len(ids) != len(set(ids)) or not set(ids) <= valid_markets or
                 not isinstance(fx, list) or len(fx) > 3 or
