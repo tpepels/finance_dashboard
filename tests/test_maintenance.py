@@ -332,12 +332,12 @@ class MaintenanceApiTests(unittest.TestCase):
                  "index_candidates_examined":50,
                  "unexamined_candidate_filings":0},
             ]}
-        with patch.dict("os.environ",{"FRED_API_KEY":"a"*32}), \\
-             patch("finance_dashboard.worker.refresh_all",return_value=0), \\
-             patch("finance_dashboard.worker.refresh_market_all",return_value=0), \\
+        with patch.dict("os.environ",{"FRED_API_KEY":"a"*32}), \
+             patch("finance_dashboard.worker.refresh_all",return_value=0), \
+             patch("finance_dashboard.worker.refresh_market_all",return_value=0), \
              patch("finance_dashboard.vintage.probe_access",return_value={
                  "status":"blocked","reason":"fred_api_key_rejected",
-                 "http_status":400,"requests":1}), \\
+                 "http_status":400,"requests":1}), \
              patch("finance_dashboard.sec_holdings_sync.collect_configured",
                    side_effect=fake_sec):
             job=self.client.post("/api/maintenance",json={"action":"sync_history"},
