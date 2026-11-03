@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+import re
 from uuid import uuid4
+
+import httpx
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -11,6 +14,21 @@ from sqlalchemy.orm import Session
 from .providers import ProviderRouter
 from .catalog import load_documents
 from .database import IngestionRun, ObservationVersion, SeriesRow, now_utc
+
+
+def safe_source_failure_code(exc: BaseException) -> str:
+    """Fixed vocabulary only; credentials, full URLs and provider bodies never persist."""
+    match = re.search(r"Provider HTTP ([0-9]{3})", str(exc))
+    if match:
+        code = int(match.group(1))
+        if code in (400, 401, 403, 404, 429, 500):
+            return "provider_http_" + str(code)
+        return "provider_failed"
+    if isinstance(exc, httpx.TimeoutException) or isinstance(exc, httpx.TransportError):
+        return "source_transport_failed"
+    if isinstance(exc, ValueError):
+        return "source_invalid"
+    return "provider_failed"
 
 
 class IngestionService:
@@ -92,7 +110,7 @@ class IngestionService:
                 run = session.get(IngestionRun, run_id)
                 run.status = "failed"
                 run.ended_at = now_utc()
-                run.error = f"{type(exc).__name__}: provider error details redacted"
+                run.error = safe_source_failure_code(exc)
             raise
 
 
