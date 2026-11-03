@@ -20,6 +20,7 @@ import time
 import httpx
 
 FRED_OBSERVATIONS = "https://api.stlouisfed.org/fred/series/observations"
+FRED_VINTAGE_DATES = "https://api.stlouisfed.org/fred/series/vintagedates"
 ROOT = Path(os.environ.get("FINANCE_VINTAGE_DIR", "/data/vintages"))
 # Selected source series have documented release/vintage semantics. No
 # assumption that every third-party FRED series has historical ALFRED vintages.
@@ -120,6 +121,33 @@ def probe_access(*, api_key: str, client: httpx.Client) -> dict:
         return {"status": "blocked", "reason": "fred_response_not_json", "requests": 1}
     return {"status": "ready", "series_id": "USREC",
             "requests": 1, "note": "Historical ALFRED 2020-01-31 as-of endpoint and authentication succeeded"}
+
+
+def first_available_vintages(series_ids: list[str], *, api_key: str,
+                             client: httpx.Client) -> dict[str, date]:
+    """Ask ALFRED for each source's earliest real publication vintage.
+
+    A series introduced after the research start date has no genuine earlier
+    point-in-time observations. Those dates must be excluded, never imputed.
+    """
+    if any(sid not in SOURCES for sid in series_ids):
+        raise VintageError("Unmapped ALFRED source")
+    result = {}
+    for sid in series_ids:
+        response = client.get(FRED_VINTAGE_DATES, params={
+            "series_id": sid, "api_key": api_key, "file_type": "json",
+            "sort_order": "asc", "limit": 1,
+        }, timeout=25)
+        response.raise_for_status()
+        try:
+            payload = response.json()
+            dates = payload["vintage_dates"]
+            if not isinstance(dates, list) or not dates:
+                raise VintageError("ALFRED series has no verified publication vintages")
+            result[sid] = date.fromisoformat(dates[0])
+        except (KeyError, TypeError, ValueError, IndexError) as exc:
+            raise VintageError("Invalid ALFRED first-publication response") from exc
+    return result
 
 
 def snapshot_path(root: Path, series_id: str, asof: date) -> Path:
@@ -312,7 +340,8 @@ def capture_previous_month(root: Path = ROOT, *,
 
 def backfill_batch(start: date, end: date, series_ids: list[str], *,
                    api_key: str, client: httpx.Client, root: Path = ROOT,
-                   max_requests: int = 180, pause_seconds: float = 0.2) -> dict:
+                   max_requests: int = 180, pause_seconds: float = 0.2,
+                   first_available: dict[str, date] | None = None) -> dict:
     """Resume full-range publication-vintage ingestion in bounded API batches.
 
     Missing dates remain missing after failures. Successful source snapshots
@@ -324,8 +353,13 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
         raise VintageError("Invalid ALFRED historical backfill range or sources")
     if not 1 <= max_requests <= 180 or pause_seconds < 0:
         raise VintageError("ALFRED request budget must be between 1 and 180")
-    periods = [(sid, asof) for asof in _month_ends(start, end)
-               for sid in series_ids]
+    if first_available is not None and set(first_available) != set(series_ids):
+        raise VintageError("ALFRED publication bounds must cover every requested series")
+    requested_periods = [(sid, asof) for asof in _month_ends(start, end)
+                         for sid in series_ids]
+    periods = [(sid, asof) for sid, asof in requested_periods
+               if first_available is None or asof >= first_available[sid]]
+    excluded = len(requested_periods) - len(periods)
     pending = [(sid, day) for sid, day in periods
                if read_snapshot(root, sid, day) is None]
     fetched, failures = 0, []
@@ -356,6 +390,7 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
         "status": "blocked" if halted else "complete" if not outstanding else "partial",
         "halted_reason": halted,
         "source_vintages_requested": len(periods),
+        "prepublication_excluded": excluded,
         "already_cached_before_run": len(periods)-len(pending),
         "downloaded_now": fetched, "failed_now": failures,
         "missing_after_run": len(outstanding),
@@ -406,9 +441,12 @@ def main() -> int:
         parser.error("FRED_API_KEY must be a registered 32-character lowercase alphanumeric key")
     if args.backfill:
         with httpx.Client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
+            first_available = first_available_vintages(
+                args.series, api_key=key, client=client)
             result = backfill_batch(args.start, args.end, args.series,
                                     api_key=key, client=client, root=args.root,
-                                    max_requests=args.max_requests)
+                                    max_requests=args.max_requests,
+                                    first_available=first_available)
         print(json.dumps(result, indent=2))
         return 1 if result["failed_now"] else 0
     ok, failed = 0, 0

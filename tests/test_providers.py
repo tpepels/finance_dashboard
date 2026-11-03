@@ -211,6 +211,29 @@ class ParserTests(unittest.TestCase):
                                     "incomplete monthly CAPE history"):
             parse_shiller_sheet(SparseSheet())
 
+    def test_shiller_split_headers_and_total_return_cape_are_not_confused(self):
+        rows = [
+            ["Shiller source", "", "", ""],
+            ["Date", "", "", ""],
+            ["", "", "Cyclically Adjusted P/E", "Total Return CAPE"],
+            ["", "", "CAPE", "TR CAPE"],
+        ]
+        for year in range(1881, 1894):
+            for month in range(1, 13):
+                rows.append([float(f"{year}.{month:02d}"), "", 12.5, 99.0])
+        observations = parse_shiller_sheet(rows)
+        self.assertEqual(len(observations), 13 * 12)
+        self.assertEqual(observations[date(1881, 1, 1)], Decimal("12.5"))
+        self.assertEqual(observations[date(1893, 12, 1)], Decimal("12.5"))
+
+    def test_shiller_rejects_partial_recent_history_even_when_contiguous(self):
+        rows = [["Date", "CAPE"]]
+        for year in range(2024, 2027):
+            for month in range(1, 13):
+                rows.append([float(f"{year}.{month:02d}"), 39.0])
+        with self.assertRaisesRegex(ProviderError, "incomplete monthly CAPE history"):
+            parse_shiller_sheet(rows)
+
     def test_world_bank_bad_geo_fails(self):
         data = [{"page": 1, "pages": 1}, [
             {"countryiso3code": "FRA", "indicator": {"id": "NY.GDP.MKTP.KD.ZG"},

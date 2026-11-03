@@ -354,7 +354,7 @@ class MaintenanceManager:
         else:
             stage(2, "ALFRED historical publication vintages")
             try:
-                from .vintage import probe_access, backfill_batch
+                from .vintage import probe_access, backfill_batch, first_available_vintages
                 key = os.environ.get("FRED_API_KEY", "").strip()
                 with httpx.Client(timeout=25, headers={
                     "User-Agent":"GlobalCapitalMonitor/0.2"}) as client:
@@ -367,6 +367,8 @@ class MaintenanceManager:
                     else:
                         end = date.today().replace(day=1)-timedelta(days=1)
                         start = date(2000,1,1)
+                        available_since = first_available_vintages(
+                            sorted(VINTAGE_IDS), api_key=key, client=client)
                         downloaded = 0
                         result = None
                         for cycle in range(60):
@@ -374,7 +376,8 @@ class MaintenanceManager:
                                 raise MaintenanceBlocked("cancelled")
                             result = backfill_batch(
                                 start,end,sorted(VINTAGE_IDS),api_key=key,
-                                client=client,max_requests=180)
+                                client=client,max_requests=180,
+                                first_available=available_since)
                             downloaded += result["downloaded_now"]
                             self._change(job_id, completed=2,total=stages,
                                 current_item="Historical releases",
@@ -401,6 +404,7 @@ class MaintenanceManager:
                                        else "partial"),
                             "downloaded": downloaded,
                             "missing": result["missing_after_run"],
+                            "prepublication_excluded": result["prepublication_excluded"],
                             "requested": result["source_vintages_requested"],
                             "reason": (result.get("halted_reason")
                                        if result["status"] == "blocked"

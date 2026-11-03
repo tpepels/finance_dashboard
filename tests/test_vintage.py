@@ -10,7 +10,7 @@ import httpx
 from finance_dashboard.vintage import (
     SOURCES, VintageError, fetch_snapshot, read_snapshot,
     latest_asof_reading, available_snapshots, _month_ends,
-    capture_previous_month, backfill_batch, probe_access,
+    capture_previous_month, backfill_batch, probe_access, first_available_vintages,
 )
 from finance_dashboard.vintage_backtest import (
     target_after, fit_predict, metrics, walk_forward, independent_holdout_diagnostics,
@@ -174,6 +174,33 @@ class VintageTests(unittest.TestCase):
                     backfill_batch(date(2020,1,1),date(2020,3,31),
                         ["T10Y3M"],api_key="fake",client=client,root=root,
                         max_requests=181,pause_seconds=0)
+
+    def test_first_real_publication_bounds_skip_unavailable_snapshots(self):
+        calls = []
+        def handler(request):
+            calls.append((request.url.path, request.url.params["series_id"]))
+            if request.url.path.endswith("/vintagedates"):
+                self.assertEqual(request.url.params["sort_order"], "asc")
+                self.assertEqual(request.url.params["limit"], "1")
+                return httpx.Response(200, json={"vintage_dates":["2020-02-15"]})
+            return httpx.Response(200, json={"observations":[{
+                "date":"2020-02-01", "value":"0.5",
+                "realtime_start":"2020-02-15",
+                "realtime_end":"9999-12-31"}]})
+        with TemporaryDirectory() as tmp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                bounds = first_available_vintages(
+                    ["T10Y3M"], api_key="a" * 32, client=client)
+                result = backfill_batch(date(2020,1,1), date(2020,3,31),
+                    ["T10Y3M"], api_key="a" * 32, client=client,
+                    root=Path(tmp), max_requests=4, pause_seconds=0,
+                    first_available=bounds)
+            self.assertEqual(result["prepublication_excluded"], 1)
+            self.assertEqual(result["source_vintages_requested"], 2)
+            self.assertEqual(result["downloaded_now"], 2)
+            self.assertEqual(result["missing_after_run"], 0)
+            self.assertEqual(len(calls), 3)
+            self.assertFalse((Path(tmp)/"T10Y3M"/"2020-01-31.json").exists())
 
     def test_refuses_future_or_after_vintage_observation(self):
         def handler(_):

@@ -460,22 +460,54 @@ class ShillerDownloadLinks(HTMLParser):
 
 
 def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
-    """Shiller workbook has prose above the Date/CAPE header and Excel year.month dates."""
-    header_row = None
-    date_col = cape_col = None
-    for row in range(min(60, sheet.nrows)):
-        cells = [str(sheet.cell_value(row, col)).strip().upper() for col in range(sheet.ncols)]
-        if "DATE" in cells and "CAPE" in cells:
-            header_row = row
-            date_col, cape_col = cells.index("DATE"), cells.index("CAPE")
-            break
-    if header_row is None:
+    """Read authored monthly CAPE, including Shiller's split multi-row headers.
+
+    Strictly identify ordinary CAPE rather than the separate total-return CAPE.
+    A partial source file must never replace a known historical series.
+    """
+    if isinstance(sheet, list):
+        nrows = len(sheet)
+        ncols = max((len(row) for row in sheet), default=0)
+
+        def cell(row, col):
+            return sheet[row][col] if col < len(sheet[row]) else ""
+    else:
+        nrows, ncols = sheet.nrows, sheet.ncols
+        cell = sheet.cell_value
+
+    dates, capes = {}, {}
+    headers = {}
+    for col in range(ncols):
+        parts = []
+        for row in range(min(12, nrows)):
+            label = str(cell(row, col)).strip().upper()
+            if label:
+                parts.append(label)
+            if label == "DATE":
+                dates[col] = max(row, dates.get(col, -1))
+            if label == "CAPE":
+                capes[col] = max(row, capes.get(col, -1))
+        headers[col] = " ".join(parts)
+
+    # The official worksheet puts Date and CAPE on separate header rows.
+    # Do not let "Date Fraction", "TR CAPE" or "Excess CAPE Yield"
+    # masquerade as the original date or CAPE column.
+    if not capes:
+        for col, label in headers.items():
+            if ("CYCLICALLY ADJUSTED" in label and "CAPE" in label
+                    and "TOTAL RETURN" not in label and "EXCESS" not in label
+                    and "TR CAPE" not in label):
+                capes[col] = 7
+    if len(dates) != 1 or len(capes) != 1:
         raise ProviderError("Shiller workbook does not contain recognizable DATE/CAPE columns")
+    date_col, date_header_row = next(iter(dates.items()))
+    cape_col, cape_header_row = next(iter(capes.items()))
+    if date_col == cape_col:
+        raise ProviderError("Shiller workbook has ambiguous DATE/CAPE columns")
     output = {}
-    for row in range(header_row + 1, sheet.nrows):
-        raw_date = sheet.cell_value(row, date_col)
+    for row in range(max(date_header_row, cape_header_row) + 1, nrows):
         try:
-            num = Decimal(str(raw_date))
+            num = Decimal(str(cell(row, date_col)))
             year = int(num)
             month = int((num - year) * 100 + Decimal("0.5"))
             if year < 1871 or month < 1 or month > 12:
@@ -483,16 +515,13 @@ def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
             day = date(year, month, 1)
         except (TypeError, ValueError, InvalidOperation):
             continue
-        _put(output, day, _value(sheet.cell_value(row, cape_col)))
+        _put(output, day, _value(cell(row, cape_col)))
     if not output:
         raise ProviderError("Shiller workbook contains no CAPE observations")
-    # Shiller CAPE is monthly from 1881 onward. A malformed/truncated
-    # source workbook must never be marked as a successful full refresh.
-    # Do not synthesize missing months. Preserve last-known-good versions
-    # in the ingestion service if this validation rejects the download.
     first, last = min(output), max(output)
     expected_months = (last.year-first.year)*12 + last.month-first.month + 1
-    if expected_months >= 120 and len(output) < int(expected_months*0.90):
+    if (first > date(1882, 1, 1) or
+            (expected_months >= 120 and len(output) < int(expected_months*0.90))):
         raise ProviderError("Shiller source workbook has incomplete monthly CAPE history")
     return output
 
@@ -812,7 +841,8 @@ class ProviderRouter:
             observations = parse_un_sdg(response.json(), code, area, start)
             return FetchedSeries(series_id, str(response.request.url), None, observations)
         if provider == "SHILLER":
-            import xlrd
+            from io import BytesIO
+            from python_calamine import CalamineWorkbook
             homepage = self._get(SHILLER_HOME, follow_redirects=True)
             parser = ShillerDownloadLinks()
             parser.feed(homepage.text)
@@ -822,11 +852,21 @@ class ProviderRouter:
             if urlparse(url).hostname not in ("img1.wsimg.com", "shillerdata.com", "www.econ.yale.edu"):
                 raise ProviderError("Shiller workbook link points to an unapproved host")
             response = self._get(url, follow_redirects=True)
+            data = response.content
+            if len(data) > 15_000_000:
+                raise ProviderError("Shiller workbook exceeds safe size limit")
+            if not (data.startswith(bytes.fromhex("D0CF11E0A1B11AE1"))
+                    or data.startswith(b"PK\x03\x04")):
+                raise ProviderError("Shiller download is not an Excel workbook")
             try:
-                workbook = xlrd.open_workbook(file_contents=response.content)
-                values = parse_shiller_sheet(workbook.sheet_by_name("Data"))
-            except (xlrd.XLRDError, ValueError, IndexError) as exc:
+                workbook = CalamineWorkbook.from_filelike(BytesIO(data))
+                rows = workbook.get_sheet_by_name("Data").to_python()
+            except Exception as exc:
+                # Never expose remote response bodies or arbitrary parser errors.
                 raise ProviderError("Invalid Shiller Excel workbook or Data sheet") from exc
+            # Parse separately: ProviderError subclasses ValueError and must not
+            # be converted into the generic workbook-invalid diagnostic.
+            values = parse_shiller_sheet(rows)
             observations = {day: value for day, value in values.items()
                             if day <= date.today() and (start is None or day >= start)}
             if not observations:

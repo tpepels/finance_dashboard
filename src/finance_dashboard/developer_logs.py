@@ -182,7 +182,7 @@ def recent_jobs(jobs: list[dict]) -> list[dict]:
                         token = _token(value.get(field))
                         if token:
                             safe[field] = token
-                    for field in ("failed", "missing", "downloaded", "sources", "http_status"):
+                    for field in ("failed", "missing", "downloaded", "sources", "http_status", "prepublication_excluded"):
                         number = _nonnegative(value.get(field))
                         if number is not None:
                             safe[field] = number
