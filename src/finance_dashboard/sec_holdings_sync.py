@@ -69,8 +69,23 @@ def read_verified_config(path: Path = CONFIG) -> list[dict]:
     return result
 
 
+def _get_transient_retry(client: httpx.Client, url: str,
+                         *, timeout: int) -> httpx.Response:
+    """Retry only temporary SEC 502/503/504 errors; preserve other failures.
+
+    SEC access-denial and rate-limit codes must not provoke a retry storm.
+    Three attempts maximum, with small bounded backoff and no request logging.
+    """
+    for attempt in range(3):
+        response = client.get(url, timeout=timeout)
+        if response.status_code not in (502, 503, 504) or attempt == 2:
+            return response
+        time.sleep(0.5 * (attempt + 1))
+    raise AssertionError("Unreachable")
+
+
 def _get_json(client: httpx.Client, url: str) -> dict:
-    response = client.get(url,timeout=25)
+    response = _get_transient_retry(client, url, timeout=25)
     response.raise_for_status()
     data = response.json()
     if not isinstance(data,dict):
@@ -246,11 +261,12 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         else:
             index_url = _official_index_url(cik, accession)
             try:
-                response = client.get(index_url, timeout=25)
+                response = _get_transient_retry(client, index_url, timeout=25)
                 if response.status_code == 404:
                     # EDGAR accepts either -index.htm or -index.html depending
                     # on submission era. Never follow arbitrary redirects.
-                    response = client.get(index_url[:-3] + "html", timeout=25)
+                    response = _get_transient_retry(
+                        client, index_url[:-3] + "html", timeout=25)
                 response.raise_for_status()
                 xml_name, evidence = _xml_in_filing_index(
                     response.text, expected, primary)
@@ -283,7 +299,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
                accession.replace("-", "") + "/" + xml_name)
         attempted_xml += 1
         try:
-            xml = client.get(url, timeout=45)
+            xml = _get_transient_retry(client, url, timeout=45)
             xml.raise_for_status()
             # Validator independently checks official CIK/accession, original
             # reported SEC series, form, holdings-period and issuer countries.

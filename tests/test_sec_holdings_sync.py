@@ -181,6 +181,36 @@ class SecSyncTests(unittest.TestCase):
         self.assertIsNone(doc)
         self.assertEqual(reason,"other_series")
 
+    def test_sec_server_503_is_retried_boundedly_and_403_is_not(self):
+        from finance_dashboard.sec_holdings_sync import _get_json
+        counts = {"success":0,"blocked":0,"unavailable":0}
+
+        def handler(request):
+            route = request.url.path
+            if route.endswith("/success.json"):
+                counts["success"] += 1
+                return httpx.Response(503 if counts["success"] < 3 else 200,
+                                      json={"cik":"123"})
+            if route.endswith("/blocked.json"):
+                counts["blocked"] += 1
+                return httpx.Response(403, json={"error":"not allowed"})
+            counts["unavailable"] += 1
+            return httpx.Response(503, json={"error":"temporarily unavailable"})
+
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client, \
+             patch("finance_dashboard.sec_holdings_sync.time.sleep") as sleep:
+            self.assertEqual(_get_json(
+                client,"https://data.sec.gov/submissions/success.json")["cik"],
+                "123")
+            self.assertEqual(counts["success"],3)
+            with self.assertRaises(httpx.HTTPStatusError):
+                _get_json(client,"https://data.sec.gov/submissions/blocked.json")
+            self.assertEqual(counts["blocked"],1)
+            with self.assertRaises(httpx.HTTPStatusError):
+                _get_json(client,"https://data.sec.gov/submissions/unavailable.json")
+            self.assertEqual(counts["unavailable"],3)
+            self.assertEqual(sleep.call_count,4)
+
     def test_sec_index_http_403_does_not_scan_or_download_every_candidate(self):
         with TemporaryDirectory() as tmp:
             mapping = {"instrument_id":"vt","cik":"1234567","series_id":"S000000001"}
