@@ -41,6 +41,7 @@ RUN pip install --no-cache-dir . \
     && python -m unittest discover -s tests -p 'test_phase4_api.py' -v \
     && python -m unittest discover -s tests -p 'test_source_coverage.py' -v \
     && python -m unittest discover -s tests -p 'test_targeted_refresh.py' -v \
+    && python -m unittest discover -s tests -p 'test_maintenance.py' -v \
     && python -m unittest discover -s tests -p 'test_source_failure_codes.py' -v \
     && python -m unittest discover -s tests -p 'test_providers.py' -v \
     && python -m unittest discover -s tests -p 'test_backup.py' -v \
