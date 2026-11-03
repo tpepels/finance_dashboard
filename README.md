@@ -112,3 +112,9 @@ Third-party provider copyright and redistribution rights still apply outside thi
 ## Complete data-source setup, audit and indicator acceptance
 
 For the existing home-server deployment configure **all** collectors, source credentials, historical backfill and verified backup components with [the complete source checklist](docs/SERVER_SOURCE_SETUP.md). The [46-indicator acceptance matrix](docs/INDICATOR_ACCEPTANCE_MATRIX.md) separates implemented research views from evidence actually verified on the server. A GitHub Actions API secret does not configure the home-server container; keep the existing bind-mounted `/data` intact.
+
+## Research interface and remaining exact indicators (2026-11-03)
+
+The same **one-page** interface has a compact selected-scope header, region/time controls, date-correct charts, readable bars for sparse records, stronger NBER recession bands, semantic chart/risk colors and a persistent light/dark setting. Chart interpretations and technical source details are closed until requested. Appearance changes preserve the underlying rendered components and stored source state rather than remounting the entire page.
+
+The full unresolved-definition list, original-versus-proxy distinction, live local gaps and whole-scope implementation/acceptance order are in [Missing indicators and plan](docs/MISSING_INDICATORS_PLAN.md). These changes are only considered runtime-verified after a successful local build and desktop/mobile, light/dark browser inspection.
