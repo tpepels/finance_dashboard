@@ -60,7 +60,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
 
 def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
                        currencies: set[str] | None = None,
-                       progress=None, stopped=None) -> int:
+                       full: bool = False, progress=None, stopped=None) -> int:
     """Full-history EOD adjustment refresh plus overlapping ECB currency history.
 
     A provider failure remains visible and does not destroy last-known-good
@@ -83,7 +83,7 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
             if stopped is not None and stopped.is_set():
                 break
             try:
-                log.info("fx refresh: %s", json.dumps(service.refresh_fx(currency)))
+                log.info("fx refresh: %s", json.dumps(service.refresh_fx(currency, full=full)))
             except Exception:
                 failures += 1
                 log.error("fx refresh failed: %s (source error redacted)", currency)
@@ -95,7 +95,7 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
                 if stopped is not None and stopped.is_set():
                     break
                 try:
-                    log.info("market refresh: %s", json.dumps(service.refresh_instrument(sid)))
+                    log.info("market refresh: %s", json.dumps(service.refresh_instrument(sid, full=full)))
                 except Exception:
                     failures += 1
                     log.error("market refresh failed: %s (source error redacted)", sid)
