@@ -28,6 +28,7 @@ from .sec_holdings import list_holdings, HoldingsError
 from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCENARIOS as MARX_SCENARIOS, AccountingError
 
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
+from .source_coverage import build_coverage
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
 from functools import partial
@@ -176,6 +177,11 @@ def create_app(engine=None) -> FastAPI:
                             "freshness or source publication vintage. Backup manifests must "
                             "be copied to separate storage to survive disk failure."),
         }
+
+    @app.get("/api/source-coverage")
+    def source_coverage():
+        """Complete safe inventory of all mapped macro, market and ECB FX histories."""
+        return build_coverage(db, catalog["series"], market_registry)
 
     @app.get("/api/research")
     def research_catalog():
