@@ -30,6 +30,17 @@ Open **Data & sync → Source diagnostics → Developer logs** to see a hidden, 
 
 Capture scheduled refresh stage failures and manual current/history sync starts, stage outcomes, source-level failures and terminal statuses. The normal dashboard remains uncluttered. Acceptance requires Docker frontend/Python test gates, a real browser run in light and dark, a complete diagnostic report after a source failure, and verification that copied text has no credentials. This is developer-only visibility, not a public observability service or a replacement for off-device archival.
 
+### Diagnostic analysis — 2026-11-03 15:09 UTC user report (after logging build)
+
+A captured in-progress report shows **80/80 registered histories stored**, **15 warnings** (ten FRED labour/PWT source-validation failures, Shiller CAPE and equity-net-worth validation, two ECB FX, gold/world equity transport, etc.). Count 15 is a snapshot of latest attempts, not 15 lost datasets. Exact raw report is supplied in the user conversation. The 15:09:02 `sync_history` was **waiting** behind a `scheduled_refresh` started 15:08:34; earlier two history jobs were partial, ALFRED `provider_blocked` with 964 missing vintages and SEC fund histories blocked, with stored filing counts. Neither provider rights nor source-specific failure causes are established by that report alone. FRED’s published PWT 11.0 observations legitimately terminate in 2023, but new `source_invalid` errors on refresh remain genuine failures.
+
+**Committed remediation (new image not yet independently built):**
+- Manual browser sync raises a cooperative scheduling priority flag. The scheduled refresh exits between provider requests, stops later stages, records `interrupted`, and releases its single collector lock before the manual sync acquires it. Preserve existing data and job serialization; test both manual queue signalling and preemptible scheduled refresh.
+- Distinguish fixed, secret-safe source failure codes for malformed FRED JSON/HTML, empty FRED data, invalid/future/duplicate periods, source-window mismatch, source-mapping mismatch, incomplete Shiller, and ECB schema/identity/empty/value problems. Do not log free-form errors or request URL. Retain `source_invalid` only for unclassified validation failures.
+- Developer report now identifies the actual FRED collection mode (`authenticated_api`, `public_table` or `public_csv`) and safe FRED API key presence/format-valid flags, SEC contact-presence flag and whether background refresh is enabled. Never return secret values.
+
+**Acceptance:** rebuild Docker, run both manual sync actions, then share the final Developer logs after job completion. Verify the pending-vs-scheduled priority, which FRED mode is active, new source-specific codes, ALFRED HTTP denial code, SEC per-fund HTTP/reason codes, and whether failing sources now actually refresh. Do not mark source ingestion or historical acquisition complete until original observations independently verified.
+
 ## Current verified baseline
 
 | Evidence | Status at audit | What it proves | What it does not prove |
