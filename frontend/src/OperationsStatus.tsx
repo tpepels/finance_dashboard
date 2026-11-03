@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 interface Operations {
-  source_setup?: {
+  source_setup: {
     fred_key_present: boolean; fred_key_format_valid: boolean;
     wisesheets_key_present: boolean; sec_contact_present: boolean;
     macro_collection_enabled: boolean; market_collection_enabled: boolean;

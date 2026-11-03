@@ -35,18 +35,18 @@ These values are examples; **do not leave placeholders**. SEC User-Agent must co
 Your Compose service's `environment:` must **pass through the variables** (the recommended full-collection template is `docs/home-server-finance-service.yml`); setting an `.env` value cannot override a literal `FINANCE_INCLUDE_MARKETS: "0"` already hardcoded in Compose.
 
 ```yaml
-FRED_API_KEY: \${FRED_API_KEY:-}
-WISESHEETS_API_KEY: \${WISESHEETS_API_KEY:-}
-SEC_USER_AGENT: "\${SEC_USER_AGENT:-}"
-FINANCE_AUTO_REFRESH: "\${FINANCE_AUTO_REFRESH:-1}"
-FINANCE_INCLUDE_MARKETS: "\${FINANCE_INCLUDE_MARKETS:-1}"
-FINANCE_WISESHEETS_REFRESH: "\${FINANCE_WISESHEETS_REFRESH:-1}"
-FINANCE_VINTAGE_REFRESH: "\${FINANCE_VINTAGE_REFRESH:-1}"
-FINANCE_SEC_HOLDINGS_REFRESH: "\${FINANCE_SEC_HOLDINGS_REFRESH:-1}"
-FINANCE_AUTO_BACKUP: "\${FINANCE_AUTO_BACKUP:-1}"
+FRED_API_KEY: ${FRED_API_KEY:-}
+WISESHEETS_API_KEY: ${WISESHEETS_API_KEY:-}
+SEC_USER_AGENT: "${SEC_USER_AGENT:-}"
+FINANCE_AUTO_REFRESH: "${FINANCE_AUTO_REFRESH:-1}"
+FINANCE_INCLUDE_MARKETS: "${FINANCE_INCLUDE_MARKETS:-1}"
+FINANCE_WISESHEETS_REFRESH: "${FINANCE_WISESHEETS_REFRESH:-1}"
+FINANCE_VINTAGE_REFRESH: "${FINANCE_VINTAGE_REFRESH:-1}"
+FINANCE_SEC_HOLDINGS_REFRESH: "${FINANCE_SEC_HOLDINGS_REFRESH:-1}"
+FINANCE_AUTO_BACKUP: "${FINANCE_AUTO_BACKUP:-1}"
 FINANCE_BACKUP_DIR: "/data/backups"
-FINANCE_BACKUP_KEEP: "\${FINANCE_BACKUP_KEEP:-14}"
-REFRESH_INTERVAL_SECONDS: "\${REFRESH_INTERVAL_SECONDS:-86400}"
+FINANCE_BACKUP_KEEP: "${FINANCE_BACKUP_KEEP:-14}"
+REFRESH_INTERVAL_SECONDS: "${REFRESH_INTERVAL_SECONDS:-86400}"
 ```
 
 Leave `DATABASE_URL`, mounted data path, user IDs, existing Wisesheets snapshot location, published port and unrelated service configuration intact. The same source data will still be under the original bind mount.

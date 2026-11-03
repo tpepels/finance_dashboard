@@ -397,7 +397,7 @@ export default function Phase4Panel() {
         historical drawdowns and documented missing evidence. No opaque risk score
         or claim that revised historical data were available at the time.</p>
     </header>
-    <div className="p4-tabs" aria-label="Phase 4 analysis type">
+    <div className="p4-tabs" aria-label="Economic risk analysis view">
       <button type="button" aria-pressed={tab === 'diagnostics'}
         onClick={() => setTab('diagnostics')}>Economic risk diagnostics</button>
       <button type="button" aria-pressed={tab === 'assets'}

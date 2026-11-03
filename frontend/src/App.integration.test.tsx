@@ -77,7 +77,11 @@ const fetchMock = vi.fn(async (input: string): Promise<{ ok: boolean; status?: n
 });
 
 beforeEach(() => {
-  try { localStorage.removeItem('gcm-color-scheme'); } catch { /* restricted storage */ }
+  try {
+    localStorage.removeItem('gcm-color-scheme');
+    sessionStorage.removeItem('gcm-region');
+    sessionStorage.removeItem('gcm-range');
+  } catch { /* restricted storage */ }
   fetchMock.mockClear();
   vi.stubGlobal('fetch', fetchMock);
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });

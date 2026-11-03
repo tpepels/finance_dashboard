@@ -369,8 +369,16 @@ function DistributionLens({ region }: { region: string }) {
 export default function ResearchDashboard() {
   const [catalog, setCatalog] = useState<ResearchCatalog | null>(null);
   const [error, setError] = useState('');
-  const [region, setRegion] = useState('world');
-  const [range, setRange] = useState('30');
+  const [region, setRegion] = useState(() => {
+    try {
+      return sessionStorage.getItem('gcm-region') || 'world';
+    } catch { return 'world'; }
+  });
+  const [range, setRange] = useState(() => {
+    try {
+      return sessionStorage.getItem('gcm-range') || '30';
+    } catch { return '30'; }
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -385,6 +393,12 @@ export default function ResearchDashboard() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    try { sessionStorage.setItem('gcm-region', region); } catch { /* optional */ }
+  }, [region]);
+  useEffect(() => {
+    try { sessionStorage.setItem('gcm-range', range); } catch { /* optional */ }
+  }, [range]);
   const current = catalog?.regions.find(item => item.id === region);
   const grouped = useMemo(() => GROUPS.map(theme => ({
     theme,
