@@ -87,7 +87,7 @@ class VintageTests(unittest.TestCase):
         self.assertEqual(malformed["requests"], 0)
 
     def test_alfred_bad_request_reports_only_controlled_parameter_category(self):
-        secret = "hidden-api-key"
+        secret = "privateTOKEN123"
         cases = [
             ("The value for variable realtime_start is invalid", "fred_realtime_parameter_rejected"),
             ("Invalid observation_start", "fred_observation_parameter_rejected"),
