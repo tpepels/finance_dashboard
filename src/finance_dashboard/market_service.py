@@ -13,6 +13,7 @@ from .database import (
     MarketInstrumentRow, MarketPriceVersion, MarketActionVersion, now_utc,
 )
 from .market import EcbFxClient, MarketDataError, MarketHistory, PriceBar, YahooMarketClient, instruments, performance
+from .service import safe_source_failure_code
 
 
 def _price_values(row):
@@ -151,12 +152,12 @@ class MarketIngestionService:
                     "received":len(history.price_bars),"versions_added":added,
                     "dividends":len(history.dividends),"splits":len(history.splits),
                     "latest":max(history.price_bars).isoformat()}
-        except Exception:
+        except Exception as exc:
             with Session(self.engine) as session, session.begin():
                 run = session.get(MarketIngestionRun, run_id)
                 run.status = "failed"
                 run.ended_at = now_utc()
-                run.error = "Market refresh failed; source details redacted"
+                run.error = safe_source_failure_code(exc)
             raise
 
     def refresh_fx(self, currency: str, *, full: bool = False) -> dict:
@@ -201,12 +202,12 @@ class MarketIngestionService:
                 run.versions_added=added
             return {"currency":currency,"status":"success","received":len(values),
                     "versions_added":added}
-        except Exception:
+        except Exception as exc:
             with Session(self.engine) as session, session.begin():
                 run=session.get(FxIngestionRun,run_id)
                 run.status="failed"
                 run.ended_at=now_utc()
-                run.error="FX refresh failed; source details redacted"
+                run.error=safe_source_failure_code(exc)
             raise
 
     def read_performance(self, instrument_id: str, *,

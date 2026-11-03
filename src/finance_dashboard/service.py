@@ -18,12 +18,13 @@ from .database import IngestionRun, ObservationVersion, SeriesRow, now_utc
 
 def safe_source_failure_code(exc: BaseException) -> str:
     """Fixed vocabulary only; credentials, full URLs and provider bodies never persist."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        return "provider_http_" + str(code) if 400 <= code < 600 else "provider_failed"
     match = re.search(r"Provider HTTP ([0-9]{3})", str(exc))
     if match:
         code = int(match.group(1))
-        if code in (400, 401, 403, 404, 429, 500):
-            return "provider_http_" + str(code)
-        return "provider_failed"
+        return "provider_http_" + str(code) if 400 <= code < 600 else "provider_failed"
     if isinstance(exc, httpx.TimeoutException) or isinstance(exc, httpx.TransportError):
         return "source_transport_failed"
     if isinstance(exc, ValueError):
