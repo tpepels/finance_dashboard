@@ -6,12 +6,28 @@
 
 **This is the only active development plan.** Historical phase contracts and changed decisions are retained as non-operative snapshots in `docs/archive/`. Technical documents such as `SERVER_SOURCE_SETUP.md`, `INDICATOR_ACCEPTANCE_MATRIX.md`, `PHASE_4_RESEARCH_SOURCES.md` and the scientific methodological references specify *how* the work is done; they do not define competing priorities or acceptance gates. If a historical note disagrees with this file, this file governs. No requirements are dropped by archival.
 
+## Latest empirical acceptance evidence — user sync + 80-source CSV, 2026-11-03
+
+The user reports the Docker build and both sync actions work. The exported CSV contains exactly **80 registered source rows**: 53 macro, 24 market and 3 FX, **all with saved periods**. This demonstrates ingestion coverage, **not** complete observation sequences or independently validated definitions. Sync history reported macro and market success, while genuine ALFRED was blocked (**964 missing; zero newly downloaded**) and SEC returned partial for two verified funds. The verified local backup stage succeeded according to the user's sync result; off-server replication and restore rehearsal remain unverified.
+
+Seven status issues appear in the supplied CSV snapshot, while the later UI summary reports six, so the temporal state differs: five BIS Q1-2026 credit-gap flags, one Shiller monthly CAPE warning, and one CHF FX last-attempt failure `source_invalid` despite retained rates through 2026-11-02. Do not erase the CSV CHF evidence based solely on the UI counter.
+
+**Remedies committed on main after this empirical result:**
+- Recession zones restored to quiet dark-gray backgrounds in both themes; no red shading/borders.
+- BIS September 14 2026 official Q1 publication recognized as current **only until December 7 2026**, the announced next release; stale status returns after expiry unless new original observations and release evidence arrive.
+- ALFRED partial result now reports the safe actual preflight FRED denial reason and HTTP code rather than the opaque `provider_blocked` catch-all. Request a user rerun of **Sync history** after deployment to distinguish bad key from network/rate-limiting/API request issues. Never echo the key, query URL or provider error body.
+- SEC partial result now exposes per-fund VT/BND status, recorded filing count, checked candidates, safe HTTP status and whether older candidate filings remain unexamined. The 50-filing ceiling still prevents a full-history claim.
+- Shiller CAPE 291 observations between 1881–2026 and 1,450 internal calendar gaps are inconsistent with a monthly source. A conservative completeness guard now **rejects** severely truncated source workbooks before recording them as successful imports, retaining previously recorded values. This is a protective check, not a full restoration: inspect original Shiller workbook, monthly date parsing and latest CAPE source availability before closing the gap.
+- Existing research UI now directs users to **Data & sync → Sync history**, not an obsolete CLI command.
+
+**Current next gate:** rebuild the updated `main` image, confirm graph shading and source-status UI, sync current/history, inspect actual ALFRED denied reason and each SEC fund's result, then audit/fix the genuine Shiller monthly sequence, CHF refresh and rights/source-history gaps. An in-volume verified backup is **not** an independent off-host copy.
+
 ## Current verified baseline
 
 | Evidence | Status at audit | What it proves | What it does not prove |
 |---|---|---|---|
-| 53 canonical macro source mappings | Implemented in `definitions/series.json` | Named source/series interface exists | Successful live historical import of every source |
-| 24 investment instruments and 3 ECB FX currencies | Registered | Collector contracts exist | Complete market-price, corporate-action or FX coverage |
+| 53 canonical macro source mappings | User's 80-row export confirms stored periods for all 53 | Live saved macro observations exist | Complete, independently source-audited histories or all current publication periods |
+| 24 market instruments and 3 ECB FX currencies | User's audit shows stored history for all 27 | Real observation periods preserved | Exact corporate-action/price audit and successful CHF latest refresh |
 | 46 curated economic indicator views | Implemented in `src/finance_dashboard/research.py` and frontend | Definitions and relationships present | Original exact empirical definition or completed production data |
 | Source coverage, browser maintenance and targeted PWT refresh | Committed to `main`; `Data & sync` UI provides per-source/bulk imports, ALFRED/SEC checks and collections, earnings and verified local backup | Data maintenance can be scheduled via safe same-origin API and a durable serialized job queue | Successful rebuilt container, historical/source imports and full visual inspection |
 | One-page light/dark UI and revised charts | Implemented in source | Chart-first hierarchy, disclosures, visible recession bands, dated sparse series | Human-reviewed dark/light desktop and mobile layouts |
