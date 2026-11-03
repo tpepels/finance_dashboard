@@ -38,7 +38,7 @@ const ATTENTION = new Set([
 export default function SourceCoveragePanel() {
   const [report, setReport] = useState<Coverage | null>(null);
   const [error, setError] = useState('');
-  const [open, setOpen] = useState(false);
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const ref = useRef<HTMLDetailsElement>(null);
   const [family, setFamily] = useState('all');
   const [selection, setSelection] = useState('issues');
@@ -55,7 +55,6 @@ export default function SourceCoveragePanel() {
     };
     const manage = () => {
       if (ref.current) ref.current.open = true;
-      setOpen(true);
       if (typeof ref.current?.scrollIntoView === 'function')
         ref.current.scrollIntoView({block:'start', behavior:'smooth'});
     };
@@ -87,18 +86,18 @@ export default function SourceCoveragePanel() {
   const needsAttention = report
     ? Object.values(report.summary).reduce((count, group) => count + group.needs_attention, 0)
     : 0;
-  return <details className="research-source-health" ref={ref} id="source-coverage"
-    onToggle={e => setOpen(e.currentTarget.open)}>
+  return <details className="research-source-health" ref={ref} id="source-coverage">
     <summary aria-label="Data & sync">
       <span>Data &amp; sync</span>
       {report && needsAttention > 0 && <small> · {needsAttention} sources need attention</small>}
       {!report && error && <small> · Status unavailable</small>}
     </summary>
-    {open && <div className="research-coverage-detail">
+    <div className="research-coverage-detail">
       <DataOperations/>
-      <details className="research-source-diagnostics">
+      <details className="research-source-diagnostics"
+        onToggle={e => setDiagnosticsOpen(e.currentTarget.open)}>
         <summary>Source diagnostics {report ? '· ' + (needsAttention || 'no') + ' issues' : ''}</summary>
-        <div className="research-source-diagnostics-body">
+        {diagnosticsOpen && <div className="research-source-diagnostics-body">
         {error && <p role="alert">{error}</p>}
         {report && <>
           <p>{report.summary.macro.with_data}/{report.summary.macro.total} economic,
@@ -154,8 +153,8 @@ export default function SourceCoveragePanel() {
         <p className="research-coverage-method">{report.method} Publication dates are
           checked separately from refresh attempts.</p>
         </>}
-        </div>
+        </div>}
       </details>
-    </div>}
+    </div>
   </details>;
 }
