@@ -1,5 +1,5 @@
 """Acceptance tests for all macro, market and FX histories, without live network."""
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import os
 import unittest
@@ -63,8 +63,13 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(report["summary"]["fx"]["collection_disabled"], 3)
 
     def test_failed_macro_refresh_does_not_hide_retained_observations(self):
-        self.add_macro("labour.de.pwt_labour_share", status="failed", recorded=True,
-                       error="HTTPStatusError: api_key=SHOULD_NOT_APPEAR")
+        self.add_macro("labour.de.pwt_labour_share", status="success", recorded=True)
+        with Session(self.engine) as session, session.begin():
+            session.add(IngestionRun(id="failed-pwt",series_id="labour.de.pwt_labour_share",
+                started_at=NOW + timedelta(seconds=1),
+                ended_at=NOW + timedelta(seconds=2), status="failed",
+                requested_from=None,observations_received=0,versions_added=0,
+                error="HTTPStatusError: api_key=SHOULD_NOT_APPEAR"))
         self.add_macro("labour.fr.pwt_labour_share", status="failed", recorded=False,
                        error="HTTPStatusError")
         result = build_coverage(self.engine, self.catalog, self.registry, asof=date(2026,11,3))
@@ -74,6 +79,7 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(germany["stored_periods"], 1)
         self.assertEqual(germany["latest_source_date"], "2025-01-01")
         self.assertEqual(germany["state"], "refresh_failed_with_data")
+        self.assertIsNotNone(germany["last_success_utc"])
         self.assertEqual(france["state"], "collection_failed")
         self.assertEqual(france["stored_periods"], 0)
         self.assertNotIn("SHOULD_NOT_APPEAR", str(result))
