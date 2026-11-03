@@ -315,8 +315,45 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(done["status"],"partial")
         self.assertEqual(calls,["sec"])
         self.assertEqual(done["result"]["parts"]["alfred"]["status"],"blocked")
+        self.assertEqual(done["result"]["parts"]["alfred"]["reason"],"invalid_api_key")
         self.assertEqual(done["result"]["parts"]["sec"]["status"],"blocked")
         self.assertEqual(done["result"]["parts"]["sec"]["reason"],"missing_credential")
+
+    def test_history_reports_per_fund_results_and_fred_http_status_without_secrets(self):
+        def fake_sec(**kwargs):
+            return {"status":"partial","funds":[
+                {"instrument_id":"vt","status":"partial","errors":2,
+                 "stored_or_already_present":11,"source_candidates_found":150,
+                 "index_candidates_examined":130,
+                 "unexamined_candidate_filings":20,"halted_reason":"sec_rate_limited",
+                 "http_status":429},
+                {"instrument_id":"bnd","status":"complete","errors":0,
+                 "stored_or_already_present":50,"source_candidates_found":50,
+                 "index_candidates_examined":50,
+                 "unexamined_candidate_filings":0},
+            ]}
+        with patch.dict("os.environ",{"FRED_API_KEY":"a"*32}), \\
+             patch("finance_dashboard.worker.refresh_all",return_value=0), \\
+             patch("finance_dashboard.worker.refresh_market_all",return_value=0), \\
+             patch("finance_dashboard.vintage.probe_access",return_value={
+                 "status":"blocked","reason":"fred_api_key_rejected",
+                 "http_status":400,"requests":1}), \\
+             patch("finance_dashboard.sec_holdings_sync.collect_configured",
+                   side_effect=fake_sec):
+            job=self.client.post("/api/maintenance",json={"action":"sync_history"},
+                                 headers=HEADERS)
+            self.assertEqual(job.status_code,202)
+            result=self.wait(job.json()["id"])
+        self.assertEqual(result["status"],"partial")
+        parts=result["result"]["parts"]
+        self.assertEqual(parts["alfred"]["reason"],"fred_api_key_rejected")
+        self.assertEqual(parts["alfred"]["http_status"],400)
+        self.assertEqual(parts["sec"]["funds"][0]["id"],"vt")
+        self.assertEqual(parts["sec"]["funds"][0]["stored"],11)
+        self.assertEqual(parts["sec"]["funds"][0]["reason"],"sec_rate_limited")
+        self.assertEqual(parts["sec"]["funds"][0]["http_status"],429)
+        self.assertTrue(parts["sec"]["funds"][0]["historical_coverage_limited"])
+        self.assertNotIn("a"*32,json.dumps(result))
 
     def test_two_sync_actions_reject_manual_options(self):
         for action in ("sync_current","sync_history"):
