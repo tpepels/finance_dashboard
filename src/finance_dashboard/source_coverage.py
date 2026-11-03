@@ -48,7 +48,12 @@ SAFE_ERROR_CODES = {
     "provider_http_404", "provider_http_429", "provider_http_500",
     "provider_http_502", "provider_http_503", "provider_http_504",
     "source_parse_failed", "source_empty", "source_transport_failed",
-    "source_invalid", "provider_failed",
+    "source_invalid", "provider_failed", "fred_schema_invalid",
+    "fred_empty", "fred_table_invalid", "source_date_invalid",
+    "source_duplicate_period", "source_value_invalid", "source_empty",
+    "source_window_invalid", "source_future_date", "source_mapping_mismatch",
+    "shiller_incomplete", "shiller_schema_invalid", "fx_identity_mismatch",
+    "fx_schema_invalid", "fx_empty", "fx_value_invalid",
 }
 
 

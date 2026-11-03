@@ -24,6 +24,24 @@ class SourceFailureCodeTests(unittest.TestCase):
             RuntimeError("Provider HTTP 502 (api.provider.example)?key=TOKEN")),
             "provider_http_502")
 
+    def test_source_parse_failures_use_precise_safe_categories(self):
+        cases = [
+            ("FRED observations list missing", "fred_schema_invalid"),
+            ("FRED response contains no usable observations", "fred_empty"),
+            ("FRED public DATE/VALUE table missing or ambiguous", "fred_table_invalid"),
+            ("Invalid observation period: '2026-02-01'", "source_date_invalid"),
+            ("Repeated observation: 2025-01-01", "source_duplicate_period"),
+            ("Provider returned observations outside requested window", "source_window_invalid"),
+            ("Shiller source workbook has incomplete monthly CAPE history", "shiller_incomplete"),
+            ("ECB FX series identity mismatch", "fx_identity_mismatch"),
+        ]
+        for message, category in cases:
+            with self.subTest(category=category):
+                self.assertEqual(safe_source_failure_code(ValueError(message)), category)
+        secret = "FRED observations list missing api_key=SECRET"
+        self.assertEqual(safe_source_failure_code(ValueError(secret)),
+                         "fred_schema_invalid")
+
     def test_network_failure_and_unparseable_response_have_fixed_codes(self):
         self.assertEqual(safe_source_failure_code(httpx.ConnectTimeout("Bearer SECRET")),
                          "source_transport_failed")

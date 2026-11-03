@@ -28,6 +28,39 @@ def safe_source_failure_code(exc: BaseException) -> str:
     if isinstance(exc, httpx.TimeoutException) or isinstance(exc, httpx.TransportError):
         return "source_transport_failed"
     if isinstance(exc, ValueError):
+        # Error categories are derived from fixed application-controlled error
+        # phrases. Never persist free-form exception text or provider content.
+        # Keep source_invalid as the fallback for unknown validation failures.
+        reason = str(exc)
+        known_prefixes = (
+            ("FRED observations list missing", "fred_schema_invalid"),
+            ("FRED response contains no usable observations", "fred_empty"),
+            ("FRED public DATE/VALUE table missing or ambiguous", "fred_table_invalid"),
+            ("FRED table page does not identify the expected series", "fred_table_invalid"),
+            ("FRED public table", "fred_table_invalid"),
+            ("FRED DATE/VALUE table", "fred_table_invalid"),
+            ("Malformed extended FRED observation row", "fred_table_invalid"),
+            ("Unexpected FRED CSV header", "fred_schema_invalid"),
+            ("FRED CSV", "fred_schema_invalid"),
+            ("Invalid observation period:", "source_date_invalid"),
+            ("Repeated observation:", "source_duplicate_period"),
+            ("Conflicting duplicate observation:", "source_duplicate_period"),
+            ("Invalid source numeric value:", "source_value_invalid"),
+            ("Source returned an infinite numeric value", "source_value_invalid"),
+            ("Provider returned no data or wrong series", "source_empty"),
+            ("Provider returned observations outside requested window", "source_window_invalid"),
+            ("Provider returned future-dated observations", "source_future_date"),
+            ("Source mapping changed:", "source_mapping_mismatch"),
+            ("Shiller source workbook has incomplete monthly CAPE history", "shiller_incomplete"),
+            ("Shiller workbook", "shiller_schema_invalid"),
+            ("ECB FX series identity mismatch", "fx_identity_mismatch"),
+            ("ECB FX CSV columns missing", "fx_schema_invalid"),
+            ("No ECB FX observations", "fx_empty"),
+            ("Invalid ECB FX period or value", "fx_value_invalid"),
+        )
+        for prefix, code in known_prefixes:
+            if reason.startswith(prefix):
+                return code
         return "source_invalid"
     return "provider_failed"
 
