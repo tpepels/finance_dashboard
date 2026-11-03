@@ -15,7 +15,7 @@ ENV PYTHONUNBUFFERED=1 \
     FINANCE_DASHBOARD_ROOT=/app \
     FINANCE_DASHBOARD_UI_DIR=/app/site \
     FINANCE_AUTO_REFRESH=1 \
-    FINANCE_INCLUDE_MARKETS=0 \
+    FINANCE_INCLUDE_MARKETS=1 \
     FINANCE_WISESHEETS_REFRESH=1 \
     WISESHEETS_SNAPSHOT_PATH=/data/wisesheets/sec_filer_profit.json \
     REFRESH_INTERVAL_SECONDS=86400 \
@@ -42,6 +42,7 @@ RUN pip install --no-cache-dir . \
     && python -m unittest discover -s tests -p 'test_source_coverage.py' -v \
     && python -m unittest discover -s tests -p 'test_targeted_refresh.py' -v \
     && python -m unittest discover -s tests -p 'test_source_failure_codes.py' -v \
+    && python -m unittest discover -s tests -p 'test_providers.py' -v \
     && python -m unittest discover -s tests -p 'test_backup.py' -v \
     && python -m unittest discover -s tests -p 'test_vintage.py' -v \
     && python -m unittest discover -s tests -p 'test_sec_holdings.py' -v \
