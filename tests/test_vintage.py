@@ -48,6 +48,26 @@ class VintageTests(unittest.TestCase):
             self.assertEqual(latest_asof_reading(again)["age_days"],30)
             self.assertEqual(available_snapshots(root)["series"][1]["count"],1)
 
+    def test_probe_verifies_historical_alfred_parameters_not_just_authentication(self):
+        requests = []
+        def handler(request):
+            requests.append(request)
+            self.assertEqual(request.url.params["realtime_start"], "2020-01-31")
+            self.assertEqual(request.url.params["realtime_end"], "2020-01-31")
+            self.assertEqual(request.url.params["observation_end"], "2020-01-31")
+            self.assertEqual(request.url.params["output_type"], "1")
+            self.assertEqual(request.url.params["units"], "lin")
+            return httpx.Response(200,json={
+                "realtime_start":"2020-01-31",
+                "realtime_end":"2020-01-31",
+                "observations":[{"date":"2020-01-01","value":"0"}],
+            })
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            result=probe_access(api_key="a" * 32,client=client)
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["requests"], 1)
+        self.assertEqual(len(requests),1)
+
     def test_safe_probe_reports_rejected_api_key_without_leaking_request(self):
         secret = "a" * 32
         requests = []
