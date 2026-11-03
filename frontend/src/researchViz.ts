@@ -25,8 +25,8 @@ export function geometryFor(id: string, frequency: string, count: number): Analy
   return 'trend';
 }
 
-function baseline(series: PlottedSeries[]): Record<string, any> {
-  return chartOptions(series, 'raw', false, true) as unknown as Record<string, any>;
+function baseline(series: PlottedSeries[], theme?: 'light' | 'dark'): Record<string, any> {
+  return chartOptions(series, 'raw', false, true, theme) as unknown as Record<string, any>;
 }
 
 function zeroReference() {
@@ -40,8 +40,10 @@ export function analyticalOptions(
   plotted: PlottedSeries[],
   geometry: AnalyticalGeometry,
   panel: 'main' | 'secondary' | 'history' = 'main',
+  theme?: 'light' | 'dark',
 ): EChartsCoreOption {
-  const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
+  const dark = theme === 'dark' || (theme === undefined &&
+    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark');
   const axisText = dark ? '#b6ccd2' : '#677b80';
   const axisGrid = dark ? '#354c56' : '#e0e8eb';
   const colors = dark
@@ -73,7 +75,7 @@ export function analyticalOptions(
   if (geometry === 'productivity' && panel === 'secondary') {
     const gap = plotted.find(p => p.definition.id === 'derived.us.productivity_pay_gap');
     if (!gap) return { series: [] };
-    const base = baseline([gap]);
+    const base = baseline([gap], theme);
     const dense = gap.observations.length > 90;
     base.series = (base.series ?? []).map((line: Record<string, any>) => ({
       ...line, type: dense ? 'line' : 'bar',
@@ -91,7 +93,7 @@ export function analyticalOptions(
   const series = geometry === 'productivity' && panel === 'main'
     ? plotted.filter(p => p.definition.id !== 'derived.us.productivity_pay_gap')
     : plotted;
-  const base = baseline(series);
+  const base = baseline(series, theme);
   if (geometry === 'composition' && panel !== 'history') {
     base.yAxis = { ...base.yAxis, min: 0, max: 100, name: 'GDP distribution (%)' };
     base.series = (base.series ?? []).map((line: Record<string, any>) => ({

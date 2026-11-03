@@ -65,7 +65,7 @@ function Phase4Plot({ assets, metric, currency, theme }: {
       return { date: monthEnd, raw: point[metric], display: point[metric] };
     }) };
   }), [assets, metric]);
-  const options = useMemo(() => chartOptions(plotted, 'raw', false, true), [plotted, theme]);
+  const options = useMemo(() => chartOptions(plotted, 'raw', false, true, theme), [plotted, theme]);
   useEffect(() => {
     if (!element.current || !assets.length) return;
     const chart = createChart(element.current);

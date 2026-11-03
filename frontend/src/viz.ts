@@ -28,9 +28,11 @@ export function chartOptions(
   mode: ViewMode,
   _showEvents: boolean,
   compact = false,
+  theme?: 'light' | 'dark',
 ): EChartsOption {
   const active = plotted.filter(s => s.observations.length);
-  const dark = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark';
+  const dark = theme === 'dark' || (theme === undefined &&
+    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark');
   const palette = dark
     ? ['#76baff', '#ffae77', '#66ddbd', '#c7a1ff', '#f0d279', '#fb889c']
     : ['#1762a2', '#d66b3e', '#1f9679', '#8754b8', '#a37b14', '#b74366'];

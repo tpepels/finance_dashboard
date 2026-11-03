@@ -219,10 +219,11 @@ function Indicator({ spec, start, theme }: { spec: IndicatorDef; start?: string;
   const hasPoints = plotted.some(series => series.observations.length);
   const comparable = geometry === 'country-bars' && Boolean(result?.comparison);
   const options = useMemo(() => result
-    ? analyticalOptions(result, plotted, geometry, 'main') : null, [result, plotted, geometry, theme]);
+    ? analyticalOptions(result, plotted, geometry, 'main', theme) : null, [result, plotted, geometry, theme]);
   const detailOptions = useMemo(() => result && (
     geometry === 'productivity' || comparable)
-    ? analyticalOptions(result, plotted, geometry, geometry === 'productivity' ? 'secondary' : 'history')
+    ? analyticalOptions(result, plotted, geometry,
+      geometry === 'productivity' ? 'secondary' : 'history', theme)
     : null, [result, plotted, geometry, comparable, theme]);
   useEffect(() => {
     if (!host.current || !hasPoints || !options) return;
