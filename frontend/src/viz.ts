@@ -103,9 +103,9 @@ export function chartOptions(
         markArea: index === 0 && grayPeriods.length ? {
           silent: true, z: 0,
           itemStyle: {
-            color: dark ? 'rgba(235,90,104,0.27)' : 'rgba(215,73,84,0.18)',
-            borderColor: dark ? 'rgba(255,131,140,0.58)' : 'rgba(188,58,73,0.40)',
-            borderWidth: 1,
+            color: dark ? 'rgba(12,17,23,0.45)' : 'rgba(35,42,49,0.20)',
+            borderColor: 'transparent',
+            borderWidth: 0,
           },
           label: { show: false },
           data: grayPeriods,

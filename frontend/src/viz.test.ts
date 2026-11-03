@@ -41,12 +41,15 @@ describe('legible date-correct economic history charts', () => {
     ]);
   });
 
-  it('uses visible red-tinted shaded recession intervals with a distinct border', () => {
-    const series = chartSeries(['2000-01-01', '2006-01-01', '2010-01-01', '2020-01-01', '2026-01-01']);
+  it('uses quiet dark-neutral recession backgrounds without red fill or borders', () => {
+    const points = ['2000-01-01', '2006-01-01', '2010-01-01', '2020-01-01', '2026-01-01'];
+    const series = chartSeries(points);
+    const dark = (chartOptions([source(points)], 'raw', false, true, 'dark') as unknown as
+      {series: Areas[]}).series[0];
     expect(series.markArea?.label?.show).toBe(false);
-    expect(series.markArea?.itemStyle?.color).toContain('rgba(');
-    expect(series.markArea?.itemStyle?.color).not.toContain('106,112,118');
-    expect((series.markArea?.itemStyle as {borderWidth?:number})?.borderWidth).toBeGreaterThan(0);
+    expect(series.markArea?.itemStyle?.color).toBe('rgba(35,42,49,0.20)');
+    expect(dark.markArea?.itemStyle?.color).toBe('rgba(12,17,23,0.45)');
+    expect((series.markArea?.itemStyle as {borderWidth?:number})?.borderWidth).toBe(0);
     expect(series.markArea?.data.map(([a,b]) => [a.xAxis,b.xAxis])).toEqual([
       ['2001-04-01', '2001-11-30'],
       ['2008-01-01', '2009-06-30'],
