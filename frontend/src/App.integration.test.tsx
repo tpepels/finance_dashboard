@@ -42,8 +42,17 @@ const regions = [
   { id: 'compare', title: 'Compare regions', explanation: 'Same source methodology' },
 ];
 
-const fetchMock = vi.fn(async (input: string): Promise<{ ok: boolean; status?: number; json?: () => Promise<unknown> }> => {
+const baseFetchMock = async (input: string): Promise<{ ok: boolean; status?: number; json?: () => Promise<unknown> }> => {
   const path = String(input);
+  if (path === '/api/source-coverage') return {
+    ok: true, json: async () => ({
+      summary: {
+        macro: { total: 53, with_data: 1, without_data: 52, needs_attention: 52 },
+        markets: { total: 24, with_data: 0, without_data: 24, needs_attention: 24 },
+        fx: { total: 3, with_data: 0, without_data: 3, needs_attention: 3 },
+      }, items: [], method: 'Measured source periods only',
+    }),
+  };
   if (path === '/api/research') return {
     ok: true, json: async () => ({
       regions, indicators: sources,
@@ -74,7 +83,8 @@ const fetchMock = vi.fn(async (input: string): Promise<{ ok: boolean; status?: n
       method: 'No interpolation or invented data.',
     }),
   };
-});
+};
+const fetchMock = vi.fn(baseFetchMock);
 
 beforeEach(() => {
   try {
@@ -82,7 +92,8 @@ beforeEach(() => {
     sessionStorage.removeItem('gcm-region');
     sessionStorage.removeItem('gcm-range');
   } catch { /* restricted storage */ }
-  fetchMock.mockClear();
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(baseFetchMock);
   vi.stubGlobal('fetch', fetchMock);
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
 });
@@ -161,19 +172,19 @@ describe('local research-first dashboard acceptance', () => {
   });
 
   it('shows source values but no graph when database is empty', async () => {
-    fetchMock.mockImplementationOnce(async () => ({
-      ok: true, json: async () => ({ regions, indicators: [{ ...sources[0] }],
-        periods_note: 'NBER US recessions', reference: 'https://www.nber.org' }),
-    })).mockImplementationOnce(async () => ({
-      ok: true, json: async () => ({
-        ...sources[0], status: 'no_data', headline: null,
-        series: [{ id: 'gdp.real_growth.world', name: 'World growth',
-          frequency: 'A', unit: 'percent', points: [] }],
-        provenance: [], method: 'No interpolation',
-      }),
-    }));
+    fetchMock.mockImplementation(async (input: string) => {
+      if (String(input).startsWith('/api/research/global_growth')) return {
+        ok: true, json: async () => ({
+          ...sources[0], status: 'no_data', headline: null,
+          series: [{ id: 'gdp.real_growth.world', name: 'World growth',
+            frequency: 'A', unit: 'percent', points: [] }],
+          provenance: [], method: 'No interpolation',
+        }),
+      };
+      return baseFetchMock(input);
+    });
     render(<App />);
-    expect(await screen.findByText(/No recorded observations for this indicator yet/)).toBeTruthy();
+    expect(await screen.findByText(/No observations available for this measure/)).toBeTruthy();
     expect(screen.queryByRole('img', { name: /Measured economic graph/ })).toBeNull();
   });
 });
