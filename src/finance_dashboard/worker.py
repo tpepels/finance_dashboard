@@ -48,7 +48,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                         log.info("refreshed: %s", json.dumps(report))
                     except Exception as exc:
                         failures += 1
-                        record_event("macro", "source_failed", level="warning",
+                        record_event("macro", "source_failed", level="error",
                                      source_id=series_id,
                                      reason=safe_source_failure_code(exc))
                         log.error("macro refresh failed: %s (provider error redacted to protect credentials)", series_id)
@@ -90,7 +90,7 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
                 log.info("fx refresh: %s", json.dumps(service.refresh_fx(currency, full=full)))
             except Exception as exc:
                 failures += 1
-                record_event("fx", "source_failed", level="warning",
+                record_event("fx", "source_failed", level="error",
                              source_id=currency,
                              reason=safe_source_failure_code(exc))
                 log.error("fx refresh failed: %s (source error redacted)", currency)
@@ -105,7 +105,7 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
                     log.info("market refresh: %s", json.dumps(service.refresh_instrument(sid, full=full)))
                 except Exception as exc:
                     failures += 1
-                    record_event("markets", "source_failed", level="warning",
+                    record_event("markets", "source_failed", level="error",
                                  source_id=sid,
                                  reason=safe_source_failure_code(exc))
                     log.error("market refresh failed: %s (source error redacted)", sid)

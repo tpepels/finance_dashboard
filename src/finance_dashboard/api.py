@@ -263,7 +263,7 @@ def create_app(engine=None) -> FastAPI:
             },
             "issues": issues,
             "jobs": recent_jobs(maintenance.list()["jobs"]),
-            "events": read_events(limit=250),
+            "events": read_events(limit=400),
             "retention": "Latest 400 structured events; latest 8 job summaries",
         }
 

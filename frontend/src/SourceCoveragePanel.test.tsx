@@ -49,6 +49,23 @@ describe('single-page source completeness panel', () => {
     expect(screen.queryByText('Germany PWT')).toBeNull();
   });
 
+  it('does not request hidden developer logs until both disclosures are open', async () => {
+    const user = userEvent.setup();
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/25 sources need attention/));
+    expect(screen.queryByText('Developer logs')).toBeNull();
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
+      String(url) === '/api/developer-log')).toBe(false);
+    await user.click(screen.getByText(/Source diagnostics/));
+    expect(screen.getByText('Developer logs')).toBeTruthy();
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
+      String(url) === '/api/developer-log')).toBe(false);
+    await user.click(screen.getByText('Developer logs'));
+    expect(await screen.findByText(/Automatically updates while open/)).toBeTruthy();
+    expect((fetch as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
+      String(url) === '/api/developer-log')).toBe(true);
+  });
+
   it('offers original dates, precise failure status and all families on request', async () => {
     const user = userEvent.setup();
     render(<SourceCoveragePanel/>);
