@@ -3,7 +3,7 @@
 
 > **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
 
-This inventory is generated from the 46 indicator declarations in `src/finance_dashboard/research.py` at the current revision. The 53 canonical macro-source contracts exist in `definitions/series.json`. **Code registration is not live-server source verification.** The active acceptance gates and ordered repairs are controlled by [Development plan](DEVELOPMENT_PLAN.md). Latest user-supplied local ALFRED batch: 0 newly downloaded in 180 attempts, all HTTPStatusError; prior local source coverage cannot be certified from those logs.
+This inventory is generated from the 46 indicator declarations in `src/finance_dashboard/research.py` at the current revision. The 53 canonical macro-source contracts exist in `definitions/series.json`. **Code registration is not live-server source verification.** The active acceptance gates and ordered repairs are controlled by [Development plan](DEVELOPMENT_PLAN.md). Latest live sync (2026-11-03 18:14 UTC): 80/80 registered source histories stored with 0 latest source issues; ALFRED has 0 remaining requested monthly vintages after 580 prepublication exclusions; VT/BND original SEC collection completed with 28/29 verified filings. **Scientific acceptance of original definitions, historical gaps, ETF exposures and independent prediction remains open.**
 
 | Scope | Research indicator | Implementation in code | Live source observations on user's server |
 |---|---|---|---|

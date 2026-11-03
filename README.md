@@ -11,9 +11,11 @@ One job runs at a time, with visible progress and an option to cancel. The 80-so
 
 ## Current development status
 
-**The single authoritative status/implementation roadmap is [Development plan](docs/DEVELOPMENT_PLAN.md).** It maps the original four phases to five ordered source/research work packages, includes open critiques and blockers, and specifies acceptance checks. Legacy phase plans have been archived as historical evidence and are not active instructions.
+The [sole authoritative development plan](docs/DEVELOPMENT_PLAN.md) records the original four phases and the ordered 0–5 workstreams. **Latest production evidence: 2026-11-03 18:14 UTC.** Both browser sync jobs completed successfully; all 80 registered sources have stored observations, with no latest source warnings; ALFRED has **0 missing requested historical vintage dates** (580 verified prepublication exclusions). VT/BND's bounded SEC original-filing collectors completed with 28/29 verified fund filings respectively. The local backup stage completed.
 
-As of 2026-11-03, 53 macro source definitions, 24 market instruments, three ECB FX currencies and 46 research views are implemented in the repository. Local import completeness and scientifically exact historical research are **not** certified. The latest supplied Docker build stopped at a frontend test (43 passing, one failing); a code correction was committed subsequently but has not yet been observed passing in a Docker build.
+**Phase 1:** contract baseline complete. **Phase 2:** ingestion operational; original-source scientific audits, revisions and off-host recovery open. **Phase 3:** UI and 46 research views implemented; multi-device/multi-theme and empirical indicator acceptance open. **Phase 4:** ALFRED/SEC acquisition foundations operational; exact global economic series, UCITS holdings, worldwide securities/profit histories, OECD IOT/STAN audited imports and scientifically validated predictive models incomplete.
+
+Source collection completeness does not imply every economic comparison is source-exact, every chart has been visually audited or any retrospective model has independently validated forecast skill. Follow the five workstreams (after operational prerequisite 0) rather than repeating an already-completed blanket sync. Historical paragraphs in supporting documents are dated evidence, not newer status assertions.
 
 ## Deploy on the existing media server
 
