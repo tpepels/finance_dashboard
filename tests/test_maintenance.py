@@ -168,7 +168,8 @@ class MaintenanceApiTests(unittest.TestCase):
             result=self.wait(import_job.json()["id"])
             self.assertEqual(result["status"],"complete")
             self.assertEqual(result["result"]["funds"][0]["stored"],1)
-            collector.assert_called_once_with(max_filings_per_fund=1)
+            self.assertEqual(collector.call_args.kwargs["max_filings_per_fund"],1)
+            self.assertTrue(callable(collector.call_args.kwargs["progress"]))
 
     def test_missing_sec_contact_cannot_be_reported_as_success(self):
         with patch("finance_dashboard.sec_holdings_sync.collect_configured",

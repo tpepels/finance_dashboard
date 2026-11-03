@@ -225,7 +225,8 @@ export default function DataOperations({ sources, initiallyOpen = false }:
           <label><input type="checkbox" checked={complete}
             onChange={e => setComplete(e.target.checked)}/>Resume all missing batches automatically</label>
         </div>
-        <button type="button" disabled={disabled || !vintages.length || !start || !end || start>end}
+        <button type="button" disabled={disabled || !vintages.length || !start || !end || start>end ||
+          !Number.isInteger(batch) || batch<1 || batch>180}
           onClick={() => void run('backfill_alfred', {
             series_ids:vintages, start, end, max_requests:batch, complete_range:complete,
           })}>Import historical ALFRED vintages</button>

@@ -404,7 +404,7 @@ def check_sec_sources(*, config: Path = CONFIG,
 
 def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
                        user_agent: str|None=None,
-                       max_filings_per_fund: int=12) -> dict:
+                       max_filings_per_fund: int=12, progress=None) -> dict:
     mappings=read_verified_config(config)
     if not mappings:
         return {"status":"unconfigured","funds":[]}
@@ -416,7 +416,7 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
     reports=[]
     with httpx.Client(headers={"User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
                       timeout=45,follow_redirects=False) as client:
-        for mapping in mappings:
+        for index, mapping in enumerate(mappings, 1):
             try:
                 reports.append(import_fund(mapping,client=client,root=folder,
                                            max_filings=max_filings_per_fund))
@@ -428,6 +428,9 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
             except (HoldingsError,httpx.HTTPError,ValueError):
                 reports.append({"instrument_id":mapping["instrument_id"],
                                 "status":"failed","errors":1})
+            finally:
+                if progress is not None:
+                    progress(index, len(mappings), mapping["instrument_id"])
     return {"status":("complete" if all(x.get("status") == "complete" for x in reports)
                       else "partial"),"funds":reports}
 
