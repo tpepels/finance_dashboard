@@ -15,6 +15,14 @@ class SourceFailureCodeTests(unittest.TestCase):
             RuntimeError("Provider HTTP 404 (api.stlouisfed.org)")),
             "provider_http_404")
 
+    def test_ecb_and_market_wrapped_http_denials_are_not_mislabeled_source_invalid(self):
+        self.assertEqual(safe_source_failure_code(
+            ValueError("ECB FX HTTP 403 for USD")), "provider_http_403")
+        self.assertEqual(safe_source_failure_code(
+            ValueError("ECB FX HTTP 429 for GBP")), "provider_http_429")
+        self.assertEqual(safe_source_failure_code(
+            ValueError("Market feed rejected VT, HTTP 429")), "provider_http_429")
+
     def test_httpx_response_status_is_classified_without_exposing_signed_query(self):
         request = httpx.Request("GET", "https://query1.finance.yahoo.com/example?secret=TOKEN")
         response = httpx.Response(503,request=request)

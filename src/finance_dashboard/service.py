@@ -21,7 +21,12 @@ def safe_source_failure_code(exc: BaseException) -> str:
     if isinstance(exc, httpx.HTTPStatusError):
         code = exc.response.status_code
         return "provider_http_" + str(code) if 400 <= code < 600 else "provider_failed"
-    match = re.search(r"Provider HTTP ([0-9]{3})", str(exc))
+    # Our controlled upstream wrappers use a few different fixed HTTP
+    # prefixes; all must map to status-only codes before generic ValueError.
+    match = re.search(
+        r"(?:Provider HTTP |ECB FX HTTP |Market feed rejected [^,\\n]{1,90}, HTTP )([0-9]{3})",
+        str(exc),
+    )
     if match:
         code = int(match.group(1))
         return "provider_http_" + str(code) if 400 <= code < 600 else "provider_failed"
