@@ -226,6 +226,30 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(observations[date(1881, 1, 1)], Decimal("12.5"))
         self.assertEqual(observations[date(1893, 12, 1)], Decimal("12.5"))
 
+    def test_shiller_official_multiline_headers_ignore_fraction_tr_cape_and_excess(self):
+        # Official Shiller workbook uses header rows 1..7 and two spacers.
+        # Ordinary CAPE has both "Cyclically Adjusted" and "CAPE" text.
+        headers = [
+            ["Shiller monthly series", "", "", "", "", "", ""],
+            ["", "", "", "", "", "", ""],
+            ["Date", "", "Date", "", "", "", ""],
+            ["", "", "Fraction", "", "Cyclically Adjusted", "Total Return", "Excess CAPE Yield"],
+            ["", "", "", "", "P/E Ratio", "CAPE", ""],
+            ["", "", "", "", "CAPE", "TR CAPE", ""],
+            ["", "", "", "", "", "", ""],
+            ["", "", "", "", "", "", ""],
+        ]
+        for year in range(1871, 1895):
+            for month in range(1, 13):
+                cape = 12.5 if year >= 1881 else "NA"
+                headers.append([float(f"{year}.{month:02d}"), "", 0.34,
+                                "", cape, 99.0, 3.0])
+        series = parse_shiller_sheet(headers)
+        self.assertEqual(min(series), date(1881, 1, 1))
+        self.assertEqual(len(series), 14 * 12)
+        self.assertEqual(series[date(1894, 12, 1)], Decimal("12.5"))
+        self.assertNotIn(date(1871, 1, 1), series)
+
     def test_shiller_rejects_partial_recent_history_even_when_contiguous(self):
         rows = [["Date", "CAPE"]]
         for year in range(2024, 2027):

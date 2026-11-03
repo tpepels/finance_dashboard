@@ -475,35 +475,44 @@ def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
         nrows, ncols = sheet.nrows, sheet.ncols
         cell = sheet.cell_value
 
-    dates, capes = {}, {}
-    headers = {}
+    # Shiller's original Data worksheet uses seven header rows and two
+    # spacer columns. The Date Fraction, TR CAPE, and Excess CAPE Yield
+    # columns may each contain an independent "Date" or "CAPE" label.
+    # Select by the complete column heading, not by an isolated cell.
+    header_rows = min(8, nrows)
+    headings = {}
+    last_header_row = {}
     for col in range(ncols):
         parts = []
-        for row in range(min(12, nrows)):
+        last = 0
+        for row in range(header_rows):
             label = str(cell(row, col)).strip().upper()
             if label:
                 parts.append(label)
-            if label == "DATE":
-                dates[col] = max(row, dates.get(col, -1))
-            if label == "CAPE":
-                capes[col] = max(row, capes.get(col, -1))
-        headers[col] = " ".join(parts)
+                last = row
+        headings[col] = " ".join(parts)
+        last_header_row[col] = last
 
-    # The official worksheet puts Date and CAPE on separate header rows.
-    # Do not let "Date Fraction", "TR CAPE" or "Excess CAPE Yield"
-    # masquerade as the original date or CAPE column.
-    if not capes:
-        for col, label in headers.items():
-            if ("CYCLICALLY ADJUSTED" in label and "CAPE" in label
-                    and "TOTAL RETURN" not in label and "EXCESS" not in label
-                    and "TR CAPE" not in label):
-                capes[col] = 7
+    dates = [col for col, label in headings.items()
+             if "DATE" in label.split() and "FRACTION" not in label]
+    def ordinary_cape(label: str) -> bool:
+        return ("CAPE" in label.split() and
+                not any(forbidden in label for forbidden in
+                        ("TOTAL RETURN", "TR CAPE", "EXCESS CAPE")))
+
+    capes = [col for col, label in headings.items()
+             if ordinary_cape(label)]
+    strong = [col for col in capes
+              if "CYCLICALLY ADJUSTED" in headings[col]]
+    if len(strong) == 1:
+        capes = strong
     if len(dates) != 1 or len(capes) != 1:
         raise ProviderError("Shiller workbook does not contain recognizable DATE/CAPE columns")
-    date_col, date_header_row = next(iter(dates.items()))
-    cape_col, cape_header_row = next(iter(capes.items()))
+    date_col, cape_col = dates[0], capes[0]
     if date_col == cape_col:
         raise ProviderError("Shiller workbook has ambiguous DATE/CAPE columns")
+    date_header_row = last_header_row[date_col]
+    cape_header_row = last_header_row[cape_col]
     output = {}
     for row in range(max(date_header_row, cape_header_row) + 1, nrows):
         try:
