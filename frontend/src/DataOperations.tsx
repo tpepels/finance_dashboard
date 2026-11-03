@@ -52,6 +52,7 @@ export default function DataOperations({ sources, initiallyOpen = false }:
   const [secLimit, setSecLimit] = useState(12);
   const [vintages, setVintages] = useState<string[]>(VINTAGES);
   const notified = useRef(new Set<string>());
+  const submitted = useRef(new Set<string>());
 
   const macros = useMemo(() => sources.filter(x => x.family === 'macro'), [sources]);
   const markets = useMemo(() => sources.filter(x => x.family === 'markets'), [sources]);
@@ -67,7 +68,8 @@ export default function DataOperations({ sources, initiallyOpen = false }:
     const incoming = await responseJson(response) as Queue;
     setQueue(incoming);
     for (const job of incoming.jobs) {
-      if (['complete','partial','failed','blocked','cancelled','interrupted'].includes(job.status)
+      if (submitted.current.has(job.id) &&
+          ['complete','partial','failed','blocked','cancelled','interrupted'].includes(job.status)
           && !notified.current.has(job.id)) {
         notified.current.add(job.id);
         if (job.finished_at && job.status !== 'interrupted') {
@@ -92,9 +94,10 @@ export default function DataOperations({ sources, initiallyOpen = false }:
     setProblem('');
     setSubmitting(true);
     try {
-      await responseJson(await fetch('/api/maintenance', {
+      const submittedJob = await responseJson(await fetch('/api/maintenance', {
         method: 'POST', headers, body: JSON.stringify({ action, ...options }),
-      }));
+      })) as Job;
+      submitted.current.add(submittedJob.id);
       await loadJobs();
     } catch (err) {
       setProblem(err instanceof Error ? err.message : 'Operation unavailable');

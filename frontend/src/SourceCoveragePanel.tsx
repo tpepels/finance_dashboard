@@ -53,7 +53,8 @@ export default function SourceCoveragePanel() {
       if (ref.current) ref.current.open = true;
       setOpen(true);
       setFocusManagement(true);
-      ref.current?.scrollIntoView({block:'start', behavior:'smooth'});
+      if (typeof ref.current?.scrollIntoView === 'function')
+        ref.current.scrollIntoView({block:'start', behavior:'smooth'});
     };
     refresh();
     window.addEventListener('gcm-data-updated', refresh);
