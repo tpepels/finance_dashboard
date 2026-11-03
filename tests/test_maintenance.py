@@ -34,11 +34,25 @@ class MaintenanceApiTests(unittest.TestCase):
             "FINANCE_AUTO_REFRESH":"0",
         })
         self.env.start()
+        # Sync actions verify a backup. Only the backup API is mocked here;
+        # the separate test_backup suite tests real SQLite archival semantics.
+        self.backup_patches=[
+            patch("finance_dashboard.backup.source_database_path",
+                  return_value=Path(self.tmp.name,"finance.sqlite3")),
+            patch("finance_dashboard.backup.backup_local",
+                  return_value={"database":{"file":"finance-20261103T120000000000Z.sqlite3"}}),
+            patch("finance_dashboard.backup.verify_manifest",
+                  return_value={"verified":True,"components":["database"]}),
+        ]
+        for p in self.backup_patches:
+            p.start()
         self.client=TestClient(create_app(self.engine))
         self.client.__enter__()
 
     def tearDown(self):
         self.client.__exit__(None,None,None)
+        for p in reversed(self.backup_patches):
+            p.stop()
         self.env.stop()
         self.engine.dispose()
         self.tmp.cleanup()
@@ -217,8 +231,10 @@ class MaintenanceApiTests(unittest.TestCase):
             done=self.wait(r.json()["id"])
         self.assertEqual(tracked,["macro","market","earnings"])
         self.assertEqual(done["status"],"complete")
-        self.assertEqual((done["completed"],done["total"]),(3,3))
-        self.assertEqual(set(done["result"]["parts"]),{"macro","markets","earnings"})
+        self.assertEqual((done["completed"],done["total"]),(4,4))
+        self.assertEqual(set(done["result"]["parts"]),{
+            "macro","markets","earnings","backup"})
+        self.assertTrue(done["result"]["parts"]["backup"]["verified"])
 
     def test_current_sync_continues_after_source_errors_and_reports_partial(self):
         calls=[]
@@ -275,12 +291,12 @@ class MaintenanceApiTests(unittest.TestCase):
             self.assertEqual(r.status_code,202,r.text)
             done=self.wait(r.json()["id"])
         self.assertEqual(done["status"],"complete")
-        self.assertEqual((done["completed"],done["total"]),(4,4))
+        self.assertEqual((done["completed"],done["total"]),(5,5))
         self.assertEqual(calls,["macro","markets","sec"])
         self.assertEqual(done["result"]["parts"]["alfred"]["downloaded"],12)
         self.assertEqual(alfred.call_count,1)
         self.assertEqual(sorted(done["result"]["parts"]),
-                         ["alfred","macro","markets","sec"])
+                         ["alfred","backup","macro","markets","sec"])
         self.assertNotIn("a"*32,json.dumps(done))
 
     def test_history_sync_reports_blocked_origins_without_skipping_sec(self):
