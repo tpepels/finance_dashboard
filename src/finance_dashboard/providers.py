@@ -486,8 +486,13 @@ def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
         parts = []
         last = 0
         for row in range(header_rows):
-            label = str(cell(row, col)).strip().upper()
-            if label:
+            raw = cell(row, col)
+            # Do not count numeric data rows as further header rows.
+            # This also accommodates short fixture sheets with data at row 2.
+            if not isinstance(raw, str) or not any(ch.isalpha() for ch in raw):
+                continue
+            label = raw.strip().upper()
+            if label and label not in ("NA", "N/A", "NULL"):
                 parts.append(label)
                 last = row
         headings[col] = " ".join(parts)
