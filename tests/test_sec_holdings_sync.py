@@ -62,6 +62,94 @@ class SecSyncTests(unittest.TestCase):
             self.assertEqual(len(list_holdings(root,"vt",asof=date(2026,5,24))["records"]),1)
             self.assertEqual(len(calls),2)
 
+    def test_html_primary_document_resolves_sec_index_xml_without_guessing(self):
+        """Official SEC indexes commonly list HTML primary plus XML sibling."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mapping = {"instrument_id":"vt","cik":"1234567","series_id":"S000000001"}
+            acc = ["0001234567-26-000120","0001234567-26-000121",
+                   "0001234567-26-000122"]
+            submissions = {"cik":1234567,"filings":{
+                "recent":{
+                    "accessionNumber":acc,
+                    "form":["NPORT-P"] * 3,
+                    "filingDate":["2026-05-21"] * 3,
+                    "acceptanceDateTime":["2026-05-21T18:30:00"] * 3,
+                    "primaryDocument":["primary_doc.html"] * 3,
+                }, "files":[]}}
+            seen = []
+            def handler(request):
+                url = str(request.url)
+                seen.append(url)
+                if "data.sec.gov" in url:
+                    return httpx.Response(200,json=submissions)
+                if url.endswith("-index.htm"):
+                    series = "S000000001" if "000120-index" in url else "S000000002"
+                    return httpx.Response(200,text=(
+                        '<html><a href="primary_doc.html">HTML</a>'
+                        '<a href="primary_doc.xml">XML</a>'
+                        '<a href="/cgi-bin/browse-edgar?series=' + series +
+                        '">' + series + '</a></html>'))
+                if url.endswith("/primary_doc.xml"):
+                    self.assertIn("000120/primary_doc.xml", url)
+                    return httpx.Response(200,content=XML)
+                return httpx.Response(404)
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                first = import_fund(mapping,client=client,root=root,max_filings=1)
+                self.assertEqual(first["stored_or_already_present"],1)
+                self.assertEqual(first["attempted"],1)
+                self.assertEqual(first["index_candidates_examined"],3)
+                self.assertEqual(first["other_series_skipped"],2)
+                self.assertEqual(first["status"],"complete")
+                self.assertEqual(len(list_holdings(root,"vt")["records"]),1)
+                downloaded = [x for x in seen if x.endswith("/primary_doc.xml")]
+                self.assertEqual(len(downloaded),1)
+                # Re-running the same source range reuses the validated record.
+                second = import_fund(mapping,client=client,root=root,max_filings=1)
+                self.assertEqual(second["already_cached_in_selection"],1)
+                self.assertEqual(second["attempted"],0)
+                self.assertEqual(len([x for x in seen
+                    if x.endswith("/primary_doc.xml")]),1)
+
+    def test_index_with_ambiguous_xml_never_guesses_a_filing(self):
+        from finance_dashboard.sec_holdings_sync import _xml_in_filing_index
+        doc, reason = _xml_in_filing_index(
+            '<html><a href="extra.xml">Extra</a>'
+            '<a href="another.xml">Other</a>'
+            '<a href="?id=S000000001">S000000001</a></html>',
+            "S000000001","primary_doc.html")
+        self.assertIsNone(doc)
+        self.assertEqual(reason,"no_verified_primary_xml")
+        doc, reason = _xml_in_filing_index(
+            '<html><a href="primary_doc.xml">XML</a>'
+            '<span>S000000002</span></html>',
+            "S000000001","primary_doc.html")
+        self.assertIsNone(doc)
+        self.assertEqual(reason,"other_series")
+
+    def test_sec_index_http_403_does_not_scan_or_download_every_candidate(self):
+        with TemporaryDirectory() as tmp:
+            mapping = {"instrument_id":"vt","cik":"1234567","series_id":"S000000001"}
+            records = {"cik":1234567,"filings":{"recent":{
+                "accessionNumber":[ACC] * 10,
+                "form":["NPORT-P"] * 10,
+                "filingDate":["2026-05-21"] * 10,
+                "acceptanceDateTime":["2026-05-21T18:30:00"] * 10,
+                "primaryDocument":["primary_doc.html"] * 10,
+            }, "files":[]}}
+            calls = []
+            def handler(request):
+                calls.append(str(request.url))
+                if "data.sec.gov" in str(request.url):
+                    return httpx.Response(200,json=records)
+                return httpx.Response(403, text="Forbidden")
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result = import_fund(mapping,client=client,root=Path(tmp),max_filings=12)
+            self.assertEqual(result["status"],"blocked")
+            self.assertEqual(result["halted_reason"],"sec_access_denied")
+            self.assertEqual(result["http_status"],403)
+            self.assertEqual(len(calls),2)
+
     def test_builtin_verified_funds_do_not_need_placeholder_identifiers(self):
         with TemporaryDirectory() as tmp:
             mappings = read_verified_config(Path(tmp)/"not-configured.json")
