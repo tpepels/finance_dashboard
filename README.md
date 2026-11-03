@@ -10,6 +10,7 @@
 - [35 scientific analysis specifications](docs/PHASE1_ANALYSIS_SPECIFICATIONS.md) — variables, original methodology, reproducible formulas, alternatives, validity, interpretation and 49 scholarly/statistical references.
 - [Phase 1 visualization contract](docs/PHASE1_VISUALIZATION_CONTRACT.md) — complete per-graph geography/series/chart type/method, saved research views, accessibility, monitoring and independent recession/shock/recovery overlays.
 - [Approved critical Phase 1 coherence/free-source review](docs/PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) — binding six-story editorial structure, five reclassifications, five new scientific questions and no-fee source rule.
+- [Primary-source discoveries for four unresolved free datasets](docs/PHASE1_FREE_DATA_SOURCE_DISCOVERY.md) — historical VT SEC filings, UCITS annual reports and terms, free multi-country company filings, original index-vs-fund return limits.
 - [Pre-redesign roadmap archive](docs/archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md) — prior operational fixes/empirical evidence; historical only.
 
 ## Existing implementation (preserved, not the approved product)

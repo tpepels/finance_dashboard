@@ -104,6 +104,10 @@ This reallocation is a **proposed scientific catalogue change**, not a deletion 
 
 **Copyright-sensitive distinction:** “free” means a no-fee usable data source for the intended private research, not a waiver of the original publisher's intellectual-property rights. Do not bulk-scrape no-fee display pages against provider terms. FRED specifically distinguishes third-party copyrighted series. BIS allows statistical use with attribution. OECD API access is free but rate-limited.
 
+## New discovered primary-source routes
+
+A subsequent targeted search found concrete original filing archives for historic VT global-fund weights and UCITS investment schedules; world issuer financial filings from public SEC/ESEF/CVM/OpenDART sources and ETF/conditional MSCI total-return routes. See [PHASE1_FREE_DATA_SOURCE_DISCOVERY.md](PHASE1_FREE_DATA_SOURCE_DISCOVERY.md) for dated examples, no-cost source status, original/index distinctions and **restrictive iShares website terms**. These materially reduce the research uncertainty but do **not** certify complete exact MSCI index weights, UCITS automated rights, global consolidated company income coverage or paired global index monthly total returns.
+
 ## Four narrowly defined source searches where owner assistance could help
 
 No reason to ask the user to rediscover BIS, OECD, FRED, World Bank, NBER, IMF or SEC pages—the original datasets are already located.
