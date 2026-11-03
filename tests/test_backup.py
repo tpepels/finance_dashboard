@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import sqlite3
+import tarfile
 from tempfile import TemporaryDirectory
 import unittest
 import os
@@ -89,6 +90,35 @@ class LocalBackupTests(unittest.TestCase):
             backup_db.write_bytes(backup_db.read_bytes() + b"corrupted")
             with self.assertRaisesRegex(ValueError, "SHA-256"):
                 verify_manifest(manifest)
+
+    def test_backup_includes_and_verifies_alfred_sec_and_oecd_source_evidence(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "database.sqlite3"
+            sqlite3.connect(db).close()
+            roots = {name: root / name for name in ("vintages","holdings","surplus")}
+            for path in roots.values():
+                path.mkdir()
+            (roots["vintages"] / "USREC").mkdir()
+            (roots["vintages"] / "USREC" / "2008-01-31.json").write_text(
+                '{"series_id":"USREC","asof":"2008-01-31"}')
+            (roots["holdings"] / "sec_funds.json").write_text('[]')
+            (roots["surplus"] / "oecd_iot_2025_normalized.json").write_text('{"records":[]}')
+            manifest = backup_local(root / "backups", source_db=db,
+                                    evidence_roots=roots)
+            archive_path = root / "backups" / manifest["evidence_archive"]["file"]
+            self.assertEqual(manifest["evidence_archive"]["source_files"], 3)
+            with tarfile.open(archive_path, "r:gz") as archive:
+                self.assertEqual(sorted(archive.getnames()), [
+                    "holdings/sec_funds.json",
+                    "surplus/oecd_iot_2025_normalized.json",
+                    "vintages/USREC/2008-01-31.json"])
+            manifest_path = next((root / "backups").glob("finance-*Z.json"))
+            self.assertIn("evidence_archive",
+                verify_manifest(manifest_path)["components"])
+            archive_path.write_bytes(archive_path.read_bytes() + b"x")
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                verify_manifest(manifest_path)
 
     def test_malformed_snapshot_cannot_replace_verified_database_backup(self):
         with TemporaryDirectory() as tmp:
