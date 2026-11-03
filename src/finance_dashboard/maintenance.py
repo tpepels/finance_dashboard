@@ -21,6 +21,7 @@ from sqlalchemy.engine import Engine
 from .standalone import maintenance_network_lock
 
 PUBLIC_ACTIONS = frozenset((
+    "sync_current", "sync_history",
     "refresh_sources", "refresh_markets", "check_alfred", "backfill_alfred",
     "check_sec", "collect_sec", "refresh_earnings", "backup",
 ))
@@ -110,6 +111,8 @@ class MaintenanceManager:
         if action not in PUBLIC_ACTIONS:
             raise ValueError("Unknown maintenance operation")
         allowed = {
+            "sync_current": set(),
+            "sync_history": set(),
             "refresh_sources": {"series_ids"},
             "refresh_markets": {"instrument_ids", "currencies"},
             "check_alfred": set(),
@@ -124,7 +127,15 @@ class MaintenanceManager:
             raise ValueError("Unexpected maintenance parameters")
         # All options are validated against an explicit allowlist. Never
         # accept a URL, file path, shell command or raw provider credential.
-        if action == "refresh_sources":
+        if action in ("sync_current", "sync_history"):
+            if options:
+                raise ValueError("Sync operations accept no manual source settings")
+            options = {
+                "series_ids": sorted(valid_sources),
+                "instrument_ids": sorted(valid_markets),
+                "currencies": sorted(FX_IDS),
+            }
+        elif action == "refresh_sources":
             ids = options["series_ids"] if "series_ids" in options else sorted(valid_sources)
             if (not isinstance(ids, list) or not 1 <= len(ids) <= 53 or
                 len(ids) != len(set(ids)) or not set(ids) <= valid_sources):
@@ -239,8 +250,174 @@ class MaintenanceManager:
                   item: str | None = None) -> None:
         self._change(job_id, completed=count, total=total, current_item=item)
 
+    def _sync(self, job_id: str, *, history: bool, options: dict,
+              cancelled: Event) -> dict:
+        """Single-click sync using the same validated source collectors.
+
+        Both modes are additive/revision-aware. Individual provider failure
+        leaves other collection stages running, unless the user cancels.
+        """
+        from .worker import refresh_all, refresh_market_all
+
+        stages = 4 if history else 3
+        stage_results = {}
+        issue_count = 0
+
+        def stage(index: int, label: str) -> None:
+            self._change(job_id, completed=index, total=stages,
+                         current_item=label, stage=label,
+                         stage_completed=0, stage_total=None)
+
+        def progress(index: int, label: str):
+            def update(done: int, total: int, sid: str) -> None:
+                self._change(job_id, completed=index, total=stages,
+                             current_item=sid, stage=label,
+                             stage_completed=done, stage_total=total)
+            return update
+
+        def record(key: str, value: dict) -> None:
+            nonlocal issue_count
+            stage_results[key] = value
+            if value.get("status") in ("partial", "blocked", "failed"):
+                issue_count += 1
+            self._change(job_id, result={"parts":dict(stage_results)})
+
+        if cancelled.is_set():
+            raise MaintenanceBlocked("cancelled")
+        macro_ids = set(options["series_ids"])
+        stage(0, "Economic indicators")
+        try:
+            failed = refresh_all(
+                self.engine, full=history, series_ids=macro_ids,
+                progress=progress(0, "Economic indicators"), stopped=cancelled)
+            record("macro", {"status":"partial" if failed else "complete",
+                             "sources":len(macro_ids),"failed":failed})
+        except Exception:
+            record("macro", {"status":"failed","reason":"provider_failed"})
+        if cancelled.is_set():
+            raise MaintenanceBlocked("cancelled")
+
+        market_ids = set(options["instrument_ids"])
+        fx_ids = set(options["currencies"])
+        stage(1, "Markets and exchange rates")
+        try:
+            failed = refresh_market_all(
+                self.engine, instrument_ids=market_ids, currencies=fx_ids,
+                full=history, progress=progress(1, "Markets and exchange rates"),
+                stopped=cancelled)
+            record("markets", {"status":"partial" if failed else "complete",
+                               "sources":len(market_ids)+len(fx_ids),"failed":failed})
+        except Exception:
+            record("markets", {"status":"failed","reason":"provider_failed"})
+        if cancelled.is_set():
+            raise MaintenanceBlocked("cancelled")
+
+        if not history:
+            stage(2, "Corporate earnings")
+            try:
+                from .wisesheets_local import refresh_local_wisesheets
+                outcome = refresh_local_wisesheets()
+                kind = ("complete" if outcome in ("current","updated") else
+                        "skipped" if outcome in ("disabled","deferred") else
+                        "failed")
+                record("earnings", {"status":kind,"source_state":outcome})
+            except Exception:
+                record("earnings", {"status":"failed","reason":"provider_failed"})
+        else:
+            stage(2, "ALFRED historical publication vintages")
+            try:
+                from .vintage import probe_access, backfill_batch
+                key = os.environ.get("FRED_API_KEY", "").strip()
+                with httpx.Client(timeout=25, headers={
+                    "User-Agent":"GlobalCapitalMonitor/0.2"}) as client:
+                    check = probe_access(api_key=key, client=client)
+                    if check["status"] != "ready":
+                        record("alfred", {"status":"blocked",
+                            "reason":"provider_blocked"})
+                    else:
+                        end = date.today().replace(day=1)-timedelta(days=1)
+                        start = date(2000,1,1)
+                        downloaded = 0
+                        result = None
+                        for cycle in range(60):
+                            if cancelled.is_set():
+                                raise MaintenanceBlocked("cancelled")
+                            result = backfill_batch(
+                                start,end,sorted(VINTAGE_IDS),api_key=key,
+                                client=client,max_requests=180)
+                            downloaded += result["downloaded_now"]
+                            self._change(job_id, completed=2,total=4,
+                                current_item="Historical releases",
+                                stage="ALFRED historical publication vintages",
+                                stage_completed=(result["source_vintages_requested"]
+                                                 -result["missing_after_run"]),
+                                stage_total=result["source_vintages_requested"])
+                            if (result["status"] in ("complete","blocked") or
+                                result["failed_now"] or
+                                result["downloaded_now"] == 0):
+                                break
+                        assert result is not None
+                        record("alfred", {
+                            "status": ("complete" if result["missing_after_run"] == 0
+                                       else "blocked" if result["status"] == "blocked"
+                                       else "partial"),
+                            "downloaded": downloaded,
+                            "missing": result["missing_after_run"],
+                            "requested": result["source_vintages_requested"],
+                            "reason": ("provider_blocked" if result["status"] == "blocked"
+                                       else "no_progress" if result["failed_now"]
+                                       else None),
+                        })
+            except MaintenanceBlocked:
+                raise
+            except Exception:
+                record("alfred", {"status":"failed","reason":"provider_failed"})
+            if cancelled.is_set():
+                raise MaintenanceBlocked("cancelled")
+
+            stage(3, "SEC original fund holdings")
+            try:
+                from .sec_holdings_sync import collect_configured
+                report = collect_configured(
+                    max_filings_per_fund=50, stopped=cancelled,
+                    progress=progress(3, "SEC original fund holdings"))
+                state = report["status"]
+                if state in ("disabled_missing_SEC_USER_AGENT","unconfigured"):
+                    record("sec", {"status":"blocked","reason":
+                        "missing_credential" if state.startswith("disabled")
+                        else "invalid_source"})
+                else:
+                    funds = report.get("funds",[])
+                    record("sec", {
+                        "status": "complete" if state == "complete" else "partial",
+                        "funds": [{
+                            "id":row["instrument_id"],"status":row["status"],
+                            "stored":row.get("stored_or_already_present",0),
+                            "errors":row.get("errors",0),
+                            "historical_coverage_limited": (
+                                row.get("unexamined_candidate_filings",0)>0),
+                        } for row in funds],
+                        "note": ("SEC importer checks up to 50 matching filings per "
+                                 "fund, not a guarantee of its full lifetime history."),
+                    })
+            except Exception:
+                record("sec", {"status":"failed","reason":"provider_failed"})
+        if cancelled.is_set():
+            raise MaintenanceBlocked("cancelled")
+        self._change(job_id, completed=stages,total=stages,
+                     stage_completed=None, stage_total=None)
+        return {"status":"partial" if issue_count else "complete",
+                "mode":"historical" if history else "current",
+                "parts":stage_results,
+                "limitations":("Source coverage, publication dates, and "
+                               "unavailable source rights must be checked "
+                               "separately. Missing data are never invented.")}
+
     def _perform(self, job_id: str, action: str, options: dict,
                  cancelled: Event) -> dict:
+        if action in ("sync_current","sync_history"):
+            return self._sync(job_id, history=action=="sync_history",
+                              options=options, cancelled=cancelled)
         if action == "refresh_sources":
             from .worker import refresh_all
             ids = options["series_ids"]
