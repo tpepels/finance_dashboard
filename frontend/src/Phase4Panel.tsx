@@ -83,7 +83,7 @@ function Phase4Plot({ assets, metric, currency, theme }: {
   </div>;
 }
 
-function DiagnosticView() {
+function DiagnosticView({ dataVersion }: { dataVersion?: number }) {
   const [scope, setScope] = useState<Scope>('us');
   const [items, setItems] = useState<Signal[] | null>(null);
   const [method, setMethod] = useState('');
@@ -98,7 +98,7 @@ function DiagnosticView() {
       if (live) { setItems(result.indicators); setMethod(result.method); }
     }).catch(e => { if (live) setError(String(e)); });
     return () => { live = false; };
-  }, [scope]);
+  }, [scope, dataVersion]);
   return <div>
     <nav className="p4-tabs" aria-label="Risk signal region">
       {SCOPE_OPTIONS.map(item => <button type="button" key={item.id}
@@ -220,7 +220,9 @@ function RiskReturnView({ comparison, theme }: { comparison: Comparison; theme?:
   </section>;
 }
 
-function AssetComparison({ theme }: { theme?: 'light' | 'dark' }) {
+function AssetComparison({ theme, dataVersion }: {
+  theme?: 'light' | 'dark'; dataVersion?: number;
+}) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [selected, setSelected] = useState<string[]>(['vt', 'gld']);
@@ -239,7 +241,8 @@ function AssetComparison({ theme }: { theme?: 'light' | 'dark' }) {
       if (live) setAssets(result.items);
     }).catch(e => { if (live) setCatalogError(String(e)); });
     return () => { live = false; };
-  }, []);
+  }, [dataVersion]);
+  useEffect(() => { setComparison(null); }, [dataVersion]);
   const available = assets.filter(asset =>
     currency === 'EUR' || asset.trading_currency === 'USD');
   function selectItems(ids: string[]) {
@@ -402,7 +405,9 @@ function AssetComparison({ theme }: { theme?: 'light' | 'dark' }) {
   </div>;
 }
 
-export default function Phase4Panel({ theme }: { theme?: 'light' | 'dark' }) {
+export default function Phase4Panel({ theme, dataVersion }: {
+  theme?: 'light' | 'dark'; dataVersion?: number;
+}) {
   const [tab, setTab] = useState<'diagnostics' | 'assets'>('diagnostics');
   return <section className="phase4-container" id="phase4">
     <header>
@@ -421,11 +426,13 @@ export default function Phase4Panel({ theme }: { theme?: 'light' | 'dark' }) {
       <button type="button" aria-pressed={tab === 'assets'}
         onClick={() => setTab('assets')}>ETF, gold and portfolio comparison</button>
     </div>
-    {tab === 'diagnostics' ? <DiagnosticView/> : <AssetComparison theme={theme}/>}
+    {tab === 'diagnostics' ? <DiagnosticView dataVersion={dataVersion}/> :
+      <AssetComparison theme={theme} dataVersion={dataVersion}/>}
+
     <details className="p4-extra">
       <summary>Historical evidence, validation &amp; source coverage</summary>
-      <EvidenceResearch theme={theme}/>
-      <OperationsStatus/>
+      <EvidenceResearch key={dataVersion} theme={theme}/>
+      <OperationsStatus key={dataVersion}/>
     </details>
   </section>;
 }

@@ -41,7 +41,9 @@ function sourceChart(s: SeriesDefinition): ChartDefinition {
 
 const link = readLink();
 
-export default function SourceExplorer({ theme }: { theme?: 'light' | 'dark' }) {
+export default function SourceExplorer({ theme, dataVersion }: {
+  theme?: 'light' | 'dark'; dataVersion?: number;
+}) {
   const [context, setContext] = useState<DataContext | null>(null);
   const [failure, setFailure] = useState('');
   const [openCharts, setOpenCharts] = useState<Set<string>>(
@@ -148,13 +150,13 @@ export default function SourceExplorer({ theme }: { theme?: 'light' | 'dark' }) 
             {!closedThemes.has(chapter.id) && <div className="chart-stack chart-grid">
               {chapter.charts.map((chart, index) =>
                 <div key={chart.id} className={index === 0 && chart.series_ids.length > 1 ? 'featured-chart' : 'grid-chart'}>
-                  <ChartCard definition={chart} context={context} theme={theme}
+                  <ChartCard definition={chart} context={context} theme={theme} dataVersion={dataVersion}
                     expanded={openCharts.has(chart.id)} onToggle={() => toggleChart(chart.id)}
                     deepLink={chart.id === link.id ? link.settings : undefined} />
                 </div>)}
             </div>}
           </section>)}
-        <SupplementaryEarnings theme={theme}/>
+        <SupplementaryEarnings key={dataVersion} theme={theme}/>
         <section className="library-section" id="source-library">
           <h2>Additional source histories</h2>
           <p>The main research chapters contain deliberate, comparable measurements. Other source histories
@@ -171,7 +173,7 @@ export default function SourceExplorer({ theme }: { theme?: 'light' | 'dark' }) 
                 </select>
               </label>
               {extraChart && <div className="source-library-chart">
-                <ChartCard key={extraChart.id} definition={extraChart} context={context} theme={theme}
+                <ChartCard key={extraChart.id} definition={extraChart} context={context} theme={theme} dataVersion={dataVersion}
                   expanded={openCharts.has(extraChart.id) || link.id === extraChart.id}
                   onToggle={() => toggleChart(extraChart.id)}
                   deepLink={extraChart.id === link.id ? link.settings : undefined} />

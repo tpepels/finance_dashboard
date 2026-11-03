@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import ResearchDashboard from './ResearchDashboard';
 import Phase4Panel from './Phase4Panel';
 import SourceExplorer from './SourceExplorer';
@@ -19,6 +19,12 @@ function initialTheme(): Theme {
 export default function App() {
   const [showSources, setShowSources] = useState(false);
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [dataVersion, setDataVersion] = useState(0);
+  useEffect(() => {
+    const update = () => setDataVersion(version => version + 1);
+    window.addEventListener('gcm-data-updated', update);
+    return () => window.removeEventListener('gcm-data-updated', update);
+  }, []);
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
@@ -49,14 +55,14 @@ export default function App() {
     </div>
     <div className="research-content">
       <ResearchDashboard theme={theme}/>
-      <Phase4Panel theme={theme}/>
+      <Phase4Panel theme={theme} dataVersion={dataVersion}/>
     <div className="research-source-shell" id="research-sources">
       <details onToggle={event => setShowSources(event.currentTarget.open)}>
         <summary className="research-explorer-toggle">
           <span>Source data & chart explorer</span>
           <small>All original charts, ingestion records, Wisesheets, CSV and method details</small>
         </summary>
-        {showSources && <SourceExplorer theme={theme}/>} 
+        {showSources && <SourceExplorer theme={theme} dataVersion={dataVersion}/>} 
       </details>
     </div>
     </div>
