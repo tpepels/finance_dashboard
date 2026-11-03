@@ -17,6 +17,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.engine import Engine
 
+from .developer_logs import record_event
+
 log = logging.getLogger(__name__)
 
 # Manual browser actions and scheduled refreshes never overlap network writes.
@@ -45,23 +47,40 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
 
     while not stopped.is_set():
         with maintenance_network_lock:
+            cycle_failed = False
+            record_event("system", "started", action="scheduled_refresh",
+                         status="running")
             if refresh_wisesheets:
                 try:
                     from .wisesheets_local import refresh_local_wisesheets
                     refresh_local_wisesheets()
                 except Exception:
+                    cycle_failed = True
+                    record_event("earnings", "collector_failed", level="warning",
+                                 action="scheduled_refresh", reason="provider_failed")
                     log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
             try:
                 macro_failures = refresh_all(engine)
                 if macro_failures:
+                    cycle_failed = True
+                    record_event("macro", "stage_finished", level="warning",
+                                 action="scheduled_refresh", status="partial",
+                                 failed=macro_failures)
                     log.warning("%d macro sources failed; retained last successful observations",
                                 macro_failures)
                 if include_markets and not stopped.is_set():
                     market_failures = refresh_market_all(engine)
                     if market_failures:
+                        cycle_failed = True
+                        record_event("markets", "stage_finished", level="warning",
+                                     action="scheduled_refresh", status="partial",
+                                     failed=market_failures)
                         log.warning("%d market/FX sources failed; retained last successful observations",
                                     market_failures)
             except Exception:
+                cycle_failed = True
+                record_event("system", "collector_failed", level="error",
+                             action="scheduled_refresh", reason="internal_error")
                 # A malformed provider response must not terminate the API or
                 # silently kill refresh. Do not log URLs containing API keys.
                 log.error("Background refresh cycle aborted (error redacted); preserving previous data")
@@ -70,22 +89,35 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     from .vintage import capture_previous_month
                     outcome = capture_previous_month()
                     if outcome["errors"]:
+                        cycle_failed = True
+                        record_event("alfred", "stage_finished", level="warning",
+                                     action="scheduled_refresh", status="partial",
+                                     reason="provider_failed")
                         log.warning("Historical ALFRED monthly collection partially failed; "
                                     "existing verified vintages retained")
                     elif outcome["status"] == "complete":
                         log.info("Completed ALFRED month-end capture for %s",
                                  outcome["asof"])
                 except Exception:
+                    cycle_failed = True
+                    record_event("alfred", "collector_failed", level="warning",
+                                 action="scheduled_refresh", reason="provider_failed")
                     log.warning("ALFRED month-end capture failed; source API credentials redacted")
             if enabled("FINANCE_SEC_HOLDINGS_REFRESH", "0") and not stopped.is_set():
                 try:
                     from .sec_holdings_sync import collect_if_due
                     result=collect_if_due()
                     if result["status"] == "partial":
+                        cycle_failed = True
+                        record_event("sec", "stage_finished", level="warning",
+                                     action="scheduled_refresh", status="partial")
                         log.warning("Official SEC N-PORT refresh partially failed; retaining stored filings")
                     elif result["status"] == "complete":
                         log.info("Official SEC N-PORT monthly report collection completed")
                 except Exception:
+                    cycle_failed = True
+                    record_event("sec", "collector_failed", level="warning",
+                                 action="scheduled_refresh", reason="provider_failed")
                     log.warning("SEC N-PORT collection failed; preserving verified historical filings")
             if enabled("FINANCE_AUTO_BACKUP", "1") and not stopped.is_set():
                 try:
@@ -100,7 +132,14 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     )
                     log.info("Verified SQLite online backup created")
                 except Exception:
+                    cycle_failed = True
+                    record_event("backup", "collector_failed", level="error",
+                                 action="scheduled_refresh", reason="backup_failed")
                     log.warning("SQLite online backup failed; latest verified backups retained")
+            record_event("system", "finished",
+                         level="warning" if cycle_failed else "info",
+                         action="scheduled_refresh",
+                         status="partial" if cycle_failed else "complete")
         if stopped.wait(interval_seconds):
             break
 

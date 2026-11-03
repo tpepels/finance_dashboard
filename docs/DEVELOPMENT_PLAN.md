@@ -22,6 +22,12 @@ Seven status issues appear in the supplied CSV snapshot, while the later UI summ
 
 **Current next gate:** rebuild the updated `main` image, confirm graph shading and source-status UI, sync current/history, inspect actual ALFRED denied reason and each SEC fund's result, then audit/fix the genuine Shiller monthly sequence, CHF refresh and rights/source-history gaps. An in-volume verified backup is **not** an independent off-host copy.
 
+### Developer support logs — implementation added, awaiting runtime verification
+
+Open **Data & sync → Source diagnostics → Developer logs** to see a hidden, auto-refreshing server diagnostic timeline. It reads **/api/developer-log**, which combines a bounded 400-event, local `/data/maintenance/diagnostics.jsonl` journal, up to eight redacted sync job summaries and current source-coverage issues. Logging is structured/field-whitelisted, with no raw exception strings, provider bodies, headers, credentials or request URLs. The panel supports event-level filtering, manual refresh, copy and text download; exports always include full content regardless of the display filter.
+
+Capture scheduled refresh stage failures and manual current/history sync starts, stage outcomes, source-level failures and terminal statuses. The normal dashboard remains uncluttered. Acceptance requires Docker frontend/Python test gates, a real browser run in light and dark, a complete diagnostic report after a source failure, and verification that copied text has no credentials. This is developer-only visibility, not a public observability service or a replacement for off-device archival.
+
 ## Current verified baseline
 
 | Evidence | Status at audit | What it proves | What it does not prove |
