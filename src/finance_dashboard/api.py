@@ -7,8 +7,8 @@ from .wisesheets import load_sec_profit_snapshot
 from os import environ
 import re
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field, model_validator
+from fastapi import FastAPI, HTTPException, Request, Header
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from sqlalchemy import select, text, func, distinct
 from sqlalchemy.orm import Session
 
@@ -29,6 +29,7 @@ from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCE
 
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .source_coverage import build_coverage
+from .maintenance import MaintenanceManager, BusyMaintenance
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
 from functools import partial
@@ -47,6 +48,19 @@ class SeriesQuery(BaseModel):
         if self.start and self.end and self.start > self.end:
             raise ValueError("start must be on or before end")
         return self
+
+
+class MaintenanceCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    action: str
+    series_ids: list[str] | None = None
+    instrument_ids: list[str] | None = None
+    currencies: list[str] | None = None
+    start: str | None = None
+    end: str | None = None
+    max_requests: int | None = None
+    complete_range: bool | None = None
+    limit: int | None = None
 
 
 class PortfolioComparison(BaseModel):
@@ -101,6 +115,8 @@ def create_app(engine=None) -> FastAPI:
         raise RuntimeError("Catalog invalid: " + "; ".join(errors))
     by_id = {s["id"]: s for s in catalog["series"]}
     supported = {sid for sid, s in by_id.items() if s["status"] == "mapped" and s["provider"] in PROVIDER_CODES}
+    maintenance = MaintenanceManager(db)
+    market_registry = instruments()
 
     @app.get("/api/health")
     def health():
@@ -178,6 +194,47 @@ def create_app(engine=None) -> FastAPI:
                             "be copied to separate storage to survive disk failure."),
         }
 
+    def require_dashboard_action(request: Request, marker: str | None) -> None:
+        # JSON + custom header enforce a browser CORS preflight for cross-origin
+        # requests. A cross-site form or embedded page cannot schedule imports.
+        if marker != "dashboard":
+            raise HTTPException(403, "Dashboard action header required")
+        origin = request.headers.get("origin")
+        if origin:
+            from urllib.parse import urlsplit
+            parsed = urlsplit(origin)
+            if parsed.scheme not in ("http", "https") or parsed.netloc != request.headers.get("host"):
+                raise HTTPException(403, "Cross-origin maintenance request rejected")
+        if request.headers.get("sec-fetch-site") == "cross-site":
+            raise HTTPException(403, "Cross-site maintenance request rejected")
+
+    @app.get("/api/maintenance")
+    def maintenance_status():
+        return maintenance.list()
+
+    @app.post("/api/maintenance", status_code=202)
+    def start_maintenance(command: MaintenanceCommand, request: Request,
+                          x_gcm_action: str | None = Header(default=None)):
+        require_dashboard_action(request, x_gcm_action)
+        values = command.model_dump(exclude_none=True)
+        action = values.pop("action")
+        try:
+            return maintenance.submit(action, values,
+                valid_sources=supported, valid_markets=set(market_registry))
+        except BusyMaintenance:
+            raise HTTPException(409, "Another data operation is already running") from None
+        except ValueError:
+            raise HTTPException(422, "Invalid data operation or source selection") from None
+
+    @app.post("/api/maintenance/{job_id}/cancel", status_code=202)
+    def cancel_maintenance(job_id: str, request: Request,
+                           x_gcm_action: str | None = Header(default=None)):
+        require_dashboard_action(request, x_gcm_action)
+        try:
+            return maintenance.cancel(job_id)
+        except ValueError:
+            raise HTTPException(409, "This data operation is not active") from None
+
     @app.get("/api/source-coverage")
     def source_coverage():
         """Complete safe inventory of all mapped macro, market and ECB FX histories."""
@@ -211,8 +268,6 @@ def create_app(engine=None) -> FastAPI:
         if item is None:
             raise HTTPException(404, "Unknown series")
         return item
-
-    market_registry = instruments()
 
     @app.get("/api/earnings/sec-filers")
     def sec_filer_earnings():

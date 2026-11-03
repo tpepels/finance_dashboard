@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 import logging
 from os import environ
 from pathlib import Path
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from typing import AsyncIterator
 
 from fastapi import FastAPI
@@ -18,6 +18,9 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.engine import Engine
 
 log = logging.getLogger(__name__)
+
+# Manual browser actions and scheduled refreshes never overlap network writes.
+maintenance_network_lock = Lock()
 
 
 def enabled(name: str, default: str = "0") -> bool:
@@ -41,62 +44,63 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
     from .worker import refresh_all, refresh_market_all
 
     while not stopped.is_set():
-        if refresh_wisesheets:
+        with maintenance_network_lock:
+            if refresh_wisesheets:
+                try:
+                    from .wisesheets_local import refresh_local_wisesheets
+                    refresh_local_wisesheets()
+                except Exception:
+                    log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
             try:
-                from .wisesheets_local import refresh_local_wisesheets
-                refresh_local_wisesheets()
+                macro_failures = refresh_all(engine)
+                if macro_failures:
+                    log.warning("%d macro sources failed; retained last successful observations",
+                                macro_failures)
+                if include_markets and not stopped.is_set():
+                    market_failures = refresh_market_all(engine)
+                    if market_failures:
+                        log.warning("%d market/FX sources failed; retained last successful observations",
+                                    market_failures)
             except Exception:
-                log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
-        try:
-            macro_failures = refresh_all(engine)
-            if macro_failures:
-                log.warning("%d macro sources failed; retained last successful observations",
-                            macro_failures)
-            if include_markets and not stopped.is_set():
-                market_failures = refresh_market_all(engine)
-                if market_failures:
-                    log.warning("%d market/FX sources failed; retained last successful observations",
-                                market_failures)
-        except Exception:
-            # A malformed provider response must not terminate the API or
-            # silently kill refresh. Do not log URLs containing API keys.
-            log.error("Background refresh cycle aborted (error redacted); preserving previous data")
-        if enabled("FINANCE_VINTAGE_REFRESH", "1") and not stopped.is_set():
-            try:
-                from .vintage import capture_previous_month
-                outcome = capture_previous_month()
-                if outcome["errors"]:
-                    log.warning("Historical ALFRED monthly collection partially failed; "
-                                "existing verified vintages retained")
-                elif outcome["status"] == "complete":
-                    log.info("Completed ALFRED month-end capture for %s",
-                             outcome["asof"])
-            except Exception:
-                log.warning("ALFRED month-end capture failed; source API credentials redacted")
-        if enabled("FINANCE_SEC_HOLDINGS_REFRESH", "0") and not stopped.is_set():
-            try:
-                from .sec_holdings_sync import collect_if_due
-                result=collect_if_due()
-                if result["status"] == "partial":
-                    log.warning("Official SEC N-PORT refresh partially failed; retaining stored filings")
-                elif result["status"] == "complete":
-                    log.info("Official SEC N-PORT monthly report collection completed")
-            except Exception:
-                log.warning("SEC N-PORT collection failed; preserving verified historical filings")
-        if enabled("FINANCE_AUTO_BACKUP", "1") and not stopped.is_set():
-            try:
-                from .backup import backup_local, source_database_path
-                backup_local(
-                    Path(environ.get("FINANCE_BACKUP_DIR", "/data/backups")),
-                    source_db=source_database_path(),
-                    earnings_snapshot=Path(environ.get(
-                        "WISESHEETS_SNAPSHOT_PATH",
-                        "/data/wisesheets/sec_filer_profit.json")),
-                    keep=int(environ.get("FINANCE_BACKUP_KEEP", "14")),
-                )
-                log.info("Verified SQLite online backup created")
-            except Exception:
-                log.warning("SQLite online backup failed; latest verified backups retained")
+                # A malformed provider response must not terminate the API or
+                # silently kill refresh. Do not log URLs containing API keys.
+                log.error("Background refresh cycle aborted (error redacted); preserving previous data")
+            if enabled("FINANCE_VINTAGE_REFRESH", "1") and not stopped.is_set():
+                try:
+                    from .vintage import capture_previous_month
+                    outcome = capture_previous_month()
+                    if outcome["errors"]:
+                        log.warning("Historical ALFRED monthly collection partially failed; "
+                                    "existing verified vintages retained")
+                    elif outcome["status"] == "complete":
+                        log.info("Completed ALFRED month-end capture for %s",
+                                 outcome["asof"])
+                except Exception:
+                    log.warning("ALFRED month-end capture failed; source API credentials redacted")
+            if enabled("FINANCE_SEC_HOLDINGS_REFRESH", "0") and not stopped.is_set():
+                try:
+                    from .sec_holdings_sync import collect_if_due
+                    result=collect_if_due()
+                    if result["status"] == "partial":
+                        log.warning("Official SEC N-PORT refresh partially failed; retaining stored filings")
+                    elif result["status"] == "complete":
+                        log.info("Official SEC N-PORT monthly report collection completed")
+                except Exception:
+                    log.warning("SEC N-PORT collection failed; preserving verified historical filings")
+            if enabled("FINANCE_AUTO_BACKUP", "1") and not stopped.is_set():
+                try:
+                    from .backup import backup_local, source_database_path
+                    backup_local(
+                        Path(environ.get("FINANCE_BACKUP_DIR", "/data/backups")),
+                        source_db=source_database_path(),
+                        earnings_snapshot=Path(environ.get(
+                            "WISESHEETS_SNAPSHOT_PATH",
+                            "/data/wisesheets/sec_filer_profit.json")),
+                        keep=int(environ.get("FINANCE_BACKUP_KEEP", "14")),
+                    )
+                    log.info("Verified SQLite online backup created")
+                except Exception:
+                    log.warning("SQLite online backup failed; latest verified backups retained")
         if stopped.wait(interval_seconds):
             break
 

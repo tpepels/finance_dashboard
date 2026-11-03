@@ -19,7 +19,8 @@ log = logging.getLogger(__name__)
 
 
 def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
-                series_ids: set[str] | None = None) -> int:
+                series_ids: set[str] | None = None, progress=None,
+                stopped=None) -> int:
     failures = 0
     client = ProviderRouter()
     try:
@@ -35,17 +36,20 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                     return 1
             try:
                 service = IngestionService(engine, client)
-                for series_id in client.supported_ids():
-                    if series_ids is not None and series_id not in series_ids:
-                        continue
-                    if providers is not None and client.definitions[series_id]["provider"] not in providers:
-                        continue
+                chosen = [sid for sid in client.supported_ids()
+                          if (series_ids is None or sid in series_ids)
+                          and (providers is None or client.definitions[sid]["provider"] in providers)]
+                for index, series_id in enumerate(chosen, 1):
+                    if stopped is not None and stopped.is_set():
+                        break
                     try:
                         report = service.refresh(series_id, full=full)
                         log.info("refreshed: %s", json.dumps(report))
                     except Exception:
                         failures += 1
                         log.error("macro refresh failed: %s (provider error redacted to protect credentials)", series_id)
+                    if progress is not None:
+                        progress(index, len(chosen), series_id)
             finally:
                 if engine.dialect.name == "postgresql":
                     conn.execute(text("SELECT pg_advisory_unlock(75390812)"))
@@ -54,7 +58,9 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
     return failures
 
 
-def refresh_market_all(engine) -> int:
+def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
+                       currencies: set[str] | None = None,
+                       progress=None, stopped=None) -> int:
     """Full-history EOD adjustment refresh plus overlapping ECB currency history.
 
     A provider failure remains visible and does not destroy last-known-good
@@ -69,19 +75,34 @@ def refresh_market_all(engine) -> int:
     try:
         service = MarketIngestionService(engine, yahoo, ecb)
         # FX first: market queries can convert to EUR as soon as prices arrive.
-        for currency in ("USD", "GBP", "CHF"):
+        fx = sorted(currencies if currencies is not None else ("USD", "GBP", "CHF"))
+        market = sorted(instrument_ids if instrument_ids is not None else instruments())
+        total = len(fx) + len(market)
+        completed = 0
+        for currency in fx:
+            if stopped is not None and stopped.is_set():
+                break
             try:
                 log.info("fx refresh: %s", json.dumps(service.refresh_fx(currency)))
             except Exception:
                 failures += 1
                 log.error("fx refresh failed: %s (source error redacted)", currency)
-        for sid in sorted(instruments()):
-            try:
-                log.info("market refresh: %s", json.dumps(service.refresh_instrument(sid)))
-            except Exception:
-                failures += 1
-                log.error("market refresh failed: %s (source error redacted)", sid)
-            time.sleep(0.15)  # avoid tight request bursts on the unofficial API
+            completed += 1
+            if progress is not None:
+                progress(completed, total, "FX:" + currency)
+        if stopped is None or not stopped.is_set():
+            for sid in market:
+                if stopped is not None and stopped.is_set():
+                    break
+                try:
+                    log.info("market refresh: %s", json.dumps(service.refresh_instrument(sid)))
+                except Exception:
+                    failures += 1
+                    log.error("market refresh failed: %s (source error redacted)", sid)
+                completed += 1
+                if progress is not None:
+                    progress(completed, total, sid)
+                time.sleep(0.15)  # avoid tight request bursts on the unofficial API
     finally:
         yahoo.close()
         ecb.close()
