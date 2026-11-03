@@ -10,7 +10,8 @@
 - [35 scientific analysis specifications](docs/PHASE1_ANALYSIS_SPECIFICATIONS.md) — variables, original methodology, reproducible formulas, alternatives, validity, interpretation and 49 scholarly/statistical references.
 - [Phase 1 visualization contract](docs/PHASE1_VISUALIZATION_CONTRACT.md) — complete per-graph geography/series/chart type/method, saved research views, accessibility, monitoring and independent recession/shock/recovery overlays.
 - [Approved critical Phase 1 coherence/free-source review](docs/PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) — binding six-story editorial structure, five reclassifications, five new scientific questions and no-fee source rule.
-- [Primary-source discoveries for four unresolved free datasets](docs/PHASE1_FREE_DATA_SOURCE_DISCOVERY.md) — plus free academic equity/sovereign-bond returns, JST macrohistory, Taiwanese original open-licensed issuer-profit CSVs, Japanese original EDINET/secondary JSON and the prohibition on unauthorized MSCI chart scraping.
+- [Historical no-fee source discoveries](docs/PHASE1_FREE_DATA_SOURCE_DISCOVERY.md) — academic return histories and original government, fund and company filings.
+- [Accessibility-first follow-up research](docs/PHASE1_ACCESSIBILITY_FIRST_DATA_SEARCH.md) — publicly documented MSCI NETR JSON, historical iShares AJAX holdings, global company web/MCP access, Bloomberg LEGATRUU source identifiers, with actual download verification still open.
 - [Pre-redesign roadmap archive](docs/archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md) — prior operational fixes/empirical evidence; historical only.
 
 ## Existing implementation (preserved, not the approved product)
