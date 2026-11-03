@@ -17,10 +17,14 @@ from .service import IngestionService
 log = logging.getLogger(__name__)
 
 
-def refresh_all(engine, full: bool = False, providers: set[str] | None = None) -> int:
+def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
+                series_ids: set[str] | None = None) -> int:
     failures = 0
     client = ProviderRouter()
     try:
+        unknown = series_ids - set(client.supported_ids()) if series_ids is not None else set()
+        if unknown:
+            raise ValueError("Unknown series IDs: " + ", ".join(sorted(unknown)))
         with engine.connect() as conn:
             # PostgreSQL advisory lock stops two scheduled workers changing one series concurrently.
             if engine.dialect.name == "postgresql":
@@ -31,6 +35,8 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None) -
             try:
                 service = IngestionService(engine, client)
                 for series_id in client.supported_ids():
+                    if series_ids is not None and series_id not in series_ids:
+                        continue
                     if providers is not None and client.definitions[series_id]["provider"] not in providers:
                         continue
                     try:
@@ -81,7 +87,7 @@ def refresh_market_all(engine) -> int:
     return failures
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true", help="Perform one bounded refresh")
     parser.add_argument("--market-only", action="store_true", help="Only refresh all market instruments and ECB FX")
@@ -89,21 +95,30 @@ def main() -> int:
     parser.add_argument("--full", action="store_true", help="Refetch complete history for each series")
     parser.add_argument("--provider", choices=sorted(PROVIDER_CODES),
                         action="append", help="Limit refresh to named provider (repeatable)")
+    parser.add_argument("--series", action="append",
+                        help="Refresh exactly this canonical macro series (repeatable)")
     parser.add_argument("--interval-seconds", type=int, default=int(os.getenv("REFRESH_INTERVAL_SECONDS", "86400")))
-    args = parser.parse_args()
-    if args.market_only and (args.macro_only or args.provider):
-        parser.error("--market-only cannot be combined with --macro-only or --provider")
+    args = parser.parse_args(argv)
+    if args.market_only and (args.macro_only or args.provider or args.series):
+        parser.error("--market-only cannot be combined with --macro-only, --provider or --series")
+    if args.series:
+        known = set(ProviderRouter().supported_ids())
+        unknown = set(args.series) - known
+        if unknown:
+            parser.error("Unknown mapped source: " + ", ".join(sorted(unknown)))
     if args.interval_seconds < 3600:
         parser.error("interval must be at least 3600 seconds")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)  # API keys in URLs must not enter logs
     engine = make_engine()
     providers = set(args.provider) if args.provider else None
+    selected = set(args.series) if args.series else None
     def refresh_cycle():
         errors = 0
         if not args.market_only:
-            errors += refresh_all(engine, full=args.full, providers=providers)
-        if not args.macro_only and providers is None:
+            errors += refresh_all(engine, full=args.full, providers=providers,
+                                  series_ids=selected)
+        if not args.macro_only and providers is None and selected is None:
             errors += refresh_market_all(engine)
         return errors
 
