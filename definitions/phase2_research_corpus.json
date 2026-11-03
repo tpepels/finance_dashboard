@@ -1,0 +1,1208 @@
+{
+  "schema_version": 1,
+  "approved_phase1_version": "2026-11-03",
+  "phase": "phase2",
+  "status": "source_inventory_not_empirically_verified",
+  "notes": "These records list source methods and prior code references, not actual retrieved histories; never mark an analysis complete solely because existing_series_references is nonempty.",
+  "original_sources": [
+    {
+      "id": "S01",
+      "label": "OECD Composite Leading Indicators dataset/method",
+      "url": "https://www.oecd.org/en/data/datasets/oecd-composite-leading-indicators-clis.html"
+    },
+    {
+      "id": "S02",
+      "label": "NBER Business Cycle Dating chronology",
+      "url": "https://www.nber.org/research/business-cycle-dating"
+    },
+    {
+      "id": "S03",
+      "label": "OECD national accounts and quarterly real GDP",
+      "url": "https://www.oecd.org/en/data/datasets/gdp-and-non-financial-accounts.html"
+    },
+    {
+      "id": "S04",
+      "label": "Federal Reserve G.17 industrial production, including diffusion tables",
+      "url": "https://www.federalreserve.gov/releases/g17/Current/ipdisk/alltables.htm"
+    },
+    {
+      "id": "S05",
+      "label": "Estrella & Mishkin (1995), Predicting U.S. Recessions, NBER w5379; published 1998",
+      "url": "https://www.nber.org/papers/w5379"
+    },
+    {
+      "id": "S06",
+      "label": "FRED SAHMREALTIME release and formula",
+      "url": "https://alfred.stlouisfed.org/series?seid=SAHMREALTIME"
+    },
+    {
+      "id": "S07",
+      "label": "FRED ALFRED realtime vintage API and availability",
+      "url": "https://fred.stlouisfed.org/docs/api/fred/realtime_period.html"
+    },
+    {
+      "id": "S08",
+      "label": "IMF World Economic Outlook: annual actuals/forecasts and variable codes",
+      "url": "https://data.imf.org/Datasets/WEO"
+    },
+    {
+      "id": "S09",
+      "label": "World Bank WDI indicator metadata (real growth/current GDP)",
+      "url": "https://databank.worldbank.org/metadataglossary/all/series/viewall?search=value"
+    },
+    {
+      "id": "S10",
+      "label": "BEA National Income and Product Accounts tables",
+      "url": "https://www.bea.gov/data/gdp/gross-domestic-product"
+    },
+    {
+      "id": "S11",
+      "label": "Federal Reserve Bank of New York: Effective Federal Funds Rate",
+      "url": "https://www.newyorkfed.org/markets/reference-rates/effr"
+    },
+    {
+      "id": "S12",
+      "label": "ECB FM.D.U2.EUR.4F.KR.DFR.LEV deposit facility official rate",
+      "url": "https://data.ecb.europa.eu/data/datasets/FM/FM.D.U2.EUR.4F.KR.DFR.LEV"
+    },
+    {
+      "id": "S13",
+      "label": "Bank of Japan main time-series codes for overnight call rates and FX",
+      "url": "https://www.stat-search.boj.or.jp/info/nme_Mdframe_en.html"
+    },
+    {
+      "id": "S14",
+      "label": "Federal Reserve H.15 Selected Interest Rates",
+      "url": "https://www.federalreserve.gov/datadownload/choose.aspx?rel=h15"
+    },
+    {
+      "id": "S15",
+      "label": "FRED T10YIE and matched DGS10/DFII10",
+      "url": "https://fred.stlouisfed.org/series/T10YIE"
+    },
+    {
+      "id": "S16",
+      "label": "BIS Credit-to-GDP gaps original definition and data portal",
+      "url": "https://data.bis.org/topics/CREDIT_GAPS"
+    },
+    {
+      "id": "S17",
+      "label": "BIS Debt Service Ratios original definition and limitations",
+      "url": "https://data.bis.org/topics/DSR"
+    },
+    {
+      "id": "S18",
+      "label": "Federal Reserve household debt-service ratio methodology (different universe)",
+      "url": "https://www.federalreserve.gov/releases/dsr/about.htm"
+    },
+    {
+      "id": "S19",
+      "label": "Drehmann & Juselius (2013), Early Warning Indicators, BIS Working Paper 421",
+      "url": "https://www.bis.org/publ/work421.pdf"
+    },
+    {
+      "id": "S20",
+      "label": "Chicago Fed NFCI / ANFCI published series",
+      "url": "https://www.chicagofed.org/research/data/nfci/about"
+    },
+    {
+      "id": "S21",
+      "label": "Office of Financial Research Financial Stress Index",
+      "url": "https://www.financialresearch.gov/financial-stress-index/"
+    },
+    {
+      "id": "S22",
+      "label": "FRED ICE BofA High Yield OAS BAMLH0A0HYM2 (licence constraints)",
+      "url": "https://alfred.stlouisfed.org/series?seid=BAMLH0A0HYM2"
+    },
+    {
+      "id": "S23",
+      "label": "Federal Reserve Financial Stability Report 2026 framework",
+      "url": "https://www.federalreserve.gov/publications/2026-may-financial-stability-report-overview.htm"
+    },
+    {
+      "id": "S24",
+      "label": "Robert J Shiller original data (CAPE, earnings, dividends, CPI)",
+      "url": "https://www.econ.yale.edu/~shiller/data.htm"
+    },
+    {
+      "id": "S25",
+      "label": "Campbell & Shiller (2001), Valuation Ratios and Long-Run Outlook, NBER w8221",
+      "url": "https://www.nber.org/papers/w8221"
+    },
+    {
+      "id": "S26",
+      "label": "BEA (2026), Returns for Domestic Nonfinancial Business Q1/Q2/Q3",
+      "url": "https://apps.bea.gov/scb/issues/2026/05-may/0526-domestic-returns.htm"
+    },
+    {
+      "id": "S27",
+      "label": "MSCI indexes: GIMI, fundamental data, country/earnings methodology",
+      "url": "https://www.msci.com/indexes/index-resources/index-methodology"
+    },
+    {
+      "id": "S28",
+      "label": "Fama & French (1992), Cross-Section of Expected Returns",
+      "url": "https://doi.org/10.1111/j.1540-6261.1992.tb04398.x"
+    },
+    {
+      "id": "S29",
+      "label": "OECD (2024) Labour income and productivity, price-deflator alignment",
+      "url": "https://www.oecd.org/en/publications/oecd-compendium-of-productivity-indicators-2024_b96cd88a-en/full-report/component-9.html"
+    },
+    {
+      "id": "S30",
+      "label": "BLS original nonfarm labour productivity/compensation via FRED",
+      "url": "https://fred.stlouisfed.org/series/OPHNFB"
+    },
+    {
+      "id": "S31",
+      "label": "OECD 2025 national IOT original value-added components",
+      "url": "https://www.oecd.org/en/data/datasets/input-output-tables.html"
+    },
+    {
+      "id": "S32",
+      "label": "OECD Structural Analysis Database STAN (industry capital and labour)",
+      "url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html"
+    },
+    {
+      "id": "S33",
+      "label": "Rotta & Kumar (2024), Was Marx right? 43-country WIOD accounting paper",
+      "url": "https://doi.org/10.1016/j.strueco.2023.12.001"
+    },
+    {
+      "id": "S34",
+      "label": "OECD Inter-Country Input-Output (ICIO) 2025",
+      "url": "https://www.oecd.org/en/data/datasets/inter-country-input-output-tables.html"
+    },
+    {
+      "id": "S35",
+      "label": "Federal Reserve Distributional Financial Accounts original table and methods",
+      "url": "https://www.federalreserve.gov/releases/z1/dataviz/dfa/index.html"
+    },
+    {
+      "id": "S36",
+      "label": "MSCI Global Investable Market Indexes methodology",
+      "url": "https://www.msci.com/indexes/documents/methodology/1_MSCI_Global_Investable_Market_Indexes_Methodology_20260331.pdf"
+    },
+    {
+      "id": "S37",
+      "label": "GLEIF ultimate parent accounting consolidation links",
+      "url": "https://www.gleif.org/en/lei-data/access-and-use-lei-data/level-2-data-who-owns-whom"
+    },
+    {
+      "id": "S38",
+      "label": "Markowitz (1952), Portfolio Selection",
+      "url": "https://doi.org/10.1111/j.1540-6261.1952.tb01525.x"
+    },
+    {
+      "id": "S39",
+      "label": "Kenneth R French developed/emerging return libraries",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/Ken.French/data_library.html"
+    },
+    {
+      "id": "S40",
+      "label": "IMF balance of payments dataset BPM6/BPM7 accounts",
+      "url": "https://data.imf.org/Datasets/BOP"
+    },
+    {
+      "id": "S41",
+      "label": "SEC Form N-PORT official source",
+      "url": "https://www.sec.gov/data-research/sec-markets-data/form-n-port-data-sets"
+    },
+    {
+      "id": "S42",
+      "label": "Brinson Hood & Beebower (1986), Determinants of Portfolio Performance",
+      "url": "https://doi.org/10.2469/faj.v42.n4.39"
+    },
+    {
+      "id": "S43",
+      "label": "World Bank original Commodity Markets Pink Sheet historical monthly commodity prices",
+      "url": "https://www.worldbank.org/en/research/commodity-markets"
+    },
+    {
+      "id": "S44",
+      "label": "BIS original Residential Property Price indices (country/quarter)",
+      "url": "https://data.bis.org/topics/RPP"
+    },
+    {
+      "id": "S45",
+      "label": "BIS Commercial Property Prices, original market-specific reported indexes",
+      "url": "https://data.bis.org/topics/CPP"
+    },
+    {
+      "id": "S46",
+      "label": "US Federal Reserve Financial Accounts Z.1 original sector balance sheets",
+      "url": "https://www.federalreserve.gov/datadownload/choose.aspx?rel=z1"
+    },
+    {
+      "id": "S47",
+      "label": "World Inequality Database original national income and wealth data/methodology",
+      "url": "https://wid.world/data/"
+    },
+    {
+      "id": "S48",
+      "label": "UNU-WIDER World Income Inequality Database and Companion methodology",
+      "url": "https://www.wider.unu.edu/database/world-income-inequality-database-wiid"
+    },
+    {
+      "id": "S49",
+      "label": "OECD original Trade in Value Added (TiVA) publisher methods and variables",
+      "url": "https://www.oecd.org/en/data/datasets/trade-in-value-added.html"
+    }
+  ],
+  "analyses": [
+    {
+      "id": "C01",
+      "title": "Are real activity and leading indicators turning?",
+      "primary_method_sources": [
+        "S01",
+        "S03",
+        "S04"
+      ],
+      "existing_series_references": [
+        "gdp.real_growth.us",
+        "gdp.real_growth.eu",
+        "gdp.real_growth.jp"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py",
+        "src/finance_dashboard/research.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "CLI series and same-country IP/unemployment not in mapped macro definitions",
+      "fallback_options": []
+    },
+    {
+      "id": "C02",
+      "title": "Do the yield curve and Sahm Rule agree about recession risks?",
+      "primary_method_sources": [
+        "S05",
+        "S06",
+        "S02",
+        "S07",
+        "S10"
+      ],
+      "existing_series_references": [
+        "rates.us.treasury_10y_3m_spread",
+        "recession.us.sahm"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py",
+        "src/finance_dashboard/vintage.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "As-of series release-date and NBER chronology not proven by two mapped current/revised series",
+      "fallback_options": []
+    },
+    {
+      "id": "C03",
+      "title": "Is real growth converging internationally?",
+      "primary_method_sources": [
+        "S08",
+        "S09"
+      ],
+      "existing_series_references": [
+        "gdp.real_growth.world",
+        "gdp.real_growth.us",
+        "gdp.real_growth.eu",
+        "gdp.real_growth.cn",
+        "gdp.real_growth.in",
+        "gdp.real_growth.jp"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Current real GDP growth mapped; WEO actual/forecast and publication vintages not verified",
+      "fallback_options": []
+    },
+    {
+      "id": "C05",
+      "title": "How persistent are economic shocks and recoveries?",
+      "primary_method_sources": [
+        "S02",
+        "S10",
+        "S04"
+      ],
+      "existing_series_references": [
+        "gdp.real_growth.us"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/research.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Real GDP output levels, monthly IP and employment recovery baselines not mapped",
+      "fallback_options": []
+    },
+    {
+      "id": "C06",
+      "title": "Are inflation and commodity shocks affecting global growth?",
+      "primary_method_sources": [
+        "S08",
+        "S43"
+      ],
+      "existing_series_references": [
+        "gdp.real_growth.world",
+        "gdp.real_growth.us",
+        "gdp.real_growth.eu",
+        "gdp.real_growth.jp"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "IMF PCPIPCH and World Bank commodity series (except gold) not mapped",
+      "fallback_options": []
+    },
+    {
+      "id": "M01",
+      "title": "How are monetary policy settings diverging?",
+      "primary_method_sources": [
+        "S11",
+        "S12",
+        "S13"
+      ],
+      "existing_series_references": [
+        "policy_rate.us.bis",
+        "policy_rate.ea.bis",
+        "policy_rate.jp.bis",
+        "policy_rate.ea.ecb_dfr",
+        "policy_rate.us.fed_upper"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "BIS harmonized series and Fed upper-bound differ from exact overnight instruments; source matching needed",
+      "fallback_options": []
+    },
+    {
+      "id": "M02",
+      "title": "Do real yields or inflation compensation explain discount-rate movements?",
+      "primary_method_sources": [
+        "S10",
+        "S14",
+        "S15"
+      ],
+      "existing_series_references": [
+        "bond.us.real_10y"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Nominal DGS10, TIPS breakeven T10YIE and original decomposition not mapped",
+      "fallback_options": []
+    },
+    {
+      "id": "M04",
+      "title": "Are currency movements coinciding with monetary divergence?",
+      "primary_method_sources": [
+        "S12",
+        "S13"
+      ],
+      "existing_series_references": [
+        "policy_rate.us.bis",
+        "policy_rate.ea.bis",
+        "policy_rate.jp.bis"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/market.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "FX market source exists separately, cross-currency historical validity not established",
+      "fallback_options": []
+    },
+    {
+      "id": "F01",
+      "title": "Is private credit growing faster than national income?",
+      "primary_method_sources": [
+        "S16"
+      ],
+      "existing_series_references": [
+        "credit_gap.us.bis",
+        "credit_gap.ea.bis",
+        "credit_gap.jp.bis",
+        "credit.world.private_gdp_gap_coverage"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/bis.py",
+        "src/finance_dashboard/world_credit.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Only three gap countries mapped; credit stock/GDP input and worldwide concept not established",
+      "fallback_options": []
+    },
+    {
+      "id": "F02",
+      "title": "Are private-debt service burdens rising in each economy?",
+      "primary_method_sources": [
+        "S17",
+        "S18"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Original BIS DSR household/corporate/total series absent",
+      "fallback_options": []
+    },
+    {
+      "id": "F03",
+      "title": "Do credit and debt-service early-warning signals coincide?",
+      "primary_method_sources": [
+        "S19",
+        "S16",
+        "S17"
+      ],
+      "existing_series_references": [
+        "credit_gap.us.bis",
+        "credit_gap.ea.bis",
+        "credit_gap.jp.bis"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/bis.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "National BIS credit gap mapped; DSR original measures and crisis validation absent",
+      "fallback_options": []
+    },
+    {
+      "id": "F04",
+      "title": "Are observable markets already under stress?",
+      "primary_method_sources": [
+        "S20",
+        "S21",
+        "S22"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "OFR/Chicago Fed original financial stress and credit spread series absent",
+      "fallback_options": []
+    },
+    {
+      "id": "F05",
+      "title": "Which balance-sheet sectors carry leverage vulnerabilities?",
+      "primary_method_sources": [
+        "S23",
+        "S16",
+        "S08"
+      ],
+      "existing_series_references": [
+        "fiscal.world.public_debt"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Borrower-sector leverage and comparable private/public debt records incomplete",
+      "fallback_options": []
+    },
+    {
+      "id": "F06",
+      "title": "Do property-market valuations compound credit vulnerabilities?",
+      "primary_method_sources": [
+        "S44",
+        "S45",
+        "S16",
+        "S17",
+        "S23"
+      ],
+      "existing_series_references": [
+        "credit_gap.us.bis",
+        "credit_gap.ea.bis",
+        "credit_gap.jp.bis"
+      ],
+      "existing_adapter_references": [],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "BIS RPP/CPP and matched CPI series not mapped",
+      "fallback_options": []
+    },
+    {
+      "id": "F07",
+      "title": "Are nonbank leverage and short-term funding raising fragility?",
+      "primary_method_sources": [
+        "S46",
+        "S21",
+        "S23"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Fed Z.1 detailed NBFI funding and leverage series not mapped",
+      "fallback_options": []
+    },
+    {
+      "id": "V01",
+      "title": "Are US equity prices historically stretched relative to fundamentals?",
+      "primary_method_sources": [
+        "S24",
+        "S25"
+      ],
+      "existing_series_references": [
+        "valuation.us.cape",
+        "bond.us.real_10y"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "CAPE mapped; original monthly Shiller data and real-yield sample alignment require evidence",
+      "fallback_options": []
+    },
+    {
+      "id": "V02",
+      "title": "Do replacement-cost Q ratios corroborate earnings valuations?",
+      "primary_method_sources": [
+        "S24",
+        "S26"
+      ],
+      "existing_series_references": [
+        "valuation.us.tobins_q"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/remaining_sources.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Only BEA Q1 mapped; exact published Q2/Q3 and component data absent",
+      "fallback_options": []
+    },
+    {
+      "id": "V03",
+      "title": "Can equity valuation levels be compared across global regions?",
+      "primary_method_sources": [
+        "S27",
+        "S25",
+        "S28"
+      ],
+      "existing_series_references": [
+        "valuation.world.global_trailing_pe",
+        "valuation.world.global_earnings_yield"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Single Siblis worldwide ratio is not comparable regional index vendor valuation panel",
+      "fallback_options": []
+    },
+    {
+      "id": "V05",
+      "title": "Do valuation–forward-return relationships survive regime and horizon changes?",
+      "primary_method_sources": [
+        "S25",
+        "S07"
+      ],
+      "existing_series_references": [
+        "valuation.us.cape",
+        "equity.world.msci_acwi_netr_usd"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/vintage_backtest.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "CAPE + index return refs do not prove matured 10-year as-of total-return outcomes",
+      "fallback_options": []
+    },
+    {
+      "id": "L01",
+      "title": "Is average labour compensation matching productivity in the same sector?",
+      "primary_method_sources": [
+        "S29",
+        "S30"
+      ],
+      "existing_series_references": [
+        "labour.us.nonfarm_productivity",
+        "labour.us.nonfarm_hourly_comp",
+        "prices.us.nonfarm_output_deflator",
+        "labour.us.nonfarm_real_compensation_cpi"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "US nonfarm source trio mapped; sector-matched global OECD series not yet mapped",
+      "fallback_options": []
+    },
+    {
+      "id": "L02",
+      "title": "How is value added divided between labour and other components?",
+      "primary_method_sources": [
+        "S31",
+        "S32"
+      ],
+      "existing_series_references": [
+        "labour.us.pwt_labour_share",
+        "labour.jp.pwt_labour_share",
+        "labour.de.pwt_labour_share",
+        "labour.fr.pwt_labour_share",
+        "labour.it.pwt_labour_share",
+        "labour.us.nonfarm_labour_share_index"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "PWT labour-share variants present; matched S11 GVA, operating surplus and self-employment imputation absent",
+      "fallback_options": []
+    },
+    {
+      "id": "L03",
+      "title": "Are corporate net surplus and productive capital evolving together?",
+      "primary_method_sources": [
+        "S32",
+        "S31",
+        "S26"
+      ],
+      "existing_series_references": [
+        "profit.eu27.nonfinancial_gross_surplus_value_added",
+        "profit.oecd38.corporate_gross_surplus_gdp"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/oecd_corporate.py",
+        "src/finance_dashboard/eurostat_corporate.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Corporate gross operating surplus ratios are not net surplus/current-cost productive capital stock",
+      "fallback_options": []
+    },
+    {
+      "id": "L04",
+      "title": "How sensitive are Marxian surplus and profit estimates to theoretical assumptions?",
+      "primary_method_sources": [
+        "S33",
+        "S31",
+        "S32",
+        "S34"
+      ],
+      "existing_series_references": [
+        "profit.eu27.nonfinancial_gross_surplus_value_added",
+        "profit.oecd38.corporate_gross_surplus_gdp"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/marx_accounts.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "OECD accounts module exists; exact theoretical s/v and s/(c+v) methodology inputs not established",
+      "fallback_options": []
+    },
+    {
+      "id": "L05",
+      "title": "How concentrated is household financial wealth?",
+      "primary_method_sources": [
+        "S35"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Official Fed DFA distribution groups original series not in mapped macro catalogue",
+      "fallback_options": []
+    },
+    {
+      "id": "L07",
+      "title": "What are the trends in global income and wealth inequality?",
+      "primary_method_sources": [
+        "S47",
+        "S48",
+        "S35"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "WID and UNU-WIDER original historical series not mapped",
+      "fallback_options": []
+    },
+    {
+      "id": "G01",
+      "title": "How much of ACWI market capitalization is concentrated in the largest constituents?",
+      "primary_method_sources": [
+        "S36"
+      ],
+      "existing_series_references": [
+        "concentration.global.msci_acwi_published_top10"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/concentration_snapshots.py",
+        "src/finance_dashboard/sec_holdings_sync.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Sparse official MSCI top-ten mapped; continuous issuer weights and VT source coverage/identity not audited",
+      "fallback_options": [
+        {
+          "tier": "first",
+          "label": "VT SEC original quarterly holdings",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "Vanguard Total World Fund issuer concentration",
+          "frequency": "Q",
+          "data_verified": false
+        },
+        {
+          "tier": "second",
+          "label": "Original dated FTSE/MSCI index factsheet snapshots",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "Dated index concentration snapshot",
+          "frequency": "irregular",
+          "data_verified": false
+        }
+      ]
+    },
+    {
+      "id": "G02",
+      "title": "How does investable equity geographic weight differ from economic size?",
+      "primary_method_sources": [
+        "S36",
+        "S09"
+      ],
+      "existing_series_references": [
+        "valuation.world.listed_market_cap_usd",
+        "valuation.world.listed_market_cap_world_gdp"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Domestic listed capital and world GDP mapped; actual free-float index-country weights absent",
+      "fallback_options": []
+    },
+    {
+      "id": "G03",
+      "title": "How large are worldwide consolidated listed-company profits relative to world output?",
+      "primary_method_sources": [
+        "S36",
+        "S09",
+        "S37"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [
+        "src/finance_dashboard/wisesheets.py",
+        "src/finance_dashboard/wisesheets_local.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "SEC filer profit sample is not global ultimate-parent consolidated income coverage",
+      "fallback_options": [
+        {
+          "tier": "first",
+          "label": "OECD/UN S11 corporate operating surplus",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "Non-financial corporate operating-surplus share, not global listed net profit",
+          "frequency": "A",
+          "data_verified": false
+        },
+        {
+          "tier": "second",
+          "label": "Eurostat S11 gross profit share",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "EU non-financial corporate GOS/GVA",
+          "frequency": "A",
+          "data_verified": false
+        }
+      ]
+    },
+    {
+      "id": "G05",
+      "title": "Do cross-border financial imbalances and private credit grow together?",
+      "primary_method_sources": [
+        "S40",
+        "S16",
+        "S09"
+      ],
+      "existing_series_references": [
+        "credit.world.private_gdp_gap",
+        "credit.world.private_gdp_gap_coverage"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/world_credit.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "World constructed gap is not BOP current-account / NIIP; true international balance rows absent",
+      "fallback_options": []
+    },
+    {
+      "id": "G06",
+      "title": "How do cross-border supply chains transmit value-added exposure?",
+      "primary_method_sources": [
+        "S34",
+        "S49"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Original OECD ICIO full matrices and TiVA source keys absent",
+      "fallback_options": []
+    },
+    {
+      "id": "P01",
+      "title": "What are the actual economic exposures inside ETF holdings?",
+      "primary_method_sources": [
+        "S41",
+        "S36"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [
+        "src/finance_dashboard/sec_holdings.py",
+        "src/finance_dashboard/sec_holdings_sync.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "SEC NPORT component exists but exact 2015–2026 European UCITS history and as-of metadata not verified",
+      "fallback_options": [
+        {
+          "tier": "first",
+          "label": "Named UCITS annual and half-year investment schedules",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "Actual fund-reported historical holdings",
+          "frequency": "A/H",
+          "data_verified": false
+        },
+        {
+          "tier": "second",
+          "label": "VT SEC historical holdings (independent global reference)",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "US global fund reference, not European UCITS holdings",
+          "frequency": "Q",
+          "data_verified": false
+        }
+      ]
+    },
+    {
+      "id": "P02",
+      "title": "Have stocks, bonds and gold provided stable diversification?",
+      "primary_method_sources": [
+        "S38",
+        "S36"
+      ],
+      "existing_series_references": [
+        "equity.world.msci_acwi_netr_usd",
+        "gold.usd.monthly_average",
+        "gold.world.equity_correlation"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/remaining_sources.py",
+        "src/finance_dashboard/portfolio_risk.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Gold/ACWI refs exist; original global bond total return and exact monthly/FX alignment absent",
+      "fallback_options": [
+        {
+          "tier": "first",
+          "label": "VT and BNDW actual fund total returns plus separately named gold spot",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "Fund NAV total-return diversification, not index NETR",
+          "frequency": "M",
+          "data_verified": false
+        },
+        {
+          "tier": "second",
+          "label": "French monthly equity portfolio + Swinkels sovereign returns + World Bank gold",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "Academic equities and country sovereign bonds/gold spot",
+          "frequency": "M",
+          "data_verified": false
+        },
+        {
+          "tier": "third",
+          "label": "Original ICE global bond annual published 2015–2024",
+          "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+          "valid_concept": "Annual ICE broad-market global bond returns",
+          "frequency": "A",
+          "data_verified": false
+        }
+      ]
+    },
+    {
+      "id": "P03",
+      "title": "How have official recessions and market crises affected actual portfolio drawdowns?",
+      "primary_method_sources": [
+        "S02",
+        "S38",
+        "S36"
+      ],
+      "existing_series_references": [
+        "equity.world.msci_acwi_netr_usd"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/portfolio_risk.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "An index level reference is not a portfolio total-return drawdown event corpus",
+      "fallback_options": []
+    },
+    {
+      "id": "P04",
+      "title": "How sensitive is a portfolio to inflation, rates and currency shifts?",
+      "primary_method_sources": [
+        "S14",
+        "S36"
+      ],
+      "existing_series_references": [
+        "bond.us.real_10y"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/portfolio_risk.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Yield refs exist, but complete portfolio duration/FX/inflation source rows missing",
+      "fallback_options": []
+    },
+    {
+      "id": "P05",
+      "title": "How do rebalancing policies change historical portfolio resilience?",
+      "primary_method_sources": [
+        "S38",
+        "S42"
+      ],
+      "existing_series_references": [],
+      "existing_adapter_references": [
+        "src/finance_dashboard/portfolio_risk.py"
+      ],
+      "evidence_status": "not_empirically_verified_for_phase2",
+      "coverage": {
+        "first_observation": null,
+        "last_observation": null,
+        "periods_observed": null,
+        "publication_vintages": null,
+        "asof_utc": null
+      },
+      "outstanding_evidence": "Market/portfolio code exists; original as-of holdings, dated cost/fund history evidence not complete",
+      "fallback_options": []
+    }
+  ]
+}
