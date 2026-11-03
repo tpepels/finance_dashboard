@@ -28,6 +28,7 @@ CIK = re.compile(r"^[0-9]{1,10}$")
 SERIES = re.compile(r"^S[0-9]{9}$")
 SEC_FILE = re.compile(r"^[A-Za-z0-9_.-]+\.xml$")
 SEC_PRIMARY = re.compile(r"^[A-Za-z0-9_.-]+\.(?:xml|html|htm)$", re.IGNORECASE)
+ACCESSION = re.compile(r"^[0-9]{10}-[0-9]{2}-[0-9]{6}$")
 SEC_SERIES_IN_INDEX = re.compile(r"\bS[0-9]{9}\b")
 PAGE = re.compile(r"^CIK[0-9]{10}-submissions-[0-9]+\.json$")
 
@@ -206,10 +207,14 @@ def import_fund(mapping: dict, *, client: httpx.Client,
     seen = set()
     for item in sorted(rows, key=lambda row: (row["date"], row["accession"]), reverse=True):
         accession, doc = item["accession"], item["document"]
-        if (accession in seen or item["form"] not in ("NPORT-P", "NPORT-P/A")
-            or item["date"] < earliest.isoformat()
-            or not isinstance(doc, str) or not SEC_PRIMARY.fullmatch(doc)):
+        if (not isinstance(accession, str) or not ACCESSION.fullmatch(accession)
+            or accession in seen or item["form"] not in ("NPORT-P", "NPORT-P/A")
+            or item["date"] < earliest.isoformat()):
             continue
+        # The submission's primaryDocument can be HTML or missing; the actual
+        # downloadable XML filename is discovered from the official index.
+        if not isinstance(doc, str) or not SEC_PRIMARY.fullmatch(doc):
+            item = {**item, "document": ""}
         seen.add(accession)
         candidates.append(item)
 
@@ -242,6 +247,10 @@ def import_fund(mapping: dict, *, client: httpx.Client,
             index_url = _official_index_url(cik, accession)
             try:
                 response = client.get(index_url, timeout=25)
+                if response.status_code == 404:
+                    # EDGAR accepts either -index.htm or -index.html depending
+                    # on submission era. Never follow arbitrary redirects.
+                    response = client.get(index_url[:-3] + "html", timeout=25)
                 response.raise_for_status()
                 xml_name, evidence = _xml_in_filing_index(
                     response.text, expected, primary)
@@ -360,6 +369,8 @@ def check_sec_sources(*, config: Path = CONFIG,
                 continue
             try:
                 response = source.get(index_url, timeout=25)
+                if response.status_code == 404 and index_url.endswith("-index.htm"):
+                    response = source.get(index_url[:-3] + "html", timeout=25)
                 response.raise_for_status()
                 xml, method = _xml_in_filing_index(
                     response.text, mapping["series_id"], "primary_doc.html")
