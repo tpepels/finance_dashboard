@@ -17,7 +17,7 @@ from finance_dashboard.api import create_app
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import Base
 from finance_dashboard.maintenance import MaintenanceManager
-from finance_dashboard.developer_logs import read_events
+from finance_dashboard.developer_logs import read_events, record_event as real_record_event
 from finance_dashboard.standalone import maintenance_network_lock, manual_sync_pending
 from finance_dashboard.vintage import (
     SOURCES as VINTAGE_SOURCES, VintageError, backfill_batch as real_backfill_batch,
@@ -169,6 +169,48 @@ class MaintenanceApiTests(unittest.TestCase):
             result = self.wait(job.json()["id"])
         self.assertEqual(result["status"], "complete")
         self.assertFalse(manual_sync_pending.is_set())
+
+    def test_job_remains_active_until_finished_journal_attempt_returns(self):
+        for journal_fails in (False, True):
+            with self.subTest(journal_fails=journal_fails):
+                finishing = Event()
+                release = Event()
+                attempted = Event()
+                def controlled_record(scope, event, **fields):
+                    if scope == "sync" and event == "finished":
+                        finishing.set()
+                        try:
+                            if not release.wait(2):
+                                raise AssertionError("Test did not release finished journal attempt")
+                            if journal_fails:
+                                raise OSError("Diagnostic writer unavailable")
+                            real_record_event(scope, event, **fields)
+                        finally:
+                            attempted.set()
+                    else:
+                        real_record_event(scope, event, **fields)
+                with patch("finance_dashboard.maintenance.record_event", side_effect=controlled_record), \
+                     patch("finance_dashboard.worker.refresh_all", return_value=0):
+                    response = self.client.post("/api/maintenance", json=ACTION, headers=HEADERS)
+                    self.assertEqual(response.status_code, 202, response.text)
+                    job_id = response.json()["id"]
+                    try:
+                        self.assertTrue(finishing.wait(2))
+                        state = self.client.get("/api/maintenance").json()
+                        job = next(x for x in state["jobs"] if x["id"] == job_id)
+                        self.assertEqual(job["status"], "running")
+                        self.assertEqual(state["active_job_id"], job_id)
+                        self.assertFalse(any(x.get("event") == "finished" and
+                                             x.get("job_id") == job_id for x in read_events()))
+                    finally:
+                        release.set()
+                        self.assertTrue(attempted.wait(2))
+                        done = self.wait(job_id)
+                    self.assertEqual(done["status"], "complete")
+                    self.assertIsNone(self.client.get("/api/maintenance").json()["active_job_id"])
+                    finished = [x for x in read_events() if x.get("event") == "finished"
+                                and x.get("job_id") == job_id]
+                    self.assertEqual(bool(finished), not journal_fails)
 
     def test_single_fx_selection_never_implicitly_schedules_all_assets(self):
         calls=[]

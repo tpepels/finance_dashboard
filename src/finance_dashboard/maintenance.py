@@ -242,6 +242,16 @@ class MaintenanceManager:
         except Exception:
             status, failure = "failed", "internal_error"
         finally:
+            # Complete the best-effort journal attempt before readers can see
+            # a terminal job. Keep diagnostic I/O outside the job-state lock.
+            try:
+                record_event("sync", "finished",
+                             level="info" if status == "complete" else "warning",
+                             action=action, job_id=job_id, status=status,
+                             reason=failure)
+            except Exception:
+                # A diagnostic failure must not strand the active job.
+                pass
             # Publish terminal state and clear the active slot atomically so
             # polling clients never see a finished job that is still busy.
             with self._mutex:
@@ -255,10 +265,6 @@ class MaintenanceManager:
                     self._active = None
                 manual_sync_pending.clear()
                 _save_atomic(self.path, self._jobs)
-            record_event("sync", "finished",
-                         level="info" if status == "complete" else "warning",
-                         action=action, job_id=job_id, status=status,
-                         reason=failure)
 
     def _progress(self, job_id: str, count: int, total: int | None,
                   item: str | None = None) -> None:
