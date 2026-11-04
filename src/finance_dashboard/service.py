@@ -104,9 +104,9 @@ class IngestionService:
         # Overlap makes backward revisions detectable; first run fetches full history.
         overlap = 120 if definition["frequency"] == "D" else 730 if definition["frequency"] == "M" else 365 * 5
         # These publishers deliver complete snapshots, cached across each run.
-        # Reconcile every delivered year: old estimates can change outside the
+        # Reconcile every delivered period: old estimates can change outside the
         # ordinary overlap, and filtering would save no upstream requests.
-        complete_snapshot = definition["provider"] in {"WID", "OECD_TIVA"}
+        complete_snapshot = definition["provider"] in {"WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS"}
         start = None if full or complete_snapshot or last_date is None else last_date - timedelta(days=overlap)
         run_id = str(uuid4())
         with Session(self.engine) as session, session.begin():

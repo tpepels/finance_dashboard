@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "source": "SEC_NPORT_PRIMARY_XML",
+  "instrument_id": "vt",
+  "fund_name": "Vanguard Total World Stock ETF",
+  "sec_cik": "857489",
+  "sec_series_id": "S000022482",
+  "accession": "0000857489-26-000275",
+  "source_url": "https://www.sec.gov/Archives/edgar/data/857489/000085748926000275/primary_doc.xml",
+  "holdings_date": "2026-07-31",
+  "eligible_after_buffer_utc": "2026-09-30T00:00:00+00:00",
+  "available_at_utc": "2026-09-30T00:00:00+00:00",
+  "sec_acceptance_timestamp_unverified_timezone": "2026-09-28T20:27:40.000Z",
+  "availability_time_quality": "conservative_filing_date_plus_two_days_not_actual_public_dissemination",
+  "reporting_semantics": "N-PORT fund holdings as of holdings_date; public actual public dissemination time is NOT verified; eligibility uses official filingDate plus two calendar days.",
+  "country_semantics": "N-PORT C.5.a issuer country of organization for non-derivative long investments; derivative market value/issuer does not identify the underlying country exposure. NOT confidential C.5.b ultimate risk/economic exposure. Fund-of-funds is not recursively look-through.",
+  "positions_reported": 10100,
+  "positions_unclassified": 0,
+  "positions_excluded_short_or_derivative": 26,
+  "reported_long_nav_percent": "100.239554917043",
+  "classified_long_nav_percent": "100.239554917043",
+  "unclassified_long_nav_percent": "0E-12",
+  "classified_fraction_of_reported_long": "1",
+  "complete_share_of_nav": false,
+  "countries": [
+    {
+      "country": "US",
+      "share_of_fund_nav_pct": "62.743169381358"
+    },
+    {
+      "country": "JP",
+      "share_of_fund_nav_pct": "5.786411365954"
+    },
+    {
+      "country": "GB",
+      "share_of_fund_nav_pct": "3.255308116363"
+    },
+    {
+      "country": "TW",
+      "share_of_fund_nav_pct": "3.053143629077"
+    },
+    {
+      "country": "CA",
+      "share_of_fund_nav_pct": "3.007622167969"
+    },
+    {
+      "country": "HK",
+      "share_of_fund_nav_pct": "2.434032730041"
+    },
+    {
+      "country": "KR",
+      "share_of_fund_nav_pct": "2.208152768263"
+    },
+    {
+      "country": "FR",
+      "share_of_fund_nav_pct": "1.980864213880"
+    },
+    {
+      "country": "CH",
+      "share_of_fund_nav_pct": "1.956049051295"
+    },
+    {
+      "country": "DE",
+      "share_of_fund_nav_pct": "1.807807518235"
+    },
+    {
+      "country": "IN",
+      "share_of_fund_nav_pct": "1.664383877435"
+    },
+    {
+      "country": "AU",
+      "share_of_fund_nav_pct": "1.606166385766"
+    },
+    {
+      "country": "NL",
+      "share_of_fund_nav_pct": "1.087747325554"
+    },
+    {
+      "country": "ES",
+      "share_of_fund_nav_pct": "0.838486982092"
+    },
+    {
+      "country": "IT",
+      "share_of_fund_nav_pct": "0.784597129336"
+    },
+    {
+      "country": "SE",
+      "share_of_fund_nav_pct": "0.770337009644"
+    },
+    {
+      "country": "CN",
+      "share_of_fund_nav_pct": "0.654934739270"
+    },
+    {
+      "country": "BR",
+      "share_of_fund_nav_pct": "0.424158854055"
+    },
+    {
+      "country": "SG",
+      "share_of_fund_nav_pct": "0.389962122748"
+    },
+    {
+      "country": "DK",
+      "share_of_fund_nav_pct": "0.376242574832"
+    },
+    {
+      "country": "ZA",
+      "share_of_fund_nav_pct": "0.360608817444"
+    },
+    {
+      "country": "IL",
+      "share_of_fund_nav_pct": "0.318068814203"
+    },
+    {
+      "country": "SA",
+      "share_of_fund_nav_pct": "0.302465871220"
+    },
+    {
+      "country": "BE",
+      "share_of_fund_nav_pct": "0.261392282218"
+    },
+    {
+      "country": "FI",
+      "share_of_fund_nav_pct": "0.245898980511"
+    },
+    {
+      "country": "MX",
+      "share_of_fund_nav_pct": "0.215896323618"
+    },
+    {
+      "country": "NO",
+      "share_of_fund_nav_pct": "0.193429165577"
+    },
+    {
+      "country": "MY",
+      "share_of_fund_nav_pct": "0.176243715469"
+    },
+    {
+      "country": "TH",
+      "share_of_fund_nav_pct": "0.170706885351"
+    },
+    {
+      "country": "AE",
+      "share_of_fund_nav_pct": "0.151889419295"
+    },
+    {
+      "country": "PL",
+      "share_of_fund_nav_pct": "0.143513473495"
+    },
+    {
+      "country": "TR",
+      "share_of_fund_nav_pct": "0.097053828898"
+    },
+    {
+      "country": "AT",
+      "share_of_fund_nav_pct": "0.096848582120"
+    },
+    {
+      "country": "GR",
+      "share_of_fund_nav_pct": "0.080720791408"
+    },
+    {
+      "country": "IE",
+      "share_of_fund_nav_pct": "0.078488326392"
+    },
+    {
+      "country": "ID",
+      "share_of_fund_nav_pct": "0.075830989885"
+    },
+    {
+      "country": "KW",
+      "share_of_fund_nav_pct": "0.072298607326"
+    },
+    {
+      "country": "CL",
+      "share_of_fund_nav_pct": "0.062505701711"
+    },
+    {
+      "country": "QA",
+      "share_of_fund_nav_pct": "0.060143742817"
+    },
+    {
+      "country": "NZ",
+      "share_of_fund_nav_pct": "0.055704080448"
+    },
+    {
+      "country": "PT",
+      "share_of_fund_nav_pct": "0.045172228622"
+    },
+    {
+      "country": "PH",
+      "share_of_fund_nav_pct": "0.045039171054"
+    },
+    {
+      "country": "HU",
+      "share_of_fund_nav_pct": "0.042121820734"
+    },
+    {
+      "country": "CZ",
+      "share_of_fund_nav_pct": "0.013667613681"
+    },
+    {
+      "country": "RO",
+      "share_of_fund_nav_pct": "0.013525443030"
+    },
+    {
+      "country": "CO",
+      "share_of_fund_nav_pct": "0.013496215076"
+    },
+    {
+      "country": "EG",
+      "share_of_fund_nav_pct": "0.009410731174"
+    },
+    {
+      "country": "IS",
+      "share_of_fund_nav_pct": "0.007833014551"
+    },
+    {
+      "country": "BM",
+      "share_of_fund_nav_pct": "0.000002336548"
+    }
+  ],
+  "xml_sha256": "fdc0c200cc005b5d43ca6d44fddeed6d19c29fe085c6c696a43e02adfed6b274",
+  "source_metadata_sha256": "f6587f340de8b7eb23641b4dbb1347356546b6b9254d2f4822ff5f2113df2c95",
+  "rights": "SEC public disseminated filings; third-party filing information subject to source terms"
+}

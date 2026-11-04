@@ -19,7 +19,9 @@ import time
 import httpx
 
 from .market import instruments
-from .sec_holdings import parse_nport, store_snapshot, HoldingsError
+from .sec_holdings import (parse_nport, store_snapshot, HoldingsError,
+                           store_source_bundle, read_position_source,
+                           reconcile_nport_aggregate)
 
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/"
 EDGAR_URL = "https://www.sec.gov/Archives/edgar/data/"
@@ -84,12 +86,14 @@ def _get_transient_retry(client: httpx.Client, url: str,
     raise AssertionError("Unreachable")
 
 
-def _get_json(client: httpx.Client, url: str) -> dict:
+def _get_json(client: httpx.Client, url: str, evidence: list | None=None) -> dict:
     response = _get_transient_retry(client, url, timeout=25)
     response.raise_for_status()
     data = response.json()
     if not isinstance(data,dict):
         raise HoldingsError("Malformed official SEC submissions page")
+    if evidence is not None:
+        evidence.append({"url":url,"body":response.content})
     return data
 
 
@@ -204,7 +208,8 @@ def import_fund(mapping: dict, *, client: httpx.Client,
     fund = mapping["instrument_id"]
     cik = mapping["cik"]
     expected = mapping["series_id"]
-    base=_get_json(client,SUBMISSIONS_URL+f"CIK{int(cik):010d}.json")
+    metadata_responses=[]
+    base=_get_json(client,SUBMISSIONS_URL+f"CIK{int(cik):010d}.json", metadata_responses)
     if str(int(base.get("cik","0"))) != str(int(cik)):
         raise HoldingsError("SEC registrant identity mismatch")
     rows = _rows(base)
@@ -215,7 +220,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
             continue
         if page.get("filingTo","9999-12-31") < earliest.isoformat():
             continue
-        payload=_get_json(client,SUBMISSIONS_URL+name)
+        payload=_get_json(client,SUBMISSIONS_URL+name, metadata_responses)
         rows.extend(_rows(payload))
         time.sleep(.2)
     candidates = []
@@ -317,6 +322,8 @@ def import_fund(mapping: dict, *, client: httpx.Client,
                                  accession=accession, filing_url=url,
                                  sec_metadata=metadata,
                                  expected_series_id=expected)
+            store_source_bundle(xml.content,sec_metadata=metadata,aggregate=filing,
+                                root=root,metadata_responses=metadata_responses)
             store_snapshot(filing, root=root)
             imported += 1
         except HoldingsError as exc:
@@ -474,6 +481,99 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
                       else "partial"),"funds":reports}
 
 
+
+def recover_fund_raw(mapping: dict, *, client: httpx.Client, root: Path,
+                     max_filings: int=50, stopped=None) -> dict:
+    """Recover exactly the stored original URLs, reconciling their immutable hashes."""
+    if not 1<=max_filings<=50:
+        raise HoldingsError("SEC raw recovery limited to 1–50 filings per fund")
+    fund=mapping["instrument_id"]
+    records=[]
+    for file in sorted((root/fund).glob("????-??-??--*.json")):
+        record=json.loads(file.read_text())
+        if (record.get("source")=="SEC_NPORT_PRIMARY_XML"
+            and record.get("sec_series_id")==mapping["series_id"]
+            and str(record.get("sec_cik"))==str(int(mapping["cik"]))):
+            records.append(record)
+    recovered=present=errors=0
+    halted=None
+    metadata_responses=[]
+    rows=None
+    for old in records[:max_filings]:
+        if stopped is not None and stopped.is_set():
+            break
+        try:
+            if read_position_source(root,fund,old["accession"])["status"]=="ready":
+                present+=1
+                continue
+            if rows is None:
+                base=_get_json(client,SUBMISSIONS_URL+f"CIK{int(mapping['cik']):010d}.json",metadata_responses)
+                if str(int(base.get("cik","0")))!=str(int(mapping["cik"])):
+                    raise HoldingsError("SEC registrant identity mismatch")
+                rows=_rows(base)
+                for page in base.get("filings",{}).get("files",[]):
+                    name=page.get("name","")
+                    if PAGE.fullmatch(name):
+                        rows.extend(_rows(_get_json(client,SUBMISSIONS_URL+name,metadata_responses)))
+                        time.sleep(.2)
+            found=[r for r in rows if r["accession"]==old["accession"]]
+            if len(found)!=1:
+                raise HoldingsError("Stored accession not uniquely verified by SEC metadata")
+            entry=found[0]
+            metadata={"cik":int(mapping["cik"]),"filings":{"recent":{
+                "accessionNumber":[entry["accession"]],"form":[entry["form"]],
+                "filingDate":[entry["date"]],"acceptanceDateTime":[entry["acceptance"]]}}}
+            # The parser checks SEC URL/CIK/accession and series before any file publication.
+            from .sec_holdings import SEC_ARCHIVE
+            match=SEC_ARCHIVE.fullmatch(old["source_url"])
+            if (not match or match.group(2)!=old["accession"].replace("-","")
+                or str(int(match.group(1)))!=str(int(mapping["cik"]))):
+                raise HoldingsError("Stored original SEC URL identity invalid")
+            response=_get_transient_retry(client,old["source_url"],timeout=45)
+            response.raise_for_status()
+            current=parse_nport(response.content,instrument_id=fund,accession=old["accession"],
+                filing_url=old["source_url"],sec_metadata=metadata,
+                expected_series_id=mapping["series_id"])
+            reconcile_nport_aggregate(current,old)
+            store_source_bundle(response.content,sec_metadata=metadata,aggregate=old,
+                                root=root,metadata_responses=metadata_responses)
+            recovered+=1
+            time.sleep(.25)
+        except httpx.HTTPStatusError as exc:
+            errors+=1
+            if exc.response.status_code in (400,401,403,429) or exc.response.status_code>=500:
+                halted=_candidate_status(exc.response.status_code)
+                break
+        except (HoldingsError,httpx.HTTPError,ValueError,KeyError):
+            errors+=1
+    return {"instrument_id":fund,"status":"blocked" if halted else
+            "complete" if errors==0 and recovered+present==len(records) else "partial",
+            "recovered":recovered,"already_present":present,"errors":errors,
+            "stored_filings":len(records),"unexamined":max(0,len(records)-max_filings),
+            "halted_reason":halted,"aggregate_records_modified":0}
+
+
+def recover_configured_raw(*, config: Path=CONFIG, root: Path|None=None,
+                           user_agent: str|None=None, max_filings_per_fund: int=50,
+                           progress=None, stopped=None) -> dict:
+    agent=user_agent or os.environ.get("SEC_USER_AGENT","")
+    if not agent or "@" not in agent or len(agent)<10:
+        return {"status":"disabled_missing_SEC_USER_AGENT","funds":[]}
+    mappings=read_verified_config(config)
+    target=root or Path(os.environ.get("FINANCE_HOLDINGS_DIR","/data/holdings"))
+    reports=[]
+    with httpx.Client(headers={"User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
+                      timeout=45,follow_redirects=False) as client:
+        for index,mapping in enumerate(mappings,1):
+            if stopped is not None and stopped.is_set():
+                break
+            reports.append(recover_fund_raw(mapping,client=client,root=target,
+                max_filings=max_filings_per_fund,stopped=stopped))
+            if progress is not None:
+                progress(index,len(mappings),mapping["instrument_id"])
+    return {"status":"complete" if len(reports)==len(mappings) and
+            all(r["status"]=="complete" for r in reports) else "partial","funds":reports}
+
 def collect_if_due(*, config: Path = CONFIG, root: Path | None = None,
                    today: date | None = None) -> dict:
     """Do not re-download the same SEC submissions on every daily refresh."""
@@ -507,7 +607,12 @@ def main() -> int:
     parser.add_argument("--limit",type=int,default=12)
     parser.add_argument("--check", action="store_true",
                         help="Verify official SEC fund indexes and XML links without downloading holdings")
+    parser.add_argument("--recover-raw",action="store_true",help="Recover original XML for existing immutable aggregates")
     args=parser.parse_args()
+    if args.recover_raw:
+        result=recover_configured_raw(config=args.config,root=args.root,max_filings_per_fund=args.limit)
+        print(json.dumps(result,indent=2))
+        return 0 if result["status"]=="complete" else 1
     if args.check:
         result=check_sec_sources(config=args.config)
         print(json.dumps(result,indent=2))

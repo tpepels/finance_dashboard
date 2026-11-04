@@ -278,7 +278,7 @@ class MaintenanceApiTests(unittest.TestCase):
             result = self.wait(response.json()["id"])
         self.assertEqual(result["status"], "complete")
         self.assertEqual(result["options"]["series_ids"], expected)
-        self.assertEqual(len(result["options"]["series_ids"]), 9)
+        self.assertEqual(len(result["options"]["series_ids"]), len(VINTAGE_SOURCES))
         backfill.assert_called_once()
         self.assertEqual(backfill.call_args.args[2], expected)
         availability.assert_called_once()

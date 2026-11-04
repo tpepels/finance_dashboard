@@ -101,10 +101,34 @@ class ReconcileTests(unittest.TestCase):
             self.assertEqual(item["stored_periods"], 2)
             self.assertEqual(item["mismatched_source_values"], [])
             self.assertEqual(item["source_sha256"], sha256((latest / "WID_data_US.csv").read_bytes()).hexdigest())
-            self.assertEqual(len(report["series"]), 45)
+            self.assertEqual(len(report["series"]), 61)
             self.assertFalse(report["whole_analysis_validated"])
             with sqlite3.connect(db) as connection:
                 self.assertEqual(connection.execute("SELECT count(*) FROM observation_versions").fetchone()[0], 3)
+
+    def test_repeated_immutable_wid_values_reuse_parsing_but_recheck_hashes_and_db(self):
+        from finance_dashboard import source_reconciliation as runtime
+        with runtime._WID_CACHE_LOCK:
+            runtime._WID_VALUES_CACHE.clear()
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            db = root / "history.db"
+            database(db)
+            folder = archive_wid(root)
+            sid = "inequality.us.pretax_income.top10"
+            add(db, sid, 2000, "0.40")
+            add(db, sid, 2024, "0.46")
+            with patch.object(runtime, "_parse_wid_values", wraps=runtime._parse_wid_values) as parser:
+                self.assertTrue(runtime.reconcile("sqlite:///" + str(db), root, [sid])["passed"])
+                self.assertTrue(runtime.reconcile("sqlite:///" + str(db), root, [sid])["passed"])
+                self.assertEqual(parser.call_count, 1)
+                add(db, sid, 2024, "0.47")
+                self.assertFalse(runtime.reconcile("sqlite:///" + str(db), root, [sid])["passed"])
+                self.assertEqual(parser.call_count, 1)
+                (folder / "WID_data_US.csv").write_text("corrupt original after caching")
+                result = runtime.reconcile("sqlite:///" + str(db), root, [sid])
+                self.assertFalse(result["passed"])
+                self.assertEqual(result["series"][0]["failure_code"], "source_hash_mismatch")
 
     def test_missing_mismatch_and_source_dropped_year_remain_explicit(self):
         # Missing data must not be interpolated and retained historical observations must not be erased.

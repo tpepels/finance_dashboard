@@ -45,6 +45,11 @@ SOURCES = {
         "frequency": "D", "maximum_age_days": 14,
         "reference": "https://fred.stlouisfed.org/series/DGS10",
     },
+    "DFII10": {
+        "name": "US real 10-year constant maturity Treasury yield",
+        "frequency": "D", "maximum_age_days": 14,
+        "reference": "https://fred.stlouisfed.org/series/DFII10",
+    },
     "T10YIE": {
         "name": "US market ten-year TIPS inflation breakeven",
         "frequency": "D", "maximum_age_days": 14,

@@ -335,5 +335,52 @@ class SecSyncTests(unittest.TestCase):
             self.assertEqual(disabled["status"],"disabled_missing_SEC_USER_AGENT")
 
 
+class SecRecoveryTests(unittest.TestCase):
+    def test_new_collection_preserves_exact_downloaded_metadata_bytes(self):
+        from finance_dashboard.sec_holdings import read_position_source
+        meta=payload("https://data.sec.gov")
+        original_metadata=json.dumps(meta,indent=3).encode()
+        def handler(request):
+            return (httpx.Response(200,content=original_metadata) if "data.sec.gov" in str(request.url)
+                    else httpx.Response(200,content=XML))
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result=import_fund({"instrument_id":"vt","cik":"1234567","series_id":"S000000001"},
+                                  client=client,root=root,max_filings=1)
+            self.assertEqual(result["status"],"complete")
+            facts=read_position_source(root,"vt",ACC)
+            bundle=root/"vt"/"sources"/ACC/facts["bundle_digest"]
+            self.assertEqual((bundle/"submissions-0.json").read_bytes(),original_metadata)
+
+    def test_raw_recovery_preserves_existing_immutable_aggregate_and_metadata_hash(self):
+        from finance_dashboard.sec_holdings_sync import recover_fund_raw
+        from finance_dashboard.sec_holdings import parse_nport, store_snapshot, read_position_source
+        meta=payload("https://data.sec.gov")
+        aggregate=parse_nport(XML,instrument_id="vt",accession=ACC,
+            filing_url="https://www.sec.gov/Archives/edgar/data/1234567/000123456726000123/primary_doc.xml",
+            sec_metadata={"cik":1234567,"old_full_source_response_marker":"preserve this original hash","filings":{"recent":{k:v for k,v in meta["filings"]["recent"].items() if k != "primaryDocument"}}},
+            expected_series_id="S000000001")
+        mapping={"instrument_id":"vt","cik":"1234567","series_id":"S000000001"}
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp);path=store_snapshot(aggregate,root=root);before=path.read_bytes()
+            def handler(request):
+                return (httpx.Response(200,json=meta) if "data.sec.gov" in str(request.url)
+                        else httpx.Response(200,content=XML))
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result=recover_fund_raw(mapping,client=client,root=root,max_filings=1)
+            self.assertEqual(result["recovered"],1)
+            self.assertEqual(path.read_bytes(),before)
+            self.assertEqual(read_position_source(root,"vt",ACC)["status"],"ready")
+            with httpx.Client(transport=httpx.MockTransport(lambda r:(httpx.Response(200,json=meta) if "data.sec.gov" in str(r.url) else httpx.Response(200,content=XML.replace(b"100000",b"100001"))))) as client:
+                # Missing a raw artifact forces recovery, changed originals must never be accepted.
+                import shutil
+                shutil.rmtree(root/"vt"/"sources")
+                result=recover_fund_raw(mapping,client=client,root=root,max_filings=1)
+            self.assertEqual(result["recovered"],0)
+            self.assertEqual(result["errors"],1)
+            self.assertEqual(path.read_bytes(),before)
+
+
 if __name__=="__main__":
     unittest.main()

@@ -21,14 +21,13 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertEqual(len(self.document["original_sources"]), 49)
         self.assertEqual(len({r["id"] for r in self.document["analyses"]}), 35)
 
-    def test_every_question_has_explicit_unverified_evidence_until_proven(self):
+    def test_every_question_has_requirements_instead_of_editable_certificates(self):
         for item in self.document["analyses"]:
-            self.assertEqual(item["evidence_status"],
-                             "not_empirically_verified_for_phase2")
+            self.assertNotIn("evidence_status", item)
+            self.assertNotIn("coverage", item)
             self.assertTrue(item["primary_method_sources"])
             self.assertTrue(item["outstanding_evidence"])
-            self.assertTrue(all(value is None for value in
-                                item["coverage"].values()))
+            self.assertTrue(item["comparison_contract"]["original_requirements"])
 
     def test_all_four_difficult_targets_have_original_fallback_methods(self):
         targets = {r["id"]: r for r in self.document["analyses"]}
@@ -62,44 +61,42 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertTrue(any("unknown source" in x for x in issues))
         self.assertTrue(any("pre-existing series" in x for x in issues))
 
-    def test_reject_false_complete_without_observations(self):
-        edited = copy.deepcopy(self.document)
-        edited["analyses"][0]["evidence_status"] = "fully_validated_comparative_corpus"
-        issues = validate_research_corpus(edited, self.series["series"])
-        self.assertTrue(any("requires actual dated source evidence" in x for x in issues))
-
-    def test_verified_coverage_rejects_invalid_dates_counts_and_naive_asof(self):
-        valid = {
-            "first_observation": "2025-01-01", "last_observation": "2026-01-01",
-            "periods_observed": 2, "publication_vintages": None,
-            "asof_utc": "2026-11-04T12:00:00+00:00",
-        }
+    def test_editable_certificates_are_rejected_even_with_plausible_dated_counts(self):
         for status in ("verified_source_data", "fully_validated_comparative_corpus"):
-            for field, value in (
-                ("first_observation", "not-a-date"),
-                ("first_observation", "2027-01-01"),
-                ("last_observation", "2026-02-30"),
-                ("periods_observed", True), ("periods_observed", 0),
-                ("asof_utc", "not-a-timestamp"),
-                ("asof_utc", "2026-11-04T12:00:00"),
-            ):
-                with self.subTest(status=status, field=field, value=value):
-                    edited = copy.deepcopy(self.document)
-                    edited["analyses"][0]["evidence_status"] = status
-                    edited["analyses"][0]["coverage"] = {**valid, field: value}
-                    issues = validate_research_corpus(edited, self.series["series"])
-                    self.assertTrue(any("requires actual dated source evidence" in x
-                                        for x in issues), issues)
+            edited = copy.deepcopy(self.document)
+            edited["analyses"][0]["evidence_status"] = status
+            edited["analyses"][0]["coverage"] = {
+                "first_observation": "2025-01-01", "last_observation": "2026-01-01",
+                "periods_observed": 2, "publication_vintages": 5,
+                "asof_utc": "2026-11-04T12:00:00Z",
+            }
+            issues = validate_research_corpus(edited, self.series["series"])
+            self.assertTrue(any("editable evidence certificate" in issue for issue in issues), issues)
+            report = research_corpus_report(edited, series_registry=self.series["series"])
+            self.assertEqual(report["fully_validated_analysis_count"], 0)
+            self.assertFalse(any(row["comparative_corpus_validated"] for row in report["analyses"]))
 
-    def test_verified_coverage_accepts_ordered_dates_and_aware_asof(self):
+    def test_requirement_and_variant_bindings_reject_unknown_or_mismatched_sources(self):
         edited = copy.deepcopy(self.document)
-        edited["analyses"][0]["evidence_status"] = "verified_source_data"
-        edited["analyses"][0]["coverage"] = {
-            "first_observation": "2025-01-01", "last_observation": "2026-01-01",
-            "periods_observed": 2, "publication_vintages": None,
-            "asof_utc": "2026-11-04T12:00:00Z",
-        }
-        self.assertEqual([], validate_research_corpus(edited, self.series["series"]))
+        m02 = next(row for row in edited["analyses"] if row["id"] == "M02")
+        m02["comparison_contract"]["original_requirements"][0]["expected"]["unit"] = "ratio"
+        m02["comparison_contract"]["variants"][0]["frequency"] = "M"
+        issues = validate_research_corpus(edited, self.series["series"])
+        self.assertTrue(any("native unit" in issue for issue in issues), issues)
+        self.assertTrue(any("native frequency" in issue for issue in issues), issues)
+        m02["comparison_contract"]["original_requirements"][0]["series_ids"] = ["imaginary"]
+        issues = validate_research_corpus(edited, self.series["series"])
+        self.assertTrue(any("requirement source" in issue for issue in issues), issues)
+
+    def test_source_period_counts_never_satisfy_first_publication_requirements(self):
+        observed = {"items": [{"family": "macro", "id": "bond.us.nominal_10y",
+            "stored_periods": 10000, "state": "available"}]}
+        report = research_corpus_report(self.document, observed, series_registry=self.series["series"])
+        m02 = next(row for row in report["analyses"] if row["id"] == "M02")
+        requirement = next(row for row in m02["requirements"] if row["role"] == "nominal_10y_yield")
+        self.assertFalse(requirement["accepted"])
+        self.assertFalse(requirement["first_publication_verified"])
+        self.assertEqual(report["fully_validated_analysis_count"], 0)
 
     def test_source_contracts_preserve_native_frequency_and_measurement_identity(self):
         registry = copy.deepcopy(self.series["series"])

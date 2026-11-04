@@ -100,5 +100,79 @@ class SecHoldingTests(unittest.TestCase):
         self.assertFalse(record["complete_share_of_nav"])
 
 
+class SecRawSourceTests(unittest.TestCase):
+    def test_original_bundle_preserves_native_positions_and_exact_metadata(self):
+        from finance_dashboard.sec_holdings import store_source_bundle, read_position_source
+        source = Path(__file__).parent / "fixtures/holdings/vt-2026-07-31-excerpt.xml"
+        meta = {"cik":857489,"filings":{"recent":{
+            "accessionNumber":["0000857489-26-000275"],"form":["NPORT-P"],
+            "filingDate":["2026-09-28"],"acceptanceDateTime":["2026-09-28T19:00:00"]}}}
+        url="https://www.sec.gov/Archives/edgar/data/857489/000085748926000275/primary_doc.xml"
+        original=source.read_bytes()
+        aggregate=parse_nport(original,instrument_id="vt",accession="0000857489-26-000275",
+            filing_url=url,sec_metadata=meta,expected_series_id="S000022482")
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            bundle=store_source_bundle(original,sec_metadata=meta,aggregate=aggregate,root=root)
+            self.assertEqual((bundle/"original.xml").read_bytes(),original)
+            self.assertEqual(json.loads((bundle/"metadata.json").read_text()),meta)
+            facts=read_position_source(root,"vt","0000857489-26-000275")
+            self.assertEqual(facts["status"],"ready")
+            position=facts["positions"][0]
+            self.assertEqual(position["name"],"Surgery Partners Inc")
+            self.assertEqual(position["lei"],"549300LC82HG33S19I03")
+            self.assertEqual(position["cusip"],"86881A100")
+            self.assertEqual(position["value_usd"],"992083.40000000")
+            self.assertEqual(position["quantity"],"64421.00000000")
+            self.assertEqual(position["quantity_unit"],"NS")
+            self.assertTrue(list(bundle.parent.joinpath("retrievals").glob("*.json")))
+            store_source_bundle(original,sec_metadata=meta,aggregate=aggregate,root=root)
+            self.assertEqual(len(list(bundle.parent.joinpath("retrievals").glob("*.json"))),2)
+            (bundle/"original.xml").write_bytes(b"damaged")
+            with self.assertRaisesRegex(HoldingsError,"inconsistent"):
+                read_position_source(root,"vt","0000857489-26-000275")
+
+    def test_receipts_select_a_b_a_and_corrupt_receipts_fail_closed(self):
+        from finance_dashboard.sec_holdings import store_source_bundle,read_position_source
+        aggregate=SecHoldingTests().parse()
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            first=store_source_bundle(xml(),sec_metadata=submission(),aggregate=aggregate,root=root)
+            revised={**submission(),"source_marker":"different current response"}
+            second=store_source_bundle(xml(),sec_metadata=revised,aggregate=aggregate,root=root)
+            self.assertNotEqual(first,second)
+            store_source_bundle(xml(),sec_metadata=submission(),aggregate=aggregate,root=root)
+            facts=read_position_source(root,"vt",ACCESSION)
+            self.assertEqual(facts["bundle_digest"],first.name)
+            receipts=sorted(first.parent.joinpath("retrievals").glob("*.json"))
+            receipts[-1].write_text("broken current receipt")
+            with self.assertRaisesRegex(HoldingsError,"receipt"):
+                read_position_source(root,"vt",ACCESSION)
+
+    def test_wrong_fund_manifest_is_rejected_even_with_updated_receipt_hash(self):
+        from hashlib import sha256
+        from finance_dashboard.sec_holdings import store_source_bundle,read_position_source
+        aggregate=SecHoldingTests().parse()
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            folder=store_source_bundle(xml(),sec_metadata=submission(),aggregate=aggregate,root=root)
+            manifest=json.loads((folder/"manifest.json").read_text())
+            manifest["instrument_id"]="bnd"
+            (folder/"manifest.json").write_text(json.dumps(manifest))
+            for path in folder.parent.joinpath("retrievals").glob("*.json"):
+                receipt=json.loads(path.read_text());receipt["manifest_sha256"]=sha256((folder/"manifest.json").read_bytes()).hexdigest()
+                path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(HoldingsError,"identity|inconsistent"):
+                read_position_source(root,"vt",ACCESSION)
+
+    def test_existing_aggregate_does_not_invent_security_positions(self):
+        from finance_dashboard.sec_holdings import read_position_source
+        with TemporaryDirectory() as tmp:
+            store_snapshot(SecHoldingTests().parse(),root=Path(tmp))
+            facts=read_position_source(Path(tmp),"vt",ACCESSION)
+            self.assertEqual(facts["status"],"missing_original_positions")
+            self.assertEqual(facts["positions"],[])
+
+
 if __name__=="__main__":
     unittest.main()

@@ -17,6 +17,7 @@ from .database import (
     FxIngestionRun, FxRateVersion,
 )
 from .oecd_tiva import TIVA_SERIES
+from .research_returns import SWINKELS_SERIES
 
 FX_CURRENCIES = ("USD", "GBP", "CHF")
 # Official BIS credit-to-GDP gaps release 2026-09-14 contains 2026-Q1
@@ -69,6 +70,18 @@ PUBLICATION_BOUNDS.update({
         ),
     }
     for identifier in TIVA_SERIES
+})
+# The immutable original Swinkels v6 workbook ends December 2022. Its
+# January 2023 scholarly dataset release is distinct from the 2025 repository
+# migration and does not establish any historical observation first release.
+PUBLICATION_BOUNDS.update({
+    identifier: {
+        "version": "Swinkels original dataset v6",
+        "released": date(2023, 1, 10),
+        "through": date(2022, 12, 1),
+        "url": "https://doi.org/10.25397/eur.8152748.v6",
+    }
+    for identifier in SWINKELS_SERIES
 })
 SAFE_ERROR_CODES = {
     "provider_http_400", "provider_http_401", "provider_http_403",

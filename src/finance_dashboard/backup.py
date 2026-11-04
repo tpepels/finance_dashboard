@@ -48,7 +48,10 @@ def _temp_in(parent: Path, suffix: str) -> Path:
 
 
 def _valid_database(path: Path) -> None:
-    with closing(sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)) as read:
+    # Completed backup-API snapshots contain all committed WAL contents.
+    # Immutable mode verifies sealed files on read-only/off-site media without
+    # creating sidecars. It must never be used to read the live source DB.
+    with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro&immutable=1", uri=True, timeout=30)) as read:
         row = read.execute("PRAGMA integrity_check").fetchone()
         if row is None or row[0] != "ok":
             raise ValueError("SQLite backup failed integrity_check")

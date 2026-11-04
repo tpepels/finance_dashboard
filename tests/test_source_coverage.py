@@ -269,6 +269,44 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertIsNone(rows[sid]["published_through"])
         self.assertFalse(rows[sid]["complete_for_pinned_release"])
 
+    def test_swinkels_fixed_v6_bounds_apply_to_each_native_country_method_only(self):
+        # A stale warning must recognise the frozen publisher edition without
+        # pretending that a 2022 return is a contemporary 2026 observation.
+        sovereign = [x["id"] for x in self.catalog if x["provider"] == "SWINKELS_RETURNS"]
+        self.assertEqual(len(sovereign), 10)
+        for sid in sovereign:
+            self.add_macro(sid, when=date(2022, 12, 1))
+        rows = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry, asof=date(2026, 11, 4))["items"]}
+        for sid in sovereign:
+            self.assertEqual(rows[sid]["state"], "available")
+            self.assertEqual(rows[sid]["latest_source_date"], "2022-12-01")
+            self.assertEqual(rows[sid]["published_through"], "2022-12-01")
+            self.assertEqual(rows[sid]["published_release_date"], "2023-01-10")
+            self.assertEqual(rows[sid]["published_release"], "Swinkels original dataset v6")
+            self.assertTrue(rows[sid]["complete_for_pinned_release"])
+
+    def test_sovereign_bounds_preserve_old_empty_failed_and_unpinned_equity_states(self):
+        old = "returns.swinkels.de.sovereign_10y_modelled_local"
+        failed = "returns.swinkels.jp.sovereign_10y_modelled_local"
+        absent = "returns.swinkels.fr.sovereign_10y_modelled_local"
+        equity = "returns.french.developed.market_total_usd"
+        self.add_macro(old, when=date(2022, 11, 1))
+        self.add_macro(failed, status="failed", when=date(2022, 12, 1), error="provider_http_503")
+        self.add_macro(equity, when=date(2022, 12, 1))
+        with patch.dict(os.environ, {"FINANCE_AUTO_REFRESH": "1"}):
+            rows = {x["id"]: x for x in build_coverage(
+                self.engine, self.catalog, self.registry, asof=date(2026, 11, 4))["items"]}
+        self.assertEqual(rows[old]["state"], "stale")
+        self.assertFalse(rows[old]["complete_for_pinned_release"])
+        self.assertEqual(rows[absent]["state"], "not_ingested")
+        self.assertFalse(rows[absent]["complete_for_pinned_release"])
+        self.assertEqual(rows[failed]["state"], "refresh_failed_with_data")
+        self.assertEqual(rows[failed]["last_failure_code"], "provider_http_503")
+        self.assertTrue(rows[failed]["complete_for_pinned_release"])
+        self.assertEqual(rows[equity]["state"], "stale")
+        self.assertIsNone(rows[equity]["published_through"])
+
     def test_annual_gap_diagnostic_does_not_label_revisions_as_missing_dates(self):
         sid = "labour.us.pwt_labour_share"
         self.add_macro(sid, when=date(2020,1,1))

@@ -24,12 +24,16 @@ from .risk_diagnostics import diagnostic_catalog, read_diagnostics, SCOPES as RI
 from .portfolio_risk import compare_market_histories
 from .vintage import SOURCES as VINTAGE_SOURCES, read_snapshot as read_alfred_snapshot, available_snapshots, latest_asof_reading
 from .vintage_backtest import walk_forward
-from .sec_holdings import list_holdings, HoldingsError
+from .sec_holdings import list_holdings, read_position_source, HoldingsError
+from .ucits_holdings import read_ucits_sources, UcitsHoldingsError
 from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCENARIOS as MARX_SCENARIOS, AccountingError
 
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .source_coverage import build_coverage
 from .research_corpus import load_research_corpus, validate_research_corpus, research_corpus_report
+from .comparative_corpus import build_comparative_corpus
+from .source_reconciliation import reconcile_session
+from .icio import read_icio_evidence
 from .maintenance import MaintenanceManager, BusyMaintenance
 from .developer_logs import read_events, recent_jobs, record_event
 from .database import MarketIngestionRun, FxIngestionRun
@@ -310,20 +314,34 @@ def create_app(engine=None) -> FastAPI:
     @app.get("/api/research-corpus")
     def source_research_corpus():
         """Phase 2 approved-question source evidence, with actual stored-source periods."""
+        return current_corpus_report()
+
+    @app.get("/api/source-evidence/icio")
+    def original_icio_evidence():
+        """Original matrix accounting evidence; no native cells or source request secrets."""
+        try:
+            return read_icio_evidence(Path(environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")))
+        except (OSError, ValueError, KeyError, TypeError):
+            raise HTTPException(422, "Original ICIO matrix evidence failed validation") from None
+
+    def current_corpus_report():
+        root = Path(environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence"))
+        ids = sorted({sid for item in research_sources["analyses"]
+                      for variant in item["comparison_contract"]["variants"] for sid in variant["series_ids"]})
+        with Session(db, autoflush=False) as session:
+            proof = reconcile_session(session, root, ids)
+            comparative = build_comparative_corpus(session, catalog["series"], research_sources,
+                evidence_root=root, source_proof=proof)
         return research_corpus_report(
             research_sources, build_coverage(db, catalog["series"], market_registry),
             vintages=available_snapshots(Path(environ.get(
                 "FINANCE_VINTAGE_DIR", "/data/vintages"))),
-            series_registry=catalog["series"])
+            series_registry=catalog["series"], comparative_evidence=comparative)
 
     @app.get("/api/research-corpus/{analysis_id}")
     def research_corpus_question(analysis_id: str):
         """Return explicit source references, missing evidence and fallbacks."""
-        report = research_corpus_report(
-            research_sources, build_coverage(db, catalog["series"], market_registry),
-            vintages=available_snapshots(Path(environ.get(
-                "FINANCE_VINTAGE_DIR", "/data/vintages"))),
-            series_registry=catalog["series"])
+        report = current_corpus_report()
         match = next((row for row in report["analyses"] if row["id"] == analysis_id), None)
         if match is None:
             raise HTTPException(404, "Unknown approved scientific question")
@@ -396,6 +414,21 @@ def create_app(engine=None) -> FastAPI:
             raise HTTPException(422, "Only pre-registered 6/12 month horizons are supported")
         return walk_forward(Path(environ.get("FINANCE_VINTAGE_DIR","/data/vintages")),
                             horizon=horizon_months)
+
+    @app.get("/api/holdings/ucits/sources")
+    def original_ucits_sources():
+        try:
+            return read_ucits_sources(Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings")))
+        except UcitsHoldingsError:
+            raise HTTPException(422, "Original UCITS source evidence failed validation") from None
+
+    @app.get("/api/holdings/{instrument_id:path}/positions")
+    def original_sec_positions(instrument_id: str, accession: str):
+        try:
+            return read_position_source(Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings")),
+                instrument_id, accession)
+        except HoldingsError:
+            raise HTTPException(422, "Original SEC position evidence failed validation") from None
 
     @app.get("/api/holdings/{instrument_id:path}")
     def dated_etf_holdings(instrument_id: str, asof: date | None = None):

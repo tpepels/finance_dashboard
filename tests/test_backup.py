@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 import sqlite3
+import subprocess
+import sys
 import tarfile
 from tempfile import TemporaryDirectory
 import unittest
@@ -12,6 +14,36 @@ from finance_dashboard.backup import backup_local, verify_manifest, _hash
 
 
 class LocalBackupTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "Read-only volume permissions require POSIX")
+    def test_sealed_wal_backup_verifies_on_readonly_media(self):
+        # A copied standalone WAL-mode database has no live WAL. Verification
+        # must also work on a read-only backup volume without creating sidecars.
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            folder = root / "readonly-volume"
+            folder.mkdir()
+            db = folder / "sealed backup.sqlite3"
+            with sqlite3.connect(db) as connection:
+                connection.execute("PRAGMA journal_mode=WAL")
+                connection.execute("CREATE TABLE source (value INTEGER)")
+                connection.execute("INSERT INTO source VALUES (42)")
+            connection.close()
+            root.chmod(0o755)
+            db.chmod(0o444)
+            folder.chmod(0o555)
+            try:
+                # Root bypasses normal file permissions. Drop privileges only
+                # in the child so the test exercises genuinely read-only media.
+                code = ("import os; " +
+                    ("os.setgroups([]); os.setgid(65534); os.setuid(65534); " if os.geteuid() == 0 else "") +
+                    "from pathlib import Path; from finance_dashboard.backup import _valid_database; " +
+                    "_valid_database(Path(" + repr(str(db)) + "))")
+                result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(sorted(p.name for p in folder.iterdir()), [db.name])
+            finally:
+                folder.chmod(0o755)
+
     def test_original_source_files_and_metadata_survive_verified_backup(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

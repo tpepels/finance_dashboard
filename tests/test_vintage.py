@@ -18,6 +18,23 @@ from finance_dashboard.vintage_backtest import (
 
 
 class VintageTests(unittest.TestCase):
+    def test_m02_real_yield_has_same_genuine_asof_contract_as_nominal_and_breakeven(self):
+        self.assertIn("DFII10", SOURCES)
+        calls = []
+        def response(request):
+            calls.append(request)
+            self.assertEqual(request.url.params["series_id"], "DFII10")
+            self.assertEqual(request.url.params["realtime_start"], "2020-03-31")
+            self.assertEqual(request.url.params["realtime_end"], "2020-03-31")
+            return httpx.Response(200, json={"observations": [
+                {"date": "2020-03-31", "value": "-0.07",
+                 "realtime_start": "2020-03-31", "realtime_end": "2020-04-01"}]})
+        with TemporaryDirectory() as temp, httpx.Client(transport=httpx.MockTransport(response)) as client:
+            result = fetch_snapshot("DFII10", date(2020, 3, 31),
+                api_key="syntheticsecret", client=client, root=Path(temp))
+            self.assertEqual(result["observations"], [{"date": "2020-03-31", "value": "-0.07"}])
+            self.assertEqual(len(calls), 1)
+
     def test_real_time_query_uses_same_asof_boundary_and_never_logs_key(self):
         requests = []
         def handler(request):

@@ -1,0 +1,8 @@
+Fund Holdings as of,03/Nov/2026
+
+Ticker,Name,Sector,Asset Class,Market Value,Weight (%),Notional Value,Shares,Price,Location,Exchange,Market Currency
+AAPL,APPLE,Information Technology,Equity,"8,162,601,236.40",5.43,"8,162,601,236.40","24,593,556.00",331.90,United States,NASDAQ,USD
+NVDA,NVIDIA,Information Technology,Equity,"7,956,774,410.75",5.29,"7,956,774,410.75","38,496,175.00",206.69,United States,NASDAQ,USD
+USD,USD CASH,Cash and/or Derivatives,Cash,"271,172,153.63",0.18,"271,172,153.63","271,172,154.00",100.00,United States,-,USD
+EUR,EUR/USD,Cash and/or Derivatives,FX,-19.50,0.00,-19.50,"2,785,354.00",1.00,United States,-,USD
+TPZ6,TOPIX INDEX DEC 26,Cash and/or Derivatives,Futures,0.00,0.00,"44,928,713.43",181.00,24.82,-,Osaka Securities Exchange,JPY

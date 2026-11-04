@@ -7,7 +7,7 @@ that the source measurements, historical vintages, or complete analysis exist.
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -26,15 +26,8 @@ APPROVED_ANALYSIS_IDS = frozenset((
     "P01", "P02", "P03", "P04", "P05",
 ))
 SUPPORTING_METHODS = {"C04", "M03", "V04", "L06", "G04"}
-EVIDENCE_STATUSES = {
-    "not_empirically_verified_for_phase2",
-    "verified_source_data",
-    "fully_validated_comparative_corpus",
-}
-REQUIRED_COVERAGE = {
-    "first_observation", "last_observation", "periods_observed",
-    "publication_vintages", "asof_utc",
-}
+TEMPORAL_REQUIREMENTS = {"current_source_snapshot", "source_asof", "first_publication"}
+COMPARISON_CHECKS = {"yield_decomposition", "share_partition_100", "tiva_value_added_share"}
 # Only reviewed catalogue metadata and safe census fields enter the API.
 # Ingestion request URLs and upstream error text may contain credentials.
 SOURCE_CONTRACT_FIELDS = (
@@ -57,13 +50,106 @@ def load_research_corpus(root: Path = DEFAULT_ROOT) -> dict[str, Any]:
         return json.load(handle)
 
 
+def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> list[str]:
+    errors = []
+    if not isinstance(contract, dict) or contract.get("version") != 1:
+        return [f"{ident}: comparison requirement contract version 1 required"]
+    if not str(contract.get("specification", "")).startswith("docs/PHASE1_ANALYSIS_SPECIFICATIONS.md#"):
+        errors.append(f"{ident}: approved scientific specification anchor required")
+    requirements = contract.get("original_requirements")
+    variants = contract.get("variants")
+    if not isinstance(requirements, list) or not requirements or not isinstance(variants, list):
+        return errors + [f"{ident}: original requirements and variants must be arrays"]
+    roles = set()
+    for requirement in requirements:
+        if not isinstance(requirement, dict):
+            errors.append(f"{ident}: malformed original requirement")
+            continue
+        role = requirement.get("role")
+        if not isinstance(role, str) or not role.strip() or role in roles:
+            errors.append(f"{ident}: unique named requirement roles required")
+        else:
+            roles.add(role)
+        if not str(requirement.get("description", "")).strip():
+            errors.append(f"{ident}: requirement source definition required")
+        ids = requirement.get("series_ids")
+        if not isinstance(ids, list) or any(not isinstance(sid, str) for sid in ids):
+            errors.append(f"{ident}: requirement source bindings must be an array")
+            continue
+        if len(ids) != len(set(ids)) or any(sid not in registry for sid in ids):
+            errors.append(f"{ident}: unknown/duplicate requirement source")
+        if requirement.get("requirement_status") != ("mapped" if ids else "missing"):
+            errors.append(f"{ident}: requirement mapped state must follow source bindings")
+        if requirement.get("temporal_requirement") not in TEMPORAL_REQUIREMENTS:
+            errors.append(f"{ident}: explicit temporal evidence requirement required")
+        expected = requirement.get("expected")
+        if not isinstance(expected, dict):
+            errors.append(f"{ident}: expected source dimensions required")
+            continue
+        for sid in ids:
+            if sid not in registry:
+                continue
+            for field in ("frequency", "unit"):
+                if expected.get(field) != registry[sid].get(field):
+                    errors.append(f"{ident}: requirement native {field} mismatch for {sid}")
+            if not isinstance(expected.get("geography"), list) or registry[sid].get("geography") not in expected["geography"]:
+                errors.append(f"{ident}: requirement native geography mismatch for {sid}")
+        if any(key in requirement for key in ("evidence_status", "coverage", "accepted")):
+            errors.append(f"{ident}: editable evidence certificate forbidden in requirement")
+    seen = set()
+    for variant in variants:
+        if not isinstance(variant, dict):
+            errors.append(f"{ident}: malformed comparison variant")
+            continue
+        variant_id = variant.get("id")
+        if not isinstance(variant_id, str) or not variant_id.strip() or variant_id in seen:
+            errors.append(f"{ident}: unique comparison variant ID required")
+        else:
+            seen.add(variant_id)
+        if any(not isinstance(variant.get(field), str) or not variant[field].strip() for field in ("label", "scope")):
+            errors.append(f"{ident}: named comparison scope required")
+        if variant.get("kind") not in {"original_scope", "approved_narrower", "approved_fallback"}:
+            errors.append(f"{ident}: approved variant kind required")
+        if (variant.get("frequency") not in {"D", "M", "Q", "A"}
+                or variant.get("end") != "latest_common"
+                or variant.get("join") != "exact_period_intersection"
+                or variant.get("missingness") != "no_fill"
+                or variant.get("temporal_mode") != "current_source_snapshot"):
+            errors.append(f"{ident}: explicit native-frequency no-fill snapshot join required")
+        try:
+            date.fromisoformat(variant["start"])
+        except (KeyError, TypeError, ValueError):
+            errors.append(f"{ident}: valid requested comparison start date required")
+        ids = variant.get("series_ids")
+        if not isinstance(ids, list) or not ids or any(not isinstance(sid, str) for sid in ids):
+            errors.append(f"{ident}: comparison source bindings required")
+            ids = []
+        if len(ids) != len(set(ids)) or any(sid not in registry for sid in ids):
+            errors.append(f"{ident}: unknown/duplicate comparison source")
+        for sid in ids:
+            if sid in registry and registry[sid].get("frequency") != variant.get("frequency"):
+                errors.append(f"{ident}: comparison native frequency mismatch for {sid}")
+        checks = variant.get("checks")
+        if not isinstance(checks, list) or any(not isinstance(check, str) or check not in COMPARISON_CHECKS for check in checks):
+            errors.append(f"{ident}: unknown comparison consistency check")
+        if not isinstance(variant.get("limitations"), list) or not variant["limitations"] or any(not isinstance(limit, str) or not limit.strip() for limit in variant["limitations"]):
+            errors.append(f"{ident}: comparison limitations required")
+        if type(variant.get("satisfies_original_method")) is not bool:
+            errors.append(f"{ident}: native input scope declaration must be boolean")
+        if variant.get("satisfies_original_method") is True and variant.get("kind") != "original_scope":
+            errors.append(f"{ident}: alternate scope cannot satisfy original native input scope")
+        if any(key in variant for key in ("evidence_status", "coverage", "fully_validated", "full_analysis_accepted")):
+            errors.append(f"{ident}: editable evidence certificate forbidden in variant")
+    return errors
+
+
 def validate_research_corpus(
     document: dict[str, Any],
     known_series: list[dict[str, Any]],
 ) -> list[str]:
     """Full-membership and proof contract: no fabricated validated state."""
     errors: list[str] = []
-    if document.get("schema_version") != 1:
+    if document.get("schema_version") != 2:
         errors.append("corpus: unsupported schema_version")
     if document.get("approved_phase1_version") != "2026-11-03":
         errors.append("corpus: wrong approved Phase 1 contract version")
@@ -91,8 +177,9 @@ def validate_research_corpus(
     if source_ids != {f"S{i:02d}" for i in range(1, 50)}:
         errors.append("corpus: expected S01 through S49 source register")
 
-    registered = {item["id"] for item in known_series if isinstance(item, dict)
-                  and isinstance(item.get("id"), str)}
+    registry = {item["id"]: item for item in known_series if isinstance(item, dict)
+                and isinstance(item.get("id"), str)}
+    registered = set(registry)
     seen: set[str] = set()
     counts = {prefix: 0 for prefix in FAMILIES}
     for row in analyses:
@@ -130,32 +217,9 @@ def validate_research_corpus(
             errors.append(f"{ident}: adapter path outside application")
         if not str(row.get("outstanding_evidence", "")).strip():
             errors.append(f"{ident}: evidence gap must be documented")
-        status = row.get("evidence_status")
-        if status not in EVIDENCE_STATUSES:
-            errors.append(f"{ident}: unsupported evidence status")
-        coverage = row.get("coverage")
-        if not isinstance(coverage, dict) or set(coverage) != REQUIRED_COVERAGE:
-            errors.append(f"{ident}: incomplete evidence coverage fields")
-            coverage = {}
-        if status == "not_empirically_verified_for_phase2" and any(
-            value is not None for value in coverage.values()
-        ):
-            errors.append(f"{ident}: unverified data must not claim observation history")
-        if status in {"verified_source_data", "fully_validated_comparative_corpus"}:
-            try:
-                first = date.fromisoformat(coverage["first_observation"])
-                last = date.fromisoformat(coverage["last_observation"])
-                asof = datetime.fromisoformat(coverage["asof_utc"])
-                valid_coverage = (
-                    first <= last
-                    and type(coverage.get("periods_observed")) is int
-                    and coverage["periods_observed"] > 0
-                    and asof.utcoffset() is not None
-                )
-            except (KeyError, TypeError, ValueError):
-                valid_coverage = False
-            if not valid_coverage:
-                errors.append(f"{ident}: verified status requires actual dated source evidence")
+        if any(field in row for field in ("evidence_status", "coverage", "comparative_corpus_validated")):
+            errors.append(f"{ident}: editable evidence certificate forbidden; runtime evidence required")
+        errors.extend(_validate_comparison_contract(ident, row.get("comparison_contract"), registry))
         fallbacks = row.get("fallback_options")
         if not isinstance(fallbacks, list):
             errors.append(f"{ident}: fallback_options must be an array")
@@ -168,7 +232,7 @@ def validate_research_corpus(
                     errors.append(f"{ident}: fallback must disclose its actual economic concept")
                 elif fallback["reference"] != "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md":
                     errors.append(f"{ident}: fallback must refer to approved method contract")
-                if fallback.get("data_verified") is True and status == "not_empirically_verified_for_phase2":
+                if fallback.get("data_verified") is True:
                     errors.append(f"{ident}: fallback verification cannot be inferred from old code")
     if (len(analyses) != len(APPROVED_ANALYSIS_IDS)
             or seen != APPROVED_ANALYSIS_IDS
@@ -194,8 +258,11 @@ def research_corpus_report(
     *,
     vintages: dict[str, Any] | None = None,
     series_registry: list[dict[str, Any]] | None = None,
+    comparative_evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Join current stored series coverage; never claim whole-analysis completion."""
+    """Join runtime evidence; declarations and source counts cannot grant approval."""
+    from .comparative_corpus import comparative_evidence_summary
+    comparative = comparative_evidence_summary(comparative_evidence, series_registry or [], document)
     counts = {item["id"]: item for item in (observations or {}).get("items", [])
               if item.get("family") == "macro"}
     # ALFRED true source publication-as-of data is keyed by FRED series ID,
@@ -256,9 +323,22 @@ def research_corpus_report(
                 "stored_versions": source.get("stored_versions") if source else None,
             })
         observed = sum((p["stored_periods"] or 0) > 0 for p in links)
+        panel_evidence = [panel for panel in comparative["panels"] if panel["analysis_id"] == row["id"]]
+        bounded_verified = any(panel["state"] == "bounded_current_vintage_verified" for panel in panel_evidence)
+        requirements = []
+        for requirement in row["comparison_contract"]["original_requirements"]:
+            bound = requirement["series_ids"]
+            stored = sum((counts.get(sid, {}).get("stored_periods") or 0) > 0 for sid in bound)
+            requirements.append({**requirement, "sources_checked": observations is not None,
+                "mapped_source_count": len(bound), "sources_with_observations": stored,
+                "first_publication_verified": False, "source_asof_verified": False,
+                "accepted": False,
+                "state": "source_binding_missing" if not bound else
+                    "source_history_not_checked" if observations is None else
+                    "source_history_missing" if stored < len(bound) else "publication_evidence_outstanding"})
         analyses.append({
             "id": row["id"], "title": row["title"],
-            "evidence_status": row["evidence_status"],
+            "evidence_status": "verified_source_data" if bounded_verified else "not_empirically_verified_for_phase2",
             "existing_reference_count": len(links),
             "existing_references_with_observations": observed,
             "linked_existing_series": links,
@@ -269,14 +349,27 @@ def research_corpus_report(
                 for source_id in row["primary_method_sources"]
             ],
             "outstanding_evidence": row["outstanding_evidence"],
-            "fallbacks": row["fallback_options"],
-            "comparative_corpus_validated": row["evidence_status"] == "fully_validated_comparative_corpus",
+            "fallbacks": [{**fallback, "data_verified": False} for fallback in row["fallback_options"]],
+            "requirements": requirements,
+            "comparison_variants": row["comparison_contract"]["variants"],
+            "comparison_evidence": panel_evidence,
+            "has_bounded_current_vintage_panel": bounded_verified,
+            # This runtime verifies native current-source panels only. There
+            # is no first-publication/full-contract verifier implemented yet.
+            "comparative_corpus_validated": False,
         })
     return {
         "phase": "phase2", "status": "active_not_complete",
         "analysis_count": len(analyses),
         "method_source_count": len(document["original_sources"]),
         "fully_validated_analysis_count": sum(x["comparative_corpus_validated"] for x in analyses),
+        "bounded_current_vintage_panel_count": comparative["bounded_current_vintage_panel_count"],
+        "analyses_with_bounded_current_vintage_panels": sum(x["has_bounded_current_vintage_panel"] for x in analyses),
+        "comparative_evidence_checked": comparative["checked"],
+        "comparative_evidence_valid": comparative["valid"],
+        "comparative_evidence_failure_codes": comparative["failure_codes"],
+        "comparative_evidence_asof": comparative.get("checked_at_utc"),
+        "comparative_report_sha256": comparative.get("report_sha256"),
         "analysis_with_existing_code_references": sum(x["existing_reference_count"] > 0 for x in analyses),
         "analysis_with_any_stored_macro_observations": sum(x["existing_references_with_observations"] > 0 for x in analyses),
         "observations_checked": observations is not None,

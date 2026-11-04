@@ -55,6 +55,29 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
                             for x in item["linked_existing_series"]))
         self.assertEqual(self.client.get("/api/research-corpus/UNKNOWN").status_code, 404)
 
+    def test_original_position_endpoints_report_missing_sources_explicitly(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as temp, patch.dict(os.environ, {"FINANCE_HOLDINGS_DIR": temp}):
+            ucits = self.client.get("/api/holdings/ucits/sources")
+            self.assertEqual(ucits.status_code, 200)
+            self.assertEqual(ucits.json()["status"], "missing_original_ucits_positions")
+            self.assertEqual(ucits.json()["records"], [])
+            response = self.client.get("/api/holdings/vt/positions", params={"accession": "0000932471-26-000001"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "missing_original_positions")
+            self.assertEqual(response.json()["positions"], [])
+            self.assertEqual(self.client.get("/api/holdings/invalid/positions", params={"accession": "bad"}).status_code, 422)
+            self.assertEqual(list(Path(temp).iterdir()), [])
+
+    def test_original_icio_route_never_fabricates_missing_matrix_data(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as temp, patch.dict(os.environ, {"FINANCE_SOURCE_EVIDENCE_DIR": temp}):
+            response = self.client.get("/api/source-evidence/icio")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "missing_original_matrix")
+            self.assertFalse(response.json()["full_history_verified"])
+
     def test_api_exposes_source_contracts_and_checked_empty_coverage(self):
         response = self.client.get("/api/research-corpus")
         self.assertEqual(response.status_code, 200)

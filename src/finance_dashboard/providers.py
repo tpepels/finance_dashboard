@@ -22,6 +22,7 @@ from .bis_dsr import BIS_DSR_ROOT, DSR_SERIES, parse_bis_dsr
 from .bis_property import PROPERTY_SOURCES, BIS_SPP_ROOT, BIS_CPP_ROOT, parse_bis_property
 from .wid import WID_SERIES, WidClient
 from .oecd_tiva import TIVA_SERIES, TivaClient
+from .research_returns import FRENCH_SERIES, SWINKELS_SERIES, ResearchReturnsClient
 from .catalog import load_documents
 from .wisesheets import load_sec_profit_snapshot, snapshot_series
 from .world_credit import (BIS_COMPOSITE_URL, WORLD_GDP_URL,
@@ -58,7 +59,7 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "BIS_DSR", "BIS_PROPERTY", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA", "OECD_CORPORATE_GDPWEIGHTED", "WID", "OECD_TIVA"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "BIS_DSR", "BIS_PROPERTY", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA", "OECD_CORPORATE_GDPWEIGHTED", "WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS"))
 
 
 class SourceUnavailable(ProviderError):
@@ -596,6 +597,7 @@ class ProviderRouter:
         self.bis = bis or BisPolicyClient(self.client, retries=1)
         self._wid = None
         self._tiva = None
+        self._research_returns = None
         self.definitions = {
             item["id"]: item for item in load_documents()[0]["series"]
         }
@@ -664,6 +666,19 @@ class ProviderRouter:
                 self._tiva = TivaClient(self.client, archive_dir=Path(os.environ.get(
                     "FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")))
             return self._tiva.fetch(series_id, start)
+        if provider in ("FRENCH_RETURNS", "SWINKELS_RETURNS"):
+            if provider == "FRENCH_RETURNS":
+                expected = FRENCH_SERIES.get(series_id)
+                exact_key = "/".join(expected) if expected else None
+            else:
+                expected = SWINKELS_SERIES.get(series_id)
+                exact_key = f"{expected[0]}/column:{expected[1]}/cached_decimal_return" if expected else None
+            if expected is None or key != exact_key:
+                raise SourceUnavailable("Original research return source identity or convention changed")
+            if self._research_returns is None:
+                self._research_returns = ResearchReturnsClient(self.client, archive_dir=Path(os.environ.get(
+                    "FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")))
+            return self._research_returns.fetch(series_id, start)
         if provider == "FRED":
             identifier = key
             api_key = os.getenv("FRED_API_KEY")

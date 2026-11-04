@@ -265,6 +265,145 @@ def list_holdings(root: Path, instrument_id: str, *,
     }
 
 
+
+def _position_facts(xml: bytes) -> list[dict]:
+    """Native security fields; no issuer consolidation or derivative look-through."""
+    fields = {"name":"name", "lei":"lei", "security_title":"title", "cusip":"cusip",
+              "quantity":"balance", "quantity_unit":"units", "currency":"curCd",
+              "value_usd":"valUSD", "percent_of_fund_nav":"pctVal",
+              "asset_category":"assetCat", "issuer_category":"issuerCat",
+              "issuer_country":"invCountry", "payoff_profile":"payoffProfile"}
+    investments = _section(ET.fromstring(xml), "invstOrSecs")
+    return [{**{key:_find_first(item, tag) for key,tag in fields.items()},
+             "source_row":index, "source_xml":ET.tostring(item, encoding="unicode")}
+            for index,item in enumerate(investments,1) if _name(item)=="invstOrSec"]
+
+
+def reconcile_nport_aggregate(current: dict, original: dict) -> None:
+    """New metadata bytes cannot replace old metadata hashes or stored capture facts."""
+    if current.get("xml_sha256") != original.get("xml_sha256"):
+        raise HoldingsError("Recovered original XML SHA does not match stored filing")
+    keys = ("instrument_id", "sec_cik", "sec_series_id", "accession", "source_url",
+            "holdings_date", "available_at_utc", "eligible_after_buffer_utc",
+            "positions_reported", "positions_unclassified", "positions_excluded_short_or_derivative",
+            "reported_long_nav_percent", "classified_long_nav_percent",
+            "unclassified_long_nav_percent", "countries", "complete_share_of_nav")
+    if any(current.get(key) != original.get(key) for key in keys):
+        raise HoldingsError("Recovered original country aggregate does not reconcile")
+
+
+def _verify_source_bundle(folder: Path, instrument_id: str|None=None, accession: str|None=None) -> dict:
+    try:
+        if folder.is_symlink():
+            raise ValueError("symlink")
+        manifest=json.loads((folder/"manifest.json").read_text())
+        if sha256(json.dumps(manifest["files"],sort_keys=True).encode()).hexdigest()!=folder.name:
+            raise ValueError("bundle digest mismatch")
+        for name, digest in manifest["files"].items():
+            path=folder/name
+            if path.is_symlink() or path.parent != folder or sha256(path.read_bytes()).hexdigest()!=digest:
+                raise ValueError("hash mismatch")
+        if (manifest.get("schema_version")!=1 or manifest["source"] != "SEC_NPORT_PRIMARY_XML"
+            or (instrument_id is not None and manifest["instrument_id"]!=instrument_id)
+            or (accession is not None and manifest["accession"]!=accession)
+            or folder.parent.name!=manifest["accession"]
+            or folder.parent.parent.name!="sources"
+            or folder.parent.parent.parent.name!=manifest["instrument_id"]):
+            raise ValueError("source identity")
+        xml=(folder/"original.xml").read_bytes()
+        parsed=parse_nport(xml,instrument_id=manifest["instrument_id"],accession=manifest["accession"],
+            filing_url=manifest["source_url"],sec_metadata=json.loads((folder/"metadata.json").read_text()),
+            expected_series_id=manifest["sec_series_id"])
+        if (parsed["holdings_date"]!=manifest["holdings_date"]
+            or json.loads((folder/"positions.json").read_text())!=_position_facts(xml)):
+            raise ValueError("original source facts identity")
+        return manifest
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise HoldingsError("SEC immutable original source bundle inconsistent") from exc
+
+
+def store_source_bundle(xml: bytes, *, sec_metadata: dict, aggregate: dict,
+                        root: Path=ROOT, metadata_responses: list[dict]|None=None) -> Path:
+    """Archive original bytes separately; never rewrite an existing aggregate record."""
+    import shutil
+    import tempfile
+    from .source_evidence import record_acquisition_receipt
+    current=parse_nport(xml,instrument_id=aggregate["instrument_id"],
+        accession=aggregate["accession"],filing_url=aggregate["source_url"],
+        sec_metadata=sec_metadata,expected_series_id=aggregate["sec_series_id"])
+    reconcile_nport_aggregate(current,aggregate)
+    payloads={"original.xml":xml,
+              "metadata.json":json.dumps(sec_metadata,sort_keys=True).encode(),
+              "positions.json":json.dumps(_position_facts(xml),sort_keys=True).encode()}
+    response_urls=[]
+    for index,response in enumerate(metadata_responses or []):
+        payloads[f"submissions-{index}.json"]=response["body"]
+        response_urls.append({"file":f"submissions-{index}.json","url":response["url"]})
+    hashes={name:sha256(body).hexdigest() for name,body in payloads.items()}
+    digest=sha256(json.dumps(hashes,sort_keys=True).encode()).hexdigest()
+    parent=root/aggregate["instrument_id"] / "sources" / aggregate["accession"]
+    folder=parent/digest
+    temporary=None
+    try:
+        parent.mkdir(parents=True,exist_ok=True)
+        if not folder.exists():
+            temporary=Path(tempfile.mkdtemp(prefix=".sec-",dir=parent))
+            for name,body in payloads.items():
+                with (temporary/name).open("wb") as stream:
+                    stream.write(body);stream.flush();os.fsync(stream.fileno())
+            manifest={"schema_version":1,"source":"SEC_NPORT_PRIMARY_XML",
+                "instrument_id":aggregate["instrument_id"],"accession":aggregate["accession"],
+                "source_url":aggregate["source_url"],"holdings_date":aggregate["holdings_date"],
+                "sec_series_id":aggregate["sec_series_id"],"files":hashes,
+                "metadata_responses":response_urls,
+                "retrieved_at_utc":datetime.now(timezone.utc).isoformat(),
+                "original_first_publication_at":None,
+                "metadata_note":"Current verified metadata archived independently; original stored aggregate metadata hash is preserved",
+                "stored_aggregate_source_metadata_sha256":aggregate["source_metadata_sha256"],
+                "country_semantics":aggregate["country_semantics"]}
+            (temporary/"manifest.json").write_text(json.dumps(manifest,indent=2))
+            try:
+                os.rename(temporary,folder)
+                temporary=None
+            except FileExistsError:
+                pass
+        manifest=_verify_source_bundle(folder)
+        if manifest["files"]!=hashes:
+            raise HoldingsError("SEC immutable original source bundle inconsistent")
+        record_acquisition_receipt(folder,{"publisher":"SEC", "instrument_id":aggregate["instrument_id"],
+            "accession":aggregate["accession"],"source_url":aggregate["source_url"]})
+        return folder
+    finally:
+        if temporary is not None:
+            shutil.rmtree(temporary,ignore_errors=True)
+
+
+def read_position_source(root: Path, instrument_id: str, accession: str) -> dict:
+    if instrument_id not in instruments() or not re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}",accession):
+        raise HoldingsError("Invalid original source identity")
+    parent=root/instrument_id/"sources"/accession
+    folders=sorted(p for p in parent.glob("*") if re.fullmatch(r"[0-9a-f]{64}",p.name))
+    if not folders and not parent.exists():
+        return {"instrument_id":instrument_id,"accession":accession,
+                "status":"missing_original_positions","positions":[]}
+    # A→B→A must select the latest successful acquisition of A, not B's newer
+    # immutable creation timestamp. Any corrupt receipt fails the whole read.
+    manifests=[(folder,_verify_source_bundle(folder,instrument_id,accession)) for folder in folders]
+    urls={manifest["source_url"] for _,manifest in manifests}
+    if len(urls)!=1 or not (parent/"retrievals").is_dir():
+        raise HoldingsError("SEC original source receipt identity invalid")
+    from .source_reconciliation import _selected_manifest, EvidenceError
+    try:
+        observed,manifest_hash,path,manifest,selection=_selected_manifest(parent,
+            {"publisher":"SEC","instrument_id":instrument_id,"accession":accession,"source_url":next(iter(urls))})
+    except EvidenceError as exc:
+        raise HoldingsError("SEC original source receipt invalid") from exc
+    folder=path.parent
+    return {"instrument_id":instrument_id,"accession":accession,"status":"ready",
+            "manifest":manifest,"bundle_digest":folder.name,"selection_method":selection,
+            "acquisition_observed_at_utc":observed.isoformat(),"manifest_sha256":manifest_hash,
+            "positions":json.loads((folder/"positions.json").read_text())}
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import original SEC N-PORT XML with SEC verified accession")
     parser.add_argument("--instrument",required=True)

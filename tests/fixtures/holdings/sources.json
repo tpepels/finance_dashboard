@@ -1,0 +1,32 @@
+[
+  {
+    "year": 2022,
+    "source_url": "https://www.ishares.com/gls-download/literature/annual-report/ishares-iii-plc-en-annual-report-2022.pdf",
+    "pdf_sha256": "036182d3c2d2ef98e487161c184c516dadc374e662cee774b694e84a53bf9321",
+    "fixture": "Literal bounded pypdf6.21.4 layout extraction: first equity page and NAV control page(s); omitted pages mean partial positions"
+  },
+  {
+    "year": 2023,
+    "source_url": "https://www.ishares.com/gls-download/literature/annual-report/ishares-iii-plc-en-annual-report-2023.pdf",
+    "pdf_sha256": "971583b11bbde9c388c72930ccf485572f69fd7e013eb4f2733c40f781e99e63",
+    "fixture": "Literal bounded pypdf6.21.4 layout extraction: first equity page and NAV control page(s); omitted pages mean partial positions"
+  },
+  {
+    "year": 2024,
+    "source_url": "https://www.ishares.com/gls-download/literature/annual-report/ishares-iii-plc-en-annual-report-2024.pdf",
+    "pdf_sha256": "0dc76ed1c62520b12f84827a2601a2b35d3d4c36d60d5da02eb07593ee55e075",
+    "fixture": "Literal bounded pypdf6.21.4 layout extraction: first equity page and NAV control page(s); omitted pages mean partial positions"
+  },
+  {
+    "year": 2025,
+    "source_url": "https://www.ishares.com/gls-download/literature/annual-report/ishares-iii-plc-en-annual-report-2025.pdf",
+    "pdf_sha256": "4c0e090ffb7e7bcba9826649dfb5a0a835a1c2b816ed80a2ef1951da8973fe80",
+    "fixture": "Literal bounded pypdf6.21.4 layout extraction: first equity page and NAV control page(s); omitted pages mean partial positions"
+  },
+  {
+    "year": 2026,
+    "source_url": "https://www.ishares.com/gls-download/literature/annual-report/ishares-iii-plc-en-annual-report-2026.pdf",
+    "pdf_sha256": "d889ccc681148e656300fdf3aa849abe9ca0be5c2d9c70ee7fd0c42fc3977051",
+    "fixture": "Literal bounded pypdf6.21.4 layout extraction: first equity page and NAV control page(s); omitted pages mean partial positions"
+  }
+]

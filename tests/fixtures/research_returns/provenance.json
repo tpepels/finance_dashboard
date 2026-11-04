@@ -1,0 +1,63 @@
+{
+  "notice": "French CSVs contain factual numerical row excerpts, not complete copyrighted publisher files. Tests do not mistake excerpt coverage for full publisher history. Swinkels original workbook/readme are CC BY 4.0: cite Swinkels (2023), Historical Data: International monthly government bond returns, doi:10.25397/eur.8152748.v6.",
+  "original_sources": [
+    {
+      "dataset": "developed",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Developed_3_Factors_CSV.zip",
+      "sha256": "3f99cfdeddd1914e3d8f84ce51d775aeed3e98ed0c290957e88f4df9912f8a23",
+      "member": "Developed_3_Factors.csv",
+      "member_sha256": "ad3198d8957788554280bac2976fdebc7bd910cc7ad4fcd93208dd3ea0785c79",
+      "observed_at_utc": "2026-11-04T10:54:39.996798+00:00",
+      "last_modified": "Mon, 26 Oct 2026 20:49:43 GMT",
+      "full_publisher_months": 435,
+      "full_first_period": "1990-07",
+      "full_last_period": "2026-09",
+      "fixture_excerpt_months": 18,
+      "first_row": "199007    ,0.77    ,0.53   ,-0.36    ,0.68",
+      "last_row": "202609   ,-1.94   ,-2.54   ,-0.17    ,0.31"
+    },
+    {
+      "dataset": "emerging",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Emerging_5_Factors_CSV.zip",
+      "sha256": "0573fd60948178daad54f577a6c87d1e5a183dfdc4a1a89ced3991cc95fd8ad3",
+      "member": "Emerging_5_Factors.csv",
+      "member_sha256": "79fce46c6d9389c2d22af2626ce1320aaa1881a1154e94f680df220683a16824",
+      "observed_at_utc": "2026-11-04T10:54:39.996116+00:00",
+      "last_modified": "Mon, 26 Oct 2026 20:49:53 GMT",
+      "full_publisher_months": 447,
+      "full_first_period": "1989-07",
+      "full_last_period": "2026-09",
+      "fixture_excerpt_months": 20,
+      "first_row": "198907    ,0.60   ,-0.39   ,15.53  ,-99.99  ,-99.99    ,0.70",
+      "last_row": "202609   ,-1.48    ,0.89    ,1.10    ,0.82    ,0.31    ,0.31"
+    },
+    {
+      "file": "swinkels_publisher_metadata.json",
+      "requested_url": "https://dataverse.nl/api/datasets/:persistentId/?persistentId=doi:10.34894/YWT2IX",
+      "sha256": "4bd4bbd04b923baf92f12c85c2b633a16f57c50aad5665935ce43cf6df476a02",
+      "bytes": 9246,
+      "observed_at_utc": "2026-11-04T10:54:39.765094+00:00"
+    },
+    {
+      "file": "swinkels_original_figshare_v6_metadata.json",
+      "requested_url": "https://api.figshare.com/v2/articles/8152748/versions/6",
+      "sha256": "93ab2bf8aeba985a575ed3f8376159e9ffff49a43d98798c95c8eb4c12e91f4b",
+      "bytes": 5727,
+      "observed_at_utc": "2026-11-04T10:54:39.893120+00:00"
+    },
+    {
+      "file": "swinkels_international_monthly_government_bond_returns.ods",
+      "requested_url": "https://dataverse.nl/api/access/datafile/512630",
+      "sha256": "90a634328d14dec82bfcbbac83625105c49ff93e9ea2771762c2294d42435847",
+      "bytes": 913425,
+      "observed_at_utc": "2026-11-04T10:54:40.882762+00:00"
+    },
+    {
+      "file": "swinkels_readme.pdf",
+      "requested_url": "https://dataverse.nl/api/access/datafile/512631",
+      "sha256": "b4c4b95917fbff72d06c8e3be1364d91d87779c3752d06260775ade45fb41072",
+      "bytes": 127043,
+      "observed_at_utc": "2026-11-04T10:54:40.641871+00:00"
+    }
+  ]
+}
