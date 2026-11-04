@@ -1,7 +1,7 @@
 # Current architecture — local finance research dashboard
 
 
-> **Technical reference, not a separate development roadmap.** The sole current implementation path and phase acceptance are in [Development plan](DEVELOPMENT_PLAN.md). Historical phase files have been archived.
+> **Pre-redesign implementation snapshot (2026-11-02), not the approved target architecture.** Source counts, UI composition and runtime assertions below reflect that date and may be stale during Phase 2. The binding Phase 3 analytical-consolidation and Phase 4 clean-slate frontend decision is in [the sole development plan](DEVELOPMENT_PLAN.md). Historical phase files are archived.
 
 Updated 2026-11-02, incorporating owner's local-only deployment decision and Phase 4 additions.
 
@@ -40,4 +40,4 @@ FastAPI is served on container port 8080; the host maps port 5052. `FINANCE_BIND
 
 The single Docker build runs short Vitest/TypeScript and Python contract tests for source definitions, macro research, Phase 4 signals/portfolio APIs, and backups. No GitHub Actions, remote CI or long scheduled checks are enabled. Local deployment and actual browser/market ingestion still need user-run verification.
 
-See [Phase 4](PHASE_4.md), [economic methods](ECONOMIC_RESEARCH_METHODS.md), [home-server deployment](HOME_SERVER_DOCKER.md) and [source integrity](DATA_POLICY.md).
+See [historical Phase 4 implementation](archive/PHASE_4.md), [economic methods](ECONOMIC_RESEARCH_METHODS.md), [home-server deployment](HOME_SERVER_DOCKER.md) and [source integrity](DATA_POLICY.md).

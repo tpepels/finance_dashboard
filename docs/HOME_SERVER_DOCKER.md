@@ -65,4 +65,4 @@ Only restore while the finance service is **stopped**, after verifying checksum 
 
 The default port 5052 remains reachable from your LAN **without any authentication**. Do not port-forward it to the internet. For use through an already-existing authenticated Caddy reverse proxy, set `FINANCE_BIND_HOST=127.0.0.1` in Compose and recreate the finance container. This changes only which host interface accepts the published port. If Caddy is in the same Docker network, its upstream should be `finance-dashboard:8080`; if Caddy runs on the host, use `127.0.0.1:5052`. Retain TLS and authentication in Caddy. This adds no container or restriction to the application's local source retrieval.
 
-Source formulas, assumptions and remaining Phase 4 limitations: [PHASE_4.md](PHASE_4.md).
+Source formulas and limitations of the **pre-redesign implementation**: [archived former Phase 4 record](archive/PHASE_4.md). For current phase acceptance and migration policy see [the development plan](DEVELOPMENT_PLAN.md).
