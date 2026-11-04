@@ -1,25 +1,24 @@
 # Global Capital Monitor
 
-> **PHASE 1 APPROVED/CLOSED (2026-11-03) · PHASE 2 ACTIVE.** The user approved all 35 scientific questions, six connected research experiences, visualization contract and the no-fee source/fallback approach. Phase 2 covers actual source acquisition, provenance, histories and data-quality evidence. Existing local Docker data are preserved. Phase 3 analytical methods and Phase 4 interface redesign have not started.
+> **Phase 1 approved (2026-11-03); Phase 2 active.** This repository contains the old running application **and** the approved replacement specifications. The deployed interface is legacy; it is not the target design. No repository reset, loss of historical data, or second runtime is authorized.
 
-## Current authoritative documents
+## Start here: one implementation path
 
-- [New five-phase development plan](docs/DEVELOPMENT_PLAN.md) — **sole phase plan**; Phase 1 approved, Phase 2 source acquisition active.
-- [Phase 1 scientific charter](docs/PHASE1_SCIENTIFIC_CHARTER.md) — ten approved product-intent decisions, seven research domains, 28 scientific/authoritative methodological references and source-validation rules.
-- [Phase 1 analysis catalogue](docs/PHASE1_ANALYSIS_CATALOGUE.md) — 35 owner-approved first-class questions and the six connected research experiences.
-- [35 scientific analysis specifications](docs/PHASE1_ANALYSIS_SPECIFICATIONS.md) — variables, original methodology, reproducible formulas, alternatives, validity, interpretation and 49 scholarly/statistical references.
-- [Phase 1 visualization contract](docs/PHASE1_VISUALIZATION_CONTRACT.md) — complete per-graph geography/series/chart type/method, saved research views, accessibility, monitoring and independent recession/shock/recovery overlays.
-- [Approved critical Phase 1 coherence/free-source review](docs/PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) — binding six-story editorial structure, five reclassifications, five new scientific questions and no-fee source rule.
-- [Historical no-fee source discoveries](docs/PHASE1_FREE_DATA_SOURCE_DISCOVERY.md) — academic return histories and original government, fund and company filings.
-- [Accessibility-first follow-up research](docs/PHASE1_ACCESSIBILITY_FIRST_DATA_SEARCH.md) — publicly documented MSCI NETR JSON, historical iShares AJAX holdings, global company web/MCP access, Bloomberg LEGATRUU source identifiers, with actual download verification still open.
-- [Preselected fallbacks for the four unresolved historical data targets](docs/PHASE1_FALLBACK_SOURCE_MATRIX.md) — verified alternative historical files, official lower-frequency sources, scientific labels and precise fallback triggers.
-- [Pre-redesign roadmap archive](docs/archive/DEVELOPMENT_PLAN_PRE_RESET_2026-11-03.md) — prior operational fixes/empirical evidence; historical only.
+- **[Authoritative development plan](docs/DEVELOPMENT_PLAN.md)** — phase gates, binding migration architecture decision (2026-11-04), acceptance and documentation policy. **Only active roadmap.**
+- **[Scientific charter](docs/PHASE1_SCIENTIFIC_CHARTER.md)** and **[35-question catalogue](docs/PHASE1_ANALYSIS_CATALOGUE.md)** — the approved product scope and six connected research experiences.
+- **[Scientific analysis specifications](docs/PHASE1_ANALYSIS_SPECIFICATIONS.md)** — variable definitions, calculation, comparability, alternatives and evidence requirements for all 35 questions.
+- **[Visualization contract](docs/PHASE1_VISUALIZATION_CONTRACT.md)** — the target information architecture and independently configurable graph interactions, not the existing UI.
+- **[Source fallback matrix](docs/PHASE1_FALLBACK_SOURCE_MATRIX.md)** and **[Phase 2 source coverage audit](docs/PHASE2_SOURCE_COVERAGE_AUDIT.md)** — approved alternatives versus observed acquisition/validation status.
 
-## Existing implementation (preserved, not the approved product)
+### What survives the rebuild
 
-The previous application includes a single Docker service, stored 53 macro/24 market/3 FX histories, previous 46 indicator views, two UI sync actions, verified local backups, SEC source records and ALFRED original vintage imports. The Nov 3 18:14 sync completed with 0 missing requested historical vintages and 0 recent source issues. These facts document the preserved implementation, **not** the scientific/design completeness of the newly proposed application.
+Keep the source collectors, append-only historical observations, provenance, release vintages, storage/migrations, backups, validated calculations, local FastAPI service and useful operations. **Phase 3 consolidates analytics; Phase 4 replaces the old frontend architecture and styling**, while reusing the React/TypeScript/Vite/ECharts stack if appropriate. Full function-by-function retention is subject to the approved scientific contracts. No legacy compatibility execution paths are allowed at phase closure.
 
-The following existing operational documentation remains available for running or safely servicing the current installation: [server setup](docs/SERVER_SOURCE_SETUP.md), [source indicator inventory](docs/INDICATOR_ACCEPTANCE_MATRIX.md), [original research methods](docs/ECONOMIC_RESEARCH_METHODS.md), [historical research/source contracts](docs/PHASE_4_RESEARCH_SOURCES.md). They are references to existing code and historic decisions, not competing product requirements.
+### Documentation boundaries
+
+- **Normative:** the six linked documents above; approved Phase 1 research reviews and source-discovery reports are evidence, not additional roadmaps.
+- **Current technical/operational references:** [architecture snapshot](docs/ARCHITECTURE.md), [data integrity policy](docs/DATA_POLICY.md), [server setup](docs/SERVER_SOURCE_SETUP.md), [Docker deployment](docs/HOME_SERVER_DOCKER.md) and [OECD surplus method](docs/OECD_CORPORATE_SURPLUS.md). Some record the pre-redesign implementation and must not be mistaken for target architecture.
+- **Historical only:** [docs/archive/](docs/archive/) contains superseded contracts, source decisions and former phase plans. Redirect-only files were removed; link directly to the archive. Git history preserves earlier versions. Do not create new phase roadmaps or duplicate status diaries.
 
 ## Phase 2 — Docker-only verification
 

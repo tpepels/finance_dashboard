@@ -1,7 +1,7 @@
-# Frozen historical documents
+# Archived historical documents
 
-These snapshots preserve superseded source decisions, prior contracts, earlier source-validation evidence and old phase plans. They are **not** additional development paths. Some legacy relative links or instructions may describe retired GitHub Actions / Pages deployment and are not valid for the current local-only service.
+These files preserve superseded source decisions, earlier feature/architecture contracts, prior validation evidence and historical development plans. **They are not active instructions or development paths.**
 
-**For the single active path, use [../DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md).** For current configuration and data preservation, use [../SERVER_SOURCE_SETUP.md](../SERVER_SOURCE_SETUP.md).
+Read [the single authoritative roadmap](../DEVELOPMENT_PLAN.md) and [the project README](../../README.md) for current decisions. See [server setup](../SERVER_SOURCE_SETUP.md) for operational instructions.
 
-Every document archived here has a short redirect at its former `docs/<name>` path to preserve links from older issues, code comments and research reports.
+On 2026-11-04, fifteen redirect-only documents at the root of `docs/` were retired. The full historical originals remain here; refer to `docs/archive/<name>.md` directly. Their own historical links and instructions may be outdated. Earlier redirects and file versions are preserved in Git history.
