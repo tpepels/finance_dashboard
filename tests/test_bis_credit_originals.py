@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-import copy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -142,7 +141,7 @@ class OriginalBisTotalCreditTests(unittest.TestCase):
         with patch("finance_dashboard.captured_sources.date") as clock:
             clock.today.return_value = date(2026, 11, 4)
             clock.side_effect = date
-            independent, _ = _bis(response, definition)
+            independent = _bis(response, definition)
         self.assertEqual(independent, values)
 
     def test_provider_routing_and_complete_capture_reconcile_without_changing_production(self):
