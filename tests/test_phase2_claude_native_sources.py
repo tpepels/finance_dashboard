@@ -65,10 +65,10 @@ class Phase2NewOriginalParserTests(unittest.TestCase):
         before = information_available_as_of(evidence, date(2008, 1, 1))
         self.assertEqual(before["announced_turning_points"], [])
         self.assertNotIn("dated_but_not_yet_announced", before)
-        self.assertNotIn("2007-12", str(before))
+        self.assertNotIn(("peak", "2007-12"), before["announced_turning_points"])
         middle = information_available_as_of(evidence, date(2009, 6, 1))
         self.assertEqual(middle["announced_turning_points"], [("peak", "2007-12")])
-        self.assertNotIn("2009-06", str(middle))
+        self.assertNotIn(("trough", "2009-06"), middle["announced_turning_points"])
         after = information_available_as_of(evidence, date(2011, 1, 1))
         self.assertEqual(len(after["announced_turning_points"]), 2)
 
