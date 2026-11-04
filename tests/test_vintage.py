@@ -241,10 +241,18 @@ class VintageTests(unittest.TestCase):
                 batch = backfill_batch(date(2020,1,1),date(2024,12,31),
                     list(SOURCES),api_key="a" * 32,client=client,root=Path(tmp),
                     max_requests=180,pause_seconds=0)
+            # All requested vintages remain missing after a rate-limit halt.
+            # This must scale with the registered source set; Phase 2 added
+            # several ALFRED sources, so a fixed old 3-series count is wrong.
+            requested = len(_month_ends(date(2020, 1, 1), date(2024, 12, 31))) * len(SOURCES)
             self.assertEqual(len(calls), 1)
             self.assertEqual(batch["status"], "blocked")
             self.assertEqual(batch["halted_reason"], "fred_rate_limited")
-            self.assertEqual(batch["missing_after_run"], 180)
+            self.assertEqual(batch["source_vintages_requested"], requested)
+            self.assertEqual(batch["missing_after_run"], requested)
+            self.assertEqual(batch["attempted_now"], 1)
+            self.assertEqual(len(batch["failed_now"]), 1)
+            self.assertEqual(batch["failed_now"][0]["reason"], "fred_rate_limited")
             self.assertEqual(batch["downloaded_now"], 0)
 
     def test_failed_early_month_does_not_starve_later_valid_snapshot(self):
