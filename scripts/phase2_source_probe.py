@@ -23,6 +23,9 @@ DEFAULT_IDS = (
     "bond.us.breakeven_10y",
     "stress.us.high_yield_oas",
     "stress.us.vix",
+    "property.pt.real_residential.bis",
+    "property.us.commercial_all.bis",
+    "property.pt.commercial_all.bis",
     "valuation.us.tobins_q2",
     "valuation.us.tobins_q3",
 )

@@ -643,10 +643,19 @@
         "credit_gap.jp.bis",
         "debt_service.us.private.bis",
         "debt_service.jp.private.bis",
-        "debt_service.de.private.bis"
+        "debt_service.de.private.bis",
+        "property.us.real_residential.bis",
+        "property.de.real_residential.bis",
+        "property.jp.real_residential.bis",
+        "property.pt.real_residential.bis",
+        "property.ea.real_residential.bis",
+        "property.world.real_residential.bis",
+        "property.us.commercial_all.bis",
+        "property.pt.commercial_all.bis"
       ],
       "existing_adapter_references": [
-        "src/finance_dashboard/bis_dsr.py"
+        "src/finance_dashboard/bis_dsr.py",
+        "src/finance_dashboard/bis_property.py"
       ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
@@ -656,7 +665,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "BIS RPP/CPP and matched CPI series not mapped; BIS DSR registered as contextual credit evidence",
+      "outstanding_evidence": "BIS selected real residential property (US/DE/JP/PT/euro area/world) and original US/Portugal commercial property source keys now mapped, plus BIS country-credit/DSR inputs. True provider histories, differing commercial coverage, publication vintages and aligned same-country panel validation remain outstanding.",
       "fallback_options": []
     },
     {

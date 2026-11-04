@@ -18,6 +18,7 @@ import httpx
 
 from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES, _dimension_code, ACCEPT
 from .bis_dsr import BIS_DSR_ROOT, DSR_SERIES, parse_bis_dsr
+from .bis_property import PROPERTY_SOURCES, BIS_SPP_ROOT, BIS_CPP_ROOT, parse_bis_property
 from .catalog import load_documents
 from .wisesheets import load_sec_profit_snapshot, snapshot_series
 from .world_credit import (BIS_COMPOSITE_URL, WORLD_GDP_URL,
@@ -54,7 +55,7 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "BIS_DSR", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA", "OECD_CORPORATE_GDPWEIGHTED"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "BIS_DSR", "BIS_PROPERTY", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA", "OECD_CORPORATE_GDPWEIGHTED"))
 
 
 class SourceUnavailable(ProviderError):
@@ -861,6 +862,22 @@ class ProviderRouter:
             response = self._get(CORGANO_GOLD_LATEST)
             observations = parse_corgano_gold(response.json(), start)
             return FetchedSeries(series_id, CORGANO_GOLD_LATEST, None, observations)
+        if provider == "BIS_PROPERTY":
+            registered = PROPERTY_SOURCES.get(series_id)
+            if registered is None:
+                raise SourceUnavailable("Unregistered BIS property series")
+            flow, original_key, native_frequency = registered
+            if key != f"BIS,WS_{flow},1.0/{original_key}":
+                raise SourceUnavailable("BIS property source key changed or is unapproved")
+            start_period = (str(start.year) if native_frequency == "A"
+                            else f"{start.year}-Q{(start.month - 1)//3 + 1}") if start else None
+            response = self._get(
+                f"{BIS_SPP_ROOT if flow == 'SPP' else BIS_CPP_ROOT}/{original_key}",
+                params={"startPeriod":start_period} if start_period else {},
+                headers={"Accept": ACCEPT})
+            values, prepared = parse_bis_property(
+                response.json(), flow=flow, original_key=original_key, start=start)
+            return FetchedSeries(series_id, str(response.request.url), prepared, values)
         if provider == "BIS_DSR":
             exact = DSR_SERIES.get(series_id)
             if exact is None:
