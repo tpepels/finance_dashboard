@@ -676,8 +676,15 @@
         "S21",
         "S23"
       ],
-      "existing_series_references": [],
-      "existing_adapter_references": [],
+      "existing_series_references": [
+        "funding.us.broker_assets",
+        "funding.us.broker_liabilities",
+        "funding.us.broker_repo_liabilities",
+        "funding.us.money_market_assets"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
         "first_observation": null,
@@ -686,7 +693,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "Fed Z.1 detailed NBFI funding and leverage series not mapped",
+      "outstanding_evidence": "Original US Z.1 broker-dealer asset/liability/repo stock series and money-market assets now mapped; actual observations and release vintages remain unverified. Funding mismatch, repos across all nonbanks, money-market fund redemption/hedge risk, country scope and empirical run risk require separate data. No all-sector or world NBFI leverage may be inferred from these four values.",
       "fallback_options": []
     },
     {
