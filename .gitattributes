@@ -1,0 +1,2 @@
+# Original CSV excerpts retain publisher line endings and padding.
+tests/fixtures/**/*.csv whitespace=-blank-at-eol,cr-at-eol
