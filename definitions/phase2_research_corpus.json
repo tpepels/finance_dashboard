@@ -504,8 +504,19 @@
         "S17",
         "S18"
       ],
-      "existing_series_references": [],
-      "existing_adapter_references": [],
+      "existing_series_references": [
+        "debt_service.us.private.bis",
+        "debt_service.us.households.bis",
+        "debt_service.us.corporations.bis",
+        "debt_service.jp.private.bis",
+        "debt_service.de.private.bis",
+        "debt_service.cn.private.bis",
+        "debt_service.pt.private.bis",
+        "debt_service.pt.households.bis"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/bis_dsr.py"
+      ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
         "first_observation": null,
@@ -514,7 +525,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "Original BIS DSR household/corporate/total series absent",
+      "outstanding_evidence": "BIS original DSR series now mapped, but actual dated observations and within-country deviation/vintage checks not yet live-verified",
       "fallback_options": []
     },
     {
@@ -528,10 +539,14 @@
       "existing_series_references": [
         "credit_gap.us.bis",
         "credit_gap.ea.bis",
-        "credit_gap.jp.bis"
+        "credit_gap.jp.bis",
+        "debt_service.us.private.bis",
+        "debt_service.jp.private.bis",
+        "debt_service.de.private.bis"
       ],
       "existing_adapter_references": [
-        "src/finance_dashboard/bis.py"
+        "src/finance_dashboard/bis.py",
+        "src/finance_dashboard/bis_dsr.py"
       ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
@@ -541,7 +556,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "National BIS credit gap mapped; DSR original measures and crisis validation absent",
+      "outstanding_evidence": "National BIS credit gap mapped; BIS private DSR mapped but actual data and crisis method validation still open",
       "fallback_options": []
     },
     {
@@ -603,9 +618,14 @@
       "existing_series_references": [
         "credit_gap.us.bis",
         "credit_gap.ea.bis",
-        "credit_gap.jp.bis"
+        "credit_gap.jp.bis",
+        "debt_service.us.private.bis",
+        "debt_service.jp.private.bis",
+        "debt_service.de.private.bis"
       ],
-      "existing_adapter_references": [],
+      "existing_adapter_references": [
+        "src/finance_dashboard/bis_dsr.py"
+      ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
         "first_observation": null,
@@ -614,7 +634,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "BIS RPP/CPP and matched CPI series not mapped",
+      "outstanding_evidence": "BIS RPP/CPP and matched CPI series not mapped; BIS DSR registered as contextual credit evidence",
       "fallback_options": []
     },
     {
