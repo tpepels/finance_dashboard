@@ -24,6 +24,7 @@ from .research_returns import (
     SWINKELS_DATA_URL, SWINKELS_README_URL, SWINKELS_METADATA_URL,
     SWINKELS_ORIGINAL_METADATA_URL,
 )
+from .global_market_returns import GLOBAL_MARKET_SERIES, ORIGINAL_SHA256 as GLOBAL_MARKET_SHA256, SOURCE_URL as GLOBAL_MARKET_URL, SOURCE_IDENTITY as GLOBAL_MARKET_IDENTITY
 
 _NS = {'t': 'urn:oasis:names:tc:opendocument:xmlns:table:1.0',
        'o': 'urn:oasis:names:tc:opendocument:xmlns:office:1.0'}
@@ -299,6 +300,89 @@ def _swinkels(root, ids, select_manifest, original_file):
         raise _error('source_schema_invalid') from None
 
 
+def _global_multiasset(root, ids, select_manifest):
+    """Select original cached XLSX cells independently of the ingestion parser."""
+    record,folder,proof=_manifest(root/'research-returns/doeswijk-swinkels/global-multiasset',
+                                 GLOBAL_MARKET_IDENTITY,select_manifest)
+    try:
+        if set(record['sources'])!={'data'}:
+            raise _error('source_identity_mismatch')
+        raw,digest=_binary(folder,record['sources']['data'],'source.xlsx',GLOBAL_MARKET_URL)
+        if digest!=GLOBAL_MARKET_SHA256:
+            raise _error('source_hash_mismatch')
+        files=_members(raw)
+        namespace={'x':'http://purl.oclc.org/ooxml/spreadsheetml/main'}
+        strings=[''.join(part.text or '' for part in node.iter('{'+namespace['x']+'}t'))
+                 for node in ET.fromstring(files['xl/sharedStrings.xml'])]
+        book=ET.fromstring(files['xl/workbook.xml'])
+        if [node.attrib['name'] for node in book.findall('x:sheets/x:sheet',namespace)]!=['GMP JIMF']:
+            raise _error('source_identity_mismatch')
+        cells={}
+        for cell in ET.fromstring(files['xl/worksheets/sheet1.xml']).findall('x:sheetData/x:row/x:c',namespace):
+            node=cell.find('x:v',namespace)
+            if node is not None:
+                cells[cell.attrib['r']]=strings[int(node.text)] if cell.attrib.get('t')=='s' else node.text
+        # Literal columns establish an independent selector, not ingestion's map.
+        columns={'AUD':('A',('B','C','D'),('E','F','G')),
+            'CAD':('I',('J','K','L'),('M','N','O')),
+            'EUR':('Q',('R','S','T'),('U','V','W')),
+            'JPY':('Y',('Z','AA','AB'),('AC','AD','AE')),
+            'NZD':('AG',('AH','AI','AJ'),('AK','AL','AM')),
+            'NOK':('AO',('AP','AQ','AR'),('AS','AT','AU')),
+            'SEK':('AW',('AX','AY','AZ'),('BA','BB','BC')),
+            'CHF':('BE',('BF','BG','BH'),('BI','BJ','BK')),
+            'GBP':('BM',('BN','BO','BP'),('BQ','BR','BS')),
+            'USD':('BU',('BV','BW','BX'),('BY','BZ','CA'))}
+        metadata=record['data_metadata']
+        if (metadata['publisher']!='Doeswijk and Swinkels'
+                or metadata['research_doi']!='10.1016/j.jimonfin.2025.103453'
+                or metadata['native_frequency']!='M' or metadata['native_unit']!='percent'
+                or metadata['original_first_publication_at'] is not None
+                or metadata['dataset_release_at'] is not None
+                or metadata['original_sha256']!=GLOBAL_MARKET_SHA256
+                or metadata['source_values_modified'] is not False
+                or metadata['original_equity_or_bond_benchmark'] is not False
+                or metadata['release_vintages_verified'] is not False
+                or metadata['source_workbook_audit_status']!='original_index_return_identity_failed'
+                or metadata['excluded_source_pairs']!=[{'currency':'EUR','return_type':'NOMINAL','identity_failures':579}]):
+            raise _error('source_identity_mismatch')
+        values,evidence={},{}
+        for sid in ids:
+            currency,kind=GLOBAL_MARKET_SERIES[sid]
+            column,index_columns,return_columns=columns[currency]
+            kind_position=('NOMINAL','REAL','EXCESS').index(kind)
+            index_col,return_col=index_columns[kind_position],return_columns[kind_position]
+            if cells[column+'3']!=currency or cells[return_col+'4']!=kind or cells[index_col+'4']!=kind:
+                raise _error('source_identity_mismatch')
+            result,periods,windows,controls={},{},{},{}
+            for row in range(6,642):
+                day=date.fromisoformat(cells[column+str(row)])
+                period=day.replace(day=1)
+                if period in result:
+                    raise _error('source_period_invalid')
+                result[period]=_decimal(cells[return_col+str(row)])
+                periods[period.isoformat()]=day.isoformat()
+                windows[period.isoformat()]={'start_exclusive':cells[column+str(row-1)],'end_inclusive':day.isoformat()}
+                controls[period.isoformat()]={'previous':cells[index_col+str(row-1)],'current':cells[index_col+str(row)]}
+            contract=metadata['series'][sid]
+            if (contract['currency']!=currency or contract['return_type']!=kind
+                    or contract['source_sheet']!='GMP JIMF' or contract['source_date_column']!=column
+                    or contract['source_index_column']!=index_col or contract['source_return_column']!=return_col
+                    or contract['source_periods']!=periods or contract['source_return_windows']!=windows
+                    or contract['native_index_controls']!=controls
+                    or contract['index_return_identity_checks']!=636 or contract['index_return_identity_failures']!=0):
+                raise _error('source_identity_mismatch')
+            values[sid]=result
+            evidence[sid]={**proof,'source_sha256':digest,'source_native_unit':'percent',
+                'source_currency':currency,'source_identity':GLOBAL_MARKET_IDENTITY,
+                'source_edition':'Pinned original workbook; individual observation first releases unverified',
+                'source_workbook_audit_status':'original_index_return_identity_failed',
+                'selected_pair_index_return_identity_failures':0,'original_equity_or_bond_benchmark':False}
+        return values,evidence
+    except (KeyError,TypeError,ValueError,IndexError,ET.ParseError):
+        raise _error('source_schema_invalid') from None
+
+
 def read_return_originals(root, series_ids, select_manifest, original_file):
     """Return independently selected native source values and cryptographic proof.
 
@@ -307,7 +391,7 @@ def read_return_originals(root, series_ids, select_manifest, original_file):
     here without attempting UTF-8 decoding or calling ingestion parsers.
     """
     ids = list(dict.fromkeys(series_ids))
-    if set(ids) - (set(FRENCH_SERIES)|set(SWINKELS_SERIES)):
+    if set(ids) - (set(FRENCH_SERIES)|set(SWINKELS_SERIES)|set(GLOBAL_MARKET_SERIES)):
         raise _error('source_identity_mismatch')
     root = Path(root)
     values, proof = {}, {}
@@ -320,4 +404,8 @@ def read_return_originals(root, series_ids, select_manifest, original_file):
     if selected:
         native, evidence = _swinkels(root, selected, select_manifest, original_file)
         values.update(native); proof.update(evidence)
+    selected=[sid for sid in ids if sid in GLOBAL_MARKET_SERIES]
+    if selected:
+        native,evidence=_global_multiasset(root,selected,select_manifest)
+        values.update(native);proof.update(evidence)
     return values, proof

@@ -26,7 +26,10 @@ def fixtures(area="US", *, legacy=False):
     writer.writerow(header)
     for stem, top, bottom in (("sptinc", "0.46", "0.13"),
                               ("shweal", "0.70", "-0.01")):
-        for percentile, value in (("p90p100", top), ("p0p50", bottom)):
+        groups = [("p90p100", top), ("p0p50", bottom)]
+        if stem == "sptinc":
+            groups.append(("p99p100", "0.19"))
+        for percentile, value in groups:
             writer.writerow([area, stem + suffix, percentile, "2024", value,
                              "992", "j"] + ([] if legacy else ["4"]))
     # Sparse older observation proves that missing years remain absent.
@@ -51,6 +54,32 @@ def fixtures(area="US", *, legacy=False):
 class WidTests(unittest.TestCase):
     def setUp(self):
         self.wid = wid
+
+    def test_actual_publisher_top1_excerpts_preserve_country_world_identity(self):
+        root = Path(__file__).parent / "fixtures" / "wid_top1"
+        expected = {"US": (2024, "0.2073"), "FR": (2024, "0.1182"),
+                    "PT": (2024, "0.1037"), "CN": (2024, "0.1576"),
+                    "IN": (2024, "0.2307"), "WO": (2023, "0.2029")}
+        provenance = json.loads((root / "provenance.json").read_text())
+        for area, (year, value) in expected.items():
+            with self.subTest(area=area):
+                bundle = self.wid.parse_wid_bundle((root / (area + "_data.csv")).read_text(),
+                    (root / (area + "_metadata.csv")).read_text(), area=area)
+                variable = "sptinc" + ("j992" if area == "WO" else "992j")
+                self.assertEqual(bundle.observations[(variable, "p99p100")][date(year, 1, 1)],
+                                 Decimal(value))
+                self.assertEqual(bundle.metadata[variable]["shortpop"], "equal-split adults")
+                self.assertEqual(bundle.metadata[variable]["unit"], "share")
+                self.assertEqual(len(provenance["areas"][area]["original_sha256"]["data"]), 64)
+
+    def test_top1_income_retains_exact_percentile_without_wealth_substitution(self):
+        for area, legacy in (("US", False), ("WO", True)):
+            data, meta = fixtures(area, legacy=legacy)
+            suffix = "j992" if legacy else "992j"
+            bundle = self.wid.parse_wid_bundle(data, meta, area=area)
+            self.assertEqual(bundle.observations[("sptinc" + suffix, "p99p100")],
+                             {date(2024, 1, 1): Decimal("0.19")})
+            self.assertNotIn(("shweal" + suffix, "p99p100"), bundle.observations)
 
     def test_native_fractions_sparse_years_and_original_metadata_survive(self):
         # A percent conversion, annual interpolation or metadata drop is a bug.
@@ -119,6 +148,29 @@ class WidTests(unittest.TestCase):
         self.assertIsNone(top.prepared_at)
         self.assertEqual(len(requested), 2)
         self.assertIn("WID_metadata_US.csv", top.request_url)
+
+    def test_added_percentile_selection_preserves_historical_manifest_bytes(self):
+        data, meta = fixtures()
+        def respond(request):
+            return httpx.Response(200, text=meta if "metadata" in request.url.path else data)
+        with TemporaryDirectory() as tmp, httpx.Client(transport=httpx.MockTransport(respond)) as http:
+            root = Path(tmp)
+            self.wid.WidClient(http, archive_dir=root).fetch("inequality.us.pretax_income.top10")
+            path = next(root.glob("wid/US/*/manifest.json"))
+            manifest = json.loads(path.read_bytes())
+            # Simulate the original archive's four-share extraction. Its raw
+            # CSV already contains the later selected native p99p100 values.
+            del manifest["observation_quality"]["sptinc992j/p99p100"]
+            path.write_text(json.dumps(manifest, indent=2))
+            before = path.read_bytes()
+            selected = self.wid.WidClient(http, archive_dir=root).fetch("inequality.us.pretax_income.top1")
+            self.assertEqual(selected.observations, {date(2024, 1, 1): Decimal("0.19")})
+            self.assertEqual(path.read_bytes(), before)
+            self.assertEqual(len(list(root.glob("wid/US/*/manifest.json"))), 1)
+            manifest["observation_quality"]["sptinc992j/p90p100"]["2024-01-01"] = "forged"
+            path.write_text(json.dumps(manifest))
+            with self.assertRaises(ProviderError):
+                self.wid.WidClient(http, archive_dir=root).fetch("inequality.us.pretax_income.top1")
 
     def test_registered_source_boundary_refuses_arbitrary_urls(self):
         # External series IDs must not create arbitrary network requests.

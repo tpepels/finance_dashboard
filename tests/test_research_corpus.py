@@ -29,6 +29,47 @@ class ResearchCorpusTests(unittest.TestCase):
             self.assertTrue(item["outstanding_evidence"])
             self.assertTrue(item["comparison_contract"]["original_requirements"])
 
+    def test_canonical_source_graph_has_no_parallel_inventory_or_stored_binding_state(self):
+        self.assertEqual(self.document["schema_version"], 3)
+        for item in self.document["analyses"]:
+            self.assertNotIn("existing_series_references", item)
+            self.assertNotIn("existing_adapter_references", item)
+            self.assertIsInstance(item["context_series_ids"], list)
+            for role in item["comparison_contract"]["original_requirements"]:
+                self.assertNotIn("requirement_status", role)
+
+    def test_report_derives_source_links_and_binding_state_from_canonical_bindings(self):
+        document = copy.deepcopy(self.document)
+        question = next(a for a in document["analyses"] if a["id"] == "C01")
+        question.pop("existing_series_references", None)
+        question.pop("existing_adapter_references", None)
+        question["context_series_ids"] = ["gdp.real_growth.jp"]
+        report = research_corpus_report(document, series_registry=self.series["series"])
+        result = next(a for a in report["analyses"] if a["id"] == "C01")
+        ids = {s["series_id"] for s in result["linked_sources"]}
+        self.assertIn("activity.us.real_gdp_level", ids)
+        self.assertIn("gdp.real_growth.jp", ids)
+        self.assertEqual(result["source_reference_count"], len(ids))
+        for role in result["requirements"]:
+            self.assertEqual(role["requirement_status"], "mapped" if role["series_ids"] else "missing")
+        self.assertFalse(next(r for r in result["requirements"] if r["role"] == "oecd_cli")["accepted"])
+
+    def test_legacy_bindings_and_context_duplicates_are_rejected(self):
+        for key, value in (("existing_series_references", []), ("existing_adapter_references", [])):
+            document = copy.deepcopy(self.document)
+            document["analyses"][0][key] = value
+            issues = validate_research_corpus(document, self.series["series"])
+            self.assertTrue(any("legacy source inventory" in issue for issue in issues), issues)
+        document = copy.deepcopy(self.document)
+        role = document["analyses"][0]["comparison_contract"]["original_requirements"][0]
+        role["requirement_status"] = "mapped"
+        self.assertTrue(any("derived requirement status" in issue for issue in
+                            validate_research_corpus(document, self.series["series"])))
+        document = copy.deepcopy(self.document)
+        document["analyses"][0]["context_series_ids"] = ["activity.us.industrial_production"] * 2
+        self.assertTrue(any("context source" in issue for issue in
+                            validate_research_corpus(document, self.series["series"])))
+
     def test_all_four_difficult_targets_have_original_fallback_methods(self):
         targets = {r["id"]: r for r in self.document["analyses"]}
         for ident in ("G01", "G03", "P01", "P02"):
@@ -53,13 +94,13 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertTrue(any("expected all 35" in issue for issue in issues))
         self.assertTrue(any(original in issue and "C07" in issue for issue in issues))
 
-    def test_reject_fake_primary_source_and_existing_series(self):
+    def test_reject_fake_primary_source_and_context_series(self):
         edited = copy.deepcopy(self.document)
         edited["analyses"][0]["primary_method_sources"] = ["S99"]
-        edited["analyses"][0]["existing_series_references"].append("imaginary")
+        edited["analyses"][0]["context_series_ids"] = ["imaginary"]
         issues = validate_research_corpus(edited, self.series["series"])
         self.assertTrue(any("unknown source" in x for x in issues))
-        self.assertTrue(any("pre-existing series" in x for x in issues))
+        self.assertTrue(any("context source" in x for x in issues))
 
     def test_editable_certificates_are_rejected_even_with_plausible_dated_counts(self):
         for status in ("verified_source_data", "fully_validated_comparative_corpus"):
@@ -105,7 +146,7 @@ class ResearchCorpusTests(unittest.TestCase):
         nominal["error"] = "PRIVATE upstream error"
         report = research_corpus_report(self.document, series_registry=registry)
         questions = {x["id"]: x for x in report["analyses"]}
-        contract = next(x for x in questions["M02"]["linked_existing_series"]
+        contract = next(x for x in questions["M02"]["linked_sources"]
                         if x["series_id"] == "bond.us.nominal_10y").get("source_contract")
         self.assertIsInstance(contract, dict)
         for question, sid, frequency in (
@@ -115,7 +156,7 @@ class ResearchCorpusTests(unittest.TestCase):
             ("V02", "valuation.us.tobins_q2", "A"),
         ):
             with self.subTest(series=sid):
-                link = next(x for x in questions[question]["linked_existing_series"]
+                link = next(x for x in questions[question]["linked_sources"]
                             if x["series_id"] == sid)
                 self.assertIsInstance(link.get("source_contract"), dict)
                 self.assertEqual(link["source_contract"]["frequency"], frequency)
@@ -149,7 +190,7 @@ class ResearchCorpusTests(unittest.TestCase):
         report = research_corpus_report(document, observed, series_registry=self.series["series"])
         self.assertEqual(report.get("observation_evidence_asof"), "2026-11-04")
         question = next(x for x in report["analyses"] if x["id"] == "M02")
-        link = next(x for x in question["linked_existing_series"]
+        link = next(x for x in question["linked_sources"]
                     if x["series_id"] == "bond.us.nominal_10y")
         self.assertIsInstance(link.get("observation_coverage"), dict)
         coverage = link["observation_coverage"]
@@ -181,7 +222,7 @@ class ResearchCorpusTests(unittest.TestCase):
         }]}
         report = research_corpus_report(self.document, observed, series_registry=self.series["series"])
         question = next(x for x in report["analyses"] if x["id"] == "L02")
-        link = next(x for x in question["linked_existing_series"]
+        link = next(x for x in question["linked_sources"]
                     if x["series_id"] == "labour.us.pwt_labour_share")
         self.assertIsInstance(link.get("observation_coverage"), dict)
         coverage = link["observation_coverage"]
@@ -206,7 +247,7 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertEqual(report["method_source_count"], 49)
         self.assertEqual(report["fully_validated_analysis_count"], 0)
         recession = next(x for x in report["analyses"] if x["id"] == "C02")
-        self.assertEqual(recession["existing_references_with_observations"], 1)
+        self.assertEqual(recession["source_references_with_observations"], 1)
         self.assertFalse(recession["comparative_corpus_validated"])
 
     def test_alfred_publication_snapshots_are_not_local_ingestion_timestamps(self):
@@ -226,7 +267,7 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertTrue(output["alfred_publication_vintages_checked"])
         self.assertEqual(output["alfred_sources_with_populated_asof"],1)
         m02 = next(x for x in output["analyses"] if x["id"] == "M02")
-        original = next(x for x in m02["linked_existing_series"]
+        original = next(x for x in m02["linked_sources"]
                         if x["series_id"] == "bond.us.nominal_10y")
         self.assertEqual(original["original_source_asof"]["asof_snapshot_files"],3)
         self.assertEqual(original["original_source_asof"]["populated_asof_snapshots"],2)
@@ -243,7 +284,7 @@ class ResearchCorpusTests(unittest.TestCase):
         report = research_corpus_report(self.document)
         self.assertFalse(report["observations_checked"])
         self.assertEqual(report["analysis_with_any_stored_macro_observations"], 0)
-        item = report["analyses"][0]["linked_existing_series"][0]
+        item = report["analyses"][0]["linked_sources"][0]
         self.assertIsNone(item["stored_periods"])
         self.assertIn("source_contract", item)
         self.assertIsNone(item["source_contract"])
@@ -258,7 +299,7 @@ class ResearchCorpusTests(unittest.TestCase):
                 report = research_corpus_report(self.document, vintages=inventory,
                                                series_registry=self.series["series"])
                 question = next(x for x in report["analyses"] if x["id"] == "M02")
-                link = next(x for x in question["linked_existing_series"]
+                link = next(x for x in question["linked_sources"]
                             if x["series_id"] == "bond.us.nominal_10y")
                 publication = link["original_source_asof"]
                 self.assertIs(publication.get("checked"), False)
@@ -272,7 +313,7 @@ class ResearchCorpusTests(unittest.TestCase):
                                   "populated_vintage_count": 0}]},
             series_registry=self.series["series"])
         question = next(x for x in report["analyses"] if x["id"] == "M02")
-        link = next(x for x in question["linked_existing_series"]
+        link = next(x for x in question["linked_sources"]
                     if x["series_id"] == "bond.us.nominal_10y")
         publication = link["original_source_asof"]
         self.assertTrue(publication.get("checked"))

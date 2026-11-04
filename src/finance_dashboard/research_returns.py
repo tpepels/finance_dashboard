@@ -367,6 +367,8 @@ class ResearchReturnsClient:
         raise ProviderError("Research return source redirect limit exceeded")
 
     def fetch(self, series_id: str, start: date | None = None) -> FetchedSeries:
+        from .global_market_returns import (GLOBAL_MARKET_SERIES, SOURCE_IDENTITY,
+            SOURCE_URL as GLOBAL_MARKET_URL, parse_global_market_workbook)
         if series_id in FRENCH_SERIES:
             dataset, _variable = FRENCH_SERIES[series_id]
             area = next(label for label, name in FRENCH_DATASETS.items() if name == dataset)
@@ -415,6 +417,15 @@ class ResearchReturnsClient:
                          "repository_release_at": repo_meta["releaseTime"],
                          "original_dataset_modified_at": source_meta["modified_date"]})
                 self._bundles[cache_key] = bundle
+        elif series_id in GLOBAL_MARKET_SERIES:
+            cache_key,url="doeswijk-swinkels/global-multiasset",GLOBAL_MARKET_URL
+            if cache_key not in self._bundles:
+                response=self._get(url,5_000_000)
+                bundle=parse_global_market_workbook(response.content)
+                if self.archive_dir is not None:
+                    _archive(self.archive_dir,cache_key,{"data":(response,"source.xlsx",url)},bundle,
+                             {"source_identity":SOURCE_IDENTITY})
+                self._bundles[cache_key]=bundle
         else:
             raise ProviderError("Unregistered original academic return series")
         values = {day: value for day, value in self._bundles[cache_key].observations[series_id].items() if start is None or day >= start}

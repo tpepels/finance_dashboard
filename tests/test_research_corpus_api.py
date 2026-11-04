@@ -52,8 +52,12 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         self.assertFalse(item["comparative_corpus_validated"])
         self.assertTrue(item["fallbacks"])
         self.assertTrue(all(x["stored_periods"] == 0
-                            for x in item["linked_existing_series"]))
+                            for x in item["linked_sources"]))
         self.assertEqual(self.client.get("/api/research-corpus/UNKNOWN").status_code, 404)
+
+    def test_unknown_question_does_not_evaluate_the_entire_corpus(self):
+        with patch("finance_dashboard.api.evaluate_corpus", side_effect=AssertionError("unnecessary corpus read")):
+            self.assertEqual(self.client.get("/api/research-corpus/UNKNOWN").status_code, 404)
 
     def test_original_position_endpoints_report_missing_sources_explicitly(self):
         from pathlib import Path
@@ -84,7 +88,7 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         report = response.json()
         self.assertEqual(report.get("observation_evidence_asof"), date.today().isoformat())
         question = next(x for x in report["analyses"] if x["id"] == "M02")
-        link = next(x for x in question["linked_existing_series"]
+        link = next(x for x in question["linked_sources"]
                     if x["series_id"] == "bond.us.nominal_10y")
         self.assertIsInstance(link.get("source_contract"), dict)
         self.assertEqual(link["source_contract"]["source_key"], "DGS10")
@@ -96,7 +100,7 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         self.assertIs(link["original_source_asof"].get("first_publication_vintage_verified"), False)
         self.assertTrue(question.get("method_sources"))
         detail = self.client.get("/api/research-corpus/M02").json()
-        self.assertEqual(detail["linked_existing_series"], question["linked_existing_series"])
+        self.assertEqual(detail["linked_sources"], question["linked_sources"])
         self.assertEqual(detail["method_sources"], question["method_sources"])
 
     def test_existing_observation_is_not_validated_comparative_analysis(self):
@@ -115,9 +119,9 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         result = self.client.get("/api/research-corpus/C02")
         self.assertEqual(result.status_code, 200)
         entry = result.json()
-        self.assertEqual(entry["existing_references_with_observations"], 1)
+        self.assertEqual(entry["source_references_with_observations"], 1)
         self.assertFalse(entry["comparative_corpus_validated"])
-        link = next(x for x in entry["linked_existing_series"]
+        link = next(x for x in entry["linked_sources"]
                     if x["series_id"] == "recession.us.sahm")
         self.assertIsInstance(link.get("observation_coverage"), dict)
         self.assertEqual(link["observation_coverage"]["stored_periods"], 1)

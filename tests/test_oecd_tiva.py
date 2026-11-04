@@ -183,6 +183,43 @@ class TivaTests(unittest.TestCase):
                     client.fetch("supply_chain.us.value_added")
             self.assertEqual(list(Path(tmp).glob("oecd-tiva/*/manifest.json")), [])
 
+    def test_canonical_evidence_recomputes_real_original_discrepancies_and_rejects_tampering(self):
+        originals = Path(__file__).parent / "fixtures" / "oecd_tiva"
+        def respond(request):
+            name = "tiva_2025_shares.csv" if "MAINSH" in request.url.path else "tiva_2025_levels.csv"
+            return httpx.Response(200, content=(originals / name).read_bytes())
+        with TemporaryDirectory() as tmp, httpx.Client(transport=httpx.MockTransport(respond)) as http:
+            root = Path(tmp)
+            self.tiva.TivaClient(http, archive_dir=root).fetch("supply_chain.pt.value_added")
+            manifest = next(root.glob("oecd-tiva/*/manifest.json"))
+            before = manifest.read_bytes()
+            evidence = self.tiva.read_tiva_evidence(root)
+            self.assertTrue(evidence["original_source_hash_verified"])
+            self.assertTrue(evidence["selected_country_history_verified"])
+            self.assertEqual(evidence["selection_method"], "acquisition_receipt")
+            self.assertEqual(evidence["serialization_diagnostic"]["outside_serialization_rounding_intervals"], 46)
+            self.assertEqual(evidence["serialization_diagnostic"]["beyond_existing_0_001pp_check"], 9)
+            self.assertFalse(evidence["accounting_passed"])
+            self.assertFalse(evidence["common_release_verified"])
+            self.assertEqual(manifest.read_bytes(), before)
+            (manifest.parent / "tiva_2025_shares.csv").write_bytes(b"changed")
+            with self.assertRaises(ValueError):
+                self.tiva.read_tiva_evidence(root)
+
+    def test_partial_original_pair_is_available_without_full_history_or_fabricated_rounding_diagnostic(self):
+        def respond(request):
+            return httpx.Response(200, text=fixture(SHARE_FLOW if "MAINSH" in request.url.path else LEVEL_FLOW))
+        with TemporaryDirectory() as tmp, httpx.Client(transport=httpx.MockTransport(respond)) as http:
+            root = Path(tmp)
+            self.tiva.TivaClient(http, archive_dir=root).fetch("supply_chain.pt.value_added")
+            evidence = self.tiva.read_tiva_evidence(root)
+            self.assertTrue(evidence["original_source_hash_verified"])
+            self.assertFalse(evidence["selected_country_history_verified"])
+            self.assertEqual(evidence["status"], "partial_original_tiva_pair")
+            self.assertIsNone(evidence["serialization_diagnostic"])
+            self.assertIsNone(evidence["accounting_passed"])
+            self.assertEqual(evidence["missing_years_by_series"]["supply_chain.pt.value_added"], list(range(1995, 2022)))
+
 
 if __name__ == "__main__":
     unittest.main()

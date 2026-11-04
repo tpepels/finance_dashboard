@@ -33,10 +33,12 @@ from finance_dashboard.catalog import load_documents
 from finance_dashboard.source_capture import CAPTURE_PROVIDERS, canonical_bytes
 from finance_dashboard.captured_sources import captured_source
 from finance_dashboard.research_returns import FRENCH_SERIES, SWINKELS_SERIES
+from finance_dashboard.global_market_returns import GLOBAL_MARKET_SERIES
 from finance_dashboard.return_source_reconciliation import read_return_originals
 
 SCALE = Decimal("0.0000000001")
-SOURCE_IDS = sorted(set(WID_SERIES) | set(TIVA_SERIES) | set(FRENCH_SERIES) | set(SWINKELS_SERIES))
+SOURCE_IDS = sorted(set(WID_SERIES) | set(TIVA_SERIES) | set(FRENCH_SERIES) | set(SWINKELS_SERIES) |
+                    {"returns.doeswijk_swinkels.global_multiasset.usd.nominal"})
 _WID_VALUES_CACHE = OrderedDict()
 _WID_CACHE_LOCK = RLock()
 
@@ -110,7 +112,7 @@ def _selected_manifest(parent, source_identity):
     return (*selected[:4], "acquisition_receipt")
 
 
-def _original_file(folder, source, expected_name):
+def _original_file(folder, source, expected_name, *, binary=False):
     try:
         if source["file"] != expected_name or Path(expected_name).name != expected_name:
             raise EvidenceError("source_identity_mismatch")
@@ -120,7 +122,7 @@ def _original_file(folder, source, expected_name):
         raw = target.read_bytes()
         if len(raw) != source["bytes"] or sha256(raw).hexdigest() != source["sha256"]:
             raise EvidenceError("source_hash_mismatch")
-        return raw.decode("utf-8-sig"), source["sha256"]
+        return raw if binary else raw.decode("utf-8-sig"), source["sha256"]
     except EvidenceError:
         raise
     except (OSError, KeyError, TypeError, UnicodeError):
@@ -344,8 +346,9 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             proof.update(evidence)
         except EvidenceError as exc:
             failures.update({sid: exc.code for sid in TIVA_SERIES if sid in stored})
-    return_ids = set(stored) & (set(FRENCH_SERIES) | set(SWINKELS_SERIES))
+    return_ids = set(stored) & (set(FRENCH_SERIES) | set(SWINKELS_SERIES) | set(GLOBAL_MARKET_SERIES))
     return_groups = [sorted(sid for sid in return_ids if sid in SWINKELS_SERIES)]
+    return_groups.append(sorted(sid for sid in return_ids if sid in GLOBAL_MARKET_SERIES))
     for dataset in sorted({source[0] for source in FRENCH_SERIES.values()}):
         return_groups.append(sorted(sid for sid in return_ids if sid in FRENCH_SERIES and FRENCH_SERIES[sid][0] == dataset))
     for ids in return_groups:
@@ -415,7 +418,7 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
         "series_count": len(items),
         "matched_series": sum(item["source_values_match"] for item in items),
         "preserved_extra_periods": sum(len(item["extra_stored_periods"] or []) for item in items),
-        "method": "Independent original CSV/JSON/ODS values versus latest append-only DB versions; no interpolation or deletion. Missing source periods are numeric original dates absent from storage; extra stored periods remain retained.",
+        "method": "Independent original CSV/JSON/ODS/XLSX values versus latest append-only DB versions; no interpolation or deletion. Missing source periods are numeric original dates absent from storage; extra stored periods remain retained.",
         "series": items}
 
 

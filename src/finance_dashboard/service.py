@@ -106,7 +106,7 @@ class IngestionService:
         # These publishers deliver complete snapshots, cached across each run.
         # Reconcile every delivered period: old estimates can change outside the
         # ordinary overlap, and filtering would save no upstream requests.
-        complete_snapshot = definition["provider"] in {"WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS"}
+        complete_snapshot = definition["provider"] in {"WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS", "GLOBAL_MARKET_RETURNS"}
         start = None if full or complete_snapshot or last_date is None else last_date - timedelta(days=overlap)
         run_id = str(uuid4())
         with Session(self.engine) as session, session.begin():

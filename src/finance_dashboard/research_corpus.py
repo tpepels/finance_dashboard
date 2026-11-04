@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .catalog import DEFAULT_ROOT
+from .comparative_corpus import CHECK_IDS
 
 FAMILIES = {"C": 5, "M": 3, "F": 7, "V": 4, "L": 6, "G": 5, "P": 5}
 # Exact owner-approved 35 first-class IDs: per-family totals alone do not
@@ -27,7 +28,6 @@ APPROVED_ANALYSIS_IDS = frozenset((
 ))
 SUPPORTING_METHODS = {"C04", "M03", "V04", "L06", "G04"}
 TEMPORAL_REQUIREMENTS = {"current_source_snapshot", "source_asof", "first_publication"}
-COMPARISON_CHECKS = {"yield_decomposition", "share_partition_100", "tiva_value_added_share"}
 # Only reviewed catalogue metadata and safe census fields enter the API.
 # Ingestion request URLs and upstream error text may contain credentials.
 SOURCE_CONTRACT_FIELDS = (
@@ -48,6 +48,14 @@ def load_research_corpus(root: Path = DEFAULT_ROOT) -> dict[str, Any]:
     source = Path(root) / "definitions" / "phase2_research_corpus.json"
     with source.open(encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def analysis_series_ids(analysis: dict) -> list[str]:
+    """Canonical input union, retaining explicitly separate contextual sources."""
+    contract = analysis["comparison_contract"]
+    return sorted(set(analysis.get("context_series_ids", [])) | {
+        sid for binding in contract["original_requirements"] + contract["variants"]
+        for sid in binding["series_ids"]})
 
 
 def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> list[str]:
@@ -78,8 +86,8 @@ def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> 
             continue
         if len(ids) != len(set(ids)) or any(sid not in registry for sid in ids):
             errors.append(f"{ident}: unknown/duplicate requirement source")
-        if requirement.get("requirement_status") != ("mapped" if ids else "missing"):
-            errors.append(f"{ident}: requirement mapped state must follow source bindings")
+        if "requirement_status" in requirement:
+            errors.append(f"{ident}: derived requirement status must not be stored")
         if requirement.get("temporal_requirement") not in TEMPORAL_REQUIREMENTS:
             errors.append(f"{ident}: explicit temporal evidence requirement required")
         expected = requirement.get("expected")
@@ -130,7 +138,7 @@ def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> 
             if sid in registry and registry[sid].get("frequency") != variant.get("frequency"):
                 errors.append(f"{ident}: comparison native frequency mismatch for {sid}")
         checks = variant.get("checks")
-        if not isinstance(checks, list) or any(not isinstance(check, str) or check not in COMPARISON_CHECKS for check in checks):
+        if not isinstance(checks, list) or any(not isinstance(check, str) or check not in CHECK_IDS for check in checks):
             errors.append(f"{ident}: unknown comparison consistency check")
         if not isinstance(variant.get("limitations"), list) or not variant["limitations"] or any(not isinstance(limit, str) or not limit.strip() for limit in variant["limitations"]):
             errors.append(f"{ident}: comparison limitations required")
@@ -149,7 +157,7 @@ def validate_research_corpus(
 ) -> list[str]:
     """Full-membership and proof contract: no fabricated validated state."""
     errors: list[str] = []
-    if document.get("schema_version") != 2:
+    if document.get("schema_version") != 3:
         errors.append("corpus: unsupported schema_version")
     if document.get("approved_phase1_version") != "2026-11-03":
         errors.append("corpus: wrong approved Phase 1 contract version")
@@ -206,15 +214,21 @@ def validate_research_corpus(
             errors.append(f"{ident}: primary methodological source required")
         elif len(refs) != len(set(refs)) or any(x not in source_ids for x in refs):
             errors.append(f"{ident}: duplicate or unknown source reference")
-        existing = row.get("existing_series_references")
-        if not isinstance(existing, list):
-            errors.append(f"{ident}: existing_series_references must be an array")
-        elif len(existing) != len(set(existing)) or any(x not in registered for x in existing):
-            errors.append(f"{ident}: unknown/duplicate pre-existing series ID")
-        if not isinstance(row.get("existing_adapter_references"), list):
-            errors.append(f"{ident}: adapter references must be an array")
-        elif any(not str(x).startswith("src/finance_dashboard/") for x in row["existing_adapter_references"]):
-            errors.append(f"{ident}: adapter path outside application")
+        if any(field in row for field in ("existing_series_references", "existing_adapter_references")):
+            errors.append(f"{ident}: legacy source inventory forbidden; canonical bindings required")
+        context = row.get("context_series_ids")
+        if not isinstance(context, list) or any(not isinstance(sid, str) for sid in context):
+            errors.append(f"{ident}: context source bindings must be an array of IDs")
+        else:
+            if len(context) != len(set(context)) or any(sid not in registered for sid in context):
+                errors.append(f"{ident}: unknown/duplicate context source")
+            contract = row.get("comparison_contract", {})
+            bound = {sid for field in ("original_requirements", "variants")
+                     for binding in (contract.get(field) or []) if isinstance(binding, dict)
+                     and isinstance(binding.get("series_ids"), list)
+                     for sid in binding.get("series_ids", []) if isinstance(sid, str)} if isinstance(contract, dict) else set()
+            if set(context) & bound:
+                errors.append(f"{ident}: context source duplicates a canonical role or variant binding")
         if not str(row.get("outstanding_evidence", "")).strip():
             errors.append(f"{ident}: evidence gap must be documented")
         if any(field in row for field in ("evidence_status", "coverage", "comparative_corpus_validated")):
@@ -259,9 +273,12 @@ def research_corpus_report(
     vintages: dict[str, Any] | None = None,
     series_registry: list[dict[str, Any]] | None = None,
     comparative_evidence: dict[str, Any] | None = None,
+    source_reconciliation: dict[str, Any] | None = None,
+    artifact_evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Join runtime evidence; declarations and source counts cannot grant approval."""
     from .comparative_corpus import comparative_evidence_summary
+    from .research_acceptance import analysis_acceptance, acceptance_summary
     comparative = comparative_evidence_summary(comparative_evidence, series_registry or [], document)
     counts = {item["id"]: item for item in (observations or {}).get("items", [])
               if item.get("family") == "macro"}
@@ -279,7 +296,7 @@ def research_corpus_report(
     analyses: list[dict[str, Any]] = []
     for row in document["analyses"]:
         links = []
-        for series_id in row["existing_series_references"]:
+        for series_id in analysis_series_ids(row):
             source = counts.get(series_id)
             original = original_by_local_id.get(series_id, {})
             original_fred_id = (original.get("source_key")
@@ -325,23 +342,17 @@ def research_corpus_report(
         observed = sum((p["stored_periods"] or 0) > 0 for p in links)
         panel_evidence = [panel for panel in comparative["panels"] if panel["analysis_id"] == row["id"]]
         bounded_verified = any(panel["state"] == "bounded_current_vintage_verified" for panel in panel_evidence)
-        requirements = []
-        for requirement in row["comparison_contract"]["original_requirements"]:
-            bound = requirement["series_ids"]
-            stored = sum((counts.get(sid, {}).get("stored_periods") or 0) > 0 for sid in bound)
-            requirements.append({**requirement, "sources_checked": observations is not None,
-                "mapped_source_count": len(bound), "sources_with_observations": stored,
-                "first_publication_verified": False, "source_asof_verified": False,
-                "accepted": False,
-                "state": "source_binding_missing" if not bound else
-                    "source_history_not_checked" if observations is None else
-                    "source_history_missing" if stored < len(bound) else "publication_evidence_outstanding"})
+        acceptance = analysis_acceptance(row, original_by_local_id, counts, panel_evidence,
+            observations_checked=observations is not None, source_proof=source_reconciliation,
+            artifact_evidence=artifact_evidence)
+        requirements = [{**role, "requirement_status": "mapped" if role["series_ids"] else "missing"}
+                        for role in acceptance.pop("requirements")]
         analyses.append({
             "id": row["id"], "title": row["title"],
             "evidence_status": "verified_source_data" if bounded_verified else "not_empirically_verified_for_phase2",
-            "existing_reference_count": len(links),
-            "existing_references_with_observations": observed,
-            "linked_existing_series": links,
+            "source_reference_count": len(links),
+            "source_references_with_observations": observed,
+            "linked_sources": links,
             "method_source_ids": row["primary_method_sources"],
             "method_sources": [
                 {field: method_source_by_id[source_id].get(field)
@@ -351,18 +362,18 @@ def research_corpus_report(
             "outstanding_evidence": row["outstanding_evidence"],
             "fallbacks": [{**fallback, "data_verified": False} for fallback in row["fallback_options"]],
             "requirements": requirements,
+            "acceptance": acceptance,
             "comparison_variants": row["comparison_contract"]["variants"],
             "comparison_evidence": panel_evidence,
             "has_bounded_current_vintage_panel": bounded_verified,
-            # This runtime verifies native current-source panels only. There
-            # is no first-publication/full-contract verifier implemented yet.
-            "comparative_corpus_validated": False,
+            "comparative_corpus_validated": acceptance["accepted"],
         })
     return {
         "phase": "phase2", "status": "active_not_complete",
         "analysis_count": len(analyses),
         "method_source_count": len(document["original_sources"]),
         "fully_validated_analysis_count": sum(x["comparative_corpus_validated"] for x in analyses),
+        "acceptance_summary": acceptance_summary(analyses),
         "bounded_current_vintage_panel_count": comparative["bounded_current_vintage_panel_count"],
         "analyses_with_bounded_current_vintage_panels": sum(x["has_bounded_current_vintage_panel"] for x in analyses),
         "comparative_evidence_checked": comparative["checked"],
@@ -370,8 +381,8 @@ def research_corpus_report(
         "comparative_evidence_failure_codes": comparative["failure_codes"],
         "comparative_evidence_asof": comparative.get("checked_at_utc"),
         "comparative_report_sha256": comparative.get("report_sha256"),
-        "analysis_with_existing_code_references": sum(x["existing_reference_count"] > 0 for x in analyses),
-        "analysis_with_any_stored_macro_observations": sum(x["existing_references_with_observations"] > 0 for x in analyses),
+        "analyses_with_source_references": sum(x["source_reference_count"] > 0 for x in analyses),
+        "analysis_with_any_stored_macro_observations": sum(x["source_references_with_observations"] > 0 for x in analyses),
         "observations_checked": observations is not None,
         "observation_evidence_asof": observations.get("asof")
             if observations is not None else None,
@@ -381,7 +392,7 @@ def research_corpus_report(
             for item in vintage_by_id.values()
         ) if vintages is not None else None,
         "interpretation": (
-            "Code references and stored historical source periods are not proof of "
+            "Source bindings and stored historical source periods are not proof of "
             "complete matched economic comparisons or original release-time vintage. "
             "Missing sources and declared fallbacks remain visible; no synthetic data."
         ),

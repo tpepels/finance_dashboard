@@ -1,0 +1,39 @@
+{
+  "source_url": "https://laurensswinkels.com/wp-content/uploads/2025/11/public-data-file-jimf-3.xlsx",
+  "original_sha256": "a66ce1c1c1852fbac0c5c56bfe8b02c42900a5a820c9f13f2219325486c96d2d",
+  "selection": "Factual native numeric cached XML values, worksheet GMP JIMF; EUR nominal R/U and USD nominal BV/BY. Prior same-column index row is included; no recalc or manufactured data.",
+  "pairs": [
+    {
+      "currency": "EUR",
+      "source_row": 6,
+      "source_date": "1970-01-30",
+      "previous_index": "100",
+      "current_index": "95.934598387927878",
+      "published_return_percent": "-2.985057035631522"
+    },
+    {
+      "currency": "EUR",
+      "source_row": 632,
+      "source_date": "2022-03-31",
+      "previous_index": "863.33544119847318",
+      "current_index": "852.64617119959678",
+      "published_return_percent": "1.1659469512447451"
+    },
+    {
+      "currency": "USD",
+      "source_row": 6,
+      "source_date": "1970-01-30",
+      "previous_index": "100",
+      "current_index": "97.014942964368473",
+      "published_return_percent": "-2.985057035631522"
+    },
+    {
+      "currency": "USD",
+      "source_row": 641,
+      "source_date": "2022-12-31",
+      "previous_index": "6565.5546178602544",
+      "current_index": "6445.7095035099919",
+      "published_return_percent": "-1.825361623285382"
+    }
+  ]
+}

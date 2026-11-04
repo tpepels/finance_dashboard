@@ -14,6 +14,47 @@ from test_phase2_source_reconcile import database, add
 
 
 class CapturedSourcesTests(unittest.TestCase):
+    def test_public_fred_html_fallback_reconciles_visible_and_hidden_native_rows(self):
+        from decimal import Decimal
+        import sqlite3
+        sid='rates.us.nominal_2y'
+        html='''<html><table><tr><th>Series ID</th><td>DGS2</td></tr></table>
+        <table id="data-table-observations"><tr><th>DATE</th><th>VALUE</th></tr>
+        <tr><th>2024-01-02</th><td>3.95</td></tr></table>
+        <div id="extra-rows">#2024-01-03|3.91 #2024-01-04| . #2024-01-05|3.94</div></html>'''
+        with TemporaryDirectory() as temp,patch.dict('os.environ',{'FRED_API_KEY':''}):
+            root=Path(temp);db=root/'history.db';database(db)
+            def source(request):
+                return httpx.Response(200,text=html) if request.url.path=='/data/DGS2' else httpx.Response(503)
+            with httpx.Client(transport=httpx.MockTransport(source)) as http:
+                result=CapturedProvider(ProviderRouter(http),root).fetch(sid)
+            self.assertEqual(result.observations,{date(2024,1,2):Decimal('3.95'),
+                date(2024,1,3):Decimal('3.91'),date(2024,1,5):Decimal('3.94')})
+            with sqlite3.connect(db) as connection:
+                connection.executemany('INSERT INTO observation_versions(series_id,period,value,first_seen_at,ingestion_run_id) VALUES(?,?,?,?,?)',[
+                    (sid,day.isoformat(),str(value),'2026-11-04 10:00:00','source-run')
+                    for day,value in result.observations.items()])
+            report=reconcile('sqlite:///'+str(db),root,[sid])
+            self.assertTrue(report['passed'])
+            self.assertEqual(report['series'][0]['source_periods'],3)
+
+    def test_independent_fred_html_selector_rejects_wrong_series_hidden_truncation_and_duplicates(self):
+        from finance_dashboard.captured_sources import _fred
+        from finance_dashboard.source_reconciliation import EvidenceError
+        definition={'source_key':'DGS2','frequency':'D'}
+        body='''<table><tr><th>Series ID</th><td>DGS2</td></tr></table>
+        <table id="data-table-observations"><tr><th>DATE</th><th>VALUE</th></tr>
+        <tr><td>2024-01-02</td><td>3.95</td></tr></table>
+        <div id="extra-rows">#2024-01-03|3.91</div>'''
+        for bad in (body.replace('<td>DGS2</td>','<td>DGS10</td>'),
+                    body.replace('#2024-01-03|3.91','#2024-01-03'),
+                    body.replace('id="extra-rows"','id="other"'),
+                    body.replace('#2024-01-03','#2024-01-02'),
+                    body+body):
+            with self.subTest(bad=bad[-70:]):
+                with self.assertRaises(EvidenceError):
+                    _fred(bad,definition,'https://fred.stlouisfed.org/data/DGS2')
+
     def test_full_fred_originals_compare_all_periods_and_reject_newer_partial_capture(self):
         sid = "bond.us.nominal_10y"
         original = {"count": 2, "offset": 0, "observations": [

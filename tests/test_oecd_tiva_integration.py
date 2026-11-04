@@ -50,9 +50,9 @@ class TivaIntegrationTests(unittest.TestCase):
                     "supply_chain.pt.foreign_final_demand_share")["versions_added"], 1)
                 with TestClient(create_app(engine)) as api:
                     result = api.get("/api/research-corpus/G06").json()
-                    self.assertEqual(result["existing_references_with_observations"], 3)
+                    self.assertEqual(result["source_references_with_observations"], 3)
                     self.assertFalse(result["comparative_corpus_validated"])
-                    sources = {s["series_id"]: s["source_contract"] for s in result["linked_existing_series"]}
+                    sources = {s["series_id"]: s["source_contract"] for s in result["linked_sources"]}
                     self.assertEqual(sources["supply_chain.pt.foreign_final_demand_va"]["unit"], "million_usd")
                     self.assertEqual(sources["supply_chain.pt.foreign_final_demand_share"]["unit"], "percent")
                     self.assertEqual(sources["supply_chain.pt.foreign_final_demand_share"]["source_key"],

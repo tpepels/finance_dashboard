@@ -1,0 +1,9 @@
+country;variable;percentile;year;value;age;pop
+WO;sptincj992;p90p100;1980;0.5185000000000001;992;j
+WO;sptincj992;p90p100;2023;0.5311;992;j
+WO;shwealj992;p90p100;2023;0.744;992;j
+WO;shwealj992;p0p50;2023;0.0203;992;j
+WO;sptincj992;p0p50;1980;0.0632;992;j
+WO;sptincj992;p0p50;2023;0.0841;992;j
+WO;sptincj992;p99p100;1980;0.1689;992;j
+WO;sptincj992;p99p100;2023;0.2029;992;j

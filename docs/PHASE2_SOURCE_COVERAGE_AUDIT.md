@@ -1,8 +1,66 @@
 # Phase 2 — approved-question source and empirical-evidence audit
 
-**2026-11-03. Current state: source inventory recorded; the complete Phase 2 data corpus is NOT certified.**
+**Updated 2026-11-04. Phase 2 is ACTIVE; the complete original data corpus is NOT certified.**
 
-Phase 1 is approved. This audit compares its 35 first-class analyses against the existing 53 registered macro series, 49 source/method references and the four preselected fallback hierarchies. Existing code registration is *not* original source acquisition or verified scientific coverage.
+Phase 1 is approved. The initial census compared its 35 analyses against 53 macro declarations, 49 source/method references and four fallback hierarchies. Current measured coverage appears below; older dated sections preserve the history. Code registration is not original-source acquisition or verified scientific coverage.
+
+## Current integrated corpus — 2026-11-04 continuation
+
+**Phase 2 remains ACTIVE / INCOMPLETE.** The schema-3 corpus includes all **35 analyses and 168 original roles**. There are **177 stored macro histories**, 24 market histories and three FX histories; **156/166 referenced macro histories independently reconcile** against retained originals. Of **29 native comparison variants across 22 analyses, 28 pass bounded current-source checks**. The TiVA panel remains failed. Full original acceptance is **0/35**, with no role certified for complete publisher dimensions and temporal eligibility.
+
+The remaining ten provenance cases are explicit: MSCI original index levels/published top-ten, Siblis valuation snapshots, constructed world credit gap/coverage, gold–equity correlation, corporate-surplus aggregates and constructed world listed-cap/GDP. Unsupported provenance is an implementation/source-evidence gap, not proof that the source observations are wrong or globally unavailable.
+
+### All-analysis decision snapshot
+
+Bindings count scalar role mappings only. Artifact evidence is reported separately: G06 has seven partial original ICIO years, G03 has native regional CVM issuer facts, and G01/P01 have named SEC/UCITS fund disclosures. Those artifacts do not fill complete original index/world/portfolio contracts. Missing measures and evidence remain executable in the canonical role diagnostics; this dated table is not another source registry.
+
+| Analysis | Scalar-bound roles / required | Passing native variants / defined | Original acceptance |
+| --- | ---: | ---: | --- |
+| C01 | 3/5 | 1/1 | blocked |
+| C02 | 3/4 | 2/2 | blocked |
+| C03 | 1/1 | 1/1 | incomplete |
+| C05 | 4/5 | 1/1 | blocked |
+| C06 | 2/5 | 2/2 | blocked |
+| M01 | 4/5 | 1/1 | blocked |
+| M02 | 3/3 | 1/1 | incomplete |
+| M04 | 2/4 | 1/1 | blocked |
+| F01 | 1/5 | 1/1 | blocked |
+| F02 | 3/4 | 1/1 | blocked |
+| F03 | 2/2 | 1/1 | incomplete |
+| F04 | 1/4 | 1/1 | blocked |
+| F05 | 0/5 | 0/0 | blocked |
+| F06 | 5/5 | 1/1 | incomplete |
+| F07 | 4/8 | 1/1 | blocked |
+| V01 | 2/6 | 0/0 | blocked |
+| V02 | 2/3 | 1/1 | blocked |
+| V03 | 0/3 | 0/0 | blocked |
+| V05 | 2/4 | 0/0 | blocked |
+| L01 | 3/7 | 2/2 | blocked |
+| L02 | 0/5 | 0/0 | blocked |
+| L03 | 0/5 | 0/0 | blocked |
+| L04 | 0/4 | 0/0 | blocked |
+| L05 | 4/8 | 1/1 | blocked |
+| L07 | 4/5 | 2/2 | blocked |
+| G01 | 0/3 | 0/0 | blocked |
+| G02 | 2/3 | 1/1 | blocked |
+| G03 | 1/6 | 0/0 | blocked |
+| G05 | 2/5 | 1/1 | blocked |
+| G06 | 3/7 | 0/1 | failed |
+| P01 | 0/5 | 0/0 | blocked |
+| P02 | 2/4 | 4/4 | blocked |
+| P03 | 2/4 | 0/0 | blocked |
+| P04 | 3/7 | 0/0 | blocked |
+| P05 | 1/9 | 0/0 | blocked |
+
+### Architectural consolidation and remaining gates
+
+- API and CLI use one evaluation path and a consistent database snapshot; legacy duplicate source/adapter inventories, stored binding statuses, duplicate check-ID sets, the unused builder parameter and `xlrd` are removed. Old immutable reports and source payloads remain historical records, without a legacy execution path.
+- Native current-frequency bundles avoid claiming that monthly and quarterly inputs share one native frequency. No filling, silent currency conversion, source-date substitution, or Phase 3 analytical transformation is introduced.
+- ICIO original/audit pins eliminate repeated cold accounting while rehashing originals and receipts; complete calculations remain available at acquisition/explicit diagnostics. Compact SEC summaries avoid building raw XML/contract output merely to count positions. Full-corpus evaluation still took **99.789 seconds** locally; scoped question reads avoid unrelated artifacts.
+- Remaining input gaps include OECD CLI/diffusion, realized BoJ overnight rates, shock/announcement dates, complete credit/account components, regional valuation panels, WIID, original country/index weights, worldwide listed-parent profits, 1995–2015/extended ICIO matrices and dated portfolio/cost/tax/FX policies. Ninety-seven roles lack scalar bindings; partial artifacts do not remove those original scope requirements.
+- Historical publisher updates/common release, first publication, aligned populations/price bases and the known ICIO/TiVA accounting failures remain open. Exact worldwide original benchmarks/profits and complete historical UCITS schedules are not certified. Approved named alternatives remain separately labelled.
+
+Final verification and recovery results are recorded in the authoritative [development plan](DEVELOPMENT_PLAN.md). The following sections preserve earlier dated inventories and must not override this current snapshot.
 
 ## Initial census
 

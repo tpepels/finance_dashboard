@@ -11,6 +11,26 @@ from finance_dashboard.catalog import load_documents, validate
 
 
 class Phase2OriginalSourceDefinitions(unittest.TestCase):
+    def test_native_missing_inputs_have_exact_source_units_and_keys(self):
+        series, _ = load_documents()
+        by_id = {row["id"]: row for row in series["series"]}
+        for sid, key, frequency, unit in (
+            ("activity.us.nonfarm_payrolls", "PAYEMS", "M", "thousands_persons"),
+            ("policy_rate.us.fed_effective", "DFF", "D", "percent"),
+            ("policy_rate.us.fed_lower", "DFEDTARL", "D", "percent"),
+            ("prices.us.cpi_all_items_sa", "CPIAUCSL", "M", "index"),
+            ("gdp.nominal_usd.world", "WLD/NY.GDP.MKTP.CD", "A", "usd"),
+        ):
+            with self.subTest(series=sid):
+                source = by_id[sid]
+                self.assertEqual((source["source_key"], source["frequency"], source["unit"]),
+                                 (key, frequency, unit))
+        self.assertIn("jobs", by_id["activity.us.nonfarm_payrolls"]["measurement"])
+        self.assertIn("1982-1984=100", by_id["prices.us.cpi_all_items_sa"]["measurement"])
+        self.assertIn("2016-03-01", by_id["policy_rate.us.fed_effective"]["notes"])
+        self.assertIn("weighted mean", by_id["policy_rate.us.fed_effective"]["notes"])
+        self.assertIn("weighted median", by_id["policy_rate.us.fed_effective"]["notes"])
+
     def test_source_catalog_remains_coherent(self):
         series,charts=load_documents()
         self.assertEqual(validate(series,charts),[])

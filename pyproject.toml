@@ -14,7 +14,6 @@ dependencies = [
     "psycopg[binary]>=3.2,<4",
     "httpx>=0.27,<1",
     "alembic>=1.13,<2",
-    "xlrd>=2.0,<3",
     "python-calamine>=0.5,<1",
     "pypdf==6.21.4",
 ]

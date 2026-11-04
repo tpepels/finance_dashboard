@@ -1,0 +1,310 @@
+{
+  "meta": {
+    "id": "IDREF56ef1370-b0de-4ef3-8a45-abc1a796cdfe",
+    "prepared": "2026-11-04T14:28:01",
+    "test": false,
+    "datasetId": "aa219a0d-c982-491c-bb13-035ad18ca3a5",
+    "sender": {
+      "id": "UNKNOWN"
+    },
+    "receiver": {
+      "id": "guest"
+    },
+    "links": [
+      {
+        "rel": "self",
+        "href": "/data/dataflow/BIS/WS_CBPOL/1.0/D.XM",
+        "uri": "https://raw.githubusercontent.com/sdmx-twg/sdmx-json/develop/structure-message/tools/schemas/1.0/sdmx-json-structure-schema.json"
+      }
+    ]
+  },
+  "data": {
+    "dataSets": [
+      {
+        "links": [
+          {
+            "rel": "dataflow",
+            "urn": "urn:sdmx:org.sdmx.infomodel.datastructure.Dataflow=BIS:WS_CBPOL(1.0)"
+          }
+        ],
+        "reportingBegin": "1999-01-01T00:00:00",
+        "reportingEnd": "2026-10-27T23:59:59",
+        "action": "Information",
+        "series": {
+          "0:0": {
+            "attributes": [
+              null,
+              0,
+              0,
+              0,
+              null,
+              0
+            ],
+            "observations": {
+              "0": [
+                "3",
+                0,
+                0,
+                null
+              ],
+              "1": [
+                "2.5",
+                0,
+                0,
+                null
+              ]
+            }
+          }
+        },
+        "attributes": [
+          0,
+          0
+        ]
+      }
+    ],
+    "structure": {
+      "links": [
+        {
+          "rel": "dataflow",
+          "urn": "urn:sdmx:org.sdmx.infomodel.datastructure.Dataflow=BIS:WS_CBPOL(1.0)"
+        },
+        {
+          "rel": "datastructure",
+          "urn": "urn:sdmx:org.sdmx.infomodel.datastructure.DataStructure=BIS:BIS_CBPOL(1.0)"
+        }
+      ],
+      "name": "Central bank policy rates",
+      "names": {
+        "en": "Central bank policy rates"
+      },
+      "description": "The interest rate which best captures the monetary authorities' policy intentions.",
+      "descriptions": {
+        "en": "The interest rate which best captures the monetary authorities' policy intentions."
+      },
+      "dimensions": {
+        "dataset": [],
+        "series": [
+          {
+            "id": "FREQ",
+            "name": "Frequency",
+            "keyPosition": 0,
+            "role": null,
+            "values": [
+              {
+                "id": "D",
+                "name": "Daily"
+              }
+            ]
+          },
+          {
+            "id": "REF_AREA",
+            "name": "Reference area",
+            "keyPosition": 1,
+            "role": null,
+            "values": [
+              {
+                "id": "XM",
+                "name": "Euro area"
+              }
+            ]
+          }
+        ],
+        "observation": [
+          {
+            "id": "TIME_PERIOD",
+            "name": "Time period or range",
+            "keyPosition": 2,
+            "role": "time",
+            "values": [
+              {
+                "start": "1999-01-01T00:00:00",
+                "end": "1999-01-01T23:59:59",
+                "id": "1999-01-01",
+                "name": "1999-01-01"
+              },
+              {
+                "start": "2026-10-27T00:00:00",
+                "end": "2026-10-27T23:59:59",
+                "id": "2026-10-27",
+                "name": "2026-10-27"
+              }
+            ]
+          }
+        ]
+      },
+      "attributes": {
+        "dataset": [
+          {
+            "id": "UNIT_MEASURE",
+            "name": "Unit of measure",
+            "relationship": {
+              "none": {}
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "368",
+                "name": "Per cent per year"
+              }
+            ]
+          },
+          {
+            "id": "UNIT_MULT",
+            "name": "Unit Multiplier",
+            "relationship": {
+              "none": {}
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "0",
+                "name": "Units"
+              }
+            ]
+          }
+        ],
+        "series": [
+          {
+            "id": "TIME_FORMAT",
+            "name": "Time Format",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": []
+          },
+          {
+            "id": "COMPILATION",
+            "name": "Compilation",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "From 18 Sep 2024 onwards: official central bank steering rate is the deposit facility rate, fixed rate; from 15 Oct 2008 to 17 Sep 2024: official central bank liquidity providing, main refinancing operations, fixed rate; from 28 Jun 2000 to 14 Oct 2008: official central bank liquidity providing, main refinancing operations, minimum bid rate; from 5 Jan 1999 to 27 Jun 2000: official central bank liquidity providing, main refinancing operations, fixed rate.",
+                "name": "From 18 Sep 2024 onwards: official central bank steering rate is the deposit facility rate, fixed rate; from 15 Oct 2008 to 17 Sep 2024: official central bank liquidity providing, main refinancing operations, fixed rate; from 28 Jun 2000 to 14 Oct 2008: official central bank liquidity providing, main refinancing operations, minimum bid rate; from 5 Jan 1999 to 27 Jun 2000: official central bank liquidity providing, main refinancing operations, fixed rate."
+              }
+            ]
+          },
+          {
+            "id": "DECIMALS",
+            "name": "Decimals",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "4",
+                "name": "Four"
+              }
+            ]
+          },
+          {
+            "id": "SOURCE_REF",
+            "name": "Publication Source",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "European Central Bank",
+                "name": "European Central Bank"
+              }
+            ]
+          },
+          {
+            "id": "SUPP_INFO_BREAKS",
+            "name": "Supplemental information and breaks",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": []
+          },
+          {
+            "id": "TITLE",
+            "name": "Title",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": " Central bank policy rates - Euro area - Daily - End of period",
+                "name": " Central bank policy rates - Euro area - Daily - End of period"
+              }
+            ]
+          }
+        ],
+        "observation": [
+          {
+            "id": "OBS_STATUS",
+            "name": "Observation Status",
+            "relationship": {
+              "primaryMeasure": "OBS_VALUE"
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "A",
+                "name": "Normal value"
+              },
+              {
+                "id": "M",
+                "name": "Missing value; data cannot exist"
+              }
+            ]
+          },
+          {
+            "id": "OBS_CONF",
+            "name": "Observation confidentiality",
+            "relationship": {
+              "primaryMeasure": "OBS_VALUE"
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "F",
+                "name": "Free"
+              }
+            ]
+          },
+          {
+            "id": "OBS_PRE_BREAK",
+            "name": "Pre-Break Observation",
+            "relationship": {
+              "primaryMeasure": "OBS_VALUE"
+            },
+            "role": null,
+            "values": []
+          }
+        ]
+      }
+    }
+  },
+  "fixture_selected_original_observation_indices": [
+    "0",
+    "10161"
+  ]
+}

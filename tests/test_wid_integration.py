@@ -65,9 +65,9 @@ class WidIntegrationTests(unittest.TestCase):
                 self.assertEqual(report["versions_added"], 1)
                 with TestClient(create_app(reopened)) as api:
                     corpus = api.get("/api/research-corpus/L07").json()
-                    self.assertEqual(corpus["existing_references_with_observations"], 2)
+                    self.assertEqual(corpus["source_references_with_observations"], 2)
                     self.assertFalse(corpus["comparative_corpus_validated"])
-                    source = next(x for x in corpus["linked_existing_series"]
+                    source = next(x for x in corpus["linked_sources"]
                                   if x["series_id"] == "inequality.us.pretax_income.top10")
                     self.assertEqual(source["stored_periods"], 2)
                     self.assertEqual(source["stored_versions"], 3)

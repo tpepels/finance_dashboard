@@ -90,6 +90,11 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
     created = []
     try:
         with closing(sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=30)) as original:
+            # Pin one source snapshot before stepping through the copy. A
+            # read-only WAL shared-memory view can otherwise restart every
+            # backup batch; active writers must not change the selected snapshot.
+            original.execute("BEGIN")
+            original.execute("SELECT name FROM sqlite_schema LIMIT 1").fetchone()
             with closing(sqlite3.connect(temporary_db, timeout=30)) as destination:
                 original.backup(destination, pages=128, sleep=0.05)
         _valid_database(temporary_db)

@@ -101,6 +101,28 @@ class SecHoldingTests(unittest.TestCase):
 
 
 class SecRawSourceTests(unittest.TestCase):
+    def test_summary_requires_original_metadata_and_positions_hashes(self):
+        from hashlib import sha256
+        from finance_dashboard.sec_holdings import store_source_bundle,read_position_source
+        for missing in ("original.xml","metadata.json","positions.json"):
+            with self.subTest(missing=missing), TemporaryDirectory() as tmp:
+                root=Path(tmp)
+                bundle=store_source_bundle(xml(),sec_metadata=submission(),
+                    aggregate=SecHoldingTests().parse(),root=root)
+                manifest=json.loads((bundle/"manifest.json").read_text())
+                del manifest["files"][missing]
+                digest=sha256(json.dumps(manifest["files"],sort_keys=True).encode()).hexdigest()
+                renamed=bundle.with_name(digest)
+                bundle.rename(renamed)
+                (renamed/"manifest.json").write_text(json.dumps(manifest))
+                for receipt_path in renamed.parent.joinpath("retrievals").glob("*.json"):
+                    receipt=json.loads(receipt_path.read_text())
+                    receipt.update(bundle_digest=digest,
+                        manifest_sha256=sha256((renamed/"manifest.json").read_bytes()).hexdigest())
+                    receipt_path.write_text(json.dumps(receipt))
+                with self.assertRaises(HoldingsError):
+                    read_position_source(root,"vt",ACCESSION,summary=True)
+
     def test_original_bundle_preserves_native_positions_and_exact_metadata(self):
         from finance_dashboard.sec_holdings import store_source_bundle, read_position_source
         source = Path(__file__).parent / "fixtures/holdings/vt-2026-07-31-excerpt.xml"
@@ -125,12 +147,62 @@ class SecRawSourceTests(unittest.TestCase):
             self.assertEqual(position["value_usd"],"992083.40000000")
             self.assertEqual(position["quantity"],"64421.00000000")
             self.assertEqual(position["quantity_unit"],"NS")
+            self.assertEqual(position["isin"],"US86881A1007")
+            self.assertEqual(position["security_identifiers"],[{"type":"isin","value":"US86881A1007"}])
+            derivative=facts["positions"][1]
+            self.assertEqual(derivative["lei"],"N/A")
+            self.assertEqual(derivative["security_identifiers"],[{
+                "type":"other","otherDesc":"CONTRACT_VANGUARD_ID","value":"V1048207501"}])
+            self.assertTrue(derivative["is_derivative"])
+            self.assertEqual(derivative["derivative_contracts"][0]["tag"],"swapDeriv")
+            contract=derivative["derivative_contracts"][0]
+            notional=next(item for item in contract["children"] if item["tag"]=="notionalAmt")
+            self.assertEqual(notional["text"],"11021090.22000000")
+            self.assertEqual(facts["fund_accounting"]["cash_not_reported_in_parts_c_and_d_usd"],"226730617.22000000")
+            self.assertEqual(facts["fund_accounting"]["assets_less_liabilities_minus_net_assets_usd"],"0.00")
+            self.assertFalse(facts["identity_coverage"]["ultimate_parent_mapping_verified"])
+            self.assertEqual(facts["identity_coverage"]["positions_with_reported_issuer_lei"],1)
+            self.assertFalse(facts["publication_evidence"]["first_public_dissemination_verified"])
+            from unittest.mock import patch
+            with patch("finance_dashboard.sec_holdings._position_facts",
+                       side_effect=AssertionError("summary must not serialize legacy position payloads")):
+                summary=read_position_source(root,"vt","0000857489-26-000275",summary=True)
+            self.assertNotIn("positions",summary)
+            self.assertEqual(summary["identity_coverage"],facts["identity_coverage"])
+            self.assertEqual(summary["fund_accounting"],facts["fund_accounting"])
+            self.assertEqual(summary["position_coverage"]["positions"],2)
+            # New derived evidence leaves the manifest and archived version-1
+            # positions immutable, including their original selected fields.
+            archived=json.loads((bundle/"positions.json").read_text())
+            self.assertNotIn("isin",archived[0])
             self.assertTrue(list(bundle.parent.joinpath("retrievals").glob("*.json")))
             store_source_bundle(original,sec_metadata=meta,aggregate=aggregate,root=root)
             self.assertEqual(len(list(bundle.parent.joinpath("retrievals").glob("*.json"))),2)
             (bundle/"original.xml").write_bytes(b"damaged")
             with self.assertRaisesRegex(HoldingsError,"inconsistent"):
                 read_position_source(root,"vt","0000857489-26-000275")
+
+    def test_nested_derivative_identity_is_never_promoted_to_issuer_identity(self):
+        from finance_dashboard.sec_holdings import store_source_bundle,read_position_source
+        original=xml().replace(b"<valUSD>3000</valUSD>", b"""<derivativeInfo><swapDeriv derivCat="SWP">
+            <descRefInstrmnt><otherRefInst><lei>UNDERLYING-LEI</lei>
+            <identifiers><isin value="US0000000001"/></identifiers></otherRefInst></descRefInstrmnt>
+            <counterparties><counterpartyName>Counterparty</counterpartyName>
+            <counterpartyLei>COUNTERPARTY-LEI</counterpartyLei></counterparties>
+            </swapDeriv></derivativeInfo><valUSD>3000</valUSD>""")
+        aggregate=parse_nport(original,instrument_id="vt",accession=ACCESSION,
+            filing_url=URL,sec_metadata=submission(),expected_series_id="S000000001")
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            store_source_bundle(original,sec_metadata=submission(),aggregate=aggregate,root=root)
+            facts=read_position_source(root,"vt",ACCESSION)
+            position=facts["positions"][1]
+            self.assertIsNone(position["lei"])
+            self.assertIsNone(position["isin"])
+            self.assertEqual(position["security_identifiers"],[])
+            self.assertTrue(position["is_derivative"])
+            self.assertEqual(facts["identity_coverage"]["positions_with_reported_issuer_lei"],0)
+            self.assertIsNone(facts["fund_accounting"]["assets_less_liabilities_minus_net_assets_usd"])
 
     def test_receipts_select_a_b_a_and_corrupt_receipts_fail_closed(self):
         from finance_dashboard.sec_holdings import store_source_bundle,read_position_source

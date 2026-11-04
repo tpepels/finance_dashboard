@@ -72,7 +72,7 @@ class ComparativeCorpusTests(unittest.TestCase):
     def build(self, proof=None, registry=None):
         with Session(self.engine) as session:
             return self.runtime().build_comparative_corpus(session, registry or self.registry,
-                self.document, evidence_root=Path(self.tmp.name), source_proof=proof)
+                self.document, source_proof=proof)
 
     def panel(self, report, analysis_id):
         return next(row for row in report["panels"] if row["analysis_id"] == analysis_id)

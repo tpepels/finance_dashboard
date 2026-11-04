@@ -2,8 +2,9 @@
 
 Import real SEC XML with matching SEC submission accession/acceptance metadata.
 The resulting country is the reported issuer/investment country (Form C.5.a),
-not the separate confidential economic-risk exposure of C.5.b. Source
-availability begins on filing acceptance, NOT at the month of holdings.
+not the separate confidential economic-risk exposure of C.5.b. Research
+eligibility uses the official filing date plus two calendar days; the actual
+first-publication instant is unverified and never the holdings observation date.
 """
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ import re
 from tempfile import NamedTemporaryFile
 import os
 import xml.etree.ElementTree as ET
+from collections import Counter
 
 from .market import instruments
 
@@ -248,8 +250,8 @@ def list_holdings(root: Path, instrument_id: str, *,
             entries.append(record)
         except (ValueError, KeyError, OSError):
             continue
-    # Keep ALL report dates; for amendments use latest SEC accepted revision
-    # actually available on the query date, not a revision filed after query.
+    # Keep all report dates; amendments use the latest buffered eligibility date
+    # on the query date, not a revision filed after the requested cutoff.
     by_period = {}
     for record in entries:
         period=record["holdings_date"]
@@ -279,6 +281,86 @@ def _position_facts(xml: bytes) -> list[dict]:
             for index,item in enumerate(investments,1) if _name(item)=="invstOrSec"]
 
 
+def _native_node(element) -> dict:
+    """Keep repeated contract fields, their attributes and native source hierarchy."""
+    return {"tag":_name(element),"attributes":dict(element.attrib),
+            "text":element.text.strip() if element.text and element.text.strip() else None,
+            "children":[_native_node(child) for child in element]}
+
+
+def _native_portfolio_evidence(xml: bytes, *, summary: bool = False) -> dict:
+    """Derive current structured evidence from the immutable verified original.
+
+    Direct holding identities must never come from a derivative's reference
+    instrument or counterparty. The version-1 positions.json is retained and
+    verified as an original archive payload, rather than rewritten by this view.
+    """
+    root=ET.fromstring(xml)
+    investments=_section(root,"invstOrSecs")
+    fields={"name":"name","lei":"lei","security_title":"title","cusip":"cusip",
+            "quantity":"balance","quantity_unit":"units","currency":"curCd",
+            "value_usd":"valUSD","percent_of_fund_nav":"pctVal",
+            "asset_category":"assetCat","issuer_category":"issuerCat",
+            "issuer_country":"invCountry","payoff_profile":"payoffProfile"}
+    if summary:
+        fields={key:fields[key] for key in ("lei","cusip","currency","asset_category")}
+    def direct(element,tag):
+        children=[child for child in element if _name(child)==tag]
+        if len(children)>1:
+            raise HoldingsError("Ambiguous direct N-PORT native field: "+tag)
+        return children[0] if children else None
+    def text(element,tag):
+        child=direct(element,tag)
+        return child.text.strip() if child is not None and child.text and child.text.strip() else None
+    positions=[]
+    for index,item in enumerate(investments,1):
+        if _name(item)!="invstOrSec": continue
+        identifiers=direct(item,"identifiers")
+        ids=[{"type":_name(child),**dict(child.attrib),
+              **({"text":child.text.strip()} if child.text and child.text.strip() else {})}
+             for child in identifiers] if identifiers is not None else []
+        derivative=direct(item,"derivativeInfo")
+        contracts=[_native_node(child) for child in derivative] if derivative is not None and not summary else []
+        lending=direct(item,"securityLending")
+        position={**{key:text(item,tag) for key,tag in fields.items()},
+            "source_row":index,
+            "security_identifiers":ids,"isin":next((i.get("value") for i in ids if i["type"]=="isin"),None),
+            "is_derivative":(derivative is not None and len(derivative)>0) or (text(item,"assetCat") or "").upper() in {"DE","DCR","DFE","DIR","DO","DCO"},
+            "derivative_contracts":contracts,
+            "securities_lending":_native_node(lending) if lending is not None and not summary else None,
+            "identity_scope":"reported issuer and security only; ultimate-parent identity unverified"}
+        conditional=direct(item,"issuerConditional")
+        if not summary:
+            position["source_xml"]=ET.tostring(item,encoding="unicode")
+        if not summary and position["issuer_category"] is None and conditional is not None:
+            position["issuer_category"]=conditional.attrib.get("issuerCat")
+        positions.append(position)
+    fund=_section(root,"fundInfo")
+    fund_fields={"total_assets_usd":"totAssets","total_liabilities_usd":"totLiabs",
+                 "net_assets_usd":"netAssets","cash_not_reported_in_parts_c_and_d_usd":"cshNotRptdInCorD",
+                 "miscellaneous_securities_assets_usd":"assetsAttrMiscSec"}
+    accounting={key:text(fund,tag) if fund is not None else None for key,tag in fund_fields.items()}
+    a,l,n=(_decimal(accounting[key]) for key in ("total_assets_usd","total_liabilities_usd","net_assets_usd"))
+    accounting["assets_less_liabilities_minus_net_assets_usd"]=str(a-l-n) if all(v is not None for v in (a,l,n)) else None
+    accounting["cash_semantics"]="B.2.f cash and cash equivalents outside Parts C and D; not total cash or an inferred NAV residual"
+    def reported(value):
+        return bool(value and value.upper() not in {"N/A","NA","NONE","NOT AVAILABLE","00000000000000000000"})
+    coverage={"positions":len(positions),
+        "positions_with_reported_issuer_lei":sum(reported(p["lei"]) for p in positions),
+        "positions_with_reported_security_identifier":sum(reported(p["cusip"]) or any(reported(i.get("value")) for i in p["security_identifiers"]) for p in positions),
+        "derivative_positions":sum(p["is_derivative"] for p in positions),
+        "ultimate_parent_mapping_verified":False,
+        "identifier_registry_validation_verified":False,
+        "derivative_underlying_country_lookthrough_verified":False}
+    currencies=Counter(p["currency"] for p in positions if re.fullmatch(r"[A-Z]{3}",p.get("currency") or ""))
+    position_coverage={key:coverage[key] for key in ("positions","positions_with_reported_issuer_lei",
+        "positions_with_reported_security_identifier","derivative_positions")}
+    position_coverage.update(positions_with_reported_currency=sum(currencies.values()),currencies=dict(sorted(currencies.items())))
+    return {**({"positions":positions} if not summary else {}),
+            "fund_accounting":accounting,"identity_coverage":coverage,"position_coverage":position_coverage,
+            "native_evidence_schema_version":1,"native_evidence_xml_sha256":sha256(xml).hexdigest()}
+
+
 def reconcile_nport_aggregate(current: dict, original: dict) -> None:
     """New metadata bytes cannot replace old metadata hashes or stored capture facts."""
     if current.get("xml_sha256") != original.get("xml_sha256"):
@@ -292,11 +374,15 @@ def reconcile_nport_aggregate(current: dict, original: dict) -> None:
         raise HoldingsError("Recovered original country aggregate does not reconcile")
 
 
-def _verify_source_bundle(folder: Path, instrument_id: str|None=None, accession: str|None=None) -> dict:
+def _verify_source_bundle(folder: Path, instrument_id: str|None=None, accession: str|None=None, *,
+                          verify_position_payload: bool=True) -> dict:
     try:
         if folder.is_symlink():
             raise ValueError("symlink")
         manifest=json.loads((folder/"manifest.json").read_text())
+        if not isinstance(manifest.get("files"),dict) or not {
+                "original.xml","metadata.json","positions.json"}.issubset(manifest["files"]):
+            raise ValueError("mandatory original source hashes missing")
         if sha256(json.dumps(manifest["files"],sort_keys=True).encode()).hexdigest()!=folder.name:
             raise ValueError("bundle digest mismatch")
         for name, digest in manifest["files"].items():
@@ -315,7 +401,7 @@ def _verify_source_bundle(folder: Path, instrument_id: str|None=None, accession:
             filing_url=manifest["source_url"],sec_metadata=json.loads((folder/"metadata.json").read_text()),
             expected_series_id=manifest["sec_series_id"])
         if (parsed["holdings_date"]!=manifest["holdings_date"]
-            or json.loads((folder/"positions.json").read_text())!=_position_facts(xml)):
+            or verify_position_payload and json.loads((folder/"positions.json").read_text())!=_position_facts(xml)):
             raise ValueError("original source facts identity")
         return manifest
     except (OSError, ValueError, KeyError, TypeError) as exc:
@@ -378,7 +464,7 @@ def store_source_bundle(xml: bytes, *, sec_metadata: dict, aggregate: dict,
             shutil.rmtree(temporary,ignore_errors=True)
 
 
-def read_position_source(root: Path, instrument_id: str, accession: str) -> dict:
+def read_position_source(root: Path, instrument_id: str, accession: str, *, summary: bool=False) -> dict:
     if instrument_id not in instruments() or not re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}",accession):
         raise HoldingsError("Invalid original source identity")
     parent=root/instrument_id/"sources"/accession
@@ -388,7 +474,10 @@ def read_position_source(root: Path, instrument_id: str, accession: str) -> dict
                 "status":"missing_original_positions","positions":[]}
     # A→B→A must select the latest successful acquisition of A, not B's newer
     # immutable creation timestamp. Any corrupt receipt fails the whole read.
-    manifests=[(folder,_verify_source_bundle(folder,instrument_id,accession)) for folder in folders]
+    # Summaries are derived directly from original XML. Archived version-1
+    # position payloads remain hash-verified, but are not deserialized or used.
+    manifests=[(folder,_verify_source_bundle(folder,instrument_id,accession,
+        verify_position_payload=not summary)) for folder in folders]
     urls={manifest["source_url"] for _,manifest in manifests}
     if len(urls)!=1 or not (parent/"retrievals").is_dir():
         raise HoldingsError("SEC original source receipt identity invalid")
@@ -399,10 +488,18 @@ def read_position_source(root: Path, instrument_id: str, accession: str) -> dict
     except EvidenceError as exc:
         raise HoldingsError("SEC original source receipt invalid") from exc
     folder=path.parent
+    metadata=json.loads((folder/"metadata.json").read_text())
+    eligible,acceptance=conservative_eligibility_from_sec_submissions(metadata,accession)
+    native=_native_portfolio_evidence((folder/"original.xml").read_bytes(),summary=summary)
     return {"instrument_id":instrument_id,"accession":accession,"status":"ready",
             "manifest":manifest,"bundle_digest":folder.name,"selection_method":selection,
             "acquisition_observed_at_utc":observed.isoformat(),"manifest_sha256":manifest_hash,
-            "positions":json.loads((folder/"positions.json").read_text())}
+            **native,
+            "publication_evidence":{"sec_acceptance_timestamp_unverified_timezone":acceptance,
+                "eligible_after_conservative_buffer_utc":eligible.isoformat(),
+                "first_public_dissemination_verified":False,
+                "source_rule":"Form N-PORT General Instruction F: public third-fiscal-month information upon filing; exact dissemination instant is not established by current submissions JSON",
+                "source_url":"https://www.sec.gov/files/formn-port.pdf"}}
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import original SEC N-PORT XML with SEC verified accession")

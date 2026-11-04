@@ -30,9 +30,8 @@ from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCE
 
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .source_coverage import build_coverage
-from .research_corpus import load_research_corpus, validate_research_corpus, research_corpus_report
-from .comparative_corpus import build_comparative_corpus
-from .source_reconciliation import reconcile_session
+from .research_corpus import load_research_corpus, validate_research_corpus
+from .research_runtime import evaluate_corpus
 from .icio import read_icio_evidence
 from .maintenance import MaintenanceManager, BusyMaintenance
 from .developer_logs import read_events, recent_jobs, record_event
@@ -324,28 +323,21 @@ def create_app(engine=None) -> FastAPI:
         except (OSError, ValueError, KeyError, TypeError):
             raise HTTPException(422, "Original ICIO matrix evidence failed validation") from None
 
-    def current_corpus_report():
+    def current_corpus_report(analyses=None):
         root = Path(environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence"))
-        ids = sorted({sid for item in research_sources["analyses"]
-                      for variant in item["comparison_contract"]["variants"] for sid in variant["series_ids"]})
-        with Session(db, autoflush=False) as session:
-            proof = reconcile_session(session, root, ids)
-            comparative = build_comparative_corpus(session, catalog["series"], research_sources,
-                evidence_root=root, source_proof=proof)
-        return research_corpus_report(
-            research_sources, build_coverage(db, catalog["series"], market_registry),
-            vintages=available_snapshots(Path(environ.get(
-                "FINANCE_VINTAGE_DIR", "/data/vintages"))),
-            series_registry=catalog["series"], comparative_evidence=comparative)
+        document = research_sources if analyses is None else {**research_sources, "analyses": analyses}
+        return evaluate_corpus(db, catalog["series"], document,
+            evidence_root=root, market_registry=market_registry,
+            vintage_root=Path(environ.get("FINANCE_VINTAGE_DIR", "/data/vintages")),
+            holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))).public_report
 
     @app.get("/api/research-corpus/{analysis_id}")
     def research_corpus_question(analysis_id: str):
         """Return explicit source references, missing evidence and fallbacks."""
-        report = current_corpus_report()
-        match = next((row for row in report["analyses"] if row["id"] == analysis_id), None)
+        match = next((row for row in research_sources["analyses"] if row["id"] == analysis_id), None)
         if match is None:
             raise HTTPException(404, "Unknown approved scientific question")
-        return match
+        return current_corpus_report([match])["analyses"][0]
 
     @app.get("/api/research")
     def research_catalog():

@@ -12,6 +12,7 @@ import sqlite3
 import httpx
 from finance_dashboard.wid import WidClient
 from finance_dashboard.oecd_tiva import TivaClient
+from finance_dashboard.source_reconciliation import SOURCE_IDS
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
@@ -101,7 +102,7 @@ class ReconcileTests(unittest.TestCase):
             self.assertEqual(item["stored_periods"], 2)
             self.assertEqual(item["mismatched_source_values"], [])
             self.assertEqual(item["source_sha256"], sha256((latest / "WID_data_US.csv").read_bytes()).hexdigest())
-            self.assertEqual(len(report["series"]), 61)
+            self.assertEqual(len(report["series"]), len(SOURCE_IDS))
             self.assertFalse(report["whole_analysis_validated"])
             with sqlite3.connect(db) as connection:
                 self.assertEqual(connection.execute("SELECT count(*) FROM observation_versions").fetchone()[0], 3)

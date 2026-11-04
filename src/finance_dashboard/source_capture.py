@@ -18,7 +18,8 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from .bis import ProviderError
 from .source_evidence import record_acquisition_receipt
 
-CAPTURE_PROVIDERS = frozenset({"FRED", "WORLD_BANK", "BIS_DSR", "BIS_PROPERTY", "BIS_CREDIT_GAP"})
+CAPTURE_PROVIDERS = frozenset({"FRED", "WORLD_BANK", "BIS_DSR", "BIS_PROPERTY", "BIS_CREDIT_GAP",
+    "IMF_DATAMAPPER", "BEA_Q", "SHILLER", "WORLD_BANK_PINK_SHEET", "BIS", "ECB"})
 SAFE_QUERY = frozenset({"series_id", "file_type", "observation_start", "id", "cosd", "format",
                         "per_page", "date", "startPeriod"})
 SAFE_HEADERS = frozenset({"content-type", "last-modified", "etag", "date"})

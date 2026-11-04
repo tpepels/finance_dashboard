@@ -1,0 +1,11 @@
+country;variable;percentile;year;value;age;pop;data_quality
+US;shweal992j;p0p50;1980;0.0099;992;j;4
+US;shweal992j;p0p50;2024;0.0096;992;j;0
+US;shweal992j;p90p100;1980;0.6499;992;j;4
+US;shweal992j;p90p100;2024;0.6954;992;j;0
+US;sptinc992j;p0p50;1980;0.2008;992;j;5
+US;sptinc992j;p0p50;2024;0.1344;992;j;5
+US;sptinc992j;p90p100;1980;0.3384;992;j;5
+US;sptinc992j;p90p100;2024;0.4676;992;j;5
+US;sptinc992j;p99p100;1980;0.1042;992;j;5
+US;sptinc992j;p99p100;2024;0.2073;992;j;5

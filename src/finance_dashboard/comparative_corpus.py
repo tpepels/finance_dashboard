@@ -315,12 +315,10 @@ def _panel(analysis: dict, variant: dict, registry: dict, inputs: dict,
     return result
 
 
-def build_comparative_corpus(session, registry, document, *, evidence_root: Path | None = None,
-                             source_proof: dict | None = None) -> dict:
+def build_comparative_corpus(session, registry, document, *, source_proof: dict | None = None) -> dict:
     """Read latest actual rows once per source; never write DB or evidence files.
 
-    ``evidence_root`` is reserved for callers' source-reconciliation boundary;
-    this builder consumes that independent, hash-bound report explicitly.
+    This builder consumes the independent, hash-bound reconciliation report.
     ``store_comparative_corpus`` is the separate opt-in archival operation.
     """
     registry = _registry(registry)

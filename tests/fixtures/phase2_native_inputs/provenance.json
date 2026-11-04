@@ -1,0 +1,83 @@
+{
+  "activity.us.nonfarm_payrolls": {
+    "file": "PAYEMS.csv",
+    "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=PAYEMS",
+    "retrieved_at_utc": "2026-11-04T13:43:32.383411+00:00",
+    "original_sha256": "c8c429818ed73de6db985f4ff565d64bd2a5ba66a6b651b39373a1532924fc0e",
+    "fixture_sha256": "c31cd48625459e55066d9b234b462ad26b31a3c55fea473f44391ecb05ce007e",
+    "original_file_bytes": 18405,
+    "scope": "factual_selected_periods"
+  },
+  "activity.us.industrial_production": {
+    "file": "INDPRO.csv",
+    "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=INDPRO",
+    "retrieved_at_utc": "2026-11-04T13:43:32.303949+00:00",
+    "original_sha256": "0fc53a503386efaf83f17cf0cc6d77b3980830a91c9dfa9ebab97b4cf1aa5feb",
+    "fixture_sha256": "659c356dd1450dfb1bd8a65badd1e0ce8ec51c69c1edb853c93e6e2c8257a59d",
+    "original_file_bytes": 24460,
+    "scope": "factual_selected_periods"
+  },
+  "activity.us.unemployment_rate": {
+    "file": "UNRATE.csv",
+    "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=UNRATE",
+    "retrieved_at_utc": "2026-11-04T13:43:32.573500+00:00",
+    "original_sha256": "621ff6fadf50910cb7a21ee20ba610c247cb043b29b4e05c4c1a72fadca2a06c",
+    "fixture_sha256": "ada6315cc08acf74d11b519fc9155287a06c76a6f2babdc6ce37fdd05997a988",
+    "original_file_bytes": 14211,
+    "scope": "factual_selected_periods"
+  },
+  "prices.us.cpi_all_items_sa": {
+    "file": "CPIAUCSL.csv",
+    "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL",
+    "retrieved_at_utc": "2026-11-04T13:44:19.574269+00:00",
+    "original_sha256": "8556b710094027fa4724641d48be620cc37c04abfa15a0c496378cf1146c1549",
+    "fixture_sha256": "8f4401711cba394ab195bd24740a31ea98ea8195c28f9a2fa49aee6321cef5ee",
+    "original_file_bytes": 17763,
+    "scope": "factual_selected_periods"
+  },
+  "policy_rate.us.fed_effective": {
+    "file": "DFF.csv",
+    "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFF",
+    "retrieved_at_utc": "2026-11-04T13:44:01.065074+00:00",
+    "original_sha256": "6f58d1bbc218d725caedb614844b90c4130992ec8687ac20646c58c3a8b2b04b",
+    "fixture_sha256": "e2372b672365d638da16678d8c4ae2c7f753fa266909c8ce63e7d391ad768fee",
+    "original_file_bytes": 424603,
+    "scope": "factual_selected_periods"
+  },
+  "policy_rate.us.fed_lower": {
+    "file": "DFEDTARL.csv",
+    "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFEDTARL",
+    "retrieved_at_utc": "2026-11-04T13:44:02.594914+00:00",
+    "original_sha256": "aa89af1d0c708d3aea6fcaa0b0b73f182a01c24f25dc55aa8e4151148cbacf10",
+    "fixture_sha256": "a96ba0319610d20c2ea4095441fae90de446b189ed0251a49db4c76d3ed94c06",
+    "original_file_bytes": 104554,
+    "scope": "factual_selected_periods"
+  },
+  "policy_rate.us.fed_upper": {
+    "file": "DFEDTARU.csv",
+    "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFEDTARU",
+    "retrieved_at_utc": "2026-11-04T13:44:02.971444+00:00",
+    "original_sha256": "ef2a920122e34484d3c55df84016bbd16e9459d85147c9ff392cd03f79a39265",
+    "fixture_sha256": "a39e4bd7cb3dea27e0d0fb6e4866ce1cda8dac82476f25c2d40a4b7f6a5ebdb4",
+    "original_file_bytes": 104554,
+    "scope": "factual_selected_periods"
+  },
+  "gdp.nominal_usd.us": {
+    "file": "USA_NY.GDP.MKTP.CD.json",
+    "url": "https://api.worldbank.org/v2/country/USA/indicator/NY.GDP.MKTP.CD?format=json&per_page=150",
+    "retrieved_at_utc": "2026-11-04T13:43:42.820403+00:00",
+    "original_sha256": "edd37fce59fdb8947fdf4aa28e3aa27cb3946be39d2f25ddd96378ec64b40676",
+    "fixture_sha256": "edd37fce59fdb8947fdf4aa28e3aa27cb3946be39d2f25ddd96378ec64b40676",
+    "original_file_bytes": 14003,
+    "scope": "full_original_current_snapshot"
+  },
+  "gdp.nominal_usd.world": {
+    "file": "WLD_NY.GDP.MKTP.CD.json",
+    "url": "https://api.worldbank.org/v2/country/WLD/indicator/NY.GDP.MKTP.CD?format=json&per_page=150",
+    "retrieved_at_utc": "2026-11-04T13:43:42.860395+00:00",
+    "original_sha256": "749b74ab56f17142a6ba152d601483fb2d956519ee483707b06d8a2f14d6a6ef",
+    "fixture_sha256": "749b74ab56f17142a6ba152d601483fb2d956519ee483707b06d8a2f14d6a6ef",
+    "original_file_bytes": 13610,
+    "scope": "full_original_current_snapshot"
+  }
+}

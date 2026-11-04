@@ -31,7 +31,8 @@ WID_SERIES = {
                         ("cn", "CN"), ("in", "IN"), ("world", "WO"))
     for concept, stem in (("pretax_income", "sptinc"),
                           ("net_personal_wealth", "shweal"))
-    for group, percentile in (("top10", "p90p100"), ("bottom50", "p0p50"))
+    for group, percentile in ((("top10", "p90p100"), ("bottom50", "p0p50"))
+                              + ((("top1", "p99p100"),) if concept == "pretax_income" else ()))
 }
 _CONCEPTS = {"sptinc": "Pre-tax national income", "shweal": "Net personal wealth"}
 
@@ -52,7 +53,7 @@ def _reader(text: str, required: set[str]) -> csv.DictReader:
 
 
 def parse_wid_bundle(data_text: str, metadata_text: str, *, area: str) -> WidBundle:
-    """Validate original source identity and select four registered area shares."""
+    """Validate original source identity and select registered native area shares."""
     keys = {(variable, percentile) for registered_area, variable, percentile
             in WID_SERIES.values() if registered_area == area}
     if not keys:
@@ -140,11 +141,21 @@ def _verify_archive(folder: Path, area: str, sources: dict, bundle: WidBundle) -
                 or record.get("area") != area
                 or record.get("original_first_publication_at") is not None
                 or not record.get("retrieved_at_utc")
-                or record.get("variables") != bundle.metadata
-                or record.get("observation_quality") != {
-                    variable + "/" + percentile: {day.isoformat(): value for day, value in values.items()}
-                    for (variable, percentile), values in bundle.quality.items()}):
+                or record.get("variables") != bundle.metadata):
             raise ValueError("source manifest identity")
+        # The manifest records the selection made at acquisition. Additional
+        # registered percentiles can be independently selected from the same
+        # immutable original CSV without rewriting that historical manifest.
+        actual_quality = {
+            variable + "/" + percentile: {day.isoformat(): value for day, value in values.items()}
+            for (variable, percentile), values in bundle.quality.items()}
+        stored_quality = record.get("observation_quality")
+        baseline = {variable + "/" + percentile for variable in bundle.metadata
+                    for percentile in ("p90p100", "p0p50")}
+        if (not isinstance(stored_quality, dict) or not baseline.issubset(stored_quality)
+                or any(key not in actual_quality or value != actual_quality[key]
+                       for key, value in stored_quality.items())):
+            raise ValueError("source manifest selected quality mismatch")
         for kind, source in sources.items():
             stored = record["sources"][kind]
             if any(stored.get(key) != source[key] for key in ("file", "url", "bytes", "sha256")):

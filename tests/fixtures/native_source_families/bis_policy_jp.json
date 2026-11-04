@@ -1,0 +1,311 @@
+{
+  "meta": {
+    "id": "IDREFf0d1a7c4-1ddd-43d0-9bf3-2582fc00f601",
+    "prepared": "2026-11-04T13:39:07",
+    "test": false,
+    "datasetId": "8f771f88-f296-4a90-993a-8084e78e382a",
+    "sender": {
+      "id": "UNKNOWN"
+    },
+    "receiver": {
+      "id": "guest"
+    },
+    "links": [
+      {
+        "rel": "self",
+        "href": "/data/dataflow/BIS/WS_CBPOL/1.0/D.JP",
+        "uri": "https://raw.githubusercontent.com/sdmx-twg/sdmx-json/develop/structure-message/tools/schemas/1.0/sdmx-json-structure-schema.json"
+      }
+    ]
+  },
+  "data": {
+    "dataSets": [
+      {
+        "links": [
+          {
+            "rel": "dataflow",
+            "urn": "urn:sdmx:org.sdmx.infomodel.datastructure.Dataflow=BIS:WS_CBPOL(1.0)"
+          }
+        ],
+        "reportingBegin": "1946-01-01T00:00:00",
+        "reportingEnd": "2026-10-27T23:59:59",
+        "action": "Information",
+        "series": {
+          "0:0": {
+            "attributes": [
+              null,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "observations": {
+              "0": [
+                "3.29",
+                0,
+                0,
+                null
+              ],
+              "1": [
+                "1.25",
+                0,
+                0,
+                null
+              ]
+            }
+          }
+        },
+        "attributes": [
+          0,
+          0
+        ]
+      }
+    ],
+    "structure": {
+      "links": [
+        {
+          "rel": "dataflow",
+          "urn": "urn:sdmx:org.sdmx.infomodel.datastructure.Dataflow=BIS:WS_CBPOL(1.0)"
+        },
+        {
+          "rel": "datastructure",
+          "urn": "urn:sdmx:org.sdmx.infomodel.datastructure.DataStructure=BIS:BIS_CBPOL(1.0)"
+        }
+      ],
+      "name": "Central bank policy rates",
+      "names": {
+        "en": "Central bank policy rates"
+      },
+      "description": "The interest rate which best captures the monetary authorities' policy intentions.",
+      "descriptions": {
+        "en": "The interest rate which best captures the monetary authorities' policy intentions."
+      },
+      "dimensions": {
+        "dataset": [],
+        "series": [
+          {
+            "id": "FREQ",
+            "name": "Frequency",
+            "keyPosition": 0,
+            "role": null,
+            "values": [
+              {
+                "id": "D",
+                "name": "Daily"
+              }
+            ]
+          },
+          {
+            "id": "REF_AREA",
+            "name": "Reference area",
+            "keyPosition": 1,
+            "role": null,
+            "values": [
+              {
+                "id": "JP",
+                "name": "Japan"
+              }
+            ]
+          }
+        ],
+        "observation": [
+          {
+            "id": "TIME_PERIOD",
+            "name": "Time period or range",
+            "keyPosition": 2,
+            "role": "time",
+            "values": [
+              {
+                "start": "1946-01-01T00:00:00",
+                "end": "1946-01-01T23:59:59",
+                "id": "1946-01-01",
+                "name": "1946-01-01"
+              },
+              {
+                "start": "2026-10-27T00:00:00",
+                "end": "2026-10-27T23:59:59",
+                "id": "2026-10-27",
+                "name": "2026-10-27"
+              }
+            ]
+          }
+        ]
+      },
+      "attributes": {
+        "dataset": [
+          {
+            "id": "UNIT_MEASURE",
+            "name": "Unit of measure",
+            "relationship": {
+              "none": {}
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "368",
+                "name": "Per cent per year"
+              }
+            ]
+          },
+          {
+            "id": "UNIT_MULT",
+            "name": "Unit Multiplier",
+            "relationship": {
+              "none": {}
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "0",
+                "name": "Units"
+              }
+            ]
+          }
+        ],
+        "series": [
+          {
+            "id": "TIME_FORMAT",
+            "name": "Time Format",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": []
+          },
+          {
+            "id": "COMPILATION",
+            "name": "Compilation",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "From 24 Sep 2026: the BOJ encourages the uncollateralized overnight call rate to remain at around 1.25 percent; From 17 Jun 2026 to 23 Sep 2026: the BOJ encourages the uncollateralized overnight call rate to remain at around 1.00 percent; From 22 Dec 2025 to 16 Jun 2026: the BOJ encourages the uncollateralized overnight call rate to remain at around 0.75 percent; From 27 Jan 2025 to 21 Dec 2025: the BOJ encourages the uncollateralized overnight call rate to remain at around 0.50 percent; From 1 Aug 2024 to 26 Jan 2025: the BOJ encouraged the UOCR to remain at around 0.25% ; From 21 Mar 2024 to 31 July: the BOJ encouraged the UOCR to remain at around 0 to 0.1 %; from 21 Sep 2016 to 20 Mar 2024: the BOJ set the guideline for market operations which specifies a short-term policy interest rate at minus 0.1% and a target level of 10-year JGB yields at around 0%. Short-term policy interest rate; from 4 Apr 2013 to 20 Sep 2016: no policy rate; from 5 Oct 2010 to 3 Apr 2013: the BOJ encouraged the UOCR to remain at around 0 to 0.1%; from 19 Dec 2008 to 4 Oct 2010: the BOJ encouraged the UOCR to remain at around 0. %; from 31 Oct 2008 to 18 Dec 2008: the BOJ encouraged the UOCR to remain at around 0.3%; before 30 Oct 2008, refer to https://data.bis.org/topics/CBPOL",
+                "name": "From 24 Sep 2026: the BOJ encourages the uncollateralized overnight call rate to remain at around 1.25 percent; From 17 Jun 2026 to 23 Sep 2026: the BOJ encourages the uncollateralized overnight call rate to remain at around 1.00 percent; From 22 Dec 2025 to 16 Jun 2026: the BOJ encourages the uncollateralized overnight call rate to remain at around 0.75 percent; From 27 Jan 2025 to 21 Dec 2025: the BOJ encourages the uncollateralized overnight call rate to remain at around 0.50 percent; From 1 Aug 2024 to 26 Jan 2025: the BOJ encouraged the UOCR to remain at around 0.25% ; From 21 Mar 2024 to 31 July: the BOJ encouraged the UOCR to remain at around 0 to 0.1 %; from 21 Sep 2016 to 20 Mar 2024: the BOJ set the guideline for market operations which specifies a short-term policy interest rate at minus 0.1% and a target level of 10-year JGB yields at around 0%. Short-term policy interest rate; from 4 Apr 2013 to 20 Sep 2016: no policy rate; from 5 Oct 2010 to 3 Apr 2013: the BOJ encouraged the UOCR to remain at around 0 to 0.1%; from 19 Dec 2008 to 4 Oct 2010: the BOJ encouraged the UOCR to remain at around 0. %; from 31 Oct 2008 to 18 Dec 2008: the BOJ encouraged the UOCR to remain at around 0.3%; before 30 Oct 2008, refer to https://data.bis.org/topics/CBPOL"
+              }
+            ]
+          },
+          {
+            "id": "DECIMALS",
+            "name": "Decimals",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "4",
+                "name": "Four"
+              }
+            ]
+          },
+          {
+            "id": "SOURCE_REF",
+            "name": "Publication Source",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "Bank of Japan",
+                "name": "Bank of Japan"
+              }
+            ]
+          },
+          {
+            "id": "SUPP_INFO_BREAKS",
+            "name": "Supplemental information and breaks",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "For details see: http://www.bis.org/statistics/cbpol/cbpol_doc.pdf  ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_1998/k980909c.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_1999/k990212c.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2000/k000811.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2001/k010228a.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2006/k060309.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2006/k060714.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2007/k070221.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2008/k081031.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2008/k081219.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2010/k101005.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k160921a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2024/k240319a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2024/mpr240731c.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2025/mpr250124a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2025/k251219a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260616a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260918a.pdf",
+                "name": "For details see: http://www.bis.org/statistics/cbpol/cbpol_doc.pdf  ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_1998/k980909c.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_1999/k990212c.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2000/k000811.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2001/k010228a.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2006/k060309.htm ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2006/k060714.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2007/k070221.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2008/k081031.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2008/k081219.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2010/k101005.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2016/k160921a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2024/k240319a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2024/mpr240731c.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2025/mpr250124a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2025/k251219a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260616a.pdf ; https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260918a.pdf"
+              }
+            ]
+          },
+          {
+            "id": "TITLE",
+            "name": "Title",
+            "relationship": {
+              "dimensions": [
+                "FREQ",
+                "REF_AREA"
+              ]
+            },
+            "role": null,
+            "values": [
+              {
+                "id": " Central bank policy rates - Japan - Daily - End of period",
+                "name": " Central bank policy rates - Japan - Daily - End of period"
+              }
+            ]
+          }
+        ],
+        "observation": [
+          {
+            "id": "OBS_STATUS",
+            "name": "Observation Status",
+            "relationship": {
+              "primaryMeasure": "OBS_VALUE"
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "A",
+                "name": "Normal value"
+              }
+            ]
+          },
+          {
+            "id": "OBS_CONF",
+            "name": "Observation confidentiality",
+            "relationship": {
+              "primaryMeasure": "OBS_VALUE"
+            },
+            "role": null,
+            "values": [
+              {
+                "id": "F",
+                "name": "Free"
+              }
+            ]
+          },
+          {
+            "id": "OBS_PRE_BREAK",
+            "name": "Pre-Break Observation",
+            "relationship": {
+              "primaryMeasure": "OBS_VALUE"
+            },
+            "role": null,
+            "values": []
+          }
+        ]
+      }
+    }
+  },
+  "fixture_selected_original_observation_indices": [
+    "0",
+    "24913"
+  ]
+}

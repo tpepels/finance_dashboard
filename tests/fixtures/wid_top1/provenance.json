@@ -1,0 +1,89 @@
+{
+  "note": "Factual excerpts of original publisher CSVs; raw file hashes identify complete private source files. Acquisition is not first publication.",
+  "areas": {
+    "US": {
+      "source_urls": {
+        "data": "https://wid.world/bulk_download/WID_data_US.csv",
+        "metadata": "https://wid.world/bulk_download/WID_metadata_US.csv"
+      },
+      "original_sha256": {
+        "data": "8d00c55d26789f68196fff281604cb66f9bc750f4cee8c24a6e18d1ede37e709",
+        "metadata": "62827d019fe466ff43cb8fd41821db1bbc48465681e51ede01f378ba045ed975"
+      },
+      "variable": "sptinc992j",
+      "percentile": "p99p100",
+      "latest_year": 2024,
+      "latest_value": "0.2073"
+    },
+    "FR": {
+      "source_urls": {
+        "data": "https://wid.world/bulk_download/WID_data_FR.csv",
+        "metadata": "https://wid.world/bulk_download/WID_metadata_FR.csv"
+      },
+      "original_sha256": {
+        "data": "172881d9117ff25dff4262918bb1358ab1008d8d93f5ccb9d605be18f1729c11",
+        "metadata": "34cb0955438a3879b1531a67127861702a6b4cd0f6bd6e005a58c63a76589898"
+      },
+      "variable": "sptinc992j",
+      "percentile": "p99p100",
+      "latest_year": 2024,
+      "latest_value": "0.1182"
+    },
+    "PT": {
+      "source_urls": {
+        "data": "https://wid.world/bulk_download/WID_data_PT.csv",
+        "metadata": "https://wid.world/bulk_download/WID_metadata_PT.csv"
+      },
+      "original_sha256": {
+        "data": "8623a0edff3283668a6fd2ff0a472922db8be1e8368b8d94240da87317a3860f",
+        "metadata": "bc9333dba185807ff3f86de8a8aae34eafe96281b5e83366c84de10d3ca50d3e"
+      },
+      "variable": "sptinc992j",
+      "percentile": "p99p100",
+      "latest_year": 2024,
+      "latest_value": "0.1037"
+    },
+    "CN": {
+      "source_urls": {
+        "data": "https://wid.world/bulk_download/WID_data_CN.csv",
+        "metadata": "https://wid.world/bulk_download/WID_metadata_CN.csv"
+      },
+      "original_sha256": {
+        "data": "6e15b89370d4a0352448d6f70245158ddd6d1847bc592f4be45daf91aa449e70",
+        "metadata": "a617c11afdf4b0d88e2fc0a6ff5de714159cbd4ffa7f28f7b7e525eb4165dedf"
+      },
+      "variable": "sptinc992j",
+      "percentile": "p99p100",
+      "latest_year": 2024,
+      "latest_value": "0.1576"
+    },
+    "IN": {
+      "source_urls": {
+        "data": "https://wid.world/bulk_download/WID_data_IN.csv",
+        "metadata": "https://wid.world/bulk_download/WID_metadata_IN.csv"
+      },
+      "original_sha256": {
+        "data": "65309b1cfe0877c5dfedef98a56ef78b40f16f7def3f9c40bca2f0460e78f798",
+        "metadata": "80ade626b5485a464aaa4b7882c5c25d9af751966753965eaa53fa5f630ce7ed"
+      },
+      "variable": "sptinc992j",
+      "percentile": "p99p100",
+      "latest_year": 2024,
+      "latest_value": "0.2307"
+    },
+    "WO": {
+      "source_urls": {
+        "data": "https://wid.world/bulk_download/WID_data_WO.csv",
+        "metadata": "https://wid.world/bulk_download/WID_metadata_WO.csv"
+      },
+      "original_sha256": {
+        "data": "2b3e5d23cd54e9c20a40fff91a06226e896da094416a214ed2ce47b09608e51b",
+        "metadata": "ea8f607daf3b68fc794088b9e871073ad39740ac43ca2871eab92f82b113f504"
+      },
+      "variable": "sptincj992",
+      "percentile": "p99p100",
+      "latest_year": 2023,
+      "latest_value": "0.2029"
+    }
+  }
+}

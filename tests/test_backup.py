@@ -14,6 +14,50 @@ from finance_dashboard.backup import backup_local, verify_manifest, _hash
 
 
 class LocalBackupTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "Read-only WAL permissions require POSIX")
+    def test_large_readonly_wal_source_finishes_without_restarting_each_batch(self):
+        with TemporaryDirectory() as temp:
+            root=Path(temp)
+            root.chmod(0o755)
+            source=root/"readonly-source"
+            source.mkdir()
+            out=root/"backup"
+            out.mkdir(mode=0o777)
+            out.chmod(0o777)
+            db=source/"history.sqlite3"
+            live=root/"live.sqlite3"
+            writer=sqlite3.connect(live)
+            writer.execute("PRAGMA journal_mode=WAL")
+            writer.execute("CREATE TABLE facts (value BLOB)")
+            writer.executemany("INSERT INTO facts VALUES (zeroblob(4096))",[()]*512)
+            writer.commit()
+            writer.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            # A copied/checkpointed WAL database retains sidecars without a
+            # live writable shared-memory owner, as on the recovery volume.
+            for suffix in ("", "-wal", "-shm"):
+                (source/(db.name+suffix)).write_bytes(Path(str(live)+suffix).read_bytes())
+            writer.close()
+            for file in source.iterdir():
+                file.chmod(0o444)
+            source.chmod(0o555)
+            try:
+                code=("import os; "+
+                    ("os.setgroups([]); os.setgid(65534); os.setuid(65534); " if os.geteuid()==0 else "")+
+                    "from pathlib import Path; from finance_dashboard.backup import backup_local; "+
+                    "backup_local(Path("+repr(str(out))+"), source_db=Path("+repr(str(db))+"), evidence_roots={})")
+                try:
+                    result=subprocess.run([sys.executable,"-c",code],capture_output=True,text=True,timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.fail("Read-only WAL backup restarted instead of advancing beyond its first batch")
+                self.assertEqual(result.returncode,0,result.stderr)
+                backup=next(out.glob("finance-*Z.sqlite3"))
+                with sqlite3.connect(backup) as restored:
+                    self.assertEqual(restored.execute("SELECT COUNT(*) FROM facts").fetchone()[0],512)
+            finally:
+                source.chmod(0o755)
+                for file in source.iterdir():
+                    file.chmod(0o600)
+
     @unittest.skipUnless(os.name == "posix", "Read-only volume permissions require POSIX")
     def test_sealed_wal_backup_verifies_on_readonly_media(self):
         # A copied standalone WAL-mode database has no live WAL. Verification

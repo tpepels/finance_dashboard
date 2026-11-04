@@ -38,7 +38,7 @@ class ComparisonContractTests(unittest.TestCase):
         return found[0]
 
     def test_all_35_have_source_roles_without_editable_evidence_certificates(self):
-        self.assertEqual(self.document["schema_version"], 2)
+        self.assertEqual(self.document["schema_version"], 3)
         self.assertEqual(set(self.analyses), APPROVED_IDS)
         for analysis_id, row in self.analyses.items():
             with self.subTest(analysis=analysis_id):
@@ -59,8 +59,7 @@ class ComparisonContractTests(unittest.TestCase):
                     ids = requirement["series_ids"]
                     self.assertEqual(len(ids), len(set(ids)))
                     self.assertTrue(set(ids).issubset(self.series))
-                    self.assertEqual(requirement["requirement_status"],
-                                     "mapped" if ids else "missing")
+                    self.assertNotIn("requirement_status", requirement)
 
     def test_mapped_roles_and_variants_preserve_native_frequency_and_units(self):
         for analysis_id in APPROVED_IDS:
@@ -90,19 +89,40 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(gdp["series_ids"], ["activity.us.real_gdp_level"])
         self.assertEqual(gdp["expected"]["frequency"], "Q")
         employment = self.requirement("C05", "employment_level")
-        self.assertEqual(employment["series_ids"], [])
-        self.assertEqual(employment["requirement_status"], "missing")
+        self.assertEqual(employment["series_ids"], ["activity.us.nonfarm_payrolls"])
+        self.assertNotIn("requirement_status", employment)
+        self.assertEqual(employment["expected"]["unit"], "thousands_persons")
         self.assertIn("PAYEMS", employment["description"])
 
-    def test_missing_original_income_top1_and_wiid_are_not_replaced_by_wealth(self):
+    def test_original_income_top1_and_missing_wiid_are_not_replaced_by_wealth(self):
         top1 = self.requirement("L07", "pretax_income_top1")
-        self.assertEqual(top1["series_ids"], [])
+        self.assertEqual(len(top1["series_ids"]), 6)
+        self.assertTrue(all(".pretax_income.top1" in sid for sid in top1["series_ids"]))
         self.assertEqual(self.requirement("L07", "wiid_gini")["series_ids"], [])
         income = self.variant("L07", "wid_pretax_income_top10_bottom50")
         self.assertEqual(len(income["series_ids"]), 12)
         self.assertTrue(all(".pretax_income." in sid for sid in income["series_ids"]))
         self.assertFalse(income["satisfies_original_method"])
         self.assertEqual(income["start"], "1980-01-01")
+
+    def test_new_activity_policy_and_nominal_gdp_panels_preserve_explicit_scope(self):
+        activity = self.variant("C05", "us_monthly_industrial_production_payrolls")
+        self.assertEqual(activity["frequency"], "M")
+        self.assertEqual(activity["series_ids"], ["activity.us.industrial_production",
+                                                 "activity.us.nonfarm_payrolls"])
+        self.assertFalse(activity["satisfies_original_method"])
+        self.assertNotIn("activity.us.real_gdp_level", activity["series_ids"])
+        policy = self.variant("M01", "us_effective_funds_target_corridor")
+        self.assertEqual(policy["start"], "2008-12-16")
+        self.assertEqual(len(policy["series_ids"]), 3)
+        gdp = self.variant("G02", "wdi_current_usd_country_world_gdp")
+        self.assertEqual(len(gdp["series_ids"]), 8)
+        self.assertEqual(len({self.series[sid]["geography"] for sid in gdp["series_ids"]}), 8)
+        self.assertFalse(any(self.series[sid]["geography"] == "EMU" for sid in gdp["series_ids"]))
+        income = self.variant("L07", "wid_pretax_income_top1_top10_bottom50")
+        self.assertEqual(len(income["series_ids"]), 18)
+        self.assertFalse(income["checks"])
+        self.assertIn("nested", income["scope"])
 
     def test_exact_us_productivity_pay_method_keeps_output_and_cpi_deflators_distinct(self):
         exact = self.variant("L01", "us_nonfarm_output_deflated_pay")
@@ -128,6 +148,58 @@ class ComparisonContractTests(unittest.TestCase):
             "bond.us.nominal_10y", "bond.us.real_10y", "bond.us.breakeven_10y"})
         self.assertEqual(variant["checks"], ["yield_decomposition"])
         self.assertTrue(variant["satisfies_original_method"])
+
+    def test_credit_dsr_panel_pairs_only_the_same_available_countries(self):
+        panel = self.variant("F03", "bis_us_jp_credit_gap_private_dsr")
+        self.assertEqual(set(panel["series_ids"]), {
+            "credit_gap.us.bis", "credit_gap.jp.bis", "debt_service.us.private.bis",
+            "debt_service.jp.private.bis"})
+        self.assertEqual(panel["frequency"], "Q")
+        self.assertFalse(panel["satisfies_original_method"])
+
+    def test_mixed_frequency_questions_keep_native_inputs_in_separate_panels(self):
+        monthly = self.variant("C02", "us_monthly_sahm_recession_inputs")
+        daily = self.variant("C02", "us_daily_published_yield_spread")
+        self.assertEqual(monthly["frequency"], "M")
+        self.assertEqual(daily["frequency"], "D")
+        self.assertFalse(set(monthly["series_ids"]) & set(daily["series_ids"]))
+        inflation = self.variant("C06", "weo_country_cpi_inflation_inputs")
+        commodity = self.variant("C06", "pink_sheet_monthly_brent_input")
+        self.assertEqual(inflation["frequency"], "A")
+        self.assertEqual(commodity["frequency"], "M")
+        self.assertFalse(inflation["satisfies_original_method"])
+        self.assertFalse(commodity["satisfies_original_method"])
+
+    def test_nonbank_and_q_variants_do_not_invent_missing_components(self):
+        nonbank = self.variant("F07", "us_nonbank_native_balance_sheets")
+        self.assertEqual(len(nonbank["series_ids"]), 4)
+        self.assertFalse(nonbank["checks"])
+        self.assertFalse(nonbank["satisfies_original_method"])
+        self.assertFalse(self.requirement("F07", "meaningful_sector_equity")["series_ids"])
+        q = self.variant("V02", "bea_annual_q_definition_panel")
+        self.assertEqual(q["frequency"], "A")
+        self.assertEqual(len(q["series_ids"]), 3)
+        self.assertNotIn("valuation.us.cape", q["series_ids"])
+        self.assertFalse(self.requirement("V02", "q_accounting_components")["series_ids"])
+
+    def test_currency_context_reuses_the_existing_realized_rate_without_fx_substitution(self):
+        self.assertEqual(self.requirement("M04", "effective_federal_funds")["series_ids"],
+                         ["policy_rate.us.fed_effective"])
+        panel = self.variant("M04", "us_effective_funds_ecb_deposit_inputs")
+        self.assertEqual(panel["frequency"], "D")
+        self.assertFalse(panel["satisfies_original_method"])
+        self.assertFalse(self.requirement("M04", "exchange_rate_quotes")["series_ids"])
+
+    def test_global_multiasset_fallback_is_not_bound_as_original_equity_or_bonds(self):
+        panel = self.variant("P02", "p02_doeswijk_swinkels_global_multiasset_usd")
+        sid = "returns.doeswijk_swinkels.global_multiasset.usd.nominal"
+        self.assertEqual(panel["series_ids"], [sid])
+        self.assertEqual(panel["kind"], "approved_fallback")
+        self.assertEqual(panel["frequency"], "M")
+        self.assertEqual(panel["start"], "1970-01-01")
+        self.assertFalse(panel["satisfies_original_method"])
+        for role in self.contract("P02")["original_requirements"]:
+            self.assertNotIn(sid, role["series_ids"])
 
     def test_property_panel_and_dsr_baseline_do_not_invent_frequency_or_coverage(self):
         property_panel = self.variant("F06", "us_property_credit_dsr")

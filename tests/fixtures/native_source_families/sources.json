@@ -1,0 +1,79 @@
+[
+  {
+    "file": "imf_bca_ngdpd.json",
+    "fixture_sha256": "b96349f145eea5ac18be9b8111d73986f3cec7834791476e6b8776690bc09909",
+    "original_sha256": "045c405c5532760a2a0abaa7ce8530a4d6711b4d987ab0f74dff73ace6acb5f5",
+    "source_url": "https://www.imf.org/external/datamapper/api/v2/BCA_NGDPD",
+    "selection": "Exact selected original country/group histories and publisher unit/edition/projection metadata; unrelated countries and prose description omitted. Native reported values unchanged."
+  },
+  {
+    "file": "imf_ggxwdg_ngdp.json",
+    "fixture_sha256": "110dc6752eb5568713a6e9c0565660e82a9036b8aef54e3bea7c476e02adbcae",
+    "original_sha256": "3ac90e0d6c92957fa5943f1cfd9ab19ba54e7b65e70bdeb6fa8b67dcb64aa53a",
+    "source_url": "https://www.imf.org/external/datamapper/api/v2/GGXWDG_NGDP",
+    "selection": "Exact selected original country/group histories and publisher unit/edition/projection metadata; unrelated countries and prose description omitted. Native reported values unchanged."
+  },
+  {
+    "file": "pink_gold_brent_cells.json",
+    "fixture_sha256": "4e5c6afca17db3805f6d480abb260c17abad8e51a69aeb848e55412ef95ece46",
+    "original_sha256": "3c8d9d8dbb48342fdbf24777c39a8ce8964cc2fd0958f72f6779e6e4ad99cde2",
+    "source_url": "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx",
+    "selection": "Native cached values for source period, Brent and Gold columns across all original rows; other commodity columns omitted. No recalculation."
+  },
+  {
+    "file": "imf_pcpipch.json",
+    "fixture_sha256": "f9ac542ce2e76edc1fc85ffa77a116d3bbf6bb22ed276e6825a0f243633d09ca",
+    "original_sha256": "3183be640193b22c1c81f4875e33c66b7a0390aec06de6377be90d52e59223d1",
+    "source_url": "https://www.imf.org/external/datamapper/api/v2/PCPIPCH",
+    "selection": "Exact selected original country/group histories and publisher unit/edition/projection metadata; unrelated countries and prose description omitted. Native reported values unchanged."
+  },
+  {
+    "file": "bea_table_e.html",
+    "fixture_sha256": "61d1067e7fed56b22338349261750b540d65e4736557c078ca0e824ecee7f103",
+    "original_sha256": "022092202ce9abc80ebc5576d2bc5539e656fd6e19f3f44cc2861536f4db63e9",
+    "source_url": "https://apps.bea.gov/scb/issues/2026/05-may/0526-domestic-returns.htm",
+    "selection": "Literal original Table E HTML, including all 65 annual Q1/Q2/Q3 rows and native ratio definitions in header attributes."
+  },
+  {
+    "file": "shiller_cape_cells.json",
+    "fixture_sha256": "5e494d92c8ae1774a0902ce7d8e10e9696748496011a7b817402c749e48d64cf",
+    "original_sha256": "98a54927942e842ec07ffe73000998e793953708c345b6b27bb363e9ada8366a",
+    "source_url": "https://img1.wsimg.com/blobby/go/e5e77e0b-59d1-44d9-ab25-4763ac982e53/downloads/1449043e-a1ed-4e2e-8e9c-7b9a2a064493/ie_data.xls",
+    "selection": "Native cached date, date-fraction, ordinary CAPE and competing CAPE columns across all original rows; unrelated values omitted. Original missing fields retained; no recalculation."
+  },
+  {
+    "file": "shiller_download_link.html",
+    "fixture_sha256": "276d07f6dfc18103e303e0fae2f0cbbb67f1ec60dbcd422bbef08e86c111e9a3",
+    "original_sha256": "458d53b34ed420e450cb75afd2a4046dd1d67c20df0bbe426a113dffb41a23e6",
+    "source_url": "https://shillerdata.com/",
+    "selection": "Literal original identifying ie_data.xls download anchor, excluding unrelated site content."
+  },
+  {
+    "file": "bis_policy_xm.json",
+    "fixture_sha256": "ad6e42560db6d3ddb85c774b68e3296f6331489eb85846f8c96542a121d74a90",
+    "original_sha256": "9b1933fafe1416656c087b62a409e9d45e05e8272f9bd6968df82740b9123103",
+    "source_url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/D.XM",
+    "selection": "Selected literal original daily observations with all native series/dataset units and instrument-compilation attributes. Fixture observation indices relabel only the retained native TIME_PERIOD entries; original indices are explicitly recorded."
+  },
+  {
+    "file": "ecb_deposit_excerpt.csv",
+    "fixture_sha256": "0a9269eab5cb415b19748fa78d950d61a60942aa5e907c295352e68eed098a17",
+    "original_sha256": "79f7d264fad4091a89066881c42889713ee3d6e05e54bab18c6aa38fc9a16dee",
+    "source_url": "https://data-api.ecb.europa.eu/service/data/FM/D.U2.EUR.4F.KR.DFR.LEV?format=csvdata",
+    "selection": "Complete literal native columns for first, first negative and last original ECB deposit-facility rows. No daily filling or values changed."
+  },
+  {
+    "file": "bis_policy_jp.json",
+    "fixture_sha256": "a76bcbdb8ba1afff4bda31e38be10136e759bd76a7cb3174afc88dd5561e18dc",
+    "original_sha256": "26f3d17aa778a7e6401a1e8f6f2fe60393a512c666b834b301836119a3bcec8a",
+    "source_url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/D.JP",
+    "selection": "Selected literal original daily observations with all native series/dataset units and instrument-compilation attributes. Fixture observation indices relabel only the retained native TIME_PERIOD entries; original indices are explicitly recorded."
+  },
+  {
+    "file": "bis_policy_us.json",
+    "fixture_sha256": "ba238e0a39c763a0629176e0690630cd62476cb669ca69fd1f8b7b077f8f9266",
+    "original_sha256": "2df33fffe0c663d718a8fe9c9ed633a55756bab4532874d5e9391458a140e4df",
+    "source_url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/D.US",
+    "selection": "Selected literal original daily observations with all native series/dataset units and instrument-compilation attributes. Fixture observation indices relabel only the retained native TIME_PERIOD entries; original indices are explicitly recorded."
+  }
+]

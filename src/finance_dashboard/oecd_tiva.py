@@ -43,6 +43,8 @@ TIVA_URLS = {
     MAINLV_FLOW: f"{OECD_TIVA_ROOT}/OECD.STI.PIE,{MAINLV_FLOW},{TIVA_VERSION}/FFD_DVA+VALU.{_COUNTRY_KEY}._T.W.USD.A",
     MAINSH_FLOW: f"{OECD_TIVA_ROOT}/OECD.STI.PIE,{MAINSH_FLOW},{TIVA_VERSION}/FFD_DVA.{_COUNTRY_KEY}._T.W.PT_VA.A",
 }
+TIVA_IDENTITY = {"publisher": "OECD", "edition": "2025", "dataflow_version": TIVA_VERSION,
+    "countries": list(TIVA_COUNTRIES.values()), "activity": "_T", "counterpart_area": "W", "frequency": "A"}
 
 
 @dataclass(frozen=True)
@@ -120,20 +122,25 @@ def _attribute_record(batches: dict[str, TivaBatch]) -> dict:
 
 def _verify_archive(folder: Path, sources: dict, attributes: dict) -> None:
     try:
+        if folder.is_symlink() or (folder / "manifest.json").is_symlink():
+            raise ValueError("source manifest symlink")
         record = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
         if (record.get("schema_version") != 1 or record.get("publisher") != "OECD"
                 or record.get("edition") != "2025"
                 or record.get("dataflow_version") != TIVA_VERSION
                 or record.get("original_first_publication_at") is not None
                 or not record.get("retrieved_at_utc")
-                or record.get("observation_attributes") != attributes):
+                or record.get("observation_attributes") != attributes
+                or any(record.get(key) != TIVA_IDENTITY[key] for key in ("countries", "activity", "counterpart_area", "frequency"))
+                or set(record.get("sources", {})) != {"levels", "shares"}):
             raise ValueError("source manifest identity")
         for kind, source in sources.items():
             stored = record["sources"][kind]
             if any(stored.get(key) != source[key] for key in ("file", "url", "bytes", "sha256")):
                 raise ValueError("source manifest hash mismatch")
             original = folder / source["file"]
-            if original.is_symlink() or sha256(original.read_bytes()).hexdigest() != source["sha256"]:
+            if (original.is_symlink() or original.stat().st_size != source["bytes"]
+                    or sha256(original.read_bytes()).hexdigest() != source["sha256"]):
                 raise ValueError("source evidence content mismatch")
     except (OSError, KeyError, TypeError, ValueError) as exc:
         raise ProviderError("OECD TiVA immutable source evidence is inconsistent") from exc
@@ -191,6 +198,61 @@ def _archive_batches(root: Path, responses: dict[str, httpx.Response],
             shutil.rmtree(temporary)
 
 
+def read_tiva_evidence(evidence_root: Path) -> dict:
+    """Recompute diagnostics from the receipt-selected canonical original pair.
+
+    This reads the same immutable originals used for independent macro-series
+    reconciliation. It writes no second evidence store and never edits a sealed
+    manifest to add a newer diagnostic or declare synchronized publication.
+    """
+    from .source_reconciliation import _selected_manifest
+    from .tiva_diagnostics import audit_tiva_serialization
+
+    parent = Path(evidence_root) / "oecd-tiva"
+    if not parent.exists():
+        return {"status": "missing_original_tiva_pair", "original_source_hash_verified": False,
+                "selected_country_history_verified": False, "accounting_passed": None,
+                "serialization_diagnostic": None, "common_release_verified": False,
+                "first_publication_verified": False}
+    observed, manifest_hash, path, manifest, selection = _selected_manifest(parent, TIVA_IDENTITY)
+    sources, bodies, batches = manifest["sources"], {}, {}
+    for kind, flow in (("levels", MAINLV_FLOW), ("shares", MAINSH_FLOW)):
+        expected_name = f"tiva_2025_{kind}.csv"
+        source = sources[kind]
+        url = httpx.URL(source["url"])
+        if (source["file"] != expected_name or source["bytes"] > 20_000_000
+                or url.scheme != "https" or url.host != "sdmx.oecd.org"
+                or url.path != httpx.URL(TIVA_URLS[flow]).path
+                or dict(url.params) != {"startPeriod": "1995", "dimensionAtObservation": "AllDimensions"}
+                or (path.parent / expected_name).is_symlink()):
+            raise ValueError("tiva_original_source_identity_mismatch")
+        bodies[kind] = (path.parent / expected_name).read_bytes()
+        if len(bodies[kind]) != source["bytes"] or sha256(bodies[kind]).hexdigest() != source["sha256"]:
+            raise ValueError("tiva_original_source_hash_mismatch")
+        batches[flow] = parse_tiva_csv(bodies[kind].decode("utf-8-sig"), flow=flow)
+    expected_digest = sha256((sources["levels"]["sha256"] + ":" + sources["shares"]["sha256"]).encode("ascii")).hexdigest()
+    if path.parent.name != expected_digest:
+        raise ValueError("tiva_original_bundle_identity_mismatch")
+    _verify_archive(path.parent, sources, _attribute_record(batches))
+    observations = {identifier: values for batch in batches.values() for identifier, values in batch.observations.items()}
+    missing = {identifier: sorted(set(range(1995, 2023)) - {period.year for period in values})
+               for identifier, values in sorted(observations.items())}
+    complete = not any(missing.values())
+    diagnostic = audit_tiva_serialization(bodies["levels"], bodies["shares"]) if complete else None
+    passed = diagnostic["beyond_existing_0_001pp_check"] == 0 if diagnostic else None
+    return {"status": ("original_tiva_identity_passed" if passed else "original_tiva_identity_failed")
+                if complete else "partial_original_tiva_pair",
+            **TIVA_IDENTITY, "original_source_hash_verified": True,
+            "selected_country_history_verified": complete, "accounting_passed": passed,
+            "missing_years_by_series": missing, "observations": sum(map(len, observations.values())),
+            "bundle_digest": path.parent.name, "source_manifest_sha256": manifest_hash,
+            "acquisition_observed_at_utc": observed.isoformat(), "selection_method": selection,
+            "source_hashes": {kind: source["sha256"] for kind, source in sources.items()},
+            "serialization_diagnostic": diagnostic,
+            "common_release_verified": False, "first_publication_verified": False,
+            "limitation": "Original published country totals and shares; source accounting failures remain; no full ICIO history or synchronized release vintage is certified."}
+
+
 class TivaClient:
     """Two original selected-country batch downloads per collector lifetime."""
     def __init__(self, client: httpx.Client, *, archive_dir: Path | None = None):
@@ -225,9 +287,7 @@ class TivaClient:
                 responses[flow] = response
             if self.archive_dir is not None:
                 archived = _archive_batches(self.archive_dir, responses, batches)
-                record_acquisition_receipt(archived, {"publisher": "OECD", "edition": "2025",
-                    "dataflow_version": TIVA_VERSION, "countries": list(TIVA_COUNTRIES.values()),
-                    "activity": "_T", "counterpart_area": "W", "frequency": "A"})
+                record_acquisition_receipt(archived, TIVA_IDENTITY)
             self._batches = batches
             self._request_urls = {flow: str(response.request.url) for flow, response in responses.items()}
         values = self._batches[source[0]].observations[series_id]

@@ -1,0 +1,20 @@
+{
+  "original_url": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip",
+  "original_sha256": "85f53d6aba99557ebb8a5f8b247c0610973230c1a0f97ab267da2216816a8ab6",
+  "source_members": {
+    "dfp_cia_aberta_DRE_con_2025.csv": "b7527f477d596d00d181da6c321228dcf2786ab7f18470eed03170ed6d7a7627",
+    "dfp_cia_aberta_2025.csv": "0d3413b8c01d13cf7ae769f3963643274b87d00c4f19a323e4a0a654e64015ba"
+  },
+  "selection": "Factual original rows only, original semicolon/Latin1/CRLF and native values. Selected issuer CNPJ identifiers; consolidated current/comparative profit and attribution accounts only, plus all selected filing versions. No invented header/value or scale conversion in fixtures.",
+  "selected_cnpj": [
+    "00.000.000/0001-91",
+    "00.194.724/0001-13",
+    "00.864.214/0001-06",
+    "02.171.304/0001-47",
+    "02.201.787/0001-85",
+    "02.635.522/0001-95",
+    "17.344.597/0001-94",
+    "30.306.294/0001-45",
+    "42.276.907/0001-28"
+  ]
+}

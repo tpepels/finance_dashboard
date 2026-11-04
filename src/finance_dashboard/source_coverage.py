@@ -228,20 +228,25 @@ def _counts(session: Session, model, key, period) -> dict:
 def build_coverage(engine, catalog: list[dict], market_registry: dict[str, dict],
                    *, asof: date | None = None) -> dict:
     """Account for each registered source, even if it has never been imported."""
+    with Session(engine) as session:
+        return coverage_from_session(session, catalog, market_registry, asof=asof)
+
+
+def coverage_from_session(session: Session, catalog: list[dict], market_registry: dict[str, dict],
+                          *, asof: date | None = None) -> dict:
+    """Use the caller's read snapshot for source counts and ingestion history."""
     today = asof or date.today()
     macro_enabled = _yes("FINANCE_AUTO_REFRESH", "1")
     market_enabled = macro_enabled and _yes("FINANCE_INCLUDE_MARKETS", "0")
-    with Session(engine) as session:
-        macro_counts = _counts(session, ObservationVersion,
-                               ObservationVersion.series_id, ObservationVersion.period)
-        market_counts = _counts(session, MarketPriceVersion,
-                                MarketPriceVersion.instrument_id, MarketPriceVersion.day)
-        fx_counts = _counts(session, FxRateVersion, FxRateVersion.currency, FxRateVersion.day)
-        macro_runs, macro_success = _runs(session, IngestionRun, IngestionRun.series_id)
-        market_runs, market_success = _runs(session, MarketIngestionRun,
-                                           MarketIngestionRun.instrument_id)
-        fx_runs, fx_success = _runs(session, FxIngestionRun, FxIngestionRun.currency)
-
+    macro_counts = _counts(session, ObservationVersion,
+                           ObservationVersion.series_id, ObservationVersion.period)
+    market_counts = _counts(session, MarketPriceVersion,
+                            MarketPriceVersion.instrument_id, MarketPriceVersion.day)
+    fx_counts = _counts(session, FxRateVersion, FxRateVersion.currency, FxRateVersion.day)
+    macro_runs, macro_success = _runs(session, IngestionRun, IngestionRun.series_id)
+    market_runs, market_success = _runs(session, MarketIngestionRun,
+                                       MarketIngestionRun.instrument_id)
+    fx_runs, fx_success = _runs(session, FxIngestionRun, FxIngestionRun.currency)
     macros = [_make_item(
         family="macro", id=item["id"], name=item["name"],
         provider=item["provider"], frequency=item.get("frequency") or "A",
