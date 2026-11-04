@@ -1,6 +1,8 @@
 # Global Capital Monitor
 
-> **Phase 1 approved (2026-11-03); Phase 2 active.** This repository contains the old running application **and** the approved replacement specifications. The deployed interface is legacy; it is not the target design. No repository reset, loss of historical data, or second runtime is authorized.
+> **Phase 1 approved (2026-11-03); Phase 2 active.** This repository contains the old running application **and** the approved replacement specifications. The existing interface is legacy; it is not the target design. No repository reset, loss of historical data, or second runtime is authorized.
+
+**Environment:** Development/research only; no separate production deployment or production database. Existing historical observations, source evidence and backups must still be preserved.
 
 ## Start here: one implementation path
 
@@ -20,7 +22,23 @@ Keep the source collectors, append-only historical observations, provenance, rel
 - **Current technical/operational references:** [architecture snapshot](docs/ARCHITECTURE.md), [data integrity policy](docs/DATA_POLICY.md), [server setup](docs/SERVER_SOURCE_SETUP.md), [Docker deployment](docs/HOME_SERVER_DOCKER.md) and [OECD surplus method](docs/OECD_CORPORATE_SURPLUS.md). Some record the pre-redesign implementation and must not be mistaken for target architecture.
 - **Historical only:** [docs/archive/](docs/archive/) contains superseded contracts, source decisions and former phase plans. Redirect-only files were removed; link directly to the archive. Git history preserves earlier versions. Do not create new phase roadmaps or duplicate status diaries.
 
-## Phase 2 — Docker-only verification
+## Phase 2 — Local and Docker verification
+
+The offline registry inventory can run directly from a checkout, without a configured database and without the optional original-artifact parser being imported:
+
+```sh
+PYTHONPATH=src python scripts/phase2_corpus_status.py
+```
+
+The full application and original-source parsers **do** require the dependencies declared in `pyproject.toml` (including `python-calamine`). On a local Python installation, activate a project virtual environment and install the declared package rather than installing individual dependencies globally:
+
+```sh
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[test]'
+```
+
+Do not confuse this offline registry report with the database/source-reconciliation acceptance run.
 
 The single Compose service is `finance-dashboard`. The image now includes the full `scripts/` directory, original Fed reference evidence, existing tests and Phase 2 additions. **Build runs the existing acceptance tests and the new Phase 2 tests before it can complete.** A failed build means no tested new image was produced, so do not infer a successful deployment.
 
