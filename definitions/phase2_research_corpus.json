@@ -263,7 +263,9 @@
       "existing_series_references": [
         "gdp.real_growth.us",
         "gdp.real_growth.eu",
-        "gdp.real_growth.jp"
+        "gdp.real_growth.jp",
+        "activity.us.industrial_production",
+        "activity.us.unemployment_rate"
       ],
       "existing_adapter_references": [
         "src/finance_dashboard/providers.py",
@@ -277,7 +279,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "CLI series and same-country IP/unemployment not in mapped macro definitions",
+      "outstanding_evidence": "US industrial production and employment activity series now mapped; original OECD CLI, comparable international production and source-release vintages remain missing",
       "fallback_options": []
     },
     {
@@ -292,7 +294,8 @@
       ],
       "existing_series_references": [
         "rates.us.treasury_10y_3m_spread",
-        "recession.us.sahm"
+        "recession.us.sahm",
+        "recession.us.nber_indicator"
       ],
       "existing_adapter_references": [
         "src/finance_dashboard/providers.py",
@@ -306,7 +309,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "As-of series release-date and NBER chronology not proven by two mapped current/revised series",
+      "outstanding_evidence": "US recession chronology, yield spread and Sahm series now mapped; release-time revisions and independent predictive comparisons still unverified",
       "fallback_options": []
     },
     {
@@ -347,10 +350,15 @@
         "S04"
       ],
       "existing_series_references": [
-        "gdp.real_growth.us"
+        "gdp.real_growth.us",
+        "activity.us.real_gdp_level",
+        "activity.us.industrial_production",
+        "activity.us.unemployment_rate",
+        "recession.us.nber_indicator"
       ],
       "existing_adapter_references": [
-        "src/finance_dashboard/research.py"
+        "src/finance_dashboard/research.py",
+        "src/finance_dashboard/providers.py"
       ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
@@ -360,7 +368,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "Real GDP output levels, monthly IP and employment recovery baselines not mapped",
+      "outstanding_evidence": "US GDP/industrial production/unemployment and USREC now mapped, but explicit historical shock/recovery baselines and source chronology publication dates not yet validated",
       "fallback_options": []
     },
     {
@@ -434,7 +442,9 @@
       "existing_series_references": [
         "bond.us.real_10y",
         "bond.us.nominal_10y",
-        "bond.us.breakeven_10y"
+        "bond.us.breakeven_10y",
+        "rates.us.nominal_2y",
+        "rates.us.nominal_3m"
       ],
       "existing_adapter_references": [
         "src/finance_dashboard/providers.py"
@@ -447,7 +457,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "Nominal 10y Treasury and TIPS breakeven source series now mapped; actual observations, yield decomposition consistency and primary-release timestamps remain unverified",
+      "outstanding_evidence": "Nominal 2Y/3M rate rows and US 10Y/TIPS proxies now mapped; correct 10Y maturity/risk decompositions still require source data and alignment",
       "fallback_options": []
     },
     {
@@ -889,8 +899,15 @@
       "primary_method_sources": [
         "S35"
       ],
-      "existing_series_references": [],
-      "existing_adapter_references": [],
+      "existing_series_references": [
+        "wealth.us.top1_share",
+        "wealth.us.next9_share",
+        "wealth.us.middle40_share",
+        "wealth.us.bottom50_share"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
         "first_observation": null,
@@ -899,7 +916,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "Official Fed DFA distribution groups original series not in mapped macro catalogue",
+      "outstanding_evidence": "Original Federal Reserve DFA four wealth-percentile shares now mapped; actual dates, identical-vintage denominator reconciliation and assets composition not independently validated",
       "fallback_options": []
     },
     {
@@ -1040,10 +1057,15 @@
       ],
       "existing_series_references": [
         "credit.world.private_gdp_gap",
-        "credit.world.private_gdp_gap_coverage"
+        "credit.world.private_gdp_gap_coverage",
+        "external.us.current_account_gdp",
+        "external.jp.current_account_gdp",
+        "external.de.current_account_gdp",
+        "external.cn.current_account_gdp"
       ],
       "existing_adapter_references": [
-        "src/finance_dashboard/world_credit.py"
+        "src/finance_dashboard/world_credit.py",
+        "src/finance_dashboard/providers.py"
       ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
@@ -1053,7 +1075,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "World constructed gap is not BOP current-account / NIIP; true international balance rows absent",
+      "outstanding_evidence": "IMF WEO country current-account-to-GDP histories now mapped; original international investment positions and original cross-border stock/flow reconciliation remain missing",
       "fallback_options": []
     },
     {
@@ -1177,10 +1199,12 @@
         "S36"
       ],
       "existing_series_references": [
-        "equity.world.msci_acwi_netr_usd"
+        "equity.world.msci_acwi_netr_usd",
+        "recession.us.nber_indicator"
       ],
       "existing_adapter_references": [
-        "src/finance_dashboard/portfolio_risk.py"
+        "src/finance_dashboard/portfolio_risk.py",
+        "src/finance_dashboard/providers.py"
       ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
@@ -1190,7 +1214,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "An index level reference is not a portfolio total-return drawdown event corpus",
+      "outstanding_evidence": "NBER monthly indicator now mapped; complete dated portfolio NAV total return and actual drawdown methodology remains unverified",
       "fallback_options": []
     },
     {
