@@ -26,9 +26,11 @@ COPY src/ /app/src/
 COPY definitions/ /app/definitions/
 COPY data/msci_acwi_published_snapshots.json /app/data/msci_acwi_published_snapshots.json
 COPY data/wisesheets/sec_filer_profit.json /app/data/wisesheets/sec_filer_profit.json
+COPY data/reference/ /app/data/reference/
 COPY migrations/ /app/migrations/
 COPY tests/ /app/tests/
 COPY alembic.ini /app/alembic.ini
+COPY scripts/ /app/scripts/
 COPY scripts/run-standalone.sh /app/run-standalone.sh
 COPY --from=frontend-build /build/frontend/dist/ /app/site/
 RUN pip install --no-cache-dir . \
@@ -51,6 +53,14 @@ RUN pip install --no-cache-dir . \
     && python -m unittest discover -s tests -p 'test_sec_holdings_sync.py' -v \
     && python -m unittest discover -s tests -p 'test_marx_accounts.py' -v \
     && python -m unittest discover -s tests -p 'test_historical_research_api.py' -v \
+    && python -m unittest discover -s tests -p 'test_research_corpus.py' -v \
+    && python -m unittest discover -s tests -p 'test_research_corpus_api.py' -v \
+    && python -m unittest discover -s tests -p 'test_bis_dsr.py' -v \
+    && python -m unittest discover -s tests -p 'test_bis_property.py' -v \
+    && python -m unittest discover -s tests -p 'test_phase2_extended_sources.py' -v \
+    && python -m unittest discover -s tests -p 'test_phase2_wealth_external_sources.py' -v \
+    && python -m unittest discover -s tests -p 'test_phase2_nonbank_sources.py' -v \
+    && python -m unittest discover -s tests -p 'test_phase2_source_probe.py' -v \
     && chmod 755 /app/run-standalone.sh
 EXPOSE 8080
 VOLUME /data
