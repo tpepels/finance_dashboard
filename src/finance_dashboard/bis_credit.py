@@ -39,11 +39,17 @@ def tc_key(country: str, sector: str, unit_type: str) -> str:
 def _selected(definitions: list[dict], indices: list) -> dict[str, str]:
     if len(definitions) != len(indices):
         raise ProviderError("BIS attribute structure is inconsistent")
+    selected = {}
     try:
-        return {definition["id"]: definition["values"][index]["id"]
-                for definition, index in zip(definitions, indices) if index is not None}
+        for definition, index in zip(definitions, indices):
+            if index is None:
+                continue
+            if type(index) is not int or index < 0 or definition["id"] in selected:
+                raise ProviderError("BIS attribute index or metadata is invalid")
+            selected[definition["id"]] = definition["values"][index]["id"]
     except (KeyError, IndexError, TypeError, ValueError) as exc:
         raise ProviderError("BIS attribute index or metadata is invalid") from exc
+    return selected
 
 
 def parse_bis_total_credit(payload: Any, series_id: str, start: date | None = None) -> tuple[dict[date, Decimal], datetime | None]:

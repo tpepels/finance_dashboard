@@ -565,8 +565,18 @@ def _bis_credit_metadata(payload,definition):
         structure=structure[0]
     nodes=list(block['dataSets'][0]['series'].values())
     if len(nodes)!=1: raise EvidenceError('source_identity_mismatch')
-    selected={attribute['id']:attribute['values'][index]['id']
-              for attribute,index in zip(structure['attributes']['series'],nodes[0]['attributes']) if index is not None}
+    declarations=structure['attributes']['series']
+    indexes=nodes[0]['attributes']
+    if len(declarations)!=len(indexes): raise EvidenceError('source_schema_invalid')
+    selected={}
+    for attribute,index in zip(declarations,indexes):
+        if index is None: continue
+        if type(index) is not int or index<0 or attribute['id'] in selected:
+            raise EvidenceError('source_schema_invalid')
+        try:
+            selected[attribute['id']]=attribute['values'][index]['id']
+        except (IndexError,KeyError,TypeError,ValueError) as exc:
+            raise EvidenceError('source_schema_invalid') from exc
     stock=definition['source_key'].split('.')[-2]=='XDC'
     if (selected.get('UNIT_MEASURE')!=(definition.get('currency') if stock else '367')
             or selected.get('UNIT_MULT')!=('9' if stock else '0')):

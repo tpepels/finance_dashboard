@@ -15,7 +15,7 @@ import httpx
 
 from finance_dashboard.bis import ProviderError
 from finance_dashboard.bis_credit import BIS_TC_ROOT, TC_SERIES, tc_key, parse_bis_total_credit
-from finance_dashboard.captured_sources import _bis
+from finance_dashboard.captured_sources import _bis, _bis_credit_metadata
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import Base, make_engine
 from finance_dashboard.providers import ProviderRouter
@@ -109,6 +109,29 @@ class OriginalBisTotalCreditTests(unittest.TestCase):
         for value in ("-2", "Infinity", "bad"):
             with self.subTest(value=value), self.assertRaises(ProviderError):
                 parse_bis_total_credit(original(sid, (value, "103.75", None)), sid)
+
+    def test_sdmx_attribute_indexes_cannot_use_python_negative_bool_or_duplicate_lookup(self):
+        sid = "credit.us.private_nonfinancial_stock_bis"
+        definition = next(row for row in load_documents()[0]["series"] if row["id"] == sid)
+        for mutation in ("negative", "bool", "string", "duplicate"):
+            response = original(sid)
+            structure = response["data"]["structure"]
+            node = response["data"]["dataSets"][0]["series"]["0:0:0:0:0:0:0"]
+            if mutation == "negative":
+                node["attributes"][0] = -1
+            elif mutation == "bool":
+                node["attributes"][0] = True
+            elif mutation == "string":
+                node["attributes"][0] = "0"
+            elif mutation == "duplicate":
+                structure["attributes"]["series"].append(
+                    {"id": "UNIT_MEASURE", "values": [{"id": "USD"}]})
+                node["attributes"].append(0)
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(ProviderError):
+                    parse_bis_total_credit(response, sid)
+                with self.assertRaises(EvidenceError):
+                    _bis_credit_metadata(response, definition)
 
     def test_unfinished_quarter_cannot_be_published_as_a_historical_stock(self):
         sid = "credit.us.private_nonfinancial_stock_bis"
