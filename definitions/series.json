@@ -1099,7 +1099,7 @@
       "source_url": "https://www.worldbank.org/en/research/commodity-markets",
       "geography": "WORLD",
       "frequency": "M",
-      "unit": "usd",
+      "unit": "usd_per_barrel",
       "measurement": "Original Pink Sheet monthly nominal Brent crude oil average price, USD per barrel",
       "revision_policy": "revisable",
       "rights": "review_required",
