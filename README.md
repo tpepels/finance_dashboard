@@ -40,6 +40,21 @@ python -m pip install -e '.[test]'
 
 Do not confuse this offline registry report with the database/source-reconciliation acceptance run.
 
+The default offline inventory is deliberately short. Use `--details` for per-analysis mapping counts or `--json` for structured output. **It does not claim that all 35 analyses are blocked**: empirical readiness requires reading original evidence and stored observations.
+
+To ingest and independently reconcile the seven newly integrated native publisher families (59 mapped series) **against an already existing SQLite research database**, use the existing Phase 2 comparative-corpus runner in targeted-source mode. Replace both explicit paths with real local paths; the command rejects nonexistent or invalid SQLite files and missing evidence directories before any write:
+
+```sh
+PYTHONPATH=src python scripts/phase2_comparative_corpus.py \
+  --database-url "sqlite+pysqlite:////absolute/path/to/existing-research.sqlite3" \
+  --source-evidence-dir "/absolute/path/to/existing-source-evidence" \
+  --new-sources --acquire > phase2-native-acquisition.json
+```
+
+`--source-ids activity.us.oecd_cli bank.us.fdic_total_assets` can replace `--new-sources` to operate on an explicit subset. Without `--acquire`, the same command only reconciles existing original responses against the stored database. A passing targeted run proves current source-value consistency for that subset, **not** observation first-publication timing, complete structured-source evidence or 35-analysis certification. The original corpus evaluation remains the canonical path for analysis-level readiness; there is no new ingest engine.
+
+
+
 The single Compose service is `finance-dashboard`. The image now includes the full `scripts/` directory, original Fed reference evidence, existing tests and Phase 2 additions. **Build runs the existing acceptance tests and the new Phase 2 tests before it can complete.** A failed build means no tested new image was produced, so do not infer a successful deployment.
 
 ```bash
