@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "source": "Federal Reserve Z.1 via original St. Louis Fed public series pages",
+  "publisher_release_date": "2026-09-11",
+  "verified_public_web_date": "2026-11-04",
+  "observation_period": "2026-04-01",
+  "frequency": "Q",
+  "unit": "million_usd",
+  "seasonal_adjustment": "NSA",
+  "evidence_kind": "publisher_page_observation_only",
+  "api_retrieval_confirmed": false,
+  "local_database_import_confirmed": false,
+  "series": [
+    {
+      "id": "funding.us.broker_assets",
+      "original_series": "BOGZ1FL664090005Q",
+      "value": "7241760",
+      "source_url": "https://alfred.stlouisfed.org/series?seid=BOGZ1FL664090005Q"
+    },
+    {
+      "id": "funding.us.broker_liabilities",
+      "original_series": "BOGZ1FL664190005Q",
+      "value": "6803297",
+      "source_url": "https://fred.stlouisfed.org/series/BOGZ1FL664190005Q"
+    },
+    {
+      "id": "funding.us.broker_repo_liabilities",
+      "original_series": "BOGZ1FL662151003Q",
+      "value": "3115829",
+      "source_url": "https://fred.stlouisfed.org/series/BOGZ1FL662151003Q"
+    },
+    {
+      "id": "funding.us.money_market_assets",
+      "original_series": "MMMFFAQ027S",
+      "value": "8441374",
+      "source_url": "https://alfred.stlouisfed.org/series?seid=MMMFFAQ027S"
+    }
+  ],
+  "notes": "One public publisher-page original quarterly observation for each source, checked independently. Not a confirmed original API read, complete 1945–2026 history, true first available release vintage, live ingestion or economically validated F07 combined analysis."
+}
