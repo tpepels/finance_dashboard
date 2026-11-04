@@ -47,7 +47,7 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
     if "G06" in analysis_ids:
         artifacts.update({"icio", "tiva"})
     if "G03" in analysis_ids:
-        artifacts.add("cvm")
+        artifacts.update({"cvm", "taiwan_profits"})
     if analysis_ids & {"G01", "P01"}:
         artifacts.update({"sec_holdings", "ucits_holdings"})
     with Session(engine, autoflush=False) as session:

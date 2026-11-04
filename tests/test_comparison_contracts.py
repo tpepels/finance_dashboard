@@ -163,12 +163,14 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(monthly["frequency"], "M")
         self.assertEqual(daily["frequency"], "D")
         self.assertFalse(set(monthly["series_ids"]) & set(daily["series_ids"]))
-        inflation = self.variant("C06", "weo_country_cpi_inflation_inputs")
-        commodity = self.variant("C06", "pink_sheet_monthly_brent_input")
+        inflation = self.variant("C06", "weo_country_growth_inflation_inputs")
+        commodity = self.variant("C06", "pink_sheet_monthly_commodity_inputs")
         self.assertEqual(inflation["frequency"], "A")
         self.assertEqual(commodity["frequency"], "M")
-        self.assertFalse(inflation["satisfies_original_method"])
-        self.assertFalse(commodity["satisfies_original_method"])
+        self.assertTrue(inflation["satisfies_original_method"])
+        self.assertTrue(commodity["satisfies_original_method"])
+        self.assertEqual(len(inflation["series_ids"]), 6)
+        self.assertEqual(len(commodity["series_ids"]), 3)
 
     def test_nonbank_and_q_variants_do_not_invent_missing_components(self):
         nonbank = self.variant("F07", "us_nonbank_native_balance_sheets")
@@ -240,7 +242,7 @@ class ComparisonContractTests(unittest.TestCase):
                 self.assertNotIn("coverage", variant)
                 self.assertNotIn("fully_validated", variant)
                 if variant["satisfies_original_method"]:
-                    self.assertIn(analysis_id, {"M02", "L01"})
+                    self.assertEqual(variant["kind"], "original_scope")
 
 
 if __name__ == "__main__":

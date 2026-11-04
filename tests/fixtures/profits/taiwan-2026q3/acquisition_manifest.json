@@ -1,0 +1,587 @@
+{
+  "schema_version": 1,
+  "phase": "phase2",
+  "status": "raw_original_publisher_acquisition_only",
+  "original_files": [
+    {
+      "file": "t187ap06_L_ci.csv",
+      "url": "https://mopsfin.twse.com.tw/opendata/t187ap06_L_ci.csv",
+      "observed_at_utc": "2026-11-04T11:02:24.022971+00:00",
+      "http_status": 200,
+      "bytes": 22176,
+      "sha256": "29b03ff3ceb84a7ffb079dbf0e63860e98013c909631bdceec25a616fa38c5a0",
+      "content_type": "text/csv",
+      "http_last_modified": "Tue, 03 Nov 2026 17:08:33 GMT",
+      "columns": [
+        "出表日期",
+        "年度",
+        "季別",
+        "公司代號",
+        "公司名稱",
+        "營業收入",
+        "營業成本",
+        "原始認列生物資產及農產品之利益（損失）",
+        "生物資產當期公允價值減出售成本之變動利益（損失）",
+        "營業毛利（毛損）",
+        "未實現銷貨（損）益",
+        "已實現銷貨（損）益",
+        "營業毛利（毛損）淨額",
+        "營業費用",
+        "其他收益及費損淨額",
+        "營業利益（損失）",
+        "營業外收入及支出",
+        "稅前淨利（淨損）",
+        "所得稅費用（利益）",
+        "繼續營業單位本期淨利（淨損）",
+        "停業單位損益",
+        "合併前非屬共同控制股權損益",
+        "本期淨利（淨損）",
+        "其他綜合損益（淨額）",
+        "合併前非屬共同控制股權綜合損益淨額",
+        "本期綜合損益總額",
+        "淨利（淨損）歸屬於母公司業主",
+        "淨利（淨損）歸屬於共同控制下前手權益",
+        "淨利（淨損）歸屬於非控制權益",
+        "綜合損益總額歸屬於母公司業主",
+        "綜合損益總額歸屬於共同控制下前手權益",
+        "綜合損益總額歸屬於非控制權益",
+        "基本每股盈餘（元）"
+      ],
+      "issuer_rows": 75,
+      "unique_company_codes": 75,
+      "native_fiscal_years": [
+        "115"
+      ],
+      "native_quarters": [
+        "3"
+      ],
+      "native_issue_dates": [
+        "1151104"
+      ],
+      "attributable_parent_net_income_column": "淨利（淨損）歸屬於母公司業主",
+      "missing_parent_net_income_rows": 2,
+      "negative_parent_net_income_rows": 5,
+      "sample_rows": [
+        {
+          "出表日期": "1151104",
+          "年度": "115",
+          "季別": "3",
+          "公司代號": "1232",
+          "公司名稱": "大統益",
+          "本期淨利（淨損）": "1341100.00",
+          "淨利（淨損）歸屬於母公司業主": "1284559.00",
+          "淨利（淨損）歸屬於非控制權益": "56541.00",
+          "基本每股盈餘（元）": "8.03"
+        },
+        {
+          "出表日期": "1151104",
+          "年度": "115",
+          "季別": "3",
+          "公司代號": "1477",
+          "公司名稱": "聚陽",
+          "本期淨利（淨損）": "2901570.00",
+          "淨利（淨損）歸屬於母公司業主": "2867646.00",
+          "淨利（淨損）歸屬於非控制權益": "33924.00",
+          "基本每股盈餘（元）": "11.62"
+        }
+      ],
+      "native_population": "TWSE-listedcompanies general-businessincome-statementrows; currentpartial2026Q3sample, notalllistedissuers"
+    },
+    {
+      "file": "t187ap06_O_ci.csv",
+      "url": "https://mopsfin.twse.com.tw/opendata/t187ap06_O_ci.csv",
+      "observed_at_utc": "2026-11-04T11:02:23.895166+00:00",
+      "http_status": 200,
+      "bytes": 16790,
+      "sha256": "35afc88edb821c88c2bf68e6d521018ab3bcdd3388dfe63463ce9839c234030e",
+      "content_type": "text/csv",
+      "http_last_modified": "Tue, 03 Nov 2026 17:08:51 GMT",
+      "columns": [
+        "出表日期",
+        "年度",
+        "季別",
+        "公司代號",
+        "公司名稱",
+        "營業收入",
+        "營業成本",
+        "原始認列生物資產及農產品之利益（損失）",
+        "生物資產當期公允價值減出售成本之變動利益（損失）",
+        "營業毛利（毛損）",
+        "未實現銷貨（損）益",
+        "已實現銷貨（損）益",
+        "營業毛利（毛損）淨額",
+        "營業費用",
+        "其他收益及費損淨額",
+        "營業利益（損失）",
+        "營業外收入及支出",
+        "稅前淨利（淨損）",
+        "所得稅費用（利益）",
+        "繼續營業單位本期淨利（淨損）",
+        "停業單位損益",
+        "合併前非屬共同控制股權損益",
+        "本期淨利（淨損）",
+        "其他綜合損益（淨額）",
+        "合併前非屬共同控制股權綜合損益淨額",
+        "本期綜合損益總額",
+        "淨利（淨損）歸屬於母公司業主",
+        "淨利（淨損）歸屬於共同控制下前手權益",
+        "淨利（淨損）歸屬於非控制權益",
+        "綜合損益總額歸屬於母公司業主",
+        "綜合損益總額歸屬於共同控制下前手權益",
+        "綜合損益總額歸屬於非控制權益",
+        "基本每股盈餘（元）"
+      ],
+      "issuer_rows": 60,
+      "unique_company_codes": 60,
+      "native_fiscal_years": [
+        "115"
+      ],
+      "native_quarters": [
+        "3"
+      ],
+      "native_issue_dates": [
+        "1151104"
+      ],
+      "attributable_parent_net_income_column": "淨利（淨損）歸屬於母公司業主",
+      "missing_parent_net_income_rows": 10,
+      "negative_parent_net_income_rows": 9,
+      "sample_rows": [
+        {
+          "出表日期": "1151104",
+          "年度": "115",
+          "季別": "3",
+          "公司代號": "1584",
+          "公司名稱": "精剛",
+          "本期淨利（淨損）": "90932.00",
+          "淨利（淨損）歸屬於母公司業主": "90280.00",
+          "淨利（淨損）歸屬於非控制權益": "652.00",
+          "基本每股盈餘（元）": "0.40"
+        },
+        {
+          "出表日期": "1151104",
+          "年度": "115",
+          "季別": "3",
+          "公司代號": "2035",
+          "公司名稱": "唐榮公司",
+          "本期淨利（淨損）": "-180835.00",
+          "淨利（淨損）歸屬於母公司業主": "",
+          "淨利（淨損）歸屬於非控制權益": "",
+          "基本每股盈餘（元）": "-0.52"
+        }
+      ],
+      "native_population": "TPExOTCcompanies general-businessincome-statementrows; officialTPExOpenAPI operation /mopsfin_t187ap06_O_ci confirmsboard; currentpartial2026Q3sample"
+    }
+  ],
+  "question": "G03 worldwide listed-parent consolidated after-tax income; this evidence covers only a narrow Taiwan issuer sample",
+  "not_claimed": [
+    "global listed-company coverage",
+    "complete Taiwan issuer coverage",
+    "verified annualhistoricalpanel",
+    "consolidated issuer ultimate-parent deduplication",
+    "original first-publication vintages",
+    "USD financial harmonization",
+    "any aggregateprofit calculation"
+  ],
+  "primary_metadata": [
+    {
+      "url": "https://data.gov.tw/en/datasets/91998",
+      "title": "Income statement for listed companies (general industry)",
+      "publisher": "FSC Securities and Futures Bureau / TWSE MOPS",
+      "consolidation": "Metadata explicitly says consolidated income statement of listed companies generalbusiness",
+      "rights": "Open Government Data License1.0, free, Primarydata",
+      "related_financial_populations": "Financialholding,banking,securities/futures,insurance and differentindustries have distinct source tables"
+    },
+    {
+      "url": "https://data.gov.tw/en/datasets/97152",
+      "title": "Consolidated Income Statement - General Business",
+      "correction": "Actual raw link ends t187ap06_X_ci.csv; TWSE OpenAPI labels X as public-issuance companies (公發), not the OTC O feed or a proven listed-only population"
+    },
+    {
+      "url": "https://data.gov.tw/en/datasets/94853",
+      "title": "Over-the-counter company comprehensive income statement (general business)",
+      "publisher": "FSC Securities and Futures Bureau / TaipeiExchange",
+      "rights": "Open Government DataLicense1.0,free,primarydata",
+      "verified_at_utc": "2026-11-04T11:04:12.589038+00:00"
+    },
+    {
+      "url": "https://mopsfin.twse.com.tw/terms",
+      "publisher": "TWSE MOPSfinancialcomparisonportal",
+      "period_semantics": "Portaldescribesincome statementsin three-statementview as cumulativeforeachquarter; distinctsinglequartertrendmetricsalsoexist",
+      "scope_limit": "This supports cumulative-flowinterpretation, but exactflatCSVperiod/scalestillneedsissuerfilingreconciliation; quarterlyflows mustnever simplybesummed."
+    }
+  ],
+  "native_period_note": "年度115=Gregorian2026,季別3,出表日期1151104=2026-11-04 forbothsnapshots. Sourceportaltermsdistinguishcumulativeincomestatementsfromsinglequartertrendmetrics; treatas likelyyear-to-datefinancialflows until exactCSV-toissuerfilingmappingverified. Notannualprofit.",
+  "native_currency_note": "Likely NT$thousand for monetary financialstatement fields; this specific CSVheader does not carry explicitcurrency/scalemetadata. Currency/scale not yet verified for these precise rawfeeds; EPSheader explicitly元. Preserve raw numbers and do not convert.",
+  "native_account_identity": {
+    "exact_original_column": "淨利（淨損）歸屬於母公司業主",
+    "meaning": "Net income (loss) attributable to owners ofparent; distinct from net profitforperiod, noncontrollinginterestincome and totalcomprehensiveincome",
+    "numeric_account_code": "Not supplied by flatCSV; no guessed XBRL accountcode"
+  },
+  "integration_status": "open_not_integrated_not_scientifically_validated",
+  "period_unit_page_probe": {
+    "url": "https://mops.twse.com.tw/mops/web/t163sb04",
+    "http_status": 302,
+    "bytes": 0,
+    "observed_at_utc": "2026-11-04T11:03:13.141427+00:00",
+    "unit_text_matches": []
+  },
+  "publisher_schema_evidence": {
+    "twse": {
+      "url": "https://openapi.twse.com.tw/v1/swagger.json",
+      "observed_at_utc": "2026-11-04T11:03:07.428690+00:00",
+      "http_status": 200,
+      "original_metadata_sha256": "06e1cea82448361e733a0ad1ae16e52f5d5d6b71905acd078472f852c32c0eb0",
+      "original_metadata_bytes": 309960,
+      "operation_path": "/opendata/t187ap06_L_ci",
+      "original_operation_metadata": {
+        "get": {
+          "tags": [
+            "財務報表"
+          ],
+          "summary": "上市公司綜合損益表(一般業)",
+          "description": "上市公司綜合損益表(一般業)",
+          "produces": [
+            "application/json",
+            "text/csv"
+          ],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "出表日期": {
+                    "type": "string",
+                    "description": "出表日期"
+                  },
+                  "年度": {
+                    "type": "string",
+                    "description": "年度"
+                  },
+                  "季別": {
+                    "type": "string",
+                    "description": "季別"
+                  },
+                  "公司代號": {
+                    "type": "string",
+                    "description": "公司代號"
+                  },
+                  "公司名稱": {
+                    "type": "string",
+                    "description": "公司名稱"
+                  },
+                  "營業收入": {
+                    "type": "string",
+                    "description": "營業收入"
+                  },
+                  "營業成本": {
+                    "type": "string",
+                    "description": "營業成本"
+                  },
+                  "原始認列生物資產及農產品之利益（損失）": {
+                    "type": "string",
+                    "description": "原始認列生物資產及農產品之利益（損失）"
+                  },
+                  "生物資產當期公允價值減出售成本之變動利益（損失）": {
+                    "type": "string",
+                    "description": "生物資產當期公允價值減出售成本之變動利益（損失）"
+                  },
+                  "營業毛利（毛損）": {
+                    "type": "string",
+                    "description": "營業毛利（毛損）"
+                  },
+                  "未實現銷貨（損）益": {
+                    "type": "string",
+                    "description": "未實現銷貨（損）益"
+                  },
+                  "已實現銷貨（損）益": {
+                    "type": "string",
+                    "description": "已實現銷貨（損）益"
+                  },
+                  "營業毛利（毛損）淨額": {
+                    "type": "string",
+                    "description": "營業毛利（毛損）淨額"
+                  },
+                  "營業費用": {
+                    "type": "string",
+                    "description": "營業費用"
+                  },
+                  "其他收益及費損淨額": {
+                    "type": "string",
+                    "description": "其他收益及費損淨額"
+                  },
+                  "營業利益（損失）": {
+                    "type": "string",
+                    "description": "營業利益（損失）"
+                  },
+                  "營業外收入及支出": {
+                    "type": "string",
+                    "description": "營業外收入及支出"
+                  },
+                  "稅前淨利（淨損）": {
+                    "type": "string",
+                    "description": "稅前淨利（淨損）"
+                  },
+                  "所得稅費用（利益）": {
+                    "type": "string",
+                    "description": "所得稅費用（利益）"
+                  },
+                  "繼續營業單位本期淨利（淨損）": {
+                    "type": "string",
+                    "description": "繼續營業單位本期淨利（淨損）"
+                  },
+                  "停業單位損益": {
+                    "type": "string",
+                    "description": "停業單位損益"
+                  },
+                  "合併前非屬共同控制股權損益": {
+                    "type": "string",
+                    "description": "合併前非屬共同控制股權損益"
+                  },
+                  "本期淨利（淨損）": {
+                    "type": "string",
+                    "description": "本期淨利（淨損）"
+                  },
+                  "其他綜合損益（淨額）": {
+                    "type": "string",
+                    "description": "其他綜合損益（淨額）"
+                  },
+                  "合併前非屬共同控制股權綜合損益淨額": {
+                    "type": "string",
+                    "description": "合併前非屬共同控制股權綜合損益淨額"
+                  },
+                  "本期綜合損益總額": {
+                    "type": "string",
+                    "description": "本期綜合損益總額"
+                  },
+                  "淨利（淨損）歸屬於母公司業主": {
+                    "type": "string",
+                    "description": "淨利（淨損）歸屬於母公司業主"
+                  },
+                  "淨利（淨損）歸屬於共同控制下前手權益": {
+                    "type": "string",
+                    "description": "淨利（淨損）歸屬於共同控制下前手權益"
+                  },
+                  "淨利（淨損）歸屬於非控制權益": {
+                    "type": "string",
+                    "description": "淨利（淨損）歸屬於非控制權益"
+                  },
+                  "綜合損益總額歸屬於母公司業主": {
+                    "type": "string",
+                    "description": "綜合損益總額歸屬於母公司業主"
+                  },
+                  "綜合損益總額歸屬於共同控制下前手權益": {
+                    "type": "string",
+                    "description": "綜合損益總額歸屬於共同控制下前手權益"
+                  },
+                  "綜合損益總額歸屬於非控制權益": {
+                    "type": "string",
+                    "description": "綜合損益總額歸屬於非控制權益"
+                  },
+                  "基本每股盈餘（元）": {
+                    "type": "string",
+                    "description": "基本每股盈餘（元）"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "publisher_info": {
+        "description": "本平臺提供臺灣證券交易所服務API，歡迎各位介接使用。<br><br>[使用條款](https://www.twse.com.tw/zh/page/terms/use.html)  [授權說明網址](https://data.gov.tw/license)",
+        "version": "1.0",
+        "title": "臺灣證券交易所 OpenAPI"
+      }
+    },
+    "tpex": {
+      "url": "https://www.tpex.org.tw/openapi/swagger.json",
+      "observed_at_utc": "2026-11-04T11:03:11.158278+00:00",
+      "http_status": 200,
+      "original_metadata_sha256": "05af7755d0d528626c104f7a8ccd7b00c6a0cf228d30bcb4669020e514eb0c7e",
+      "original_metadata_bytes": 476923,
+      "operation_path": "/mopsfin_t187ap06_O_ci",
+      "original_operation_metadata": {
+        "get": {
+          "tags": [
+            "財務報表"
+          ],
+          "summary": "上櫃公司綜合損益表(一般業)",
+          "description": "上櫃公司綜合損益表(一般業)",
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/mopsfin_t187ap06_O_ci"
+                  }
+                },
+                "text/csv": {
+                  "schema": {
+                    "$ref": "#/components/schemas/mopsfin_t187ap06_O_ci"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "publisher_info": {
+        "description": "本平臺提供櫃檯買賣市場資料服務API，包含上櫃、興櫃、創櫃及債券等發行及交易資訊，歡迎各位介接使用。<br><br>[使用條款](https://www.tpex.org.tw/web/inc/gtsm_disclaimer.php?l=zh-tw)<br>[聯絡窗口](mailTo:apiteam@swagger.io)",
+        "version": "1.0.0",
+        "title": "證券櫃檯買賣中心 OpenAPI"
+      },
+      "original_response_schema": {
+        "type": "object",
+        "properties": {
+          "Date": {
+            "type": "string",
+            "description": "出表日期"
+          },
+          "Year": {
+            "type": "string",
+            "description": "年度"
+          },
+          "Season": {
+            "type": "string",
+            "description": "季別"
+          },
+          "SecuritiesCompanyCode": {
+            "type": "string",
+            "description": "公司代號"
+          },
+          "CompanyName": {
+            "type": "string",
+            "description": "公司名稱"
+          },
+          "營業收入": {
+            "type": "string",
+            "description": "營業收入"
+          },
+          "營業成本": {
+            "type": "string",
+            "description": "營業成本"
+          },
+          "原始認列生物資產及農產品之利益（損失）": {
+            "type": "string",
+            "description": "原始認列生物資產及農產品之利益（損失）"
+          },
+          "生物資產當期公允價值減出售成本之變動利益（損失）": {
+            "type": "string",
+            "description": "生物資產當期公允價值減出售成本之變動利益（損失）"
+          },
+          "營業毛利（毛損）": {
+            "type": "string",
+            "description": "營業毛利（毛損）"
+          },
+          "未實現銷貨（損）益": {
+            "type": "string",
+            "description": "未實現銷貨（損）益"
+          },
+          "已實現銷貨（損）益": {
+            "type": "string",
+            "description": "已實現銷貨（損）益"
+          },
+          "營業毛利（毛損）淨額": {
+            "type": "string",
+            "description": "營業毛利（毛損）淨額"
+          },
+          "營業費用": {
+            "type": "string",
+            "description": "營業費用"
+          },
+          "其他收益及費損淨額": {
+            "type": "string",
+            "description": "其他收益及費損淨額"
+          },
+          "營業利益（損失）": {
+            "type": "string",
+            "description": "營業利益（損失）"
+          },
+          "營業外收入及支出": {
+            "type": "string",
+            "description": "營業外收入及支出"
+          },
+          "稅前淨利（淨損）": {
+            "type": "string",
+            "description": "稅前淨利（淨損）"
+          },
+          "所得稅費用（利益）": {
+            "type": "string",
+            "description": "所得稅費用（利益）"
+          },
+          "繼續營業單位本期淨利（淨損）": {
+            "type": "string",
+            "description": "繼續營業單位本期淨利（淨損）"
+          },
+          "停業單位損益": {
+            "type": "string",
+            "description": "停業單位損益"
+          },
+          "合併前非屬共同控制股權損益": {
+            "type": "string",
+            "description": "合併前非屬共同控制股權損益"
+          },
+          "本期淨利（淨損）": {
+            "type": "string",
+            "description": "本期淨利（淨損）"
+          },
+          "其他綜合損益（淨額）": {
+            "type": "string",
+            "description": "其他綜合損益（淨額）"
+          },
+          "合併前非屬共同控制股權綜合損益淨額": {
+            "type": "string",
+            "description": "合併前非屬共同控制股權綜合損益淨額"
+          },
+          "本期綜合損益總額": {
+            "type": "string",
+            "description": "本期綜合損益總額"
+          },
+          "淨利（淨損）歸屬於母公司業主": {
+            "type": "string",
+            "description": "淨利（淨損）歸屬於母公司業主"
+          },
+          "淨利（淨損）歸屬於共同控制下前手權益": {
+            "type": "string",
+            "description": "淨利（淨損）歸屬於共同控制下前手權益"
+          },
+          "淨利（淨損）歸屬於非控制權益": {
+            "type": "string",
+            "description": "淨利（淨損）歸屬於非控制權益"
+          },
+          "綜合損益總額歸屬於母公司業主": {
+            "type": "string",
+            "description": "綜合損益總額歸屬於母公司業主"
+          },
+          "綜合損益總額歸屬於共同控制下前手權益": {
+            "type": "string",
+            "description": "綜合損益總額歸屬於共同控制下前手權益"
+          },
+          "綜合損益總額歸屬於非控制權益": {
+            "type": "string",
+            "description": "綜合損益總額歸屬於非控制權益"
+          },
+          "基本每股盈餘（元）": {
+            "type": "string",
+            "description": "基本每股盈餘（元）"
+          }
+        }
+      }
+    }
+  },
+  "consolidation_status": "The Chinese native title綜合損益表means comprehensive income statement, not by itself consolidated scope (合併). Englishgovernmentmetadatausesconsolidated but exactflatCSVhasnoconsolidated-vsstandaloneflag. Parent-attributablenetincome columnisexplicitwherepopulated; blanksremainmissing. Do not infer scope or substitute totalprofit forblankparentincome.",
+  "access_rights": "BothrawfilesofficialpublicdownloadsHTTP200; governmentmetadata91998(L) and94853(O) each explicitlyfree/primarydata/OpenGovernmentDataLicense1.0.",
+  "raw_acquisition_successful": true,
+  "remaining_scientific_gates": [
+    "nativecurrencyandmonetaryscaleverificationforpreciserawfeeds",
+    "consolidatedvsstandalonefilingcontextperissuer",
+    "cumulativevsdiscretequarterflowverification",
+    "ultimateparentdedupeandlistedsubsidiarydoublecounting",
+    "financialsectoradditionaltemplates",
+    "issuerpopulationandmissingmarketcapitalizationcoverage",
+    "annualhistoricalsourceandrestatementavailability",
+    "FXandfiscalcalendaralignment"
+  ]
+}

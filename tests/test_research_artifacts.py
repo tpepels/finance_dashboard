@@ -3,7 +3,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
-from unittest.mock import patch
 import json
 
 from finance_dashboard.research_artifacts import research_artifact_evidence
@@ -56,11 +55,22 @@ class ResearchArtifactTests(unittest.TestCase):
             self.assertTrue(result["cvm"]["original_source_hash_verified"])
             self.assertEqual(result["cvm"]["verified_years"], [2025])
             self.assertGreater(result["cvm"]["issuer_records"], 0)
+            self.assertIn("evidence_retrieved_at_utc", result["cvm"]["sources"][0])
+            self.assertGreater(len(result["cvm"]["sources"][0]["reported_fiscal_periods"]), 0)
+            self.assertFalse(result["cvm"]["authority_receipt_is_first_publication"])
             self.assertFalse(result["cvm"]["worldwide_population_verified"])
             self.assertFalse(result["cvm"]["aggregate_produced"])
             self.assertTrue(result["ucits_holdings"]["original_source_hash_verified"])
             self.assertEqual(result["ucits_holdings"]["position_coverage"]["positions"], len(facts["positions"]))
             self.assertGreater(result["ucits_holdings"]["position_coverage"]["positions_with_reported_currency"], 0)
+            self.assertEqual(result["ucits_holdings"]["cash_positions"], 1)
+            self.assertEqual(result["ucits_holdings"]["unclassified_fx_positions"], 1)
+            self.assertFalse(result["ucits_holdings"]["original_index_constituents_verified"])
+            source = result["ucits_holdings"]["sources"][0]
+            self.assertIn("immutable_manifest_retrieved_at_utc", source)
+            self.assertEqual(len(source["source_manifest_sha256"]), 64)
+            self.assertFalse(source["nav_accounting_identity_checked"])
+            self.assertIsNone(source["nav_accounting_identity_passed"])
             rendered = json.dumps(result)
             for private in (temp, "source_row", "issuer_name", "parent_attributable_income_native", "source_xml"):
                 self.assertNotIn(private, rendered)
@@ -94,6 +104,11 @@ class ResearchArtifactTests(unittest.TestCase):
             self.assertEqual(result["position_coverage"]["positions_with_reported_issuer_lei"], 1)
             self.assertEqual(result["position_coverage"]["derivative_positions"], 1)
             self.assertTrue(result["sources"][0]["fund_accounting_identity_passed"])
+            self.assertIn("acquisition_observed_at_utc", result["sources"][0])
+            self.assertEqual(result["sources"][0]["publication_evidence"]["sec_acceptance_timestamp_unverified_timezone"],
+                             "2026-09-28T19:00:00")
+            self.assertFalse(result["sources"][0]["publication_evidence"]["first_public_dissemination_verified"])
+            self.assertFalse(result["original_index_constituents_verified"])
             self.assertFalse(result["first_publication_verified"])
             self.assertFalse(result["ultimate_parent_mapping_verified"])
             for private in (temp, "Surgery Partners", "549300LC82HG33S19I03", "derivative_contracts", "source_xml"):

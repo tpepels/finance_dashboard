@@ -63,6 +63,8 @@ class IcioTests(unittest.TestCase):
             result = read_icio_evidence(Path(temp))
             self.assertEqual(result["status"], "missing_original_matrix")
             self.assertFalse(result["full_history_verified"])
+            self.assertEqual(result["release_comparison"]["status"], "missing_original_release_comparison")
+            self.assertFalse(result["release_comparison"]["original_source_hashes_verified"])
 
     def test_historical_original_uses_same_accounting_and_receipts_without_certifying_full_history(self):
         body = b"V1,AAA_A01,AAA_INVNT,OUT\nAAA_A01,1,2,4\nTLS,0,0,0\nVA,3,0,0\nOUT,4,0,0\n"
@@ -98,6 +100,38 @@ class IcioTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_icio_evidence(root / "evidence")
 
+    def test_1995_replica_keeps_distinct_declared_release_and_canonical_source_route(self):
+        body = b"V1,AAA_A01,AAA_INVNT,OUT\nAAA_A01,1,2,3\nTLS,0,0,0\nVA,2,0,0\nOUT,3,0,0\n"
+        descriptor = {"sha256": sha256(body).hexdigest(), "bytes": len(body),
+                      "source_url": "https://reproducibility.worldbank.org/catalog/601/download/1785/RR_THA_2026_689.zip",
+                      "replica": "RR_THA_2026_689", "replica_declared_update": "October 2025",
+                      "package_sha256": "f" * 64, "archive_member": "RR_THA_2026_689/1995_SML.csv"}
+        dimensions = {"industry_codes": ["AAA_A01"], "final_demand_codes": ["AAA_INVNT"],
+                      "unit": "current_USD_million", "country_count": 1, "industry_count": 1}
+        readme = Path(__file__).parent / "fixtures" / "icio" / "ReadMe_ICIO_small.xlsx"
+        with TemporaryDirectory() as temp, patch.dict(icio.HISTORY_MATRICES, {1995: descriptor}, clear=True), \
+                patch.object(icio, "readme_dimensions", return_value=dimensions):
+            root = Path(temp)
+            matrix = root / "1995_SML.csv"
+            matrix.write_bytes(body)
+            audit = icio._historical_audit(str(matrix), str(readme), 1995, descriptor["sha256"])
+            self.assertEqual(audit["replica"], "RR_THA_2026_689")
+            self.assertEqual(audit["replica_declared_update"], "October 2025")
+            self.assertEqual(audit["source_url"], descriptor["source_url"])
+            self.assertEqual(audit["matrix_archive_member"], descriptor["archive_member"])
+            self.assertEqual(audit["package_sha256"], descriptor["package_sha256"])
+            self.assertFalse(audit["common_update_verified"])
+            pin = (descriptor["sha256"], icio.README_SHA256, 1995, "regular-history-accounting-v1")
+            with patch.object(icio, "PINNED_AUDITS", {pin: sha256(icio.canonical_bytes(audit)).hexdigest()}):
+                bundle = icio.store_icio_matrix(matrix, readme, 1995, root / "evidence")
+                result = read_icio_evidence(root / "evidence")
+            self.assertTrue(result["accounting_passed"])
+            self.assertEqual(result["historical_coverage"]["verified_years"], [1995])
+            self.assertEqual(result["historical_coverage"]["missing_years"], list(range(1996, 2023)))
+            self.assertFalse(result["historical_coverage"]["common_update_verified"])
+            manifest = json.loads((bundle / "manifest.json").read_text())
+            self.assertEqual(manifest["sources"]["matrix"], descriptor["source_url"])
+
     def test_unpinned_historical_original_is_rejected_before_archive(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
@@ -107,6 +141,24 @@ class IcioTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "icio_pinned_original_identity_mismatch"):
                 icio.store_icio_matrix(matrix, readme, 2021, root / "evidence")
             self.assertFalse((root / "evidence").exists())
+
+    @unittest.skipUnless(os.environ.get("TEST_ICIO_1995"), "Requires original 1995 OECD replica matrix")
+    def test_full_original_1995_balances_without_certifying_history_or_common_update(self):
+        original = Path(os.environ["TEST_ICIO_1995"])
+        readme = Path(__file__).parent / "fixtures" / "icio" / "ReadMe_ICIO_small.xlsx"
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            icio.store_icio_matrix(original, readme, 1995, root)
+            result = read_icio_evidence(root)
+            self.assertTrue(result["accounting_passed"])
+            self.assertEqual(result["maximum_row_residual"], "0.0230")
+            self.assertEqual(result["maximum_column_residual"], "0.0157")
+            self.assertEqual(result["historical_coverage"]["verified_years"], [1995])
+            self.assertFalse(result["full_history_verified"])
+            self.assertFalse(result["common_update_verified"])
+            self.assertFalse(result["first_publication_verified"])
+            self.assertEqual(result["replica_declared_update"], "October 2025")
+            self.assertEqual(result["matrix_sha256"], icio.OCTOBER_2025_MATRICES[1995]["sha256"])
 
     @unittest.skipUnless(os.environ.get("TEST_ICIO_PACKAGE"), "Requires original 55MB World Bank ICIO replication package")
     def test_full_original_2022_matrix_preserves_source_accounting_failures(self):

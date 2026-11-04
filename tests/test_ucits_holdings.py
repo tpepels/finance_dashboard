@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import json
 import unittest
+from hashlib import sha256
 
 FIXTURES=Path(__file__).parent/"fixtures/holdings"
 
@@ -110,5 +111,36 @@ class UcitsHoldingTests(unittest.TestCase):
             (folder/"original.csv").write_bytes(b"tampered")
             with self.assertRaises(UcitsHoldingsError):
                 read_ucits_sources(Path(tmp))
+
+    def test_reader_rebuilds_native_facts_instead_of_trusting_self_consistent_hashes(self):
+        from finance_dashboard.ucits_holdings import parse_holdings_csv, store_ucits_source, read_ucits_sources, UcitsHoldingsError
+        original=(FIXTURES/"swda-2026-11-03-excerpt.csv").read_bytes()
+        with TemporaryDirectory() as tmp:
+            folder=store_ucits_source(original,facts=parse_holdings_csv(original),root=Path(tmp))
+            facts=json.loads((folder/"facts.json").read_text())
+            facts["positions"][0]["currency"]="EUR"
+            facts_bytes=json.dumps(facts,sort_keys=True).encode()
+            (folder/"facts.json").write_bytes(facts_bytes)
+            manifest=json.loads((folder/"manifest.json").read_text())
+            manifest["files"]["facts.json"]=sha256(facts_bytes).hexdigest()
+            (folder/"manifest.json").write_text(json.dumps(manifest))
+            folder.rename(folder.parent/sha256(json.dumps(manifest["files"],sort_keys=True).encode()).hexdigest())
+            with self.assertRaises(UcitsHoldingsError):
+                read_ucits_sources(Path(tmp))
+
+    def test_reader_checks_fund_source_date_and_publication_identity(self):
+        from finance_dashboard.ucits_holdings import parse_holdings_csv, store_ucits_source, read_ucits_sources, UcitsHoldingsError
+        original=(FIXTURES/"swda-2026-11-03-excerpt.csv").read_bytes()
+        changes={"fund_name":"Unrelated fund", "holdings_date":"2020-01-01",
+                 "share_class_reference_isin":"IE0000000000", "original_first_publication_at":"2026-11-03T00:00:00Z",
+                 "source_url":"https://example.invalid/holdings.csv"}
+        for key,value in changes.items():
+            with self.subTest(key=key), TemporaryDirectory() as tmp:
+                folder=store_ucits_source(original,facts=parse_holdings_csv(original),root=Path(tmp))
+                manifest=json.loads((folder/"manifest.json").read_text())
+                manifest[key]=value
+                (folder/"manifest.json").write_text(json.dumps(manifest))
+                with self.assertRaises(UcitsHoldingsError):
+                    read_ucits_sources(Path(tmp))
 
 if __name__=="__main__": unittest.main()

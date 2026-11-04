@@ -6,13 +6,15 @@ Phase 1 is approved. The initial census compared its 35 analyses against 53 macr
 
 ## Current integrated corpus — 2026-11-04 continuation
 
-**Phase 2 remains ACTIVE / INCOMPLETE.** The schema-3 corpus includes all **35 analyses and 168 original roles**. There are **177 stored macro histories**, 24 market histories and three FX histories; **156/166 referenced macro histories independently reconcile** against retained originals. Of **29 native comparison variants across 22 analyses, 28 pass bounded current-source checks**. The TiVA panel remains failed. Full original acceptance is **0/35**, with no role certified for complete publisher dimensions and temporal eligibility.
+**Phase 2 remains ACTIVE / INCOMPLETE.** The schema-3 corpus includes all **35 analyses and 168 original roles**. The new isolated acquisition corpus contains **187 stored macro histories**, 24 market histories and three FX histories. Ten new histories add **11,084 independently reconciled observations** and resolve nine scalar bindings, leaving **88 unbound / 80 scalar-bound roles**. The media-server deployment remains at the previous baseline until separately deployed. Full original acceptance remains **0/35**, with complete publisher dimensions and observation temporal eligibility still open.
 
-The remaining ten provenance cases are explicit: MSCI original index levels/published top-ten, Siblis valuation snapshots, constructed world credit gap/coverage, gold–equity correlation, corporate-surplus aggregates and constructed world listed-cap/GDP. Unsupported provenance is an implementation/source-evidence gap, not proof that the source observations are wrong or globally unavailable.
+Nine formerly unsupported referenced provenance histories now independently reconcile **7,457 values** against newly retained originals: MSCI NETR levels, Siblis PE/earnings-yield snapshots, constructed world credit gap/coverage, gold–equity correlation, corporate-surplus aggregates and listed-cap/GDP. The separate EU corporate-surplus/GDP and two OECD coverage/count histories reconcile 74 additional values. Every raw dependency is hash/identity checked before selection or recomputation. **MSCI published top-ten is the sole remaining unsupported provenance case**: retained citations/transcriptions do not establish original dated documents. Unsupported provenance does not prove observations wrong or globally unavailable.
+
+The final canonical read verifies **175/176 referenced histories**, **32/33 native panels across 24 analyses** (23 with a passing panel), and **0/35 certified analyses**. G06's TiVA panel remains failed. One full Python run plus focused repairs/reruns covers **550 passing checks**, including disposable PostgreSQL and full originals; **63 frontend tests** and production frontend build pass. SQL set comparisons preserve every prior row in all ten database tables. The authoritative [development plan](DEVELOPMENT_PLAN.md) records the isolated acquisition/verification boundary and remaining blockers.
 
 ### All-analysis decision snapshot
 
-Bindings count scalar role mappings only. Artifact evidence is reported separately: G06 has seven partial original ICIO years, G03 has native regional CVM issuer facts, and G01/P01 have named SEC/UCITS fund disclosures. Those artifacts do not fill complete original index/world/portfolio contracts. Missing measures and evidence remain executable in the canonical role diagnostics; this dated table is not another source registry.
+Bindings count scalar role mappings only. Artifact evidence is separate: G06 has eight partial original ICIO years (1995 and 2016–2022, with distinct release identities); G03 has native regional CVM and Taiwan samples; G01/P01 have named SEC/UCITS fund disclosures. Taiwan retains 135 issuer rows / 123 populated parent-income facts / 14 losses without asserting currency/scale, annualization or worldwide coverage. UCITS facts are replayed from originals. Those artifacts do not fill complete original index/world/portfolio contracts. This table is not another source registry.
 
 | Analysis | Scalar-bound roles / required | Passing native variants / defined | Original acceptance |
 | --- | ---: | ---: | --- |
@@ -20,7 +22,7 @@ Bindings count scalar role mappings only. Artifact evidence is reported separate
 | C02 | 3/4 | 2/2 | blocked |
 | C03 | 1/1 | 1/1 | incomplete |
 | C05 | 4/5 | 1/1 | blocked |
-| C06 | 2/5 | 2/2 | blocked |
+| C06 | 5/5 | 2/2 | incomplete |
 | M01 | 4/5 | 1/1 | blocked |
 | M02 | 3/3 | 1/1 | incomplete |
 | M04 | 2/4 | 1/1 | blocked |
@@ -31,10 +33,10 @@ Bindings count scalar role mappings only. Artifact evidence is reported separate
 | F05 | 0/5 | 0/0 | blocked |
 | F06 | 5/5 | 1/1 | incomplete |
 | F07 | 4/8 | 1/1 | blocked |
-| V01 | 2/6 | 0/0 | blocked |
+| V01 | 6/6 | 2/2 | incomplete |
 | V02 | 2/3 | 1/1 | blocked |
 | V03 | 0/3 | 0/0 | blocked |
-| V05 | 2/4 | 0/0 | blocked |
+| V05 | 4/4 | 2/2 | incomplete |
 | L01 | 3/7 | 2/2 | blocked |
 | L02 | 0/5 | 0/0 | blocked |
 | L03 | 0/5 | 0/0 | blocked |
@@ -57,7 +59,9 @@ Bindings count scalar role mappings only. Artifact evidence is reported separate
 - API and CLI use one evaluation path and a consistent database snapshot; legacy duplicate source/adapter inventories, stored binding statuses, duplicate check-ID sets, the unused builder parameter and `xlrd` are removed. Old immutable reports and source payloads remain historical records, without a legacy execution path.
 - Native current-frequency bundles avoid claiming that monthly and quarterly inputs share one native frequency. No filling, silent currency conversion, source-date substitution, or Phase 3 analytical transformation is introduced.
 - ICIO original/audit pins eliminate repeated cold accounting while rehashing originals and receipts; complete calculations remain available at acquisition/explicit diagnostics. Compact SEC summaries avoid building raw XML/contract output merely to count positions. Full-corpus evaluation still took **99.789 seconds** locally; scoped question reads avoid unrelated artifacts.
-- Remaining input gaps include OECD CLI/diffusion, realized BoJ overnight rates, shock/announcement dates, complete credit/account components, regional valuation panels, WIID, original country/index weights, worldwide listed-parent profits, 1995–2015/extended ICIO matrices and dated portfolio/cost/tax/FX policies. Ninety-seven roles lack scalar bindings; partial artifacts do not remove those original scope requirements.
+- Remaining input gaps include OECD CLI/diffusion, realized BoJ overnight rates, shock/announcement dates, complete credit/account components, regional valuation panels, WIID, original country/index weights, worldwide listed-parent profits, 1996–2015/extended ICIO matrices and dated portfolio/cost/tax/FX policies. Eighty-eight roles lack scalar bindings; partial artifacts do not remove those original scope requirements.
+- G01/G03/P01/P02 now expose approved conditional source-resolution contracts with exact unmet roles, verified native alternatives and partial artifact identities. Their Phase 2 resolution remains open; no unavailable-source claim is inferred from a missing binding. Original publisher metadata/estimation notes are exposed only with fresh numeric/hash proof. Full publisher dimensions and first publication are still incomplete.
+- [Original ICIO release diagnostics](PHASE2_OECD_EVIDENCE.md#additional-original-release-evidence--1995-and-october-2025-2022) show balanced October-2025 1995/2022 matrices alongside the still-failed January-2026 2022. The canonical compact comparison freshly hashes original bytes and verifies a method-pinned result. No earlier release replaces the later failures, and no source cell/tolerance is changed. Ordinary full-workbook refreshes now retain pre-overlap revisions; Pink Sheet selectors share one ingestion implementation while independent reconciliation retains its own selector.
 - Historical publisher updates/common release, first publication, aligned populations/price bases and the known ICIO/TiVA accounting failures remain open. Exact worldwide original benchmarks/profits and complete historical UCITS schedules are not certified. Approved named alternatives remain separately labelled.
 
 Final verification and recovery results are recorded in the authoritative [development plan](DEVELOPMENT_PLAN.md). The following sections preserve earlier dated inventories and must not override this current snapshot.

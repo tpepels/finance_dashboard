@@ -713,7 +713,7 @@
         "S08",
         "S43"
       ],
-      "outstanding_evidence": "Original WEO historical CPI and World Bank Brent series now mapped; WEO releases and forecast/version separation plus live data evidence remain open",
+      "outstanding_evidence": "Native WEO real growth/CPI and named Pink Sheet Brent, US natural gas and maize inputs are bound. Original projection/status, common publication edition, price/population and temporal eligibility must be independently verified; no shock model or frequency conversion is inferred.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -743,14 +743,18 @@
           {
             "role": "weo_real_gdp_growth",
             "description": "Original WEO NGDP_RPCH from matching country-year WEO release; WDI growth is a separate source variant.",
-            "series_ids": [],
+            "series_ids": [
+              "gdp.real_growth.weo.us",
+              "gdp.real_growth.weo.jp",
+              "gdp.real_growth.weo.cn"
+            ],
             "expected": {
               "frequency": "A",
               "unit": "percent",
               "geography": [
-                "USA",
+                "CHN",
                 "JPN",
-                "CHN"
+                "USA"
               ],
               "population": "Named country economy",
               "concept": "WEO annual real GDP growth with source status"
@@ -777,34 +781,49 @@
           {
             "role": "gas_price",
             "description": "Independently named original monthly gas price; source benchmark and quote unit must be selected.",
-            "series_ids": [],
+            "series_ids": [
+              "prices.commodity.natural_gas_us_usd"
+            ],
             "expected": {
               "frequency": "M",
-              "concept": "Source-defined natural-gas price benchmark"
+              "concept": "Source-defined natural-gas price benchmark",
+              "unit": "usd_per_mmbtu",
+              "geography": [
+                "WORLD"
+              ]
             },
             "temporal_requirement": "first_publication"
           },
           {
             "role": "food_price",
             "description": "Independently named original monthly food commodity series or source-defined basket.",
-            "series_ids": [],
+            "series_ids": [
+              "prices.commodity.maize_usd"
+            ],
             "expected": {
               "frequency": "M",
-              "concept": "Source-defined food commodity price"
+              "concept": "Source-defined food commodity price",
+              "unit": "usd_per_metric_ton",
+              "geography": [
+                "WORLD"
+              ]
             },
             "temporal_requirement": "first_publication"
           }
         ],
         "variants": [
           {
-            "id": "weo_country_cpi_inflation_inputs",
-            "label": "US, Japan and China published annual CPI inflation",
-            "kind": "approved_narrower",
-            "scope": "Published WEO annual-average CPI inflation for the US, Japan and China, in native percent on exact years.",
+            "id": "weo_country_growth_inflation_inputs",
+            "label": "US, Japan and China WEO real growth and inflation",
+            "kind": "original_scope",
+            "scope": "Named country WEO real GDP growth and CPI inflation in native annual percent; source editions are independently retained.",
             "series_ids": [
               "prices.us.imf_cpi_inflation",
               "prices.jp.imf_cpi_inflation",
-              "prices.cn.imf_cpi_inflation"
+              "prices.cn.imf_cpi_inflation",
+              "gdp.real_growth.weo.us",
+              "gdp.real_growth.weo.jp",
+              "gdp.real_growth.weo.cn"
             ],
             "frequency": "A",
             "start": "2000-01-01",
@@ -815,18 +834,20 @@
             "checks": [],
             "limitations": [
               "The named national CPI baskets differ; this is not a global inflation aggregate.",
-              "Matching WEO real-growth releases, source actual/estimate status and gas/food inputs remain unresolved; monthly commodities stay separate.",
+              "WEO final/estimate status and every observation first-publication vintage remain unresolved; monthly commodities stay separate.",
               "Native current-source inputs only; no frequency transformation, economic-model estimate, synchronized release or observation first-publication verification is implied."
             ],
-            "satisfies_original_method": false
+            "satisfies_original_method": true
           },
           {
-            "id": "pink_sheet_monthly_brent_input",
-            "label": "World Bank monthly Brent benchmark",
-            "kind": "approved_narrower",
-            "scope": "Original World Bank Pink Sheet monthly nominal Brent benchmark in USD per barrel.",
+            "id": "pink_sheet_monthly_commodity_inputs",
+            "label": "World Bank Brent, US natural gas and maize benchmarks",
+            "kind": "original_scope",
+            "scope": "Original monthly nominal USD benchmarks, with separate native barrel, million Btu and metric-ton denominators.",
             "series_ids": [
-              "prices.commodity.brent_usd"
+              "prices.commodity.brent_usd",
+              "prices.commodity.natural_gas_us_usd",
+              "prices.commodity.maize_usd"
             ],
             "frequency": "M",
             "start": "2000-01-01",
@@ -836,11 +857,11 @@
             "temporal_mode": "current_source_snapshot",
             "checks": [],
             "limitations": [
-              "Brent is one oil benchmark, not a broad food, gas or commodity-price index.",
+              "US natural gas and maize are named benchmarks, not worldwide gas or food baskets; quote units remain separate.",
               "No monthly-to-annual transformation, inflation pass-through or growth-shock estimate is performed.",
               "Native current-source inputs only; no frequency transformation, economic-model estimate, synchronized release or observation first-publication verification is implied."
             ],
-            "satisfies_original_method": false
+            "satisfies_original_method": true
           }
         ]
       },
@@ -2015,7 +2036,7 @@
         "S24",
         "S25"
       ],
-      "outstanding_evidence": "CAPE mapped; original monthly Shiller data and real-yield sample alignment require evidence",
+      "outstanding_evidence": "Original Shiller workbook inputs and daily real yields have canonical bindings. Publisher population changes, source estimation, genuine first-publication vintages and matured temporal eligibility remain required; current source values do not certify historical forecasts.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -2041,35 +2062,43 @@
           {
             "role": "original_equity_price",
             "description": "Original Shiller monthly price input.",
-            "series_ids": [],
+            "series_ids": [
+              "valuation.us.shiller_price"
+            ],
             "expected": {
               "frequency": "M",
               "geography": [
                 "US"
               ],
               "population": "Shiller US equity sample",
-              "concept": "Original equity price level"
+              "concept": "Original equity price level",
+              "unit": "index"
             },
             "temporal_requirement": "first_publication"
           },
           {
             "role": "original_earnings",
             "description": "Original Shiller monthly earnings for exact source-defined preceding ten-year real-earnings windows.",
-            "series_ids": [],
+            "series_ids": [
+              "valuation.us.shiller_earnings"
+            ],
             "expected": {
               "frequency": "M",
               "geography": [
                 "US"
               ],
               "population": "Shiller US equity sample",
-              "concept": "Source-defined monthly earnings"
+              "concept": "Source-defined monthly earnings",
+              "unit": "index"
             },
             "temporal_requirement": "first_publication"
           },
           {
             "role": "original_cpi",
             "description": "Original Shiller workbook CPI for consistent real-price/earnings deflation.",
-            "series_ids": [],
+            "series_ids": [
+              "prices.us.shiller_cpi"
+            ],
             "expected": {
               "frequency": "M",
               "unit": "index",
@@ -2083,14 +2112,17 @@
           {
             "role": "original_dividend",
             "description": "Original Shiller dividend/yield inputs for the selected supporting valuation-yield method.",
-            "series_ids": [],
+            "series_ids": [
+              "valuation.us.shiller_dividend"
+            ],
             "expected": {
               "frequency": "M",
               "geography": [
                 "US"
               ],
               "population": "Shiller US equity sample",
-              "concept": "Source dividend and dividend-yield components"
+              "concept": "Source dividend and dividend-yield components",
+              "unit": "index"
             },
             "temporal_requirement": "first_publication"
           },
@@ -2112,7 +2144,55 @@
             "temporal_requirement": "first_publication"
           }
         ],
-        "variants": []
+        "variants": [
+          {
+            "id": "shiller_original_monthly_inputs",
+            "label": "Shiller native US valuation inputs",
+            "kind": "original_scope",
+            "scope": "Original author-published US S&P Composite sample; exact monthly intersection within the source workbook.",
+            "series_ids": [
+              "valuation.us.cape",
+              "valuation.us.shiller_price",
+              "valuation.us.shiller_earnings",
+              "prices.us.shiller_cpi",
+              "valuation.us.shiller_dividend"
+            ],
+            "frequency": "M",
+            "start": "1881-01-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Historical source interpolation, population changes and latest estimated/partial months are retained.",
+              "No 120-month forward outcomes or CAPE/total-return transformations are calculated; author real total-return levels must not be CPI-deflated twice.",
+              "Current source snapshot only; original first-release vintages and synchronized publication eligibility remain unverified."
+            ],
+            "satisfies_original_method": true
+          },
+          {
+            "id": "real_treasury_native_input",
+            "label": "US 10-year TIPS native yield input",
+            "kind": "original_scope",
+            "scope": "Separate original daily real Treasury yield; no invented monthly averaging.",
+            "series_ids": [
+              "bond.us.real_10y"
+            ],
+            "frequency": "D",
+            "start": "2003-01-02",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Daily yield and monthly equity inputs retain separate native calendars.",
+              "Current source snapshot only; original first-release vintages and synchronized publication eligibility remain unverified."
+            ],
+            "satisfies_original_method": true
+          }
+        ]
       },
       "context_series_ids": [
         "bond.us.nominal_10y"
@@ -2274,7 +2354,7 @@
         "S25",
         "S07"
       ],
-      "outstanding_evidence": "CAPE + index return refs do not prove matured 10-year as-of total-return outcomes",
+      "outstanding_evidence": "Original Shiller workbook inputs and daily real yields have canonical bindings. Publisher population changes, source estimation, genuine first-publication vintages and matured temporal eligibility remain required; current source values do not certify historical forecasts.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -2316,8 +2396,10 @@
           },
           {
             "role": "matched_equity_total_return",
-            "description": "Original matched-US-universe dividend-reinvested equity total returns through each matured 120-month outcome; world ACWI cannot silently replace the US valuation population.",
-            "series_ids": [],
+            "description": "Original Shiller US S&P Composite author-constructed real dividend-reinvested total-return price; native real price basis remains explicit for matured 120-month outcomes.",
+            "series_ids": [
+              "returns.us.shiller_real_total_return"
+            ],
             "expected": {
               "frequency": "M",
               "unit": "index",
@@ -2325,14 +2407,17 @@
                 "US"
               ],
               "population": "US equity population compatible with selected valuation",
-              "concept": "Equity total-return index"
+              "concept": "Equity total-return index",
+              "price_basis": "real_cpi_deflated"
             },
             "temporal_requirement": "first_publication"
           },
           {
             "role": "inflation_deflator",
-            "description": "Original CPI history for matched-horizon real total returns.",
-            "series_ids": [],
+            "description": "Original Shiller workbook CPI for the same US sample; already-real return levels must not be deflated twice.",
+            "series_ids": [
+              "prices.us.shiller_cpi"
+            ],
             "expected": {
               "frequency": "M",
               "unit": "index",
@@ -2344,7 +2429,53 @@
             "temporal_requirement": "first_publication"
           }
         ],
-        "variants": []
+        "variants": [
+          {
+            "id": "shiller_real_return_monthly_inputs",
+            "label": "Shiller US real total-return and valuation inputs",
+            "kind": "original_scope",
+            "scope": "Original author-published US S&P Composite sample; exact monthly intersection within the source workbook.",
+            "series_ids": [
+              "valuation.us.cape",
+              "returns.us.shiller_real_total_return",
+              "prices.us.shiller_cpi"
+            ],
+            "frequency": "M",
+            "start": "1881-01-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Historical source interpolation, population changes and latest estimated/partial months are retained.",
+              "No 120-month forward outcomes or CAPE/total-return transformations are calculated; author real total-return levels must not be CPI-deflated twice.",
+              "Current source snapshot only; original first-release vintages and synchronized publication eligibility remain unverified."
+            ],
+            "satisfies_original_method": true
+          },
+          {
+            "id": "real_treasury_native_input",
+            "label": "US 10-year TIPS native yield input",
+            "kind": "original_scope",
+            "scope": "Separate original daily real Treasury yield; no invented monthly averaging.",
+            "series_ids": [
+              "bond.us.real_10y"
+            ],
+            "frequency": "D",
+            "start": "2003-01-02",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Daily yield and monthly equity inputs retain separate native calendars.",
+              "Current source snapshot only; original first-release vintages and synchronized publication eligibility remain unverified."
+            ],
+            "satisfies_original_method": true
+          }
+        ]
       },
       "context_series_ids": [
         "equity.world.msci_acwi_netr_usd"

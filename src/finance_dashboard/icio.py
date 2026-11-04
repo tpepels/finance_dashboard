@@ -39,7 +39,20 @@ HISTORY_ROOT = f"https://huggingface.co/datasets/{HISTORY_REPLICA}/resolve/{HIST
 # Public LFS content hashes, checked against every retained original. The 2022
 # member is also independently identical to the World Bank package above.
 # A mirror's MIT repository card does not change the OECD matrix's rights.
+EARLY_PACKAGE_URL = "https://reproducibility.worldbank.org/catalog/601/download/1785/RR_THA_2026_689.zip"
+EARLY_PACKAGE_SHA256 = "355736eb81a887e6900cb03699700259b9ce678f32b4c3618e0b5a7250b584b4"
+EARLY_MEMBER_ROOT = "RR_THA_2026_689/reproducibility_package/simulations/tiva_2025/tiva_raw_2025"
+# These originals are explicitly a different, replica-documented release.
+# The older balanced 2022 matrix is for release comparison only: it must not
+# replace the retained January-2026 matrix or erase that original's failures.
+OCTOBER_2025_MATRICES = {
+    1995: {"sha256": "4ed63b49ff1452a5dc0834f0ad971b4d266c804345bc07b3e0fb6e7f5800dda2", "bytes": 75555276},
+    2022: {"sha256": "e006e57f9bc3c44bd938f0e86a8a5193f156184851fa94b2dee82cc5248a99d1", "bytes": 88412091},
+}
 HISTORY_MATRICES = {
+    1995: {**OCTOBER_2025_MATRICES[1995], "source_url": EARLY_PACKAGE_URL,
+           "replica": "RR_THA_2026_689", "replica_declared_update": "October 2025",
+           "package_sha256": EARLY_PACKAGE_SHA256, "archive_member": f"{EARLY_MEMBER_ROOT}/1995_SML.csv"},
     2016: {"sha256": "de91a560b3f4b1c75ab18846da13418d663844b465724691598a4e39bf5a09c2", "bytes": 86745061},
     2017: {"sha256": "07a07dc53f1302a35c984f2801a98899ea3e73c9704e8350cbb36587200a4b19", "bytes": 87440646},
     2018: {"sha256": "3d14b8d34c5cc036fd2eb91fc44edce97c904ea8657cc273a162de84153ae23b", "bytes": 87878366},
@@ -57,6 +70,7 @@ PINNED_AUDITS = {
         "38aa8ccf7a12a0d512b6e2022c543da425336762918adf0538905eab4c48bdcb",
     **{(HISTORY_MATRICES[year]["sha256"], README_SHA256, year, "regular-history-accounting-v1"): digest
        for year, digest in {
+           1995: "9d62b90c841d62dce779a4a43d84d55b121e6e607515b09262319c3936b816eb",
            2016: "8492820482ad5aafdda3bfadc8ef57f98d2144c4fac2f252bbdcee486b11d4dc",
            2017: "61d03fffd73cc632b59916a1aa928495f5acccad473dfed93c6c05226ca4cd16",
            2018: "f21fa962139464e41a596f93da42bc5aa492f93aa11fca6f561a20ad7cff1ee6",
@@ -71,8 +85,17 @@ PINNED_AUDITS = {
 def _history_identity(year):
     if year not in HISTORY_MATRICES:
         raise ValueError("icio_unregistered_original_year")
+    descriptor = HISTORY_MATRICES[year]
+    if "archive_member" in descriptor:
+        return {"publisher": "OECD", "edition": "2025", "table": "regular", "year": year,
+                "replica": descriptor["replica"], "replica_declared_update": descriptor["replica_declared_update"],
+                "replica_package_sha256": descriptor["package_sha256"]}
     return {"publisher": "OECD", "edition": "2025", "table": "regular", "year": year,
             "replica": HISTORY_REPLICA, "replica_revision": HISTORY_REVISION}
+
+
+def _history_source_url(year):
+    return HISTORY_MATRICES[year].get("source_url", f"{HISTORY_ROOT}/{year}_SML.csv")
 
 
 def _hash(path):
@@ -349,10 +372,14 @@ def _historical_audit(matrix_path: str, readme_path: str, year: int, original_ha
     with Path(matrix_path).open(encoding="utf-8-sig", newline="") as stream:
         audit = audit_matrix(stream, dimensions["industry_codes"], dimensions["final_demand_codes"],
                              include_residuals=True)
-    return {**audit, **_history_identity(year), "unit": dimensions["unit"],
+    descriptor = HISTORY_MATRICES[year]
+    provenance = ({"matrix_archive_member": descriptor["archive_member"],
+                   "package_sha256": descriptor["package_sha256"]}
+                  if "archive_member" in descriptor else {})
+    return {**audit, **_history_identity(year), **provenance, "unit": dimensions["unit"],
             "country_count": dimensions["country_count"], "industry_count": dimensions["industry_count"],
             "matrix_sha256": original_hash, "readme_sha256": README_SHA256,
-            "source_url": f"{HISTORY_ROOT}/{year}_SML.csv",
+            "source_url": _history_source_url(year),
             "replica_content_hash_verified": True,
             "independent_replica_match_verified": year == 2022 and original_hash == MATRIX_SHA256,
             "publisher_direct_verified": False, "common_update_verified": False,
@@ -372,14 +399,14 @@ def store_icio_matrix(matrix: Path, readme: Path, year: int, evidence_root: Path
     identity = _history_identity(year)
     return _store_original_bundle(Path(evidence_root) / "icio" / f"regular-2025-{year}-replica",
         {"matrix.csv": Path(matrix), "readme.xlsx": Path(readme)}, audit, identity,
-        {"matrix": f"{HISTORY_ROOT}/{year}_SML.csv", "readme": README_URL},
+        {"matrix": _history_source_url(year), "readme": README_URL},
         lambda bundle: _verify_historical_bundle(bundle, year))
 
 
 def _verify_historical_bundle(bundle, year):
     matrix_hash = HISTORY_MATRICES[year]["sha256"]
     manifest = _verified_manifest(bundle, _history_identity(year), {"matrix.csv", "readme.xlsx", "audit.json"},
-        {"matrix": f"{HISTORY_ROOT}/{year}_SML.csv", "readme": README_URL}, HISTORY_MATRICES[year]["sha256"])
+        {"matrix": _history_source_url(year), "readme": README_URL}, HISTORY_MATRICES[year]["sha256"])
     if manifest["files"]["matrix.csv"] != matrix_hash or manifest["files"]["readme.xlsx"] != README_SHA256:
         raise ValueError("icio_pinned_original_identity_mismatch")
     audit = json.loads((bundle / "audit.json").read_bytes())
@@ -420,14 +447,18 @@ def read_icio_evidence(evidence_root: Path, *, include_residuals: bool = False) 
                 "first_publication_verified": False, "common_update_verified": False}
     status = (f"verified_{primary['year']}_original_matrix" if primary.get("accounting_passed")
               else "original_matrix_accounting_failed") if verified_years else "missing_original_matrix"
-    return {**primary, "status": status, "historical_matrices": historical, "historical_coverage": coverage}
+    from .icio_release_diagnostics import read_2022_release_comparison
+    comparison = read_2022_release_comparison(evidence_root, verified_newer_sha256=(
+        primary.get("matrix_sha256") if primary.get("original_source_hash_verified") else None))
+    return {**primary, "status": status, "historical_matrices": historical, "historical_coverage": coverage,
+            "release_comparison": comparison}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     original = parser.add_mutually_exclusive_group(required=True)
     original.add_argument("--package", type=Path)
-    original.add_argument("--matrix", type=Path, help="A pinned 2016–2022 original replica CSV")
+    original.add_argument("--matrix", type=Path, help="A registered, pinned original replica CSV")
     parser.add_argument("--year", type=int, choices=sorted(HISTORY_MATRICES))
     parser.add_argument("--readme", type=Path, required=True)
     parser.add_argument("--diagnose", action="store_true", help="Read-only signed residual investigation; do not store or rewrite source evidence")

@@ -76,3 +76,28 @@ python -m finance_dashboard.icio --matrix /path/to/2021_SML.csv --year 2021 \
 Focused Docker verification passed **23 OECD tests with no skips**, including the real World Bank original, native TiVA fixtures, database ingestion and API integration. The seven full historical matrices were separately audited and retained through the same canonical store. Final integrated verification and backup/recovery results are recorded in the authoritative development plan; deployment is a separate operation.
 
 The integrated `research_artifact_evidence` boundary now reads ICIO, TiVA and native CVM evidence independently; an explicitly supplied holdings root also enables the existing verified SEC and UCITS readers. Its holdings/profit outputs contain source dates and hashes, population/state/position/currency/identifier counts and unresolved scope flags, with no raw issuer or holding records. Missing holdings differ from holdings not checked. Corruption in one artifact fails that artifact without hiding valid evidence in the others. Five focused Docker artifact tests pass using canonical original excerpt stores, including byte-preservation, redaction and independent corruption checks. This is partial input evidence, not an additional certification registry.
+
+## Additional original release evidence — 1995 and October-2025 2022
+
+A new ordinary unauthenticated GET acquired the [World Bank `RR_THA_2026_689` package](https://reproducibility.worldbank.org/catalog/601/download/1785/RR_THA_2026_689.zip), **788,733,344 bytes**, SHA-256 `355736eb81a887e6900cb03699700259b9ce678f32b4c3618e0b5a7250b584b4`. The [primary replica catalogue](https://reproducibility.worldbank.org/catalog/601) explicitly identifies the October-2025 regular ICIO update. Its prose mistakenly mentions 1994; the actual retained member and hash ledger both say **1995_SML.csv**. The package contains exact 1995 and 2022 originals, with matching internal size/hash records:
+
+| Replica-declared update | Year | Original CSV bytes | SHA-256 | Failed rows / columns | Maximum row / column residual, USD million |
+| --- | ---: | ---: | --- | --- | --- |
+| October 2025 | 1995 | 75,555,276 | `4ed63b49ff1452a5dc0834f0ad971b4d266c804345bc07b3e0fb6e7f5800dda2` | 0 / 0 | 0.0230 / 0.0157 |
+| October 2025 | 2022 | 88,412,091 | `e006e57f9bc3c44bd938f0e86a8a5193f156184851fa94b2dee82cc5248a99d1` | 0 / 0 | 0.0227 / 0.0148 |
+
+Both match all existing publisher ReadMe dimensions, retain four-decimal precision, and pass the **unchanged** 0.22685/0.20265 million row/column bounds with exact agreement between output vectors. The canonical reader now accepts the pinned **1995** original through its existing atomic matrix/audit/receipt store, including the package member, package hash and explicitly replica-declared update. Together with the seven previously acquired years this gives eight distinct original years; **1996–2015**, extended matrices, publisher-direct bytes, independent update verification and common-release history remain absent.
+
+The older 2022 original is retained for a read-only release comparison; it does **not** replace or certify the January-2026 original. Exact comparison finds 9,552,688 numerically changed intermediate-use cells and 1,074,256 changed final-demand cells. For `USA_L`, intermediate use changes by −596.7961 million, final demand by +835.4067 million and published output by 0.0000; the row residual changes from −0.0048 to **+238.6058**. For `CHN_L`, intermediate inputs change by +1379.6798, taxes by −1379.6785, value added by 0.000 and output by +82.0258 million; the column residual changes from −0.0075 to **−82.0320**. These exact source deltas locate the discrepancy in the differing releases. They do not explain the publisher's revision process. All **123/26 January-2026 failures remain failures**, with no changed values or tolerances.
+
+Reproduce the pinned-original comparison without writes:
+
+```sh
+python -m finance_dashboard.icio_release_diagnostics \
+  --older /path/to/2022_October2025_SML.csv --newer /path/to/2022_SML.csv \
+  --readme tests/fixtures/icio/ReadMe_ICIO_small.xlsx
+```
+
+A fresh original OECD TiVA pair was also acquired through the existing capture path. Both bodies remain byte-identical to the prior originals (`fe2e53c3…` levels / `5050b1aa…` shares); the 588 observations, nine existing identity failures and 46 disjoint serialization intervals reproduce unchanged. A fresh transport retrieval does not establish common release or historical first publication.
+
+The same comparison can be acquired with `--root /path/to/source-evidence`. It uses the existing immutable original/audit/manifest/receipt boundary. `read_icio_evidence(root).release_comparison` then reports compact old/new accounting outcomes, numeric change counts and the largest failed row/column decompositions. Each read verifies the retained older original and ReadMe against pinned hashes, verifies the exact original-pair/method audit digest, and requires the current original already verified by the canonical ICIO reader. It does not repeat full matrix accounting or trust an editable diagnostic JSON, and it does not replace the failed current-release status.

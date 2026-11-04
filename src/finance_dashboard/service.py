@@ -64,7 +64,7 @@ def safe_source_failure_code(exc: BaseException) -> str:
             ("Provider returned observations outside requested window", "source_window_invalid"),
             ("Provider returned future-dated observations", "source_future_date"),
             ("Source mapping changed:", "source_mapping_mismatch"),
-            ("Shiller source workbook has incomplete monthly CAPE history", "shiller_incomplete"),
+            ("Shiller source workbook has incomplete monthly ", "shiller_incomplete"),
             ("Shiller workbook", "shiller_schema_invalid"),
             ("ECB FX series identity mismatch", "fx_identity_mismatch"),
             ("ECB FX CSV columns missing", "fx_schema_invalid"),
@@ -103,10 +103,14 @@ class IngestionService:
             )
         # Overlap makes backward revisions detectable; first run fetches full history.
         overlap = 120 if definition["frequency"] == "D" else 730 if definition["frequency"] == "M" else 365 * 5
-        # These publishers deliver complete snapshots, cached across each run.
+        # These publishers deliver complete snapshots (some cached per run).
         # Reconcile every delivered period: old estimates can change outside the
         # ordinary overlap, and filtering would save no upstream requests.
-        complete_snapshot = definition["provider"] in {"WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS", "GLOBAL_MARKET_RETURNS"}
+        complete_snapshot = definition["provider"] in {
+            "WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS", "GLOBAL_MARKET_RETURNS",
+            "SHILLER", "WORLD_BANK_PINK_SHEET", "IMF_DATAMAPPER", "BEA_Q",
+            "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "GOLD_MSCI_CORR",
+        }
         start = None if full or complete_snapshot or last_date is None else last_date - timedelta(days=overlap)
         run_id = str(uuid4())
         with Session(self.engine) as session, session.begin():

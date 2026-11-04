@@ -56,8 +56,8 @@ def captured_source(root, definition, select_manifest, original_file):
         elif provider == 'WORLD_BANK_PINK_SHEET':
             values,dimensions = _pink_sheet(raw,definition,source['url'])
         elif provider == 'SHILLER':
-            values = _shiller(raw,definition,originals[0][0].decode('utf-8-sig'),
-                              sources[0]['url'],source['url'])
+            values,dimensions = _shiller(raw,definition,originals[0][0].decode('utf-8-sig'),
+                              sources[0]['url'],source['url'], return_metadata=True)
         elif provider == 'ECB':
             values,dimensions = _ecb(body,definition,source['url'])
         else:
@@ -284,7 +284,8 @@ def _imf_mapper(payload,definition,url):
             or not isinstance(payload['values'][indicator][area],dict)):
         raise EvidenceError('source_identity_mismatch')
     metadata=payload['indicators'][indicator]
-    expected_units={'BCA_NGDPD':'Percent of GDP','GGXWDG_NGDP':'Percent of GDP','PCPIPCH':'Annual percent change'}
+    expected_units={'BCA_NGDPD':'Percent of GDP','GGXWDG_NGDP':'Percent of GDP','PCPIPCH':'Annual percent change',
+                    'NGDP_RPCH':'Annual percent change'}
     projection=metadata['projection-year']
     if (indicator not in expected_units or metadata['unit']!=expected_units[indicator]
             or metadata['dataset']!='WEO' or not isinstance(projection,int)
@@ -354,7 +355,9 @@ def _pink_sheet(raw,definition,url):
     from .providers import PINK_SHEET_URL
     selectors={
         'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Gold':('Gold','troy oz','usd_per_oz'),
-        'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Crude oil, Brent':('Crude oil, Brent','bbl','usd_per_barrel')}
+        'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Crude oil, Brent':('Crude oil, Brent','bbl','usd_per_barrel'),
+        'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Natural gas, US':('Natural gas, US','mmbtu','usd_per_mmbtu'),
+        'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Maize':('Maize','mt','usd_per_metric_ton')}
     if url!=PINK_SHEET_URL or definition['source_key'] not in selectors or definition['frequency']!='M':
         raise EvidenceError('source_identity_mismatch')
     label,unit,native_unit=selectors[definition['source_key']]
@@ -364,7 +367,7 @@ def _pink_sheet(raw,definition,url):
     if len(headers)!=1: raise EvidenceError('source_identity_mismatch')
     header,column=headers[0]
     unit_label=str(rows[header+1][column]).strip()
-    if '$' not in unit_label or unit not in unit_label.lower(): raise EvidenceError('source_identity_mismatch')
+    if unit_label.lower() != f'($/{unit})': raise EvidenceError('source_identity_mismatch')
     values,seen={},set()
     for row in rows[header+2:]:
         period=str(row[0]).strip() if row else ''
@@ -385,11 +388,18 @@ class _OriginalWorkbookLinks(HTMLParser):
             if 'ie_data.xls' in href.lower(): self.links.append(href)
 
 
-def _shiller(raw,definition,homepage,homepage_url,workbook_url):
+def _shiller(raw,definition,homepage,homepage_url,workbook_url, *, return_metadata=False):
     from .source_reconciliation import EvidenceError
     from .source_capture import safe_url
     from urllib.parse import urljoin,urlsplit
-    if (definition['source_key']!='ie_data.xls#Data:CAPE' or definition['unit']!='ratio'
+    selectors = {'ie_data.xls#Data:CAPE': ('CAPE', 'ratio'),
+                 'ie_data.xls#Data:P': ('S&P COMP. P', 'index'),
+                 'ie_data.xls#Data:D': ('DIVIDEND D', 'index'),
+                 'ie_data.xls#Data:E': ('EARNINGS E', 'index'),
+                 'ie_data.xls#Data:CPI': ('CONSUMER PRICE INDEX CPI', 'index'),
+                 'ie_data.xls#Data:REAL_TR_PRICE': ('REAL TOTAL RETURN PRICE', 'index')}
+    key = definition['source_key']
+    if (key not in selectors or definition['unit']!=selectors[key][1]
             or definition['frequency']!='M' or homepage_url not in {'https://shillerdata.com/','https://www.shillerdata.com/'}):
         raise EvidenceError('source_identity_mismatch')
     links=_OriginalWorkbookLinks();links.feed(homepage);links.close()
@@ -404,6 +414,8 @@ def _shiller(raw,definition,homepage,homepage_url,workbook_url):
     dates=[column for column,label in enumerate(headings) if re.search(r'\bDATE\b',label) and 'FRACTION' not in label]
     capes=[column for column,label in enumerate(headings) if 'CYCLICALLY ADJUSTED' in label
            and 'CAPE' in label and not any(excluded in label for excluded in ('TOTAL RETURN','TR CAPE','EXCESS'))]
+    if key != 'ie_data.xls#Data:CAPE':
+        capes=[column for column,label in enumerate(headings) if label == selectors[key][0]]
     if len(dates)!=1 or len(capes)!=1: raise EvidenceError('source_identity_mismatch')
     date_col,cape_col=dates[0],capes[0]
     values,seen={},set()
@@ -416,11 +428,25 @@ def _shiller(raw,definition,homepage,homepage_url,workbook_url):
             raise EvidenceError('source_period_invalid')
         day=_native_period(f'{year:04d}-{month:02d}','M')
         _add(values,seen,day,row[cape_col] if len(row)>cape_col else None)
-        if day in values and values[day]<=0: raise EvidenceError('source_value_invalid')
+        if day in values and values[day]<=0 and key not in {'ie_data.xls#Data:E', 'ie_data.xls#Data:D'}:
+            raise EvidenceError('source_value_invalid')
     if not values or min(values)>date(1882,1,1): raise EvidenceError('source_truncated')
     expected=(max(values).year-min(values).year)*12+max(values).month-min(values).month+1
     if len(values)<expected*Decimal('0.9'): raise EvidenceError('source_truncated')
-    return values
+    variable = key.split(':')[-1]
+    basis = {'CAPE': 'ratio_to_trailing_real_earnings', 'P': 'nominal',
+             'D': 'nominal_annual_per_index_unit', 'E': 'nominal_annual_per_index_unit',
+             'CPI': 'consumer_price_index', 'REAL_TR_PRICE': 'real_cpi_deflated'}
+    metadata = {'source_sheet': 'Data', 'source_variable': variable,
+        'source_population': ('US consumer-price basket and source historical extensions' if variable == 'CPI'
+                              else 'Shiller US S&P Composite historical sample'),
+        'source_price_basis': basis[variable],
+        **({'source_author_constructed': True} if variable in {'CAPE', 'D', 'E', 'REAL_TR_PRICE'} else {}),
+        'source_workbook_notes': [str(cell).strip() for row in rows for cell in row
+                                  if isinstance(cell,str) and any(word in cell.lower()
+                                  for word in ('estimated', 'close', 'value'))],
+        'individual_observation_first_publication_verified': False}
+    return (values, metadata) if return_metadata else values
 
 
 def _bis(payload, definition):

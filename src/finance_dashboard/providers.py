@@ -242,55 +242,25 @@ def parse_ecb_csv(csv_text: str, key: str, frequency: str) -> dict[date, Decimal
     return output
 
 
-def parse_pink_sheet_gold(rows: list[list], start: date | None = None) -> dict[date, Decimal]:
-    """World Bank Pink Sheet 'Monthly Prices', nominal Gold ($/troy oz) since 1960."""
+def parse_pink_sheet_price(rows: list[list], variable: str, start: date | None = None) -> dict[date, Decimal]:
+    """Select one named original nominal USD benchmark; never fill missing months."""
     import re
-    headers = []
-    for index, row in enumerate(rows[:15]):
-        columns = [j for j, cell in enumerate(row) if str(cell).strip() == "Gold"]
-        if columns:
-            headers.append((index, columns[0]))
-    if len(headers) != 1:
-        raise ProviderError("World Bank workbook must have one Gold column")
-    header_row, col = headers[0]
-    if header_row + 1 >= len(rows) or col >= len(rows[header_row+1]) or "troy oz" not in str(rows[header_row+1][col]).lower():
-        raise ProviderError("World Bank Gold column is not priced per troy ounce")
-    output = {}
-    for row in rows[header_row+2:]:
-        if not row:
-            continue
-        raw = str(row[0]).strip()
-        if not re.fullmatch(r"\d{4}M(0[1-9]|1[0-2])", raw):
-            continue
-        day = date(int(raw[:4]), int(raw[-2:]), 1)
-        if day > date.today() or start and day < start:
-            continue
-        if col >= len(row):
-            continue
-        _put(output, day, _value(row[col]))
-    if not output:
-        raise ProviderError("World Bank Pink Sheet has no usable gold-price months")
-    return output
-
-
-def parse_pink_sheet_brent(rows: list[list], start: date | None = None) -> dict[date, Decimal]:
-    """World Bank Pink Sheet *Crude oil, Brent*, nominal USD per barrel.
-
-    No arbitrary commodity column is accepted. Dates are YYYYMMM strings in
-    the original 'Monthly Prices' workbook; true missing values stay missing.
-    """
-    import re
+    units = {"Gold": "troy oz", "Crude oil, Brent": "bbl",
+             "Natural gas, US": "mmbtu", "Maize": "mt"}
+    if variable not in units:
+        raise ProviderError("Unapproved World Bank Pink Sheet commodity")
     headers = [(i, j) for i, row in enumerate(rows[:15])
                for j, cell in enumerate(row)
-               if str(cell).strip().lower() == "crude oil, brent"]
+               if str(cell).strip() == variable]
     if len(headers) != 1:
-        raise ProviderError("World Bank Pink Sheet Brent column missing or ambiguous")
+        raise ProviderError("World Bank Pink Sheet commodity column missing or ambiguous")
     header_row, column = headers[0]
     if header_row+1 >= len(rows) or column >= len(rows[header_row+1]):
-        raise ProviderError("World Bank Brent source unit row missing")
-    units = str(rows[header_row+1][column]).lower()
-    if "bbl" not in units and "barrel" not in units:
-        raise ProviderError("World Bank Brent price must be denominated per barrel")
+        raise ProviderError("World Bank commodity source unit row missing")
+    if str(rows[header_row+1][column]).strip().lower() != f"($/{units[variable]})":
+        denominators = {"Gold": "troy ounce", "Crude oil, Brent": "barrel",
+                        "Natural gas, US": "million Btu", "Maize": "metric ton"}
+        raise ProviderError(f"World Bank {variable} must be priced per {denominators[variable]} in nominal USD")
     output: dict[date, Decimal] = {}
     for row in rows[header_row+2:]:
         if not row:
@@ -305,11 +275,19 @@ def parse_pink_sheet_brent(rows: list[list], start: date | None = None) -> dict[
             continue
         value = _value(row[column])
         if value is not None and value <= 0:
-            raise ProviderError("World Bank Brent price must be positive")
+            raise ProviderError("World Bank commodity price must be positive")
         _put(output, day, value)
     if not output:
-        raise ProviderError("World Bank Pink Sheet has no Brent oil price observations")
+        raise ProviderError("World Bank Pink Sheet has no commodity price observations")
     return dict(sorted(output.items()))
+
+
+def parse_pink_sheet_gold(rows: list[list], start: date | None = None) -> dict[date, Decimal]:
+    return parse_pink_sheet_price(rows, "Gold", start)
+
+
+def parse_pink_sheet_brent(rows: list[list], start: date | None = None) -> dict[date, Decimal]:
+    return parse_pink_sheet_price(rows, "Crude oil, Brent", start)
 
 
 def parse_corgano_gold(payload: Any, start: date | None = None) -> dict[date, Decimal]:
@@ -505,8 +483,8 @@ class ShillerDownloadLinks(HTMLParser):
             self.links.append(url)
 
 
-def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
-    """Read authored monthly CAPE, including Shiller's split multi-row headers.
+def parse_shiller_sheet(sheet, *, variable: str = "CAPE") -> dict[date, Decimal]:
+    """Read a named authored monthly series, including split multi-row headers.
 
     Strictly identify ordinary CAPE rather than the separate total-return CAPE.
     A partial source file must never replace a known historical series.
@@ -557,6 +535,12 @@ def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
               if "CYCLICALLY ADJUSTED" in headings[col]]
     if len(strong) == 1:
         capes = strong
+    if variable != "CAPE":
+        labels = {"P": "S&P COMP. P", "D": "DIVIDEND D", "E": "EARNINGS E",
+                  "CPI": "CONSUMER PRICE INDEX CPI", "REAL_TR_PRICE": "REAL TOTAL RETURN PRICE"}
+        if variable not in labels:
+            raise ProviderError("Unapproved Shiller workbook variable")
+        capes = [col for col, label in headings.items() if label == labels[variable]]
     if len(dates) != 1 or len(capes) != 1:
         raise ProviderError("Shiller workbook does not contain recognizable DATE/CAPE columns")
     date_col, cape_col = dates[0], capes[0]
@@ -582,7 +566,7 @@ def parse_shiller_sheet(sheet) -> dict[date, Decimal]:
     expected_months = (last.year-first.year)*12 + last.month-first.month + 1
     if (first > date(1882, 1, 1) or
             (expected_months >= 120 and len(output) < int(expected_months*0.90))):
-        raise ProviderError("Shiller source workbook has incomplete monthly CAPE history")
+            raise ProviderError(f"Shiller source workbook has incomplete monthly {variable} history")
     return output
 
 
@@ -970,12 +954,10 @@ class ProviderRouter:
                 rows = workbook.get_sheet_by_name("Monthly Prices").to_python()
             except (ValueError, RuntimeError) as exc:
                 raise ProviderError("World Bank monthly workbook is invalid") from exc
-            if key == "CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Gold":
-                observations = parse_pink_sheet_gold(rows, start)
-            elif key == "CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Crude oil, Brent":
-                observations = parse_pink_sheet_brent(rows, start)
-            else:
+            prefix = "CMO-Historical-Data-Monthly.xlsx#Monthly Prices:"
+            if not key.startswith(prefix):
                 raise SourceUnavailable("Unapproved World Bank Pink Sheet commodity")
+            observations = parse_pink_sheet_price(rows, key[len(prefix):], start)
             return FetchedSeries(series_id, PINK_SHEET_URL, None, observations)
         if provider == "UN_SDG":
             code, area = key.split("/", 1)
@@ -1009,7 +991,10 @@ class ProviderRouter:
                 raise ProviderError("Invalid Shiller Excel workbook or Data sheet") from exc
             # Parse separately: ProviderError subclasses ValueError and must not
             # be converted into the generic workbook-invalid diagnostic.
-            values = parse_shiller_sheet(rows)
+            prefix = "ie_data.xls#Data:"
+            if not key.startswith(prefix):
+                raise SourceUnavailable("Unapproved Shiller workbook variable")
+            values = parse_shiller_sheet(rows, variable=key[len(prefix):])
             observations = {day: value for day, value in values.items()
                             if day <= date.today() and (start is None or day >= start)}
             if not observations:

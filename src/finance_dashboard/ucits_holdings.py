@@ -4,6 +4,7 @@ Reported fund positions and accounting controls only. No inferred identifiers,
 monthly interpolation, index constituents or derivative country look-through.
 """
 from __future__ import annotations
+from collections import OrderedDict
 import csv
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -15,6 +16,7 @@ from pathlib import Path
 import re
 import shutil
 import tempfile
+from threading import RLock
 
 from .source_evidence import record_acquisition_receipt
 
@@ -29,6 +31,10 @@ ANNUALS={
  2025:("4c0e090ffb7e7bcba9826649dfb5a0a835a1c2b816ed80a2ef1951da8973fe80",1047,1062),
  2026:("d889ccc681148e656300fdf3aa849abe9ca0be5c2d9c70ee7fd0c42fc3977051",1227,1242),
 }
+# Cache only independently rebuilt native selections, never file integrity or
+# caller-owned dictionaries. Every read still hashes all original bundle bytes.
+_ANNUAL_NATIVE_CACHE=OrderedDict()
+_ANNUAL_NATIVE_CACHE_LOCK=RLock()
 COUNTRIES=set("Australia|Austria|Belgium|Bermuda|Canada|Cayman Islands|China|Denmark|Finland|France|Germany|Hong Kong|Ireland|Isle of Man|Israel|Italy|Japan|Jersey|Luxembourg|Netherlands|New Zealand|Norway|Portugal|Singapore|Spain|Sweden|Switzerland|United Kingdom|United States|Curacao|Mauritius|Panama|Liberia|Papua New Guinea".split("|"))
 NUMBER=r"(?:\(?[0-9][0-9,]*(?:\.[0-9]+)?\)?|-)"
 POSITION=re.compile(r"^\s*([A-Z]{3})\s+([0-9][0-9,]*(?:\.[0-9]+)?)\s+(.+?)\s{2,}("+NUMBER+r")\s+("+NUMBER+r")\s*$")
@@ -235,16 +241,62 @@ def parse_holdings_csv(original: bytes, *, expected_asof: str|None=None) -> dict
         "limits":"Rounded weights preserved without forcing 100 percent. Location is publisher label, not verified revenue country. No historical date inferred from requested URL."}
 
 
+def _annual_native_facts(original: bytes, year: int) -> dict:
+    digest=sha256(original).hexdigest()
+    if year not in ANNUALS or digest!=ANNUALS[year][0]:
+        raise UcitsHoldingsError("Unverified full annual PDF SHA")
+    with _ANNUAL_NATIVE_CACHE_LOCK:
+        cached=_ANNUAL_NATIVE_CACHE.get(digest)
+        if cached is None:
+            cached=json.dumps(parse_annual_pdf(original,year=year),sort_keys=True).encode()
+            _ANNUAL_NATIVE_CACHE[digest]=cached
+            if len(_ANNUAL_NATIVE_CACHE)>5:
+                _ANNUAL_NATIVE_CACHE.popitem(last=False)
+        else:
+            _ANNUAL_NATIVE_CACHE.move_to_end(digest)
+    return json.loads(cached)
+
+
 def _verify_archive(folder: Path) -> dict:
     try:
-        if folder.is_symlink(): raise ValueError("symlink")
+        if folder.is_symlink() or (folder/"manifest.json").is_symlink(): raise ValueError("symlink")
         manifest=json.loads((folder/"manifest.json").read_text())
+        if (manifest["schema_version"]!=1 or manifest["publisher"]!="iShares / BlackRock"
+                or manifest["fund_name"]!=FUND or manifest["share_class_reference_isin"]!=ISIN
+                or manifest["original_first_publication_at"] is not None
+                or folder.parent.name!=manifest["holdings_date"] or folder.parent.parent.name!=ISIN
+                or folder.parent.parent.parent.name!="ucits"
+                or datetime.fromisoformat(manifest["retrieved_at_utc"]).utcoffset() is None):
+            raise ValueError("native source identity mismatch")
+        source=manifest["source"]
+        if source=="ISHARES_UCITS_ANNUAL_PRIMARY_PDF":
+            expected={"original.pdf","facts.json","extracted.txt"}
+        elif source=="ISHARES_UCITS_PRIMARY_CSV":
+            expected={"original.csv","facts.json"}
+        else:
+            raise ValueError("unsupported native source")
+        if set(manifest["files"])!=expected:
+            raise ValueError("native original files missing")
         if sha256(json.dumps(manifest["files"],sort_keys=True).encode()).hexdigest()!=folder.name:
             raise ValueError("bundle digest mismatch")
+        bodies={}
         for name,digest in manifest["files"].items():
             path=folder/name
-            if path.parent!=folder or path.is_symlink() or sha256(path.read_bytes()).hexdigest()!=digest:
+            if path.parent!=folder or path.is_symlink() or path.stat().st_size>30_000_000:
+                raise ValueError("original source size or symlink invalid")
+            bodies[name]=path.read_bytes()
+            if sha256(bodies[name]).hexdigest()!=digest:
                 raise ValueError("hash mismatch")
+        if source=="ISHARES_UCITS_ANNUAL_PRIMARY_PDF":
+            native=_annual_native_facts(bodies["original.pdf"],int(manifest["holdings_date"][:4]))
+            if native.pop("_extracted_text").encode()!=bodies["extracted.txt"]:
+                raise ValueError("original PDF text extraction mismatch")
+        else:
+            native=parse_holdings_csv(bodies["original.csv"],expected_asof=manifest["holdings_date"])
+        if (native!=json.loads(bodies["facts.json"])
+                or any(native[key]!=manifest[key] for key in
+                       ("source","fund_name","share_class_reference_isin","holdings_date","source_url"))):
+            raise ValueError("native original facts mismatch")
         return manifest
     except (OSError,ValueError,KeyError,TypeError) as exc:
         raise UcitsHoldingsError("Immutable UCITS original source archive inconsistent") from exc
@@ -300,7 +352,9 @@ def read_ucits_sources(root: Path) -> dict:
         if not re.fullmatch(r"[0-9a-f]{64}",folder.name): continue
         manifest=_verify_archive(folder)
         facts=json.loads((folder/"facts.json").read_text())
-        records.append({**facts,"bundle_digest":folder.name,"manifest":manifest})
+        records.append({**facts,"bundle_digest":folder.name,"manifest":manifest,
+            "source_manifest_sha256":sha256((folder/"manifest.json").read_bytes()).hexdigest(),
+            "immutable_manifest_retrieved_at_utc":manifest["retrieved_at_utc"]})
     return {"fund_name":FUND,"share_class_reference_isin":ISIN,
             "status":"ready" if records else "missing_original_ucits_positions","records":records}
 

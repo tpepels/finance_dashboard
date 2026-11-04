@@ -112,6 +112,43 @@ class ResearchAcceptanceTests(unittest.TestCase):
         self.assertEqual(gate["state"], "incomplete")
         self.assertEqual(gate["series_ids"], roles[1]["series_ids"])
 
+    def test_approved_fallback_classification_keeps_exact_conditions_and_failures_open(self):
+        analysis = next(row for row in self.document["analyses"] if row["id"] == "G03")
+        evidence = {"taiwan_profits": {"original_source_hash_verified": True,
+                    "status": "verified_original_native_samples_partial", "issuer_records": 135}}
+        result = analysis_acceptance(analysis, self.by_id, {}, [], observations_checked=True,
+                                     artifact_evidence=evidence)
+        decision = result["source_resolution"]
+        self.assertEqual(decision["classification"], "conditional")
+        self.assertFalse(decision["phase2_resolved"])
+        self.assertEqual(decision["policy_reference"], "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md")
+        self.assertIn("listed_parent_net_income", decision["unmet_original_roles"])
+        self.assertEqual(decision["partial_artifact_ids"], ["taiwan_profits"])
+        self.assertFalse(result["accepted"])
+        self.assertNotIn("source_resolution", self.evaluate())
+
+    def test_publisher_details_require_fresh_proof_and_do_not_certify_first_release(self):
+        analysis = next(row for row in self.document["analyses"] if row["id"] == "V05")
+        sid = "returns.us.shiller_real_total_return"
+        original = {"series_id": sid, "stored_periods": 2, "source_values_match": True,
+            "source_covers_all_stored_periods": True, "source_sha256": "a" * 64,
+            "source_manifest_sha256": "b" * 64, "stored_observations_sha256": "c" * 64,
+            "source_contract_sha256": source_contract_digest(self.by_id[sid]),
+            "source_population": "Shiller US S&P Composite historical sample",
+            "source_price_basis": "real_cpi_deflated", "source_author_constructed": True,
+            "source_workbook_notes": ["Sept/Oct CPI estimated"]}
+        def evaluate(item):
+            result = analysis_acceptance(analysis, self.by_id, {sid: {"stored_periods": 2}}, [],
+                observations_checked=True, source_proof={"series": [item]})
+            role = next(r for r in result["requirements"] if r["role"] == "matched_equity_total_return")
+            return {g["id"]: g for g in role["checks"]}
+        gates = evaluate(original)
+        dimensions = gates["publisher_dimensions"]["original_metadata"]
+        self.assertEqual(dimensions[0]["source_price_basis"], "real_cpi_deflated")
+        self.assertEqual(gates["publisher_dimensions"]["state"], "incomplete")
+        self.assertEqual(gates["temporal_evidence"]["state"], "incomplete")
+        self.assertEqual(evaluate({**original, "source_values_match": False})["publisher_dimensions"]["original_metadata"], [])
+
     def test_fresh_numeric_proof_covers_roles_outside_panels_but_not_partial_or_wrong_contracts(self):
         sid = self.m02["comparison_contract"]["original_requirements"][0]["series_ids"][0]
         item = {"series_id": sid, "stored_periods": 2, "source_values_match": True,

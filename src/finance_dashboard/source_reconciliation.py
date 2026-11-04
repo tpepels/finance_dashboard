@@ -35,6 +35,7 @@ from finance_dashboard.captured_sources import captured_source
 from finance_dashboard.research_returns import FRENCH_SERIES, SWINKELS_SERIES
 from finance_dashboard.global_market_returns import GLOBAL_MARKET_SERIES
 from finance_dashboard.return_source_reconciliation import read_return_originals
+from finance_dashboard.constructed_source_reconciliation import CONSTRUCTED_PROVIDERS, constructed_source
 
 SCALE = Decimal("0.0000000001")
 SOURCE_IDS = sorted(set(WID_SERIES) | set(TIVA_SERIES) | set(FRENCH_SERIES) | set(SWINKELS_SERIES) |
@@ -366,7 +367,8 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             failures[sid] = "source_reconciliation_unsupported"
             continue
         try:
-            values, evidence = captured_source(root, definition, _selected_manifest, _original_file)
+            reader = constructed_source if definition['provider'] in CONSTRUCTED_PROVIDERS else captured_source
+            values, evidence = reader(root, definition, _selected_manifest, _original_file)
             originals[sid] = values
             proof[sid] = evidence
         except EvidenceError as exc:

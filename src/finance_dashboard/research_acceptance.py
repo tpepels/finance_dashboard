@@ -12,6 +12,13 @@ import re
 
 from .comparative_corpus import source_contract_digest
 
+PUBLISHER_METADATA_FIELDS = (
+    "source_native_unit", "source_native_unit_label", "source_currency", "source_sheet",
+    "source_variable", "source_population", "source_price_basis", "source_author_constructed",
+    "source_workbook_notes", "source_database_vintage", "source_dataset",
+    "source_projection_start_year", "source_metadata_last_modified", "source_publisher_metadata",
+)
+
 
 def _gate(identifier: str, state: str, code: str, series_ids=(), **details) -> dict:
     return {"id": identifier, "state": state, "code": code,
@@ -35,13 +42,13 @@ def _partial_artifacts(analysis_id: str, role: str, evidence: dict) -> list[dict
     keys = ()
     if analysis_id == "G03" and role in {"listed_parent_net_income", "issuer_universe_parent_mapping",
                                          "fiscal_period_currency", "original_filing_dates"}:
-        keys = ("cvm",)
+        keys = ("cvm", "taiwan_profits")
     elif analysis_id == "G01" or analysis_id == "P01" and role != "portfolio_fund_weights":
         keys = ("sec_holdings", "ucits_holdings")
     return [{"artifact_id": key, "availability": "available_partial", **evidence[key],
              "original_role_satisfied": False,
              "scope": ("Regional native issuer filings; no worldwide listed-parent universe, deduplication or fiscal/FX aggregate."
-                       if key == "cvm" else
+                       if key in {"cvm", "taiwan_profits"} else
                        "Named fund disclosures only; no exact index-constituent weights, complete holdings history or portfolio allocation.")}
             for key in keys if evidence.get(key, {}).get("original_source_hash_verified") is True]
 
@@ -122,7 +129,11 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             scope="Exact native-period joins; no fill. Daily calendars require independent evidence."))
         checks.append(_gate("publisher_dimensions", "incomplete", "publisher_dimensions_unverified", ids,
             required_evidence=["population", "currency_and_quote", "price_basis_and_index_base", "common_release"],
-            expected=expected))
+            expected=expected,
+            original_metadata=[{"series_id": sid, "source_sha256": originals[sid]["source_sha256"],
+                **{key: originals[sid][key] for key in PUBLISHER_METADATA_FIELDS if key in originals[sid]}}
+                for sid in ids if sid in originals],
+            scope="Independently selected original metadata and author estimation notes are disclosed. Complete publisher population/base and common-release eligibility are not inferred from numeric fidelity."))
         checks.append(_gate("temporal_evidence", "incomplete", "observation_release_eligibility_unverified", ids,
             required_mode=role["temporal_requirement"],
             scope="Retrieval timestamps and selected month-end ALFRED snapshots do not prove every observation's first release or synchronized eligibility."))
@@ -202,12 +213,30 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     if scientific_failures:
         checks.append({"state": "failed"})
     state = _state(checks)
-    return {"contract_version": 1, "specification": analysis["comparison_contract"]["specification"],
+    result = {"contract_version": 1, "specification": analysis["comparison_contract"]["specification"],
         "state": state, "accepted": state == "accepted", "required_input_roles": len(requirements),
         "accepted_input_roles": sum(r["accepted"] for r in requirements),
         "requirements": requirements, "comparison": comparison, "scientific_failures": scientific_failures,
         "blocking_roles": [r["role"] for r in requirements if not r["accepted"]],
         "interpretation": "Original analysis acceptance requires every role and original comparison gate. Bounded native alternatives remain separately labelled."}
+    fallbacks = analysis.get("fallback_options", [])
+    policy = "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md"
+    if fallbacks and all(option.get("reference") == policy for option in fallbacks):
+        result["source_resolution"] = {
+            "classification": "certified" if result["accepted"] else "conditional",
+            "policy_reference": policy,
+            "phase2_resolved": result["accepted"],
+            "unmet_original_roles": result["blocking_roles"],
+            "comparison_outstanding": comparison["state"] != "passed",
+            "scientific_failure_count": len(scientific_failures),
+            "verified_native_alternative_variants": sorted(p["variant_id"] for p in panels
+                if p.get("kind") in {"approved_narrower", "approved_fallback"}
+                and p.get("state") == "bounded_current_vintage_verified"),
+            "partial_artifact_ids": sorted({artifact["artifact_id"] for role in requirements
+                for artifact in role.get("partial_artifact_evidence", [])}),
+            "conditions": "Exact source identity, historical coverage, publisher dimensions and temporal eligibility remain required. Named alternatives retain their own populations; missing implementation or evidence is not an unavailable-source finding.",
+        }
+    return result
 
 
 def acceptance_summary(analyses: list[dict]) -> dict:

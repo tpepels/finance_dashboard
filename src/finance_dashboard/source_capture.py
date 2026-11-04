@@ -19,9 +19,14 @@ from .bis import ProviderError
 from .source_evidence import record_acquisition_receipt
 
 CAPTURE_PROVIDERS = frozenset({"FRED", "WORLD_BANK", "BIS_DSR", "BIS_PROPERTY", "BIS_CREDIT_GAP",
-    "IMF_DATAMAPPER", "BEA_Q", "SHILLER", "WORLD_BANK_PINK_SHEET", "BIS", "ECB"})
+    "IMF_DATAMAPPER", "BEA_Q", "SHILLER", "WORLD_BANK_PINK_SHEET", "BIS", "ECB",
+    "MSCI_NETR", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "WORLD_LISTED_CAP_SHARE",
+    "BIS_WORLD_WEIGHTED", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA",
+    "OECD_CORPORATE_GDPWEIGHTED", "GOLD_MSCI_CORR"})
 SAFE_QUERY = frozenset({"series_id", "file_type", "observation_start", "id", "cosd", "format",
-                        "per_page", "date", "startPeriod"})
+                        "per_page", "date", "startPeriod", "sinceTimePeriod", "freq", "unit", "direct",
+                        "sector", "na_item", "geo", "index_codes", "currency_symbol", "index_variant",
+                        "data_frequency", "start_date", "end_date"})
 SAFE_HEADERS = frozenset({"content-type", "last-modified", "etag", "date"})
 MAX_RESPONSE_BYTES = 50_000_000
 
