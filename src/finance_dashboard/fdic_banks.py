@@ -9,6 +9,7 @@ as its own series and a same-date asset/equity ratio shares one perimeter.
 from __future__ import annotations
 
 from datetime import date
+from calendar import monthrange
 from decimal import Decimal, InvalidOperation
 import re
 
@@ -43,7 +44,10 @@ def parse_fdic_aggregates(payload: dict, series_id: str, start: date | None = No
         match = re.fullmatch(r"(\d{4})(03|06|09|12)(30|31)", label)
         if not match:
             raise ProviderError("FDIC report date is not a calendar quarter end")
-        day = date(int(match.group(1)), int(match.group(2)) - 2, 1)
+        year, month, reported_day = map(int, match.groups())
+        if reported_day != monthrange(year, month)[1]:
+            raise ProviderError("FDIC report date is not an actual quarter end")
+        day = date(year, month - 2, 1)
         try:
             value = Decimal(str(record[field]))
         except (KeyError, InvalidOperation) as exc:

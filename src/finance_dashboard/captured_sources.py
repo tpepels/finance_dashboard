@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from html.parser import HTMLParser
 import csv
+from calendar import monthrange
 import io
 import json
 import re
@@ -735,8 +736,11 @@ def _fdic(payload,definition,url):
     for row in rows:
         match=re.fullmatch(r'(\d{4})(03|06|09|12)(30|31)',row['data']['REPDTE'])
         if not match: raise EvidenceError('source_period_invalid')
+        year, month, reported_day = map(int, match.groups())
+        if reported_day != monthrange(year, month)[1]:
+            raise EvidenceError('source_period_invalid')
         counts.append(int(row['data']['count']))
-        _add(values,seen,date(int(match.group(1)),int(match.group(2))-2,1),row['data'][field])
+        _add(values,seen,date(year,month-2,1),row['data'][field])
     return values,{'source_native_unit':definition['unit'],'source_currency':None if field=='count' else 'USD',
         'source_publisher_metadata':{'perimeter':'all institutions reporting financials at each report date',
             'reporting_institutions_first':counts[0],'reporting_institutions_last':counts[-1],

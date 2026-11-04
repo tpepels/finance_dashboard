@@ -146,18 +146,19 @@ def parse_chronology_table(page_html: str) -> list[dict]:
 
 
 def information_available_as_of(evidence: dict, as_of: date) -> dict:
-    """Turning points the Committee had announced by `as_of`; later dating is hindsight."""
+    """Return only determinations actually announced at the requested date.
+
+    Retrospective peak/trough tables must never leak into point-in-time data,
+    including under a 'pending but already dated' label.  The absence of an
+    announcement is not evidence that a turning point did or did not occur.
+    """
     stamp = as_of.isoformat()
-    known = [a for a in evidence["announcements"] if a["announcement_date"] <= stamp and a["classification"] == "determination"]
-    announced = {(a["turning_point"], a["event_month"]) for a in known}
-    pending = [{"turning_point": point, "event_month": cycle[point + "_month"]}
-               for cycle in evidence["retrospective_cycles"][-6:] for point in ("peak", "trough")
-               if cycle[point + "_month"] and cycle[point + "_month"] + "-01" <= stamp
-               and (point, cycle[point + "_month"]) not in announced
-               and any(a["event_month"] == cycle[point + "_month"] for a in evidence["announcements"])]
-    return {"as_of": stamp, "announced_turning_points": sorted(announced, key=lambda item: item[1]),
-            "dated_but_not_yet_announced": pending,
-            "scope": "Committee announcements only; the table of dated months is retrospective and must not be read at earlier dates."}
+    known = [item for item in evidence["announcements"]
+             if item["announcement_date"] <= stamp and item["classification"] == "determination"]
+    announced = {(item["turning_point"], item["event_month"]) for item in known}
+    return {"as_of": stamp,
+            "announced_turning_points": sorted(announced, key=lambda item: (item[1], item[0])),
+            "scope": "Only Committee determinations publicly announced by this date; no retrospective chronology or unannounced turning points."}
 
 
 def _sha(raw: bytes) -> str:

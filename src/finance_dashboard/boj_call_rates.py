@@ -121,14 +121,18 @@ def audit_boj_consistency(daily_csv: str, monthly_csv: str) -> dict:
     by_month: dict[str, list[tuple[str, Decimal]]] = {}
     for label, value in daily.items():
         by_month.setdefault(label[:7], []).append((label, value))
+    common_months = set(average) & set(by_month)
+    if not common_months:
+        raise ProviderError("BOJ daily and monthly series have no overlapping observations")
     last_month = max(by_month)
+    complete_months = sorted(common_months - {last_month})
+    if not complete_months:
+        raise ProviderError("BOJ daily and monthly series have no complete overlapping month")
     regimes = {name: {"months": 0, "average_failures": 0, "month_end_failures": 0,
                       "largest_average_residual": Decimal(0), "largest_month_end_residual": Decimal(0)}
                for name, _, _ in REGIME_WINDOWS}
     uncovered = []
-    for month in sorted(set(average) & set(by_month)):
-        if month == last_month:
-            continue  # the newest month can be incomplete
+    for month in complete_months:
         label = month.replace("/", "-")
         regime = next((name for name, low, high in REGIME_WINDOWS if low <= label <= high), None)
         if regime is None:
@@ -147,8 +151,7 @@ def audit_boj_consistency(daily_csv: str, monthly_csv: str) -> dict:
             end_residual = abs(last_value - month_end[month])
             item["largest_month_end_residual"] = max(item["largest_month_end_residual"], end_residual)
             item["month_end_failures"] += end_residual > _half_unit(month_end[month]) + _half_unit(last_value)
-    return {"overlap_first_month": min(set(average) & set(by_month)), "last_complete_month_checked": max(
-                m for m in set(average) & set(by_month) if m != last_month),
+    return {"overlap_first_month": min(common_months), "last_complete_month_checked": max(complete_months),
             "regimes": {name: {**stats, "largest_average_residual": str(stats["largest_average_residual"]),
                                "largest_month_end_residual": str(stats["largest_month_end_residual"])}
                         for name, stats in regimes.items() if stats["months"]},

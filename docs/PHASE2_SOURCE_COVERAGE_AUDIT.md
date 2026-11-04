@@ -4,6 +4,14 @@
 
 Phase 1 is approved. The initial census compared its 35 analyses against 53 macro declarations, 49 source/method references and four fallback hierarchies. Current measured coverage appears below; older dated sections preserve the history. Code registration is not original-source acquisition or verified scientific coverage.
 
+## New-adapter completion safety review — 2026-11-04
+
+The 2026-11-04 Claude commits register **103/124 scalar input roles** (up from 86/124) across BOJ, OECD CLI, Fed G.17 diffusion, BIS total credit, OFR FSI, FDIC banking aggregates and IMF external accounts. **A mapping is a source contract, not proof of downloaded history, original full-series reconciliation or scientific certification.** The 21 remaining roles and all structured scientific gates remain active.
+
+An independent follow-up corrected three parser/contract hazards and added focused synthetic-format tests: FDIC financial observations require an *actual* quarter-end date, not merely a 30/31 suffix; NBER as-of information sets must never disclose retrospectively dated but not yet announced turning points; and BOJ consistency checks must report missing overlap rather than raising an incidental min/max exception. Original publisher acquisition and end-to-end live reconciliation are still required.
+
+Publisher check pending: reconcile OECD CLI v4.1's currently advertised SDMX Data Explorer key `.M.LI...AA...H` against the more explicit old-dimension key stored in this repository; identify the actual returned dimensional values before changing the live key, and do not equate registered mappings with a successfully retrieved series. See https://data-explorer.oecd.org/vis?df%5Bag%5D=OECD.SDD.STES&df%5Bid%5D=DSD_STES%40DF_CLI&df%5Bvs%5D=4.1. FDIC API aggregation shape, IMF compact SDMX response and publisher release/availability dates likewise require raw-response proof.
+
 ## Current integrated corpus — 2026-11-04 research handoff
 
 **Phase 2 remains ACTIVE / INCOMPLETE.** The schema-4 canonical corpus covers **35 analyses / 168 roles**: **124 scalar-history contracts (86 bound, 38 unbound)** and **44 structured/policy contracts**. There are **195 stored macro histories**, 24 market histories and three FX histories in the isolated copy. Empty scalar lists on matrices, holdings, mappings, events and policies are no longer counted as missing scalar histories. Eight new histories plus one new original top-ten observation add **6,229 immutable observation versions**. No production dataset was changed.
