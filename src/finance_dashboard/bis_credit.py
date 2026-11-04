@@ -8,6 +8,7 @@ re-derived here: the published ratio stays distinct from any reconstruction.
 from __future__ import annotations
 
 from datetime import date, datetime
+from calendar import monthrange
 from decimal import Decimal, InvalidOperation
 import re
 from typing import Any
@@ -38,8 +39,11 @@ def tc_key(country: str, sector: str, unit_type: str) -> str:
 def _selected(definitions: list[dict], indices: list) -> dict[str, str]:
     if len(definitions) != len(indices):
         raise ProviderError("BIS attribute structure is inconsistent")
-    return {definition["id"]: definition["values"][index]["id"]
-            for definition, index in zip(definitions, indices) if index is not None}
+    try:
+        return {definition["id"]: definition["values"][index]["id"]
+                for definition, index in zip(definitions, indices) if index is not None}
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise ProviderError("BIS attribute index or metadata is invalid") from exc
 
 
 def parse_bis_total_credit(payload: Any, series_id: str, start: date | None = None) -> tuple[dict[date, Decimal], datetime | None]:
@@ -78,15 +82,22 @@ def parse_bis_total_credit(payload: Any, series_id: str, start: date | None = No
             match = re.fullmatch(r"(\d{4})-Q([1-4])", period)
             if not match:
                 raise ProviderError("BIS total-credit reference period is not quarterly")
-            day = date(int(match.group(1)), 1 + 3 * (int(match.group(2)) - 1), 1)
-            if row[0] is None:
+            year, quarter = int(match.group(1)), int(match.group(2))
+            first_month, last_month = 1 + 3 * (quarter - 1), 3 * quarter
+            day = date(year, first_month, 1)
+            if not isinstance(row, (list, tuple)) or not row:
+                raise ProviderError("BIS total-credit observation has no value field")
+            raw = row[0]
+            if raw is None or raw in ("", "NaN", "NA", "N/A"):
                 continue
+            if date(year, last_month, monthrange(year, last_month)[1]) > date.today():
+                raise ProviderError("BIS total-credit quarter has not ended")
             try:
-                value = Decimal(str(row[0]))
-            except InvalidOperation as exc:
+                value = Decimal(str(raw))
+            except (InvalidOperation, ValueError) as exc:
                 raise ProviderError("BIS total-credit observation is invalid") from exc
-            if not value.is_finite() or value < 0 or day > date.today() or day in values:
-                raise ProviderError("BIS total-credit value is negative, future-dated or duplicated")
+            if not value.is_finite() or value < 0 or day in values:
+                raise ProviderError("BIS total-credit value is negative, nonfinite or duplicated")
             if start is None or day >= start:
                 values[day] = value
     if matched != 1 or not values:

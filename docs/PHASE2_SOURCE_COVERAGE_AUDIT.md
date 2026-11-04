@@ -4,6 +4,12 @@
 
 Phase 1 is approved. The initial census compared its 35 analyses against 53 macro declarations, 49 source/method references and four fallback hierarchies. Current measured coverage appears below; older dated sections preserve the history. Code registration is not original-source acquisition or verified scientific coverage.
 
+## BIS total-credit native integration hardening — 2026-11-04
+
+The original BIS WS_TC adapter now validates quarter **end** before admitting any quarterly stock or credit/GDP observation; a not-yet-finished quarter cannot pass by using its first day as the canonical period key. Explicit original missing-value markers (`NaN`, `NA`, empty, null) remain absent, never zero. Malformed SDMX attribute indexes and missing observation fields raise typed source errors. The independent original-response selector enforces the same quarter-end temporal invariant without calling the ingestion decoder.
+
+Added a dedicated offline native original/immutable-capture test file covering all 20 BIS total-credit definitions, country/borrower/unit/multiplier rejection, missing values, start filters, provider routing, append-only no-change re-ingestion and original-to-stored reconciliation. **Tests still require execution on the checkout**; their addition is not evidence of successful publisher downloads or 35-analysis certification.
+
 ## New-adapter completion safety review — 2026-11-04
 
 The 2026-11-04 Claude commits register **103/124 scalar input roles** (up from 86/124) across BOJ, OECD CLI, Fed G.17 diffusion, BIS total credit, OFR FSI, FDIC banking aggregates and IMF external accounts. **A mapping is a source contract, not proof of downloaded history, original full-series reconciliation or scientific certification.** The 21 remaining roles and all structured scientific gates remain active.

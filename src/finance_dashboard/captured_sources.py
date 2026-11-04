@@ -510,7 +510,14 @@ def _bis(payload, definition):
             matched += 1
             for index, row in node["observations"].items():
                 period = decode(dims["observation"], index)["TIME_PERIOD"]
-                _add(values, seen, _native_period(period, definition["frequency"]), row[0])
+                native_date = _native_period(period, definition["frequency"])
+                if not isinstance(row, (list, tuple)) or not row:
+                    raise EvidenceError("source_schema_invalid")
+                if provider == "BIS_TOTAL_CREDIT" and row[0] not in (None, "", "NaN", "NA", "N/A"):
+                    last_month = native_date.month + 2
+                    if date(native_date.year, last_month, monthrange(native_date.year, last_month)[1]) > date.today():
+                        raise EvidenceError("source_period_invalid")
+                _add(values, seen, native_date, row[0])
     if matched != 1:
         raise EvidenceError("source_identity_mismatch")
     return values
