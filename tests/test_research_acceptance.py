@@ -263,7 +263,7 @@ class ResearchAcceptanceTests(unittest.TestCase):
                                          artifact_evidence=evidence)
             role = next(r for r in result["requirements"] if r["role"] == role_name)
             self.assertEqual([e["artifact_id"] for e in role["partial_artifact_evidence"]], artifact_ids)
-            self.assertEqual(role["state"], "blocked")
+            self.assertEqual(role["state"], "incomplete")
             self.assertFalse(role["accepted"])
             self.assertFalse(result["accepted"])
 

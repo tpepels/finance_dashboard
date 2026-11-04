@@ -6,7 +6,7 @@ It deliberately has no route from a declared status to whole-analysis approval.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import json
@@ -96,6 +96,9 @@ def _regular_grid(start: date, end: date, frequency: str) -> set[date] | None:
     # from weekends/holidays. Never fabricate calendar-day gap counts.
     if frequency == "D":
         return None
+    if frequency == "W":
+        first_friday = (4 - start.weekday()) % 7
+        return {start + timedelta(days=offset) for offset in range(first_friday, (end-start).days+1, 7)}
     step = {"M": 1, "Q": 3, "A": 12}.get(frequency)
     if step is None:
         return None
@@ -111,6 +114,8 @@ def _regular_grid(start: date, end: date, frequency: str) -> set[date] | None:
 def _native_period(period: date, frequency: str) -> bool:
     if frequency == "D":
         return True
+    if frequency == "W":
+        return period.weekday() == 4
     return (period.day == 1 and
             (frequency == "M" or frequency == "Q" and period.month in (1, 4, 7, 10)
              or frequency == "A" and period.month == 1))
@@ -142,6 +147,10 @@ def _check_values(identifier: str, rows: list[dict], series_ids: list[str]) -> d
                   "tiva_value_added_share": Decimal("0.001")}
     if identifier not in tolerances:
         return {"id": identifier, "passed": False, "failure_code": "unknown_comparison_check"}
+    fine_wealth_ids = {f"wealth.us.{group}_share" for group in ("top_point1", "next_point9", "next9", "middle40", "bottom50")}
+    if identifier == "share_partition_100" and set(series_ids) == fine_wealth_ids:
+        # Five independently published 0.1pp shares: five half-rounding units.
+        tolerances[identifier] = Decimal("0.25")
     failed, residuals = [], []
     for row in rows:
         values = {sid: Decimal(value) for sid, value in row["values"].items()}
@@ -155,7 +164,7 @@ def _check_values(identifier: str, rows: list[dict], series_ids: list[str]) -> d
                     values["bond.us.real_10y"] - values["bond.us.breakeven_10y"]))
             elif identifier == "share_partition_100":
                 required = {f"wealth.us.{group}_share" for group in ("top1", "next9", "middle40", "bottom50")}
-                if set(series_ids) != required:
+                if set(series_ids) not in (required, fine_wealth_ids):
                     raise ValueError("wrong_partition_check_inputs")
                 # Negative net-worth shares are economically possible; do not
                 # reject them using a fictitious universal 0..100 constraint.

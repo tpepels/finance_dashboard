@@ -1,0 +1,55 @@
+{
+  "scope": "The OECD CSV fixture retains one original native row for each of the13 observed sector/entry/transaction combinations, preserving all native field strings. Eurostat JSON fixtures are complete retained originals. UN investigation HTML/error receipts/bodies match the code-pinned original hashes; the audit report JSON is not accepted as source evidence.",
+  "sources": {
+    "profit.oecd38.corporate_gross_surplus_gdp": {
+      "source_manifest_sha256": "952b17cf3ec8b237672d09e64ca2ea406d2b50c1d4b38cbc9e2354c065fe1839",
+      "originals": [
+        {
+          "url": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/A.AUS+AUT+BEL+CAN+CHE+CHL+COL+CRI+CZE+DEU+DNK+ESP+EST+FIN+FRA+GBR+GRC+HUN+IRL+ISL+ISR+ITA+JPN+KOR+LTU+LUX+LVA+MEX+NLD+NOR+NZL+POL+PRT+SVK+SVN+SWE+TUR+USA.S11+S12+S1.S1.C+D.B2G+B1G+D21X31._Z._Z.XDC.S.V.N.T0800?format=csvfile&startPeriod=1990",
+          "bytes": 1486378,
+          "sha256": "e797a86f64aa2973ebe8af679b8d63cba0e33dc1b3c065aafcf27e3c54f17cbb"
+        },
+        {
+          "url": "https://api.worldbank.org/v2/country/all/indicator/NY.GDP.MKTP.CD?format=json&per_page=20000&date=1990%3A2026",
+          "bytes": 2025971,
+          "sha256": "5744b68fc460e040ac4c1c581b595651d71a41c2b9d8d058a6589b143f5e5145"
+        },
+        {
+          "url": "https://api.worldbank.org/v2/country/all/indicator/NY.GDP.MKTP.CN?format=json&per_page=20000&date=1990%3A2026",
+          "bytes": 1979857,
+          "sha256": "aabdd003d64e3925961af58b2d11ddf2bcedd78ea5072ab0c311ae7636198c77"
+        }
+      ]
+    },
+    "profit.eu27.corporate_operating_surplus_gdp": {
+      "source_manifest_sha256": "e38a8d824f560140de6d030156784c68c597c8adf2a635bbd560a95556b7deeb",
+      "originals": [
+        {
+          "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/nasa_10_nf_tr?freq=A&unit=CP_MEUR&direct=RECV&sector=S11&na_item=B2A3G&geo=EU27_2020",
+          "bytes": 5740,
+          "sha256": "096237ae87c0230a243f859e737d43d0ce5d42f75fb50c0cfbf54119ce7f118b"
+        },
+        {
+          "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/nasa_10_nf_tr?freq=A&unit=CP_MEUR&direct=RECV&sector=S12&na_item=B2A3G&geo=EU27_2020",
+          "bytes": 5709,
+          "sha256": "2725ca05c4f56f06a0708e3cd8574604de0cf2268e47b22c1fe9076b88f1758e"
+        },
+        {
+          "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/nasa_10_nf_tr?freq=A&unit=CP_MEUR&direct=RECV&sector=S1&na_item=B1GQ&geo=EU27_2020",
+          "bytes": 5792,
+          "sha256": "cbb93dae3da3af98c3ae3f7f71bd64582405d7d5b8a16ca46d47f3dd28e131b1"
+        }
+      ]
+    },
+    "profit.eu27.nonfinancial_gross_surplus_value_added": {
+      "source_manifest_sha256": "5e0a9b76720e5b279f198cd3ddac081f1cad2851c28ad61616394c81ce932825",
+      "originals": [
+        {
+          "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/nasa_10_ki?freq=A&unit=PC&sector=S11&geo=EU27_2020&na_item=B2G_B3G_RAT_S11",
+          "bytes": 5618,
+          "sha256": "6f8cafe0f0acc984a0b9cb052f5f82fdc89a0061fce85013d0639668ea85a8db"
+        }
+      ]
+    }
+  }
+}

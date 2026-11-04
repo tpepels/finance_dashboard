@@ -42,14 +42,11 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
     only when a vintage root is supplied; they do not imply first publication.
     """
     root = Path(evidence_root)
-    analysis_ids = {analysis["id"] for analysis in document["analyses"]}
-    artifacts = set()
-    if "G06" in analysis_ids:
-        artifacts.update({"icio", "tiva"})
-    if "G03" in analysis_ids:
-        artifacts.update({"cvm", "taiwan_profits"})
-    if analysis_ids & {"G01", "P01"}:
-        artifacts.update({"sec_holdings", "ucits_holdings"})
+    artifacts = {key for analysis in document["analyses"]
+                 for key in analysis.get("context_artifact_ids", [])}
+    artifacts.update(key for analysis in document["analyses"]
+                     for role in analysis["comparison_contract"]["original_requirements"]
+                     for key in role["artifact_ids"])
     with Session(engine, autoflush=False) as session:
         if engine.dialect.name == "postgresql":
             session.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"))

@@ -246,4 +246,4 @@ class ConstructedSourceTests(unittest.TestCase):
         with TemporaryDirectory() as temp:
             item = audit(Path(temp), 'concentration.global.msci_acwi_published_top10', {})
             self.assertFalse(item['source_values_match'])
-            self.assertEqual(item['failure_code'], 'source_reconciliation_unsupported')
+            self.assertEqual(item['failure_code'], 'original_msci_documents_missing_or_invalid')

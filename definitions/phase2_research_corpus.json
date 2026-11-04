@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "approved_phase1_version": "2026-11-03",
   "phase": "phase2",
   "status": "requirements_and_source_inventory",
@@ -276,7 +276,9 @@
               "population": "OECD country or explicitly named published area",
               "concept": "Amplitude-adjusted growth-cycle index, average 100"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "quarterly_real_gdp",
@@ -293,7 +295,9 @@
               "population": "US domestic economy",
               "concept": "BEA quarterly real GDP chained-dollar volume level"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "industrial_production",
@@ -310,7 +314,9 @@
               "population": "US industrial production",
               "concept": "Fed G.17 real industrial-production index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "harmonized_unemployment",
@@ -327,7 +333,9 @@
               "population": "US civilian labour force",
               "concept": "BLS seasonally adjusted unemployment rate"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "industry_diffusion",
@@ -342,7 +350,9 @@
               "population": "G.17 industry production sample",
               "concept": "Source-published industrial-production diffusion"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -375,7 +385,8 @@
         "gdp.real_growth.eu",
         "gdp.real_growth.jp",
         "gdp.real_growth.us"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "C02",
@@ -408,7 +419,9 @@
               "population": "US Treasury constant-maturity instruments",
               "concept": "10-year minus 3-month nominal yield spread"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "published_sahm",
@@ -425,7 +438,9 @@
               "population": "US civilian unemployment population",
               "concept": "Published real-time Sahm recession indicator"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "recession_chronology",
@@ -442,7 +457,9 @@
               "population": "US economy",
               "concept": "Retrospectively classified US recession months"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "chronology_announcements",
@@ -454,7 +471,10 @@
               ],
               "concept": "Public availability of NBER classifications"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "events",
+            "artifact_ids": [],
+            "input_requirement": "Original peak/trough announcement dates and available chronology versions, distinct from recession months."
           }
         ],
         "variants": [
@@ -505,7 +525,8 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "C03",
@@ -545,7 +566,9 @@
               "population": "Published WDI country or named area aggregate",
               "concept": "Annual real GDP percentage growth"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -578,7 +601,8 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "C05",
@@ -609,7 +633,9 @@
               "population": "US economy",
               "concept": "Real GDP level"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "employment_level",
@@ -626,7 +652,9 @@
               "concept": "BLS PAYEMS employment level",
               "unit": "thousands_persons"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "industrial_production_level",
@@ -643,7 +671,9 @@
               "population": "US industrial production",
               "concept": "Real industrial-production index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "recession_chronology",
@@ -660,7 +690,9 @@
               "population": "US economy",
               "concept": "NBER recession chronology"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "independent_shock_events",
@@ -672,7 +704,10 @@
               ],
               "concept": "Dated shock events and recovery reference periods"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "events",
+            "artifact_ids": [],
+            "input_requirement": "Independently documented shock-event dates and pre-shock reference eligibility; a pandemic shock is distinct from NBER recession months."
           }
         ],
         "variants": [
@@ -704,7 +739,8 @@
       "context_series_ids": [
         "activity.us.unemployment_rate",
         "gdp.real_growth.us"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "C06",
@@ -738,7 +774,9 @@
               "population": "Named country CPI basket",
               "concept": "Annual average consumer-price inflation"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "weo_real_gdp_growth",
@@ -759,7 +797,9 @@
               "population": "Named country economy",
               "concept": "WEO annual real GDP growth with source status"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "brent_price",
@@ -776,7 +816,9 @@
               "population": "World Bank quoted Brent market",
               "concept": "Monthly nominal Brent crude price in USD/barrel"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "gas_price",
@@ -792,7 +834,9 @@
                 "WORLD"
               ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "food_price",
@@ -808,7 +852,9 @@
                 "WORLD"
               ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -870,7 +916,8 @@
         "gdp.real_growth.jp",
         "gdp.real_growth.us",
         "gdp.real_growth.world"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "M01",
@@ -901,7 +948,9 @@
               "population": "US overnight federal-funds transactions",
               "concept": "Effective federal funds rate"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "ecb_deposit_facility",
@@ -918,7 +967,9 @@
               "population": "Euro-area ECB deposit facility",
               "concept": "Declared deposit-facility policy setting"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "boj_overnight_call",
@@ -933,7 +984,9 @@
               "population": "Japan uncollateralized overnight call market",
               "concept": "Realized overnight call rate"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "fed_target_lower",
@@ -949,7 +1002,9 @@
               ],
               "concept": "Federal-funds target-range lower bound"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "fed_target_upper",
@@ -966,7 +1021,9 @@
               "population": "US federal-funds target corridor",
               "concept": "Federal-funds target-range upper bound"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -1001,7 +1058,8 @@
         "policy_rate.ea.bis",
         "policy_rate.jp.bis",
         "policy_rate.us.bis"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "M02",
@@ -1032,7 +1090,9 @@
               "population": "US Treasury 10-year constant-maturity instrument",
               "concept": "Nominal annual yield"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "real_10y_yield",
@@ -1049,7 +1109,9 @@
               "population": "US Treasury 10-year inflation-indexed constant-maturity instrument",
               "concept": "Real annual yield"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "published_10y_breakeven",
@@ -1066,7 +1128,9 @@
               "population": "US nominal and TIPS 10-year Treasury instruments",
               "concept": "Inflation compensation including risk/liquidity premia"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -1101,7 +1165,8 @@
       "context_series_ids": [
         "rates.us.nominal_2y",
         "rates.us.nominal_3m"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "M04",
@@ -1124,7 +1189,15 @@
               "frequency": "D",
               "concept": "Named nominal spot/reference FX quote"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "fx_history",
+            "artifact_ids": [],
+            "input_requirement": "Original currency-pair FX observations with quote direction, fixing time and source calendar. Existing separate FX storage is not a canonical macro-series binding.",
+            "external_sources": [
+              "USD",
+              "GBP",
+              "CHF"
+            ]
           },
           {
             "role": "effective_federal_funds",
@@ -1140,7 +1213,9 @@
               ],
               "concept": "Effective federal funds rate"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "ecb_deposit_facility",
@@ -1157,7 +1232,9 @@
               "population": "Euro area",
               "concept": "ECB deposit-facility rate"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "boj_overnight_call",
@@ -1171,7 +1248,9 @@
               ],
               "concept": "Uncollateralized overnight call rate"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -1205,7 +1284,8 @@
         "policy_rate.ea.bis",
         "policy_rate.jp.bis",
         "policy_rate.us.bis"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "F01",
@@ -1228,7 +1308,9 @@
               "population": "Private non-financial sector",
               "concept": "Outstanding credit stock in original monetary unit"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "published_credit_gdp",
@@ -1240,7 +1322,9 @@
               "population": "Private non-financial sector",
               "concept": "Outstanding private credit divided by nominal GDP"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "published_credit_trend",
@@ -1252,7 +1336,9 @@
               "population": "Private non-financial sector",
               "concept": "Source-published one-sided credit/GDP trend"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "published_credit_gap",
@@ -1273,7 +1359,9 @@
               "population": "National or named-area private non-financial sector",
               "concept": "Actual credit/GDP minus one-sided source trend"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "nominal_gdp",
@@ -1283,7 +1371,9 @@
               "frequency": "Q",
               "concept": "Four-quarter nominal domestic GDP flow in compatible currency"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -1315,7 +1405,8 @@
       },
       "context_series_ids": [
         "credit.world.private_gdp_gap_coverage"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "F02",
@@ -1353,7 +1444,9 @@
               "population": "Total private non-financial sector",
               "concept": "Published model-based debt-service/income ratio"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "household_dsr",
@@ -1372,7 +1465,9 @@
               "population": "Households",
               "concept": "Published household debt-service/income ratio"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "corporate_dsr",
@@ -1389,7 +1484,9 @@
               "population": "Non-financial corporations",
               "concept": "Published corporate debt-service/income ratio"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "private_credit_context",
@@ -1400,7 +1497,9 @@
               "population": "Matching private/household/corporate sector",
               "concept": "Outstanding credit/debt context"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -1440,7 +1539,8 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "F03",
@@ -1475,7 +1575,9 @@
               "population": "Private non-financial sector",
               "concept": "Source-published national credit-to-GDP gap"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "private_dsr",
@@ -1496,7 +1598,9 @@
               "population": "Private non-financial sector",
               "concept": "Published debt-service/income ratio"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -1527,7 +1631,8 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "F04",
@@ -1546,7 +1651,9 @@
           {
             "role": "nfci",
             "description": "Original Chicago Fed NFCI with source historical-standardization vintage.",
-            "series_ids": [],
+            "series_ids": [
+              "stress.us.nfci"
+            ],
             "expected": {
               "frequency": "W",
               "unit": "index",
@@ -1555,12 +1662,16 @@
               ],
               "concept": "Published NFCI standardized financial conditions"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "adjusted_nfci",
             "description": "Original Chicago Fed ANFCI with source historical-standardization vintage.",
-            "series_ids": [],
+            "series_ids": [
+              "stress.us.adjusted_nfci"
+            ],
             "expected": {
               "frequency": "W",
               "unit": "index",
@@ -1569,7 +1680,9 @@
               ],
               "concept": "Published adjusted financial-conditions index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "ofr_fsi",
@@ -1580,7 +1693,9 @@
               "unit": "index",
               "concept": "OFR standardized contemporaneous stress index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "high_yield_oas",
@@ -1597,7 +1712,9 @@
               "population": "Source-defined US high-yield corporate bond index",
               "concept": "Option-adjusted credit spread"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -1623,10 +1740,32 @@
               "Native current-source inputs only; no frequency transformation, economic-model estimate, synchronized release or observation first-publication verification is implied."
             ],
             "satisfies_original_method": false
+          },
+          {
+            "id": "chicago_fed_weekly_conditions",
+            "label": "Chicago Fed weekly NFCI and ANFCI, ending Friday",
+            "kind": "approved_narrower",
+            "scope": "Chicago Fed weekly NFCI and ANFCI, ending Friday; exact native periods and source units only.",
+            "series_ids": [
+              "stress.us.nfci",
+              "stress.us.adjusted_nfci"
+            ],
+            "frequency": "W",
+            "start": "1971-01-08",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Original first-publication/common-release and population evidence remain separate; no analytical frequency conversion is performed."
+            ],
+            "satisfies_original_method": false
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "F05",
@@ -1652,7 +1791,9 @@
               "population": "Households",
               "concept": "Household outstanding credit/GDP"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "corporate_credit_gdp",
@@ -1664,19 +1805,32 @@
               "population": "Non-financial corporations",
               "concept": "Corporate outstanding credit/GDP"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "national_government_debt_gdp",
             "description": "Original WEO GGXWDG_NGDP national general-government debt/GDP; a world aggregate cannot bind national sector comparisons.",
-            "series_ids": [],
+            "series_ids": [
+              "fiscal.us.public_debt",
+              "fiscal.jp.public_debt",
+              "fiscal.cn.public_debt"
+            ],
             "expected": {
               "frequency": "A",
               "unit": "percent",
               "population": "National general government",
-              "concept": "Gross government debt/GDP"
+              "concept": "Gross government debt/GDP",
+              "geography": [
+                "CHN",
+                "JPN",
+                "USA"
+              ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "bank_total_assets",
@@ -1686,7 +1840,9 @@
               "population": "Named bank/financial institution sector",
               "concept": "Total balance-sheet assets"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "bank_equity",
@@ -1696,15 +1852,41 @@
               "population": "Same named bank/financial institution sector",
               "concept": "Positive accounting equity denominator"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
-        "variants": []
+        "variants": [
+          {
+            "id": "weo_national_government_debt",
+            "label": "Named national WEO general-government debt/GDP",
+            "kind": "approved_narrower",
+            "scope": "Named national WEO general-government debt/GDP; exact native periods and source units only.",
+            "series_ids": [
+              "fiscal.us.public_debt",
+              "fiscal.jp.public_debt",
+              "fiscal.cn.public_debt"
+            ],
+            "frequency": "A",
+            "start": "2000-01-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Original first-publication/common-release and population evidence remain separate; no analytical frequency conversion is performed."
+            ],
+            "satisfies_original_method": false
+          }
+        ]
       },
       "context_series_ids": [
         "fiscal.world.public_debt",
         "stress.us.high_yield_oas"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "F06",
@@ -1747,7 +1929,9 @@
               "population": "Source-defined residential property market",
               "concept": "Real residential property-price index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "commercial_property_us",
@@ -1764,7 +1948,9 @@
               "population": "US source-defined all-commercial-property market",
               "concept": "Nominal commercial property-price index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "commercial_property_portugal",
@@ -1781,7 +1967,9 @@
               "population": "Portugal source-defined commercial property market",
               "concept": "Annual nominal commercial property-price index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "published_credit_gap",
@@ -1802,7 +1990,9 @@
               "population": "Private non-financial sector",
               "concept": "Published national credit-to-GDP gap"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "debt_service_ratio",
@@ -1829,7 +2019,9 @@
               "population": "Separately identified total-private or household sector",
               "concept": "Published sector debt-service/income ratio"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -1861,7 +2053,8 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "F07",
@@ -1892,7 +2085,9 @@
               "population": "US security brokers and dealers",
               "concept": "Financial asset stock"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "broker_liabilities",
@@ -1909,7 +2104,9 @@
               "population": "US security brokers and dealers",
               "concept": "Liability stock"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "broker_repo_liabilities",
@@ -1926,7 +2123,9 @@
               "population": "US security brokers and dealers",
               "concept": "Repurchase-agreement liability stock"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "money_market_financial_assets",
@@ -1943,7 +2142,9 @@
               "population": "US money market funds",
               "concept": "Financial asset stock, not redemption-risk measure"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "meaningful_sector_equity",
@@ -1956,7 +2157,9 @@
               ],
               "concept": "Source-defined equity and compatible total assets"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "finance_company_balance_sheet",
@@ -1970,7 +2173,10 @@
               "population": "Finance companies",
               "concept": "Source-defined assets/liabilities/funding"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "accounting_panel",
+            "artifact_ids": [],
+            "input_requirement": "Original named finance-company balance-sheet and funding inputs."
           },
           {
             "role": "fund_funding_mismatch",
@@ -1984,7 +2190,10 @@
               "population": "Explicitly named fund classes",
               "concept": "Funding/liquidity structure with NAV treatment"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "accounting_panel",
+            "artifact_ids": [],
+            "input_requirement": "Original named fund liquidity, obligations and redemption/funding mismatch inputs."
           },
           {
             "role": "ofr_fsi",
@@ -1995,7 +2204,9 @@
               "unit": "index",
               "concept": "Published contemporaneous market stress"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -2027,7 +2238,8 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "V01",
@@ -2057,7 +2269,9 @@
               "population": "Shiller US equity sample",
               "concept": "Cyclically adjusted price/real earnings ratio"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "original_equity_price",
@@ -2074,7 +2288,9 @@
               "concept": "Original equity price level",
               "unit": "index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "original_earnings",
@@ -2091,7 +2307,9 @@
               "concept": "Source-defined monthly earnings",
               "unit": "index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "original_cpi",
@@ -2107,7 +2325,9 @@
               ],
               "concept": "Workbook consumer-price index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "original_dividend",
@@ -2124,7 +2344,9 @@
               "concept": "Source dividend and dividend-yield components",
               "unit": "index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "real_treasury_yield",
@@ -2141,7 +2363,9 @@
               "population": "US 10-year TIPS constant-maturity instrument",
               "concept": "Real annual yield"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -2196,7 +2420,8 @@
       },
       "context_series_ids": [
         "bond.us.nominal_10y"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "V02",
@@ -2228,7 +2453,9 @@
               "population": "US domestic nonfinancial corporations",
               "concept": "Published replacement-cost Q ratios"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "q_accounting_components",
@@ -2242,7 +2469,10 @@
               "population": "BEA domestic nonfinancial corporations",
               "concept": "Supporting original Q numerator and denominator components"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "accounting_panel",
+            "artifact_ids": [],
+            "input_requirement": "Original annual market equity, book/market bonds, net liquid assets and net current-cost produced-assets denominator."
           },
           {
             "role": "cape_context",
@@ -2259,7 +2489,9 @@
               "population": "Shiller US listed equity sample",
               "concept": "Published ordinary CAPE"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -2289,7 +2521,8 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "V03",
@@ -2315,7 +2548,9 @@
               "population": "Named comparable regional equity indexes",
               "concept": "Trailing twelve-month index price/earnings"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "regional_forward_pe",
@@ -2327,7 +2562,9 @@
               "population": "Same named regional equity indexes",
               "concept": "Forward consensus earnings valuation"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "regional_composition",
@@ -2337,7 +2574,10 @@
               "population": "Same named regional equity indexes",
               "concept": "Index population and sector mix"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "entity_mapping",
+            "artifact_ids": [],
+            "input_requirement": "Original dated region index constituents, country/sector weights and vendor methodology versions."
           }
         ],
         "variants": []
@@ -2345,7 +2585,8 @@
       "context_series_ids": [
         "valuation.world.global_earnings_yield",
         "valuation.world.global_trailing_pe"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "V05",
@@ -2375,7 +2616,9 @@
               "population": "Shiller US equity sample",
               "concept": "Origin-vintage ordinary CAPE"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "origin_real_yield",
@@ -2392,7 +2635,9 @@
               "population": "US 10-year TIPS constant-maturity instrument",
               "concept": "Origin-vintage real annual yield"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "matched_equity_total_return",
@@ -2410,7 +2655,9 @@
               "concept": "Equity total-return index",
               "price_basis": "real_cpi_deflated"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "inflation_deflator",
@@ -2426,7 +2673,9 @@
               ],
               "concept": "Consumer-price index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -2479,7 +2728,8 @@
       },
       "context_series_ids": [
         "equity.world.msci_acwi_netr_usd"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "L01",
@@ -2510,7 +2760,9 @@
               "concept": "Real output per hour worked",
               "index_base": "2017=100"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "us_nominal_hourly_compensation",
@@ -2528,7 +2780,9 @@
               "concept": "Nominal compensation per hour worked",
               "index_base": "2017=100"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "us_output_deflator",
@@ -2546,7 +2800,9 @@
               "concept": "Value-added output price deflator",
               "index_base": "2017=100"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "oecd_matched_value_added",
@@ -2557,7 +2813,9 @@
               "population": "Declared country-industry scope",
               "concept": "Matched industry gross value added"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "oecd_matched_hours",
@@ -2568,7 +2826,9 @@
               "population": "Same country-industry including defined self-employment",
               "concept": "Total hours worked"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "oecd_matched_compensation",
@@ -2579,7 +2839,9 @@
               "population": "Same country-industry",
               "concept": "Total labour compensation with documented imputation"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "oecd_matched_output_deflator",
@@ -2591,7 +2853,9 @@
               "population": "Same country-industry",
               "concept": "Industry value-added price deflator"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -2644,7 +2908,10 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": [
+        "corporate_accounts"
+      ]
     },
     {
       "id": "L02",
@@ -2668,7 +2935,9 @@
               "population": "Matched national input-output industries",
               "concept": "Compensation of employees"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_operating_surplus",
@@ -2679,7 +2948,9 @@
               "population": "Same matched industries",
               "concept": "Net operating surplus"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "consumption_fixed_capital",
@@ -2690,7 +2961,9 @@
               "population": "Same matched industries",
               "concept": "Consumption of fixed capital"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_production_taxes",
@@ -2701,7 +2974,9 @@
               "population": "Same matched industries",
               "concept": "Net taxes on production"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "gross_value_added",
@@ -2712,7 +2987,9 @@
               "population": "Same matched industries",
               "concept": "Gross value added"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": []
@@ -2724,6 +3001,9 @@
         "labour.jp.pwt_labour_share",
         "labour.us.nonfarm_labour_share_index",
         "labour.us.pwt_labour_share"
+      ],
+      "context_artifact_ids": [
+        "corporate_accounts"
       ]
     },
     {
@@ -2749,7 +3029,9 @@
               "population": "Matched national-account industry/sector",
               "concept": "Net operating surplus flow"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_fixed_capital",
@@ -2760,7 +3042,9 @@
               "population": "Same matched industry/sector",
               "concept": "Current-cost net produced fixed-capital stock"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "employee_compensation",
@@ -2771,7 +3055,9 @@
               "population": "Same matched industry/sector",
               "concept": "Compensation of employees flow"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "consumption_fixed_capital",
@@ -2782,7 +3068,9 @@
               "population": "Same matched industry/sector",
               "concept": "Consumption of fixed capital flow"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "gross_value_added",
@@ -2793,7 +3081,18 @@
               "population": "Same matched industry/sector",
               "concept": "Gross value-added flow"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "artifact_id": "corporate_accounts",
+                "measure": "gross_value_added",
+                "source_id": "profit.oecd38.corporate_gross_surplus_gdp",
+                "sector": "S11",
+                "condition": "Select and verify common NOS, net fixed capital, employee compensation and CFC perimeter, currency and years before binding sector GVA."
+              }
+            ]
           }
         ],
         "variants": []
@@ -2801,6 +3100,9 @@
       "context_series_ids": [
         "profit.eu27.nonfinancial_gross_surplus_value_added",
         "profit.oecd38.corporate_gross_surplus_gdp"
+      ],
+      "context_artifact_ids": [
+        "corporate_accounts"
       ]
     },
     {
@@ -2827,7 +3129,10 @@
               "population": "Framework-defined productive industries/labour",
               "concept": "Variable capital V input"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "accounting_panel",
+            "artifact_ids": [],
+            "input_requirement": "Original industry-level wages and documented productive-labour classification under one selected published framework."
           },
           {
             "role": "productive_surplus_inputs",
@@ -2838,7 +3143,10 @@
               "population": "Same framework industries",
               "concept": "Framework surplus S inputs"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "accounting_panel",
+            "artifact_ids": [],
+            "input_requirement": "Original CE, mixed income, NOS and depreciation inputs for the selected productive-surplus estimate."
           },
           {
             "role": "capital_advance_inputs",
@@ -2849,7 +3157,10 @@
               "population": "Same framework industries",
               "concept": "Constant-capital advance C inputs"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "accounting_panel",
+            "artifact_ids": [],
+            "input_requirement": "Original gross intermediate inputs, net fixed capital, turnover and stock/advance valuation inputs."
           },
           {
             "role": "industry_classification",
@@ -2859,7 +3170,10 @@
               "population": "Selected WIOD/OECD published framework universe",
               "concept": "Framework classification and coverage"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "entity_mapping",
+            "artifact_ids": [],
+            "input_requirement": "Original country-industry concordance and published productive/unproductive classification parameters."
           }
         ],
         "variants": []
@@ -2867,6 +3181,9 @@
       "context_series_ids": [
         "profit.eu27.nonfinancial_gross_surplus_value_added",
         "profit.oecd38.corporate_gross_surplus_gdp"
+      ],
+      "context_artifact_ids": [
+        "corporate_accounts"
       ]
     },
     {
@@ -2884,7 +3201,9 @@
           {
             "role": "net_worth_top_point1",
             "description": "Original Fed DFA top 0.1% household net-worth group share.",
-            "series_ids": [],
+            "series_ids": [
+              "wealth.us.top_point1_share"
+            ],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
@@ -2894,12 +3213,16 @@
               "population": "Top 0.1% of US households by net worth",
               "concept": "Net-worth share"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_worth_next_point9",
             "description": "Original Fed DFA next 0.9% household net-worth group share.",
-            "series_ids": [],
+            "series_ids": [
+              "wealth.us.next_point9_share"
+            ],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
@@ -2909,7 +3232,9 @@
               "population": "99th to 99.9th household wealth percentiles",
               "concept": "Net-worth share"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_worth_top1_aggregate",
@@ -2926,7 +3251,9 @@
               "population": "99th to 100th US household wealth percentiles",
               "concept": "Net-worth share"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_worth_next9",
@@ -2943,7 +3270,9 @@
               "population": "90th to 99th US household wealth percentiles",
               "concept": "Net-worth share"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_worth_middle40",
@@ -2960,7 +3289,9 @@
               "population": "50th to 90th US household wealth percentiles",
               "concept": "Net-worth share"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_worth_bottom50",
@@ -2977,7 +3308,9 @@
               "population": "Bottom 50% of US households by wealth",
               "concept": "Net-worth share"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "financial_asset_components",
@@ -2991,7 +3324,10 @@
               "population": "Same DFA household wealth groups",
               "concept": "Financial asset stocks by category"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "accounting_panel",
+            "artifact_ids": [],
+            "input_requirement": "Original DFA financial-wealth asset components by identical household group and release."
           },
           {
             "role": "group_assets_liabilities",
@@ -3005,7 +3341,10 @@
               "population": "Same DFA household wealth groups",
               "concept": "Balance-sheet stock denominators"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "accounting_panel",
+            "artifact_ids": [],
+            "input_requirement": "Original same-release total household/group assets, liabilities and net-worth denominators."
           }
         ],
         "variants": [
@@ -3035,10 +3374,37 @@
               "A near-100 share sum checks partition consistency, not original common-release identity or first publication."
             ],
             "satisfies_original_method": false
+          },
+          {
+            "id": "dfa_five_wealth_groups",
+            "label": "Five original DFA net-worth percentile groups",
+            "kind": "approved_narrower",
+            "scope": "Five original DFA net-worth percentile groups; exact native periods and source units only.",
+            "series_ids": [
+              "wealth.us.top_point1_share",
+              "wealth.us.next_point9_share",
+              "wealth.us.next9_share",
+              "wealth.us.middle40_share",
+              "wealth.us.bottom50_share"
+            ],
+            "frequency": "Q",
+            "start": "1989-07-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [
+              "share_partition_100"
+            ],
+            "limitations": [
+              "Original first-publication/common-release and population evidence remain separate; no analytical frequency conversion is performed."
+            ],
+            "satisfies_original_method": false
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "L07",
@@ -3079,7 +3445,9 @@
                 "WO"
               ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "pretax_income_top10",
@@ -3106,7 +3474,9 @@
               "population": "Equal-split adults over 20 (992,j); original world code order retained",
               "concept": "Top 10% pre-tax national-income fraction"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "pretax_income_bottom50",
@@ -3133,7 +3503,9 @@
               "population": "Equal-split adults over 20 (992,j); original world code order retained",
               "concept": "Bottom 50% pre-tax national-income fraction"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "wiid_gini",
@@ -3144,7 +3516,9 @@
               "population": "Source survey population and equivalence scale",
               "concept": "Survey Gini, distinct from WID national-account income shares"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "dfa_wealth_context",
@@ -3164,7 +3538,9 @@
               "population": "US household net-worth percentile groups",
               "concept": "Net-worth shares, distinct from income flows"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -3257,7 +3633,8 @@
         "inequality.us.net_personal_wealth.top10",
         "inequality.world.net_personal_wealth.bottom50",
         "inequality.world.net_personal_wealth.top10"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "G01",
@@ -3273,7 +3650,10 @@
           "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
           "valid_concept": "Vanguard Total World Fund issuer concentration",
           "frequency": "Q",
-          "data_verified": false
+          "data_verified": false,
+          "artifact_ids": [
+            "sec_holdings"
+          ]
         },
         {
           "tier": "second",
@@ -3281,7 +3661,8 @@
           "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
           "valid_concept": "Dated index concentration snapshot",
           "frequency": "irregular",
-          "data_verified": false
+          "data_verified": false,
+          "artifact_ids": []
         }
       ],
       "comparison_contract": {
@@ -3297,7 +3678,14 @@
               "population": "MSCI ACWI original eligible securities",
               "concept": "Complete dated security constituent weights"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "positions",
+            "artifact_ids": [
+              "sec_holdings",
+              "ucits_holdings",
+              "msci_concentration"
+            ],
+            "input_requirement": "Original dated complete MSCI ACWI free-float security weights and index universe."
           },
           {
             "role": "issuer_crosswalk",
@@ -3307,25 +3695,40 @@
               "population": "Same MSCI ACWI securities",
               "concept": "Unique issuer aggregation mapping"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "entity_mapping",
+            "artifact_ids": [
+              "sec_holdings",
+              "ucits_holdings"
+            ],
+            "input_requirement": "Original dated security-to-ultimate-issuer/share-class crosswalk."
           },
           {
             "role": "constituent_count",
             "description": "Original number of constituents with corresponding methodology version.",
-            "series_ids": [],
+            "series_ids": [
+              "concentration.global.msci_acwi_constituent_count"
+            ],
             "expected": {
               "unit": "count",
               "population": "Same MSCI ACWI universe",
-              "concept": "Dated complete index population size"
+              "concept": "Dated complete index population size",
+              "frequency": "M",
+              "geography": [
+                "MSCI_ACWI_DM_EM_892400"
+              ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": []
       },
       "context_series_ids": [
         "concentration.global.msci_acwi_published_top10"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "G02",
@@ -3349,7 +3752,12 @@
               "population": "MSCI ACWI assigned countries",
               "concept": "Investable index country weights"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "allocation",
+            "artifact_ids": [
+              "msci_concentration"
+            ],
+            "input_requirement": "Original dated MSCI ACWI free-float index country weights and membership."
           },
           {
             "role": "country_nominal_gdp",
@@ -3378,7 +3786,9 @@
                 "JPN"
               ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "world_nominal_gdp",
@@ -3395,7 +3805,9 @@
                 "WLD"
               ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -3434,7 +3846,8 @@
       "context_series_ids": [
         "valuation.world.listed_market_cap_usd",
         "valuation.world.listed_market_cap_world_gdp"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "G03",
@@ -3476,7 +3889,14 @@
               "population": "Eligible worldwide listed ultimate parents",
               "concept": "Consolidated parent-attributable net income"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "filing_panel",
+            "artifact_ids": [
+              "cvm",
+              "taiwan_profits",
+              "meip"
+            ],
+            "input_requirement": "Original complete fiscal-period after-tax consolidated income attributable to listed parent, including losses."
           },
           {
             "role": "issuer_universe_parent_mapping",
@@ -3486,7 +3906,14 @@
               "population": "Worldwide listed ultimate-parent universe",
               "concept": "Issuer identity, consolidation and coverage"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "entity_mapping",
+            "artifact_ids": [
+              "cvm",
+              "taiwan_profits",
+              "meip"
+            ],
+            "input_requirement": "Original dated eligible listed-parent universe, LEI/parent deduplication and population coverage denominator."
           },
           {
             "role": "fiscal_period_currency",
@@ -3497,7 +3924,14 @@
               "population": "Same eligible listed parents",
               "concept": "Annual fiscal-period and currency identity"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "filing_panel",
+            "artifact_ids": [
+              "cvm",
+              "taiwan_profits",
+              "meip"
+            ],
+            "input_requirement": "Original reporting currency, monetary scale and complete fiscal-period mapping for every issuer."
           },
           {
             "role": "original_filing_dates",
@@ -3507,7 +3941,14 @@
               "population": "Same original financial statements",
               "concept": "Public reporting and revision availability"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "events",
+            "artifact_ids": [
+              "cvm",
+              "taiwan_profits",
+              "meip"
+            ],
+            "input_requirement": "Original filing/amendment publication dates and restatement availability."
           },
           {
             "role": "fiscal_fx",
@@ -3516,7 +3957,10 @@
             "expected": {
               "concept": "Reporting currency to USD flow conversion"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "fx_history",
+            "artifact_ids": [],
+            "input_requirement": "Compatible original fiscal-period FX conversion convention and rates."
           },
           {
             "role": "world_nominal_gdp",
@@ -3532,12 +3976,63 @@
                 "WLD"
               ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
-        "variants": []
+        "variants": [
+          {
+            "id": "eurostat_nfc_gross_profit_share",
+            "label": "EU27 nonfinancial corporate gross profit share",
+            "kind": "approved_fallback",
+            "scope": "Original published Eurostat S11 gross operating surplus and mixed income as percent of S11 value added; neither listed-company net profit nor GDP share.",
+            "series_ids": [
+              "profit.eu27.nonfinancial_gross_surplus_value_added"
+            ],
+            "frequency": "A",
+            "start": "1999-01-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "EU27 national accounts gross surplus/value added, listed and unlisted NFCs; no worldwide parent-consolidated after-tax profit claim.",
+              "First release, country/period coverage and exact source sector/method remain separately visible."
+            ],
+            "satisfies_original_method": false
+          },
+          {
+            "id": "oecd_corporate_gross_surplus_context",
+            "label": "Named OECD corporate-sector gross surplus/GDP",
+            "kind": "approved_fallback",
+            "scope": "Fixed OECD38 sample, S11 plus S12 gross operating surplus/GDP with explicit GDP coverage and member count; national-account sectors, including financial corporations, not listed-parent income.",
+            "series_ids": [
+              "profit.oecd38.corporate_gross_surplus_gdp",
+              "profit.oecd38.corporate_gross_surplus_gdp_coverage",
+              "profit.oecd38.corporate_gross_surplus_member_count"
+            ],
+            "frequency": "A",
+            "start": "2000-01-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "S11 and S12, gross surplus and a GDP denominator remain explicit; this is broader than NFC-only profit share and differs from net listed-parent profits.",
+              "Contributing country coverage changes; original coverage and member count remain paired with the ratio.",
+              "Current-source evidence only; first-publication histories remain unverified."
+            ],
+            "satisfies_original_method": false
+          }
+        ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": [
+        "corporate_accounts"
+      ]
     },
     {
       "id": "G05",
@@ -3563,7 +4058,9 @@
               "population": "Named domestic BOP jurisdiction",
               "concept": "Current-account flow"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "net_international_investment_position",
@@ -3575,7 +4072,9 @@
               "population": "Same BOP jurisdiction",
               "concept": "Net international investment position stock"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "private_credit_outstanding",
@@ -3586,7 +4085,9 @@
               "population": "Same-jurisdiction private non-financial sector",
               "concept": "Outstanding private-credit stock"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "nominal_gdp",
@@ -3609,7 +4110,9 @@
                 "CHN"
               ]
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "published_current_account_ratio",
@@ -3632,7 +4135,9 @@
               "population": "Named WEO country economy",
               "concept": "Published current-account/GDP ratio"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -3670,7 +4175,8 @@
       "context_series_ids": [
         "credit.world.private_gdp_gap",
         "credit.world.private_gdp_gap_coverage"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "G06",
@@ -3694,7 +4200,12 @@
               "population": "Full ICIO country-industry universe including rest of world",
               "concept": "Intermediate transaction matrix in original monetary units"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "matrix",
+            "artifact_ids": [
+              "icio"
+            ],
+            "input_requirement": "Original full ICIO country-by-industry intermediate transaction matrix Z."
           },
           {
             "role": "gross_output",
@@ -3705,7 +4216,12 @@
               "population": "Same full ICIO country-industry universe",
               "concept": "Gross output vector"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "matrix",
+            "artifact_ids": [
+              "icio"
+            ],
+            "input_requirement": "Original same-edition country-industry gross output vector x."
           },
           {
             "role": "final_demand",
@@ -3716,7 +4232,12 @@
               "population": "Same full ICIO country-industry universe",
               "concept": "Purchasing-country final-demand matrix"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "matrix",
+            "artifact_ids": [
+              "icio"
+            ],
+            "input_requirement": "Original same-edition final demand f by purchasing country and origin industry."
           },
           {
             "role": "industry_value_added",
@@ -3727,7 +4248,13 @@
               "population": "Same full ICIO country-industry universe",
               "concept": "Industry gross value-added vector"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "matrix",
+            "artifact_ids": [
+              "icio",
+              "amne"
+            ],
+            "input_requirement": "Original same-edition industry gross value added VA; country TiVA totals cannot substitute for industry matrix inputs."
           },
           {
             "role": "tiva_foreign_final_demand_va",
@@ -3756,7 +4283,9 @@
               "population": "Total activity _T; counterpart world W; selected countries",
               "concept": "Published FFD_DVA level"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "tiva_total_value_added",
@@ -3785,7 +4314,9 @@
               "population": "Identical total activity/country/year/counterpart",
               "concept": "Published VALU denominator"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "tiva_foreign_final_demand_share",
@@ -3814,7 +4345,9 @@
               "population": "Identical total activity/country/year/counterpart",
               "concept": "Published FFD_DVA percent of value added"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -3865,7 +4398,10 @@
           }
         ]
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": [
+        "tiva"
+      ]
     },
     {
       "id": "P01",
@@ -3882,7 +4418,10 @@
           "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
           "valid_concept": "Actual fund-reported historical holdings",
           "frequency": "A/H",
-          "data_verified": false
+          "data_verified": false,
+          "artifact_ids": [
+            "ucits_holdings"
+          ]
         },
         {
           "tier": "second",
@@ -3890,7 +4429,8 @@
           "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
           "valid_concept": "US global fund reference, not European UCITS holdings",
           "frequency": "Q",
-          "data_verified": false
+          "data_verified": false,
+          "artifact_ids": []
         }
       ],
       "comparison_contract": {
@@ -3905,7 +4445,10 @@
               "unit": "ratio",
               "concept": "Portfolio fund allocation at actual holding-as-of date"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "allocation",
+            "artifact_ids": [],
+            "input_requirement": "Dated original or explicitly user-declared portfolio fund weights."
           },
           {
             "role": "fund_constituents",
@@ -3916,7 +4459,13 @@
               "population": "Named legal funds and share classes",
               "concept": "Holding fractions and source NAV reconciliation"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "positions",
+            "artifact_ids": [
+              "sec_holdings",
+              "ucits_holdings"
+            ],
+            "input_requirement": "Original actual named-fund reported security positions including cash, derivatives and residuals; UCITS and SEC funds remain separate."
           },
           {
             "role": "security_issuer_identity",
@@ -3926,7 +4475,13 @@
               "population": "Same reported securities",
               "concept": "Security-to-issuer identity"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "entity_mapping",
+            "artifact_ids": [
+              "sec_holdings",
+              "ucits_holdings"
+            ],
+            "input_requirement": "Original security ISIN/CUSIP/LEI and dated issuer mappings."
           },
           {
             "role": "issuer_country_sector",
@@ -3936,7 +4491,13 @@
               "population": "Same reported issuers",
               "concept": "Issuer-country and sector exposure mapping"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "entity_mapping",
+            "artifact_ids": [
+              "sec_holdings",
+              "ucits_holdings"
+            ],
+            "input_requirement": "Dated original registered/assigned issuer country and sector classification."
           },
           {
             "role": "filing_availability",
@@ -3946,12 +4507,19 @@
               "population": "Same original holdings reports",
               "concept": "Disclosure availability distinct from portfolio date"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "events",
+            "artifact_ids": [
+              "sec_holdings",
+              "ucits_holdings"
+            ],
+            "input_requirement": "Original holdings-as-of, filing/report publication and amendment dates."
           }
         ],
         "variants": []
       },
-      "context_series_ids": []
+      "context_series_ids": [],
+      "context_artifact_ids": []
     },
     {
       "id": "P02",
@@ -4006,7 +4574,9 @@
               "population": "MSCI ACWI large/mid-cap developed/emerging equities",
               "concept": "USD net dividend-reinvested equity index level"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "global_bond_total_return",
@@ -4018,7 +4588,9 @@
               "population": "Declared original global aggregate bond universe",
               "concept": "Bond total-return index, not yield or US-only aggregate"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "gold_price",
@@ -4035,7 +4607,9 @@
               "population": "Source-defined gold bullion quote",
               "concept": "Monthly average nominal USD/troy-ounce price, not investable net total return"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "currency_conversion",
@@ -4045,7 +4619,19 @@
               "frequency": "M",
               "concept": "Explicit common-currency FX conversion"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "fx_history",
+            "artifact_ids": [],
+            "input_requirement": "Original compatible FX series when converting any selected return source to the declared common currency.",
+            "derivation": {
+              "method": "explicit_common_currency_conversion",
+              "requires": [
+                "all_selected_source_currencies",
+                "declared_base_currency",
+                "compatible_fx_quotes_if_needed"
+              ],
+              "status_is_runtime_derived": true
+            }
           }
         ],
         "variants": [
@@ -4159,7 +4745,8 @@
         "returns.swinkels.jp.sovereign_10y_modelled_local",
         "returns.swinkels.no.sovereign_10y_modelled_local",
         "returns.swinkels.se.sovereign_10y_modelled_local"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "P03",
@@ -4199,7 +4786,9 @@
               "population": "Source-defined MSCI ACWI asset comparator",
               "concept": "Net dividend-reinvested investment-value index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "benchmark_risk_free",
@@ -4208,7 +4797,9 @@
             "expected": {
               "concept": "Source-defined benchmark and risk-free return"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "recession_chronology",
@@ -4225,7 +4816,9 @@
               "population": "US economy",
               "concept": "US recession phases"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "market_shock_dates",
@@ -4234,7 +4827,10 @@
             "expected": {
               "concept": "Dated market-shock evidence"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "events",
+            "artifact_ids": [],
+            "input_requirement": "Independently sourced market-crisis/shock dates, separate from recession classifications."
           }
         ],
         "variants": []
@@ -4248,7 +4844,8 @@
         "returns.french.emerging.risk_free_usd",
         "returns.swinkels.us.sovereign_10y_modelled_local",
         "returns.swinkels.us.sovereign_10y_original_1962_usd"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "P04",
@@ -4280,7 +4877,10 @@
               "unit": "ratio",
               "concept": "Dated portfolio and currency allocations"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "allocation",
+            "artifact_ids": [],
+            "input_requirement": "Original or explicitly declared scenario allocation and underlying currency weights."
           },
           {
             "role": "nominal_bond_yield",
@@ -4297,7 +4897,9 @@
               "population": "US 10-year Treasury source comparator",
               "concept": "Nominal annual bond yield"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "modified_duration",
@@ -4307,7 +4909,10 @@
               "unit": "years",
               "concept": "Modified duration"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "scenario_parameter",
+            "artifact_ids": [],
+            "input_requirement": "Source-documented modified duration or explicitly labelled hypothetical scenario assumption."
           },
           {
             "role": "convexity",
@@ -4316,7 +4921,10 @@
             "expected": {
               "concept": "Bond convexity with units documented"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "scenario_parameter",
+            "artifact_ids": [],
+            "input_requirement": "Source-documented convexity where the selected scenario includes the second-order term."
           },
           {
             "role": "fx_quotes",
@@ -4325,7 +4933,15 @@
             "expected": {
               "concept": "Scenario currency conversion"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "fx_history",
+            "artifact_ids": [],
+            "input_requirement": "Original domestic/foreign spot FX with declared quote direction.",
+            "external_sources": [
+              "USD",
+              "GBP",
+              "CHF"
+            ]
           },
           {
             "role": "inflation_index",
@@ -4342,7 +4958,9 @@
               "frequency": "M",
               "index_base": "1982-1984=100"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "asset_class_total_return",
@@ -4359,7 +4977,9 @@
               "population": "MSCI ACWI equity comparator",
               "concept": "Asset total-return benchmark"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": []
@@ -4382,7 +5002,8 @@
         "returns.swinkels.se.sovereign_10y_modelled_local",
         "returns.swinkels.us.sovereign_10y_modelled_local",
         "returns.swinkels.us.sovereign_10y_original_1962_usd"
-      ]
+      ],
+      "context_artifact_ids": []
     },
     {
       "id": "P05",
@@ -4414,7 +5035,10 @@
               "unit": "ratio",
               "concept": "Declared ex-ante target allocation"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "allocation",
+            "artifact_ids": [],
+            "input_requirement": "Timestamped target weights and policy known before each simulated rebalance."
           },
           {
             "role": "actual_weights",
@@ -4424,7 +5048,10 @@
               "unit": "ratio",
               "concept": "Portfolio allocation and cash-flow inputs"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "allocation",
+            "artifact_ids": [],
+            "input_requirement": "Dated initial/actual allocation and original portfolio cash flows where applicable."
           },
           {
             "role": "constituent_total_returns",
@@ -4434,7 +5061,10 @@
               "population": "Selected investable portfolio constituents",
               "concept": "Distribution-reinvested constituent returns"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "positions",
+            "artifact_ids": [],
+            "input_requirement": "Original dated investable constituent total returns with inception and delisting/survivorship evidence."
           },
           {
             "role": "benchmark_total_return",
@@ -4451,7 +5081,9 @@
               "population": "MSCI ACWI benchmark comparator",
               "concept": "Benchmark USD NETR index"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "benchmark_weights",
@@ -4461,7 +5093,10 @@
               "unit": "ratio",
               "concept": "Benchmark allocations"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "allocation",
+            "artifact_ids": [],
+            "input_requirement": "Dated benchmark weights appropriate to the selected attribution/comparison."
           },
           {
             "role": "rebalance_policy",
@@ -4470,7 +5105,10 @@
             "expected": {
               "concept": "Rebalance schedule/policy"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "policy",
+            "artifact_ids": [],
+            "input_requirement": "Predeclared rebalance dates/calendar or threshold policy."
           },
           {
             "role": "trading_costs",
@@ -4479,7 +5117,10 @@
             "expected": {
               "concept": "Transaction-cost policy"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "policy",
+            "artifact_ids": [],
+            "input_requirement": "Dated commissions/spreads or explicit scenario cost assumptions."
           },
           {
             "role": "tax_policy",
@@ -4488,7 +5129,10 @@
             "expected": {
               "concept": "Tax and withholding scenario policy"
             },
-            "temporal_requirement": "source_asof"
+            "temporal_requirement": "source_asof",
+            "input_type": "policy",
+            "artifact_ids": [],
+            "input_requirement": "Explicit withholding/tax scenario with applicability dates, rather than future-known policy silently applied to history."
           },
           {
             "role": "execution_fx",
@@ -4497,7 +5141,15 @@
             "expected": {
               "concept": "Execution-currency conversion"
             },
-            "temporal_requirement": "first_publication"
+            "temporal_requirement": "first_publication",
+            "input_type": "fx_history",
+            "artifact_ids": [],
+            "input_requirement": "Original declared execution/base-currency FX conversion observations.",
+            "external_sources": [
+              "USD",
+              "GBP",
+              "CHF"
+            ]
           }
         ],
         "variants": []
@@ -4511,7 +5163,8 @@
         "returns.french.emerging.risk_free_usd",
         "returns.swinkels.us.sovereign_10y_modelled_local",
         "returns.swinkels.us.sovereign_10y_original_1962_usd"
-      ]
+      ],
+      "context_artifact_ids": []
     }
   ]
 }

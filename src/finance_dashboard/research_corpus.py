@@ -13,6 +13,8 @@ from typing import Any
 
 from .catalog import DEFAULT_ROOT
 from .comparative_corpus import CHECK_IDS
+from .research_readiness import INPUT_TYPES, role_resolution, readiness_decision, resolution_summary
+from .research_artifacts import ARTIFACT_IDS
 
 FAMILIES = {"C": 5, "M": 3, "F": 7, "V": 4, "L": 6, "G": 5, "P": 5}
 # Exact owner-approved 35 first-class IDs: per-family totals alone do not
@@ -80,6 +82,18 @@ def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> 
             roles.add(role)
         if not str(requirement.get("description", "")).strip():
             errors.append(f"{ident}: requirement source definition required")
+        if requirement.get("input_type") not in INPUT_TYPES:
+            errors.append(f"{ident}: explicit input representation required")
+        artifacts = requirement.get("artifact_ids")
+        if (not isinstance(artifacts, list) or len(artifacts) != len(set(artifacts))
+                or any(key not in ARTIFACT_IDS for key in artifacts)):
+            errors.append(f"{ident}: unknown/duplicate original artifact binding")
+        if requirement.get("input_type") == "scalar_history" and artifacts:
+            errors.append(f"{ident}: scalar role cannot substitute an artifact for original scalar values")
+        for candidate in requirement.get("source_candidates", []):
+            if (candidate.get("artifact_id") not in ARTIFACT_IDS or candidate.get("source_id") not in registry
+                    or not all(isinstance(candidate.get(key), str) and candidate[key].strip() for key in ("measure", "sector", "condition"))):
+                errors.append(f"{ident}: invalid native source candidate reference")
         ids = requirement.get("series_ids")
         if not isinstance(ids, list) or any(not isinstance(sid, str) for sid in ids):
             errors.append(f"{ident}: requirement source bindings must be an array")
@@ -118,7 +132,7 @@ def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> 
             errors.append(f"{ident}: named comparison scope required")
         if variant.get("kind") not in {"original_scope", "approved_narrower", "approved_fallback"}:
             errors.append(f"{ident}: approved variant kind required")
-        if (variant.get("frequency") not in {"D", "M", "Q", "A"}
+        if (variant.get("frequency") not in {"D", "W", "M", "Q", "A"}
                 or variant.get("end") != "latest_common"
                 or variant.get("join") != "exact_period_intersection"
                 or variant.get("missingness") != "no_fill"
@@ -157,7 +171,7 @@ def validate_research_corpus(
 ) -> list[str]:
     """Full-membership and proof contract: no fabricated validated state."""
     errors: list[str] = []
-    if document.get("schema_version") != 3:
+    if document.get("schema_version") != 4:
         errors.append("corpus: unsupported schema_version")
     if document.get("approved_phase1_version") != "2026-11-03":
         errors.append("corpus: wrong approved Phase 1 contract version")
@@ -216,6 +230,9 @@ def validate_research_corpus(
             errors.append(f"{ident}: duplicate or unknown source reference")
         if any(field in row for field in ("existing_series_references", "existing_adapter_references")):
             errors.append(f"{ident}: legacy source inventory forbidden; canonical bindings required")
+        artifact_context = row.get("context_artifact_ids")
+        if not isinstance(artifact_context, list) or any(key not in ARTIFACT_IDS for key in artifact_context):
+            errors.append(f"{ident}: explicit known contextual artifact bindings required")
         context = row.get("context_series_ids")
         if not isinstance(context, list) or any(not isinstance(sid, str) for sid in context):
             errors.append(f"{ident}: context source bindings must be an array of IDs")
@@ -345,8 +362,15 @@ def research_corpus_report(
         acceptance = analysis_acceptance(row, original_by_local_id, counts, panel_evidence,
             observations_checked=observations is not None, source_proof=source_reconciliation,
             artifact_evidence=artifact_evidence)
-        requirements = [{**role, "requirement_status": "mapped" if role["series_ids"] else "missing"}
-                        for role in acceptance.pop("requirements")]
+        external_coverage = {item["id"]: item for item in (observations or {}).get("items", []) if item.get("family") == "fx"}
+        requirements = []
+        for role in acceptance.pop("requirements"):
+            role["resolution"] = role_resolution(role, counts, original_by_local_id, external_coverage=external_coverage,
+                                                  artifact_evidence=artifact_evidence)
+            role["requirement_status"] = ("mapped" if role["series_ids"] else "missing_scalar" if role["input_type"] == "scalar_history"
+                else "structured_partial" if role["resolution"]["availability"] == "available_partial" else "structured_required")
+            requirements.append(role)
+        readiness = readiness_decision(row, requirements, acceptance, panel_evidence)
         analyses.append({
             "id": row["id"], "title": row["title"],
             "evidence_status": "verified_source_data" if bounded_verified else "not_empirically_verified_for_phase2",
@@ -363,6 +387,9 @@ def research_corpus_report(
             "fallbacks": [{**fallback, "data_verified": False} for fallback in row["fallback_options"]],
             "requirements": requirements,
             "acceptance": acceptance,
+            "readiness": readiness,
+            "context_artifacts": {key: (artifact_evidence or {}).get(key, {"status": "not_checked"})
+                                  for key in row["context_artifact_ids"]},
             "comparison_variants": row["comparison_contract"]["variants"],
             "comparison_evidence": panel_evidence,
             "has_bounded_current_vintage_panel": bounded_verified,
@@ -374,6 +401,8 @@ def research_corpus_report(
         "method_source_count": len(document["original_sources"]),
         "fully_validated_analysis_count": sum(x["comparative_corpus_validated"] for x in analyses),
         "acceptance_summary": acceptance_summary(analyses),
+        "role_resolution_summary": resolution_summary(analyses),
+        "readiness_matrix": [analysis["readiness"] for analysis in analyses],
         "bounded_current_vintage_panel_count": comparative["bounded_current_vintage_panel_count"],
         "analyses_with_bounded_current_vintage_panels": sum(x["has_bounded_current_vintage_panel"] for x in analyses),
         "comparative_evidence_checked": comparative["checked"],

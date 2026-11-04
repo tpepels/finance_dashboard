@@ -111,6 +111,7 @@ class IngestionService:
             "SHILLER", "WORLD_BANK_PINK_SHEET", "IMF_DATAMAPPER", "BEA_Q",
             "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "GOLD_MSCI_CORR",
         }
+        complete_snapshot = complete_snapshot or definition["provider"] == "FRED" and definition["source_key"] in {"NFCI", "ANFCI"}
         start = None if full or complete_snapshot or last_date is None else last_date - timedelta(days=overlap)
         run_id = str(uuid4())
         with Session(self.engine) as session, session.begin():

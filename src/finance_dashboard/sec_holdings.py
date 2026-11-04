@@ -288,6 +288,106 @@ def _native_node(element) -> dict:
             "children":[_native_node(child) for child in element]}
 
 
+def _portfolio_accounting_evidence(positions: list[dict], accounting: dict) -> tuple[dict,dict]:
+    """Independent native controls and explicitly unexplained residual accounts.
+
+    The residual decomposition is an arithmetic bridge, not independent proof
+    that all portfolio assets or liabilities have been identified. In particular
+    neither a NAV residual nor securities-lending collateral is relabelled cash.
+    """
+    zero=Decimal(0)
+    valued=[(p,_decimal(p.get("value_usd"))) for p in positions]
+    numeric=[(p,v) for p,v in valued if v is not None]
+    signed=sum((v for _,v in numeric),zero)
+    positive=sum((v for _,v in numeric if v>0),zero)
+    negative=-sum((v for _,v in numeric if v<0),zero)
+    derivative=sum((v for p,v in numeric if p["is_derivative"]),zero)
+    asset_totals={}
+    for p,v in numeric:
+        cat=p.get("asset_category") or "UNREPORTED"
+        asset_totals[cat]=asset_totals.get(cat,zero)+v
+    assets=_decimal(accounting.get("total_assets_usd"))
+    liabilities=_decimal(accounting.get("total_liabilities_usd"))
+    nav=_decimal(accounting.get("net_assets_usd"))
+    cash=_decimal(accounting.get("cash_not_reported_in_parts_c_and_d_usd"))
+    other_assets=assets-positive-cash if assets is not None and cash is not None else None
+    other_liabilities=liabilities-negative if liabilities is not None else None
+    weight_deltas=[]
+    missing_weight=0
+    for position,value in valued:
+        pct=_decimal(position.get("percent_of_fund_nav"))
+        if value is None or pct is None or nav is None or nav<=0:
+            missing_weight+=1
+            continue
+        weight_deltas.append(abs(pct-value/nav*100))
+    tolerance=Decimal("0.0000000001")
+    recon={"position_value_sum_usd":str(signed),"positive_position_value_usd":str(positive),
+        "negative_position_value_magnitude_usd":str(negative),
+        "derivative_market_value_sum_usd":str(derivative),
+        "derivative_positions":sum(p["is_derivative"] for p in positions),
+        "positions_with_missing_value":len(valued)-len(numeric),
+        "native_asset_category_value_usd":{k:str(v) for k,v in sorted(asset_totals.items())},
+        "cash_outside_parts_c_and_d_usd":str(cash) if cash is not None else None,
+        "other_assets_residual_usd":str(other_assets) if other_assets is not None else None,
+        "other_liabilities_residual_usd":str(other_liabilities) if other_liabilities is not None else None,
+        "net_assets_minus_positions_and_reported_cash_usd":str(nav-signed-cash)
+            if nav is not None and cash is not None else None,
+        "fund_balance_sheet_difference_usd":accounting["assets_less_liabilities_minus_net_assets_usd"],
+        "maximum_position_value_nav_weight_difference_pct":str(max(weight_deltas)) if weight_deltas else None,
+        "position_value_nav_weight_tolerance_pct":str(tolerance),
+        "position_value_nav_weight_mismatches":sum(delta>tolerance for delta in weight_deltas),
+        "positions_with_unverified_nav_weight":missing_weight,
+        "unreported_residual_composition_verified":False,
+        "residual_semantics":"Derived other-asset/liability balance-sheet residuals, not cash; asset residual subtracts positive reported positions and B.2.f cash, liability residual subtracts negative market values. This bridge does not independently identify receivables, payables, collateral or derivative economic exposure."}
+    groups={}
+    lei_names={}
+    ungrouped=zero
+    for position,value in numeric:
+        if (position["is_derivative"] or value<0 or position.get("asset_category") not in {"EC","EP"}
+                or (position.get("payoff_profile") or "").lower() not in {"long",""}):
+            continue
+        name=" ".join((position.get("name") or "").split())
+        if not name:
+            ungrouped+=value
+            continue
+        lei=position.get("lei") or ""
+        if not re.fullmatch(r"[A-Z0-9]{20}",lei) or lei=="00000000000000000000": lei=None
+        if lei: lei_names.setdefault(lei,set()).add(name)
+        # Identical source issuer names consolidate share classes. A reused LEI
+        # never joins two differently named reported issuers (seen in 2019 XML).
+        group=groups.setdefault(name,{"reported_name":name,"value":zero,"source_rows":[],
+            "reported_leis":set(),"security_identifiers":set()})
+        group["value"]+=value
+        group["source_rows"].append(position["source_row"])
+        if lei: group["reported_leis"].add(lei)
+        for identifier in position.get("security_identifiers",[]):
+            if identifier.get("value"):
+                group["security_identifiers"].add((identifier["type"],identifier["value"]))
+    ordered=sorted(groups.values(),key=lambda g:(-g["value"],g["reported_name"]))
+    equity=sum((g["value"] for g in ordered),zero)+ungrouped
+    top=sum((g["value"] for g in ordered[:10]),zero)
+    rows=[{"reported_name":g["reported_name"],"value_usd":str(g["value"]),
+        "position_count":len(g["source_rows"]),"source_rows":g["source_rows"],
+        "reported_leis":sorted(g["reported_leis"]),
+        "reported_security_identifiers":[{"type":kind,"value":value}
+             for kind,value in sorted(g["security_identifiers"])],
+        "share_of_fund_nav_pct":str(g["value"]/nav*100) if nav is not None and nav>0 else None}
+        for g in ordered[:10]]
+    concentration={"grouping_basis":"Exact whitespace-normalized reported issuer name; source LEIs cross-checked, share classes summed; no inferred aliases or ultimate-parent mapping",
+        "issuer_groups":rows,"issuer_groups_count":len(ordered),"reported_ordinary_and_preferred_equity_value_usd":str(equity),
+        "unassigned_issuer_name_equity_value_usd":str(ungrouped),"top10_reported_issuer_value_usd":str(top),
+        "top10_reported_issuer_share_of_fund_nav_pct":str(top/nav*100) if nav is not None and nav>0 else None,
+        "remaining_reported_equity_value_usd":str(equity-top),
+        "lei_name_conflicts":[{"reported_lei":lei,"distinct_reported_names":sorted(names)}
+              for lei,names in sorted(lei_names.items()) if len(names)>1],
+        "name_multiple_lei_conflicts":[{"reported_name":g["reported_name"],"reported_leis":sorted(g["reported_leis"])}
+              for g in ordered if len(g["reported_leis"])>1],
+        "legal_entity_registry_validation_verified":False,"ultimate_parent_concentration_verified":False,
+        "index_constituent_concentration":False,
+        "limitations":"Fund-level reported issuer-name concentration only; not MSCI ACWI or FTSE constituents. Native issuer identities can conflict; no unverified parent consolidation or derivative look-through."}
+    return recon,concentration
+
+
 def _native_portfolio_evidence(xml: bytes, *, summary: bool = False) -> dict:
     """Derive current structured evidence from the immutable verified original.
 
@@ -302,8 +402,6 @@ def _native_portfolio_evidence(xml: bytes, *, summary: bool = False) -> dict:
             "value_usd":"valUSD","percent_of_fund_nav":"pctVal",
             "asset_category":"assetCat","issuer_category":"issuerCat",
             "issuer_country":"invCountry","payoff_profile":"payoffProfile"}
-    if summary:
-        fields={key:fields[key] for key in ("lei","cusip","currency","asset_category")}
     def direct(element,tag):
         children=[child for child in element if _name(child)==tag]
         if len(children)>1:
@@ -356,8 +454,10 @@ def _native_portfolio_evidence(xml: bytes, *, summary: bool = False) -> dict:
     position_coverage={key:coverage[key] for key in ("positions","positions_with_reported_issuer_lei",
         "positions_with_reported_security_identifier","derivative_positions")}
     position_coverage.update(positions_with_reported_currency=sum(currencies.values()),currencies=dict(sorted(currencies.items())))
+    reconciliation,concentration=_portfolio_accounting_evidence(positions,accounting)
     return {**({"positions":positions} if not summary else {}),
             "fund_accounting":accounting,"identity_coverage":coverage,"position_coverage":position_coverage,
+            "portfolio_reconciliation":reconciliation,"reported_issuer_concentration":concentration,
             "native_evidence_schema_version":1,"native_evidence_xml_sha256":sha256(xml).hexdigest()}
 
 

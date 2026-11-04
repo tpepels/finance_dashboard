@@ -38,7 +38,7 @@ class ComparisonContractTests(unittest.TestCase):
         return found[0]
 
     def test_all_35_have_source_roles_without_editable_evidence_certificates(self):
-        self.assertEqual(self.document["schema_version"], 3)
+        self.assertEqual(self.document["schema_version"], 4)
         self.assertEqual(set(self.analyses), APPROVED_IDS)
         for analysis_id, row in self.analyses.items():
             with self.subTest(analysis=analysis_id):
@@ -222,7 +222,7 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(variant["checks"], ["share_partition_100"])
         self.assertFalse(variant["satisfies_original_method"])
         self.assertEqual(self.requirement("L05", "financial_asset_components")["series_ids"], [])
-        self.assertEqual(self.requirement("L05", "net_worth_top_point1")["series_ids"], [])
+        self.assertEqual(self.requirement("L05", "net_worth_top_point1")["series_ids"], ["wealth.us.top_point1_share"])
 
     def test_tiva_alternative_does_not_satisfy_missing_icio_matrices(self):
         for role in ("intermediate_transactions", "gross_output", "final_demand", "industry_value_added"):

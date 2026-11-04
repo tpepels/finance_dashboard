@@ -1,0 +1,29 @@
+{
+  "fixture_scope": "Publisher originals for small workbooks; exact CSV lines and decoded register rows selected from native originals, not a complete universe. CSV excerpts include the quarantined zero-only 2024 block.",
+  "sources": {
+    "OECD_UNSD_MEIP_MNE-Indicators_2024.xlsx": {
+      "url": "https://unstats.un.org/unsd/business-stat/mne-platform/OECD_UNSD_MEIP_MNE-Indicators_2024.xlsx",
+      "original_sha256": "783122aa526ba04ae0742e1cf00f625f255d1599bf4a6d800f6bff66f5dcb83f"
+    },
+    "readme-aamne.xlsx": {
+      "url": "https://www.oecd.org/content/dam/oecd/en/data/datasets/global-value-chain-data-across-trade-multinationals-and-services/analytical-amne/2026/readme-aamne.xlsx",
+      "original_sha256": "ef00d4d039cf9939838ddf4dccc81f933cec1071e4bdea6d77c0b1b5fce5c201"
+    },
+    "OECD_UNSD_MEIP_Global-Register_2024.xlsx": {
+      "url": "https://unstats.un.org/unsd/business-stat/mne-platform/OECD_UNSD_MEIP_Global-Register_2024.xlsx",
+      "original_sha256": "499c7da2e76f798fe5db1877e4aeaf339bb3ec8668ff84d6b4a85df2a755c025"
+    },
+    "aamne-xvem.csv": {
+      "url": "https://www.oecd.org/content/dam/oecd/en/data/datasets/global-value-chain-data-across-trade-multinationals-and-services/analytical-amne/2026/aamne-xvem.csv",
+      "original_sha256": "4e80473b9f6918bfc45b2326f5a4a178399610fedd15f073ffb65d2c283d8dc0"
+    },
+    "aamne-bilateral-output.csv": {
+      "url": "https://www.oecd.org/content/dam/oecd/en/data/datasets/global-value-chain-data-across-trade-multinationals-and-services/analytical-amne/2026/aamne-bilateral-output.csv",
+      "original_sha256": "4aea799162e631d568b7c5fbb73d16592e5b375645c0384daba85f4f6e125f3c"
+    },
+    "aamne-mne-xvem.csv": {
+      "url": "https://www.oecd.org/content/dam/oecd/en/data/datasets/global-value-chain-data-across-trade-multinationals-and-services/analytical-amne/2026/aamne-mne-xvem.csv",
+      "original_sha256": "5b8bd811388741f38d55ed2b4a1a5dcf608c696ab1dcd06d8bc0e55454b33dc5"
+    }
+  }
+}

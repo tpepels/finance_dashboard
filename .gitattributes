@@ -1,3 +1,4 @@
 # Original source excerpts retain publisher line endings and padding.
 tests/fixtures/**/*.csv whitespace=-blank-at-eol,cr-at-eol
 tests/fixtures/native_source_families/*.html whitespace=cr-at-eol
+tests/fixtures/corporate_accounts/**/*.html -text whitespace=-blank-at-eol,cr-at-eol

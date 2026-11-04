@@ -1,0 +1,18 @@
+[
+  {
+    "url": "http://data.un.org/Handlers/DownloadHandler.ashx?DataFilter=group_code:403;item_code:10&DataMartId=SNA&Format=csv",
+    "http_status": 404,
+    "observed_at_utc": "2026-11-04T18:15:11.459155+00:00",
+    "error_body_file": "http-s11-b2g-error.html",
+    "error_body_sha256": "8ef3da215ff1000f05581814f1e5ef349a5f18b070b18bec5eb0507e967b1d8a",
+    "bytes": 3769
+  },
+  {
+    "url": "https://data.un.org/Handlers/DownloadHandler.ashx?DataFilter=group_code:403;item_code:10&DataMartId=SNA&Format=csv",
+    "http_status": 404,
+    "observed_at_utc": "2026-11-04T18:15:11.519059+00:00",
+    "error_body_file": "https-s11-b2g-error.html",
+    "error_body_sha256": "8ef3da215ff1000f05581814f1e5ef349a5f18b070b18bec5eb0507e967b1d8a",
+    "bytes": 3769
+  }
+]

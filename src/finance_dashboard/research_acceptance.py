@@ -33,23 +33,16 @@ def _state(checks: list[dict]) -> str:
     return "accepted" if states and states.issubset({"passed", "accepted"}) else "not_checked"
 
 
-def _partial_artifacts(analysis_id: str, role: str, evidence: dict) -> list[dict]:
+def _partial_artifacts(role: dict, evidence: dict) -> list[dict]:
     """Attach verified bounded alternatives without binding an original role.
 
     Holdings use the existing holdings archive; issuer facts use the existing
     native filing archive. Neither becomes a second scalar ingestion path.
     """
-    keys = ()
-    if analysis_id == "G03" and role in {"listed_parent_net_income", "issuer_universe_parent_mapping",
-                                         "fiscal_period_currency", "original_filing_dates"}:
-        keys = ("cvm", "taiwan_profits")
-    elif analysis_id == "G01" or analysis_id == "P01" and role != "portfolio_fund_weights":
-        keys = ("sec_holdings", "ucits_holdings")
+    keys = [key for key in role.get("artifact_ids", []) if key != "icio"]
     return [{"artifact_id": key, "availability": "available_partial", **evidence[key],
              "original_role_satisfied": False,
-             "scope": ("Regional native issuer filings; no worldwide listed-parent universe, deduplication or fiscal/FX aggregate."
-                       if key in {"cvm", "taiwan_profits"} else
-                       "Named fund disclosures only; no exact index-constituent weights, complete holdings history or portfolio allocation.")}
+             "scope": evidence[key].get("scope", "Partial native artifact only; exact population, full history, mapping and publication conditions remain required.")}
             for key in keys if evidence.get(key, {}).get("original_source_hash_verified") is True]
 
 
@@ -83,7 +76,6 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                     and (item.get("stored_periods") or 0) > 0):
                 originals[sid] = item
     matrix = (artifact_evidence or {}).get("icio", {}) if analysis["id"] == "G06" else {}
-    matrix_roles = {"intermediate_transactions", "gross_output", "final_demand", "industry_value_added"}
     matrix_available = (matrix.get("original_source_hash_verified") is True
                         and type(matrix.get("year")) is int and 1995 <= matrix["year"] <= 2022
                         and type(matrix.get("accounting_passed")) is bool)
@@ -138,7 +130,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             required_mode=role["temporal_requirement"],
             scope="Retrieval timestamps and selected month-end ALFRED snapshots do not prove every observation's first release or synchronized eligibility."))
         artifact = None
-        if role["role"] in matrix_roles and matrix_available:
+        if "icio" in role.get("artifact_ids", []) and matrix_available:
             artifact = {key: matrix.get(key) for key in (
                 "status", "year", "edition", "matrix_sha256", "package_sha256", "readme_sha256",
                 "source_manifest_sha256", "bundle_digest", "industry_nodes", "accounting_passed")}
@@ -157,6 +149,15 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                                missing_years=sorted(set(range(1995, 2023)) - set(years)))
             checks[3] = _gate("original_source_values", "passed", "original_artifact_hashes_verified",
                 scope="Original matrix bytes match the pinned replica ledger. Accounting validity is a separate failed check.")
+        partial = _partial_artifacts(role, artifact_evidence or {})
+        if not ids and partial:
+            checks[0] = _gate("source_binding", "incomplete", "original_artifact_partial_scope",
+                scope="Verified structured originals are connected; complete original scope/history remains unverified.")
+            checks[2] = _gate("stored_history", "incomplete", "original_artifact_partial_history",
+                artifact_ids=[item["artifact_id"] for item in partial])
+            if checks[1]["state"] == "not_checked":
+                checks[1] = _gate("native_dimensions", "incomplete", "original_artifact_partial_dimensions",
+                    scope="Native artifact scope is disclosed; it does not establish the complete original population/mapping.")
         state = _state(checks)
         result = {**role, "state": state, "accepted": state == "accepted",
             "sources_checked": observations_checked, "mapped_source_count": len(ids),
@@ -165,7 +166,6 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             "blocking_checks": [item["id"] for item in checks if item["state"] != "passed"]}
         if artifact is not None:
             result["original_artifact_evidence"] = artifact
-        partial = _partial_artifacts(analysis["id"], role["role"], artifact_evidence or {})
         if partial:
             result["partial_artifact_evidence"] = partial
         requirements.append(result)
@@ -220,6 +220,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         "blocking_roles": [r["role"] for r in requirements if not r["accepted"]],
         "interpretation": "Original analysis acceptance requires every role and original comparison gate. Bounded native alternatives remain separately labelled."}
     fallbacks = analysis.get("fallback_options", [])
+    if analysis["id"] == "G06":
+        result["source_investigations"] = {key: matrix[key] for key in ("publisher_acquisition", "release_comparison") if key in matrix}
     policy = "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md"
     if fallbacks and all(option.get("reference") == policy for option in fallbacks):
         result["source_resolution"] = {

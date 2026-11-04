@@ -4,67 +4,78 @@
 
 Phase 1 is approved. The initial census compared its 35 analyses against 53 macro declarations, 49 source/method references and four fallback hierarchies. Current measured coverage appears below; older dated sections preserve the history. Code registration is not original-source acquisition or verified scientific coverage.
 
-## Current integrated corpus — 2026-11-04 continuation
+## Current integrated corpus — 2026-11-04 research handoff
 
-**Phase 2 remains ACTIVE / INCOMPLETE.** The schema-3 corpus includes all **35 analyses and 168 original roles**. The new isolated acquisition corpus contains **187 stored macro histories**, 24 market histories and three FX histories. Ten new histories add **11,084 independently reconciled observations** and resolve nine scalar bindings, leaving **88 unbound / 80 scalar-bound roles**. The media-server deployment remains at the previous baseline until separately deployed. Full original acceptance remains **0/35**, with complete publisher dimensions and observation temporal eligibility still open.
+**Phase 2 remains ACTIVE / INCOMPLETE.** The schema-4 canonical corpus covers **35 analyses / 168 roles**: **124 scalar-history contracts (86 bound, 38 unbound)** and **44 structured/policy contracts**. There are **195 stored macro histories**, 24 market histories and three FX histories in the isolated copy. Empty scalar lists on matrices, holdings, mappings, events and policies are no longer counted as missing scalar histories. Eight new histories plus one new original top-ten observation add **6,229 immutable observation versions**. No production dataset was changed.
 
-Nine formerly unsupported referenced provenance histories now independently reconcile **7,457 values** against newly retained originals: MSCI NETR levels, Siblis PE/earnings-yield snapshots, constructed world credit gap/coverage, gold–equity correlation, corporate-surplus aggregates and listed-cap/GDP. The separate EU corporate-surplus/GDP and two OECD coverage/count histories reconcile 74 additional values. Every raw dependency is hash/identity checked before selection or recomputation. **MSCI published top-ten is the sole remaining unsupported provenance case**: retained citations/transcriptions do not establish original dated documents. Unsupported provenance does not prove observations wrong or globally unavailable.
+**185/186 referenced histories fully reconcile.** All 186 available original source subsets match numerically, but the MSCI top-ten history remains only partially verified: four primary months versus nine stored months. **37/38 native panels pass**; G06's TiVA panel remains failed. **Original certification remains 0/35.** Readiness is **0 complete / 11 conditional / 24 blocked**; conditional includes four scientifically distinct approved fallback experiences, not acceptance of their blocked exact originals.
 
-The final canonical read verifies **175/176 referenced histories**, **32/33 native panels across 24 analyses** (23 with a passing panel), and **0/35 certified analyses**. G06's TiVA panel remains failed. One full Python run plus focused repairs/reruns covers **550 passing checks**, including disposable PostgreSQL and full originals; **63 frontend tests** and production frontend build pass. SQL set comparisons preserve every prior row in all ten database tables. The authoritative [development plan](DEVELOPMENT_PLAN.md) records the isolated acquisition/verification boundary and remaining blockers.
+### Original acquisition and concrete errors
 
-### All-analysis decision snapshot
+- **Official ICIO:** all five supplied publisher ZIP GETs returned **HTTP 403 / Cloudflare managed challenge**, with exact error bodies, headers, hashes and append-only receipts retained. No bypass was attempted. The official ReadMe (328,422 bytes, SHA-256 `dec015b4d89190607fac90710352c9076d0c58ddfcdf6abf1fb6703d6cfca1ba`) matches the retained original; the annex also downloaded. Regular coverage is 81 areas including ROW × 50 industries, current USD millions, six final-demand categories. Extended tables distinguish China/Mexico splits and underlie TiVA. Native history remains **1995 and 2016–2022**; **1996–2015 and extended matrices remain missing**. The January-2026-labelled retained 2022 originals still fail **123 row / 26 column** identities; October-2025 2022 balances under unchanged bounds. Current publisher byte identity and the cause remain unverified. An independently executed minimal reproduction and an **unsent** publisher question are retained under `~/.cache/finance-phase2-handoff/`.
+- **MSCI:** actual original factsheets verify **2020-10 (15.93%), 2021-08 (16.06%), 2023-10 (18.45%), 2026-10 (24.26%)**, with constituent counts **2,995 / 2,964 / 2,948 / 2,413**. Printed total 24.26% is retained separately from the current rounded-row sum 24.27%. **2019-12, 2024-07, 2025-05, 2025-10 and 2026-09** remain unproved primary-document periods. The 2019 source is secondary research; the 2024 host fails DNS; both cited 2025 publisher URLs now serve October-2026 factsheets; the live webpage does not prove its former September value. All historical observations and the old citation JSON remain intact.
+- **VT SEC:** all **28 periods, October 2019–July 2026, 265,291 positions** rebuild from original filings. Fund A−L−NAV identities and position-value/NAV percentages reconcile, while **12 LEI/name conflicts** and unexplained asset/liability residuals remain explicit. Latest reported-name top-ten is 22.2729775856% of fund NAV, not MSCI or ultimate-parent concentration. Acceptance timestamps/buffers remain distinct from verified first public dissemination. The official 2026-Q2 bulk dataset route returned HTTP 403; retained original filings remain usable.
+- **UCITS:** six original iShares sources plus new Vanguard Funds plc FTSE All-World annual **2026-06-30** and semiannual **2025-12-31** schedules are verified. The two Vanguard schedules contain **7,552 securities** and exactly reconcile security values, total investments, derivative assets/liabilities, cash/collateral and NAV. They do not establish SWDA positions, share-class portfolios, individual derivative look-through, monthly continuity or pre-2022 coverage.
+- **AMNE 2026:** actual originals provide **159,408 XVEM rows (2000–2023)**, **159,408 domestic-MNE rows (2008–2023)** and **79,704 usable bilateral rows** across 81 locations / 41 industries. The undeclared 2024 block of **3,321 rows / 269,001 zero cells** remains in originals but is quarantined. January-2026 ICIO consistency and projected 2023 are explicit publisher metadata. Ownership-economy production/GVA is not firm net profit, ultimate-parent identity or a full ICIO intermediate/final-demand system.
+- **MEIP:** all **500 FY2024 parent records**, 34 headquarters economies and **15 reported profit losses** are retained. R&D is missing for 292 parents. The register has **126,658 rows / 501 candidate heads for 500 parents**, including ambiguous BP PLC heads. USD columns are explicit; fiscal-end dates, controlling/noncontrolling attribution, consolidation, FX method, listing-universe coverage and first publication are not. The 2023 package supplies registers, not earlier financial indicators. No world profit aggregate is produced.
 
-Bindings count scalar role mappings only. Artifact evidence is separate: G06 has eight partial original ICIO years (1995 and 2016–2022, with distinct release identities); G03 has native regional CVM and Taiwan samples; G01/P01 have named SEC/UCITS fund disclosures. Taiwan retains 135 issuer rows / 123 populated parent-income facts / 14 losses without asserting currency/scale, annualization or worldwide coverage. UCITS facts are replayed from originals. Those artifacts do not fill complete original index/world/portfolio contracts. This table is not another source registry.
+### Accounting-variable coverage and remaining-role classification
 
-| Analysis | Scalar-bound roles / required | Passing native variants / defined | Original acceptance |
-| --- | ---: | ---: | --- |
-| C01 | 3/5 | 1/1 | blocked |
-| C02 | 3/4 | 2/2 | blocked |
-| C03 | 1/1 | 1/1 | incomplete |
-| C05 | 4/5 | 1/1 | blocked |
-| C06 | 5/5 | 2/2 | incomplete |
-| M01 | 4/5 | 1/1 | blocked |
-| M02 | 3/3 | 1/1 | incomplete |
-| M04 | 2/4 | 1/1 | blocked |
-| F01 | 1/5 | 1/1 | blocked |
-| F02 | 3/4 | 1/1 | blocked |
-| F03 | 2/2 | 1/1 | incomplete |
-| F04 | 1/4 | 1/1 | blocked |
-| F05 | 0/5 | 0/0 | blocked |
-| F06 | 5/5 | 1/1 | incomplete |
-| F07 | 4/8 | 1/1 | blocked |
-| V01 | 6/6 | 2/2 | incomplete |
-| V02 | 2/3 | 1/1 | blocked |
-| V03 | 0/3 | 0/0 | blocked |
-| V05 | 4/4 | 2/2 | incomplete |
-| L01 | 3/7 | 2/2 | blocked |
-| L02 | 0/5 | 0/0 | blocked |
-| L03 | 0/5 | 0/0 | blocked |
-| L04 | 0/4 | 0/0 | blocked |
-| L05 | 4/8 | 1/1 | blocked |
-| L07 | 4/5 | 2/2 | blocked |
-| G01 | 0/3 | 0/0 | blocked |
-| G02 | 2/3 | 1/1 | blocked |
-| G03 | 1/6 | 0/0 | blocked |
-| G05 | 2/5 | 1/1 | blocked |
-| G06 | 3/7 | 0/1 | failed |
-| P01 | 0/5 | 0/0 | blocked |
-| P02 | 2/4 | 4/4 | blocked |
-| P03 | 2/4 | 0/0 | blocked |
-| P04 | 3/7 | 0/0 | blocked |
-| P05 | 1/9 | 0/0 | blocked |
+The canonical `corporate_accounts` contextual artifact verifies seven retained originals / 17 native field combinations. OECD S11 and S12 gross surplus each have **1,023 country-years / 35 economies**, 1990–2025; S11 GVA has **943 / 33**, S12 GVA **974 / 34**. Eurostat EU27 S11/S12 surplus each cover 1999–2025, with a 2002–2025 GDP intersection. These are source-specific sector counts, never summed as disjoint countries or substituted for industry GVA. CE, NOS, CFC, production taxes, net fixed capital and matched-industry GVA are absent **from these retained queried files**, not declared globally unavailable. L03's sector-GVA candidate remains unconnected pending a common NOS/capital/CE/CFC perimeter. The prior UN item 32 reference is non-produced-asset transactions, not operating surplus; corrected S11 item 10 is identified, but its bulk export returned **HTTP 404**, with original error evidence retained and no country coverage invented.
 
-### Architectural consolidation and remaining gates
+The **82 roles without scalar bindings** classify as **4 existing-source candidates**, **0 supported-but-unacquired exact sources**, **40 structured originals/declarations**, **1 derived conversion with unverified prerequisites**, **37 targeted exact-source investigations**, **0 proven-unavailable originals with satisfied fallback**. No access challenge or missing implementation is relabelled global unavailability. Every role carries its native representation, evidence, exact conditions and publication gates in the canonical report.
 
-- API and CLI use one evaluation path and a consistent database snapshot; legacy duplicate source/adapter inventories, stored binding statuses, duplicate check-ID sets, the unused builder parameter and `xlrd` are removed. Old immutable reports and source payloads remain historical records, without a legacy execution path.
-- Native current-frequency bundles avoid claiming that monthly and quarterly inputs share one native frequency. No filling, silent currency conversion, source-date substitution, or Phase 3 analytical transformation is introduced.
-- ICIO original/audit pins eliminate repeated cold accounting while rehashing originals and receipts; complete calculations remain available at acquisition/explicit diagnostics. Compact SEC summaries avoid building raw XML/contract output merely to count positions. Full-corpus evaluation still took **99.789 seconds** locally; scoped question reads avoid unrelated artifacts.
-- Remaining input gaps include OECD CLI/diffusion, realized BoJ overnight rates, shock/announcement dates, complete credit/account components, regional valuation panels, WIID, original country/index weights, worldwide listed-parent profits, 1996–2015/extended ICIO matrices and dated portfolio/cost/tax/FX policies. Eighty-eight roles lack scalar bindings; partial artifacts do not remove those original scope requirements.
-- G01/G03/P01/P02 now expose approved conditional source-resolution contracts with exact unmet roles, verified native alternatives and partial artifact identities. Their Phase 2 resolution remains open; no unavailable-source claim is inferred from a missing binding. Original publisher metadata/estimation notes are exposed only with fresh numeric/hash proof. Full publisher dimensions and first publication are still incomplete.
-- [Original ICIO release diagnostics](PHASE2_OECD_EVIDENCE.md#additional-original-release-evidence--1995-and-october-2025-2022) show balanced October-2025 1995/2022 matrices alongside the still-failed January-2026 2022. The canonical compact comparison freshly hashes original bytes and verifies a method-pinned result. No earlier release replaces the later failures, and no source cell/tolerance is changed. Ordinary full-workbook refreshes now retain pre-overlap revisions; Pink Sheet selectors share one ingestion implementation while independent reconciliation retains its own selector.
-- Historical publisher updates/common release, first publication, aligned populations/price bases and the known ICIO/TiVA accounting failures remain open. Exact worldwide original benchmarks/profits and complete historical UCITS schedules are not certified. Approved named alternatives remain separately labelled.
+### All 35 readiness decisions
 
-Final verification and recovery results are recorded in the authoritative [development plan](DEVELOPMENT_PLAN.md). The following sections preserve earlier dated inventories and must not override this current snapshot.
+Conditional means usable bounded native evidence or an approved, distinctly labelled fallback with remaining population/release/method conditions. It never means complete original acceptance. All analyses still require complete publisher dimensions, first-publication eligibility and the full original comparison contract. Structured counts identify contracts, not proof that complete structured histories exist.
+
+| ID | Scalar bound / required | Structured roles | Native panels passing / defined | Original | Approved fallback | Decision | Concrete missing/partial original inputs |
+| --- | ---: | ---: | ---: | --- | --- | --- | --- |
+| C01 | 3/5 | 0 | 1/1 | blocked | not applicable | blocked | oecd_cli, industry_diffusion |
+| C02 | 3/3 | 1 | 2/2 | blocked | not applicable | blocked | chronology_announcements |
+| C03 | 1/1 | 0 | 1/1 | conditional | not applicable | conditional | Publisher dimensions, first release and full method alignment |
+| C05 | 4/4 | 1 | 1/1 | blocked | not applicable | blocked | independent_shock_events |
+| C06 | 5/5 | 0 | 2/2 | conditional | not applicable | conditional | Publisher dimensions, first release and full method alignment |
+| M01 | 4/5 | 0 | 1/1 | blocked | not applicable | blocked | boj_overnight_call |
+| M02 | 3/3 | 0 | 1/1 | conditional | not applicable | conditional | Publisher dimensions, first release and full method alignment |
+| M04 | 2/3 | 1 | 1/1 | blocked | not applicable | blocked | exchange_rate_quotes, boj_overnight_call |
+| F01 | 1/5 | 0 | 1/1 | blocked | not applicable | blocked | private_credit_outstanding, published_credit_gdp, published_credit_trend, nominal_gdp |
+| F02 | 3/4 | 0 | 1/1 | blocked | not applicable | blocked | private_credit_context |
+| F03 | 2/2 | 0 | 1/1 | conditional | not applicable | conditional | Publisher dimensions, first release and full method alignment |
+| F04 | 3/4 | 0 | 2/2 | blocked | not applicable | blocked | ofr_fsi |
+| F05 | 1/5 | 0 | 1/1 | blocked | not applicable | blocked | household_credit_gdp, corporate_credit_gdp, bank_total_assets, bank_equity |
+| F06 | 5/5 | 0 | 1/1 | conditional | not applicable | conditional | Publisher dimensions, first release and full method alignment |
+| F07 | 4/6 | 2 | 1/1 | blocked | not applicable | blocked | meaningful_sector_equity, finance_company_balance_sheet, fund_funding_mismatch, ofr_fsi |
+| V01 | 6/6 | 0 | 2/2 | conditional | not applicable | conditional | Publisher dimensions, first release and full method alignment |
+| V02 | 2/2 | 1 | 1/1 | blocked | not applicable | blocked | q_accounting_components |
+| V03 | 0/2 | 1 | 0/0 | blocked | not applicable | blocked | regional_trailing_pe, regional_forward_pe, regional_composition |
+| V05 | 4/4 | 0 | 2/2 | conditional | not applicable | conditional | Publisher dimensions, first release and full method alignment |
+| L01 | 3/7 | 0 | 2/2 | blocked | not applicable | blocked | oecd_matched_value_added, oecd_matched_hours, oecd_matched_compensation, oecd_matched_output_deflator |
+| L02 | 0/5 | 0 | 0/0 | blocked | not applicable | blocked | employee_compensation, net_operating_surplus, consumption_fixed_capital, net_production_taxes, gross_value_added |
+| L03 | 0/5 | 0 | 0/0 | blocked | not applicable | blocked | net_operating_surplus, net_fixed_capital, employee_compensation, consumption_fixed_capital, gross_value_added; S11 GVA is an unconnected native candidate, not a missing source |
+| L04 | 0/0 | 4 | 0/0 | blocked | not applicable | blocked | productive_labour_wages, productive_surplus_inputs, capital_advance_inputs, industry_classification |
+| L05 | 6/6 | 2 | 2/2 | blocked | not applicable | blocked | financial_asset_components, group_assets_liabilities |
+| L07 | 4/5 | 0 | 2/2 | blocked | not applicable | blocked | wiid_gini |
+| G01 | 1/1 | 2 | 0/0 | blocked | conditional | conditional | original_security_weights, issuer_crosswalk |
+| G02 | 2/2 | 1 | 1/1 | blocked | not applicable | blocked | index_country_weights |
+| G03 | 1/1 | 5 | 2/2 | blocked | conditional | conditional | listed_parent_net_income, issuer_universe_parent_mapping, fiscal_period_currency, original_filing_dates, fiscal_fx |
+| G05 | 2/5 | 0 | 1/1 | blocked | not applicable | blocked | current_account_flow, net_international_investment_position, private_credit_outstanding |
+| G06 | 3/3 | 4 | 0/1 | blocked | blocked | blocked | intermediate_transactions, gross_output, final_demand, industry_value_added; preserved ICIO/TiVA failures; official ZIPs HTTP 403 |
+| P01 | 0/0 | 5 | 0/0 | blocked | conditional | conditional | portfolio_fund_weights, fund_constituents, security_issuer_identity, issuer_country_sector, filing_availability |
+| P02 | 2/3 | 1 | 4/4 | blocked | conditional | conditional | global_bond_total_return, currency_conversion |
+| P03 | 2/3 | 1 | 0/0 | blocked | blocked | blocked | benchmark_risk_free, market_shock_dates |
+| P04 | 3/3 | 4 | 0/0 | blocked | blocked | blocked | currency_portfolio_weights, modified_duration, convexity, fx_quotes |
+| P05 | 1/1 | 8 | 0/0 | blocked | blocked | blocked | target_weights, actual_weights, constituent_total_returns, benchmark_weights, rebalance_policy, trading_costs, tax_policy, execution_fx |
+
+G01/P01 conditional fallback evidence is named original fund data; G03 has separately labelled **Eurostat S11 gross surplus/GVA, 27 annual observations (1999–2025)** and **OECD S11+S12 gross surplus/GDP plus coverage/member count, 25 years (2000–2024)**. P02 retains its individually labelled research-return alternatives. None is substituted into the original index/world/portfolio identities.
+
+### Architecture, verification and production boundary
+
+Schema 4 explicitly binds artifact kinds and contextual evidence in the canonical role graph. API and CLI derive role classifications and all 35 readiness decisions from the same consistent read. Original MSCI PDF acquisition replaces the obsolete citation-only ingestion module and tests; its historical JSON and every observation remain preserved. Native AMNE/MEIP, corporate coverage, publisher-access and named UCITS readers use immutable originals/receipts. Existing research/risk consumers remain active. No Phase 3 model or Phase 4 dashboard was started.
+
+Verification covers **588 Python checks** (one full run plus focused stale-assertion repairs and the native GVA-candidate regression), with disposable PostgreSQL and full originals, **63 frontend tests** and the production frontend build. The final canonical evaluation and immutable preservation checks took **172.048 seconds**. All prior macro, market, action, FX and ingestion rows and all source identities survive; one existing source's mutable refresh timestamp advances normally. Macro versions total **315,830**. Details and recovery references belong to the authoritative [development plan](DEVELOPMENT_PLAN.md).
+
+**The isolated corpus is not ready to replace production.** Scientific conditions remain open, and no fresh live-production state comparison has been performed. Validated additions require append-only integration against a fresh production backup; the isolated database must not overwrite newer live observations. Production remains untouched.
 
 ## Initial census
 

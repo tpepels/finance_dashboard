@@ -87,6 +87,8 @@ def main(argv=None):
         if args.required_inputs:
             acceptance = evaluation.public_report
             summary["acceptance_summary"] = acceptance["acceptance_summary"]
+            summary["role_resolution_summary"] = acceptance["role_resolution_summary"]
+            summary["readiness_matrix"] = acceptance["readiness_matrix"]
             summary["analysis_acceptance"] = [{"id": item["id"], "acceptance": item["acceptance"],
                 "requirements": item["requirements"]} for item in acceptance["analyses"]]
         print(json.dumps(summary, indent=2))

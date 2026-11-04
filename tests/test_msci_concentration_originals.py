@@ -1,0 +1,90 @@
+"""Native MSCI totals are dated evidence, including source revisions and rounding."""
+from datetime import date
+from decimal import Decimal
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import shutil
+
+from finance_dashboard import msci_concentration_originals as originals
+
+
+FACTSHEET = """MSCI ACWI Index (USD)
+The MSCI ACWI captures large and mid cap representation.
+OCT 30, 2026    Index Factsheet
+INDEX CHARACTERISTICS                   TOP 10 CONSTITUENTS
+                                        Country Float Adj Mkt Index Sector
+                                        Cap Wt. (%)
+ Number of Constituents 2,413            APPLE                       US 5,061.70 5.02 Info Tech
+                                        NVIDIA                      US 4,704.67 4.66 Info Tech
+ Index 100,900,111.81                    MICROSOFT CORP              US 3,683.13 3.65 Info Tech
+                                        AMAZON.COM                  US 2,326.92 2.31 Cons Discr
+                                        TAIWAN SEMICONDUCTOR MFG     TW 1,791.11 1.78 Info Tech
+                                        ALPHABET A                  US 1,641.96 1.63 Comm Srvcs
+                                        BROADCOM                    US 1,473.78 1.46 Info Tech
+                                        META PLATFORMS A            US 1,350.55 1.34 Comm Srvcs
+                                        ALPHABET C                  US 1,300.59 1.29 Comm Srvcs
+                                        TESLA                       US 1,143.84 1.13 Cons Discr
+                                        Total                          24,478.26 24.26
+FACTORS - KEY EXPOSURES THAT DRIVE RISK AND RETURN
+"""
+
+
+class MsciOriginalTests(unittest.TestCase):
+    def test_native_printed_total_is_retained_when_rounded_constituent_sum_differs(self):
+        facts=originals.parse_msci_factsheet_text(FACTSHEET)
+        self.assertEqual(facts["as_of"],"2026-10-30")
+        self.assertEqual(facts["top10_percent"],"24.26")
+        self.assertEqual(facts["sum_rounded_constituent_weights_pct"],"24.27")
+        self.assertEqual(facts["constituent_sum_minus_published_total_pct"],"0.01")
+        self.assertEqual(len(facts["constituents"]),10)
+        self.assertEqual([p["name"] for p in facts["constituents"] if p["name"].startswith("ALPHABET")],
+                         ["ALPHABET A","ALPHABET C"])
+
+    def test_current_pdf_cannot_reconcile_a_historical_claim(self):
+        with self.assertRaisesRegex(originals.MsciOriginalError,"date"):
+            originals.parse_msci_factsheet_text(FACTSHEET,expected_asof="2025-05-30")
+
+    def test_pdf_page_break_can_immediately_follow_a_footer(self):
+        text=FACTSHEET.replace("OCT 30, 2026", "Previous page footer\fOCT 30, 2026")
+        self.assertEqual(originals.parse_msci_factsheet_text(text)["as_of"],"2026-10-30")
+
+    def test_wrong_index_missing_rows_and_material_total_difference_fail_closed(self):
+        for text in (FACTSHEET.replace("MSCI ACWI Index (USD)","MSCI World Index (USD)"),
+                     FACTSHEET.replace("                                        TESLA                       US 1,143.84 1.13 Cons Discr\n", ""),
+                     FACTSHEET.replace("24,478.26 24.26","24,478.26 23.26")):
+            with self.assertRaises(originals.MsciOriginalError):
+                originals.parse_msci_factsheet_text(text)
+
+    def test_source_month_preserves_exact_day_and_does_not_interpolate(self):
+        result=originals.monthly_msci_values([
+            {"as_of":"2020-10-30","top10_percent":"15.93"},
+            {"as_of":"2023-10-31","top10_percent":"18.45"}])
+        self.assertEqual(result,{date(2020,10,1):Decimal("15.93"),date(2023,10,1):Decimal("18.45")})
+        with self.assertRaisesRegex(originals.MsciOriginalError,"conflicting"):
+            originals.monthly_msci_values([
+                {"as_of":"2020-10-30","top10_percent":"15.93"},
+                {"as_of":"2020-10-30","top10_percent":"15.94"}])
+
+    def test_constituent_count_requires_original_number_of_constituents_label(self):
+        text=FACTSHEET.replace("Number of Constituents 2,413", "Number of 2,413".ljust(27))
+        text=text.replace("                                        NVIDIA", " Constituents                           NVIDIA",1)
+        self.assertEqual(originals.parse_msci_constituent_count_text(text),2413)
+        self.assertIsNone(originals.parse_msci_constituent_count_text(text.replace("Number of 2,413","Unrelated 2,413")))
+
+    def test_original_archive_requires_receipt_even_when_immutable_manifest_is_valid(self):
+        original=(Path(__file__).parent/"fixtures/holdings/msci-acwi-2020-10-30-original.pdf").read_bytes()
+        url="https://foro.masdividendos.com/uploads/short-url/fPVgQB8q4qpfx5mQlN0hs0VVkrR.pdf"
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            folder=originals.store_msci_concentration_original(original,source_url=url,root=root)
+            values,evidence=originals.read_msci_concentration_originals(root)
+            self.assertEqual(values,{date(2020,10,1):Decimal("15.93")})
+            self.assertEqual(evidence["constituent_count_values"],{"2020-10-01":"2995"})
+            self.assertEqual(evidence["original_document_proofs"][0]["selection_method"],"acquisition_receipt")
+            shutil.rmtree(folder.parent/"retrievals")
+            with self.assertRaisesRegex(originals.MsciOriginalError,"receipt"):
+                originals.read_msci_concentration_originals(root)
+
+
+if __name__=="__main__": unittest.main()

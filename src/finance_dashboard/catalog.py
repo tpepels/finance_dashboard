@@ -15,7 +15,7 @@ THEMES = {
     "credit_recession", "market_concentration", "gold_currency",
     "structural_risk",
 }
-FREQUENCIES = {"D", "M", "Q", "A"}
+FREQUENCIES = {"D", "W", "M", "Q", "A"}
 UNITS = {
     "percent", "percentage_points", "index", "usd", "ratio",
     "usd_per_oz", "usd_per_barrel", "usd_per_mmbtu", "usd_per_metric_ton", "billions_chained_usd", "million_usd", "persons", "thousands_persons", "count", "currency_per_usd",

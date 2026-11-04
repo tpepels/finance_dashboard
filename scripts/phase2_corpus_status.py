@@ -26,9 +26,8 @@ def main() -> int:
         "source_reference_questions": report["analyses_with_source_references"],
         "fully_validated_analysis_count": report["fully_validated_analysis_count"],
         "acceptance_summary": report["acceptance_summary"],
-        "unmapped_required_roles": {q["id"]: [role["role"] for role in q["requirements"]
-            if not role["series_ids"]] for q in report["analyses"]
-            if any(not role["series_ids"] for role in q["requirements"])},
+        "role_resolution_summary": report["role_resolution_summary"],
+        "readiness_matrix": report["readiness_matrix"],
         "no_macro_series_reference": [
             q["id"] for q in report["analyses"]
             if q["source_reference_count"] == 0

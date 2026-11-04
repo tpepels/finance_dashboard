@@ -12,6 +12,12 @@ from .oecd_tiva import read_tiva_evidence
 from .sec_holdings import read_position_source
 from .taiwan_profits import read_taiwan_sources
 from .ucits_holdings import read_ucits_sources
+from .multinational_sources import read_amne_evidence, read_meip_evidence
+from .msci_concentration_originals import read_msci_concentration_originals
+from .vanguard_ucits_holdings import read_vanguard_ucits_sources
+from .corporate_account_coverage import read_corporate_account_coverage
+
+ARTIFACT_IDS = frozenset({"icio", "tiva", "cvm", "taiwan_profits", "sec_holdings", "ucits_holdings", "amne", "meip", "msci_concentration", "corporate_accounts"})
 
 READ_ERRORS = (OSError, ValueError, KeyError, TypeError, ET.ParseError)
 
@@ -113,6 +119,15 @@ def _taiwan_evidence(root):
             "full_history_verified": False, "first_publication_verified": False}
 
 
+def _msci_evidence(root):
+    values, evidence = read_msci_concentration_originals(root)
+    return {**evidence, "status": "verified_sparse_original_index_snapshots",
+        "original_source_hash_verified": True, "source_count": len(evidence["original_document_proofs"]),
+        "stored_original_periods": len(values), "full_history_verified": False,
+        "first_publication_verified": False,
+        "scope": "Sparse original top-ten share-class totals only; not complete security/issuer histories, country weights or ultimate-parent mappings."}
+
+
 def _sec_evidence(root):
     sources = []
     for instrument_id in sorted(instruments()):
@@ -137,6 +152,16 @@ def _sec_evidence(root):
                 "fund_accounting_identity_checked": residual is not None,
                 "fund_accounting_identity_passed": Decimal(residual) == 0 if residual is not None else None,
                 "cash_disclosure_present": source["fund_accounting"]["cash_not_reported_in_parts_c_and_d_usd"] is not None})
+            if "portfolio_reconciliation" in source:
+                sources[-1]["portfolio_reconciliation"] = source["portfolio_reconciliation"]
+            if "reported_issuer_concentration" in source:
+                concentration = source["reported_issuer_concentration"]
+                sources[-1]["reported_issuer_concentration"] = {
+                    key: value for key, value in concentration.items()
+                    if key not in {"issuer_groups", "lei_name_conflicts", "name_multiple_lei_conflicts"}}
+                sources[-1]["reported_issuer_concentration"].update({
+                    "lei_name_conflicts": len(concentration["lei_name_conflicts"]),
+                    "name_multiple_lei_conflicts": len(concentration["name_multiple_lei_conflicts"])})
     return {"status": "verified_original_positions_partial" if sources else "missing_original_positions",
             "original_source_hash_verified": bool(sources), "source_count": len(sources), "sources": sources,
             "instruments": sorted({source["instrument_id"] for source in sources}),
@@ -147,6 +172,8 @@ def _sec_evidence(root):
             "currency_semantics": "Reported security currencies; counts do not establish economic currency exposure or FX hedges.",
             "identifier_registry_validation_verified": False, "derivative_lookthrough_verified": False,
             "original_index_constituents_verified": False, "portfolio_allocation_verified": False,
+            "bounded_data_verified": any(source["instrument_id"] == "vt" and source["fund_accounting_identity_passed"] is True
+                                         and source.get("reported_issuer_concentration") for source in sources),
             "full_history_verified": False, "first_publication_verified": False}
 
 
@@ -168,6 +195,23 @@ def _ucits_evidence(root):
             "equity_value_reconciled": source.get("equity_value_reconciled"),
             "unparsed_derivative_schedule_lines": len(source.get("derivative_schedule_lines", [])),
             "share_class_positions_verified": False})
+    vanguard = read_vanguard_ucits_sources(root)
+    for source in vanguard["records"]:
+        controls = source["valuation_reconciliation"]
+        sources.append({"fund_name": source["fund_name"], "legal_entity": source["legal_entity"],
+            "share_class_reference_isin": source["share_class_reference_isin"],
+            "holdings_date": source["holdings_date"], "bundle_digest": source["bundle_digest"],
+            "original_sha256": source["original_sha256"], "source_manifest_sha256": source["source_manifest_sha256"],
+            "source": source["source"], "source_url": source["source_url"],
+            "acquisition_observed_at_utc": source["acquisition_observed_at_utc"],
+            "selection_method": source["selection_method"], "position_coverage": _position_coverage(source["positions"]),
+            "cash_positions": 0, "unclassified_fx_positions": 0,
+            "cash_position_semantics": "Cash, collateral and margin balances are separately reported balance-sheet controls, not security rows.",
+            "nav_accounting_identity_checked": True,
+            "nav_accounting_identity_passed": Decimal(controls["fund_balance_sheet_difference_usd"]) == 0,
+            "equity_value_reconciled": source["complete_security_schedule"],
+            "valuation_reconciliation": controls, "share_class_positions_verified": False,
+            "individual_derivative_lookthrough_verified": False})
     return {"status": "verified_original_positions_partial" if sources else original["status"],
             "original_source_hash_verified": bool(sources), "source_count": len(sources), "sources": sources,
             "holdings_dates": sorted({source["holdings_date"] for source in sources}),
@@ -179,6 +223,7 @@ def _ucits_evidence(root):
             "currency_semantics": "Reported security currencies; counts do not establish economic currency exposure or share-class hedges.",
             "identifier_registry_validation_verified": False, "share_class_positions_verified": False,
             "original_index_constituents_verified": False, "portfolio_allocation_verified": False,
+            "bounded_data_verified": any(source["nav_accounting_identity_passed"] is True and source["equity_value_reconciled"] is True for source in sources),
             "publication_semantics": "The immutable manifest's local retrieval time is not the source's first publication; no public disclosure instant is inferred.",
             "derivative_lookthrough_verified": False, "full_history_verified": False, "first_publication_verified": False}
 
@@ -195,10 +240,13 @@ def research_artifact_evidence(evidence_root: Path, *, holdings_root: Path | Non
     readers = {"icio": (lambda: read_icio_evidence(root), "invalid_original_matrix_evidence"),
                "tiva": (lambda: read_tiva_evidence(root), "invalid_original_tiva_evidence"),
                "cvm": (lambda: _cvm_evidence(root), "invalid_original_cvm_evidence"),
-               "taiwan_profits": (lambda: _taiwan_evidence(root), "invalid_original_taiwan_profit_evidence")}
-    known = {"icio", "tiva", "cvm", "taiwan_profits", "sec_holdings", "ucits_holdings"}
-    selected = known if kinds is None else kinds
-    if selected - known:
+               "taiwan_profits": (lambda: _taiwan_evidence(root), "invalid_original_taiwan_profit_evidence"),
+               "amne": (lambda: read_amne_evidence(root), "invalid_original_amne_evidence"),
+               "meip": (lambda: read_meip_evidence(root), "invalid_original_meip_evidence")}
+    readers["corporate_accounts"] = (lambda: read_corporate_account_coverage(root), "invalid_corporate_variable_coverage_evidence")
+    readers["msci_concentration"] = (lambda: _msci_evidence(root), "missing_or_invalid_original_msci_documents")
+    selected = ARTIFACT_IDS if kinds is None else kinds
+    if selected - ARTIFACT_IDS:
         raise ValueError("unknown_original_artifact_kind")
     if holdings_root is not None:
         holdings = Path(holdings_root)

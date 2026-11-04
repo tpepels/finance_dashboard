@@ -40,7 +40,7 @@ BIS_DSR_RELEASE = {
     "through": date(2026, 1, 1),
     "url": "https://data.bis.org/topics/DSR",
 }
-SOURCE_LAGS = {"D": 10, "M": 95, "Q": 220, "A": 1100}
+SOURCE_LAGS = {"D": 10, "W": 22, "M": 95, "Q": 220, "A": 1100}
 
 # Version-pinned official publication bounds, not a claim that the source
 # publishes each calendar year. PWT 11.0 (released 2025-10-07) ends in 2023.

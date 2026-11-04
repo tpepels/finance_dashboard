@@ -450,8 +450,9 @@ def read_icio_evidence(evidence_root: Path, *, include_residuals: bool = False) 
     from .icio_release_diagnostics import read_2022_release_comparison
     comparison = read_2022_release_comparison(evidence_root, verified_newer_sha256=(
         primary.get("matrix_sha256") if primary.get("original_source_hash_verified") else None))
+    from .oecd_icio_access import read_publisher_access
     return {**primary, "status": status, "historical_matrices": historical, "historical_coverage": coverage,
-            "release_comparison": comparison}
+            "release_comparison": comparison, "publisher_acquisition": read_publisher_access(evidence_root)}
 
 
 def main():

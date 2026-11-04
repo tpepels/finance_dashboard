@@ -22,7 +22,7 @@ class CatalogTests(unittest.TestCase):
             if item["status"] == "mapped":
                 self.assertTrue(item["source_key"])
                 self.assertTrue(item["source_url"].startswith("https://"))
-                self.assertIn(item["frequency"], {"D", "M", "Q", "A"})
+                self.assertIn(item["frequency"], {"D", "W", "M", "Q", "A"})
 
     def test_duplicate_series_is_rejected(self):
         series, charts = self.modified()

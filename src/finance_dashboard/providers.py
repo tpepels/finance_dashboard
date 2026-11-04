@@ -33,7 +33,6 @@ from .oecd_corporate import (
     parse_oecd_annual_sector_csv, parse_oecd_gdp_weights,
     compute_oecd_corporate_surplus,
 )
-from .concentration_snapshots import load_msci_concentration_snapshots
 from .eurostat_corporate import (
     EUROSTAT_JSON_URL, EUROSTAT_KI_URL, EU27,
     parse_eurostat_annual_series, eu27_corporate_gross_surplus_gdp,
@@ -751,9 +750,16 @@ class ProviderRouter:
                 observations = aggregate_earnings_yield(observations)
             return FetchedSeries(series_id, SIBLIS_WORLD_PE_URL, None, observations)
         if provider == "MSCI_PUBLISHED_TOP10":
-            if key != "892400/TOP10/PUBLISHED_SPARSE_SNAPSHOTS":
+            if key not in {"892400/TOP10/PUBLISHED_SPARSE_SNAPSHOTS", "892400/COUNT/PUBLISHED_SPARSE_SNAPSHOTS"}:
                 raise SourceUnavailable("Wrong index, statistic or historical method")
-            values = load_msci_concentration_snapshots(start=start)
+            from .msci_concentration_originals import read_msci_concentration_originals
+            values, _evidence = read_msci_concentration_originals(Path(os.environ.get(
+                "FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")))
+            if key == "892400/COUNT/PUBLISHED_SPARSE_SNAPSHOTS":
+                values = {date.fromisoformat(period): Decimal(count) for period, count in _evidence["constituent_count_values"].items()}
+            values = {day: value for day, value in values.items() if start is None or day >= start}
+            if not values:
+                raise ProviderError("Original MSCI factsheets have no selected values in requested period")
             return FetchedSeries(series_id,
                 "https://www.msci.com/indexes/index/892400/msci-acwi-index",
                 None, values)

@@ -30,7 +30,7 @@ class ResearchCorpusTests(unittest.TestCase):
             self.assertTrue(item["comparison_contract"]["original_requirements"])
 
     def test_canonical_source_graph_has_no_parallel_inventory_or_stored_binding_state(self):
-        self.assertEqual(self.document["schema_version"], 3)
+        self.assertEqual(self.document["schema_version"], 4)
         for item in self.document["analyses"]:
             self.assertNotIn("existing_series_references", item)
             self.assertNotIn("existing_adapter_references", item)
@@ -51,7 +51,7 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertIn("gdp.real_growth.jp", ids)
         self.assertEqual(result["source_reference_count"], len(ids))
         for role in result["requirements"]:
-            self.assertEqual(role["requirement_status"], "mapped" if role["series_ids"] else "missing")
+            self.assertEqual(role["requirement_status"], "mapped" if role["series_ids"] else "missing_scalar")
         self.assertFalse(next(r for r in result["requirements"] if r["role"] == "oecd_cli")["accepted"])
 
     def test_legacy_bindings_and_context_duplicates_are_rejected(self):

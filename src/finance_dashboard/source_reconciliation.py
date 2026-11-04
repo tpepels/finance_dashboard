@@ -363,6 +363,24 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             failures.update({sid: exc.code for sid in ids})
     for sid in stored.keys() - set(WID_SERIES) - set(TIVA_SERIES) - return_ids:
         definition = registry.get(sid)
+        if definition and definition["provider"] == "MSCI_PUBLISHED_TOP10":
+            from .msci_concentration_originals import read_msci_concentration_originals
+            try:
+                values, evidence = read_msci_concentration_originals(root)
+                if definition["source_key"] == "892400/COUNT/PUBLISHED_SPARSE_SNAPSHOTS":
+                    values = {date.fromisoformat(period): Decimal(count) for period, count in evidence["constituent_count_values"].items()}
+                    evidence = {**evidence, "source_measure": "published_security_constituent_count"}
+                if not values:
+                    raise EvidenceError("source_empty")
+                originals[sid] = values
+                evidence["source_manifest_sha256"] = sha256(canonical_bytes(
+                    [item["source_manifest_sha256"] for item in evidence["original_document_proofs"]])).hexdigest()
+                proof[sid] = evidence
+            except EvidenceError as exc:
+                failures[sid] = exc.code
+            except (OSError, ValueError):
+                failures[sid] = "original_msci_documents_missing_or_invalid"
+            continue
         if not definition or definition["provider"] not in CAPTURE_PROVIDERS:
             failures[sid] = "source_reconciliation_unsupported"
             continue
@@ -419,8 +437,10 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
         "passed": all(item["source_values_match"] for item in items),
         "series_count": len(items),
         "matched_series": sum(item["source_values_match"] for item in items),
+        "fully_reconciled_series": sum(item["source_covers_all_stored_periods"] for item in items),
+        "all_stored_histories_reconciled": all(item["source_covers_all_stored_periods"] for item in items),
         "preserved_extra_periods": sum(len(item["extra_stored_periods"] or []) for item in items),
-        "method": "Independent original CSV/JSON/ODS/XLSX values versus latest append-only DB versions; no interpolation or deletion. Missing source periods are numeric original dates absent from storage; extra stored periods remain retained.",
+        "method": "Independent original CSV/JSON/ODS/XLSX/PDF values versus latest append-only DB versions; no interpolation or deletion. Missing source periods are numeric original dates absent from storage; extra stored periods remain retained and can remain unverified.",
         "series": items}
 
 
