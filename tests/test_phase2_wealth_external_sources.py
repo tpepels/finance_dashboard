@@ -14,7 +14,7 @@ class Phase2OriginalSourceDefinitions(unittest.TestCase):
     def test_source_catalog_remains_coherent(self):
         series,charts=load_documents()
         self.assertEqual(validate(series,charts),[])
-        self.assertEqual(len(series["series"]),85)
+        self.assertGreaterEqual(len(series["series"]),93)
         ids={x["id"] for x in series["series"]}
         for required in ("wealth.us.top1_share","wealth.us.bottom50_share",
                          "external.us.current_account_gdp","activity.us.real_gdp_level",

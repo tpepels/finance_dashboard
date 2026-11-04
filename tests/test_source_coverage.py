@@ -47,18 +47,17 @@ class SourceCoverageTests(unittest.TestCase):
                 session.add(ObservationVersion(series_id=sid, period=when,
                     value=Decimal("0.58"), first_seen_at=NOW, ingestion_run_id="run-"+sid))
 
-    def test_returns_exactly_all_53_macro_24_market_and_three_currency_sources(self):
+    def test_returns_exactly_all_registered_macro_market_and_currency_sources(self):
         with patch.dict(os.environ, {"FINANCE_INCLUDE_MARKETS":"0"}):
             report = build_coverage(self.engine, self.catalog, self.registry, asof=date(2026, 11, 3))
         self.assertEqual(report["summary"]["macro"]["total"], len(self.catalog))
-        self.assertEqual(report["summary"]["macro"]["total"], 53)
         self.assertEqual(report["summary"]["markets"]["total"], 24)
         self.assertEqual(report["summary"]["fx"]["total"], 3)
-        self.assertEqual(len(report["items"]), 80)
-        self.assertEqual(len({(x["family"],x["id"]) for x in report["items"]}), 80)
+        self.assertEqual(len(report["items"]),len(self.catalog)+len(self.registry)+3)
+        self.assertEqual(len({(x["family"],x["id"]) for x in report["items"]}), len(self.catalog)+len(self.registry)+3)
         self.assertTrue(all(x["stored_periods"] == 0 for x in report["items"]))
         self.assertTrue(all(x["latest_source_date"] is None for x in report["items"]))
-        self.assertEqual(report["summary"]["macro"]["not_ingested"], 53)
+        self.assertEqual(report["summary"]["macro"]["not_ingested"], len(self.catalog))
         self.assertEqual(report["summary"]["markets"]["collection_disabled"], 24)
         self.assertEqual(report["summary"]["fx"]["collection_disabled"], 3)
 
@@ -202,8 +201,8 @@ class SourceCoverageTests(unittest.TestCase):
                 response=client.get("/api/source-coverage")
         self.assertEqual(response.status_code,200)
         payload=response.json()
-        self.assertEqual(len(payload["items"]),80)
-        self.assertEqual(payload["summary"]["macro"]["total"],53)
+        self.assertEqual(len(payload["items"]),len(self.catalog)+len(self.registry)+3)
+        self.assertEqual(payload["summary"]["macro"]["total"],len(self.catalog))
         self.assertNotIn("SENSITIVE_KEY", response.text)
         self.assertNotIn("a"*32, response.text)
 

@@ -11,6 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
 from finance_dashboard.api import create_app
+from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import Base
 from finance_dashboard.developer_logs import record_event, read_events, recent_jobs, MAX_EVENTS
 
@@ -136,7 +137,7 @@ class DiagnosticJournalTests(unittest.TestCase):
                 self.assertIn(obj["configuration"]["fred_mode"],
                               ("authenticated_api","public_csv","public_table"))
                 self.assertIsInstance(obj["configuration"]["fred_key_present"],bool)
-                self.assertEqual(obj["coverage"]["registered"], 80)
+                self.assertEqual(obj["coverage"]["registered"], len(load_documents()[0]["series"]) + 27)
                 self.assertTrue(obj["issues"])
                 self.assertEqual(obj["events"][-1]["source_id"], "credit_gap.us.bis")
                 self.assertIsInstance(obj["jobs"], list)

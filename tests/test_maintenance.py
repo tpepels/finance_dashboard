@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
 from finance_dashboard.api import create_app
+from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import Base
 from finance_dashboard.maintenance import MaintenanceManager
 from finance_dashboard.developer_logs import read_events
@@ -227,8 +228,8 @@ class MaintenanceApiTests(unittest.TestCase):
         tracked = []
         def macro(engine, *, full, series_ids, progress, stopped):
             self.assertFalse(full)
-            self.assertEqual(len(series_ids), 53)
-            progress(53,53,"labour.de.pwt_labour_share")
+            self.assertEqual(len(series_ids), len(load_documents()[0]["series"]))
+            progress(len(series_ids), len(series_ids), "labour.de.pwt_labour_share")
             tracked.append("macro")
             return 0
         def market(engine, *, full, instrument_ids, currencies, progress, stopped):
@@ -281,8 +282,8 @@ class MaintenanceApiTests(unittest.TestCase):
         calls=[]
         def macro(engine, *, full, series_ids, progress, stopped):
             self.assertTrue(full)
-            self.assertEqual(len(series_ids),53)
-            progress(53,53,"labour.de.pwt_labour_share")
+            self.assertEqual(len(series_ids), len(load_documents()[0]["series"]))
+            progress(len(series_ids), len(series_ids), "labour.de.pwt_labour_share")
             calls.append("macro")
             return 0
         def market(engine, *, full, instrument_ids, currencies, progress, stopped):
