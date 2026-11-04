@@ -1,5 +1,9 @@
 """Phase 2 full scientific-membership and provenance proof tests; offline."""
 import copy
+import os
+from pathlib import Path
+import subprocess
+import sys
 import unittest
 
 from finance_dashboard.catalog import load_documents
@@ -13,6 +17,25 @@ class ResearchCorpusTests(unittest.TestCase):
     def setUpClass(cls):
         cls.document = load_research_corpus()
         cls.series, _ = load_documents()
+
+    def test_offline_status_does_not_import_spreadsheet_backends(self):
+        """Source-contract reporting must not depend on original artifact parsers."""
+        root = Path(__file__).resolve().parents[1]
+        code = (
+            'import sys; sys.modules["python_calamine"] = None; '
+            'from finance_dashboard.research_corpus import load_research_corpus, '
+            'validate_research_corpus; from finance_dashboard.catalog import load_documents; '
+            'corpus = load_research_corpus(); registry, _ = load_documents(); '
+            'assert len(corpus["analyses"]) == 35; '
+            'assert validate_research_corpus(corpus, registry["series"]) == []'
+        )
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(root / "src")
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=root, env=env,
+            capture_output=True, text=True, timeout=25, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_complete_35_and_49_verified_reference_contracts(self):
         self.assertEqual([], validate_research_corpus(

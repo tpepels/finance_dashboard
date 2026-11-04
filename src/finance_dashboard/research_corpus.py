@@ -13,8 +13,7 @@ from typing import Any
 
 from .catalog import DEFAULT_ROOT
 from .comparative_corpus import CHECK_IDS
-from .research_readiness import INPUT_TYPES, role_resolution, readiness_decision, resolution_summary
-from .research_artifacts import ARTIFACT_IDS
+from .research_readiness import ARTIFACT_IDS, INPUT_TYPES, role_resolution, readiness_decision, resolution_summary
 
 FAMILIES = {"C": 5, "M": 3, "F": 7, "V": 4, "L": 6, "G": 5, "P": 5}
 # Exact owner-approved 35 first-class IDs: per-family totals alone do not

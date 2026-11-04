@@ -18,8 +18,7 @@ from .vanguard_ucits_holdings import read_vanguard_ucits_sources
 from .corporate_account_coverage import read_corporate_account_coverage
 from .nber_chronology import read_nber_chronology
 from .wiid_originals import read_wiid_originals
-
-ARTIFACT_IDS = frozenset({"icio", "tiva", "cvm", "taiwan_profits", "sec_holdings", "ucits_holdings", "amne", "meip", "msci_concentration", "corporate_accounts", "nber_chronology", "wiid"})
+from .research_readiness import ARTIFACT_IDS
 
 READ_ERRORS = (OSError, ValueError, KeyError, TypeError, ET.ParseError)
 
