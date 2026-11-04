@@ -45,6 +45,15 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertTrue(any("duplicate analysis" in x for x in issues))
         self.assertTrue(any("expected all 35" in x for x in issues))
 
+    def test_reject_unapproved_id_with_unchanged_family_count(self):
+        edited = copy.deepcopy(self.document)
+        original = edited["analyses"][0]["id"]
+        self.assertTrue(original.startswith("C"))
+        edited["analyses"][0]["id"] = "C07"
+        issues = validate_research_corpus(edited, self.series["series"])
+        self.assertTrue(any("expected all 35" in issue for issue in issues))
+        self.assertTrue(any(original in issue and "C07" in issue for issue in issues))
+
     def test_reject_fake_primary_source_and_existing_series(self):
         edited = copy.deepcopy(self.document)
         edited["analyses"][0]["primary_method_sources"] = ["S99"]

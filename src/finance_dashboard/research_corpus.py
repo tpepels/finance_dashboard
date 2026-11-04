@@ -13,6 +13,17 @@ from typing import Any
 from .catalog import DEFAULT_ROOT
 
 FAMILIES = {"C": 5, "M": 3, "F": 7, "V": 4, "L": 6, "G": 5, "P": 5}
+# Exact owner-approved 35 first-class IDs: per-family totals alone do not
+# detect a wrong replacement within a family.
+APPROVED_ANALYSIS_IDS = frozenset((
+    "C01", "C02", "C03", "C05", "C06",
+    "M01", "M02", "M04",
+    "F01", "F02", "F03", "F04", "F05", "F06", "F07",
+    "V01", "V02", "V03", "V05",
+    "L01", "L02", "L03", "L04", "L05", "L07",
+    "G01", "G02", "G03", "G05", "G06",
+    "P01", "P02", "P03", "P04", "P05",
+))
 SUPPORTING_METHODS = {"C04", "M03", "V04", "L06", "G04"}
 EVIDENCE_STATUSES = {
     "not_empirically_verified_for_phase2",
@@ -136,8 +147,15 @@ def validate_research_corpus(
                     errors.append(f"{ident}: fallback must refer to approved method contract")
                 if fallback.get("data_verified") is True and status == "not_empirically_verified_for_phase2":
                     errors.append(f"{ident}: fallback verification cannot be inferred from old code")
-    if len(analyses) != 35 or any(counts[p] != n for p, n in FAMILIES.items()):
-        errors.append("corpus: expected all 35 approved scientific question IDs by domain")
+    if (len(analyses) != len(APPROVED_ANALYSIS_IDS)
+            or seen != APPROVED_ANALYSIS_IDS
+            or any(counts[p] != n for p, n in FAMILIES.items())):
+        missing = sorted(APPROVED_ANALYSIS_IDS - seen)
+        unexpected = sorted(seen - APPROVED_ANALYSIS_IDS)
+        errors.append(
+            "corpus: expected all 35 approved scientific question IDs by domain"
+            f" (missing={missing}, unexpected={unexpected})"
+        )
     if not {"G01", "G03", "P01", "P02"}.issubset(seen):
         errors.append("corpus: four hard historical-data target contracts missing")
     for row in analyses:

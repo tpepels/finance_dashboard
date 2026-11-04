@@ -36,31 +36,7 @@ COPY --from=frontend-build /build/frontend/dist/ /app/site/
 RUN pip install --no-cache-dir . \
     && python -m compileall -q /app/src \
     && python -m finance_dashboard validate \
-    && python -m unittest discover -s tests -p 'test_research.py' -v \
-    && python -m unittest discover -s tests -p 'test_insights.py' -v \
-    && python -m unittest discover -s tests -p 'test_risk_diagnostics.py' -v \
-    && python -m unittest discover -s tests -p 'test_portfolio_risk.py' -v \
-    && python -m unittest discover -s tests -p 'test_phase4_api.py' -v \
-    && python -m unittest discover -s tests -p 'test_source_coverage.py' -v \
-    && python -m unittest discover -s tests -p 'test_targeted_refresh.py' -v \
-    && python -m unittest discover -s tests -p 'test_maintenance.py' -v \
-    && python -m unittest discover -s tests -p 'test_developer_logs.py' -v \
-    && python -m unittest discover -s tests -p 'test_source_failure_codes.py' -v \
-    && python -m unittest discover -s tests -p 'test_providers.py' -v \
-    && python -m unittest discover -s tests -p 'test_backup.py' -v \
-    && python -m unittest discover -s tests -p 'test_vintage.py' -v \
-    && python -m unittest discover -s tests -p 'test_sec_holdings.py' -v \
-    && python -m unittest discover -s tests -p 'test_sec_holdings_sync.py' -v \
-    && python -m unittest discover -s tests -p 'test_marx_accounts.py' -v \
-    && python -m unittest discover -s tests -p 'test_historical_research_api.py' -v \
-    && python -m unittest discover -s tests -p 'test_research_corpus.py' -v \
-    && python -m unittest discover -s tests -p 'test_research_corpus_api.py' -v \
-    && python -m unittest discover -s tests -p 'test_bis_dsr.py' -v \
-    && python -m unittest discover -s tests -p 'test_bis_property.py' -v \
-    && python -m unittest discover -s tests -p 'test_phase2_extended_sources.py' -v \
-    && python -m unittest discover -s tests -p 'test_phase2_wealth_external_sources.py' -v \
-    && python -m unittest discover -s tests -p 'test_phase2_nonbank_sources.py' -v \
-    && python -m unittest discover -s tests -p 'test_phase2_source_probe.py' -v \
+    && python -m unittest discover -s tests -p 'test_*.py' -v \
     && chmod 755 /app/run-standalone.sh
 EXPOSE 8080
 VOLUME /data
