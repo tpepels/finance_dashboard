@@ -54,7 +54,7 @@ def parse_fdic_aggregates(payload: dict, series_id: str, start: date | None = No
             raise ProviderError("FDIC aggregate value is missing or invalid") from exc
         if not value.is_finite() or value <= 0 or day in values:
             raise ProviderError("FDIC aggregate value is nonpositive or duplicated")
-        if day > date.today():
+        if date(year, month, reported_day) > date.today():
             raise ProviderError("FDIC aggregate contains a future report date")
         if start is None or day >= start:
             values[day] = value

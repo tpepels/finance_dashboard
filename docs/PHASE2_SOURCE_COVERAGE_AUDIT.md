@@ -8,7 +8,17 @@ Phase 1 is approved. The initial census compared its 35 analyses against 53 macr
 
 The 2026-11-04 Claude commits register **103/124 scalar input roles** (up from 86/124) across BOJ, OECD CLI, Fed G.17 diffusion, BIS total credit, OFR FSI, FDIC banking aggregates and IMF external accounts. **A mapping is a source contract, not proof of downloaded history, original full-series reconciliation or scientific certification.** The 21 remaining roles and all structured scientific gates remain active.
 
-An independent follow-up corrected three parser/contract hazards and added focused synthetic-format tests: FDIC financial observations require an *actual* quarter-end date, not merely a 30/31 suffix; NBER as-of information sets must never disclose retrospectively dated but not yet announced turning points; and BOJ consistency checks must report missing overlap rather than raising an incidental min/max exception. Original publisher acquisition and end-to-end live reconciliation are still required.
+An independent follow-up corrected four parser/contract hazards and added focused synthetic-format tests: FDIC financial observations require an *actual, not future* quarter-end date, not merely a 30/31 suffix; NBER as-of information sets must never disclose retrospectively dated but not yet announced turning points; and BOJ consistency checks must report missing overlap rather than raising an incidental min/max exception. Original publisher acquisition and end-to-end live reconciliation are still required.
+
+A bounded, **read-only** live probe now covers representative newly registered original-source families without creating observations or modifying the database:
+
+```sh
+PYTHONPATH=src python scripts/phase2_source_probe.py --new-sources --since 2024-01-01
+# Probe any exact canonical source identifier individually:
+PYTHONPATH=src python scripts/phase2_source_probe.py --only activity.us.oecd_cli --since 2024-01-01
+```
+
+These checks must be executed on the isolated corpus host with publisher access. A sampled response is not historical reconciliation, first-publication proof, or scientific acceptance. The new mappings require a full append-only acquisition against the **isolated** database (never overwrite production), independent raw-source reconciliation and the already-defined 35-analysis readiness evaluation. The existing canonical operation supports `scripts/phase2_comparative_corpus.py --acquire --required-inputs --store` after the database/evidence directory is explicitly selected. Its `--acquire` option writes to the chosen database; do not use it against production without the separate approved migration procedure.
 
 Publisher check pending: reconcile OECD CLI v4.1's currently advertised SDMX Data Explorer key `.M.LI...AA...H` against the more explicit old-dimension key stored in this repository; identify the actual returned dimensional values before changing the live key, and do not equate registered mappings with a successfully retrieved series. See https://data-explorer.oecd.org/vis?df%5Bag%5D=OECD.SDD.STES&df%5Bid%5D=DSD_STES%40DF_CLI&df%5Bvs%5D=4.1. FDIC API aggregation shape, IMF compact SDMX response and publisher release/availability dates likewise require raw-response proof.
 

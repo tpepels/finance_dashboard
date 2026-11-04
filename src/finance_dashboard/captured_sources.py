@@ -739,6 +739,8 @@ def _fdic(payload,definition,url):
         year, month, reported_day = map(int, match.groups())
         if reported_day != monthrange(year, month)[1]:
             raise EvidenceError('source_period_invalid')
+        if date(year, month, reported_day) > date.today():
+            raise EvidenceError('source_period_invalid')
         counts.append(int(row['data']['count']))
         _add(values,seen,date(year,month-2,1),row['data'][field])
     return values,{'source_native_unit':definition['unit'],'source_currency':None if field=='count' else 'USD',

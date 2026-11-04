@@ -31,6 +31,25 @@ DEFAULT_IDS = (
 )
 
 
+# Representative, distinct source families introduced by the 2026-11-04
+# Claude increment. This tests remote source availability only; it is not a
+# complete ingestion or source-reconciliation audit.
+CLAUDE_SOURCE_IDS = (
+    "activity.us.oecd_cli",
+    "activity.us.industrial_production_diffusion_1m",
+    "policy_rate.jp.boj_call_daily",
+    "policy_rate.jp.boj_call_monthly_average",
+    "credit.us.private_nonfinancial_stock_bis",
+    "credit.us.private_nonfinancial_gdp_bis",
+    "credit_gap.us.bis_trend",
+    "stress.global.ofr_fsi",
+    "external.us.imf_bop_current_account_usd",
+    "external.us.imf_iip_net_position_usd",
+    "bank.us.fdic_total_assets",
+    "bank.us.fdic_total_equity",
+)
+
+
 def probe(router: ProviderRouter, ids=DEFAULT_IDS, since=date(2024, 1, 1)) -> dict:
     """Identity-preserving source sample; no data storage or raw provider URLs."""
     result = []
@@ -71,13 +90,20 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--since", default="2024-01-01",
                         help="First requested original observation (YYYY-MM-DD)")
-    parser.add_argument("--only", choices=DEFAULT_IDS, nargs="+",
-                        help="Optional subset of exact-source IDs")
+    selected = parser.add_mutually_exclusive_group()
+    selected.add_argument("--new-sources", action="store_true",
+                          help="Probe a representative set of newly integrated source families, without database writes")
+    selected.add_argument("--only", nargs="+",
+                          help="Probe any registered exact series IDs, without database writes")
     opts = parser.parse_args()
     since = date.fromisoformat(opts.since)
     provider = ProviderRouter()
     try:
-        result = probe(provider, tuple(opts.only) if opts.only else DEFAULT_IDS, since)
+        ids = tuple(opts.only) if opts.only else CLAUDE_SOURCE_IDS if opts.new_sources else DEFAULT_IDS
+        unknown = sorted(set(ids) - set(provider.definitions))
+        if unknown:
+            parser.error("Unknown canonical source identifier(s): " + ", ".join(unknown))
+        result = probe(provider, ids, since)
     finally:
         provider.close()
     print(json.dumps(result, indent=2))

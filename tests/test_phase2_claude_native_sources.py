@@ -36,6 +36,19 @@ class Phase2NewOriginalParserTests(unittest.TestCase):
                     parse_fdic_aggregates(payload(stamp), "bank.us.fdic_total_assets")
                 with self.assertRaises(EvidenceError):
                     _fdic(payload(stamp), definition, url)
+        # A future quarter-end must be rejected even if its stored quarter
+        # start (2026-10-01) is already in the past.
+        from unittest.mock import patch
+        with patch("finance_dashboard.fdic_banks.date") as clock:
+            clock.today.return_value = date(2026, 11, 4)
+            clock.side_effect = date
+            with self.assertRaises(ProviderError):
+                parse_fdic_aggregates(payload("20261231"), "bank.us.fdic_total_assets")
+        with patch("finance_dashboard.captured_sources.date") as clock:
+            clock.today.return_value = date(2026, 11, 4)
+            clock.side_effect = date
+            with self.assertRaises(EvidenceError):
+                _fdic(payload("20261231"), definition, url)
         good = payload("20260331")
         self.assertEqual(parse_fdic_aggregates(good, "bank.us.fdic_total_assets"),
                          {date(2026, 1, 1): Decimal("1000")})
@@ -107,6 +120,38 @@ class Phase2NewOriginalParserTests(unittest.TestCase):
             with self.assertRaises(ProviderError):
                 parse_imf_bop_iip(xml.replace('METHODOLOGY="BPM6"',
                                              'METHODOLOGY="BPM5"').encode(), sid)
+
+    def test_registered_probe_group_and_read_only_source_status(self):
+        from scripts.phase2_source_probe import CLAUDE_SOURCE_IDS, DEFAULT_IDS, probe
+        from finance_dashboard.catalog import load_documents
+        sources = {row["id"]: row for row in load_documents()[0]["series"]}
+        self.assertEqual(len(CLAUDE_SOURCE_IDS), 12)
+        self.assertEqual(len(CLAUDE_SOURCE_IDS), len(set(CLAUDE_SOURCE_IDS)))
+        self.assertTrue(set(CLAUDE_SOURCE_IDS) <= set(sources))
+        self.assertGreaterEqual(len({sources[sid]["provider"] for sid in CLAUDE_SOURCE_IDS}), 7)
+
+        class Sample:
+            def __init__(self, points):
+                self.observations = points
+                self.prepared_at = None
+
+        class Router:
+            def __init__(self):
+                self.seen = []
+            def fetch(self, identifier, start):
+                self.seen.append((identifier, start))
+                if identifier == CLAUDE_SOURCE_IDS[0]:
+                    return Sample({date(2024, 3, 1): Decimal("100.1")})
+                raise ProviderError("Private publisher error that must never be shown")
+
+        router = Router()
+        results = probe(router, CLAUDE_SOURCE_IDS[:2], since=date(2024, 1, 1))
+        self.assertTrue(results["no_database_writes"])
+        self.assertEqual(results["sampled"], 1)
+        self.assertEqual(results["failed"], 1)
+        self.assertNotIn("Private publisher", str(results))
+        self.assertEqual(len(router.seen), 2)
+        self.assertTrue(DEFAULT_IDS)
 
     def test_boj_rejects_uncheckable_overlap(self):
         # Different published windows must produce an explicit diagnostic,
