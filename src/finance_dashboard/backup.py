@@ -20,6 +20,8 @@ from tempfile import NamedTemporaryFile
 
 from sqlalchemy.engine import make_url
 
+EVIDENCE_ROOT_NAMES = {"vintages", "holdings", "surplus", "maintenance", "source-evidence"}
+
 
 def source_database_path() -> Path:
     value = os.environ.get("DATABASE_URL", "")
@@ -71,8 +73,10 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
             "surplus": Path(os.environ.get("FINANCE_SURPLUS_DIR", "/data/surplus")),
             "maintenance": Path(os.environ.get(
                 "FINANCE_MAINTENANCE_STATE", "/data/maintenance/jobs.json")).parent,
+            "source-evidence": Path(os.environ.get(
+                "FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")),
         }
-    if set(evidence_roots) - {"vintages", "holdings", "surplus", "maintenance"}:
+    if set(evidence_roots) - EVIDENCE_ROOT_NAMES:
         raise ValueError("Unrecognized local evidence directory")
     # Microsecond suffix protects repeated manual runs and concurrent calls.
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -233,7 +237,7 @@ def verify_manifest(path: Path) -> dict:
                 for member in members:
                     parts = Path(member.name).parts
                     if (not member.isfile() or len(parts) < 2 or
-                        parts[0] not in {"vintages", "holdings", "surplus", "maintenance"} or
+                        parts[0] not in EVIDENCE_ROOT_NAMES or
                         ".." in parts or member.name.startswith("/")):
                         raise ValueError("Unsafe or unexpected evidence backup member")
     return {

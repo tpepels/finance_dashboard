@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from os import environ
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, create_engine, event
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -68,6 +68,7 @@ class IngestionRun(Base):
 
 class ObservationVersion(Base):
     __tablename__ = "observation_versions"
+    __table_args__ = (Index("ix_observation_versions_series_period", "series_id", "period"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     series_id: Mapped[str] = mapped_column(ForeignKey("series.id"), index=True)
     period: Mapped[date] = mapped_column(Date(), index=True, nullable=False)
@@ -102,6 +103,7 @@ class MarketIngestionRun(Base):
 
 class MarketPriceVersion(Base):
     __tablename__ = "market_price_versions"
+    __table_args__ = (Index("ix_market_price_versions_instrument_day", "instrument_id", "day"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     instrument_id: Mapped[str] = mapped_column(ForeignKey("market_instruments.id"), index=True, nullable=False)
     day: Mapped[date] = mapped_column(Date(), index=True, nullable=False)
@@ -138,6 +140,7 @@ class FxIngestionRun(Base):
 
 class FxRateVersion(Base):
     __tablename__ = "fx_rate_versions"
+    __table_args__ = (Index("ix_fx_rate_versions_currency_day", "currency", "day"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     currency: Mapped[str] = mapped_column(String(8), index=True, nullable=False)
     day: Mapped[date] = mapped_column(Date(), index=True, nullable=False)

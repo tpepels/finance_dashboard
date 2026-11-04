@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from datetime import date
 import json
+import os
 import unittest
 from unittest.mock import patch
 import httpx
@@ -328,8 +329,9 @@ class SecSyncTests(unittest.TestCase):
             cfg.write_text(json.dumps([{
                 "instrument_id":"vt","cik":"1234567","series_id":"S000000001",
             }]))
-            disabled=collect_configured(config=cfg,root=Path(tmp),
-                                       user_agent="")
+            with patch.dict(os.environ, {"SEC_USER_AGENT": ""}):
+                disabled=collect_configured(config=cfg,root=Path(tmp),
+                                           user_agent="")
             self.assertEqual(disabled["status"],"disabled_missing_SEC_USER_AGENT")
 
 

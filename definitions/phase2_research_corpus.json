@@ -943,8 +943,35 @@
         "S48",
         "S35"
       ],
-      "existing_series_references": [],
-      "existing_adapter_references": [],
+      "existing_series_references": [
+        "inequality.us.pretax_income.top10",
+        "inequality.us.pretax_income.bottom50",
+        "inequality.us.net_personal_wealth.top10",
+        "inequality.us.net_personal_wealth.bottom50",
+        "inequality.fr.pretax_income.top10",
+        "inequality.fr.pretax_income.bottom50",
+        "inequality.fr.net_personal_wealth.top10",
+        "inequality.fr.net_personal_wealth.bottom50",
+        "inequality.pt.pretax_income.top10",
+        "inequality.pt.pretax_income.bottom50",
+        "inequality.pt.net_personal_wealth.top10",
+        "inequality.pt.net_personal_wealth.bottom50",
+        "inequality.cn.pretax_income.top10",
+        "inequality.cn.pretax_income.bottom50",
+        "inequality.cn.net_personal_wealth.top10",
+        "inequality.cn.net_personal_wealth.bottom50",
+        "inequality.in.pretax_income.top10",
+        "inequality.in.pretax_income.bottom50",
+        "inequality.in.net_personal_wealth.top10",
+        "inequality.in.net_personal_wealth.bottom50",
+        "inequality.world.pretax_income.top10",
+        "inequality.world.pretax_income.bottom50",
+        "inequality.world.net_personal_wealth.top10",
+        "inequality.world.net_personal_wealth.bottom50"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/wid.py"
+      ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
         "first_observation": null,
@@ -953,7 +980,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "WID and UNU-WIDER original historical series not mapped",
+      "outstanding_evidence": "Original WID income and net personal wealth shares for world/US/France/Portugal/China/India are available as separate current publisher snapshots, retaining equal-split adults over 20, source metadata, sparse historical years and native fractions. World ends in 2023; selected national files end in 2024. Verify persisted observations and missingness, cross-country measurement comparability, source estimation quality and revision history. Original first-publication vintages and independent UNU-WIDER survey-concept comparators remain unverified; these inputs do not validate the complete L07 comparison.",
       "fallback_options": []
     },
     {
@@ -1101,8 +1128,32 @@
         "S34",
         "S49"
       ],
-      "existing_series_references": [],
-      "existing_adapter_references": [],
+      "existing_series_references": [
+        "supply_chain.us.foreign_final_demand_va",
+        "supply_chain.us.value_added",
+        "supply_chain.us.foreign_final_demand_share",
+        "supply_chain.fr.foreign_final_demand_va",
+        "supply_chain.fr.value_added",
+        "supply_chain.fr.foreign_final_demand_share",
+        "supply_chain.pt.foreign_final_demand_va",
+        "supply_chain.pt.value_added",
+        "supply_chain.pt.foreign_final_demand_share",
+        "supply_chain.cn.foreign_final_demand_va",
+        "supply_chain.cn.value_added",
+        "supply_chain.cn.foreign_final_demand_share",
+        "supply_chain.jp.foreign_final_demand_va",
+        "supply_chain.jp.value_added",
+        "supply_chain.jp.foreign_final_demand_share",
+        "supply_chain.de.foreign_final_demand_va",
+        "supply_chain.de.value_added",
+        "supply_chain.de.foreign_final_demand_share",
+        "supply_chain.in.foreign_final_demand_va",
+        "supply_chain.in.value_added",
+        "supply_chain.in.foreign_final_demand_share"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/oecd_tiva.py"
+      ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
         "first_observation": null,
@@ -1111,7 +1162,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "Original OECD ICIO full matrices and TiVA source keys absent",
+      "outstanding_evidence": "Original OECD TiVA 2025 annual domestic value added in foreign final demand, total value added and publisher-calculated foreign-final-demand share are mapped for US/France/Portugal/China/Japan/Germany/India, 1995–2022. Verify stored observations, statuses and independent source-value reconciliation. Complete original ICIO matrix ZIP downloads returned HTTP 403 in source testing; published TiVA country inputs do not establish full bilateral industry matrices, Leontief reconstruction, sector propagation, original release-time vintages or a fully validated G06 corpus.",
       "fallback_options": []
     },
     {

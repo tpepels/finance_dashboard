@@ -57,6 +57,18 @@ The original Phase 1 acceptance was **reopened during redesign and subsequently 
 - [PHASE1_ANALYSIS_CATALOGUE.md](PHASE1_ANALYSIS_CATALOGUE.md) — curated 35 comparative questions and six editorial overview defaults.
 - [PHASE1_ANALYSIS_SPECIFICATIONS.md](PHASE1_ANALYSIS_SPECIFICATIONS.md) — scientific specification for all 35: published variables, research sources, calculations, alternatives, comparable populations and inference limits.
 - [PHASE1_VISUALIZATION_CONTRACT.md](PHASE1_VISUALIZATION_CONTRACT.md) — information architecture, independent per-graph configuration, chart grammar, annotation model and research workflow.
+
+## Phase 2 execution continuation — 2026-11-04
+
+The approved Phase 1 contracts and source fallback hierarchy remain the specification. Work continues on `main` without worktrees. Implementation and verification use disposable local Docker resources; deployment retains the existing `/srv/finance-dashboard:/data` mount.
+
+- [ ] Rebuild and run the full Python/frontend suites; exercise PostgreSQL persistence separately from the default SQLite integration tests. Check the previously reported SQLite thread warning explicitly.
+- [ ] Inspect real stored source/research coverage on the media server. Diagnose availability failures before collection, verify a recoverable backup, and preserve all observation versions and source evidence during refresh/backfill.
+- [ ] Make source evidence inspectable without promoting source availability to analysis validation: expose allowlisted source identity, units, geography, native frequency, coverage gaps and release bounds; distinguish unchecked source-as-of evidence from checked empty stores. Suppress calendar-gap counts for irregular published snapshots. Add regression/API tests before implementation.
+- [ ] Acquire missing international inequality inputs from original WID country/world files, preserving native variable/population codes, source metadata and retrieval provenance. Verify exact observed history and limitations before registration/ingestion; do not substitute income concepts or certify L07 from a partial source panel.
+- [ ] Run integrated source, historical-consistency, API and backup checks; review changes, commit completed integrated work, rebuild/deploy only after passing checks, and record measured coverage and remaining blockers here and in the source audit.
+
+The initial live sampling supplied by the owner succeeded for 15/15 sources from 2024 onward. It explicitly performed no database writes and verified no first-publication vintages. The offline registry reported 35 analyses, 49 method references and zero fully validated analyses; these results are not evidence of stored comparative histories.
 - [PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md](PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) — complete critical scientific/product review of all 35 and source availability, with proposed six-story overview and four no-fee dataset discovery questions. **Review only; not an approved replacement scope.**
 
 The earlier source and economic method files remain **inventory/technical references to the existing system**, not an approved specification of what the new application must look like or contain. Any original requirement or data source is considered for the new scope by its scientific question, not by its presence in the former code.

@@ -16,6 +16,7 @@ from .database import (
     IngestionRun, ObservationVersion, MarketIngestionRun, MarketPriceVersion,
     FxIngestionRun, FxRateVersion,
 )
+from .oecd_tiva import TIVA_SERIES
 
 FX_CURRENCIES = ("USD", "GBP", "CHF")
 # Official BIS credit-to-GDP gaps release 2026-09-14 contains 2026-Q1
@@ -27,6 +28,16 @@ BIS_CREDIT_RELEASE = {
     "expires": date(2026, 12, 7),
     "through": date(2026, 1, 1),
     "url": "https://data.bis.org/topics/CREDIT_GAPS",
+}
+# Official DSR overview/calendar and all eight exact SDMX keys checked on
+# 2026-11-04: data/reference/bis_dsr_2026q1.json. These are publisher bounds,
+# not observation-level first-publication vintages or proof of local ingestion.
+BIS_DSR_RELEASE = {
+    "version": "BIS debt service ratios, 14 September 2026",
+    "released": date(2026, 9, 14),
+    "expires": date(2026, 12, 7),
+    "through": date(2026, 1, 1),
+    "url": "https://data.bis.org/topics/DSR",
 }
 SOURCE_LAGS = {"D": 10, "M": 95, "Q": 220, "A": 1100}
 
@@ -43,6 +54,22 @@ PUBLICATION_BOUNDS = {
     }
     for country in ("us", "jp", "de", "fr", "it")
 }
+# These named series use the fixed TiVA 2025 edition, dataflow version 1.1.
+# Its January 2026 revision retains the 1995--2022 reference years; this is
+# current for that pinned edition, not a provider-wide freshness exemption.
+PUBLICATION_BOUNDS.update({
+    identifier: {
+        "version": "TiVA 2025 edition, January 2026 revision",
+        "released": date(2026, 1, 22),
+        "through": date(2022, 1, 1),
+        "url": (
+            "https://data-explorer.oecd.org/vis?bp=true&df%5Bag%5D=OECD.STI.PIE"
+            "&df%5Bds%5D=dsDisseminateFinalDMZ&df%5Bid%5D=DSD_TIVA_MAINLV%40DF_MAINLV"
+            "&df%5Bvs%5D=1.1&pg=0&snb=12&tm=TiVA"
+        ),
+    }
+    for identifier in TIVA_SERIES
+})
 SAFE_ERROR_CODES = {
     "provider_http_400", "provider_http_401", "provider_http_403",
     "provider_http_404", "provider_http_429", "provider_http_500",
@@ -105,6 +132,9 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     if (family == "macro" and provider in ("BIS_CREDIT_GAP", "BIS_WORLD_WEIGHTED")
             and BIS_CREDIT_RELEASE["released"] <= asof < BIS_CREDIT_RELEASE["expires"]):
         publication = BIS_CREDIT_RELEASE
+    if (family == "macro" and provider == "BIS_DSR"
+            and BIS_DSR_RELEASE["released"] <= asof < BIS_DSR_RELEASE["expires"]):
+        publication = BIS_DSR_RELEASE
     release_known = bool(publication and asof >= publication["released"]
                          and asof < publication.get("expires", date.max))
     published_through = publication["through"] if release_known else None
@@ -127,6 +157,9 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     else:
         state = "available"
     last_error = last["error"] if last is not None else None
+    regular_cadence = provider not in (
+        "MSCI_PUBLISHED_TOP10", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
+        "SIBLIS_WORLD_EARNINGS_YIELD", "CORGANO_SPOT")
     return {
         "family": family, "id": id, "name": name, "provider": provider,
         "frequency": frequency, "state": state, "collection_enabled": configured,
@@ -144,10 +177,8 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         "stored_versions": int(versions),
         "additional_revisions": max(0, int(versions)-int(count)),
         "unobserved_internal_periods": _internal_calendar_gaps(
-            oldest, latest, frequency, int(count)),
-        "regular_cadence_assumed": provider not in (
-            "MSCI_PUBLISHED_TOP10", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
-            "SIBLIS_WORLD_EARNINGS_YIELD", "CORGANO_SPOT"),
+            oldest, latest, frequency, int(count)) if regular_cadence else None,
+        "regular_cadence_assumed": regular_cadence,
         "last_attempt_utc": last["started_at"].isoformat() if last else None,
         "last_attempt_state": last["status"] if last else "never",
         "last_success_utc": successful["ended_at"].isoformat()
@@ -234,7 +265,9 @@ def build_coverage(engine, catalog: list[dict], market_registry: dict[str, dict]
                    "legitimately omit years, and daily exchange holidays are not "
                    "interpreted as missing data. Pinned published PWT 11.0 coverage "
                    "through 2023 is considered current for that release, not stale. "
-                   "BIS credit-gap Q1 2026 is current only for its verified "
+                   "Selected TiVA 2025 series through 2022 are current for the "
+                   "pinned January 2026 revision, not for later reference years. "
+                   "BIS credit-gap and debt-service Q1 2026 are current only for their verified "
                    "14 September to 6 December 2026 release window. "
                    "Additional versions preserve source revisions."),
     }

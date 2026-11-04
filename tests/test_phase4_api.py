@@ -1,5 +1,7 @@
 """Phase 4 source-validated API smoke with a clean local SQLite database."""
 from datetime import date
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import os
 from unittest.mock import patch
 import unittest
@@ -14,6 +16,9 @@ from finance_dashboard.database import Base
 
 class Phase4ApiTests(unittest.TestCase):
     def setUp(self):
+        self.sources = TemporaryDirectory()
+        self.addCleanup(self.sources.cleanup)
+        self.source_root = Path(self.sources.name)
         self.engine = create_engine("sqlite+pysqlite:///:memory:",
             connect_args={"check_same_thread": False}, poolclass=StaticPool)
         Base.metadata.create_all(self.engine)
@@ -21,6 +26,11 @@ class Phase4ApiTests(unittest.TestCase):
             "FINANCE_AUTO_REFRESH": "0",
             "FINANCE_INCLUDE_MARKETS": "0",
             "FINANCE_AUTO_BACKUP": "0",
+            "FINANCE_BACKUP_DIR": str(self.source_root / "backups"),
+            "FINANCE_VINTAGE_DIR": str(self.source_root / "vintages"),
+            "FINANCE_HOLDINGS_DIR": str(self.source_root / "holdings"),
+            "FINANCE_SURPLUS_DIR": str(self.source_root / "surplus"),
+            "WISESHEETS_SNAPSHOT_PATH": str(self.source_root / "earnings.json"),
         })
         self.env.start()
         self.client_ctx = TestClient(create_app(self.engine))
@@ -87,6 +97,12 @@ class Phase4ApiTests(unittest.TestCase):
             self.assertNotIn("secret", result.text)
             self.assertNotIn("contact@example.org", result.text)
             self.assertNotIn("a" * 32, result.text)
+            reports = self.source_root / "holdings" / "vt"
+            reports.mkdir(parents=True)
+            (reports / "2026-03-31--test-report.json").write_text("{}")
+            stored = self.client.get("/api/operations")
+            self.assertEqual(stored.status_code, 200)
+            self.assertEqual(stored.json()["source_setup"]["sec_nport_reports_stored"], 1)
 
     def test_operations_excludes_secrets_and_source_raw_errors(self):
         status = self.client.get("/api/operations")

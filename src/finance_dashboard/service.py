@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP, localcontext
 import re
 from uuid import uuid4
 
@@ -103,7 +103,11 @@ class IngestionService:
             )
         # Overlap makes backward revisions detectable; first run fetches full history.
         overlap = 120 if definition["frequency"] == "D" else 730 if definition["frequency"] == "M" else 365 * 5
-        start = None if full or last_date is None else last_date - timedelta(days=overlap)
+        # These publishers deliver complete snapshots, cached across each run.
+        # Reconcile every delivered year: old estimates can change outside the
+        # ordinary overlap, and filtering would save no upstream requests.
+        complete_snapshot = definition["provider"] in {"WID", "OECD_TIVA"}
+        start = None if full or complete_snapshot or last_date is None else last_date - timedelta(days=overlap)
         run_id = str(uuid4())
         with Session(self.engine) as session, session.begin():
             session.add(IngestionRun(
@@ -133,10 +137,30 @@ class IngestionService:
                     latest.setdefault(version.period, version.value)
                 added = 0
                 seen = now_utc()
+                numeric = ObservationVersion.__table__.c.value.type.dialect_impl(self.engine.dialect)
+                if self.engine.dialect.name == "sqlite":
+                    bind_value = numeric.bind_processor(self.engine.dialect)
+                    read_value = numeric.result_processor(self.engine.dialect, None)
                 for day, value in fetched.observations.items():
                     if not isinstance(value, Decimal) or not value.is_finite():
                         raise ValueError(f"Invalid provider value for {day}")
-                    if latest.get(day) != value:
+                    # Compare the exact representation this column can retain,
+                    # while passing the original value to normal persistence.
+                    # SQLite Numeric passes through a binary float; PostgreSQL
+                    # numeric rounds scale ties away from zero. Without this,
+                    # unchanged high-precision source values create revisions
+                    # on every refresh. Raw source evidence remains untouched.
+                    if self.engine.dialect.name == "sqlite":
+                        stored_value = bind_value(value) if bind_value else value
+                        stored_value = read_value(stored_value) if read_value else stored_value
+                    else:
+                        with localcontext() as context:
+                            context.prec = 48
+                            stored_value = value.quantize(
+                                Decimal(1).scaleb(-numeric.scale), rounding=ROUND_HALF_UP)
+                    if not stored_value.is_finite():
+                        raise ValueError(f"Invalid provider value for {day}")
+                    if latest.get(day) != stored_value:
                         session.add(ObservationVersion(
                             series_id=series_id, period=day, value=value,
                             first_seen_at=seen, ingestion_run_id=run_id,

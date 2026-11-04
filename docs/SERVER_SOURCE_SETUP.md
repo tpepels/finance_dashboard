@@ -71,7 +71,7 @@ Leave `DATABASE_URL`, mounted data path, user IDs, existing Wisesheets snapshot 
 | SEC N-PORT dated ETF holdings | Original reported positions for specifically verified US-registered funds | Real `SEC_USER_AGENT`, `FINANCE_SEC_HOLDINGS_REFRESH=1`, verified CIK + SEC series mapping | Historical filing completeness and issuer-country coverage; UCITS require separate original source |
 | OECD harmonized industry IOT accounts | National industry employee pay, depreciation, net surplus, optional capital stock | **Separate audited CSV importer, not an env toggle** | Original OECD archive, reproducible extraction, same-unit reconciliation, explicit sector/model assumptions |
 
-The macro providers are pulled by one in-process scheduled cycle when `FINANCE_AUTO_REFRESH=1`. The original publication-vintage, SEC N-PORT and manual OECD-account import paths are separate from that 53-series macro map. A "mapped" series is not proof it has observations in your local SQLite database.
+The macro providers are pulled by one in-process scheduled cycle when `FINANCE_AUTO_REFRESH=1`. The original publication-vintage, SEC N-PORT and manual OECD-account import paths are separate from the current macro map. A "mapped" series is not proof it has observations in your local SQLite database.
 
 ## Deployment and non-secret readiness checks
 
@@ -138,16 +138,16 @@ Check `/api/holdings/vt` and `/api/holdings/bnd` for original dated holdings. Th
 
 ## Source-by-source audit and browser-managed PWT repair
 
-The `GET /api/source-coverage` endpoint returns all **53** registered macro source rows, **24** market instruments, and **3** ECB FX histories without losing previous observations. For each source it reports its stored original-date count, first/last source date, most recent run status, last successful run and a fixed credential-safe failure code. The dashboard displays only aggregate missing/stale counts until you open **Source coverage**.
+The `GET /api/source-coverage` endpoint returns all **142** registered macro source rows, **24** market instruments, and **3** ECB FX histories without losing previous observations. For each source it reports its stored original-date count, first/last source date, most recent run status, last successful run and a fixed credential-safe failure code. The dashboard displays only aggregate missing/stale counts until you open **Source coverage**.
 
 The public FRED sources for Germany, France and Italy are confirmed to be real PWT 11.0 annual **ratios** with latest source year 2023. Do not insert these numbers manually, and do not multiply values in the database by 100; the research view handles that presentation transformation.
 
 For ordinary operation, open **Data & sync** in the dashboard. There are **two buttons**:
 
-- **Sync current data**: imports/refreshes all 53 mapped macro sources (including Germany/France/Italy PWT), 24 markets and three ECB FX rates, plus the current quota-aware earnings snapshot, then creates and verifies a local backup.
+- **Sync current data**: imports/refreshes all 142 mapped macro sources (including Germany/France/Italy PWT), 24 markets and three ECB FX rates, plus the current quota-aware earnings snapshot, then creates and verifies a local backup.
 - **Sync history**: requests complete source histories, continues genuine ALFRED monthly publication-vintage imports and collects original SEC holdings using independently verified fund series identities (up to 50 filings per fund), then verifies a local backup.
 
-Both actions retain existing source observations, serialize with scheduled refreshes and show progress, completion or partial failures. There is no ordinary need to choose series IDs, providers, dates or request limits. The full 80-source table, source-period dates, original release boundaries, failure codes and CSV export are available only after opening **Source diagnostics**.
+Both actions retain existing source observations, serialize with scheduled refreshes and show progress, completion or partial failures. There is no ordinary need to choose series IDs, providers, dates or request limits. The full 169-source table, source-period dates, original release boundaries, failure codes and CSV export are available only after opening **Source diagnostics**.
 
 **Historical coverage is not automatically complete:** SEC collection still has a 50-matching-filing limit per fund, UCITS sources are not yet integrated and licensed historical global index weights are missing. A successfully completed button press does not mean unresolved source definitions are verified.
 
@@ -164,7 +164,7 @@ docker compose exec finance-dashboard python -c \
 
 Wisesheets subscription limits may prevent the requested full filer enumeration. Inspect `/api/earnings/sec-filers`, snapshot provenance and source coverage rather than assuming completeness.
 
-Markets and ECB FX run automatically from the same existing service when `FINANCE_INCLUDE_MARKETS=1`; `/api/market/status` shows historical coverage and errors. Yahoo history is rate-limited/unofficial, and a configured collector cannot guarantee provider availability. Macro coverage can be checked through `/api/data-status`; 53 mappings are not 53 successfully imported histories.
+Markets and ECB FX run automatically from the same existing service when `FINANCE_INCLUDE_MARKETS=1`; `/api/market/status` shows historical coverage and errors. Yahoo history is rate-limited/unofficial, and a configured collector cannot guarantee provider availability. Macro coverage can be checked through `/api/data-status`; 142 mappings are not 142 successfully imported histories.
 
 ## OECD industry input-output accounting
 
@@ -182,7 +182,7 @@ Do not substitute an unaudited CSV with invented accounting rows. The importer r
 
 ## Backups: preserve everything, including non-database evidence
 
-The updated backup writes a verified SQLite online copy, Wisesheets snapshot when present, and **a compressed evidence archive** when ALFRED/SEC/OECD files exist. A signed-off manifest includes SHA-256 for every component. Backups stored under `/data/backups` share the same physical disk with the live source data and are **not** sufficient protection against drive loss.
+The updated backup writes a verified SQLite online copy, Wisesheets snapshot when present, and **a compressed evidence archive** when ALFRED/SEC/OECD files exist. Original WID bulk data/metadata and published OECD TiVA CSV snapshots are stored under `FINANCE_SOURCE_EVIDENCE_DIR` (default `/data/source-evidence`) and included in that archive. The manifest includes SHA-256 for every component. Backups stored under `/data/backups` share the same physical disk with the live source data and are **not** sufficient protection against drive loss.
 
 ```bash
 docker compose exec finance-dashboard \

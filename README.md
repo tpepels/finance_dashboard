@@ -4,7 +4,7 @@
 
 ## Current authoritative documents
 
-- [New five-phase development plan](docs/DEVELOPMENT_PLAN.md) — **sole phase plan**; research-first Phase 1 active, later scope acceptance reset.
+- [New five-phase development plan](docs/DEVELOPMENT_PLAN.md) — **sole phase plan**; Phase 1 approved, Phase 2 source acquisition active.
 - [Phase 1 scientific charter](docs/PHASE1_SCIENTIFIC_CHARTER.md) — ten approved product-intent decisions, seven research domains, 28 scientific/authoritative methodological references and source-validation rules.
 - [Phase 1 analysis catalogue](docs/PHASE1_ANALYSIS_CATALOGUE.md) — 35 owner-approved first-class questions and the six connected research experiences.
 - [35 scientific analysis specifications](docs/PHASE1_ANALYSIS_SPECIFICATIONS.md) — variables, original methodology, reproducible formulas, alternatives, validity, interpretation and 49 scholarly/statistical references.
@@ -26,18 +26,15 @@ The following existing operational documentation remains available for running o
 The single Compose service is `finance-dashboard`. The image now includes the full `scripts/` directory, original Fed reference evidence, existing tests and Phase 2 additions. **Build runs the existing acceptance tests and the new Phase 2 tests before it can complete.** A failed build means no tested new image was produced, so do not infer a successful deployment.
 
 ```bash
-cd ~/Projects/finance_dashboard
-git pull --ff-only
-docker compose build finance-dashboard
-docker compose up -d finance-dashboard
-docker compose ps
-docker compose exec -T finance-dashboard python -m finance_dashboard validate
+rtk git pull --ff-only
+rtk docker build -t finance-dashboard:verify .
 ```
 
-Run **all** Python tests in the container (the build runs only a selected set):
+The build runs all Python tests and frontend tests. Repeat Python verification in a disposable container without the media server's data mount or credentials:
 
 ```bash
-docker compose exec -T finance-dashboard python -m unittest discover -s tests -p 'test_*.py'
+rtk proxy docker run --rm --entrypoint python finance-dashboard:verify \
+  -m unittest discover -s tests -p 'test_*.py'
 ```
 
 Read-only Phase 2 source check, without changing the SQLite database:
@@ -52,4 +49,6 @@ Source-contract inventory without network access or DB mutation:
 docker compose exec -T finance-dashboard python scripts/phase2_corpus_status.py
 ```
 
-The configured `FINANCE_DATA_DIR` path is mounted at `/data`; builds and container recreation must **not** clear it. `FRED_API_KEY` and other source configuration remain supplied by Compose. The source probe reports missing, rejected, or unavailable source samples rather than making up values. The new original-index and BIS integrations still require real-source verification; passing tests alone is not source coverage.
+Run the Compose commands above from the existing `~/media-stack` project on `media-server`. Deploy a clean build there with `docker compose --progress plain build finance-dashboard` followed by `docker compose up -d --no-deps finance-dashboard`. Keep its existing `/srv/finance-dashboard:/data` mount. The repository's standalone Compose file instead uses `FINANCE_DATA_DIR`; do not start a second stack beside the existing service.
+
+Original WID inequality files and published OECD TiVA inputs retain their raw source snapshots under `/data/source-evidence`, included in verified backups. `scripts/phase2_source_reconcile.py` checks the raw source values against the latest stored observations without writing to the database. These sources still require comparative and release-vintage validation; passing tests or storing series does not complete Phase 2.

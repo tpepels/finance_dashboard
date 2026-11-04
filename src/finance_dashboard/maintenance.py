@@ -138,7 +138,7 @@ class MaintenanceManager:
             }
         elif action == "refresh_sources":
             ids = options["series_ids"] if "series_ids" in options else sorted(valid_sources)
-            if (not isinstance(ids, list) or not 1 <= len(ids) <= 53 or
+            if (not isinstance(ids, list) or not 1 <= len(ids) <= len(valid_sources) or
                 len(ids) != len(set(ids)) or not set(ids) <= valid_sources):
                 raise ValueError("Invalid canonical series selection")
             options = {"series_ids": sorted(ids)}

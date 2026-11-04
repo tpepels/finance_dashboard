@@ -156,6 +156,119 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(december[current]["state"],"stale")
         self.assertIsNone(december[current]["published_through"])
 
+    def test_bis_dsr_q1_is_current_only_within_verified_publication_window(self):
+        dsr_ids = (
+            "debt_service.us.private.bis", "debt_service.us.households.bis",
+            "debt_service.us.corporations.bis", "debt_service.jp.private.bis",
+            "debt_service.de.private.bis", "debt_service.cn.private.bis",
+            "debt_service.pt.private.bis", "debt_service.pt.households.bis",
+        )
+        for sid in dsr_ids:
+            self.add_macro(sid, when=date(2026, 1, 1))
+        for asof, state, through in (
+            (date(2026, 9, 13), "stale", None),
+            (date(2026, 9, 14), "available", "2026-01-01"),
+            (date(2026, 12, 6), "available", "2026-01-01"),
+            (date(2026, 12, 7), "stale", None),
+        ):
+            rows = {x["id"]: x for x in build_coverage(
+                self.engine, self.catalog, self.registry, asof=asof)["items"]}
+            for sid in dsr_ids:
+                with self.subTest(series=sid, asof=asof):
+                    self.assertEqual(rows[sid]["state"], state)
+                    self.assertEqual(rows[sid]["published_through"], through)
+                    self.assertEqual(rows[sid]["complete_for_pinned_release"],
+                                     through is not None)
+                    self.assertEqual(rows[sid]["published_release_date"],
+                                     "2026-09-14" if through else None)
+
+    def test_bis_dsr_release_does_not_exempt_older_or_absent_observations(self):
+        old = "debt_service.jp.private.bis"
+        absent = "debt_service.de.private.bis"
+        self.add_macro(old, when=date(2025, 10, 1))
+        with patch.dict(os.environ, {"FINANCE_AUTO_REFRESH": "1"}):
+            rows = {x["id"]: x for x in build_coverage(
+                self.engine, self.catalog, self.registry,
+                asof=date(2026, 11, 4))["items"]}
+        self.assertEqual(rows[old]["state"], "stale")
+        self.assertEqual(rows[absent]["state"], "not_ingested")
+        for sid in (old, absent):
+            self.assertEqual(rows[sid]["published_through"], "2026-01-01")
+            self.assertFalse(rows[sid]["complete_for_pinned_release"])
+
+    def test_bis_dsr_release_preserves_active_refresh_failure(self):
+        sid = "debt_service.us.private.bis"
+        self.add_macro(sid, status="failed", when=date(2026, 1, 1),
+                       error="provider_http_503")
+        rows = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry, asof=date(2026, 11, 4))["items"]}
+        self.assertEqual(rows[sid]["state"], "refresh_failed_with_data")
+        self.assertEqual(rows[sid]["last_failure_code"], "provider_http_503")
+        self.assertTrue(rows[sid]["complete_for_pinned_release"])
+
+    def test_bis_dsr_release_does_not_exempt_property_sources(self):
+        self.add_macro("property.jp.real_residential.bis", when=date(2025, 10, 1))
+        self.add_macro("property.world.real_residential.bis", when=date(2026, 1, 1))
+        rows = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry, asof=date(2026, 11, 4))["items"]}
+        for sid in ("property.jp.real_residential.bis", "property.world.real_residential.bis"):
+            with self.subTest(series=sid):
+                self.assertEqual(rows[sid]["state"], "stale")
+                self.assertIsNone(rows[sid]["published_through"])
+                self.assertFalse(rows[sid]["complete_for_pinned_release"])
+
+    def test_tiva_2022_is_current_for_pinned_edition_after_revision_date(self):
+        tiva_ids = [x["id"] for x in self.catalog if x["provider"] == "OECD_TIVA"]
+        for sid in tiva_ids:
+            self.add_macro(sid, when=date(2022, 1, 1))
+        for asof, state, through in (
+            (date(2026, 1, 21), "stale", None),
+            (date(2026, 1, 22), "available", "2022-01-01"),
+            (date(2026, 11, 4), "available", "2022-01-01"),
+        ):
+            rows = {x["id"]: x for x in build_coverage(
+                self.engine, self.catalog, self.registry, asof=asof)["items"]}
+            for sid in tiva_ids:
+                with self.subTest(series=sid, asof=asof):
+                    self.assertEqual(rows[sid]["state"], state)
+                    self.assertEqual(rows[sid]["published_through"], through)
+                    self.assertEqual(rows[sid]["complete_for_pinned_release"],
+                                     through is not None)
+                    self.assertEqual(rows[sid]["published_release_date"],
+                                     "2026-01-22" if through else None)
+                    self.assertEqual(rows[sid]["published_release"],
+                                     "TiVA 2025 edition, January 2026 revision" if through else None)
+
+    def test_tiva_edition_bound_preserves_older_empty_and_failed_states(self):
+        old = "supply_chain.pt.foreign_final_demand_va"
+        absent = "supply_chain.pt.value_added"
+        failed = "supply_chain.pt.foreign_final_demand_share"
+        self.add_macro(old, when=date(2021, 1, 1))
+        self.add_macro(failed, status="failed", when=date(2022, 1, 1),
+                       error="provider_http_503")
+        with patch.dict(os.environ, {"FINANCE_AUTO_REFRESH": "1"}):
+            rows = {x["id"]: x for x in build_coverage(
+                self.engine, self.catalog, self.registry,
+                asof=date(2026, 11, 4))["items"]}
+        self.assertEqual(rows[old]["state"], "stale")
+        self.assertFalse(rows[old]["complete_for_pinned_release"])
+        self.assertEqual(rows[absent]["state"], "not_ingested")
+        self.assertFalse(rows[absent]["complete_for_pinned_release"])
+        self.assertEqual(rows[failed]["state"], "refresh_failed_with_data")
+        self.assertEqual(rows[failed]["last_failure_code"], "provider_http_503")
+        self.assertTrue(rows[failed]["complete_for_pinned_release"])
+        self.assertEqual(rows[old]["published_through"], "2022-01-01")
+        self.assertEqual(rows[absent]["published_through"], "2022-01-01")
+
+    def test_tiva_edition_bound_does_not_exempt_older_wid_world_file(self):
+        sid = "inequality.world.pretax_income.top10"
+        self.add_macro(sid, when=date(2023, 1, 1))
+        rows = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry, asof=date(2026, 11, 4))["items"]}
+        self.assertEqual(rows[sid]["state"], "stale")
+        self.assertIsNone(rows[sid]["published_through"])
+        self.assertFalse(rows[sid]["complete_for_pinned_release"])
+
     def test_annual_gap_diagnostic_does_not_label_revisions_as_missing_dates(self):
         sid = "labour.us.pwt_labour_share"
         self.add_macro(sid, when=date(2020,1,1))
@@ -168,6 +281,20 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(row["stored_periods"],2)
         self.assertEqual(row["unobserved_internal_periods"],1)
         self.assertEqual(row["additional_revisions"],0)
+
+    def test_irregular_published_snapshots_do_not_claim_calendar_gaps(self):
+        sid = "concentration.global.msci_acwi_published_top10"
+        self.add_macro(sid, when=date(2019, 1, 1))
+        with Session(self.engine) as session, session.begin():
+            session.add(ObservationVersion(series_id=sid, period=date(2026, 10, 1),
+                value=Decimal("25.5"), first_seen_at=NOW, ingestion_run_id="run-"+sid))
+        report = build_coverage(self.engine, self.catalog, self.registry,
+                                asof=date(2026, 11, 3))
+        row = next(x for x in report["items"] if x["id"] == sid)
+        self.assertFalse(row["regular_cadence_assumed"])
+        self.assertIsNone(row["unobserved_internal_periods"])
+        self.assertEqual(row["stored_periods"], 2)
+        self.assertEqual(row["latest_source_date"], "2026-10-01")
 
     def test_market_and_fx_are_reported_with_actual_observation_dates(self):
         with Session(self.engine) as session, session.begin():

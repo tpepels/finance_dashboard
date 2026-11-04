@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "provider": "BIS",
+  "dataset": "BIS,WS_DSR,1.0",
+  "checked_at_utc": "2026-11-04T10:09:42.712432+00:00",
+  "official_publication": {
+    "released": "2026-09-14",
+    "reference_period": "2026-Q1",
+    "next_scheduled_release": "2026-12-07",
+    "next_scheduled_reference_period": "2026-Q2",
+    "overview_url": "https://data.bis.org/topics/DSR",
+    "calendar_url": "https://data.bis.org/release-calendar?m=216"
+  },
+  "api_retrieval_verified": true,
+  "database_ingestion_verified_by_this_record": false,
+  "first_publication_vintage_verified": false,
+  "method": "Read-only HTTP requests with startPeriod=2025-Q3; existing strict BIS DSR parser verified the exact country, borrower sector and quarterly dimensions. Each entry records the latest nonmissing observation returned, not an entire historical corpus.",
+  "limitations": "The official date describes the dataset release. Local checked_at_utc describes retrieval verification. Neither identifies the first public availability or revision history of an individual observation. API retrieval is independent of database ingestion, and this check performed no database writes.",
+  "unit": "percent of sector income",
+  "frequency": "Q",
+  "source_period": "2026-Q1",
+  "source_period_start": "2026-01-01",
+  "samples": [
+    {
+      "series_id": "debt_service.us.private.bis",
+      "source_key": "Q.US.P",
+      "value": "13.8",
+      "checked_at_utc": "2026-11-04T10:09:41.987739+00:00",
+      "http_status": 200,
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_DSR/1.0/Q.US.P?startPeriod=2025-Q3"
+    },
+    {
+      "series_id": "debt_service.us.households.bis",
+      "source_key": "Q.US.H",
+      "value": "8",
+      "checked_at_utc": "2026-11-04T10:09:42.470475+00:00",
+      "http_status": 200,
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_DSR/1.0/Q.US.H?startPeriod=2025-Q3"
+    },
+    {
+      "series_id": "debt_service.us.corporations.bis",
+      "source_key": "Q.US.N",
+      "value": "36.9",
+      "checked_at_utc": "2026-11-04T10:09:41.983998+00:00",
+      "http_status": 200,
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_DSR/1.0/Q.US.N?startPeriod=2025-Q3"
+    },
+    {
+      "series_id": "debt_service.jp.private.bis",
+      "source_key": "Q.JP.P",
+      "value": "15.5",
+      "checked_at_utc": "2026-11-04T10:09:42.156675+00:00",
+      "http_status": 200,
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_DSR/1.0/Q.JP.P?startPeriod=2025-Q3"
+    },
+    {
+      "series_id": "debt_service.de.private.bis",
+      "source_key": "Q.DE.P",
+      "value": "12.2",
+      "checked_at_utc": "2026-11-04T10:09:42.151016+00:00",
+      "http_status": 200,
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_DSR/1.0/Q.DE.P?startPeriod=2025-Q3"
+    },
+    {
+      "series_id": "debt_service.cn.private.bis",
+      "source_key": "Q.CN.P",
+      "value": "19.1",
+      "checked_at_utc": "2026-11-04T10:09:42.551441+00:00",
+      "http_status": 200,
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_DSR/1.0/Q.CN.P?startPeriod=2025-Q3"
+    },
+    {
+      "series_id": "debt_service.pt.private.bis",
+      "source_key": "Q.PT.P",
+      "value": "12.2",
+      "checked_at_utc": "2026-11-04T10:09:42.405333+00:00",
+      "http_status": 200,
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_DSR/1.0/Q.PT.P?startPeriod=2025-Q3"
+    },
+    {
+      "series_id": "debt_service.pt.households.bis",
+      "source_key": "Q.PT.H",
+      "value": "5.9",
+      "checked_at_utc": "2026-11-04T10:09:42.712432+00:00",
+      "http_status": 200,
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_DSR/1.0/Q.PT.H?startPeriod=2025-Q3"
+    }
+  ]
+}

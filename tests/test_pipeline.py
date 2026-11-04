@@ -59,6 +59,28 @@ class PipelineTests(unittest.TestCase):
             before = current_observations(session, ID, snapshot_at=original_seen)
             self.assertEqual(before[1].value, Decimal("3.625"))
 
+    def test_numeric_storage_representation_does_not_fabricate_revisions(self):
+        # Raw decimal precision exceeds SQLite's persisted Numeric(32,10)
+        # representation. Repeating an identical original must remain idempotent.
+        for initial, changed in (("0.7202000000000001", "0.7202000001"),
+                                 ("0.46000000005", "0.4600000002"),
+                                 ("25000000.1234", "25000000.1235")):
+            with self.subTest(source=initial):
+                engine = create_engine("sqlite+pysqlite:///:memory:")
+                Base.metadata.create_all(engine)
+                try:
+                    provider = FakeProvider()
+                    provider.values = {date(2022, 1, 1): Decimal(initial)}
+                    service = IngestionService(engine, provider)
+                    self.assertEqual(service.refresh("supply_chain.pt.value_added")["versions_added"], 1)
+                    self.assertEqual(service.refresh("supply_chain.pt.value_added")["versions_added"], 0)
+                    provider.values[date(2022, 1, 1)] = Decimal(changed)
+                    self.assertEqual(service.refresh("supply_chain.pt.value_added")["versions_added"], 1)
+                    with Session(engine) as session:
+                        self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 2)
+                finally:
+                    engine.dispose()
+
     def test_provider_failure_preserves_data_and_records_failure(self):
         self.svc.refresh(ID, today=date(2026, 9, 1))
         self.provider.fail = True

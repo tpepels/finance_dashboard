@@ -91,6 +91,30 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(saved["jobs"][-1]["status"],"complete")
         self.assertNotIn("FRED_API_KEY",json.dumps(saved))
 
+    def test_full_canonical_source_selection_grows_with_catalog(self):
+        from finance_dashboard.providers import ProviderRouter
+        router = ProviderRouter()
+        try:
+            expected = set(router.supported_ids())
+        finally:
+            router.close()
+        self.assertGreater(len(expected), 53)
+        collected = []
+        def collect(engine, *, full, series_ids, progress, stopped):
+            collected.append(series_ids)
+            return 0
+        with patch("finance_dashboard.worker.refresh_all", side_effect=collect):
+            for payload in ({"action": "refresh_sources"},
+                            {"action": "refresh_sources", "series_ids": sorted(expected)}):
+                response = self.client.post("/api/maintenance", json=payload, headers=HEADERS)
+                self.assertEqual(response.status_code, 202, response.text)
+                self.assertEqual(self.wait(response.json()["id"])["status"], "complete")
+        self.assertEqual(collected, [expected, expected])
+        for ids in ([], [PWT[0], PWT[0]], ["unknown-source"]):
+            response = self.client.post("/api/maintenance", headers=HEADERS,
+                json={"action": "refresh_sources", "series_ids": ids})
+            self.assertEqual(response.status_code, 422)
+
     def test_rejects_cross_origin_missing_action_header_and_unknown_ids(self):
         self.assertEqual(self.client.post("/api/maintenance",json=ACTION).status_code,403)
         self.assertEqual(self.client.post("/api/maintenance",json=ACTION,

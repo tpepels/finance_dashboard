@@ -7,6 +7,7 @@ that the source measurements, historical vintages, or complete analysis exist.
 from __future__ import annotations
 
 import json
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,20 @@ REQUIRED_COVERAGE = {
     "first_observation", "last_observation", "periods_observed",
     "publication_vintages", "asof_utc",
 }
+# Only reviewed catalogue metadata and safe census fields enter the API.
+# Ingestion request URLs and upstream error text may contain credentials.
+SOURCE_CONTRACT_FIELDS = (
+    "name", "provider", "source_key", "source_url", "geography", "frequency",
+    "unit", "measurement", "revision_policy", "rights", "notes", "status",
+)
+OBSERVATION_COVERAGE_FIELDS = (
+    "frequency", "state", "collection_enabled", "mapped", "stored_periods",
+    "oldest_source_date", "latest_source_date", "days_since_latest_observation",
+    "stored_versions", "additional_revisions", "unobserved_internal_periods",
+    "regular_cadence_assumed", "published_through", "published_release",
+    "published_release_date", "complete_for_pinned_release", "last_attempt_utc",
+    "last_attempt_state", "last_success_utc", "last_failure_code",
+)
 
 
 def load_research_corpus(root: Path = DEFAULT_ROOT) -> dict[str, Any]:
@@ -127,11 +142,19 @@ def validate_research_corpus(
         ):
             errors.append(f"{ident}: unverified data must not claim observation history")
         if status in {"verified_source_data", "fully_validated_comparative_corpus"}:
-            if (not coverage.get("first_observation")
-                    or not coverage.get("last_observation")
-                    or not isinstance(coverage.get("periods_observed"), int)
-                    or coverage["periods_observed"] <= 0
-                    or not coverage.get("asof_utc")):
+            try:
+                first = date.fromisoformat(coverage["first_observation"])
+                last = date.fromisoformat(coverage["last_observation"])
+                asof = datetime.fromisoformat(coverage["asof_utc"])
+                valid_coverage = (
+                    first <= last
+                    and type(coverage.get("periods_observed")) is int
+                    and coverage["periods_observed"] > 0
+                    and asof.utcoffset() is not None
+                )
+            except (KeyError, TypeError, ValueError):
+                valid_coverage = False
+            if not valid_coverage:
                 errors.append(f"{ident}: verified status requires actual dated source evidence")
         fallbacks = row.get("fallback_options")
         if not isinstance(fallbacks, list):
@@ -185,6 +208,7 @@ def research_corpus_report(
         item["series_id"]: item for item in (vintages or {}).get("series", [])
         if isinstance(item, dict) and isinstance(item.get("series_id"), str)
     }
+    method_source_by_id = {item["id"]: item for item in document["original_sources"]}
     analyses: list[dict[str, Any]] = []
     for row in document["analyses"]:
         links = []
@@ -196,9 +220,11 @@ def research_corpus_report(
             source_vintages = vintage_by_id.get(original_fred_id) if original_fred_id else None
             publication = {
                 "original_fred_id": original_fred_id,
-                "asof_snapshot_files": source_vintages.get("count", 0) if source_vintages else 0,
+                "checked": source_vintages is not None,
+                "asof_snapshot_files": source_vintages.get("count", 0)
+                    if source_vintages is not None else None,
                 "populated_asof_snapshots": source_vintages.get("populated_vintage_count", 0)
-                    if source_vintages else 0,
+                    if source_vintages is not None else None,
                 "first_populated_asof": source_vintages.get("first_populated_asof")
                     if source_vintages else None,
                 "last_populated_asof": source_vintages.get("last_populated_asof")
@@ -206,9 +232,22 @@ def research_corpus_report(
                 "source_publication_vintage_verified": bool(
                     source_vintages and source_vintages.get("populated_vintage_count", 0) > 0
                 ),
+                # A populated ALFRED snapshot proves values known on its as-of
+                # date, not the earliest public release of each observation.
+                "first_publication_vintage_verified": False,
+                "publication_semantics": (
+                    "Stored ALFRED information available on selected as-of dates; "
+                    "first populated as-of is not the first publication date."
+                ),
             } if original_fred_id else None
             links.append({
                 "series_id": series_id,
+                "source_contract": {
+                    field: original.get(field) for field in SOURCE_CONTRACT_FIELDS
+                } if original else None,
+                "observation_coverage": {
+                    field: source.get(field) for field in OBSERVATION_COVERAGE_FIELDS
+                } if source is not None else None,
                 "original_source_asof": publication,
                 "stored_periods": source.get("stored_periods", 0) if source else None,
                 "oldest_source_date": source.get("oldest_source_date") if source else None,
@@ -224,6 +263,11 @@ def research_corpus_report(
             "existing_references_with_observations": observed,
             "linked_existing_series": links,
             "method_source_ids": row["primary_method_sources"],
+            "method_sources": [
+                {field: method_source_by_id[source_id].get(field)
+                 for field in ("id", "label", "url")}
+                for source_id in row["primary_method_sources"]
+            ],
             "outstanding_evidence": row["outstanding_evidence"],
             "fallbacks": row["fallback_options"],
             "comparative_corpus_validated": row["evidence_status"] == "fully_validated_comparative_corpus",
@@ -236,6 +280,8 @@ def research_corpus_report(
         "analysis_with_existing_code_references": sum(x["existing_reference_count"] > 0 for x in analyses),
         "analysis_with_any_stored_macro_observations": sum(x["existing_references_with_observations"] > 0 for x in analyses),
         "observations_checked": observations is not None,
+        "observation_evidence_asof": observations.get("asof")
+            if observations is not None else None,
         "alfred_publication_vintages_checked": vintages is not None,
         "alfred_sources_with_populated_asof": sum(
             item.get("populated_vintage_count", 0) > 0

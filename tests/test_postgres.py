@@ -25,6 +25,31 @@ class FakeProvider:
 
 @unittest.skipUnless(os.getenv("TEST_POSTGRES_URL"), "Requires temporary PostgreSQL test database")
 class PostgresTests(unittest.TestCase):
+    def test_numeric_scale_rounding_does_not_fabricate_source_revisions(self):
+        engine = create_engine(os.environ["TEST_POSTGRES_URL"])
+        Base.metadata.create_all(engine)
+        provider = FakeProvider()
+        service = IngestionService(engine, provider)
+        sid = "policy_rate.ea.bis"
+        try:
+            for original, retained, revised in (
+                ("0.46000000005", "0.4600000001", "0.4600000002"),
+                ("-0.46000000005", "-0.4600000001", "-0.4600000002"),
+                ("25000000.1234", "25000000.1234000000", "25000000.1235")):
+                with self.subTest(source=original):
+                    provider.value = Decimal(original)
+                    self.assertEqual(service.refresh(sid)["versions_added"], 1)
+                    self.assertEqual(service.refresh(sid)["versions_added"], 0)
+                    with Session(engine) as session:
+                        self.assertEqual(current_observations(session, sid)[0].value, Decimal(retained))
+                    provider.value = Decimal(revised)
+                    self.assertEqual(service.refresh(sid)["versions_added"], 1)
+            with Session(engine) as session:
+                self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 6)
+        finally:
+            Base.metadata.drop_all(engine)
+            engine.dispose()
+
     def test_global_usd_magnitudes_round_trip_without_numeric_overflow(self):
         engine = create_engine(os.environ["TEST_POSTGRES_URL"])
         Base.metadata.create_all(engine)

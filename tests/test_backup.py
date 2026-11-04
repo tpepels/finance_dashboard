@@ -12,6 +12,39 @@ from finance_dashboard.backup import backup_local, verify_manifest, _hash
 
 
 class LocalBackupTests(unittest.TestCase):
+    def test_original_source_files_and_metadata_survive_verified_backup(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "database.sqlite3"
+            sqlite3.connect(db).close()
+            evidence = root / "source-evidence"
+            bundle = evidence / "wid" / "WO" / "content-hash"
+            bundle.mkdir(parents=True)
+            originals = {
+                "WID_data_WO.csv": b"country;variable;percentile;year;value\nWO;sptincj992;p90p100;2023;0.5\n",
+                "WID_metadata_WO.csv": b"country;variable;unit\nWO;sptincj992;share\n",
+                "manifest.json": b'{"first_publication_vintage_verified":false}',
+            }
+            for name, payload in originals.items():
+                (bundle / name).write_bytes(payload)
+            with patch.dict(os.environ, {
+                "FINANCE_SOURCE_EVIDENCE_DIR": str(evidence),
+                "FINANCE_VINTAGE_DIR": str(root / "empty-vintages"),
+                "FINANCE_HOLDINGS_DIR": str(root / "empty-holdings"),
+                "FINANCE_SURPLUS_DIR": str(root / "empty-surplus"),
+                "FINANCE_MAINTENANCE_STATE": str(root / "empty-maintenance" / "jobs.json"),
+            }):
+                manifest = backup_local(root / "backups", source_db=db)
+            self.assertIsNotNone(manifest["evidence_archive"])
+            self.assertEqual(manifest["evidence_archive"]["source_roots"], ["source-evidence"])
+            archive_path = root / "backups" / manifest["evidence_archive"]["file"]
+            with tarfile.open(archive_path, "r:gz") as archive:
+                for name, expected in originals.items():
+                    member = "source-evidence/wid/WO/content-hash/" + name
+                    self.assertEqual(archive.extractfile(member).read(), expected)
+            manifest_path = next((root / "backups").glob("finance-*Z.json"))
+            self.assertTrue(verify_manifest(manifest_path)["verified"])
+
     def test_existing_background_refresh_schedules_one_daily_backup_without_worker(self):
         from finance_dashboard.standalone import refresh_loop
         class OneCycle:
