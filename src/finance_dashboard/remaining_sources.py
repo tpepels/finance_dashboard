@@ -54,8 +54,10 @@ class HtmlTables(HTMLParser):
             self.table = None
 
 
-def parse_bea_q1(html: str, *, start: date | None = None) -> dict[date, Decimal]:
-    """Extract BEA Table E Q1, not Q2/Q3 or the Fed equities/net-worth ratio."""
+def parse_bea_q_table(html: str, q_type: str, *, start: date | None = None) -> dict[date, Decimal]:
+    """Extract BEA original Table E Q1/Q2/Q3 with exact annual columns."""
+    if q_type not in {"Q1", "Q2", "Q3"}:
+        raise DerivedDataError("Unknown BEA Table E Q-type ratio")
     if "Q-Type Ratios" not in html or "produced assets" not in html:
         raise DerivedDataError("BEA source does not identify replacement-cost Q ratios")
     parser = HtmlTables()
@@ -89,11 +91,16 @@ def parse_bea_q1(html: str, *, start: date | None = None) -> dict[date, Decimal]
         if day in values:
             raise DerivedDataError("Duplicate BEA Q year")
         if day <= date.today() and (start is None or day >= start):
-            values[day] = v
+            values[day] = {"Q1": v, "Q2": q2, "Q3": q3}[q_type]
     if not values or (start is None and (date(1960,1,1) not in values or len(values) < 60)):
-        raise DerivedDataError("Incomplete BEA historical replacement-cost Q1 series")
+        raise DerivedDataError("Incomplete BEA historical replacement-cost Q series")
     return dict(sorted(values.items()))
 
+
+
+def parse_bea_q1(html: str, *, start: date | None = None) -> dict[date, Decimal]:
+    """Compatibility-neutral named public BEA Q1 research variable."""
+    return parse_bea_q_table(html, "Q1", start=start)
 
 def parse_msci_acwi(payload: Any, *, start: date | None = None) -> dict[date, Decimal]:
     """MSCI 892400 NETR USD levels; one observation per actual provider date."""

@@ -38,7 +38,7 @@ from .macro_aggregates import (
 )
 from .remaining_sources import (
     BEA_Q_URL, MSCI_LEVELS_URL, MSCI_ACWI_INDEX_CODE,
-    parse_bea_q1, parse_msci_acwi, gold_acwi_rolling_correlation,
+    parse_bea_q1, parse_bea_q_table, parse_msci_acwi, gold_acwi_rolling_correlation,
     global_output_to_labour_income_ratio,
 )
 
@@ -265,6 +265,45 @@ def parse_pink_sheet_gold(rows: list[list], start: date | None = None) -> dict[d
     if not output:
         raise ProviderError("World Bank Pink Sheet has no usable gold-price months")
     return output
+
+
+def parse_pink_sheet_brent(rows: list[list], start: date | None = None) -> dict[date, Decimal]:
+    """World Bank Pink Sheet *Crude oil, Brent*, nominal USD per barrel.
+
+    No arbitrary commodity column is accepted. Dates are YYYYMMM strings in
+    the original 'Monthly Prices' workbook; true missing values stay missing.
+    """
+    import re
+    headers = [(i, j) for i, row in enumerate(rows[:15])
+               for j, cell in enumerate(row)
+               if str(cell).strip().lower() == "crude oil, brent"]
+    if len(headers) != 1:
+        raise ProviderError("World Bank Pink Sheet Brent column missing or ambiguous")
+    header_row, column = headers[0]
+    if header_row+1 >= len(rows) or column >= len(rows[header_row+1]):
+        raise ProviderError("World Bank Brent source unit row missing")
+    units = str(rows[header_row+1][column]).lower()
+    if "bbl" not in units and "barrel" not in units:
+        raise ProviderError("World Bank Brent price must be denominated per barrel")
+    output: dict[date, Decimal] = {}
+    for row in rows[header_row+2:]:
+        if not row:
+            continue
+        period = str(row[0]).strip()
+        if not re.fullmatch(r"\d{4}M(0[1-9]|1[0-2])", period):
+            continue
+        day = date(int(period[:4]), int(period[-2:]), 1)
+        if day > date.today() or (start is not None and day < start):
+            continue
+        if column >= len(row):
+            continue
+        value = _value(row[column])
+        if value is not None and value <= 0:
+            raise ProviderError("World Bank Brent price must be positive")
+        _put(output, day, value)
+    if not output:
+        raise ProviderError("World Bank Pink Sheet has no Brent oil price observations")
+    return dict(sorted(output.items()))
 
 
 def parse_corgano_gold(payload: Any, start: date | None = None) -> dict[date, Decimal]:
@@ -781,10 +820,15 @@ class ProviderRouter:
             return FetchedSeries(
                 series_id, "https://www.wisesheets.io/api/docs", None, observations)
         if provider == "BEA_Q":
-            if key != "BEA_2026_TABLE_E_Q1":
+            approved = {
+                "BEA_2026_TABLE_E_Q1": "Q1",
+                "BEA_2026_TABLE_E_Q2": "Q2",
+                "BEA_2026_TABLE_E_Q3": "Q3",
+            }
+            if key not in approved:
                 raise SourceUnavailable("Unknown BEA Q table/version")
             response = self._get(BEA_Q_URL)
-            observations = parse_bea_q1(response.text, start=start)
+            observations = parse_bea_q_table(response.text, approved[key], start=start)
             return FetchedSeries(series_id, BEA_Q_URL, None, observations)
         if provider == "MSCI_NETR":
             if key != "892400/NETR/USD":
@@ -861,7 +905,12 @@ class ProviderRouter:
                 rows = workbook.get_sheet_by_name("Monthly Prices").to_python()
             except (ValueError, RuntimeError) as exc:
                 raise ProviderError("World Bank monthly workbook is invalid") from exc
-            observations = parse_pink_sheet_gold(rows, start)
+            if key == "CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Gold":
+                observations = parse_pink_sheet_gold(rows, start)
+            elif key == "CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Crude oil, Brent":
+                observations = parse_pink_sheet_brent(rows, start)
+            else:
+                raise SourceUnavailable("Unapproved World Bank Pink Sheet commodity")
             return FetchedSeries(series_id, PINK_SHEET_URL, None, observations)
         if provider == "UN_SDG":
             code, area = key.split("/", 1)

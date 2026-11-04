@@ -374,7 +374,11 @@
         "gdp.real_growth.world",
         "gdp.real_growth.us",
         "gdp.real_growth.eu",
-        "gdp.real_growth.jp"
+        "gdp.real_growth.jp",
+        "prices.us.imf_cpi_inflation",
+        "prices.jp.imf_cpi_inflation",
+        "prices.cn.imf_cpi_inflation",
+        "prices.commodity.brent_usd"
       ],
       "existing_adapter_references": [
         "src/finance_dashboard/providers.py"
@@ -387,7 +391,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "IMF PCPIPCH and World Bank commodity series (except gold) not mapped",
+      "outstanding_evidence": "Original WEO historical CPI and World Bank Brent series now mapped; WEO releases and forecast/version separation plus live data evidence remain open",
       "fallback_options": []
     },
     {
@@ -428,7 +432,9 @@
         "S15"
       ],
       "existing_series_references": [
-        "bond.us.real_10y"
+        "bond.us.real_10y",
+        "bond.us.nominal_10y",
+        "bond.us.breakeven_10y"
       ],
       "existing_adapter_references": [
         "src/finance_dashboard/providers.py"
@@ -441,7 +447,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "Nominal DGS10, TIPS breakeven T10YIE and original decomposition not mapped",
+      "outstanding_evidence": "Nominal 10y Treasury and TIPS breakeven source series now mapped; actual observations, yield decomposition consistency and primary-release timestamps remain unverified",
       "fallback_options": []
     },
     {
@@ -567,8 +573,13 @@
         "S21",
         "S22"
       ],
-      "existing_series_references": [],
-      "existing_adapter_references": [],
+      "existing_series_references": [
+        "stress.us.high_yield_oas",
+        "stress.us.vix"
+      ],
+      "existing_adapter_references": [
+        "src/finance_dashboard/providers.py"
+      ],
       "evidence_status": "not_empirically_verified_for_phase2",
       "coverage": {
         "first_observation": null,
@@ -577,7 +588,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "OFR/Chicago Fed original financial stress and credit spread series absent",
+      "outstanding_evidence": "FRED source IDs for high-yield OAS and VIX now mapped; original OFR/NFCI and real-data historical stress-validation remain open",
       "fallback_options": []
     },
     {
@@ -589,7 +600,8 @@
         "S08"
       ],
       "existing_series_references": [
-        "fiscal.world.public_debt"
+        "fiscal.world.public_debt",
+        "stress.us.high_yield_oas"
       ],
       "existing_adapter_references": [
         "src/finance_dashboard/providers.py"
@@ -667,7 +679,8 @@
       ],
       "existing_series_references": [
         "valuation.us.cape",
-        "bond.us.real_10y"
+        "bond.us.real_10y",
+        "bond.us.nominal_10y"
       ],
       "existing_adapter_references": [
         "src/finance_dashboard/providers.py"
@@ -691,7 +704,9 @@
         "S26"
       ],
       "existing_series_references": [
-        "valuation.us.tobins_q"
+        "valuation.us.tobins_q",
+        "valuation.us.tobins_q2",
+        "valuation.us.tobins_q3"
       ],
       "existing_adapter_references": [
         "src/finance_dashboard/remaining_sources.py"
@@ -704,7 +719,7 @@
         "publication_vintages": null,
         "asof_utc": null
       },
-      "outstanding_evidence": "Only BEA Q1 mapped; exact published Q2/Q3 and component data absent",
+      "outstanding_evidence": "BEA Q1/Q2/Q3 now have individually sourced published columns; historical retrieval and independent BEA table identity remain to be observed",
       "fallback_options": []
     },
     {
