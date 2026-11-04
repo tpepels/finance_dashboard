@@ -20,13 +20,14 @@ from sqlalchemy.engine import Engine
 
 from .standalone import maintenance_network_lock, manual_sync_pending
 from .developer_logs import record_event
+from .vintage import SOURCES as VINTAGE_SOURCES
 
 PUBLIC_ACTIONS = frozenset((
     "sync_current", "sync_history",
     "refresh_sources", "refresh_markets", "check_alfred", "backfill_alfred",
     "check_sec", "collect_sec", "refresh_earnings", "backup",
 ))
-VINTAGE_IDS = frozenset(("T10Y3M", "SAHMREALTIME", "USREC"))
+VINTAGE_IDS = frozenset(VINTAGE_SOURCES)
 FX_IDS = frozenset(("USD", "GBP", "CHF"))
 JOB_STATES = frozenset(("queued", "waiting", "running", "cancelling"))
 SAFE_ERRORS = frozenset((
@@ -380,6 +381,9 @@ class MaintenanceManager:
                             result = backfill_batch(
                                 start,end,sorted(VINTAGE_IDS),api_key=key,
                                 client=client,max_requests=180,
+                                # Stay below FRED's 120 requests/minute limit:
+                                # https://fred.stlouisfed.org/docs/api/fred/errors.html
+                                pause_seconds=0.6,
                                 first_available=available_since,
                                 skip_failed=attempted_failed)
                             downloaded += result["downloaded_now"]
@@ -527,7 +531,7 @@ class MaintenanceManager:
             return {"status": "partial" if failed else "complete",
                     "attempted_sources": len(ids)+len(fx), "failed_sources": failed}
         if action in ("check_alfred", "backfill_alfred"):
-            from .vintage import probe_access, backfill_batch
+            from .vintage import probe_access, backfill_batch, first_available_vintages
             key = os.environ.get("FRED_API_KEY", "").strip()
             with httpx.Client(timeout=25,headers={"User-Agent":"GlobalCapitalMonitor/0.2"}) as client:
                 check = probe_access(api_key=key, client=client)
@@ -538,12 +542,24 @@ class MaintenanceManager:
                     return {"status": "complete", "asof_probe": "2020-01-31",
                             "requests": check["requests"]}
                 start,end = date.fromisoformat(options["start"]),date.fromisoformat(options["end"])
+                try:
+                    available_since = first_available_vintages(
+                        options["series_ids"], api_key=key, client=client)
+                except httpx.HTTPStatusError as exc:
+                    from .vintage import _safe_http_diagnostic
+                    return {"status": "blocked", **_safe_http_diagnostic(exc.response)}
+                except httpx.RequestError:
+                    return {"status": "blocked", "reason": "fred_network_error"}
+                except (ValueError, KeyError, TypeError):
+                    return {"status": "blocked", "reason": "fred_publication_metadata_invalid"}
                 total_captured=0
                 cycles=0
                 result=None
                 while not cancelled.is_set():
                     result=backfill_batch(start,end,options["series_ids"],
                         api_key=key, client=client,
+                        # Same bounded spacing as full history synchronization.
+                        pause_seconds=0.6, first_available=available_since,
                         max_requests=options["max_requests"])
                     total_captured += result["downloaded_now"]
                     cycles+=1
@@ -561,10 +577,15 @@ class MaintenanceManager:
                     raise MaintenanceBlocked("cancelled")
                 return {"status": result["status"], "vintages_total": result["source_vintages_requested"],
                         "vintages_missing": result["missing_after_run"],
+                        "prepublication_excluded": result["prepublication_excluded"],
+                        # Source-level availability bounds do not establish
+                        # each observation's first-publication history.
+                        "first_publication_vintage_verified": False,
                         "downloaded_now": total_captured,
                         "cycles": cycles,
                         "reason": result.get("halted_reason") or
-                            ("no_progress" if result["failed_now"] or not result["downloaded_now"]
+                            ("no_progress" if result["status"] != "complete" and
+                             (result["failed_now"] or not result["downloaded_now"])
                              else None)}
         if action == "check_sec":
             from .sec_holdings_sync import check_sec_sources

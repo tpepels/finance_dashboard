@@ -8,6 +8,7 @@ from pathlib import Path
 from threading import Event
 from unittest.mock import patch
 
+import httpx
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -18,6 +19,9 @@ from finance_dashboard.database import Base
 from finance_dashboard.maintenance import MaintenanceManager
 from finance_dashboard.developer_logs import read_events
 from finance_dashboard.standalone import maintenance_network_lock, manual_sync_pending
+from finance_dashboard.vintage import (
+    SOURCES as VINTAGE_SOURCES, VintageError, backfill_batch as real_backfill_batch,
+)
 
 
 PWT = ["labour.de.pwt_labour_share","labour.fr.pwt_labour_share",
@@ -183,14 +187,18 @@ class MaintenanceApiTests(unittest.TestCase):
     def test_historical_asof_import_resumes_batches_and_keeps_secrets_out(self):
         batch=[
             {"status":"partial","source_vintages_requested":3,"missing_after_run":1,
+             "prepublication_excluded":0,
              "downloaded_now":2,"failed_now":[],
              "next_missing":{"series_id":"T10Y3M"},"halted_reason":None},
             {"status":"complete","source_vintages_requested":3,"missing_after_run":0,
+             "prepublication_excluded":0,
              "downloaded_now":1,"failed_now":[],"next_missing":None,"halted_reason":None},
         ]
         with patch.dict("os.environ",{"FRED_API_KEY":"a"*32}), \
              patch("finance_dashboard.vintage.probe_access",
                    return_value={"status":"ready","requests":1}), \
+             patch("finance_dashboard.vintage.first_available_vintages",
+                   return_value={"T10Y3M": date(2000, 1, 1)}) as availability, \
              patch("finance_dashboard.vintage.backfill_batch",side_effect=batch) as backfill:
             request=self.client.post("/api/maintenance",headers=HEADERS,json={
                 "action":"backfill_alfred","start":"2020-01-01",
@@ -203,8 +211,158 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(result["total"],3)
         self.assertEqual(result["result"]["downloaded_now"],3)
         self.assertEqual(backfill.call_count,2)
+        availability.assert_called_once()
+        self.assertTrue(all(call.kwargs["first_available"] == {"T10Y3M": date(2000, 1, 1)}
+                            for call in backfill.call_args_list))
         self.assertNotIn("a"*32,
             Path(self.tmp.name,"jobs.json").read_text(encoding="utf-8"))
+
+    def test_default_alfred_backfill_collects_all_canonical_sources(self):
+        expected = sorted(VINTAGE_SOURCES)
+        with patch.dict("os.environ", {"FRED_API_KEY": "a"*32}), \
+             patch("finance_dashboard.vintage.probe_access",
+                   return_value={"status": "ready", "requests": 1}), \
+             patch("finance_dashboard.vintage.first_available_vintages",
+                   return_value={sid: date(2000, 1, 1) for sid in VINTAGE_SOURCES}) as availability, \
+             patch("finance_dashboard.vintage.backfill_batch", return_value={
+                 "status": "complete", "source_vintages_requested": 9,
+                 "prepublication_excluded": 0,
+                 "missing_after_run": 0, "downloaded_now": 9,
+                 "failed_now": [], "next_missing": None, "halted_reason": None,
+             }) as backfill:
+            response = self.client.post("/api/maintenance", headers=HEADERS, json={
+                "action": "backfill_alfred", "start": "2020-01-01", "end": "2020-01-31"})
+            self.assertEqual(response.status_code, 202, response.text)
+            result = self.wait(response.json()["id"])
+        self.assertEqual(result["status"], "complete")
+        self.assertEqual(result["options"]["series_ids"], expected)
+        self.assertEqual(len(result["options"]["series_ids"]), 9)
+        backfill.assert_called_once()
+        self.assertEqual(backfill.call_args.args[2], expected)
+        availability.assert_called_once()
+        self.assertEqual(availability.call_args.args[0], expected)
+        self.assertEqual(backfill.call_args.kwargs["first_available"],
+                         {sid: date(2000, 1, 1) for sid in VINTAGE_SOURCES})
+
+    def test_explicit_new_yield_and_dfa_backfill_sources_are_accepted(self):
+        with patch.dict("os.environ", {"FRED_API_KEY": "a"*32}), \
+             patch("finance_dashboard.vintage.probe_access",
+                   return_value={"status": "ready", "requests": 1}), \
+             patch("finance_dashboard.vintage.first_available_vintages",
+                   return_value={sid: date(2000, 1, 1) for sid in ("DGS10", "WFRBST01134")}), \
+             patch("finance_dashboard.vintage.backfill_batch", return_value={
+                 "status": "complete", "source_vintages_requested": 2,
+                 "prepublication_excluded": 0,
+                 "missing_after_run": 0, "downloaded_now": 2,
+                 "failed_now": [], "next_missing": None, "halted_reason": None,
+             }) as backfill:
+            response = self.client.post("/api/maintenance", headers=HEADERS, json={
+                "action": "backfill_alfred", "start": "2020-01-01", "end": "2020-01-31",
+                "series_ids": ["WFRBST01134", "DGS10"]})
+            self.assertEqual(response.status_code, 202, response.text)
+            result = self.wait(response.json()["id"])
+        self.assertEqual(result["status"], "complete")
+        self.assertEqual(result["options"]["series_ids"], ["DGS10", "WFRBST01134"])
+        self.assertEqual(backfill.call_args.args[2], ["DGS10", "WFRBST01134"])
+
+    def test_alfred_backfill_rejects_unknown_and_duplicate_sources(self):
+        for selected in (["DGS10", "unknown-source"], ["DGS10", "DGS10"]):
+            with self.subTest(selected=selected):
+                response = self.client.post("/api/maintenance", headers=HEADERS, json={
+                    "action": "backfill_alfred", "series_ids": selected})
+                self.assertEqual(response.status_code, 422, response.text)
+        self.assertIsNone(self.client.get("/api/maintenance").json()["active_job_id"])
+
+    def test_alfred_backfill_never_requests_prepublication_months(self):
+        requested_asofs = []
+        metadata_ids = []
+        def transport(request):
+            if request.url.path.endswith("/vintagedates"):
+                metadata_ids.append(request.url.params["series_id"])
+                return httpx.Response(200, json={"vintage_dates": ["2000-03-15"]})
+            sid = request.url.params["series_id"]
+            asof = request.url.params["realtime_start"]
+            if sid == "DGS10":
+                requested_asofs.append(asof)
+            return httpx.Response(200, json={
+                "realtime_start": asof, "realtime_end": asof,
+                "observations": [{"date": asof, "value": "3.5"}],
+            })
+        client = httpx.Client(transport=httpx.MockTransport(transport))
+        source_folder = Path(self.tmp.name, "vintages")
+        def local_backfill(*args, **kwargs):
+            return real_backfill_batch(*args, **kwargs, root=source_folder)
+        with patch.dict("os.environ", {"FRED_API_KEY": "a"*32}), \
+             patch("finance_dashboard.maintenance.httpx.Client", return_value=client), \
+             patch("finance_dashboard.vintage.time.sleep"), \
+             patch("finance_dashboard.vintage.backfill_batch", side_effect=local_backfill):
+            response = self.client.post("/api/maintenance", headers=HEADERS, json={
+                "action": "backfill_alfred", "series_ids": ["DGS10"],
+                "start": "2000-01-01", "end": "2000-03-31"})
+            self.assertEqual(response.status_code, 202, response.text)
+            job = self.wait(response.json()["id"])
+        self.assertEqual(job["status"], "complete")
+        self.assertEqual(metadata_ids, ["DGS10"])
+        self.assertEqual(requested_asofs, ["2000-03-31"])
+        self.assertEqual(job["result"]["prepublication_excluded"], 2)
+        self.assertEqual(job["result"]["vintages_total"], 1)
+        self.assertEqual(job["result"]["vintages_missing"], 0)
+        self.assertEqual(job["result"]["downloaded_now"], 1)
+        self.assertIs(job["result"].get("first_publication_vintage_verified"), False)
+        self.assertTrue((source_folder / "DGS10" / "2000-03-31.json").is_file())
+
+    def test_alfred_metadata_failure_blocks_without_fabricated_counts_or_secrets(self):
+        request = httpx.Request("GET", "https://api.stlouisfed.org/fred/series/vintagedates?api_key=PRIVATE")
+        response = httpx.Response(400, request=request, json={"error_message": "Invalid api_key given"})
+        cases = (
+            (VintageError("PRIVATE invalid publication metadata"), "fred_publication_metadata_invalid", None),
+            (httpx.HTTPStatusError("PRIVATE", request=request, response=response), "fred_api_key_rejected", 400),
+            (httpx.ConnectError("PRIVATE", request=request), "fred_network_error", None),
+        )
+        for failure, reason, status in cases:
+            with self.subTest(reason=reason), \
+                 patch("finance_dashboard.vintage.probe_access",
+                       return_value={"status": "ready", "requests": 1}), \
+                 patch("finance_dashboard.vintage.first_available_vintages", side_effect=failure), \
+                 patch("finance_dashboard.vintage.backfill_batch", return_value={
+                     "status": "complete", "source_vintages_requested": 3,
+                     "prepublication_excluded": 0, "missing_after_run": 0,
+                     "downloaded_now": 3, "failed_now": [], "next_missing": None,
+                     "halted_reason": None,
+                 }) as backfill:
+                accepted = self.client.post("/api/maintenance", headers=HEADERS, json={
+                    "action": "backfill_alfred", "series_ids": ["DGS10"],
+                    "start": "2000-01-01", "end": "2000-03-31"})
+                self.assertEqual(accepted.status_code, 202, accepted.text)
+                result = self.wait(accepted.json()["id"])
+                self.assertEqual(result["status"], "blocked")
+                self.assertEqual(result["result"]["reason"], reason)
+                self.assertEqual(result["result"].get("http_status"), status)
+                self.assertNotIn("vintages_total", result["result"])
+                self.assertNotIn("prepublication_excluded", result["result"])
+                self.assertNotIn("PRIVATE", json.dumps(result))
+                backfill.assert_not_called()
+
+    def test_all_prepublication_dates_are_exclusions_without_false_no_progress(self):
+        with patch("finance_dashboard.vintage.probe_access",
+                   return_value={"status": "ready", "requests": 1}), \
+             patch("finance_dashboard.vintage.first_available_vintages",
+                   return_value={"DGS10": date(2001, 1, 1)}), \
+             patch("finance_dashboard.vintage.backfill_batch", return_value={
+                 "status": "complete", "source_vintages_requested": 0,
+                 "prepublication_excluded": 3, "missing_after_run": 0,
+                 "downloaded_now": 0, "failed_now": [], "next_missing": None,
+                 "halted_reason": None,
+             }):
+            response = self.client.post("/api/maintenance", headers=HEADERS, json={
+                "action": "backfill_alfred", "series_ids": ["DGS10"],
+                "start": "2000-01-01", "end": "2000-03-31"})
+            self.assertEqual(response.status_code, 202, response.text)
+            job = self.wait(response.json()["id"])
+        self.assertEqual(job["status"], "complete")
+        self.assertIsNone(job["result"]["reason"])
+        self.assertEqual(job["result"]["prepublication_excluded"], 3)
+        self.assertEqual(job["result"]["vintages_total"], 0)
 
     def test_sec_access_and_historical_filing_import_can_run_from_ui(self):
         with patch("finance_dashboard.sec_holdings_sync.check_sec_sources",
@@ -316,7 +474,7 @@ class MaintenanceApiTests(unittest.TestCase):
             progress(27,27,"FX:USD")
             calls.append("markets")
             return 0
-        bounds={sid: date(2000, 1, 1) for sid in ("T10Y3M","SAHMREALTIME","USREC")}
+        bounds={sid: date(2000, 1, 1) for sid in VINTAGE_SOURCES}
         batch={"status":"complete","source_vintages_requested":12,
                "prepublication_excluded":0,
                "missing_after_run":0,"downloaded_now":12,"failed_now":[],
@@ -349,6 +507,8 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertEqual(done["result"]["parts"]["alfred"]["downloaded"],12)
         self.assertEqual(alfred.call_count,1)
         availability.assert_called_once()
+        self.assertEqual(availability.call_args.args[0], sorted(VINTAGE_SOURCES))
+        self.assertEqual(alfred.call_args.args[2], sorted(VINTAGE_SOURCES))
         self.assertEqual(alfred.call_args.kwargs["first_available"],bounds)
         self.assertEqual(done["result"]["parts"]["alfred"]["prepublication_excluded"],0)
         self.assertEqual(sorted(done["result"]["parts"]),
@@ -356,7 +516,7 @@ class MaintenanceApiTests(unittest.TestCase):
         self.assertNotIn("a"*32,json.dumps(done))
 
     def test_history_backfill_exposes_first_failed_source_and_date(self):
-        bounds={sid: date(2000, 1, 1) for sid in ("T10Y3M","SAHMREALTIME","USREC")}
+        bounds={sid: date(2000, 1, 1) for sid in VINTAGE_SOURCES}
         failure = {
             "status":"blocked","source_vintages_requested":964,
             "prepublication_excluded":0,
