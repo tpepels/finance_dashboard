@@ -255,11 +255,7 @@
     {
       "id": "C01",
       "title": "Are real activity and leading indicators turning?",
-      "primary_method_sources": [
-        "S01",
-        "S03",
-        "S04"
-      ],
+      "primary_method_sources": ["S01", "S03", "S04"],
       "outstanding_evidence": "US industrial production and employment activity series now mapped; original OECD CLI, comparable international production and source-release vintages remain missing",
       "fallback_options": [],
       "comparison_contract": {
@@ -306,15 +302,11 @@
           {
             "role": "quarterly_real_gdp",
             "description": "Original quarterly real GDP volume levels; US GDPC1 is the currently declared national input. Annual WDI growth cannot satisfy this role.",
-            "series_ids": [
-              "activity.us.real_gdp_level"
-            ],
+            "series_ids": ["activity.us.real_gdp_level"],
             "expected": {
               "frequency": "Q",
               "unit": "billions_chained_usd",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US domestic economy",
               "concept": "BEA quarterly real GDP chained-dollar volume level"
             },
@@ -325,15 +317,11 @@
           {
             "role": "industrial_production",
             "description": "Original monthly real industrial-production index.",
-            "series_ids": [
-              "activity.us.industrial_production"
-            ],
+            "series_ids": ["activity.us.industrial_production"],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US industrial production",
               "concept": "Fed G.17 real industrial-production index"
             },
@@ -344,15 +332,11 @@
           {
             "role": "harmonized_unemployment",
             "description": "Original monthly unemployment rate for the compared labour-market population.",
-            "series_ids": [
-              "activity.us.unemployment_rate"
-            ],
+            "series_ids": ["activity.us.unemployment_rate"],
             "expected": {
               "frequency": "M",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US civilian labour force",
               "concept": "BLS seasonally adjusted unemployment rate"
             },
@@ -371,9 +355,7 @@
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "G.17 industry production sample",
               "concept": "Source-published industrial-production diffusion"
             },
@@ -418,13 +400,7 @@
     {
       "id": "C02",
       "title": "Do the yield curve and Sahm Rule agree about recession risks?",
-      "primary_method_sources": [
-        "S05",
-        "S06",
-        "S02",
-        "S07",
-        "S10"
-      ],
+      "primary_method_sources": ["S05", "S06", "S02", "S07", "S10"],
       "outstanding_evidence": "US recession chronology, yield spread and Sahm series are mapped. Original NBER committee announcements (19 documents, 1979-2021) and the retrospective peak/trough table are retained as a typed event artifact with separate event and announcement dates; release-time revisions and independent predictive comparisons remain unverified.",
       "fallback_options": [],
       "comparison_contract": {
@@ -434,15 +410,11 @@
           {
             "role": "published_yield_spread",
             "description": "Published nominal 10-year minus 3-month Treasury spread.",
-            "series_ids": [
-              "rates.us.treasury_10y_3m_spread"
-            ],
+            "series_ids": ["rates.us.treasury_10y_3m_spread"],
             "expected": {
               "frequency": "D",
               "unit": "percentage_points",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US Treasury constant-maturity instruments",
               "concept": "10-year minus 3-month nominal yield spread"
             },
@@ -453,15 +425,11 @@
           {
             "role": "published_sahm",
             "description": "Published SAHMREALTIME; historical observation dates do not establish contemporaneous publication.",
-            "series_ids": [
-              "recession.us.sahm"
-            ],
+            "series_ids": ["recession.us.sahm"],
             "expected": {
               "frequency": "M",
               "unit": "percentage_points",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US civilian unemployment population",
               "concept": "Published real-time Sahm recession indicator"
             },
@@ -472,15 +440,11 @@
           {
             "role": "recession_chronology",
             "description": "Published NBER US recession chronology.",
-            "series_ids": [
-              "recession.us.nber_indicator"
-            ],
+            "series_ids": ["recession.us.nber_indicator"],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US economy",
               "concept": "Retrospectively classified US recession months"
             },
@@ -493,16 +457,12 @@
             "description": "Original peak/trough announcement dates and available chronology versions, distinct from recession months.",
             "series_ids": [],
             "expected": {
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Public availability of NBER classifications"
             },
             "temporal_requirement": "first_publication",
             "input_type": "events",
-            "artifact_ids": [
-              "nber_chronology"
-            ],
+            "artifact_ids": ["nber_chronology"],
             "input_requirement": "Original peak/trough announcement dates and available chronology versions, distinct from recession months."
           }
         ],
@@ -512,10 +472,7 @@
             "label": "US monthly published Sahm and recession chronology",
             "kind": "approved_narrower",
             "scope": "Published US monthly Sahm indicator and retrospective NBER recession classification, exactly aligned without manufacturing contemporaneous availability.",
-            "series_ids": [
-              "recession.us.sahm",
-              "recession.us.nber_indicator"
-            ],
+            "series_ids": ["recession.us.sahm", "recession.us.nber_indicator"],
             "frequency": "M",
             "start": "2000-01-01",
             "end": "latest_common",
@@ -535,9 +492,7 @@
             "label": "US daily published 10-year minus 3-month yield spread",
             "kind": "approved_narrower",
             "scope": "Native daily published US Treasury nominal 10-year minus 3-month yield spread, retained separately from monthly Sahm and recession inputs.",
-            "series_ids": [
-              "rates.us.treasury_10y_3m_spread"
-            ],
+            "series_ids": ["rates.us.treasury_10y_3m_spread"],
             "frequency": "D",
             "start": "2000-01-01",
             "end": "latest_common",
@@ -560,10 +515,7 @@
     {
       "id": "C03",
       "title": "Is real growth converging internationally?",
-      "primary_method_sources": [
-        "S08",
-        "S09"
-      ],
+      "primary_method_sources": ["S08", "S09"],
       "outstanding_evidence": "Current real GDP growth mapped; WEO actual/forecast and publication vintages not verified",
       "fallback_options": [],
       "comparison_contract": {
@@ -584,14 +536,7 @@
             "expected": {
               "frequency": "A",
               "unit": "percent",
-              "geography": [
-                "WLD",
-                "USA",
-                "EMU",
-                "CHN",
-                "IND",
-                "JPN"
-              ],
+              "geography": ["WLD", "USA", "EMU", "CHN", "IND", "JPN"],
               "population": "Published WDI country or named area aggregate",
               "concept": "Annual real GDP percentage growth"
             },
@@ -636,11 +581,7 @@
     {
       "id": "C05",
       "title": "How persistent are economic shocks and recoveries?",
-      "primary_method_sources": [
-        "S02",
-        "S10",
-        "S04"
-      ],
+      "primary_method_sources": ["S02", "S10", "S04"],
       "outstanding_evidence": "Original native PAYEMS payroll employment is mapped separately from unique employed persons. GDP and monthly activity inputs remain different frequencies. The NBER recession chronology and committee announcements are retained as a separate typed event artifact (context); independently documented non-recession shock events and source release vintages remain missing.",
       "fallback_options": [],
       "comparison_contract": {
@@ -650,15 +591,11 @@
           {
             "role": "real_gdp_level",
             "description": "Original quarterly real GDP level for recovery-to-level research.",
-            "series_ids": [
-              "activity.us.real_gdp_level"
-            ],
+            "series_ids": ["activity.us.real_gdp_level"],
             "expected": {
               "frequency": "Q",
               "unit": "billions_chained_usd",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US economy",
               "concept": "Real GDP level"
             },
@@ -669,14 +606,10 @@
           {
             "role": "employment_level",
             "description": "Original BLS CES PAYEMS seasonally adjusted total nonfarm payroll jobs in native thousands of persons; establishment employment is distinct from unique employed people.",
-            "series_ids": [
-              "activity.us.nonfarm_payrolls"
-            ],
+            "series_ids": ["activity.us.nonfarm_payrolls"],
             "expected": {
               "frequency": "M",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US nonfarm payroll employment",
               "concept": "BLS PAYEMS employment level",
               "unit": "thousands_persons"
@@ -688,15 +621,11 @@
           {
             "role": "industrial_production_level",
             "description": "Original monthly industrial-production level.",
-            "series_ids": [
-              "activity.us.industrial_production"
-            ],
+            "series_ids": ["activity.us.industrial_production"],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US industrial production",
               "concept": "Real industrial-production index"
             },
@@ -707,15 +636,11 @@
           {
             "role": "recession_chronology",
             "description": "Original US recession phases.",
-            "series_ids": [
-              "recession.us.nber_indicator"
-            ],
+            "series_ids": ["recession.us.nber_indicator"],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US economy",
               "concept": "NBER recession chronology"
             },
@@ -728,9 +653,7 @@
             "description": "Independently documented shock-event dates and pre-shock reference eligibility; a pandemic shock is distinct from NBER recession months.",
             "series_ids": [],
             "expected": {
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Dated shock events and recovery reference periods"
             },
             "temporal_requirement": "first_publication",
@@ -769,17 +692,12 @@
         "activity.us.unemployment_rate",
         "gdp.real_growth.us"
       ],
-      "context_artifact_ids": [
-        "nber_chronology"
-      ]
+      "context_artifact_ids": ["nber_chronology"]
     },
     {
       "id": "C06",
       "title": "Are inflation and commodity shocks affecting global growth?",
-      "primary_method_sources": [
-        "S08",
-        "S43"
-      ],
+      "primary_method_sources": ["S08", "S43"],
       "outstanding_evidence": "Native WEO real growth/CPI and named Pink Sheet Brent, US natural gas and maize inputs are bound. Original projection/status, common publication edition, price/population and temporal eligibility must be independently verified; no shock model or frequency conversion is inferred.",
       "fallback_options": [],
       "comparison_contract": {
@@ -797,11 +715,7 @@
             "expected": {
               "frequency": "A",
               "unit": "percent",
-              "geography": [
-                "USA",
-                "JPN",
-                "CHN"
-              ],
+              "geography": ["USA", "JPN", "CHN"],
               "population": "Named country CPI basket",
               "concept": "Annual average consumer-price inflation"
             },
@@ -820,11 +734,7 @@
             "expected": {
               "frequency": "A",
               "unit": "percent",
-              "geography": [
-                "CHN",
-                "JPN",
-                "USA"
-              ],
+              "geography": ["CHN", "JPN", "USA"],
               "population": "Named country economy",
               "concept": "WEO annual real GDP growth with source status"
             },
@@ -835,15 +745,11 @@
           {
             "role": "brent_price",
             "description": "Original World Bank Pink Sheet monthly Brent price.",
-            "series_ids": [
-              "prices.commodity.brent_usd"
-            ],
+            "series_ids": ["prices.commodity.brent_usd"],
             "expected": {
               "frequency": "M",
               "unit": "usd_per_barrel",
-              "geography": [
-                "WORLD"
-              ],
+              "geography": ["WORLD"],
               "population": "World Bank quoted Brent market",
               "concept": "Monthly nominal Brent crude price in USD/barrel"
             },
@@ -854,16 +760,12 @@
           {
             "role": "gas_price",
             "description": "Independently named original monthly gas price; source benchmark and quote unit must be selected.",
-            "series_ids": [
-              "prices.commodity.natural_gas_us_usd"
-            ],
+            "series_ids": ["prices.commodity.natural_gas_us_usd"],
             "expected": {
               "frequency": "M",
               "concept": "Source-defined natural-gas price benchmark",
               "unit": "usd_per_mmbtu",
-              "geography": [
-                "WORLD"
-              ]
+              "geography": ["WORLD"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -872,16 +774,12 @@
           {
             "role": "food_price",
             "description": "Independently named original monthly food commodity series or source-defined basket.",
-            "series_ids": [
-              "prices.commodity.maize_usd"
-            ],
+            "series_ids": ["prices.commodity.maize_usd"],
             "expected": {
               "frequency": "M",
               "concept": "Source-defined food commodity price",
               "unit": "usd_per_metric_ton",
-              "geography": [
-                "WORLD"
-              ]
+              "geography": ["WORLD"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -953,11 +851,7 @@
     {
       "id": "M01",
       "title": "How are monetary policy settings diverging?",
-      "primary_method_sources": [
-        "S11",
-        "S12",
-        "S13"
-      ],
+      "primary_method_sources": ["S11", "S12", "S13"],
       "outstanding_evidence": "Original DFF effective federal funds and target lower/upper bounds are separately mapped. Original BoJ daily-average call rate FM01'STRDCLUCON (1998 onward) is bound; the separately defined monthly average and end-of-month series (1985 onward) are context and agree with the daily series within publisher rounding. Joint original release vintages remain missing.",
       "fallback_options": [],
       "comparison_contract": {
@@ -967,15 +861,11 @@
           {
             "role": "effective_federal_funds",
             "description": "Original Board of Governors H.15 DFF effective federal funds history, with broker-reported volume-weighted mean before 2016-03-01 and FR 2420 transaction-based volume-weighted median thereafter. This is a realized market rate, distinct from target bounds.",
-            "series_ids": [
-              "policy_rate.us.fed_effective"
-            ],
+            "series_ids": ["policy_rate.us.fed_effective"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US overnight federal-funds transactions",
               "concept": "Effective federal funds rate"
             },
@@ -986,15 +876,11 @@
           {
             "role": "ecb_deposit_facility",
             "description": "Original ECB deposit-facility policy rate.",
-            "series_ids": [
-              "policy_rate.ea.ecb_dfr"
-            ],
+            "series_ids": ["policy_rate.ea.ecb_dfr"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "EA"
-              ],
+              "geography": ["EA"],
               "population": "Euro-area ECB deposit facility",
               "concept": "Declared deposit-facility policy setting"
             },
@@ -1005,15 +891,11 @@
           {
             "role": "boj_overnight_call",
             "description": "Original BoJ uncollateralized overnight call rate with daily-average or explicitly separate monthly identity.",
-            "series_ids": [
-              "policy_rate.jp.boj_call_daily"
-            ],
+            "series_ids": ["policy_rate.jp.boj_call_daily"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "JP"
-              ],
+              "geography": ["JP"],
               "population": "Japan uncollateralized overnight call market",
               "concept": "Realized overnight call rate"
             },
@@ -1024,15 +906,11 @@
           {
             "role": "fed_target_lower",
             "description": "Original Federal Reserve target-range lower bound for the target-setting comparison.",
-            "series_ids": [
-              "policy_rate.us.fed_lower"
-            ],
+            "series_ids": ["policy_rate.us.fed_lower"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Federal-funds target-range lower bound"
             },
             "temporal_requirement": "first_publication",
@@ -1042,15 +920,11 @@
           {
             "role": "fed_target_upper",
             "description": "Original Federal Reserve target-range upper bound; not a realized overnight rate.",
-            "series_ids": [
-              "policy_rate.us.fed_upper"
-            ],
+            "series_ids": ["policy_rate.us.fed_upper"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US federal-funds target corridor",
               "concept": "Federal-funds target-range upper bound"
             },
@@ -1099,11 +973,7 @@
     {
       "id": "M02",
       "title": "Do real yields or inflation compensation explain discount-rate movements?",
-      "primary_method_sources": [
-        "S10",
-        "S14",
-        "S15"
-      ],
+      "primary_method_sources": ["S10", "S14", "S15"],
       "outstanding_evidence": "Nominal 2Y/3M rate rows and US 10Y/TIPS proxies now mapped; correct 10Y maturity/risk decompositions still require source data and alignment",
       "fallback_options": [],
       "comparison_contract": {
@@ -1113,15 +983,11 @@
           {
             "role": "nominal_10y_yield",
             "description": "Original DGS10 nominal Treasury constant-maturity yield.",
-            "series_ids": [
-              "bond.us.nominal_10y"
-            ],
+            "series_ids": ["bond.us.nominal_10y"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US Treasury 10-year constant-maturity instrument",
               "concept": "Nominal annual yield"
             },
@@ -1132,15 +998,11 @@
           {
             "role": "real_10y_yield",
             "description": "Original DFII10 TIPS constant-maturity real yield.",
-            "series_ids": [
-              "bond.us.real_10y"
-            ],
+            "series_ids": ["bond.us.real_10y"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US Treasury 10-year inflation-indexed constant-maturity instrument",
               "concept": "Real annual yield"
             },
@@ -1151,15 +1013,11 @@
           {
             "role": "published_10y_breakeven",
             "description": "Original independently published T10YIE for matched-date identity reconciliation.",
-            "series_ids": [
-              "bond.us.breakeven_10y"
-            ],
+            "series_ids": ["bond.us.breakeven_10y"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US nominal and TIPS 10-year Treasury instruments",
               "concept": "Inflation compensation including risk/liquidity premia"
             },
@@ -1185,9 +1043,7 @@
             "join": "exact_period_intersection",
             "missingness": "no_fill",
             "temporal_mode": "current_source_snapshot",
-            "checks": [
-              "yield_decomposition"
-            ],
+            "checks": ["yield_decomposition"],
             "limitations": [
               "Breakeven inflation compensation includes liquidity and risk premia; it is not pure expected inflation.",
               "Native input scope is complete for this method; publication-vintage and source-value evidence are separate runtime requirements.",
@@ -1197,19 +1053,13 @@
           }
         ]
       },
-      "context_series_ids": [
-        "rates.us.nominal_2y",
-        "rates.us.nominal_3m"
-      ],
+      "context_series_ids": ["rates.us.nominal_2y", "rates.us.nominal_3m"],
       "context_artifact_ids": []
     },
     {
       "id": "M04",
       "title": "Are currency movements coinciding with monetary divergence?",
-      "primary_method_sources": [
-        "S12",
-        "S13"
-      ],
+      "primary_method_sources": ["S12", "S13"],
       "outstanding_evidence": "FX market source exists separately, cross-currency historical validity not established. Original BoJ daily call rate is now bound; monthly definitions are separate context.",
       "fallback_options": [],
       "comparison_contract": {
@@ -1228,24 +1078,16 @@
             "input_type": "fx_history",
             "artifact_ids": [],
             "input_requirement": "Original currency-pair FX observations with quote direction, fixing time and source calendar. Existing separate FX storage is not a canonical macro-series binding.",
-            "external_sources": [
-              "USD",
-              "GBP",
-              "CHF"
-            ]
+            "external_sources": ["USD", "GBP", "CHF"]
           },
           {
             "role": "effective_federal_funds",
             "description": "Original Federal Reserve H.15 daily effective federal funds rate DFF. The documented 2016 change from broker-reported mean to transaction-based median remains explicit; realized overnight rates differ from policy settings.",
-            "series_ids": [
-              "policy_rate.us.fed_effective"
-            ],
+            "series_ids": ["policy_rate.us.fed_effective"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Effective federal funds rate"
             },
             "temporal_requirement": "first_publication",
@@ -1255,15 +1097,11 @@
           {
             "role": "ecb_deposit_facility",
             "description": "Original ECB policy setting; its concept differs from realized overnight EFFR.",
-            "series_ids": [
-              "policy_rate.ea.ecb_dfr"
-            ],
+            "series_ids": ["policy_rate.ea.ecb_dfr"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "EA"
-              ],
+              "geography": ["EA"],
               "population": "Euro area",
               "concept": "ECB deposit-facility rate"
             },
@@ -1274,15 +1112,11 @@
           {
             "role": "boj_overnight_call",
             "description": "Original BoJ realized overnight call rate.",
-            "series_ids": [
-              "policy_rate.jp.boj_call_daily"
-            ],
+            "series_ids": ["policy_rate.jp.boj_call_daily"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "JP"
-              ],
+              "geography": ["JP"],
               "concept": "Uncollateralized overnight call rate"
             },
             "temporal_requirement": "first_publication",
@@ -1329,9 +1163,7 @@
     {
       "id": "F01",
       "title": "Is private credit growing faster than national income?",
-      "primary_method_sources": [
-        "S16"
-      ],
+      "primary_method_sources": ["S16"],
       "outstanding_evidence": "Original BIS private credit stocks, published private-credit/GDP ratios, published one-sided trends and national gaps are bound for the US, Japan, Germany, China and Portugal (euro-area gap only). BIS does not publish the underlying nominal GDP, so any independent credit/GDP reconstruction still needs matched original national GDP flows; published and reconstructed ratios stay distinct.",
       "fallback_options": [],
       "comparison_contract": {
@@ -1351,13 +1183,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "billion_local_currency",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Private non-financial sector",
               "concept": "Outstanding credit stock in original monetary unit"
             },
@@ -1378,13 +1204,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Private non-financial sector",
               "concept": "Outstanding private credit divided by nominal GDP"
             },
@@ -1405,13 +1225,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Private non-financial sector",
               "concept": "Source-published one-sided credit/GDP trend"
             },
@@ -1488,18 +1302,13 @@
           }
         ]
       },
-      "context_series_ids": [
-        "credit.world.private_gdp_gap_coverage"
-      ],
+      "context_series_ids": ["credit.world.private_gdp_gap_coverage"],
       "context_artifact_ids": []
     },
     {
       "id": "F02",
       "title": "Are private-debt service burdens rising in each economy?",
-      "primary_method_sources": [
-        "S17",
-        "S18"
-      ],
+      "primary_method_sources": ["S17", "S18"],
       "outstanding_evidence": "BIS original DSR series now mapped, but actual dated observations and within-country deviation/vintage checks not yet live-verified",
       "fallback_options": [],
       "comparison_contract": {
@@ -1519,13 +1328,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Total private non-financial sector",
               "concept": "Published model-based debt-service/income ratio"
             },
@@ -1543,10 +1346,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US",
-                "PT"
-              ],
+              "geography": ["US", "PT"],
               "population": "Households",
               "concept": "Published household debt-service/income ratio"
             },
@@ -1557,15 +1357,11 @@
           {
             "role": "corporate_dsr",
             "description": "Original BIS nonfinancial-corporation debt-service ratios where source coverage exists.",
-            "series_ids": [
-              "debt_service.us.corporations.bis"
-            ],
+            "series_ids": ["debt_service.us.corporations.bis"],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Non-financial corporations",
               "concept": "Published corporate debt-service/income ratio"
             },
@@ -1586,13 +1382,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "billion_local_currency",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Matching private/household/corporate sector",
               "concept": "Outstanding credit/debt context"
             },
@@ -1650,11 +1440,7 @@
     {
       "id": "F03",
       "title": "Do credit and debt-service early-warning signals coincide?",
-      "primary_method_sources": [
-        "S19",
-        "S16",
-        "S17"
-      ],
+      "primary_method_sources": ["S19", "S16", "S17"],
       "outstanding_evidence": "National BIS credit gap mapped; BIS private DSR mapped but actual data and crisis method validation still open",
       "fallback_options": [],
       "comparison_contract": {
@@ -1672,11 +1458,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percentage_points",
-              "geography": [
-                "United States",
-                "Euro area",
-                "Japan"
-              ],
+              "geography": ["United States", "Euro area", "Japan"],
               "population": "Private non-financial sector",
               "concept": "Source-published national credit-to-GDP gap"
             },
@@ -1695,11 +1477,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US",
-                "JP",
-                "DE"
-              ],
+              "geography": ["US", "JP", "DE"],
               "population": "Private non-financial sector",
               "concept": "Published debt-service/income ratio"
             },
@@ -1742,11 +1520,7 @@
     {
       "id": "F04",
       "title": "Are observable markets already under stress?",
-      "primary_method_sources": [
-        "S20",
-        "S21",
-        "S22"
-      ],
+      "primary_method_sources": ["S20", "S21", "S22"],
       "outstanding_evidence": "FRED source IDs for high-yield OAS and VIX now mapped; original OFR/NFCI and real-data historical stress-validation remain open",
       "fallback_options": [],
       "comparison_contract": {
@@ -1756,15 +1530,11 @@
           {
             "role": "nfci",
             "description": "Original Chicago Fed NFCI with source historical-standardization vintage.",
-            "series_ids": [
-              "stress.us.nfci"
-            ],
+            "series_ids": ["stress.us.nfci"],
             "expected": {
               "frequency": "W",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Published NFCI standardized financial conditions"
             },
             "temporal_requirement": "first_publication",
@@ -1774,15 +1544,11 @@
           {
             "role": "adjusted_nfci",
             "description": "Original Chicago Fed ANFCI with source historical-standardization vintage.",
-            "series_ids": [
-              "stress.us.adjusted_nfci"
-            ],
+            "series_ids": ["stress.us.adjusted_nfci"],
             "expected": {
               "frequency": "W",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Published adjusted financial-conditions index"
             },
             "temporal_requirement": "first_publication",
@@ -1806,9 +1572,7 @@
             "expected": {
               "frequency": "D",
               "unit": "index",
-              "geography": [
-                "WORLD"
-              ],
+              "geography": ["WORLD"],
               "concept": "OFR standardized contemporaneous stress index"
             },
             "temporal_requirement": "first_publication",
@@ -1818,15 +1582,11 @@
           {
             "role": "high_yield_oas",
             "description": "Original ICE BofA US high-yield option-adjusted spread.",
-            "series_ids": [
-              "stress.us.high_yield_oas"
-            ],
+            "series_ids": ["stress.us.high_yield_oas"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Source-defined US high-yield corporate bond index",
               "concept": "Option-adjusted credit spread"
             },
@@ -1841,10 +1601,7 @@
             "label": "US daily high-yield spread and VIX inputs",
             "kind": "approved_narrower",
             "scope": "Native daily US high-yield option-adjusted spread and VIX, preserving percent spread and volatility-index measurements separately.",
-            "series_ids": [
-              "stress.us.high_yield_oas",
-              "stress.us.vix"
-            ],
+            "series_ids": ["stress.us.high_yield_oas", "stress.us.vix"],
             "frequency": "D",
             "start": "2000-01-01",
             "end": "latest_common",
@@ -1864,10 +1621,7 @@
             "label": "Chicago Fed weekly NFCI and ANFCI, ending Friday",
             "kind": "approved_narrower",
             "scope": "Chicago Fed weekly NFCI and ANFCI, ending Friday; exact native periods and source units only.",
-            "series_ids": [
-              "stress.us.nfci",
-              "stress.us.adjusted_nfci"
-            ],
+            "series_ids": ["stress.us.nfci", "stress.us.adjusted_nfci"],
             "frequency": "W",
             "start": "1971-01-08",
             "end": "latest_common",
@@ -1888,11 +1642,7 @@
     {
       "id": "F05",
       "title": "Which balance-sheet sectors carry leverage vulnerabilities?",
-      "primary_method_sources": [
-        "S23",
-        "S16",
-        "S08"
-      ],
+      "primary_method_sources": ["S23", "S16", "S08"],
       "outstanding_evidence": "Borrower-sector leverage and comparable private/public debt records incomplete",
       "fallback_options": [],
       "comparison_contract": {
@@ -1912,13 +1662,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Households",
               "concept": "Household outstanding credit/GDP"
             },
@@ -1939,13 +1683,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Non-financial corporations",
               "concept": "Corporate outstanding credit/GDP"
             },
@@ -1966,11 +1704,7 @@
               "unit": "percent",
               "population": "National general government",
               "concept": "Gross government debt/GDP",
-              "geography": [
-                "CHN",
-                "JPN",
-                "USA"
-              ]
+              "geography": ["CHN", "JPN", "USA"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -1979,15 +1713,11 @@
           {
             "role": "bank_total_assets",
             "description": "Original consistently consolidated bank total assets.",
-            "series_ids": [
-              "bank.us.fdic_total_assets"
-            ],
+            "series_ids": ["bank.us.fdic_total_assets"],
             "expected": {
               "frequency": "Q",
               "unit": "thousand_usd",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Named bank/financial institution sector",
               "concept": "Total balance-sheet assets"
             },
@@ -1998,15 +1728,11 @@
           {
             "role": "bank_equity",
             "description": "Original same-perimeter bank equity, distinct from risk-weighted capital.",
-            "series_ids": [
-              "bank.us.fdic_total_equity"
-            ],
+            "series_ids": ["bank.us.fdic_total_equity"],
             "expected": {
               "frequency": "Q",
               "unit": "thousand_usd",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Same named bank/financial institution sector",
               "concept": "Positive accounting equity denominator"
             },
@@ -2050,13 +1776,7 @@
     {
       "id": "F06",
       "title": "Do property-market valuations compound credit vulnerabilities?",
-      "primary_method_sources": [
-        "S44",
-        "S45",
-        "S16",
-        "S17",
-        "S23"
-      ],
+      "primary_method_sources": ["S44", "S45", "S16", "S17", "S23"],
       "outstanding_evidence": "BIS selected real residential property (US/DE/JP/PT/euro area/world) and original US/Portugal commercial property source keys now mapped, plus BIS country-credit/DSR inputs. True provider histories, differing commercial coverage, publication vintages and aligned same-country panel validation remain outstanding.",
       "fallback_options": [],
       "comparison_contract": {
@@ -2077,14 +1797,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "index",
-              "geography": [
-                "US",
-                "DE",
-                "JP",
-                "PT",
-                "XM",
-                "XW"
-              ],
+              "geography": ["US", "DE", "JP", "PT", "XM", "XW"],
               "population": "Source-defined residential property market",
               "concept": "Real residential property-price index"
             },
@@ -2095,15 +1808,11 @@
           {
             "role": "commercial_property_us",
             "description": "Original US quarterly all-properties nominal commercial-price index.",
-            "series_ids": [
-              "property.us.commercial_all.bis"
-            ],
+            "series_ids": ["property.us.commercial_all.bis"],
             "expected": {
               "frequency": "Q",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US source-defined all-commercial-property market",
               "concept": "Nominal commercial property-price index"
             },
@@ -2114,15 +1823,11 @@
           {
             "role": "commercial_property_portugal",
             "description": "Original Portugal annual nominal commercial-price index; never treated as quarterly or real.",
-            "series_ids": [
-              "property.pt.commercial_all.bis"
-            ],
+            "series_ids": ["property.pt.commercial_all.bis"],
             "expected": {
               "frequency": "A",
               "unit": "index",
-              "geography": [
-                "PT"
-              ],
+              "geography": ["PT"],
               "population": "Portugal source-defined commercial property market",
               "concept": "Annual nominal commercial property-price index"
             },
@@ -2141,11 +1846,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percentage_points",
-              "geography": [
-                "United States",
-                "Euro area",
-                "Japan"
-              ],
+              "geography": ["United States", "Euro area", "Japan"],
               "population": "Private non-financial sector",
               "concept": "Published national credit-to-GDP gap"
             },
@@ -2168,13 +1869,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Separately identified total-private or household sector",
               "concept": "Published sector debt-service/income ratio"
             },
@@ -2218,11 +1913,7 @@
     {
       "id": "F07",
       "title": "Are nonbank leverage and short-term funding raising fragility?",
-      "primary_method_sources": [
-        "S46",
-        "S21",
-        "S23"
-      ],
+      "primary_method_sources": ["S46", "S21", "S23"],
       "outstanding_evidence": "Original US Z.1 broker-dealer asset/liability/repo stock series and money-market assets now mapped; actual observations and release vintages remain unverified. Funding mismatch, repos across all nonbanks, money-market fund redemption/hedge risk, country scope and empirical run risk require separate data. No all-sector or world NBFI leverage may be inferred from these four values.",
       "fallback_options": [],
       "comparison_contract": {
@@ -2232,15 +1923,11 @@
           {
             "role": "broker_financial_assets",
             "description": "Original US Z.1 broker-dealer financial assets; these do not equal all total accounting assets.",
-            "series_ids": [
-              "funding.us.broker_assets"
-            ],
+            "series_ids": ["funding.us.broker_assets"],
             "expected": {
               "frequency": "Q",
               "unit": "million_usd",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US security brokers and dealers",
               "concept": "Financial asset stock"
             },
@@ -2251,15 +1938,11 @@
           {
             "role": "broker_liabilities",
             "description": "Original US Z.1 broker-dealer total liabilities.",
-            "series_ids": [
-              "funding.us.broker_liabilities"
-            ],
+            "series_ids": ["funding.us.broker_liabilities"],
             "expected": {
               "frequency": "Q",
               "unit": "million_usd",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US security brokers and dealers",
               "concept": "Liability stock"
             },
@@ -2270,15 +1953,11 @@
           {
             "role": "broker_repo_liabilities",
             "description": "Original US broker-dealer repo funding liabilities, a specifically named funding subset.",
-            "series_ids": [
-              "funding.us.broker_repo_liabilities"
-            ],
+            "series_ids": ["funding.us.broker_repo_liabilities"],
             "expected": {
               "frequency": "Q",
               "unit": "million_usd",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US security brokers and dealers",
               "concept": "Repurchase-agreement liability stock"
             },
@@ -2289,15 +1968,11 @@
           {
             "role": "money_market_financial_assets",
             "description": "Original US money-market-fund financial assets.",
-            "series_ids": [
-              "funding.us.money_market_assets"
-            ],
+            "series_ids": ["funding.us.money_market_assets"],
             "expected": {
               "frequency": "Q",
               "unit": "million_usd",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US money market funds",
               "concept": "Financial asset stock, not redemption-risk measure"
             },
@@ -2311,9 +1986,7 @@
             "series_ids": [],
             "expected": {
               "frequency": "Q",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Source-defined equity and compatible total assets"
             },
             "temporal_requirement": "first_publication",
@@ -2326,9 +1999,7 @@
             "series_ids": [],
             "expected": {
               "frequency": "Q",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Finance companies",
               "concept": "Source-defined assets/liabilities/funding"
             },
@@ -2343,9 +2014,7 @@
             "series_ids": [],
             "expected": {
               "frequency": "Q",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Explicitly named fund classes",
               "concept": "Funding/liquidity structure with NAV treatment"
             },
@@ -2357,15 +2026,11 @@
           {
             "role": "ofr_fsi",
             "description": "Original separately scaled OFR stress index; never added to balance-sheet ratios.",
-            "series_ids": [
-              "stress.global.ofr_fsi"
-            ],
+            "series_ids": ["stress.global.ofr_fsi"],
             "expected": {
               "frequency": "D",
               "unit": "index",
-              "geography": [
-                "WORLD"
-              ],
+              "geography": ["WORLD"],
               "concept": "Published contemporaneous market stress"
             },
             "temporal_requirement": "first_publication",
@@ -2408,10 +2073,7 @@
     {
       "id": "V01",
       "title": "Are US equity prices historically stretched relative to fundamentals?",
-      "primary_method_sources": [
-        "S24",
-        "S25"
-      ],
+      "primary_method_sources": ["S24", "S25"],
       "outstanding_evidence": "Original Shiller workbook inputs and daily real yields have canonical bindings. Publisher population changes, source estimation, genuine first-publication vintages and matured temporal eligibility remain required; current source values do not certify historical forecasts.",
       "fallback_options": [],
       "comparison_contract": {
@@ -2421,15 +2083,11 @@
           {
             "role": "published_cape",
             "description": "Original Shiller ordinary monthly CAPE, distinct from total-return CAPE.",
-            "series_ids": [
-              "valuation.us.cape"
-            ],
+            "series_ids": ["valuation.us.cape"],
             "expected": {
               "frequency": "M",
               "unit": "ratio",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Shiller US equity sample",
               "concept": "Cyclically adjusted price/real earnings ratio"
             },
@@ -2440,14 +2098,10 @@
           {
             "role": "original_equity_price",
             "description": "Original Shiller monthly price input.",
-            "series_ids": [
-              "valuation.us.shiller_price"
-            ],
+            "series_ids": ["valuation.us.shiller_price"],
             "expected": {
               "frequency": "M",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Shiller US equity sample",
               "concept": "Original equity price level",
               "unit": "index"
@@ -2459,14 +2113,10 @@
           {
             "role": "original_earnings",
             "description": "Original Shiller monthly earnings for exact source-defined preceding ten-year real-earnings windows.",
-            "series_ids": [
-              "valuation.us.shiller_earnings"
-            ],
+            "series_ids": ["valuation.us.shiller_earnings"],
             "expected": {
               "frequency": "M",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Shiller US equity sample",
               "concept": "Source-defined monthly earnings",
               "unit": "index"
@@ -2478,15 +2128,11 @@
           {
             "role": "original_cpi",
             "description": "Original Shiller workbook CPI for consistent real-price/earnings deflation.",
-            "series_ids": [
-              "prices.us.shiller_cpi"
-            ],
+            "series_ids": ["prices.us.shiller_cpi"],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Workbook consumer-price index"
             },
             "temporal_requirement": "first_publication",
@@ -2496,14 +2142,10 @@
           {
             "role": "original_dividend",
             "description": "Original Shiller dividend/yield inputs for the selected supporting valuation-yield method.",
-            "series_ids": [
-              "valuation.us.shiller_dividend"
-            ],
+            "series_ids": ["valuation.us.shiller_dividend"],
             "expected": {
               "frequency": "M",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Shiller US equity sample",
               "concept": "Source dividend and dividend-yield components",
               "unit": "index"
@@ -2515,15 +2157,11 @@
           {
             "role": "real_treasury_yield",
             "description": "Original US 10-year real Treasury yield for separate matched-time context.",
-            "series_ids": [
-              "bond.us.real_10y"
-            ],
+            "series_ids": ["bond.us.real_10y"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US 10-year TIPS constant-maturity instrument",
               "concept": "Real annual yield"
             },
@@ -2564,9 +2202,7 @@
             "label": "US 10-year TIPS native yield input",
             "kind": "original_scope",
             "scope": "Separate original daily real Treasury yield; no invented monthly averaging.",
-            "series_ids": [
-              "bond.us.real_10y"
-            ],
+            "series_ids": ["bond.us.real_10y"],
             "frequency": "D",
             "start": "2003-01-02",
             "end": "latest_common",
@@ -2582,18 +2218,13 @@
           }
         ]
       },
-      "context_series_ids": [
-        "bond.us.nominal_10y"
-      ],
+      "context_series_ids": ["bond.us.nominal_10y"],
       "context_artifact_ids": []
     },
     {
       "id": "V02",
       "title": "Do replacement-cost Q ratios corroborate earnings valuations?",
-      "primary_method_sources": [
-        "S24",
-        "S26"
-      ],
+      "primary_method_sources": ["S24", "S26"],
       "outstanding_evidence": "BEA Q1/Q2/Q3 now have individually sourced published columns; historical retrieval and independent BEA table identity remain to be observed",
       "fallback_options": [],
       "comparison_contract": {
@@ -2611,9 +2242,7 @@
             "expected": {
               "frequency": "A",
               "unit": "ratio",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US domestic nonfinancial corporations",
               "concept": "Published replacement-cost Q ratios"
             },
@@ -2627,9 +2256,7 @@
             "series_ids": [],
             "expected": {
               "frequency": "A",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "BEA domestic nonfinancial corporations",
               "concept": "Supporting original Q numerator and denominator components"
             },
@@ -2641,15 +2268,11 @@
           {
             "role": "cape_context",
             "description": "Original monthly CAPE context; annual alignment must declare a selector and distinct listed-equity population.",
-            "series_ids": [
-              "valuation.us.cape"
-            ],
+            "series_ids": ["valuation.us.cape"],
             "expected": {
               "frequency": "M",
               "unit": "ratio",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Shiller US listed equity sample",
               "concept": "Published ordinary CAPE"
             },
@@ -2691,11 +2314,7 @@
     {
       "id": "V03",
       "title": "Can equity valuation levels be compared across global regions?",
-      "primary_method_sources": [
-        "S27",
-        "S25",
-        "S28"
-      ],
+      "primary_method_sources": ["S27", "S25", "S28"],
       "outstanding_evidence": "Single Siblis worldwide ratio is not comparable regional index vendor valuation panel",
       "fallback_options": [],
       "comparison_contract": {
@@ -2755,10 +2374,7 @@
     {
       "id": "V05",
       "title": "Do valuation–forward-return relationships survive regime and horizon changes?",
-      "primary_method_sources": [
-        "S25",
-        "S07"
-      ],
+      "primary_method_sources": ["S25", "S07"],
       "outstanding_evidence": "Original Shiller workbook inputs and daily real yields have canonical bindings. Publisher population changes, source estimation, genuine first-publication vintages and matured temporal eligibility remain required; current source values do not certify historical forecasts.",
       "fallback_options": [],
       "comparison_contract": {
@@ -2768,15 +2384,11 @@
           {
             "role": "origin_valuation",
             "description": "Source-defined US valuation known at each historical origin.",
-            "series_ids": [
-              "valuation.us.cape"
-            ],
+            "series_ids": ["valuation.us.cape"],
             "expected": {
               "frequency": "M",
               "unit": "ratio",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Shiller US equity sample",
               "concept": "Origin-vintage ordinary CAPE"
             },
@@ -2787,15 +2399,11 @@
           {
             "role": "origin_real_yield",
             "description": "Original real yield known at each historical origin.",
-            "series_ids": [
-              "bond.us.real_10y"
-            ],
+            "series_ids": ["bond.us.real_10y"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US 10-year TIPS constant-maturity instrument",
               "concept": "Origin-vintage real annual yield"
             },
@@ -2806,15 +2414,11 @@
           {
             "role": "matched_equity_total_return",
             "description": "Original Shiller US S&P Composite author-constructed real dividend-reinvested total-return price; native real price basis remains explicit for matured 120-month outcomes.",
-            "series_ids": [
-              "returns.us.shiller_real_total_return"
-            ],
+            "series_ids": ["returns.us.shiller_real_total_return"],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US equity population compatible with selected valuation",
               "concept": "Equity total-return index",
               "price_basis": "real_cpi_deflated"
@@ -2826,15 +2430,11 @@
           {
             "role": "inflation_deflator",
             "description": "Original Shiller workbook CPI for the same US sample; already-real return levels must not be deflated twice.",
-            "series_ids": [
-              "prices.us.shiller_cpi"
-            ],
+            "series_ids": ["prices.us.shiller_cpi"],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "concept": "Consumer-price index"
             },
             "temporal_requirement": "first_publication",
@@ -2872,9 +2472,7 @@
             "label": "US 10-year TIPS native yield input",
             "kind": "original_scope",
             "scope": "Separate original daily real Treasury yield; no invented monthly averaging.",
-            "series_ids": [
-              "bond.us.real_10y"
-            ],
+            "series_ids": ["bond.us.real_10y"],
             "frequency": "D",
             "start": "2003-01-02",
             "end": "latest_common",
@@ -2890,18 +2488,13 @@
           }
         ]
       },
-      "context_series_ids": [
-        "equity.world.msci_acwi_netr_usd"
-      ],
+      "context_series_ids": ["equity.world.msci_acwi_netr_usd"],
       "context_artifact_ids": []
     },
     {
       "id": "L01",
       "title": "Is average labour compensation matching productivity in the same sector?",
-      "primary_method_sources": [
-        "S29",
-        "S30"
-      ],
+      "primary_method_sources": ["S29", "S30"],
       "outstanding_evidence": "US nonfarm source trio mapped; sector-matched global OECD series not yet mapped",
       "fallback_options": [],
       "comparison_contract": {
@@ -2911,15 +2504,11 @@
           {
             "role": "us_productivity",
             "description": "Original BLS OPHNFB nonfarm business output/hour index.",
-            "series_ids": [
-              "labour.us.nonfarm_productivity"
-            ],
+            "series_ids": ["labour.us.nonfarm_productivity"],
             "expected": {
               "frequency": "Q",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US nonfarm business; employees and proprietors",
               "concept": "Real output per hour worked",
               "index_base": "2017=100"
@@ -2931,15 +2520,11 @@
           {
             "role": "us_nominal_hourly_compensation",
             "description": "Original BLS COMPNFB nominal hourly compensation index with matching sector/hour definition.",
-            "series_ids": [
-              "labour.us.nonfarm_hourly_comp"
-            ],
+            "series_ids": ["labour.us.nonfarm_hourly_comp"],
             "expected": {
               "frequency": "Q",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US nonfarm business; employees and proprietors",
               "concept": "Nominal compensation per hour worked",
               "index_base": "2017=100"
@@ -2951,15 +2536,11 @@
           {
             "role": "us_output_deflator",
             "description": "Original BLS IPDNBS same-sector output-price deflator.",
-            "series_ids": [
-              "prices.us.nonfarm_output_deflator"
-            ],
+            "series_ids": ["prices.us.nonfarm_output_deflator"],
             "expected": {
               "frequency": "Q",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US nonfarm business",
               "concept": "Value-added output price deflator",
               "index_base": "2017=100"
@@ -3073,17 +2654,12 @@
         ]
       },
       "context_series_ids": [],
-      "context_artifact_ids": [
-        "corporate_accounts"
-      ]
+      "context_artifact_ids": ["corporate_accounts"]
     },
     {
       "id": "L02",
       "title": "How is value added divided between labour and other components?",
-      "primary_method_sources": [
-        "S31",
-        "S32"
-      ],
+      "primary_method_sources": ["S31", "S32"],
       "outstanding_evidence": "PWT labour-share variants present; matched S11 GVA, operating surplus and self-employment imputation absent",
       "fallback_options": [],
       "comparison_contract": {
@@ -3166,18 +2742,12 @@
         "labour.us.nonfarm_labour_share_index",
         "labour.us.pwt_labour_share"
       ],
-      "context_artifact_ids": [
-        "corporate_accounts"
-      ]
+      "context_artifact_ids": ["corporate_accounts"]
     },
     {
       "id": "L03",
       "title": "Are corporate net surplus and productive capital evolving together?",
-      "primary_method_sources": [
-        "S32",
-        "S31",
-        "S26"
-      ],
+      "primary_method_sources": ["S32", "S31", "S26"],
       "outstanding_evidence": "Corporate gross operating surplus ratios are not net surplus/current-cost productive capital stock",
       "fallback_options": [],
       "comparison_contract": {
@@ -3265,19 +2835,12 @@
         "profit.eu27.nonfinancial_gross_surplus_value_added",
         "profit.oecd38.corporate_gross_surplus_gdp"
       ],
-      "context_artifact_ids": [
-        "corporate_accounts"
-      ]
+      "context_artifact_ids": ["corporate_accounts"]
     },
     {
       "id": "L04",
       "title": "How sensitive are Marxian surplus and profit estimates to theoretical assumptions?",
-      "primary_method_sources": [
-        "S33",
-        "S31",
-        "S32",
-        "S34"
-      ],
+      "primary_method_sources": ["S33", "S31", "S32", "S34"],
       "outstanding_evidence": "OECD accounts module exists; exact theoretical s/v and s/(c+v) methodology inputs not established",
       "fallback_options": [],
       "comparison_contract": {
@@ -3346,16 +2909,12 @@
         "profit.eu27.nonfinancial_gross_surplus_value_added",
         "profit.oecd38.corporate_gross_surplus_gdp"
       ],
-      "context_artifact_ids": [
-        "corporate_accounts"
-      ]
+      "context_artifact_ids": ["corporate_accounts"]
     },
     {
       "id": "L05",
       "title": "How concentrated is household financial wealth?",
-      "primary_method_sources": [
-        "S35"
-      ],
+      "primary_method_sources": ["S35"],
       "outstanding_evidence": "Original Federal Reserve DFA four wealth-percentile shares now mapped; actual dates, identical-vintage denominator reconciliation and assets composition not independently validated",
       "fallback_options": [],
       "comparison_contract": {
@@ -3365,15 +2924,11 @@
           {
             "role": "net_worth_top_point1",
             "description": "Original Fed DFA top 0.1% household net-worth group share.",
-            "series_ids": [
-              "wealth.us.top_point1_share"
-            ],
+            "series_ids": ["wealth.us.top_point1_share"],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Top 0.1% of US households by net worth",
               "concept": "Net-worth share"
             },
@@ -3384,15 +2939,11 @@
           {
             "role": "net_worth_next_point9",
             "description": "Original Fed DFA next 0.9% household net-worth group share.",
-            "series_ids": [
-              "wealth.us.next_point9_share"
-            ],
+            "series_ids": ["wealth.us.next_point9_share"],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "99th to 99.9th household wealth percentiles",
               "concept": "Net-worth share"
             },
@@ -3403,15 +2954,11 @@
           {
             "role": "net_worth_top1_aggregate",
             "description": "Published top-1% aggregate is available for a separate coarser partition; it does not supply the two finer groups.",
-            "series_ids": [
-              "wealth.us.top1_share"
-            ],
+            "series_ids": ["wealth.us.top1_share"],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "99th to 100th US household wealth percentiles",
               "concept": "Net-worth share"
             },
@@ -3422,15 +2969,11 @@
           {
             "role": "net_worth_next9",
             "description": "Original Fed DFA next 9% household net-worth share.",
-            "series_ids": [
-              "wealth.us.next9_share"
-            ],
+            "series_ids": ["wealth.us.next9_share"],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "90th to 99th US household wealth percentiles",
               "concept": "Net-worth share"
             },
@@ -3441,15 +2984,11 @@
           {
             "role": "net_worth_middle40",
             "description": "Original Fed DFA middle 40% household net-worth share.",
-            "series_ids": [
-              "wealth.us.middle40_share"
-            ],
+            "series_ids": ["wealth.us.middle40_share"],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "50th to 90th US household wealth percentiles",
               "concept": "Net-worth share"
             },
@@ -3460,15 +2999,11 @@
           {
             "role": "net_worth_bottom50",
             "description": "Original Fed DFA bottom 50% household net-worth share.",
-            "series_ids": [
-              "wealth.us.bottom50_share"
-            ],
+            "series_ids": ["wealth.us.bottom50_share"],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Bottom 50% of US households by wealth",
               "concept": "Net-worth share"
             },
@@ -3482,9 +3017,7 @@
             "series_ids": [],
             "expected": {
               "frequency": "Q",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Same DFA household wealth groups",
               "concept": "Financial asset stocks by category"
             },
@@ -3499,9 +3032,7 @@
             "series_ids": [],
             "expected": {
               "frequency": "Q",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "Same DFA household wealth groups",
               "concept": "Balance-sheet stock denominators"
             },
@@ -3529,9 +3060,7 @@
             "join": "exact_period_intersection",
             "missingness": "no_fill",
             "temporal_mode": "current_source_snapshot",
-            "checks": [
-              "share_partition_100"
-            ],
+            "checks": ["share_partition_100"],
             "limitations": [
               "Net worth is a household balance-sheet stock, not financial assets, income or GDP.",
               "The coarser four-group partition does not supply top0.1/next0.9 detail or group asset/liability composition.",
@@ -3557,9 +3086,7 @@
             "join": "exact_period_intersection",
             "missingness": "no_fill",
             "temporal_mode": "current_source_snapshot",
-            "checks": [
-              "share_partition_100"
-            ],
+            "checks": ["share_partition_100"],
             "limitations": [
               "Original first-publication/common-release and population evidence remain separate; no analytical frequency conversion is performed."
             ],
@@ -3573,11 +3100,7 @@
     {
       "id": "L07",
       "title": "What are the trends in global income and wealth inequality?",
-      "primary_method_sources": [
-        "S47",
-        "S48",
-        "S35"
-      ],
+      "primary_method_sources": ["S47", "S48", "S35"],
       "outstanding_evidence": "Original WID top1/top10/bottom50 income shares are mapped, separate from wealth. Independent WIID Gini survey concepts, common populations and first-publication histories remain unresolved.",
       "fallback_options": [],
       "comparison_contract": {
@@ -3600,14 +3123,7 @@
               "unit": "ratio",
               "population": "Source-defined equal-split adults over 20",
               "concept": "Top 1% pre-tax national-income share",
-              "geography": [
-                "US",
-                "FR",
-                "PT",
-                "CN",
-                "IN",
-                "WO"
-              ]
+              "geography": ["US", "FR", "PT", "CN", "IN", "WO"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -3627,14 +3143,7 @@
             "expected": {
               "frequency": "A",
               "unit": "ratio",
-              "geography": [
-                "US",
-                "FR",
-                "PT",
-                "CN",
-                "IN",
-                "WO"
-              ],
+              "geography": ["US", "FR", "PT", "CN", "IN", "WO"],
               "population": "Equal-split adults over 20 (992,j); original world code order retained",
               "concept": "Top 10% pre-tax national-income fraction"
             },
@@ -3656,14 +3165,7 @@
             "expected": {
               "frequency": "A",
               "unit": "ratio",
-              "geography": [
-                "US",
-                "FR",
-                "PT",
-                "CN",
-                "IN",
-                "WO"
-              ],
+              "geography": ["US", "FR", "PT", "CN", "IN", "WO"],
               "population": "Equal-split adults over 20 (992,j); original world code order retained",
               "concept": "Bottom 50% pre-tax national-income fraction"
             },
@@ -3696,9 +3198,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US household net-worth percentile groups",
               "concept": "Net-worth shares, distinct from income flows"
             },
@@ -3803,9 +3303,7 @@
     {
       "id": "G01",
       "title": "How much of ACWI market capitalization is concentrated in the largest constituents?",
-      "primary_method_sources": [
-        "S36"
-      ],
+      "primary_method_sources": ["S36"],
       "outstanding_evidence": "Sparse official MSCI top-ten mapped; continuous issuer weights and VT source coverage/identity not audited",
       "fallback_options": [
         {
@@ -3815,9 +3313,7 @@
           "valid_concept": "Vanguard Total World Fund issuer concentration",
           "frequency": "Q",
           "data_verified": false,
-          "artifact_ids": [
-            "sec_holdings"
-          ]
+          "artifact_ids": ["sec_holdings"]
         },
         {
           "tier": "second",
@@ -3861,26 +3357,19 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "entity_mapping",
-            "artifact_ids": [
-              "sec_holdings",
-              "ucits_holdings"
-            ],
+            "artifact_ids": ["sec_holdings", "ucits_holdings"],
             "input_requirement": "Original dated security-to-ultimate-issuer/share-class crosswalk."
           },
           {
             "role": "constituent_count",
             "description": "Original number of constituents with corresponding methodology version.",
-            "series_ids": [
-              "concentration.global.msci_acwi_constituent_count"
-            ],
+            "series_ids": ["concentration.global.msci_acwi_constituent_count"],
             "expected": {
               "unit": "count",
               "population": "Same MSCI ACWI universe",
               "concept": "Dated complete index population size",
               "frequency": "M",
-              "geography": [
-                "MSCI_ACWI_DM_EM_892400"
-              ]
+              "geography": ["MSCI_ACWI_DM_EM_892400"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -3889,18 +3378,13 @@
         ],
         "variants": []
       },
-      "context_series_ids": [
-        "concentration.global.msci_acwi_published_top10"
-      ],
+      "context_series_ids": ["concentration.global.msci_acwi_published_top10"],
       "context_artifact_ids": []
     },
     {
       "id": "G02",
       "title": "How does investable equity geographic weight differ from economic size?",
-      "primary_method_sources": [
-        "S36",
-        "S09"
-      ],
+      "primary_method_sources": ["S36", "S09"],
       "outstanding_evidence": "Domestic listed capital and world GDP mapped; actual free-float index-country weights absent",
       "fallback_options": [],
       "comparison_contract": {
@@ -3918,9 +3402,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "allocation",
-            "artifact_ids": [
-              "msci_concentration"
-            ],
+            "artifact_ids": ["msci_concentration"],
             "input_requirement": "Original dated MSCI ACWI free-float index country weights and membership."
           },
           {
@@ -3940,15 +3422,7 @@
               "unit": "usd",
               "population": "Declared country GDP universe",
               "concept": "Nominal annual GDP current USD",
-              "geography": [
-                "USA",
-                "FRA",
-                "PRT",
-                "DEU",
-                "CHN",
-                "IND",
-                "JPN"
-              ]
+              "geography": ["USA", "FRA", "PRT", "DEU", "CHN", "IND", "JPN"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -3957,17 +3431,13 @@
           {
             "role": "world_nominal_gdp",
             "description": "Original same-year world GDP denominator or auditable declared-cohort sum, with rest-of-world residual.",
-            "series_ids": [
-              "gdp.nominal_usd.world"
-            ],
+            "series_ids": ["gdp.nominal_usd.world"],
             "expected": {
               "frequency": "A",
               "unit": "usd",
               "population": "Declared world/cohort economy universe",
               "concept": "Nominal annual GDP denominator",
-              "geography": [
-                "WLD"
-              ]
+              "geography": ["WLD"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -4016,11 +3486,7 @@
     {
       "id": "G03",
       "title": "How large are worldwide consolidated listed-company profits relative to world output?",
-      "primary_method_sources": [
-        "S36",
-        "S09",
-        "S37"
-      ],
+      "primary_method_sources": ["S36", "S09", "S37"],
       "outstanding_evidence": "SEC filer profit sample is not global ultimate-parent consolidated income coverage",
       "fallback_options": [
         {
@@ -4055,11 +3521,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "filing_panel",
-            "artifact_ids": [
-              "cvm",
-              "taiwan_profits",
-              "meip"
-            ],
+            "artifact_ids": ["cvm", "taiwan_profits", "meip"],
             "input_requirement": "Original complete fiscal-period after-tax consolidated income attributable to listed parent, including losses."
           },
           {
@@ -4072,11 +3534,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "entity_mapping",
-            "artifact_ids": [
-              "cvm",
-              "taiwan_profits",
-              "meip"
-            ],
+            "artifact_ids": ["cvm", "taiwan_profits", "meip"],
             "input_requirement": "Original dated eligible listed-parent universe, LEI/parent deduplication and population coverage denominator."
           },
           {
@@ -4090,11 +3548,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "filing_panel",
-            "artifact_ids": [
-              "cvm",
-              "taiwan_profits",
-              "meip"
-            ],
+            "artifact_ids": ["cvm", "taiwan_profits", "meip"],
             "input_requirement": "Original reporting currency, monetary scale and complete fiscal-period mapping for every issuer."
           },
           {
@@ -4107,11 +3561,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "events",
-            "artifact_ids": [
-              "cvm",
-              "taiwan_profits",
-              "meip"
-            ],
+            "artifact_ids": ["cvm", "taiwan_profits", "meip"],
             "input_requirement": "Original filing/amendment publication dates and restatement availability."
           },
           {
@@ -4129,16 +3579,12 @@
           {
             "role": "world_nominal_gdp",
             "description": "Original WDI world current-USD GDP for the separately aligned calendar year.",
-            "series_ids": [
-              "gdp.nominal_usd.world"
-            ],
+            "series_ids": ["gdp.nominal_usd.world"],
             "expected": {
               "frequency": "A",
               "unit": "usd",
               "concept": "Nominal world GDP denominator",
-              "geography": [
-                "WLD"
-              ]
+              "geography": ["WLD"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -4194,18 +3640,12 @@
         ]
       },
       "context_series_ids": [],
-      "context_artifact_ids": [
-        "corporate_accounts"
-      ]
+      "context_artifact_ids": ["corporate_accounts"]
     },
     {
       "id": "G05",
       "title": "Do cross-border financial imbalances and private credit grow together?",
-      "primary_method_sources": [
-        "S40",
-        "S16",
-        "S09"
-      ],
+      "primary_method_sources": ["S40", "S16", "S09"],
       "outstanding_evidence": "Original IMF BOP current-account flows (NETCD_T) and IIP net-position stocks (NETAL_P), BPM6 annual USD, are bound for the US, Japan, Germany, China and Portugal alongside BIS private credit stocks and WEO ratios. Cross-currency conversion, BPM5-to-BPM6 history and original release vintages remain open.",
       "fallback_options": [],
       "comparison_contract": {
@@ -4225,13 +3665,7 @@
             "expected": {
               "frequency": "A",
               "unit": "usd",
-              "geography": [
-                "USA",
-                "JPN",
-                "DEU",
-                "CHN",
-                "PRT"
-              ],
+              "geography": ["USA", "JPN", "DEU", "CHN", "PRT"],
               "population": "Named domestic BOP jurisdiction",
               "concept": "Current-account flow"
             },
@@ -4252,13 +3686,7 @@
             "expected": {
               "frequency": "A",
               "unit": "usd",
-              "geography": [
-                "USA",
-                "JPN",
-                "DEU",
-                "CHN",
-                "PRT"
-              ],
+              "geography": ["USA", "JPN", "DEU", "CHN", "PRT"],
               "population": "Same BOP jurisdiction",
               "concept": "Net international investment position stock"
             },
@@ -4279,13 +3707,7 @@
             "expected": {
               "frequency": "Q",
               "unit": "billion_local_currency",
-              "geography": [
-                "US",
-                "JP",
-                "DE",
-                "CN",
-                "PT"
-              ],
+              "geography": ["US", "JP", "DE", "CN", "PT"],
               "population": "Same-jurisdiction private non-financial sector",
               "concept": "Outstanding private-credit stock"
             },
@@ -4307,12 +3729,7 @@
               "unit": "usd",
               "population": "Same domestic jurisdiction",
               "concept": "Annual nominal GDP flow",
-              "geography": [
-                "USA",
-                "JPN",
-                "DEU",
-                "CHN"
-              ]
+              "geography": ["USA", "JPN", "DEU", "CHN"]
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
@@ -4330,12 +3747,7 @@
             "expected": {
               "frequency": "A",
               "unit": "percent",
-              "geography": [
-                "USA",
-                "JPN",
-                "DEU",
-                "CHN"
-              ],
+              "geography": ["USA", "JPN", "DEU", "CHN"],
               "population": "Named WEO country economy",
               "concept": "Published current-account/GDP ratio"
             },
@@ -4385,10 +3797,7 @@
     {
       "id": "G06",
       "title": "How do cross-border supply chains transmit value-added exposure?",
-      "primary_method_sources": [
-        "S34",
-        "S49"
-      ],
+      "primary_method_sources": ["S34", "S49"],
       "outstanding_evidence": "Original OECD TiVA 2025 annual domestic value added in foreign final demand, total value added and publisher-calculated foreign-final-demand share are mapped for US/France/Portugal/China/Japan/Germany/India, 1995–2022. Verify stored observations, statuses and independent source-value reconciliation. Complete original ICIO matrix ZIP downloads returned HTTP 403 in source testing; published TiVA country inputs do not establish full bilateral industry matrices, Leontief reconstruction, sector propagation, original release-time vintages or a fully validated G06 corpus.",
       "fallback_options": [],
       "comparison_contract": {
@@ -4406,9 +3815,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "matrix",
-            "artifact_ids": [
-              "icio"
-            ],
+            "artifact_ids": ["icio"],
             "input_requirement": "Original full ICIO country-by-industry intermediate transaction matrix Z."
           },
           {
@@ -4422,9 +3829,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "matrix",
-            "artifact_ids": [
-              "icio"
-            ],
+            "artifact_ids": ["icio"],
             "input_requirement": "Original same-edition country-industry gross output vector x."
           },
           {
@@ -4438,9 +3843,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "matrix",
-            "artifact_ids": [
-              "icio"
-            ],
+            "artifact_ids": ["icio"],
             "input_requirement": "Original same-edition final demand f by purchasing country and origin industry."
           },
           {
@@ -4454,10 +3857,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "matrix",
-            "artifact_ids": [
-              "icio",
-              "amne"
-            ],
+            "artifact_ids": ["icio", "amne"],
             "input_requirement": "Original same-edition industry gross value added VA; country TiVA totals cannot substitute for industry matrix inputs."
           },
           {
@@ -4475,15 +3875,7 @@
             "expected": {
               "frequency": "A",
               "unit": "million_usd",
-              "geography": [
-                "USA",
-                "FRA",
-                "PRT",
-                "CHN",
-                "JPN",
-                "DEU",
-                "IND"
-              ],
+              "geography": ["USA", "FRA", "PRT", "CHN", "JPN", "DEU", "IND"],
               "population": "Total activity _T; counterpart world W; selected countries",
               "concept": "Published FFD_DVA level"
             },
@@ -4506,15 +3898,7 @@
             "expected": {
               "frequency": "A",
               "unit": "million_usd",
-              "geography": [
-                "USA",
-                "FRA",
-                "PRT",
-                "CHN",
-                "JPN",
-                "DEU",
-                "IND"
-              ],
+              "geography": ["USA", "FRA", "PRT", "CHN", "JPN", "DEU", "IND"],
               "population": "Identical total activity/country/year/counterpart",
               "concept": "Published VALU denominator"
             },
@@ -4537,15 +3921,7 @@
             "expected": {
               "frequency": "A",
               "unit": "percent",
-              "geography": [
-                "USA",
-                "FRA",
-                "PRT",
-                "CHN",
-                "JPN",
-                "DEU",
-                "IND"
-              ],
+              "geography": ["USA", "FRA", "PRT", "CHN", "JPN", "DEU", "IND"],
               "population": "Identical total activity/country/year/counterpart",
               "concept": "Published FFD_DVA percent of value added"
             },
@@ -4589,9 +3965,7 @@
             "join": "exact_period_intersection",
             "missingness": "no_fill",
             "temporal_mode": "current_source_snapshot",
-            "checks": [
-              "tiva_value_added_share"
-            ],
+            "checks": ["tiva_value_added_share"],
             "limitations": [
               "Original published TiVA country totals are distinct from full bilateral country-industry ICIO matrices and a Leontief reconstruction.",
               "Level inputs retain USD millions; source PT_VA shares retain percent and are checked independently within source rounding.",
@@ -4603,17 +3977,12 @@
         ]
       },
       "context_series_ids": [],
-      "context_artifact_ids": [
-        "tiva"
-      ]
+      "context_artifact_ids": ["tiva"]
     },
     {
       "id": "P01",
       "title": "What are the actual economic exposures inside ETF holdings?",
-      "primary_method_sources": [
-        "S41",
-        "S36"
-      ],
+      "primary_method_sources": ["S41", "S36"],
       "outstanding_evidence": "SEC NPORT component exists but exact 2015–2026 European UCITS history and as-of metadata not verified",
       "fallback_options": [
         {
@@ -4623,9 +3992,7 @@
           "valid_concept": "Actual fund-reported historical holdings",
           "frequency": "A/H",
           "data_verified": false,
-          "artifact_ids": [
-            "ucits_holdings"
-          ]
+          "artifact_ids": ["ucits_holdings"]
         },
         {
           "tier": "second",
@@ -4665,10 +4032,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "positions",
-            "artifact_ids": [
-              "sec_holdings",
-              "ucits_holdings"
-            ],
+            "artifact_ids": ["sec_holdings", "ucits_holdings"],
             "input_requirement": "Original actual named-fund reported security positions including cash, derivatives and residuals; UCITS and SEC funds remain separate."
           },
           {
@@ -4681,10 +4045,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "entity_mapping",
-            "artifact_ids": [
-              "sec_holdings",
-              "ucits_holdings"
-            ],
+            "artifact_ids": ["sec_holdings", "ucits_holdings"],
             "input_requirement": "Original security ISIN/CUSIP/LEI and dated issuer mappings."
           },
           {
@@ -4697,10 +4058,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "entity_mapping",
-            "artifact_ids": [
-              "sec_holdings",
-              "ucits_holdings"
-            ],
+            "artifact_ids": ["sec_holdings", "ucits_holdings"],
             "input_requirement": "Dated original registered/assigned issuer country and sector classification."
           },
           {
@@ -4713,10 +4071,7 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "events",
-            "artifact_ids": [
-              "sec_holdings",
-              "ucits_holdings"
-            ],
+            "artifact_ids": ["sec_holdings", "ucits_holdings"],
             "input_requirement": "Original holdings-as-of, filing/report publication and amendment dates."
           }
         ],
@@ -4728,10 +4083,7 @@
     {
       "id": "P02",
       "title": "Have stocks, bonds and gold provided stable diversification?",
-      "primary_method_sources": [
-        "S38",
-        "S36"
-      ],
+      "primary_method_sources": ["S38", "S36"],
       "outstanding_evidence": "Original academic French monthly excess/RF/explicit-total inputs and ten native-currency Swinkels sovereign method histories are now canonically collectable with preserved originals. These are separately named research alternatives: no exact MSCI/Bloomberg identity, common-currency country basket, aligned gold return convention or first-publication history is established.",
       "fallback_options": [
         {
@@ -4766,15 +4118,11 @@
           {
             "role": "equity_netr",
             "description": "Original MSCI ACWI 892400 USD NETR daily index levels.",
-            "series_ids": [
-              "equity.world.msci_acwi_netr_usd"
-            ],
+            "series_ids": ["equity.world.msci_acwi_netr_usd"],
             "expected": {
               "frequency": "D",
               "unit": "index",
-              "geography": [
-                "WORLD"
-              ],
+              "geography": ["WORLD"],
               "population": "MSCI ACWI large/mid-cap developed/emerging equities",
               "concept": "USD net dividend-reinvested equity index level"
             },
@@ -4799,15 +4147,11 @@
           {
             "role": "gold_price",
             "description": "Original World Bank monthly gold benchmark.",
-            "series_ids": [
-              "gold.usd.monthly_average"
-            ],
+            "series_ids": ["gold.usd.monthly_average"],
             "expected": {
               "frequency": "M",
               "unit": "usd_per_oz",
-              "geography": [
-                "WORLD"
-              ],
+              "geography": ["WORLD"],
               "population": "Source-defined gold bullion quote",
               "concept": "Monthly average nominal USD/troy-ounce price, not investable net total return"
             },
@@ -4955,11 +4299,7 @@
     {
       "id": "P03",
       "title": "How have official recessions and market crises affected actual portfolio drawdowns?",
-      "primary_method_sources": [
-        "S02",
-        "S38",
-        "S36"
-      ],
+      "primary_method_sources": ["S02", "S38", "S36"],
       "outstanding_evidence": "Original academic monthly source inputs are available as explicitly scoped alternatives, not actual investable portfolio NAV histories. Dated holdings/allocations, fees/taxes, event corpus, common-currency alignment and first-publication histories remain incomplete; original question acceptance is unchanged.",
       "fallback_options": [
         {
@@ -4978,15 +4318,11 @@
           {
             "role": "investment_total_return",
             "description": "Original single-currency source-defined asset total-return level; actual portfolio values require their separately dated allocation evidence.",
-            "series_ids": [
-              "equity.world.msci_acwi_netr_usd"
-            ],
+            "series_ids": ["equity.world.msci_acwi_netr_usd"],
             "expected": {
               "frequency": "D",
               "unit": "index",
-              "geography": [
-                "WORLD"
-              ],
+              "geography": ["WORLD"],
               "population": "Source-defined MSCI ACWI asset comparator",
               "concept": "Net dividend-reinvested investment-value index"
             },
@@ -5008,15 +4344,11 @@
           {
             "role": "recession_chronology",
             "description": "Original US NBER monthly recession classification.",
-            "series_ids": [
-              "recession.us.nber_indicator"
-            ],
+            "series_ids": ["recession.us.nber_indicator"],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US economy",
               "concept": "US recession phases"
             },
@@ -5054,10 +4386,7 @@
     {
       "id": "P04",
       "title": "How sensitive is a portfolio to inflation, rates and currency shifts?",
-      "primary_method_sources": [
-        "S14",
-        "S36"
-      ],
+      "primary_method_sources": ["S14", "S36"],
       "outstanding_evidence": "Native academic equity and hypothetical sovereign monthly-return inputs are separately identified. They do not supply actual portfolio currency weights, observed bond duration/convexity, complete matched FX or inflation deflators; no scenario calculation or probability model is certified.",
       "fallback_options": [
         {
@@ -5089,15 +4418,11 @@
           {
             "role": "nominal_bond_yield",
             "description": "Original nominal yield for the selected bond-rate scenario, not a real-yield substitute.",
-            "series_ids": [
-              "bond.us.nominal_10y"
-            ],
+            "series_ids": ["bond.us.nominal_10y"],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "population": "US 10-year Treasury source comparator",
               "concept": "Nominal annual bond yield"
             },
@@ -5141,24 +4466,16 @@
             "input_type": "fx_history",
             "artifact_ids": [],
             "input_requirement": "Original domestic/foreign spot FX with declared quote direction.",
-            "external_sources": [
-              "USD",
-              "GBP",
-              "CHF"
-            ]
+            "external_sources": ["USD", "GBP", "CHF"]
           },
           {
             "role": "inflation_index",
             "description": "Original BLS CPIAUCSL all-items CPI-U, US city average, seasonally adjusted, 1982-1984=100. This maps only the named US price-basis comparator, not other portfolio currencies.",
-            "series_ids": [
-              "prices.us.cpi_all_items_sa"
-            ],
+            "series_ids": ["prices.us.cpi_all_items_sa"],
             "expected": {
               "unit": "index",
               "concept": "Consumer-price inflation deflator",
-              "geography": [
-                "US"
-              ],
+              "geography": ["US"],
               "frequency": "M",
               "index_base": "1982-1984=100"
             },
@@ -5169,15 +4486,11 @@
           {
             "role": "asset_class_total_return",
             "description": "Original declared asset-class total-return benchmarks; a single equity comparator is currently bound.",
-            "series_ids": [
-              "equity.world.msci_acwi_netr_usd"
-            ],
+            "series_ids": ["equity.world.msci_acwi_netr_usd"],
             "expected": {
               "frequency": "D",
               "unit": "index",
-              "geography": [
-                "WORLD"
-              ],
+              "geography": ["WORLD"],
               "population": "MSCI ACWI equity comparator",
               "concept": "Asset total-return benchmark"
             },
@@ -5212,10 +4525,7 @@
     {
       "id": "P05",
       "title": "How do rebalancing policies change historical portfolio resilience?",
-      "primary_method_sources": [
-        "S38",
-        "S42"
-      ],
+      "primary_method_sources": ["S38", "S42"],
       "outstanding_evidence": "Original academic research portfolio and hypothetical sovereign returns are scoped source alternatives, not investable constituent/fund total returns. Actual dated weights, rebalance/cost/tax/FX policy, delisting/inception evidence and original benchmark coverage remain incomplete.",
       "fallback_options": [
         {
@@ -5273,15 +4583,11 @@
           {
             "role": "benchmark_total_return",
             "description": "Original named benchmark total returns; source identity is distinct from investable constituent returns.",
-            "series_ids": [
-              "equity.world.msci_acwi_netr_usd"
-            ],
+            "series_ids": ["equity.world.msci_acwi_netr_usd"],
             "expected": {
               "frequency": "D",
               "unit": "index",
-              "geography": [
-                "WORLD"
-              ],
+              "geography": ["WORLD"],
               "population": "MSCI ACWI benchmark comparator",
               "concept": "Benchmark USD NETR index"
             },
@@ -5349,11 +4655,7 @@
             "input_type": "fx_history",
             "artifact_ids": [],
             "input_requirement": "Original declared execution/base-currency FX conversion observations.",
-            "external_sources": [
-              "USD",
-              "GBP",
-              "CHF"
-            ]
+            "external_sources": ["USD", "GBP", "CHF"]
           }
         ],
         "variants": []
