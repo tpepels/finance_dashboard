@@ -48,6 +48,28 @@ class VintageTests(unittest.TestCase):
             self.assertEqual(latest_asof_reading(again)["age_days"],30)
             self.assertEqual(available_snapshots(root)["series"][1]["count"],1)
 
+    def test_snapshot_inventory_distinguishes_no_data_from_populated_vintage(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / "DGS10"
+            folder.mkdir()
+            for day, status, obs in (
+                ("2026-01-31","no_data",[]),
+                ("2026-02-28","ready",[{"date":"2026-02-02","value":"4.5"}]),
+            ):
+                data = {"schema_version":1, "provider":"ALFRED",
+                        "series_id":"DGS10", "asof":day,
+                        "realtime_start":day, "realtime_end":day,
+                        "status":status, "observations":obs}
+                (folder / (day+".json")).write_text(json.dumps(data))
+            inventory = available_snapshots(root)
+            entry = next(x for x in inventory["series"]
+                         if x["series_id"] == "DGS10")
+            self.assertEqual(entry["count"],2)
+            self.assertEqual(entry["populated_vintage_count"],1)
+            self.assertEqual(entry["first_populated_asof"],"2026-02-28")
+            self.assertEqual(entry["last_populated_asof"],"2026-02-28")
+
     def test_dfa_vintage_preserves_actual_historical_population_without_future_leakage(self):
         series = "WFRBST01134"
         asof = date(2020, 3, 31)

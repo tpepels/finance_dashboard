@@ -148,18 +148,50 @@ def validate_research_corpus(
 
 
 def research_corpus_report(
-    document: dict[str, Any], observations: dict[str, Any] | None = None
+    document: dict[str, Any],
+    observations: dict[str, Any] | None = None,
+    *,
+    vintages: dict[str, Any] | None = None,
+    series_registry: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Join current stored series coverage; never claim whole-analysis completion."""
     counts = {item["id"]: item for item in (observations or {}).get("items", [])
               if item.get("family") == "macro"}
+    # ALFRED true source publication-as-of data is keyed by FRED series ID,
+    # not by our app's observation-series ID or ingestion timestamp.
+    original_by_local_id = {
+        item["id"]: item for item in (series_registry or [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    vintage_by_id = {
+        item["series_id"]: item for item in (vintages or {}).get("series", [])
+        if isinstance(item, dict) and isinstance(item.get("series_id"), str)
+    }
     analyses: list[dict[str, Any]] = []
     for row in document["analyses"]:
         links = []
         for series_id in row["existing_series_references"]:
             source = counts.get(series_id)
+            original = original_by_local_id.get(series_id, {})
+            original_fred_id = (original.get("source_key")
+                                if original.get("provider") == "FRED" else None)
+            source_vintages = vintage_by_id.get(original_fred_id) if original_fred_id else None
+            publication = {
+                "original_fred_id": original_fred_id,
+                "asof_snapshot_files": source_vintages.get("count", 0) if source_vintages else 0,
+                "populated_asof_snapshots": source_vintages.get("populated_vintage_count", 0)
+                    if source_vintages else 0,
+                "first_populated_asof": source_vintages.get("first_populated_asof")
+                    if source_vintages else None,
+                "last_populated_asof": source_vintages.get("last_populated_asof")
+                    if source_vintages else None,
+                "source_publication_vintage_verified": bool(
+                    source_vintages and source_vintages.get("populated_vintage_count", 0) > 0
+                ),
+            } if original_fred_id else None
             links.append({
                 "series_id": series_id,
+                "original_source_asof": publication,
                 "stored_periods": source.get("stored_periods", 0) if source else None,
                 "oldest_source_date": source.get("oldest_source_date") if source else None,
                 "latest_source_date": source.get("latest_source_date") if source else None,
@@ -186,6 +218,11 @@ def research_corpus_report(
         "analysis_with_existing_code_references": sum(x["existing_reference_count"] > 0 for x in analyses),
         "analysis_with_any_stored_macro_observations": sum(x["existing_references_with_observations"] > 0 for x in analyses),
         "observations_checked": observations is not None,
+        "alfred_publication_vintages_checked": vintages is not None,
+        "alfred_sources_with_populated_asof": sum(
+            item.get("populated_vintage_count", 0) > 0
+            for item in vintage_by_id.values()
+        ) if vintages is not None else None,
         "interpretation": (
             "Code references and stored historical source periods are not proof of "
             "complete matched economic comparisons or original release-time vintage. "

@@ -75,6 +75,34 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertEqual(recession["existing_references_with_observations"], 1)
         self.assertFalse(recession["comparative_corpus_validated"])
 
+    def test_alfred_publication_snapshots_are_not_local_ingestion_timestamps(self):
+        observed = {"items": [{
+            "family":"macro", "id":"bond.us.nominal_10y",
+            "stored_periods":300, "oldest_source_date":"2024-01-01",
+            "latest_source_date":"2026-10-30", "stored_versions":300,
+            "state":"available",
+        }]}
+        vintages = {"series":[{"series_id":"DGS10", "count":3,
+            "populated_vintage_count":2,
+            "first_populated_asof":"2026-08-31",
+            "last_populated_asof":"2026-09-30"}]}
+        output = research_corpus_report(
+            self.document, observed,
+            vintages=vintages, series_registry=self.series["series"])
+        self.assertTrue(output["alfred_publication_vintages_checked"])
+        self.assertEqual(output["alfred_sources_with_populated_asof"],1)
+        m02 = next(x for x in output["analyses"] if x["id"] == "M02")
+        original = next(x for x in m02["linked_existing_series"]
+                        if x["series_id"] == "bond.us.nominal_10y")
+        self.assertEqual(original["original_source_asof"]["asof_snapshot_files"],3)
+        self.assertEqual(original["original_source_asof"]["populated_asof_snapshots"],2)
+        self.assertTrue(original["original_source_asof"]["source_publication_vintage_verified"])
+        self.assertFalse(m02["comparative_corpus_validated"])
+        # The latest observed economic period is never misrepresented as
+        # the date it first became available to a researcher.
+        self.assertNotEqual(original["latest_source_date"],
+                            original["original_source_asof"]["last_populated_asof"])
+
     def test_no_database_evidence_is_not_zero_population(self):
         report = research_corpus_report(self.document)
         self.assertFalse(report["observations_checked"])

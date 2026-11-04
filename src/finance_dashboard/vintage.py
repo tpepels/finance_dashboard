@@ -361,16 +361,24 @@ def available_snapshots(root: Path = ROOT) -> dict:
     for sid, metadata in SOURCES.items():
         folder = root / sid
         dates = []
+        populated_dates = []
         for path in sorted(folder.glob("????-??-??.json")) if folder.exists() else []:
             try:
                 asof = date.fromisoformat(path.stem)
                 item = read_snapshot(root, sid, asof)
                 if item is not None:
                     dates.append(asof.isoformat())
+                    if item["status"] == "ready" and item["observations"]:
+                        populated_dates.append(asof.isoformat())
             except (ValueError, OSError, json.JSONDecodeError, KeyError):
                 continue
-        series.append({"series_id": sid, **metadata, "snapshot_dates": dates,
-                       "count": len(dates)})
+        series.append({
+            "series_id": sid, **metadata, "snapshot_dates": dates,
+            "count": len(dates),
+            "populated_vintage_count": len(populated_dates),
+            "first_populated_asof": populated_dates[0] if populated_dates else None,
+            "last_populated_asof": populated_dates[-1] if populated_dates else None,
+        })
     return {"provider": "ALFRED", "source": "https://fred.stlouisfed.org/docs/api/fred/",
             "series": series, "source_publication_vintages": True,
             "current_market_prices_asof": False,

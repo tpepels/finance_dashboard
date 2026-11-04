@@ -311,13 +311,19 @@ def create_app(engine=None) -> FastAPI:
     def source_research_corpus():
         """Phase 2 approved-question source evidence, with actual stored-source periods."""
         return research_corpus_report(
-            research_sources, build_coverage(db, catalog["series"], market_registry))
+            research_sources, build_coverage(db, catalog["series"], market_registry),
+            vintages=available_snapshots(Path(environ.get(
+                "FINANCE_VINTAGE_DIR", "/data/vintages"))),
+            series_registry=catalog["series"])
 
     @app.get("/api/research-corpus/{analysis_id}")
     def research_corpus_question(analysis_id: str):
         """Return explicit source references, missing evidence and fallbacks."""
         report = research_corpus_report(
-            research_sources, build_coverage(db, catalog["series"], market_registry))
+            research_sources, build_coverage(db, catalog["series"], market_registry),
+            vintages=available_snapshots(Path(environ.get(
+                "FINANCE_VINTAGE_DIR", "/data/vintages"))),
+            series_registry=catalog["series"])
         match = next((row for row in report["analyses"] if row["id"] == analysis_id), None)
         if match is None:
             raise HTTPException(404, "Unknown approved scientific question")
