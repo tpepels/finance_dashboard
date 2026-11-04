@@ -48,6 +48,40 @@ class VintageTests(unittest.TestCase):
             self.assertEqual(latest_asof_reading(again)["age_days"],30)
             self.assertEqual(available_snapshots(root)["series"][1]["count"],1)
 
+    def test_dfa_vintage_preserves_actual_historical_population_without_future_leakage(self):
+        series = "WFRBST01134"
+        asof = date(2020, 3, 31)
+        def handler(request):
+            self.assertEqual(request.url.params["series_id"], series)
+            self.assertEqual(request.url.params["observation_start"], "1989-01-01")
+            self.assertEqual(request.url.params["observation_end"], "2020-03-31")
+            self.assertEqual(request.url.params["realtime_start"], "2020-03-31")
+            self.assertEqual(request.url.params["realtime_end"], "2020-03-31")
+            return httpx.Response(200, json={"observations": [
+                {"date": "1989-07-01", "value": "24.6",
+                 "realtime_start": "2019-06-21",
+                 "realtime_end": "2020-04-01"},
+                {"date": "2019-10-01", "value": "31.4",
+                 "realtime_start": "2020-01-15",
+                 "realtime_end": "2020-04-01"},
+            ]})
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                result = fetch_snapshot(series, asof, api_key="syntheticsecret",
+                                        client=client, root=root)
+                self.assertEqual(len(result["observations"]), 2)
+                self.assertEqual(result["asof"], asof.isoformat())
+                self.assertEqual(result["observations"][0]["date"], "1989-07-01")
+                self.assertTrue((root / series / "2020-03-31.json").is_file())
+
+    def test_dfa_source_date_before_first_publication_is_not_a_valid_asof(self):
+        for sid in ("WFRBST01134", "WFRBSN09161",
+                    "WFRBSN40188", "WFRBSB50215"):
+            self.assertIn(sid, SOURCES)
+            self.assertEqual(SOURCES[sid]["frequency"], "Q")
+            self.assertLessEqual(SOURCES[sid]["maximum_age_days"], 225)
+
     def test_sahm_vintage_preserves_source_history_since_1959_without_future_leakage(self):
         asof = date(2019, 9, 30)
         requests = []
@@ -258,8 +292,8 @@ class VintageTests(unittest.TestCase):
                 second=capture_previous_month(root,today=date(2026,11,2),
                     api_key="fake",client=client)
             self.assertEqual(first["status"],"complete")
-            self.assertEqual(second["captured"],3)
-            self.assertEqual(len(called),3)
+            self.assertEqual(second["captured"],len(SOURCES))
+            self.assertEqual(len(called),len(SOURCES))
 
     def test_resume_backfill_only_requests_missing_month_end_vintages(self):
         calls=[]

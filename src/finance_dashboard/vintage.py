@@ -40,6 +40,36 @@ SOURCES = {
         "frequency": "M", "maximum_age_days": 76,
         "reference": "https://fred.stlouisfed.org/series/USREC",
     },
+    "DGS10": {
+        "name": "US nominal 10-year constant maturity Treasury yield",
+        "frequency": "D", "maximum_age_days": 14,
+        "reference": "https://fred.stlouisfed.org/series/DGS10",
+    },
+    "T10YIE": {
+        "name": "US market ten-year TIPS inflation breakeven",
+        "frequency": "D", "maximum_age_days": 14,
+        "reference": "https://fred.stlouisfed.org/series/T10YIE",
+    },
+    "WFRBST01134": {
+        "name": "Fed DFA US top one-percent household net-worth share",
+        "frequency": "Q", "maximum_age_days": 225,
+        "reference": "https://fred.stlouisfed.org/series/WFRBST01134",
+    },
+    "WFRBSN09161": {
+        "name": "Fed DFA US next nine-percent household net-worth share",
+        "frequency": "Q", "maximum_age_days": 225,
+        "reference": "https://fred.stlouisfed.org/series/WFRBSN09161",
+    },
+    "WFRBSN40188": {
+        "name": "Fed DFA US middle forty-percent household net-worth share",
+        "frequency": "Q", "maximum_age_days": 225,
+        "reference": "https://fred.stlouisfed.org/series/WFRBSN40188",
+    },
+    "WFRBSB50215": {
+        "name": "Fed DFA US bottom half household net-worth share",
+        "frequency": "Q", "maximum_age_days": 225,
+        "reference": "https://fred.stlouisfed.org/series/WFRBSB50215",
+    },
 }
 
 
@@ -244,8 +274,14 @@ def fetch_snapshot(series_id: str, asof: date, *, api_key: str,
     # source's first ALFRED publication vintage (checked separately).
     # USREC likewise requires long historical recession labels. Daily T10Y3M
     # remains bounded to avoid truncation at the 10,000-observation API limit.
+    # The four Fed DFA history series extend back to 1989. Request original
+    # historical observations inside an ALFRED point-in-time vintage. This
+    # NEVER proves they were published in 1989; the actual first published
+    # source date is validated by first_available_vintages separately.
+    dfa_series = {"WFRBST01134", "WFRBSN09161", "WFRBSN40188", "WFRBSB50215"}
     start = (date(1959, 12, 1) if series_id == "SAHMREALTIME"
              else date(1900, 1, 1) if series_id == "USREC"
+             else date(1989, 1, 1) if series_id in dfa_series
              else asof - timedelta(days=430))
     response = client.get(FRED_OBSERVATIONS, params={
         "series_id": series_id, "api_key": api_key, "file_type": "json",

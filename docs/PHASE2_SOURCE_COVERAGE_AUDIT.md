@@ -70,3 +70,7 @@ Phase 1 is approved. This audit compares its 35 first-class analyses against the
 6. Automated original-source, failure, data provenance, historical-consistency, backup/restore and regression tests on the integrated running corpus.
 
 These are **Phase 2 tasks**, not deferrals to later phases. The earlier 80/80 operational source-history count is not scientific evidence that all approved analysis questions are complete.
+
+## Dated 2026-11-04 follow-up — ALFRED release-time source histories
+
+The Phase 2 code now supports eight additional original source mappings for BIS DSR, 10 further nominal/real-rate/Brent/CPI/stress/BEA series, four Fed DFA net-worth groups plus other original activities/imbalances, and eight BIS property series, totaling **93 registered macro series**. New source adapters/record IDs do not imply any observation is present. Nine ALFRED source-as-of histories can be captured, including four wealth-group histories, with real release-vintage snapshots retained. Full 35-analysis source/test/corpus acceptance remains open. Source tests have not run in this remote GitHub connector environment.
