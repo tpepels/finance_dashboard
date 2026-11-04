@@ -60,10 +60,23 @@ def captured_source(root, definition, select_manifest, original_file):
                               sources[0]['url'],source['url'], return_metadata=True)
         elif provider == 'ECB':
             values,dimensions = _ecb(body,definition,source['url'])
+        elif provider == 'FED_G17_DIFFUSION':
+            values,dimensions = _g17_diffusion(body,definition,source['url'])
+        elif provider == 'OFR_FSI':
+            values,dimensions = _ofr_fsi(body,definition,source['url'])
+        elif provider == 'BOJ_TSS':
+            values,dimensions = _boj(body,definition,source['url'])
+        elif provider == 'OECD_CLI':
+            values,dimensions = _oecd_cli(body,definition,source['url'])
+        elif provider == 'IMF_BOP_IIP':
+            values,dimensions = _imf_bop_iip(raw,definition,source['url'])
+        elif provider == 'FDIC_BANKFIND':
+            values,dimensions = _fdic(json.loads(body,parse_float=Decimal),definition,source['url'])
         else:
             payload=json.loads(body,parse_float=Decimal)
             values = _bis(payload, definition)
             if provider=='BIS': dimensions=_bis_policy_metadata(payload)
+            if provider=='BIS_TOTAL_CREDIT': dimensions=_bis_credit_metadata(payload,definition)
         if not values:
             raise EvidenceError("source_empty")
         return values, {"source_sha256": data_hash, "source_manifest_sha256": manifest_hash,
@@ -460,6 +473,8 @@ def _bis(payload, definition):
             raise EvidenceError('source_identity_mismatch')
     elif provider == "BIS_DSR":
         names = ("FREQ", "BORROWERS_CTY", "DSR_BORROWERS")
+    elif provider == "BIS_TOTAL_CREDIT":
+        names = ("FREQ", "BORROWERS_CTY", "TC_BORROWERS", "TC_LENDERS", "VALUATION", "UNIT_TYPE", "TC_ADJUST")
     elif provider == "BIS_CREDIT_GAP":
         names = ("FREQ", "BORROWERS_CTY", "TC_BORROWERS", "TC_LENDERS", "CG_DTYPE")
     elif provider == "BIS_PROPERTY":
@@ -530,4 +545,200 @@ def _bis_policy_metadata(payload):
         'source_publisher_metadata':{key:value['id'] for key,value in details.items()
                                      if key in {'COMPILATION','SOURCE_REF','TITLE','SUPP_INFO_BREAKS'}},
         'source_response_prepared_at':payload.get('meta',{}).get('prepared'),
+        'individual_observation_first_publication_verified':False}
+
+
+def _bis_credit_metadata(payload,definition):
+    """Check the reported unit and multiplier of the one selected total-credit series."""
+    from .source_reconciliation import EvidenceError
+    block=payload['data'];structure=block.get('structure',block.get('structures'))
+    if isinstance(structure,list):
+        if len(structure)!=1: raise EvidenceError('source_identity_mismatch')
+        structure=structure[0]
+    nodes=list(block['dataSets'][0]['series'].values())
+    if len(nodes)!=1: raise EvidenceError('source_identity_mismatch')
+    selected={attribute['id']:attribute['values'][index]['id']
+              for attribute,index in zip(structure['attributes']['series'],nodes[0]['attributes']) if index is not None}
+    stock=definition['source_key'].split('.')[-2]=='XDC'
+    if (selected.get('UNIT_MEASURE')!=(definition.get('currency') if stock else '367')
+            or selected.get('UNIT_MULT')!=('9' if stock else '0')):
+        raise EvidenceError('source_identity_mismatch')
+    return {'source_native_unit':definition['unit'],'source_native_unit_code':selected['UNIT_MEASURE'],
+        'source_unit_multiplier':selected['UNIT_MULT'],'source_decimals':selected.get('DECIMALS'),
+        **({'source_currency':selected['UNIT_MEASURE']} if stock else {}),
+        'source_response_prepared_at':payload.get('meta',{}).get('prepared'),
+        'individual_observation_first_publication_verified':False}
+
+
+def _g17_diffusion(body,definition,url):
+    """Fixed-width column slicing; a blank cell is a missing month, never shifted."""
+    from .source_reconciliation import EvidenceError
+    spans={'DIFFUSION_1':'one month earlier','DIFFUSION_3':'three months earlier','DIFFUSION_6':'six months earlier'}
+    block=definition['source_key'].rsplit('#',1)[-1]
+    if (url!='https://www.federalreserve.gov/Releases/G17/Current/ipdisk/diff_sa.txt' or block not in spans
+            or definition['source_key']!='diff_sa.txt#'+block or definition['frequency']!='M'
+            or definition['unit']!='index'):
+        raise EvidenceError('source_identity_mismatch')
+    lines=body.splitlines()
+    starts=[i for i,line in enumerate(lines) if line.strip()=='"%s: Diffusion index of industrial production, %s"'%(block,spans[block])]
+    if len(starts)!=1: raise EvidenceError('source_identity_mismatch')
+    values,seen,rows=({},set(),0)
+    for line in lines[starts[0]+1:]:
+        if not line.strip(): continue
+        if line.strip().startswith('"DIFFUSION_') and ':' in line: break
+        year=line[13:23].strip()
+        if line[:13]!='"%s"'%block or len(line.rstrip())>143 or not re.fullmatch(r'\d{4}',year):
+            raise EvidenceError('source_schema_invalid')
+        rows+=1
+        for month in range(12):
+            cell=line[23+10*month:33+10*month].strip()
+            if not cell: continue
+            day=date(int(year),month+1,1)
+            if day>date.today(): raise EvidenceError('source_period_invalid')
+            _add(values,seen,day,cell)
+            if day in values and not 0<=values[day]<=100: raise EvidenceError('source_value_invalid')
+    if not rows: raise EvidenceError('source_empty')
+    return values,{'source_native_unit':'index','source_publisher_metadata':{
+        'definition':'percentage of series that increased over the span plus one-half of the unchanged','span':spans[block]},
+        'source_seasonal_adjustment':'seasonally adjusted','individual_observation_first_publication_verified':False}
+
+
+def _ofr_fsi(body,definition,url):
+    from .source_reconciliation import EvidenceError
+    columns=['OFR FSI','Credit','Equity valuation','Safe assets','Funding','Volatility',
+             'United States','Other advanced economies','Emerging markets']
+    column=definition['source_key'].partition('#')[2]
+    if (url!='https://www.financialresearch.gov/financial-stress-index/data/fsi.csv'
+            or definition['source_key']!='fsi.csv#'+column or column not in columns
+            or definition['frequency']!='D' or definition['unit']!='index'):
+        raise EvidenceError('source_identity_mismatch')
+    rows=list(csv.reader(io.StringIO(body)))
+    if not rows or rows[0]!=['Date']+columns: raise EvidenceError('source_identity_mismatch')
+    position=rows[0].index(column)
+    values,seen=({},set())
+    categories=regions=0
+    for row in rows[1:]:
+        if len(row)!=len(rows[0]): raise EvidenceError('source_schema_invalid')
+        _add(values,seen,_native_period(row[0],'D'),row[position])
+        total=Decimal(row[1])
+        categories+=abs(sum(Decimal(v) for v in row[2:7])-total)>Decimal('0.003')
+        regions+=abs(sum(Decimal(v) for v in row[7:10])-total)>Decimal('0.002')
+    return values,{'source_native_unit':'standardized_index','source_publisher_metadata':{
+        'scale':'zero is average stress; positive above average','frequency':'business days',
+        'published_decimals':3,'category_partition_rows_beyond_rounding':categories,
+        'region_partition_rows_beyond_rounding':regions},
+        'individual_observation_first_publication_verified':False}
+
+
+def _boj(body,definition,url):
+    from .source_reconciliation import EvidenceError
+    codes={"FM01'STRDCLUCON":('fm01_d_1_en',0,'D'),"FM02'STRECLUCON":('fm02_m_1_en',0,'M'),
+           "FM02'STRACLUCON":('fm02_m_1_en',1,'M')}
+    spec=codes.get(definition['source_key'])
+    if (spec is None or url!='https://www.stat-search.boj.or.jp/ssi/mtshtml/csv/%s.csv'%spec[0]
+            or definition['frequency']!=spec[2] or definition['unit']!='percent'):
+        raise EvidenceError('source_identity_mismatch')
+    rows=list(csv.reader(io.StringIO(body)))
+    named={row[0]:row for row in rows if row and row[0] in ('Series code','Unit','Name of time-series')}
+    column=spec[1]+1
+    if (len(named)!=3 or named['Series code'][column]!=definition['source_key']
+            or named['Unit'][column]!='percent per annum'):
+        raise EvidenceError('source_identity_mismatch')
+    pattern=r'\d{4}/\d{2}/\d{2}' if spec[2]=='D' else r'\d{4}/\d{2}'
+    values,seen=({},set())
+    for row in rows:
+        if row and re.fullmatch(pattern,row[0]):
+            if len(row)!=len(named['Series code']): raise EvidenceError('source_schema_invalid')
+            _add(values,seen,_native_period(row[0].replace('/','-'),spec[2]),row[column])
+    return values,{'source_native_unit':'percent','source_native_unit_label':named['Unit'][column],
+        'source_publisher_metadata':{'series_code':definition['source_key'],'name':named['Name of time-series'][column]},
+        'individual_observation_first_publication_verified':False}
+
+
+def _oecd_cli(body,definition,url):
+    from .source_reconciliation import EvidenceError
+    key=definition['source_key']
+    flow,_,series=key.partition('/')
+    if (flow!='OECD.SDD.STES,DSD_STES@DF_CLI,4.1'
+            or url!='https://sdmx.oecd.org/public/rest/data/%s/%s?format=csvfile'%(flow,series)
+            or definition['frequency']!='M' or definition['unit']!='index'):
+        raise EvidenceError('source_identity_mismatch')
+    names=('REF_AREA','FREQ','MEASURE','UNIT_MEASURE','ACTIVITY','ADJUSTMENT','TRANSFORMATION','TIME_HORIZ','METHODOLOGY')
+    expected=dict(zip(names,series.split('.'),strict=True))
+    if expected['MEASURE']!='LI' or expected['ADJUSTMENT'] not in ('AA','TR'): raise EvidenceError('source_identity_mismatch')
+    rows=csv.DictReader(io.StringIO(body))
+    values,seen=({},set())
+    decimals=set()
+    for row in rows:
+        if (row['DATAFLOW']!='OECD.SDD.STES:DSD_STES@DF_CLI(4.1)' or row['UNIT_MULT']!='0'
+                or any(row[name]!=value for name,value in expected.items()) or row['OBS_STATUS']!='A'):
+            raise EvidenceError('source_identity_mismatch')
+        decimals.add(row['DECIMALS'])
+        _add(values,seen,_native_period(row['TIME_PERIOD'],'M'),row['OBS_VALUE'])
+    return values,{'source_native_unit':'index','source_dataset':'OECD DSD_STES@DF_CLI',
+        'source_database_vintage':'dataflow version 4.1','source_decimals':sorted(decimals),
+        'source_publisher_metadata':{'adjustment':{'AA':'amplitude adjusted (average 100)','TR':'trend restored'}[expected['ADJUSTMENT']],
+            'methodology':'OECD harmonised'},'individual_observation_first_publication_verified':False}
+
+
+def _imf_bop_iip(raw,definition,url):
+    """Regex attribute scan of the structure-specific XML, independent of the ElementTree provider."""
+    from .source_reconciliation import EvidenceError
+    key=definition['source_key']
+    flow_id,_,series=key.partition('/')
+    agency,flow,version=flow_id.split(',')
+    country,_,rest=series.partition('..')
+    indicator,unit,frequency=rest.split('.')
+    entries={'CAB':'NETCD_T','NIIP':'NETAL_P'}
+    if (agency!='IMF.STA' or (flow,indicator) not in (('BOP','CAB'),('IIP','NIIP')) or unit!='USD' or frequency!='A'
+            or url!='https://api.imf.org/external/sdmx/2.1/data/%s/%s'%(flow_id,series)
+            or definition['frequency']!='A' or definition['unit']!='usd'):
+        raise EvidenceError('source_identity_mismatch')
+    text=raw.decode('utf-8-sig')
+    blocks=re.findall(r'<Series\s([^>]*)>(.*?)</Series>',text,flags=re.S)
+    if len(blocks)!=1: raise EvidenceError('source_identity_mismatch')
+    attributes=dict(re.findall(r'(\w+)="([^"]*)"',blocks[0][0]))
+    if (attributes.get('COUNTRY')!=country or attributes.get('BOP_ACCOUNTING_ENTRY')!=entries[indicator]
+            or attributes.get('INDICATOR')!=indicator or attributes.get('UNIT')!='USD'
+            or attributes.get('FREQUENCY')!='A' or attributes.get('METHODOLOGY')!='BPM6'):
+        raise EvidenceError('source_identity_mismatch')
+    values,seen=({},set())
+    derivations=set()
+    for observation in re.findall(r'<Obs\s([^>]*?)/>',blocks[0][1]):
+        fields=dict(re.findall(r'(\w+)="([^"]*)"',observation))
+        derivations.add(fields.get('DERIVATION_TYPE'))
+        _add(values,seen,_native_period(fields['TIME_PERIOD'],'A'),fields.get('OBS_VALUE'))
+    return values,{'source_native_unit':'usd','source_currency':'USD','source_variable':indicator,
+        'source_price_basis':'flow' if indicator=='CAB' else 'end_period_stock',
+        'source_publisher_metadata':{'methodology':'BPM6','accounting_entry':attributes['BOP_ACCOUNTING_ENTRY'],
+            'overlap':attributes.get('OVERLAP'),'scale':attributes.get('SCALE'),
+            'derivation_types':sorted(item for item in derivations if item)},
+        'source_dataset':flow_id,'individual_observation_first_publication_verified':False}
+
+
+def _fdic(payload,definition,url):
+    from .source_reconciliation import EvidenceError
+    from urllib.parse import urlsplit,parse_qs
+    field=definition['source_key'].partition('#')[2]
+    parts=urlsplit(url)
+    query=parse_qs(parts.query)
+    if (parts.scheme!='https' or parts.netloc!='api.fdic.gov' or parts.path!='/banks/financials'
+            or definition['source_key']!='financials?agg_by=REPDTE#'+field or field not in ('sum_ASSET','sum_EQ','count')
+            or query.get('agg_by')!=['REPDTE'] or query.get('agg_sum_fields')!=['ASSET,EQ']
+            or definition['frequency']!='Q' or definition['unit']!=('count' if field=='count' else 'thousand_usd')):
+        raise EvidenceError('source_identity_mismatch')
+    meta=payload['meta']['parameters']['aggsMetaData']
+    rows=payload['data']
+    if meta['by']!='REPDTE' or not rows or len(rows)>=int(query['agg_limit'][0]): raise EvidenceError('source_truncated')
+    values,seen=({},set())
+    counts=[]
+    for row in rows:
+        match=re.fullmatch(r'(\d{4})(03|06|09|12)(30|31)',row['data']['REPDTE'])
+        if not match: raise EvidenceError('source_period_invalid')
+        counts.append(int(row['data']['count']))
+        _add(values,seen,date(int(match.group(1)),int(match.group(2))-2,1),row['data'][field])
+    return values,{'source_native_unit':definition['unit'],'source_currency':None if field=='count' else 'USD',
+        'source_publisher_metadata':{'perimeter':'all institutions reporting financials at each report date',
+            'reporting_institutions_first':counts[0],'reporting_institutions_last':counts[-1],
+            'reporting_institutions_minimum':min(counts),'reporting_institutions_maximum':max(counts)},
         'individual_observation_first_publication_verified':False}

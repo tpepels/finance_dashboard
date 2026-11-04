@@ -269,10 +269,33 @@
           {
             "role": "oecd_cli",
             "description": "Original OECD amplitude-adjusted monthly CLI and reference trend.",
-            "series_ids": [],
+            "series_ids": [
+              "activity.us.oecd_cli",
+              "activity.jp.oecd_cli",
+              "activity.de.oecd_cli",
+              "activity.fr.oecd_cli",
+              "activity.gb.oecd_cli",
+              "activity.cn.oecd_cli",
+              "activity.in.oecd_cli",
+              "activity.g7.oecd_cli",
+              "activity.g20.oecd_cli",
+              "activity.us.oecd_cli_trend_restored",
+              "activity.jp.oecd_cli_trend_restored"
+            ],
             "expected": {
               "frequency": "M",
               "unit": "index",
+              "geography": [
+                "US",
+                "JP",
+                "DE",
+                "FR",
+                "GB",
+                "CN",
+                "IN",
+                "G7",
+                "G20"
+              ],
               "population": "OECD country or explicitly named published area",
               "concept": "Amplitude-adjusted growth-cycle index, average 100"
             },
@@ -340,7 +363,11 @@
           {
             "role": "industry_diffusion",
             "description": "Retained C04 method: original G.17 industry diffusion series, classifications and documented weight versions.",
-            "series_ids": [],
+            "series_ids": [
+              "activity.us.industrial_production_diffusion_1m",
+              "activity.us.industrial_production_diffusion_3m",
+              "activity.us.industrial_production_diffusion_6m"
+            ],
             "expected": {
               "frequency": "M",
               "unit": "index",
@@ -398,7 +425,7 @@
         "S07",
         "S10"
       ],
-      "outstanding_evidence": "US recession chronology, yield spread and Sahm series now mapped; release-time revisions and independent predictive comparisons still unverified",
+      "outstanding_evidence": "US recession chronology, yield spread and Sahm series are mapped. Original NBER committee announcements (19 documents, 1979-2021) and the retrospective peak/trough table are retained as a typed event artifact with separate event and announcement dates; release-time revisions and independent predictive comparisons remain unverified.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -473,7 +500,9 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "events",
-            "artifact_ids": [],
+            "artifact_ids": [
+              "nber_chronology"
+            ],
             "input_requirement": "Original peak/trough announcement dates and available chronology versions, distinct from recession months."
           }
         ],
@@ -612,7 +641,7 @@
         "S10",
         "S04"
       ],
-      "outstanding_evidence": "Original native PAYEMS payroll employment is mapped separately from unique employed persons. GDP and monthly activity inputs remain different frequencies; recession/shock baselines and source release vintages remain incomplete.",
+      "outstanding_evidence": "Original native PAYEMS payroll employment is mapped separately from unique employed persons. GDP and monthly activity inputs remain different frequencies. The NBER recession chronology and committee announcements are retained as a separate typed event artifact (context); independently documented non-recession shock events and source release vintages remain missing.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -740,7 +769,9 @@
         "activity.us.unemployment_rate",
         "gdp.real_growth.us"
       ],
-      "context_artifact_ids": []
+      "context_artifact_ids": [
+        "nber_chronology"
+      ]
     },
     {
       "id": "C06",
@@ -927,7 +958,7 @@
         "S12",
         "S13"
       ],
-      "outstanding_evidence": "Original DFF effective federal funds and target lower/upper bounds are separately mapped. Exact BoJ realized overnight call history and joint original release vintages remain missing.",
+      "outstanding_evidence": "Original DFF effective federal funds and target lower/upper bounds are separately mapped. Original BoJ daily-average call rate FM01'STRDCLUCON (1998 onward) is bound; the separately defined monthly average and end-of-month series (1985 onward) are context and agree with the daily series within publisher rounding. Joint original release vintages remain missing.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -974,7 +1005,9 @@
           {
             "role": "boj_overnight_call",
             "description": "Original BoJ uncollateralized overnight call rate with daily-average or explicitly separate monthly identity.",
-            "series_ids": [],
+            "series_ids": [
+              "policy_rate.jp.boj_call_daily"
+            ],
             "expected": {
               "frequency": "D",
               "unit": "percent",
@@ -1057,6 +1090,8 @@
       "context_series_ids": [
         "policy_rate.ea.bis",
         "policy_rate.jp.bis",
+        "policy_rate.jp.boj_call_monthly_average",
+        "policy_rate.jp.boj_call_monthly_end",
         "policy_rate.us.bis"
       ],
       "context_artifact_ids": []
@@ -1175,7 +1210,7 @@
         "S12",
         "S13"
       ],
-      "outstanding_evidence": "FX market source exists separately, cross-currency historical validity not established",
+      "outstanding_evidence": "FX market source exists separately, cross-currency historical validity not established. Original BoJ daily call rate is now bound; monthly definitions are separate context.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -1239,7 +1274,9 @@
           {
             "role": "boj_overnight_call",
             "description": "Original BoJ realized overnight call rate.",
-            "series_ids": [],
+            "series_ids": [
+              "policy_rate.jp.boj_call_daily"
+            ],
             "expected": {
               "frequency": "D",
               "unit": "percent",
@@ -1283,6 +1320,8 @@
       "context_series_ids": [
         "policy_rate.ea.bis",
         "policy_rate.jp.bis",
+        "policy_rate.jp.boj_call_monthly_average",
+        "policy_rate.jp.boj_call_monthly_end",
         "policy_rate.us.bis"
       ],
       "context_artifact_ids": []
@@ -1293,7 +1332,7 @@
       "primary_method_sources": [
         "S16"
       ],
-      "outstanding_evidence": "Only three gap countries mapped; credit stock/GDP input and worldwide concept not established",
+      "outstanding_evidence": "Original BIS private credit stocks, published private-credit/GDP ratios, published one-sided trends and national gaps are bound for the US, Japan, Germany, China and Portugal (euro-area gap only). BIS does not publish the underlying nominal GDP, so any independent credit/GDP reconstruction still needs matched original national GDP flows; published and reconstructed ratios stay distinct.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -1302,9 +1341,23 @@
           {
             "role": "private_credit_outstanding",
             "description": "Original BIS outstanding credit stock to domestic households and nonfinancial corporations.",
-            "series_ids": [],
+            "series_ids": [
+              "credit.us.private_nonfinancial_stock_bis",
+              "credit.jp.private_nonfinancial_stock_bis",
+              "credit.de.private_nonfinancial_stock_bis",
+              "credit.cn.private_nonfinancial_stock_bis",
+              "credit.pt.private_nonfinancial_stock_bis"
+            ],
             "expected": {
               "frequency": "Q",
+              "unit": "billion_local_currency",
+              "geography": [
+                "US",
+                "JP",
+                "DE",
+                "CN",
+                "PT"
+              ],
               "population": "Private non-financial sector",
               "concept": "Outstanding credit stock in original monetary unit"
             },
@@ -1315,10 +1368,23 @@
           {
             "role": "published_credit_gdp",
             "description": "Original BIS private-credit/GDP ratio; a credit gap is not this ratio.",
-            "series_ids": [],
+            "series_ids": [
+              "credit.us.private_nonfinancial_gdp_bis",
+              "credit.jp.private_nonfinancial_gdp_bis",
+              "credit.de.private_nonfinancial_gdp_bis",
+              "credit.cn.private_nonfinancial_gdp_bis",
+              "credit.pt.private_nonfinancial_gdp_bis"
+            ],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
+              "geography": [
+                "US",
+                "JP",
+                "DE",
+                "CN",
+                "PT"
+              ],
               "population": "Private non-financial sector",
               "concept": "Outstanding private credit divided by nominal GDP"
             },
@@ -1329,10 +1395,23 @@
           {
             "role": "published_credit_trend",
             "description": "Original BIS one-sided credit/GDP trend used to define the published gap.",
-            "series_ids": [],
+            "series_ids": [
+              "credit_gap.us.bis_trend",
+              "credit_gap.jp.bis_trend",
+              "credit_gap.de.bis_trend",
+              "credit_gap.cn.bis_trend",
+              "credit_gap.pt.bis_trend"
+            ],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
+              "geography": [
+                "US",
+                "JP",
+                "DE",
+                "CN",
+                "PT"
+              ],
               "population": "Private non-financial sector",
               "concept": "Source-published one-sided credit/GDP trend"
             },
@@ -1346,7 +1425,10 @@
             "series_ids": [
               "credit_gap.us.bis",
               "credit_gap.ea.bis",
-              "credit_gap.jp.bis"
+              "credit_gap.jp.bis",
+              "credit_gap.de.bis",
+              "credit_gap.cn.bis",
+              "credit_gap.pt.bis"
             ],
             "expected": {
               "frequency": "Q",
@@ -1354,7 +1436,10 @@
               "geography": [
                 "United States",
                 "Euro area",
-                "Japan"
+                "Japan",
+                "DE",
+                "CN",
+                "PT"
               ],
               "population": "National or named-area private non-financial sector",
               "concept": "Actual credit/GDP minus one-sided source trend"
@@ -1365,7 +1450,7 @@
           },
           {
             "role": "nominal_gdp",
-            "description": "Matched original nominal GDP flows for any independent credit/GDP reconstruction.",
+            "description": "Matched original nominal GDP flows for any independent credit/GDP reconstruction. BIS publishes the ratio but not its GDP denominator; the matching national-accounts flows need an independent original source.",
             "series_ids": [],
             "expected": {
               "frequency": "Q",
@@ -1491,9 +1576,23 @@
           {
             "role": "private_credit_context",
             "description": "Original same-country private credit stock and debt-ratio context; DSR is not a debt stock.",
-            "series_ids": [],
+            "series_ids": [
+              "credit.us.private_nonfinancial_stock_bis",
+              "credit.jp.private_nonfinancial_stock_bis",
+              "credit.de.private_nonfinancial_stock_bis",
+              "credit.cn.private_nonfinancial_stock_bis",
+              "credit.pt.private_nonfinancial_stock_bis"
+            ],
             "expected": {
               "frequency": "Q",
+              "unit": "billion_local_currency",
+              "geography": [
+                "US",
+                "JP",
+                "DE",
+                "CN",
+                "PT"
+              ],
               "population": "Matching private/household/corporate sector",
               "concept": "Outstanding credit/debt context"
             },
@@ -1539,7 +1638,13 @@
           }
         ]
       },
-      "context_series_ids": [],
+      "context_series_ids": [
+        "credit.cn.private_nonfinancial_gdp_bis",
+        "credit.de.private_nonfinancial_gdp_bis",
+        "credit.jp.private_nonfinancial_gdp_bis",
+        "credit.pt.private_nonfinancial_gdp_bis",
+        "credit.us.private_nonfinancial_gdp_bis"
+      ],
       "context_artifact_ids": []
     },
     {
@@ -1687,10 +1792,23 @@
           {
             "role": "ofr_fsi",
             "description": "Original OFR daily Financial Stress Index and source-defined regional contributions.",
-            "series_ids": [],
+            "series_ids": [
+              "stress.global.ofr_fsi",
+              "stress.global.ofr_fsi.credit",
+              "stress.global.ofr_fsi.equity_valuation",
+              "stress.global.ofr_fsi.safe_assets",
+              "stress.global.ofr_fsi.funding",
+              "stress.global.ofr_fsi.volatility",
+              "stress.global.ofr_fsi.region_united_states",
+              "stress.global.ofr_fsi.region_other_advanced",
+              "stress.global.ofr_fsi.region_emerging_markets"
+            ],
             "expected": {
               "frequency": "D",
               "unit": "index",
+              "geography": [
+                "WORLD"
+              ],
               "concept": "OFR standardized contemporaneous stress index"
             },
             "temporal_requirement": "first_publication",
@@ -1784,10 +1902,23 @@
           {
             "role": "household_credit_gdp",
             "description": "Original BIS household credit/GDP by country.",
-            "series_ids": [],
+            "series_ids": [
+              "credit.us.household_gdp_bis",
+              "credit.jp.household_gdp_bis",
+              "credit.de.household_gdp_bis",
+              "credit.cn.household_gdp_bis",
+              "credit.pt.household_gdp_bis"
+            ],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
+              "geography": [
+                "US",
+                "JP",
+                "DE",
+                "CN",
+                "PT"
+              ],
               "population": "Households",
               "concept": "Household outstanding credit/GDP"
             },
@@ -1798,10 +1929,23 @@
           {
             "role": "corporate_credit_gdp",
             "description": "Original BIS nonfinancial-corporate credit/GDP by country.",
-            "series_ids": [],
+            "series_ids": [
+              "credit.us.corporate_gdp_bis",
+              "credit.jp.corporate_gdp_bis",
+              "credit.de.corporate_gdp_bis",
+              "credit.cn.corporate_gdp_bis",
+              "credit.pt.corporate_gdp_bis"
+            ],
             "expected": {
               "frequency": "Q",
               "unit": "percent",
+              "geography": [
+                "US",
+                "JP",
+                "DE",
+                "CN",
+                "PT"
+              ],
               "population": "Non-financial corporations",
               "concept": "Corporate outstanding credit/GDP"
             },
@@ -1835,8 +1979,15 @@
           {
             "role": "bank_total_assets",
             "description": "Original consistently consolidated bank total assets.",
-            "series_ids": [],
+            "series_ids": [
+              "bank.us.fdic_total_assets"
+            ],
             "expected": {
+              "frequency": "Q",
+              "unit": "thousand_usd",
+              "geography": [
+                "US"
+              ],
               "population": "Named bank/financial institution sector",
               "concept": "Total balance-sheet assets"
             },
@@ -1847,8 +1998,15 @@
           {
             "role": "bank_equity",
             "description": "Original same-perimeter bank equity, distinct from risk-weighted capital.",
-            "series_ids": [],
+            "series_ids": [
+              "bank.us.fdic_total_equity"
+            ],
             "expected": {
+              "frequency": "Q",
+              "unit": "thousand_usd",
+              "geography": [
+                "US"
+              ],
               "population": "Same named bank/financial institution sector",
               "concept": "Positive accounting equity denominator"
             },
@@ -1883,6 +2041,7 @@
         ]
       },
       "context_series_ids": [
+        "bank.us.fdic_reporting_institutions",
         "fiscal.world.public_debt",
         "stress.us.high_yield_oas"
       ],
@@ -2198,10 +2357,15 @@
           {
             "role": "ofr_fsi",
             "description": "Original separately scaled OFR stress index; never added to balance-sheet ratios.",
-            "series_ids": [],
+            "series_ids": [
+              "stress.global.ofr_fsi"
+            ],
             "expected": {
               "frequency": "D",
               "unit": "index",
+              "geography": [
+                "WORLD"
+              ],
               "concept": "Published contemporaneous market stress"
             },
             "temporal_requirement": "first_publication",
@@ -4042,7 +4206,7 @@
         "S16",
         "S09"
       ],
-      "outstanding_evidence": "IMF WEO country current-account-to-GDP histories now mapped; original international investment positions and original cross-border stock/flow reconciliation remain missing",
+      "outstanding_evidence": "Original IMF BOP current-account flows (NETCD_T) and IIP net-position stocks (NETAL_P), BPM6 annual USD, are bound for the US, Japan, Germany, China and Portugal alongside BIS private credit stocks and WEO ratios. Cross-currency conversion, BPM5-to-BPM6 history and original release vintages remain open.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -4051,10 +4215,23 @@
           {
             "role": "current_account_flow",
             "description": "Original BPM6/BPM7 current-account monetary flow, distinct from a WEO ratio.",
-            "series_ids": [],
+            "series_ids": [
+              "external.us.imf_bop_current_account_usd",
+              "external.jp.imf_bop_current_account_usd",
+              "external.de.imf_bop_current_account_usd",
+              "external.cn.imf_bop_current_account_usd",
+              "external.pt.imf_bop_current_account_usd"
+            ],
             "expected": {
               "frequency": "A",
               "unit": "usd",
+              "geography": [
+                "USA",
+                "JPN",
+                "DEU",
+                "CHN",
+                "PRT"
+              ],
               "population": "Named domestic BOP jurisdiction",
               "concept": "Current-account flow"
             },
@@ -4065,10 +4242,23 @@
           {
             "role": "net_international_investment_position",
             "description": "Original end-period net international investment position stock.",
-            "series_ids": [],
+            "series_ids": [
+              "external.us.imf_iip_net_position_usd",
+              "external.jp.imf_iip_net_position_usd",
+              "external.de.imf_iip_net_position_usd",
+              "external.cn.imf_iip_net_position_usd",
+              "external.pt.imf_iip_net_position_usd"
+            ],
             "expected": {
               "frequency": "A",
               "unit": "usd",
+              "geography": [
+                "USA",
+                "JPN",
+                "DEU",
+                "CHN",
+                "PRT"
+              ],
               "population": "Same BOP jurisdiction",
               "concept": "Net international investment position stock"
             },
@@ -4079,9 +4269,23 @@
           {
             "role": "private_credit_outstanding",
             "description": "Original BIS country private nonfinancial credit outstanding; a credit gap cannot satisfy this role.",
-            "series_ids": [],
+            "series_ids": [
+              "credit.us.private_nonfinancial_stock_bis",
+              "credit.jp.private_nonfinancial_stock_bis",
+              "credit.de.private_nonfinancial_stock_bis",
+              "credit.cn.private_nonfinancial_stock_bis",
+              "credit.pt.private_nonfinancial_stock_bis"
+            ],
             "expected": {
               "frequency": "Q",
+              "unit": "billion_local_currency",
+              "geography": [
+                "US",
+                "JP",
+                "DE",
+                "CN",
+                "PT"
+              ],
               "population": "Same-jurisdiction private non-financial sector",
               "concept": "Outstanding private-credit stock"
             },

@@ -16,8 +16,10 @@ from .multinational_sources import read_amne_evidence, read_meip_evidence
 from .msci_concentration_originals import read_msci_concentration_originals
 from .vanguard_ucits_holdings import read_vanguard_ucits_sources
 from .corporate_account_coverage import read_corporate_account_coverage
+from .nber_chronology import read_nber_chronology
+from .wiid_originals import read_wiid_originals
 
-ARTIFACT_IDS = frozenset({"icio", "tiva", "cvm", "taiwan_profits", "sec_holdings", "ucits_holdings", "amne", "meip", "msci_concentration", "corporate_accounts"})
+ARTIFACT_IDS = frozenset({"icio", "tiva", "cvm", "taiwan_profits", "sec_holdings", "ucits_holdings", "amne", "meip", "msci_concentration", "corporate_accounts", "nber_chronology", "wiid"})
 
 READ_ERRORS = (OSError, ValueError, KeyError, TypeError, ET.ParseError)
 
@@ -244,6 +246,8 @@ def research_artifact_evidence(evidence_root: Path, *, holdings_root: Path | Non
                "amne": (lambda: read_amne_evidence(root), "invalid_original_amne_evidence"),
                "meip": (lambda: read_meip_evidence(root), "invalid_original_meip_evidence")}
     readers["corporate_accounts"] = (lambda: read_corporate_account_coverage(root), "invalid_corporate_variable_coverage_evidence")
+    readers["nber_chronology"] = (lambda: read_nber_chronology(root), "invalid_original_nber_evidence")
+    readers["wiid"] = (lambda: read_wiid_originals(root), "invalid_original_wiid_evidence")
     readers["msci_concentration"] = (lambda: _msci_evidence(root), "missing_or_invalid_original_msci_documents")
     selected = ARTIFACT_IDS if kinds is None else kinds
     if selected - ARTIFACT_IDS:

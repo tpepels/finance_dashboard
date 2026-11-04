@@ -110,6 +110,7 @@ class IngestionService:
             "WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS", "GLOBAL_MARKET_RETURNS",
             "SHILLER", "WORLD_BANK_PINK_SHEET", "IMF_DATAMAPPER", "BEA_Q",
             "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "GOLD_MSCI_CORR",
+            "FED_G17_DIFFUSION", "OFR_FSI", "BOJ_TSS", "OECD_CLI", "BIS_TOTAL_CREDIT", "IMF_BOP_IIP", "FDIC_BANKFIND",
         }
         complete_snapshot = complete_snapshot or definition["provider"] == "FRED" and definition["source_key"] in {"NFCI", "ANFCI"}
         start = None if full or complete_snapshot or last_date is None else last_date - timedelta(days=overlap)

@@ -19,6 +19,7 @@ FREQUENCIES = {"D", "W", "M", "Q", "A"}
 UNITS = {
     "percent", "percentage_points", "index", "usd", "ratio",
     "usd_per_oz", "usd_per_barrel", "usd_per_mmbtu", "usd_per_metric_ton", "billions_chained_usd", "million_usd", "persons", "thousands_persons", "count", "currency_per_usd",
+    "billion_local_currency", "thousand_usd",
 }
 STATES = {"mapped", "unresolved"}
 RIGHTS = {"cc_by_4_0", "review_required", "unknown"}

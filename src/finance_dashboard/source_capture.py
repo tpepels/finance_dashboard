@@ -22,11 +22,13 @@ CAPTURE_PROVIDERS = frozenset({"FRED", "WORLD_BANK", "BIS_DSR", "BIS_PROPERTY", 
     "IMF_DATAMAPPER", "BEA_Q", "SHILLER", "WORLD_BANK_PINK_SHEET", "BIS", "ECB",
     "MSCI_NETR", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "WORLD_LISTED_CAP_SHARE",
     "BIS_WORLD_WEIGHTED", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA",
-    "OECD_CORPORATE_GDPWEIGHTED", "GOLD_MSCI_CORR"})
+    "OECD_CORPORATE_GDPWEIGHTED", "GOLD_MSCI_CORR",
+    "FED_G17_DIFFUSION", "OFR_FSI", "BOJ_TSS", "OECD_CLI", "BIS_TOTAL_CREDIT", "IMF_BOP_IIP", "FDIC_BANKFIND"})
 SAFE_QUERY = frozenset({"series_id", "file_type", "observation_start", "id", "cosd", "format",
                         "per_page", "date", "startPeriod", "sinceTimePeriod", "freq", "unit", "direct",
                         "sector", "na_item", "geo", "index_codes", "currency_symbol", "index_variant",
-                        "data_frequency", "start_date", "end_date"})
+                        "data_frequency", "start_date", "end_date", "agg_by", "agg_sum_fields", "agg_limit",
+                        "limit", "fields", "agg_sort_by", "agg_sort_order"})
 SAFE_HEADERS = frozenset({"content-type", "last-modified", "etag", "date"})
 MAX_RESPONSE_BYTES = 50_000_000
 

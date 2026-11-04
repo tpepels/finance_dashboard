@@ -18,8 +18,15 @@ from typing import Any
 import httpx
 
 from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES, _dimension_code, ACCEPT
+from .bis_credit import BIS_TC_ROOT, TC_SERIES, tc_key, parse_bis_total_credit
 from .bis_dsr import BIS_DSR_ROOT, DSR_SERIES, parse_bis_dsr
 from .bis_property import PROPERTY_SOURCES, BIS_SPP_ROOT, BIS_CPP_ROOT, parse_bis_property
+from .boj_call_rates import BOJ_SERIES, boj_url, parse_boj_csv
+from .fdic_banks import FDIC_FINANCIALS_URL, FDIC_QUERY, FDIC_SERIES, parse_fdic_aggregates
+from .fed_g17 import G17_DIFFUSION_SERIES, G17_DIFFUSION_URL, parse_g17_diffusion
+from .imf_external import IMF_SDMX_ROOT, IMF_SERIES, imf_key, parse_imf_bop_iip
+from .oecd_cli import OECD_CLI_FLOW, OECD_CLI_ROOT, OECD_CLI_SERIES, oecd_cli_key, parse_oecd_cli_csv
+from .ofr_fsi import OFR_FSI_SERIES, OFR_FSI_URL, parse_ofr_fsi
 from .wid import WID_SERIES, WidClient
 from .oecd_tiva import TIVA_SERIES, TivaClient
 from .research_returns import FRENCH_SERIES, SWINKELS_SERIES, ResearchReturnsClient
@@ -59,7 +66,8 @@ IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
 CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
-PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "BIS_DSR", "BIS_PROPERTY", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA", "OECD_CORPORATE_GDPWEIGHTED", "WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS", "GLOBAL_MARKET_RETURNS"))
+PROVIDER_CODES = frozenset(("BIS", "FRED", "ECB", "WORLD_BANK", "IMF_DATAMAPPER", "SHILLER", "UN_SDG", "WORLD_BANK_PINK_SHEET", "SIBLIS_FREE", "BIS_CREDIT_GAP", "BIS_DSR", "BIS_PROPERTY", "CORGANO_SPOT", "BEA_Q", "MSCI_NETR", "GOLD_MSCI_CORR", "ILO_LABOUR_PRODUCTIVITY_RATIO", "BIS_WORLD_WEIGHTED", "WISESHEETS_SNAPSHOT", "WORLD_LISTED_CAP_SHARE", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "MSCI_PUBLISHED_TOP10", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA", "OECD_CORPORATE_GDPWEIGHTED", "WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS", "GLOBAL_MARKET_RETURNS",
+                       "FED_G17_DIFFUSION", "OFR_FSI", "BOJ_TSS", "OECD_CLI", "BIS_TOTAL_CREDIT", "IMF_BOP_IIP", "FDIC_BANKFIND"))
 
 
 class SourceUnavailable(ProviderError):
@@ -350,12 +358,15 @@ def parse_un_sdg(payload: Any, series_code: str, area_code: str,
 
 
 def parse_bis_credit_gap(payload: Any, country: str,
-                         start: date | None = None) -> tuple[dict[date, Decimal], datetime | None]:
-    """Select *gap* (CG_DTYPE=C), never actual ratio A or HP trend B.
+                         start: date | None = None, dtype: str = "C") -> tuple[dict[date, Decimal], datetime | None]:
+    """Select exactly one CG_DTYPE: C gap (default, actual minus one-sided HP trend) or B trend.
 
-    BIS series: Q.{country}.P.A.C (private nonfinancial borrowers, all lenders,
-    actual minus one-sided HP trend). Units: percentage points of GDP.
+    BIS series: Q.{country}.P.A.{dtype} (private nonfinancial borrowers, all
+    lenders). The gap is percentage points of GDP; the trend is percent of GDP.
+    The actual ratio (A) is carried by WS_TC and is never selected here.
     """
+    if dtype not in ("B", "C"):
+        raise ProviderError("Unsupported BIS credit-gap data type")
     try:
         data = payload["data"]
         structure = data["structure"]
@@ -375,7 +386,7 @@ def parse_bis_credit_gap(payload: Any, country: str,
                 raise ProviderError("Unexpected BIS credit gap frequency or geography")
             if labels.get("TC_BORROWERS") != "P" or labels.get("TC_LENDERS") != "A":
                 raise ProviderError("Unexpected BIS credit borrowers or lenders")
-            if labels.get("CG_DTYPE") != "C":
+            if labels.get("CG_DTYPE") != dtype:
                 continue
             matched += 1
             if matched > 1:
@@ -389,7 +400,7 @@ def parse_bis_credit_gap(payload: Any, country: str,
                     continue
                 _put(values, day, _value(row[0]))
     if matched != 1 or not values:
-        raise ProviderError("No actual-minus-trend credit gaps in BIS result")
+        raise ProviderError("No selected BIS credit-gap or trend series in BIS result")
     prepared_raw = payload.get("meta", {}).get("prepared")
     try:
         prepared = datetime.fromisoformat(prepared_raw.replace("Z", "+00:00")) if prepared_raw else None
@@ -933,14 +944,64 @@ class ProviderRouter:
         if provider == "BIS_CREDIT_GAP":
             # The API is queried with a country code then exact dimensions
             # are selected from the SDMX structure, not assumed by series position.
-            country = key.split("/")[1].split(".")[1]
-            if country not in {"US", "JP", "XM"}:
-                raise SourceUnavailable("Unsupported BIS credit-gap country")
+            parts = key.split("/")[1].split(".")
+            country, dtype = parts[1], parts[-1]
+            if country not in {"US", "JP", "XM", "DE", "CN", "PT"} or key != f"BIS,WS_CREDIT_GAP,1.0/Q.{country}.P.A.{dtype}":
+                raise SourceUnavailable("Unsupported BIS credit-gap country or data type")
             url = f"{BIS_CREDIT_GAP_ROOT}/Q.{country}"
             response = self._get(url, params={"startPeriod": f"{start.year}-Q1"} if start else {},
                                  headers={"Accept": ACCEPT})
-            observations, prepared = parse_bis_credit_gap(response.json(), country, start)
+            observations, prepared = parse_bis_credit_gap(response.json(), country, start, dtype)
             return FetchedSeries(series_id, str(response.request.url), prepared, observations)
+        if provider == "BIS_TOTAL_CREDIT":
+            exact = TC_SERIES.get(series_id)
+            if exact is None or key != f"BIS,WS_TC,2.0/{tc_key(*exact[:3])}":
+                raise SourceUnavailable("BIS total-credit source key differs from the approved country/sector/unit")
+            response = self._get(f"{BIS_TC_ROOT}/{tc_key(*exact[:3])}", headers={"Accept": ACCEPT})
+            values, prepared = parse_bis_total_credit(response.json(), series_id, start)
+            return FetchedSeries(series_id, str(response.request.url), prepared, values)
+        if provider == "FED_G17_DIFFUSION":
+            exact = G17_DIFFUSION_SERIES.get(series_id)
+            if exact is None or key != f"diff_sa.txt#{exact[0]}":
+                raise SourceUnavailable("G.17 diffusion span or block identity differs from the approved definition")
+            response = self._get(G17_DIFFUSION_URL)
+            return FetchedSeries(series_id, G17_DIFFUSION_URL, None,
+                                 parse_g17_diffusion(response.text, block=exact[0], span=exact[1], start=start))
+        if provider == "OFR_FSI":
+            column = OFR_FSI_SERIES.get(series_id)
+            if column is None or key != f"fsi.csv#{column}":
+                raise SourceUnavailable("OFR FSI column identity differs from the approved definition")
+            response = self._get(OFR_FSI_URL, headers={"Accept": "text/csv"})
+            return FetchedSeries(series_id, OFR_FSI_URL, None, parse_ofr_fsi(response.text, column, start))
+        if provider == "BOJ_TSS":
+            exact = BOJ_SERIES.get(series_id)
+            if exact is None or key != exact[1]:
+                raise SourceUnavailable("BOJ series code differs from the approved daily/monthly definition")
+            response = self._get(boj_url(exact[0]), headers={"Accept": "text/csv"})
+            return FetchedSeries(series_id, boj_url(exact[0]), None, parse_boj_csv(response.text, series_id, start))
+        if provider == "OECD_CLI":
+            exact = OECD_CLI_SERIES.get(series_id)
+            if exact is None or key != f"{OECD_CLI_FLOW}/{oecd_cli_key(*exact)}":
+                raise SourceUnavailable("OECD CLI area or adjustment differs from the approved definition")
+            response = self._get(f"{OECD_CLI_ROOT}/{OECD_CLI_FLOW}/{oecd_cli_key(*exact)}",
+                                 params={"format": "csvfile"}, headers={"Accept": "text/csv"})
+            return FetchedSeries(series_id, str(response.request.url), None,
+                                 parse_oecd_cli_csv(response.text, *exact, start=start))
+        if provider == "IMF_BOP_IIP":
+            exact = IMF_SERIES.get(series_id)
+            if exact is None or key != imf_key(exact[0], exact[1], exact[2], exact[3]):
+                raise SourceUnavailable("IMF BOP/IIP key differs from the approved country and indicator")
+            response = self._get(f"{IMF_SDMX_ROOT}/IMF.STA,{exact[0]},{exact[1]}/{exact[2]}..{exact[3]}.USD.A",
+                                 headers={"Accept": "application/xml"})
+            return FetchedSeries(series_id, str(response.request.url), None,
+                                 parse_imf_bop_iip(response.content, series_id, start))
+        if provider == "FDIC_BANKFIND":
+            field = FDIC_SERIES.get(series_id)
+            if field is None or key != f"financials?agg_by=REPDTE#{field}":
+                raise SourceUnavailable("FDIC aggregate field differs from the approved definition")
+            response = self._get(FDIC_FINANCIALS_URL, params=FDIC_QUERY)
+            return FetchedSeries(series_id, str(response.request.url), None,
+                                 parse_fdic_aggregates(response.json(), series_id, start))
         if provider == "SIBLIS_FREE":
             ticker, ratio = key.split("/", 1)
             if ticker not in {"ACWI"} or ratio != "cape":
