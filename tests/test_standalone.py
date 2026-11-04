@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from finance_dashboard.api import create_app
+from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import make_engine, Base
 from finance_dashboard.standalone import refresh_interval
 
@@ -53,7 +54,12 @@ class StandaloneContainerTests(TestCase):
                         self.assertIn("GCM test", client.get("/").text)
                         self.assertEqual(client.get("/assets/app.js").status_code, 200)
                         self.assertEqual(client.get("/api/health").json()["status"], "ok")
-                        self.assertEqual(len(client.get("/api/series").json()["items"]), 42)
+                        # Catalogue growth must not break the standalone API;
+                        # assert the currently registered source contract.
+                        self.assertEqual(
+                            len(client.get("/api/series").json()["items"]),
+                            len(load_documents()[0]["series"]),
+                        )
                         self.assertEqual(len(client.get("/api/charts").json()["items"]), 21)
                         response = client.post("/api/query", json={
                             "series_ids": ["policy_rate.us.bis"], "start": "2025-01-01",
@@ -77,7 +83,11 @@ class StandaloneContainerTests(TestCase):
     def test_one_background_refresh_thread_with_no_market_containers(self):
         started = threading.Event()
         calls = []
-        def fake_refresh(_engine):
+        def fake_refresh(_engine, *, stopped):
+            # The scheduler passes a cooperative stop token to each source
+            # collector. The previous mock omitted this required keyword,
+            # causing a swallowed TypeError and a false startup timeout.
+            self.assertFalse(stopped.is_set())
             calls.append("macro")
             started.set()
             return 0
@@ -87,6 +97,9 @@ class StandaloneContainerTests(TestCase):
             try:
                 with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_INCLUDE_MARKETS="0",
                               FINANCE_WISESHEETS_REFRESH="0",
+                              FINANCE_VINTAGE_REFRESH="0",
+                              FINANCE_SEC_HOLDINGS_REFRESH="0",
+                              FINANCE_AUTO_BACKUP="0",
                               FINANCE_DASHBOARD_UI_DIR=None, REFRESH_INTERVAL_SECONDS="3600"),
                       patch("finance_dashboard.worker.refresh_all", side_effect=fake_refresh),
                       patch("finance_dashboard.worker.refresh_market_all") as market):

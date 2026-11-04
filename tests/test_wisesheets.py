@@ -190,22 +190,33 @@ class WiseTests(unittest.TestCase):
     def test_snapshot_endpoint_uses_no_token_or_network(self):
         from fastapi.testclient import TestClient
         from sqlalchemy import create_engine
+        from sqlalchemy.pool import StaticPool
         from finance_dashboard.api import create_app
-        engine=create_engine("sqlite+pysqlite:///:memory:")
-        app=create_app(engine)
-        with TestClient(app) as browser:
-            with patch("finance_dashboard.api.load_sec_profit_snapshot",
-                       return_value=None):
-                self.assertEqual(browser.get("/api/earnings/sec-filers").status_code,404)
-            expected={"id":"profit.us_sec_filers.world_gdp_share",
-                      "status":"partial_us_sec_reporter_coverage",
-                      "observations":[{"year":2024,"sec_filer_net_income_usd":"100"}]}
-            with patch("finance_dashboard.api.load_sec_profit_snapshot",
-                       return_value=expected):
-                response=browser.get("/api/earnings/sec-filers")
-                self.assertEqual(response.status_code,200)
-                self.assertEqual(response.json(),expected)
-        engine.dispose()
+        # This read-only endpoint test must not accidentally start the actual
+        # refresh worker against an in-memory SQLite test database. Such a
+        # worker would outlive the TestClient and close SQLite connections
+        # from another thread on teardown.
+        with patch.dict("os.environ", {"FINANCE_AUTO_REFRESH": "0"}):
+            engine=create_engine("sqlite+pysqlite:///:memory:",
+                connect_args={"check_same_thread": False}, poolclass=StaticPool)
+            try:
+                app=create_app(engine)
+                with TestClient(app) as browser:
+                    with patch("finance_dashboard.api.load_sec_profit_snapshot",
+                               return_value=None):
+                        self.assertEqual(
+                            browser.get("/api/earnings/sec-filers").status_code,404)
+                    expected={"id":"profit.us_sec_filers.world_gdp_share",
+                              "status":"partial_us_sec_reporter_coverage",
+                              "observations":[{"year":2024,
+                                               "sec_filer_net_income_usd":"100"}]}
+                    with patch("finance_dashboard.api.load_sec_profit_snapshot",
+                               return_value=expected):
+                        response=browser.get("/api/earnings/sec-filers")
+                        self.assertEqual(response.status_code,200)
+                        self.assertEqual(response.json(),expected)
+            finally:
+                engine.dispose()
 
     def test_collect_keeps_world_label_out_of_numerator(self):
         class FakeClient:

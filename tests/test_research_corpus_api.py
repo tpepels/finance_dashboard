@@ -71,7 +71,11 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         entry = result.json()
         self.assertEqual(entry["existing_references_with_observations"], 1)
         self.assertFalse(entry["comparative_corpus_validated"])
-        self.assertIn("NBER", entry["outstanding_evidence"])
+        # The current C02 source inventory names the official recession
+        # chronology without using the NBER abbreviation; test the actual
+        # methodological requirement rather than obsolete wording.
+        self.assertIn("US recession chronology", entry["outstanding_evidence"])
+        self.assertIn("release-time revisions", entry["outstanding_evidence"])
 
 
 if __name__ == "__main__":
