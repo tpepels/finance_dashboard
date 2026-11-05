@@ -19,13 +19,8 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .bis import ProviderError
 from .source_evidence import record_acquisition_receipt
+from .provider_registry import get_provider
 
-CAPTURE_PROVIDERS = frozenset({"FRED", "WORLD_BANK", "BIS_DSR", "BIS_PROPERTY", "BIS_CREDIT_GAP",
-    "IMF_DATAMAPPER", "BEA_Q", "SHILLER", "WORLD_BANK_PINK_SHEET", "BIS", "ECB",
-    "MSCI_NETR", "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "WORLD_LISTED_CAP_SHARE",
-    "BIS_WORLD_WEIGHTED", "EUROSTAT_CORPORATE_GDP", "EUROSTAT_NFC_PROFIT_GVA",
-    "OECD_CORPORATE_GDPWEIGHTED", "GOLD_MSCI_CORR",
-    "FED_G17_DIFFUSION", "OFR_FSI", "BOJ_TSS", "OECD_CLI", "BIS_TOTAL_CREDIT", "IMF_BOP_IIP", "FDIC_BANKFIND"})
 SAFE_QUERY = frozenset({"series_id", "file_type", "observation_start", "id", "cosd", "format",
                         "per_page", "date", "startPeriod", "sinceTimePeriod", "freq", "unit", "direct",
                         "sector", "na_item", "geo", "index_codes", "currency_symbol", "index_variant",
@@ -49,7 +44,7 @@ def safe_url(url):
     return urlunsplit((parts.scheme, parts.netloc, parts.path, query, ""))
 
 
-class CapturedProvider:
+class SourceAcquisition:
     """Wrap one sequential acquisition run without changing ingestion semantics."""
     def __init__(self, router, evidence_root: Path):
         self.router = router
@@ -60,7 +55,13 @@ class CapturedProvider:
 
     def fetch(self, series_id: str, start: date | None = None):
         definition = self.router.definitions.get(series_id, {})
-        if definition.get("provider") not in CAPTURE_PROVIDERS:
+        spec = get_provider(definition.get("provider", ""))
+        if spec is None:
+            return self.router.fetch(series_id, start)
+        # Native archives, local snapshots and derived values keep their
+        # distinct evidence semantics. Only HTTP-original acquisitions can
+        # truthfully yield a response bundle/receipt in this generic gateway.
+        if spec.acquisition != "response":
             return self.router.fetch(series_id, start)
         responses = []
         rejected = []
