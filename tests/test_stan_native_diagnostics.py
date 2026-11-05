@@ -157,6 +157,29 @@ class StanAcquisitionResilienceTests(unittest.TestCase):
             self.assertFalse((root / "stan-2025").exists())
             self.assertNotIn("Rate limited", json.dumps(result))
 
+    def test_corrupted_original_stops_acquisition_without_overwriting_archive(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            stored = store_stan_original(
+                four_measure_original(), country="PRT", start_year=1970,
+                root=root, measures=STAN_VERIFIED_PORTUGAL_MEASURES)
+            source = (root / "stan-2025" / "PRT" / "1970" /
+                      "measure-B1G+D1+P51C+D29X39" /
+                      stored["bundle_digest"] / "original.csv")
+            source.write_bytes(b"corrupted")
+
+            def unexpected_request(request):
+                self.fail("Corrupted originals must block publisher requests")
+
+            with httpx.Client(transport=httpx.MockTransport(unexpected_request)) as client:
+                report = acquire(client, root, countries=("PRT",), start_year=1970)
+            self.assertEqual(report["original_responses_archived"], 0)
+            self.assertEqual(report["acquisition_failures"], 1)
+            entry = report["acquisitions"][0]
+            self.assertEqual(entry["status"], "invalid_existing_original_archive")
+            self.assertEqual(entry["failure_category"], "original_archive_integrity")
+            self.assertEqual(source.read_bytes(), b"corrupted")
+
     def test_404_does_not_reclassify_unavailable_measure_as_zero(self):
         with TemporaryDirectory() as temp:
             with httpx.Client(transport=httpx.MockTransport(
