@@ -522,12 +522,9 @@ def brief_report(data: dict) -> dict:
                 "receipts": row.get("original_retrieval_receipts_verified"),
                 "changed_originals": row.get("same_selection_version_disagreements"),
                 "revision_pairs": row.get("same_selection_revision_pairs"),
-                "added_observations": sum(
-                    ex["observations_added"]
-                    for ex in row.get("historical_revision_examples", [])),
-                "removed_observations": sum(
-                    ex["observations_removed"]
-                    for ex in row.get("historical_revision_examples", [])),
+                "added_observations": row.get("revision_observations_added", 0),
+                "removed_observations": row.get("revision_observations_removed", 0),
+                "changed_values": row.get("revision_numeric_values_changed", 0),
             } for row in data["country_readiness"]
                if row.get("historical_original_versions_verified", 0) >
                row.get("verified_scopes", 0)][:8],

@@ -485,6 +485,12 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
                 for scope in scopes),
             "same_selection_version_disagreements": version_conflicts,
             "same_selection_revision_pairs": len(revisions),
+            "revision_observations_added": sum(
+                change["right_only_numeric_observations"] for change in revisions),
+            "revision_observations_removed": sum(
+                change["left_only_numeric_observations"] for change in revisions),
+            "revision_numeric_values_changed": sum(
+                change["numeric_value_disagreements_same_unit"] for change in revisions),
             "historical_revision_examples": [
                 {
                     "left_sha256": change["left_sha256"],
