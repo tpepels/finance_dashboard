@@ -20,7 +20,7 @@ Each rule declares its source documentation, classification (publisher_verified,
 | [World Bank](https://datahelpdesk.worldbank.org/knowledgebase/articles/902064) | Cache and avoid redundant requests | Conservative internal window; not an official numerical limit |
 | [Eurostat](https://ec.europa.eu/eurostat/en/web/user-guides/data-browser/api-data-access/api-detailed-guidelines/asynchronous-api) | Fair use and sequential extraction guidance | Conservative internal window and concurrency |
 
-MSCI and unapproved iShares automated access is blocked. Original files already retained are never erased or rewritten by this transport policy. Publisher licence and redistribution rights are distinct from HTTP availability; redistribution defaults to not_cleared. A public dataset export needs separate verified rights and attribution clearance.
+MSCI and unapproved iShares automated access is blocked. Original files already retained are never erased or rewritten by this transport policy. Publisher licence and redistribution rights are distinct from HTTP availability; redistribution defaults to not_cleared. The registry's `require_redistribution_clearance(url)` enforces explicit verified rights before any public dataset release; existing local-only data processing does not imply publication clearance.
 
 ## Operational limits
 
