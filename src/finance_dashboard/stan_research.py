@@ -20,7 +20,7 @@ from .stan_originals import (
 CORE = ("B1G", "D1", "P51C", "D29X39")
 INCOME_IDENTITIES = {
     "net_surplus_and_mixed_income": (
-        ("B1G", "D1", "B2N_B3N", "P51C", "D29X39"), "B2N_B3N"),
+        ("B1G", "D1", "B2N_B3_N", "P51C", "D29X39"), "B2N_B3_N"),
     "gross_surplus_and_mixed_income": (
         ("B1G", "D1", "B2G_B3G", "D29X39"), "B2G_B3G"),
 }
@@ -48,7 +48,7 @@ def _income_identity(groups: dict, required: tuple[str, ...],
             non_a += 1
         numbers = {measure: observations[measure][0] for measure in required}
         operands = ["D1", surplus, "D29X39"]
-        if surplus == "B2N_B3N":
+        if surplus == "B2N_B3_N":
             operands.append("P51C")
         residual = numbers["B1G"] - sum(
             (numbers[measure] for measure in operands), Decimal(0))
