@@ -8,7 +8,7 @@ from unittest.mock import patch
 import httpx
 
 from finance_dashboard.providers import ProviderRouter
-from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_reconciliation import reconcile
 from test_phase2_source_reconcile import database, add
 
@@ -27,7 +27,7 @@ class CapturedSourcesTests(unittest.TestCase):
             def source(request):
                 return httpx.Response(200,text=html) if request.url.path=='/data/DGS2' else httpx.Response(503)
             with httpx.Client(transport=httpx.MockTransport(source)) as http:
-                result=CapturedProvider(ProviderRouter(http),root).fetch(sid)
+                result=SourceAcquisition(ProviderRouter(http),root).fetch(sid)
             self.assertEqual(result.observations,{date(2024,1,2):Decimal('3.95'),
                 date(2024,1,3):Decimal('3.91'),date(2024,1,5):Decimal('3.94')})
             with sqlite3.connect(db) as connection:
@@ -65,7 +65,7 @@ class CapturedSourcesTests(unittest.TestCase):
             db = root / "history.db"
             database(db)
             with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=original))) as http:
-                captured = CapturedProvider(ProviderRouter(http), root)
+                captured = SourceAcquisition(ProviderRouter(http), root)
                 captured.fetch(sid)
                 # Use direct dates because the existing annual fixture helper is deliberately unsuitable here.
                 import sqlite3
@@ -100,7 +100,7 @@ class CapturedSourcesTests(unittest.TestCase):
             database(db)
             add(db, sid, 2023, "2.9")
             with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=payload))) as http:
-                CapturedProvider(ProviderRouter(http), root).fetch(sid)
+                SourceAcquisition(ProviderRouter(http), root).fetch(sid)
             result = reconcile("sqlite:///" + str(db), root, [sid])
             self.assertTrue(result["passed"])
             self.assertEqual(result["series"][0]["source_periods"], 1)
@@ -120,7 +120,7 @@ class CapturedSourcesTests(unittest.TestCase):
             db = root / "history.db"
             database(db)
             with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=raw))) as http:
-                result = CapturedProvider(ProviderRouter(http), root).fetch(sid)
+                result = SourceAcquisition(ProviderRouter(http), root).fetch(sid)
             import sqlite3
             with sqlite3.connect(db) as connection:
                 connection.executemany("INSERT INTO observation_versions(series_id,period,value,first_seen_at,ingestion_run_id) VALUES(?,?,?,?,?)", [
