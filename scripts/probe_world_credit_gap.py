@@ -2,8 +2,9 @@
 from datetime import date
 import json
 import httpx
+from finance_dashboard.source_policy import managed_client, managed_get
 
-with httpx.Client(timeout=22,follow_redirects=True) as client:
+with managed_client(timeout=22,follow_redirects=True) as client:
     url="https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0/Q..P.A.C"
     try:
         response=client.get(url,params={"startPeriod":"2025-Q1"},
@@ -34,7 +35,7 @@ with httpx.Client(timeout=22,follow_redirects=True) as client:
 
 # Reconcile BIS actual economy list to World Bank GDP country IDs
 bis_codes=["PL","BR","GB","MX","ZA","CN","SA","US","HU","JP","LU","RU","CL","HK","IT","NL","CZ","SG","ES","IE","AU","XM","MY","AR","SE","CO","TR","DK","ID","IN","NZ","CA","AT","FR","NO","DE","TH","FI","IL","BE","KR","PT","CH","GR"]
-with httpx.Client(timeout=18) as client:
+with managed_client(timeout=18) as client:
     wb=client.get("https://api.worldbank.org/v2/country/all/indicator/NY.GDP.MKTP.CD",
         params={"format":"json","per_page":1000,"date":"2024:2025"}).json()[1]
     records={(row["country"]["id"],int(row["date"])):row["value"] for row in wb}
