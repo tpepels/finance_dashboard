@@ -10,13 +10,12 @@ import logging
 import os
 import time
 
-from sqlalchemy import text
-
 from .providers import ProviderRouter, PROVIDER_CODES
 from .catalog import load_documents
 from .database import make_engine
 from .service import IngestionService, safe_source_failure_code
 from .source_policy import PolicyDeferred
+from .refresh_coordinator import reserve_refresh
 from .developer_logs import record_event
 
 log = logging.getLogger(__name__)
@@ -74,29 +73,23 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
         unknown = series_ids - set(client.supported_ids()) if series_ids is not None else set()
         if unknown:
             raise ValueError("Unknown series IDs: " + ", ".join(sorted(unknown)))
-        with engine.connect() as conn:
-            if engine.dialect.name == "postgresql":
-                locked = conn.execute(text("SELECT pg_try_advisory_lock(75390812)")).scalar()
-                if not locked:
-                    log.warning("Another refresh worker owns the advisory lock")
-                    return 1
-            try:
-                service = IngestionService(engine, client)
-                chosen = [sid for sid in client.supported_ids()
-                          if (series_ids is None or sid in series_ids)
-                          and (providers is None or client.definitions[sid]["provider"] in providers)]
-                tasks = [
-                    RefreshTask(
-                        family="macro", source_id=sid,
-                        execute=lambda sid=sid: service.refresh(sid, full=full),
-                        progress_label=sid,
-                    )
-                    for sid in chosen
-                ]
-                return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
-            finally:
-                if engine.dialect.name == "postgresql":
-                    conn.execute(text("SELECT pg_advisory_unlock(75390812)"))
+        with reserve_refresh(engine) as acquired:
+            if not acquired:
+                log.warning("Another process owns the ingestion refresh lock")
+                return 1
+            service = IngestionService(engine, client)
+            chosen = [sid for sid in client.supported_ids()
+                      if (series_ids is None or sid in series_ids)
+                      and (providers is None or client.definitions[sid]["provider"] in providers)]
+            tasks = [
+                RefreshTask(
+                    family="macro", source_id=sid,
+                    execute=lambda sid=sid: service.refresh(sid, full=full),
+                    progress_label=sid,
+                )
+                for sid in chosen
+            ]
+            return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
     finally:
         client.close()
 
@@ -112,32 +105,36 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
     from .market import EcbFxClient, YahooMarketClient, instruments
     from .market_service import MarketIngestionService
 
-    yahoo, ecb = YahooMarketClient(), EcbFxClient()
-    try:
-        service = MarketIngestionService(engine, yahoo, ecb)
-        fx = sorted(currencies if currencies is not None else ("USD", "GBP", "CHF"))
-        market = sorted(instrument_ids if instrument_ids is not None else instruments())
-        tasks = [
-            RefreshTask(
-                family="fx", source_id=currency,
-                execute=lambda currency=currency: service.refresh_fx(
-                    currency, full=full),
-                progress_label="FX:" + currency,
-            ) for currency in fx
-        ]
-        tasks.extend(
-            RefreshTask(
-                family="markets", source_id=sid,
-                execute=lambda sid=sid: service.refresh_instrument(
-                    sid, full=full),
-                progress_label=sid,
-            ) for sid in market
-        )
-        return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
-    finally:
-        yahoo.close()
-        ecb.close()
-
+    with reserve_refresh(engine) as acquired:
+        if not acquired:
+            log.warning("Another process owns the ingestion refresh lock")
+            return 1
+        yahoo, ecb = YahooMarketClient(), EcbFxClient()
+        try:
+            service = MarketIngestionService(engine, yahoo, ecb)
+            fx = sorted(currencies if currencies is not None else ("USD", "GBP", "CHF"))
+            market = sorted(instrument_ids if instrument_ids is not None else instruments())
+            tasks = [
+                RefreshTask(
+                    family="fx", source_id=currency,
+                    execute=lambda currency=currency: service.refresh_fx(
+                        currency, full=full),
+                    progress_label="FX:" + currency,
+                ) for currency in fx
+            ]
+            tasks.extend(
+                RefreshTask(
+                    family="markets", source_id=sid,
+                    execute=lambda sid=sid: service.refresh_instrument(
+                        sid, full=full),
+                    progress_label=sid,
+                ) for sid in market
+            )
+            return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
+        finally:
+            yahoo.close()
+            ecb.close()
+    
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
