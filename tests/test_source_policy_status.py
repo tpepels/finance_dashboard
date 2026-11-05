@@ -14,6 +14,10 @@ class PolicyStatusTests(unittest.TestCase):
             "registry_sha256": "a" * 64,
             "publisher_count": 2, "host_count": 3,
             "unclassified_hosts_denied": True, "requests_recorded": 7,
+            "catalog_source_reference_coverage": {
+                "source_references_classified": 262,
+                "unclassified_or_invalid_source_references": [],
+            },
             "publishers": [
                 {"id": "fred-v1", "automated_download_allowed": True},
                 {"id": "ishares", "automated_download_allowed": False},
@@ -31,6 +35,8 @@ class PolicyStatusTests(unittest.TestCase):
         self.assertEqual(len(output.getvalue().splitlines()), 1)
         report = json.loads(output.getvalue())
         self.assertEqual(report["registered_publishers"], 2)
+        self.assertEqual(report["catalog_references_classified"], 262)
+        self.assertEqual(report["catalog_reference_issues"], [])
         self.assertEqual(report["publisher_cooldowns"][0]["http_status"], 429)
         self.assertEqual(report["restricted_publishers"], ["ishares"])
         self.assertNotIn("source_url", output.getvalue())
