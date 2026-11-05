@@ -17,6 +17,7 @@ import re
 import time
 
 import httpx
+from .source_policy import managed_client
 
 from .market import instruments
 from .sec_holdings import (parse_nport, store_snapshot, HoldingsError,
@@ -399,7 +400,7 @@ def check_sec_sources(*, config: Path = CONFIG,
         return {"status": "blocked", "reason": "missing_SEC_USER_AGENT",
                 "funds": [], "requests": 0}
     owns = client is None
-    source = client or httpx.Client(
+    source = client or managed_client(
         headers={"User-Agent": agent, "Accept-Encoding": "gzip, deflate"},
         timeout=25, follow_redirects=False)
     funds = []
@@ -458,7 +459,7 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
         return {"status":"disabled_missing_SEC_USER_AGENT","funds":[]}
     folder = root or Path(os.environ.get("FINANCE_HOLDINGS_DIR","/data/holdings"))
     reports=[]
-    with httpx.Client(headers={"User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
+    with managed_client(headers={"User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
                       timeout=45,follow_redirects=False) as client:
         for index, mapping in enumerate(mappings, 1):
             if stopped is not None and stopped.is_set():
@@ -562,7 +563,7 @@ def recover_configured_raw(*, config: Path=CONFIG, root: Path|None=None,
     mappings=read_verified_config(config)
     target=root or Path(os.environ.get("FINANCE_HOLDINGS_DIR","/data/holdings"))
     reports=[]
-    with httpx.Client(headers={"User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
+    with managed_client(headers={"User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
                       timeout=45,follow_redirects=False) as client:
         for index,mapping in enumerate(mappings,1):
             if stopped is not None and stopped.is_set():
