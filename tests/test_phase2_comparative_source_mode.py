@@ -122,6 +122,8 @@ class TargetedPhase2SourcesTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "backup_location_overlaps_source_archive"):
                 verified_phase2_snapshot(url, evidence, evidence / "nested-backup", label="before")
             before = verified_phase2_snapshot(url, evidence, checkpoint, label="before")
+            self.assertEqual(len(before["database_sha256"]), 64)
+            self.assertEqual(len(before["evidence_archive_sha256"]), 64)
             with sqlite3.connect(db) as connection:
                 connection.execute("INSERT INTO series VALUES ('acquired')")
             original.write_bytes(b"2025-Q1,13.0\\n")

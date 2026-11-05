@@ -48,7 +48,7 @@ class SourceCoverageTests(unittest.TestCase):
                     value=Decimal("0.58"), first_seen_at=NOW, ingestion_run_id="run-"+sid))
 
     def test_returns_exactly_all_registered_macro_market_and_currency_sources(self):
-        with patch.dict(os.environ, {"FINANCE_INCLUDE_MARKETS":"0"}):
+        with patch.dict(os.environ, {"FINANCE_AUTO_REFRESH":"1", "FINANCE_INCLUDE_MARKETS":"0"}):
             report = build_coverage(self.engine, self.catalog, self.registry, asof=date(2026, 11, 3))
         self.assertEqual(report["summary"]["macro"]["total"], len(self.catalog))
         self.assertEqual(report["summary"]["markets"]["total"], 24)

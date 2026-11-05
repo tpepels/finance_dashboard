@@ -307,3 +307,8 @@ This implementation has not yet downloaded STAN 2025 historical country original
 
 
 **Scientific candidate-schema consolidation:** The 14 unverified L01–L03 OECD publisher leads now live in a dedicated `publisher_candidates` list, with strict schema checks; the existing verified `source_candidates` native-artifact reference (L03/S11 GVA) is retained unchanged. Candidates cannot bind scalar source IDs, enter observation histories, or mark acceptance gates passed. This corrects a declaration-validation failure introduced when publisher leads were mistakenly put into the verified artifact candidate field. Focused suite: `test_phase2_publisher_candidates.py` plus `test_phase2_corpus_status.py`.
+
+
+### Build regression fixes — 2026-11-05
+
+The P03 approved French academic-return comparison variants now own the same-source monthly RF and total-return series exclusively. Its contextual set retains only the two independent market-excess context series plus both Swinkels sovereign estimators; no context ID duplicates an original requirement or comparison-variant input. The canonical corpus validator remains strict. The Phase 2 snapshot wrapper consumes the SHA-256 fields from the **on-disk, independently verified backup manifest**, not a mutable or partial writer return value, retaining the same verified SQLite and archive snapshot semantics. The empty-storage source-coverage test now explicitly enables macro refresh within its test-only environment, so a surrounding build's refresh configuration cannot silently change the expected source states. No source histories or evidence archives are modified by these changes.

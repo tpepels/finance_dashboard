@@ -203,6 +203,30 @@ class ComparisonContractTests(unittest.TestCase):
         for role in self.contract("P02")["original_requirements"]:
             self.assertNotIn(sid, role["series_ids"])
 
+    def test_p03_context_is_disjoint_from_original_and_bounded_comparisons(self):
+        question = self.analyses["P03"]
+        contract = question["comparison_contract"]
+        bound = {
+            sid
+            for item in contract["original_requirements"] + contract["variants"]
+            for sid in item["series_ids"]
+        }
+        context = question["context_series_ids"]
+        self.assertEqual(len(context), len(set(context)))
+        self.assertFalse(set(context) & bound)
+        self.assertEqual(set(context), {
+            "returns.french.developed.market_excess_usd",
+            "returns.french.emerging.market_excess_usd",
+            "returns.swinkels.us.sovereign_10y_modelled_local",
+            "returns.swinkels.us.sovereign_10y_original_1962_usd",
+        })
+        for region in ("developed", "emerging"):
+            variant = self.variant("P03", f"p03_french_{region}_us_recession_context")
+            self.assertIn(f"returns.french.{region}.market_total_usd", variant["series_ids"])
+            self.assertIn(f"returns.french.{region}.risk_free_usd", variant["series_ids"])
+            self.assertNotIn(f"returns.french.{region}.market_excess_usd", variant["series_ids"])
+            self.assertFalse(variant["satisfies_original_method"])
+
     def test_p03_academic_recession_fallbacks_keep_native_units_and_hindsight_limits(self):
         original = self.contract("P03")["original_requirements"]
         self.assertEqual(

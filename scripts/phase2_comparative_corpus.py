@@ -142,12 +142,20 @@ def verified_phase2_snapshot(database_url, evidence_root, backup_dir, *, label):
     result = backup_local(output, source_db=database, keep=365, evidence_roots=evidence)
     basename = result["database"]["file"].removesuffix(".sqlite3")
     receipt = output / (basename + ".json")
-    verify_manifest(receipt)
+    # Backup verification checks bytes on disk, not the return value from the
+    # writer. Read the verified manifest rather than relying on a partial or
+    # mutated in-memory return shape.
+    verification = verify_manifest(receipt)
+    if verification.get("verified") is not True:
+        raise ValueError("research_backup_verification_required")
+    persisted = json.loads(receipt.read_text(encoding="utf-8"))
+    database_record = persisted["database"]
+    evidence_record = persisted.get("evidence_archive")
     return {
         "manifest": str(receipt),
-        "database_sha256": result["database"]["sha256"],
+        "database_sha256": database_record["sha256"],
         "evidence_archive_sha256": (
-            result["evidence_archive"]["sha256"] if result["evidence_archive"] else None
+            evidence_record["sha256"] if evidence_record else None
         ),
     }
 

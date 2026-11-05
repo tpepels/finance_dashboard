@@ -4568,11 +4568,7 @@
       },
       "context_series_ids": [
         "returns.french.developed.market_excess_usd",
-        "returns.french.developed.market_total_usd",
-        "returns.french.developed.risk_free_usd",
         "returns.french.emerging.market_excess_usd",
-        "returns.french.emerging.market_total_usd",
-        "returns.french.emerging.risk_free_usd",
         "returns.swinkels.us.sovereign_10y_modelled_local",
         "returns.swinkels.us.sovereign_10y_original_1962_usd"
       ],
