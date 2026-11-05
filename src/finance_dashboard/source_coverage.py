@@ -114,6 +114,7 @@ def _summary(items: list[dict]) -> dict:
     result["without_data"] = result["total"] - result["with_data"]
     result["needs_attention"] = sum(item["state"] in {
         "not_ingested", "collection_disabled", "collection_failed",
+        "collection_deferred", "refresh_deferred_with_data",
         "refresh_failed_with_data", "stale", "source_unresolved",
     } for item in items)
     return result
@@ -158,12 +159,16 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     )
     if not mapped:
         state = "source_unresolved"
+    elif count == 0 and last is not None and last["status"] == "deferred":
+        state = "collection_deferred"
     elif count == 0 and last is not None and last["status"] == "failed":
         state = "collection_failed"
     elif count == 0 and not configured:
         state = "collection_disabled"
     elif count == 0:
         state = "not_ingested"
+    elif last is not None and last["status"] == "deferred":
+        state = "refresh_deferred_with_data"
     elif last is not None and last["status"] == "failed":
         state = "refresh_failed_with_data"
     elif lag is not None and lag > SOURCE_LAGS[frequency] and not is_complete_for_release:
