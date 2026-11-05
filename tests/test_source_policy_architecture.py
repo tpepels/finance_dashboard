@@ -47,6 +47,15 @@ class PolicyArchitectureTests(unittest.TestCase):
         self.assertEqual(bypasses, [],
                          "Unmanaged outbound HTTPX bypasses: " + ", ".join(bypasses))
 
+    def test_all_declared_series_reference_hosts_have_canonical_rules(self):
+        from finance_dashboard.source_policy import catalog_source_policy_audit
+        result = catalog_source_policy_audit()
+        self.assertEqual(result["series_catalog_count"], 262)
+        self.assertTrue(result["all_declared_references_classified"])
+        self.assertEqual(result["source_references_classified"], 262)
+        self.assertEqual(result["unclassified_or_invalid_source_references"], [])
+        self.assertFalse(result["dynamic_network_origins_verified"])
+
     def test_catalog_shares_rules_between_same_publisher_paths(self):
         from finance_dashboard.source_policy import PolicyRegistry
         registry = PolicyRegistry()
