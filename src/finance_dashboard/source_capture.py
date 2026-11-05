@@ -1,8 +1,10 @@
 """Explicit original-response acquisition through the existing provider router.
 
-Only successful, validated fetches publish evidence. Ordinary overlap refreshes
-do not silently become full historical snapshots. Dedicated multi-file source
-adapters keep their own evidence format.
+Only successful, validated fetches publish original evidence. Rejected HTTP
+responses and publisher payloads that fail parsing are retained separately as
+immutable, noncertifying diagnostics. Ordinary overlap refreshes do not silently
+become full historical snapshots. Dedicated multi-file adapters keep their own
+evidence format.
 """
 from __future__ import annotations
 
@@ -61,18 +63,30 @@ class CapturedProvider:
         if definition.get("provider") not in CAPTURE_PROVIDERS:
             return self.router.fetch(series_id, start)
         responses = []
+        rejected = []
         def capture(response):
-            if response.status_code != 200:
-                return
             raw = response.read()
-            if not raw or len(raw) > MAX_RESPONSE_BYTES:
+            if len(raw) > MAX_RESPONSE_BYTES or (response.status_code == 200 and not raw):
                 raise ProviderError("Original response exceeds capture bounds")
-            responses.append((raw, safe_url(response.request.url), {
-                key: value for key, value in response.headers.items() if key in SAFE_HEADERS}))
+            captured = (raw, safe_url(response.request.url), {
+                key: value for key, value in response.headers.items() if key in SAFE_HEADERS})
+            if response.status_code == 200:
+                responses.append(captured)
+            else:
+                rejected.append((*captured, response.status_code))
         hooks = self.router.client.event_hooks["response"]
         hooks.append(capture)
         try:
-            fetched = self.router.fetch(series_id, start)
+            try:
+                fetched = self.router.fetch(series_id, start)
+            except Exception:
+                if responses or rejected:
+                    self._quarantine_failed_response(
+                        series_id, definition, start,
+                        [(*item, 200) for item in responses] + rejected)
+                raise
+            if rejected:
+                self._quarantine_failed_response(series_id, definition, start, rejected)
         finally:
             hooks.remove(capture)
         if not responses or not fetched.observations:
@@ -124,3 +138,53 @@ class CapturedProvider:
             if staging is not None:
                 shutil.rmtree(staging)
         return fetched
+
+    def _quarantine_failed_response(self, series_id, definition, start, responses):
+        """Keep invalid publisher bytes immutable and outside certified evidence."""
+        identity = {"provider": definition["provider"], "series_id": series_id,
+                    "source_key": definition["source_key"]}
+        contract = sha256(canonical_bytes(definition)).hexdigest()
+        sources = [{"file": f"response-{i}.bin", "url": url, "sha256": sha256(raw).hexdigest(),
+                    "bytes": len(raw), "http_status": status, "headers": headers}
+                   for i, (raw, url, headers, status) in enumerate(responses)]
+        content = {"source_identity": identity, "source_contract_sha256": contract,
+                   "requested_from": start.isoformat() if start else None,
+                   "responses": [{key: item[key] for key in
+                                  ("file", "url", "sha256", "bytes", "http_status")}
+                                 for item in sources]}
+        parent = self.evidence_root / "rejected-responses" / series_id
+        parent.mkdir(parents=True, exist_ok=True)
+        target = parent / sha256(canonical_bytes(content)).hexdigest()
+        staging = None
+        try:
+            if target.exists():
+                if target.is_symlink() or not target.is_dir():
+                    raise ProviderError("Rejected source archive identity is invalid")
+                saved = json.loads((target / "manifest.json").read_bytes())
+                if saved.get("content_identity") != content:
+                    raise ProviderError("Rejected source archive identity is invalid")
+                for item, (raw, _url, _headers, _status) in zip(
+                        saved["sources"], responses, strict=True):
+                    path = target / item["file"]
+                    if path.is_symlink() or path.read_bytes() != raw:
+                        raise ProviderError("Rejected source archive bytes differ")
+                return
+            staging = Path(tempfile.mkdtemp(prefix=".capture-failed-", dir=parent))
+            for item, (raw, _url, _headers, _status) in zip(
+                    sources, responses, strict=True):
+                (staging / item["file"]).write_bytes(raw)
+            manifest = {"schema_version": 1, **identity,
+                "source_contract": definition, "source_contract_sha256": contract,
+                "scope": "rejected_response_not_valid_evidence",
+                "requested_from": start.isoformat() if start else None,
+                "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
+                "publication_vintage_verified": False, "observation_values_accepted": False,
+                "content_identity": content, "sources": sources}
+            (staging / "manifest.json").write_bytes(canonical_bytes(manifest))
+            os.rename(staging, target)
+            staging = None
+        except (OSError, KeyError, TypeError, ValueError) as exc:
+            raise ProviderError("Rejected publisher response could not be archived") from exc
+        finally:
+            if staging is not None:
+                shutil.rmtree(staging)

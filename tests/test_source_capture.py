@@ -52,6 +52,52 @@ class SourceCaptureTests(unittest.TestCase):
                 self.assertFalse(list(Path(temp).glob("responses/bond.us.real_10y/retrievals/*.json")))
                 self.assertEqual(http.event_hooks["response"], [])
 
+    def test_failed_http_retains_raw_publisher_bytes_without_certifying(self):
+        raw = b"Publisher temporarily rejected request"
+        with TemporaryDirectory() as temp, patch.dict("os.environ", {
+                "FRED_API_KEY": "keep-this-token-private"}):
+            with httpx.Client(transport=httpx.MockTransport(
+                    lambda request: httpx.Response(403, content=raw, headers={
+                        "content-type": "text/plain", "set-cookie": "private-cookie"}))) as client:
+                captured = CapturedProvider(ProviderRouter(client), Path(temp))
+                with self.assertRaises(Exception):
+                    captured.fetch("bond.us.nominal_10y")
+                files = list(Path(temp).glob(
+                    "rejected-responses/bond.us.nominal_10y/*/manifest.json"))
+                self.assertEqual(len(files), 1)
+                record = json.loads(files[0].read_text())
+                self.assertEqual(record["scope"], "rejected_response_not_valid_evidence")
+                self.assertFalse(record["observation_values_accepted"])
+                self.assertEqual(record["sources"][0]["http_status"], 403)
+                self.assertEqual((files[0].parent / "response-0.bin").read_bytes(), raw)
+                self.assertNotIn("keep-this-token-private", files[0].read_text())
+                self.assertNotIn("cookie", files[0].read_text())
+                self.assertFalse(list(Path(temp).glob("responses/bond.us.nominal_10y/**/manifest.json")))
+                with self.assertRaises(Exception):
+                    captured.fetch("bond.us.nominal_10y")
+                self.assertEqual(len(list(Path(temp).glob(
+                    "rejected-responses/bond.us.nominal_10y/*/manifest.json"))), 1)
+                self.assertEqual(client.event_hooks["response"], [])
+
+    def test_invalid_success_http_body_is_quarantined_without_original_receipt(self):
+        invalid = b"definitely-not-a-publisher-payload"
+        with TemporaryDirectory() as temp, patch.dict("os.environ", {
+                "FRED_API_KEY": "private-api-token"}):
+            with httpx.Client(transport=httpx.MockTransport(
+                    lambda request: httpx.Response(200, content=invalid))) as client:
+                captured = CapturedProvider(ProviderRouter(client), Path(temp))
+                with self.assertRaises(ValueError):
+                    captured.fetch("bond.us.real_10y")
+                files = list(Path(temp).glob(
+                    "rejected-responses/bond.us.real_10y/*/manifest.json"))
+                self.assertEqual(len(files), 1)
+                record = json.loads(files[0].read_text())
+                self.assertEqual(record["sources"][0]["http_status"], 200)
+                self.assertEqual((files[0].parent / "response-0.bin").read_bytes(), invalid)
+                self.assertFalse(list(Path(temp).glob(
+                    "responses/bond.us.real_10y/**/manifest.json")))
+                self.assertEqual(client.event_hooks["response"], [])
+
     def test_unsupported_sources_keep_existing_archives_and_do_not_capture(self):
         # WID/TiVA/returns already have dedicated multi-file evidence stores.
         class Router:
