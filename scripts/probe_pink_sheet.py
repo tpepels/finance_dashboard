@@ -1,10 +1,11 @@
+from finance_dashboard.source_policy import managed_get
 """Discover official World Bank Pink Sheet monthly workbook structure (bounded)."""
 from io import BytesIO
 import httpx
 from python_calamine import CalamineWorkbook
 
 URL="https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/CMO-Historical-Data-Monthly.xlsx"
-r=httpx.get(URL,timeout=20,follow_redirects=True)
+r=managed_get(URL,timeout=20,follow_redirects=True)
 print("status",r.status_code,"size",len(r.content),"content_type",r.headers.get("content-type"),flush=True)
 r.raise_for_status()
 wb=CalamineWorkbook.from_filelike(BytesIO(r.content))
