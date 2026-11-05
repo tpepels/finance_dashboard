@@ -177,6 +177,21 @@ class PolicyRegistry:
         if policy.rights["internal_analysis"] != "allowed_with_attribution":
             raise PolicyViolation(policy.id, "internal_collection_not_cleared")
 
+    def require_redistribution_clearance(self, url: str) -> dict:
+        """Fail closed for publication/export using a publisher's source data.
+
+        Transport access does not confer external redistribution rights.
+        Only explicit, independently confirmed canonical rights may unlock it.
+        """
+        policy = self.for_url(url)
+        if (not policy.rights["machine_verified_licence"]
+                or policy.rights["redistribution"] != "allowed_with_attribution"):
+            raise PolicyViolation(policy.id, "redistribution_not_cleared")
+        return {
+            "publisher": policy.id, "required_attribution": True,
+            "rights_verified": True,
+        }
+
     def report(self) -> dict:
         return {
             "schema_version": 1,
