@@ -16,10 +16,9 @@ DEFAULT_MAX_WAIT_SECONDS = 3.0
 class SourcePolicyGate:
     """Atomic cross-process rolling-window reservations and publisher cooldowns.
 
-    Client hooks enforce the rules before sending requests. A response releases
-    its concurrency lease and records publisher cooldowns (including Retry-After).
-    Unreturned requests consume their budget and leave a bounded expiring lease:
-    they cannot make the system exceed rate limits after a connection failure.
+    The managed HTTP transport enforces these reservations before the request
+    leaves the process. Publisher cooldowns survive process restarts; failed
+    connections release concurrency leases but still consume request budget.
     """
 
     def __init__(self, *, registry: PolicyRegistry | None = None,
@@ -31,6 +30,8 @@ class SourcePolicyGate:
         self.clock = clock or time.time
         self.sleep = sleep or time.sleep
         self.max_wait_seconds = max_wait_seconds
+        self._schema_ready = False
+        self._schema_lock = threading.Lock()
 
     def _connection(self) -> sqlite3.Connection:
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -39,7 +40,15 @@ class SourcePolicyGate:
         connection = sqlite3.connect(str(self.state_path), timeout=15,
                                      isolation_level=None)
         connection.execute("PRAGMA busy_timeout=15000")
-        connection.executescript("""
+        # Schema creation is idempotent, but must not execute DDL on every
+        # request. A per-instance lock protects the first simultaneous callers;
+        # SQLite itself serializes initialization across different processes.
+        if self._schema_ready:
+            return connection
+        try:
+            with self._schema_lock:
+                if not self._schema_ready:
+                    connection.executescript("""
             CREATE TABLE IF NOT EXISTS requests (
                 policy_id TEXT NOT NULL, requested_at REAL NOT NULL
             );
@@ -56,7 +65,11 @@ class SourcePolicyGate:
                 cooldown_until REAL NOT NULL DEFAULT 0,
                 last_http_status INTEGER
             );
-        """)
+                    """)
+                    self._schema_ready = True
+        except BaseException:
+            connection.close()
+            raise
         return connection
 
     def _reserve_once(self, policy: Policy) -> str:
