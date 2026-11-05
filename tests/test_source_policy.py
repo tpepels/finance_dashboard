@@ -230,6 +230,10 @@ class DurableLimitTests(PolicyHarness):
             managed_client(policy_gate=self.gate(),
                            mounts={"https://": httpx.MockTransport(
                                lambda req: httpx.Response(200))})
+        with self.assertRaises(PolicyViolation) as denied:
+            managed_client(policy_gate=self.gate(),
+                           transport=httpx.HTTPTransport())
+        self.assertEqual(denied.exception.reason, "unapproved_injected_transport")
 
     def test_retry_after_and_429_cooldown_survive_new_client(self):
         requests = []
