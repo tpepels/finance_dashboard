@@ -9,7 +9,9 @@ from finance_dashboard.stan_metadata import (
     MAX_STRUCTURE_BYTES, parse_stan_measure_structure,
     read_stan_structure, store_stan_structure,
 )
-from scripts.phase2_stan_sources import discover_measure_codes, brief_report
+from scripts.phase2_stan_sources import (
+    discover_measure_codes, plan_surplus_probe, probe_surplus, brief_report,
+)
 
 
 SAMPLE_XML = b"""<?xml version="1.0" encoding="utf-8"?>
@@ -136,6 +138,40 @@ class StanMetadataTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 store_stan_structure(b"<html>wrong</html>", root=root)
             self.assertFalse((root / "stan-2025").exists())
+
+    def test_surplus_probe_requires_supported_verified_2025_structure(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            absent = plan_surplus_probe(root)
+            self.assertEqual(absent["state"], "verified_publisher_structure_required")
+            self.assertEqual(absent["publisher_requests"], 0)
+            self.assertEqual(absent["candidate_measures"], [])
+            store_stan_structure(SAMPLE_XML, root=root)
+            verified = plan_surplus_probe(root)
+            self.assertEqual(verified["state"], "ready_for_bounded_publisher_probe")
+            self.assertEqual(verified["candidate_measures"],
+                             ["B2N_B3_N", "B2G_B3G"])
+            self.assertEqual(verified["publisher_requests"], 0)
+            revised = SAMPLE_XML.replace(b'Code id="B2N_B3_N"',
+                                          b'Code id="NEW_SURPLUS_CODE"')
+            store_stan_structure(revised, root=root)
+            changed = plan_surplus_probe(root)
+            self.assertEqual(changed["candidate_measures"], ["B2G_B3G"])
+            self.assertIn("NEW_SURPLUS_CODE",
+                          changed["other_published_surplus_ids"])
+
+    def test_probe_uses_only_verified_selected_candidate_subset(self):
+        calls = []
+        def unavailable(request):
+            calls.append(str(request.url))
+            return httpx.Response(404, content=b"not published for selection")
+        with httpx.Client(transport=httpx.MockTransport(unavailable)) as client:
+            report = probe_surplus(
+                client, country="PRT", year=2020, candidates=("B2G_B3G",))
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(report["publisher_requests"], 1)
+        self.assertEqual(report["checks"][0]["candidate_measure"], "B2G_B3G")
+        self.assertNotIn("B2N_B3_N", str(report))
 
     def test_metadata_rate_limit_does_not_retry(self):
         calls = []

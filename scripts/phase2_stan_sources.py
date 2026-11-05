@@ -176,7 +176,38 @@ def discover_measure_codes(client, *, archive_root: Path | None = None) -> dict:
     return report
 
 
-def probe_surplus(client, *, country: str, year: int) -> dict:
+def plan_surplus_probe(root: Path) -> dict:
+    """Fail closed unless a verified 2025 structure advertises exact candidates.
+
+    This is offline metadata classification, never an inference of country data.
+    Legacy method-paper codes cannot independently authorize live requests.
+    """
+    metadata = read_stan_structure(root)
+    verified = metadata["status"] == "verified_publisher_structure"
+    published_surplus = {
+        row["id"] for row in metadata.get("surplus_measures", [])
+    } if verified else set()
+    candidates = [
+        code for code in STAN_SURPLUS_CANDIDATES
+        if code in published_surplus
+    ]
+    return {
+        "phase": "phase2", "operation": "stan_surplus_metadata_gate",
+        "state": ("ready_for_bounded_publisher_probe" if candidates
+                  else "publisher_structure_has_no_supported_surplus_code"
+                  if verified else "verified_publisher_structure_required"),
+        "metadata_status": metadata["status"],
+        "source_sha256": metadata.get("source_sha256"),
+        "candidate_measures": candidates,
+        "other_published_surplus_ids": sorted(published_surplus - set(candidates)),
+        "publisher_requests": 0,
+        "country_coverage_verified": False,
+        "scientific_analysis_certified": False,
+    }
+
+
+def probe_surplus(client, *, country: str, year: int,
+                  candidates: tuple[str, ...] | None = None) -> dict:
     """At most two exact-year, total-activity candidate requests; no archive writes.
 
     OECD historical methods use B2N_B3_N and B2G_B3G for combined mixed
@@ -184,10 +215,15 @@ def probe_surplus(client, *, country: str, year: int) -> dict:
     """
     from hashlib import sha256
     require_managed_client(client)
+    requested = STAN_SURPLUS_CANDIDATES if candidates is None else tuple(candidates)
+    if (not requested or len(requested) > len(STAN_SURPLUS_CANDIDATES)
+            or len(set(requested)) != len(requested)
+            or not set(requested) <= set(STAN_SURPLUS_CANDIDATES)):
+        raise ValueError("invalid_verified_stan_surplus_candidates")
     checks = []
     sent_requests = 0
     stopped = False
-    for candidate in STAN_SURPLUS_CANDIDATES:
+    for candidate in requested:
         url, params = stan_source_request(
             country, year, measures=(candidate,),
             activity="_T", end_year=year)
@@ -497,6 +533,16 @@ def brief_report(data: dict) -> dict:
             "archived": bool(data.get("original_evidence")),
             "receipt_sha256": data.get("original_evidence", {}).get("receipt_sha256"),
         }
+    if data.get("operation") == "stan_surplus_metadata_gate":
+        return {
+            "operation": "surplus_metadata_gate",
+            "state": data["state"],
+            "metadata_status": data["metadata_status"],
+            "candidate_measures": data["candidate_measures"],
+            "other_published_surplus_ids": data["other_published_surplus_ids"],
+            "source_sha256": data["source_sha256"],
+            "publisher_requests": 0,
+        }
     if "surplus_probe" in data:
         probe = data["surplus_probe"]
         out = {
@@ -507,6 +553,7 @@ def brief_report(data: dict) -> dict:
                 "http": row.get("http_status"), "failure": row.get("failure_category"),
             } for row in probe["checks"]],
             "publisher_backpressure": probe["stopped_on_publisher_backpressure"],
+            "metadata_source_sha256": data.get("metadata_source_sha256"),
         }
         if "acquisition" in data:
             out["acquisition"] = brief_report(data["acquisition"])
@@ -744,10 +791,16 @@ def main(argv=None) -> int:
             for report in results
         ) else 1
     if args.resolve_surplus:
-        import httpx
+        gate = plan_surplus_probe(args.evidence_dir)
+        if not gate["candidate_measures"]:
+            emit_report(gate, brief=args.brief)
+            return 1
         with managed_client(timeout=60, follow_redirects=False) as client:
-            probe = probe_surplus(client, country=countries[0], year=args.probe_year)
-            result = {"surplus_probe": probe}
+            probe = probe_surplus(
+                client, country=countries[0], year=args.probe_year,
+                candidates=tuple(gate["candidate_measures"]))
+            result = {"surplus_probe": probe,
+                      "metadata_source_sha256": gate["source_sha256"]}
             net, gross = STAN_SURPLUS_CANDIDATES
             validated = [item["candidate_measure"] for item in probe["checks"]
                          if item["state"] == "validated_native_csv"]

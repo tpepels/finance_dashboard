@@ -41,9 +41,13 @@ docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py -
 The last command is **not** automatic or safe to run without confirming the
 OECD access-policy acknowledged direct network route. Publisher quota,
 cooldowns, and network-origin restrictions apply before transmission.
-Expand original country coverage only in bounded batches after confirming
-metadata and available publisher capacity. The approved 35-analysis Phase 2
-scientific acceptance stays open.
+`--resolve-surplus` now fails closed *before any network request* unless
+the independently verified and archived current publisher MEASURE codelist
+advertises exact supported candidate identifiers. Only those supported codes
+are probed; other new publisher codes are surfaced for scientific review
+rather than assumed equivalent. Expand original country coverage only in
+bounded batches after confirming metadata and available publisher capacity.
+The approved 35-analysis Phase 2 scientific acceptance stays open.
 
 
 ## Phase 2 STAN research readiness and publisher interruption handling — 2026-11-05
