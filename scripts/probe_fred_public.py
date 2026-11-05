@@ -2,11 +2,12 @@
 import json
 import re
 import httpx
+from finance_dashboard.source_policy import managed_client, managed_get
 for sid in ("DFEDTARU","DFII10","SAHMREALTIME","NCBCEPNW"):
     for suffix in ("", ".txt"):
         url=f"https://fred.stlouisfed.org/data/{sid}{suffix}"
         try:
-            r=httpx.get(url,timeout=12,follow_redirects=True)
+            r=managed_get(url,timeout=12,follow_redirects=True)
             text=r.text
             print(json.dumps({
                 "series":sid,"suffix":suffix,"status":r.status_code,
