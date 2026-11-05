@@ -18,7 +18,7 @@ from finance_dashboard.database import Base
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.research_corpus import load_research_corpus
 from finance_dashboard.service import IngestionService, current_observations
-from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_reconciliation import reconcile_session
 
 
@@ -54,7 +54,7 @@ class NativeActivitySourceTests(unittest.TestCase):
             try:
                 with patch.dict("os.environ", {"FRED_API_KEY": "", "FRED_PUBLIC_CSV_FALLBACK": "1"}):
                     with httpx.Client(transport=httpx.MockTransport(response)) as client:
-                        service = IngestionService(engine, CapturedProvider(ProviderRouter(client), root))
+                        service = IngestionService(engine, SourceAcquisition(ProviderRouter(client), root))
                         for sid in provenance:
                             self.assertEqual(service.refresh(sid, full=True)["status"], "success")
                 with Session(engine) as session:
