@@ -213,16 +213,31 @@ class SourcePolicyGate:
         try:
             now = self.clock()
             rows = conn.execute(
-                "SELECT p.policy_id,p.cooldown_until,p.last_http_status,"
-                "(SELECT COUNT(*) FROM requests r WHERE r.policy_id=p.policy_id)"
-                " FROM policy_state p ORDER BY p.policy_id").fetchall()
-            catalog["state"] = [{
-                "publisher": policy_id,
-                "cooldown_seconds_remaining": max(0, int(until - now)),
-                "last_http_status": status,
-                "requests_in_ledger": count,
-            } for policy_id, until, status, count in rows]
-            catalog["requests_recorded"] = sum(r[3] for r in rows)
+                "SELECT policy_id,cooldown_until,last_http_status"
+                " FROM policy_state ORDER BY policy_id").fetchall()
+            state = []
+            for policy_id, until, status in rows:
+                policy = self.registry.by_id.get(policy_id)
+                if policy is None:
+                    # Previously classified policies are retained in durable
+                    # state, but cannot authorize new outbound requests.
+                    count = 0
+                else:
+                    count = conn.execute(
+                        "SELECT COUNT(*) FROM requests "
+                        "WHERE policy_id = ? AND requested_at > ?",
+                        (policy_id, now - policy.rate["window_seconds"])
+                    ).fetchone()[0]
+                state.append({
+                    "publisher": policy_id,
+                    "cooldown_seconds_remaining": max(0, int(until - now)),
+                    "last_http_status": status,
+                    "requests_in_ledger": count,
+                })
+            catalog["state"] = state
+            catalog["requests_recorded"] = sum(row["requests_in_ledger"]
+                                                 for row in state)
+            catalog["request_count_scope"] = "active_rolling_windows"
             return catalog
         finally:
             conn.close()
