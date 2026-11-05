@@ -1,0 +1,666 @@
+{
+  "schema_version": 1,
+  "version": "2026-11-05",
+  "unknown_host": "deny",
+  "notes": "Rules are publisher-conservative, not licences. Rate caps apply across all configured clients/processes; publisher policy evidence classification is explicit. OECD request limit 60/hour; 55/hour is a safety margin. SEC 10/s; 8/s margin. Publisher 429/503 and Retry-After persist.",
+  "policies": [
+    {
+      "id": "oecd-sdmx",
+      "hosts": [
+        "sdmx.oecd.org"
+      ],
+      "classification": "publisher_verified",
+      "evidence_url": "https://www.oecd.org/en/data/insights/data-explainers/2024/11/Api-best-practices-and-recommendations.html",
+      "rate": {
+        "limit": 55,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 1,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 300,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [
+          "lastNObservations",
+          "firstNObservations"
+        ],
+        "require_direct_network_ack": true,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "oecd-documents",
+      "hosts": [
+        "www.oecd.org",
+        "webfs-sti.oecd.org",
+        "stats.oecd.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://www.oecd.org/en/data/insights/data-explainers/2024/09/api.html",
+      "rate": {
+        "limit": 12,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 5,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 300,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "fred-v1",
+      "hosts": [
+        "api.stlouisfed.org"
+      ],
+      "classification": "publisher_verified",
+      "evidence_url": "https://fred.stlouisfed.org/docs/api/fred/errors.html",
+      "rate": {
+        "limit": 110,
+        "window_seconds": 60,
+        "min_spacing_seconds": 0.55,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 60,
+        "cooldown_503_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "fred-web",
+      "hosts": [
+        "fred.stlouisfed.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://fred.stlouisfed.org/docs/api/fred/overview.html",
+      "rate": {
+        "limit": 45,
+        "window_seconds": 60,
+        "min_spacing_seconds": 1.35,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 120,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "sec-edgar",
+      "hosts": [
+        "data.sec.gov",
+        "www.sec.gov",
+        "sec.gov"
+      ],
+      "classification": "publisher_verified",
+      "evidence_url": "https://www.sec.gov/about/developer-resources",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 1,
+        "min_spacing_seconds": 0.14,
+        "max_concurrent": 2,
+        "cooldown_429_seconds": 600,
+        "cooldown_503_seconds": 600,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": true,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "world-bank",
+      "hosts": [
+        "api.worldbank.org",
+        "thedocs.worldbank.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://datahelpdesk.worldbank.org/knowledgebase/articles/902064",
+      "rate": {
+        "limit": 30,
+        "window_seconds": 60,
+        "min_spacing_seconds": 2,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 120,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "ecb",
+      "hosts": [
+        "data-api.ecb.europa.eu",
+        "data.ecb.europa.eu"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://data.ecb.europa.eu/help/api/overview",
+      "rate": {
+        "limit": 30,
+        "window_seconds": 60,
+        "min_spacing_seconds": 2,
+        "max_concurrent": 2,
+        "cooldown_429_seconds": 120,
+        "cooldown_503_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "bis",
+      "hosts": [
+        "stats.bis.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://www.bis.org/statistics/",
+      "rate": {
+        "limit": 15,
+        "window_seconds": 60,
+        "min_spacing_seconds": 4,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 180,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "imf",
+      "hosts": [
+        "www.imf.org",
+        "api.imf.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://www.imf.org/en/Data",
+      "rate": {
+        "limit": 20,
+        "window_seconds": 60,
+        "min_spacing_seconds": 3,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 180,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "un-statistics",
+      "hosts": [
+        "unstats.un.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://unstats.un.org/SDGAPI/swagger/",
+      "rate": {
+        "limit": 15,
+        "window_seconds": 60,
+        "min_spacing_seconds": 4,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 180,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "eurostat",
+      "hosts": [
+        "ec.europa.eu",
+        "api.db.nomics.world"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://ec.europa.eu/eurostat/en/web/user-guides/data-browser/api-data-access/api-detailed-guidelines/asynchronous-api",
+      "rate": {
+        "limit": 12,
+        "window_seconds": 60,
+        "min_spacing_seconds": 5,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 180,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "yahoo-market",
+      "hosts": [
+        "query1.finance.yahoo.com",
+        "query2.finance.yahoo.com"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://finance.yahoo.com/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 60,
+        "min_spacing_seconds": 6,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 300,
+        "cooldown_503_seconds": 300,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "wisesheets",
+      "hosts": [
+        "api.wisesheets.io"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://www.wisesheets.io/api/docs",
+      "rate": {
+        "limit": 20,
+        "window_seconds": 60,
+        "min_spacing_seconds": 3,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 180,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "siblis",
+      "hosts": [
+        "siblisresearch.supabase.co"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://siblisresearch.com/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 60,
+        "min_spacing_seconds": 6,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 180,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "corgano",
+      "hosts": [
+        "goldprice.corgano.com"
+      ],
+      "classification": "unverified",
+      "evidence_url": "https://goldprice.corgano.com/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 60,
+        "min_spacing_seconds": 6,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 180,
+        "cooldown_503_seconds": 180,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "ishares",
+      "hosts": [
+        "www.ishares.com"
+      ],
+      "classification": "restricted_use",
+      "evidence_url": "https://www.ishares.com/",
+      "rate": {
+        "limit": 4,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 900,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "vanguard-fund-docs",
+      "hosts": [
+        "fund-docs.vanguard.com"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://fund-docs.vanguard.com/",
+      "rate": {
+        "limit": 6,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 600,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "research-papers",
+      "hosts": [
+        "www.shillerdata.com",
+        "shillerdata.com",
+        "www.econ.yale.edu",
+        "www.stern.nyu.edu"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://shillerdata.com/",
+      "rate": {
+        "limit": 6,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 600,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "french-library",
+      "hosts": [
+        "mba.tuck.dartmouth.edu"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html",
+      "rate": {
+        "limit": 6,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 600,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "research-repositories",
+      "hosts": [
+        "huggingface.co",
+        "raw.githubusercontent.com",
+        "github.com",
+        "reproducibility.worldbank.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://huggingface.co/",
+      "rate": {
+        "limit": 6,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 600,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    }
+  ]
+}
