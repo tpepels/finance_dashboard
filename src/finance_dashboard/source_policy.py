@@ -204,6 +204,29 @@ class PolicyRegistry:
         }
 
 
+class _ManagedResponseStream(httpx.SyncByteStream):
+    """Hold concurrency lease until all source body bytes are consumed/closed."""
+
+    def __init__(self, original: httpx.SyncByteStream, release):
+        self.original = original
+        self.release_callback = release
+        self.closed = False
+
+    def __iter__(self):
+        try:
+            yield from self.original
+        finally:
+            self.close()
+
+    def close(self):
+        if not self.closed:
+            self.closed = True
+            try:
+                self.original.close()
+            finally:
+                self.release_callback()
+
+
 class SourcePolicyGate:
     """Atomic cross-process rolling-window reservations and publisher cooldowns.
 
@@ -366,10 +389,19 @@ class SourcePolicyGate:
 
     def after_response(self, response: httpx.Response) -> None:
         entry = response.request.extensions.pop("source_policy_lease", None)
-        if entry is not None:
-            lease, policy_id = entry
+        if entry is None:
+            return
+        lease, policy_id = entry
+        # A publisher block must be persisted before any subsequent request,
+        # even if the caller never consumes the error response body.
+        if response.status_code in (429, 503):
             self.release(lease, policy_id, status=response.status_code,
                          headers=response.headers)
+            return
+        # HTTPX response hooks run on headers before a streamed body has been
+        # consumed. Concurrency applies to the whole download, not just headers.
+        response.stream = _ManagedResponseStream(
+            response.stream, lambda: self.release(lease, policy_id))
 
     def report(self) -> dict:
         """Read only policy-state diagnostics; redact URLs and all credentials."""
