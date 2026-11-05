@@ -32,12 +32,12 @@ def build_inventory(document: dict, registry: list[dict]) -> dict:
                 {key: source[key] for key in (
                     "publisher", "dataset", "source_url", "potential_original_measure",
                     "status", "required_original_checks")}
-                for source in role.get("source_candidates", [])
+                for source in role.get("publisher_candidates", [])
                 if source.get("status") == "unverified_candidate"
             ]}
             for role in scalar if not role["series_ids"] and any(
                 source.get("status") == "unverified_candidate"
-                for source in role.get("source_candidates", []))
+                for source in role.get("publisher_candidates", []))
         ]
         analyses.append({
             "id": item["id"],

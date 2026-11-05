@@ -51,6 +51,33 @@ docker compose exec -T finance-dashboard python scripts/phase2_source_probe.py \
 
 The probe checks publisher HTTP status, native measure dimensions, exact country-industry observation counts and source-body SHA-256. It does not store observations or establish matched capital-stock valuation or first-publication vintages.
 
+The same validated STAN 2025 parser now supports **complete native, country-specific
+historical acquisition** (all OECD members by default), with immutable original CSV,
+SHA-256 content identity, append-only acquisition receipts, recomputed accounting
+diagnostics and explicit OECD observation-status flags. This is a structured
+country/industry/measure/year archive; it never writes synthetic macro scalars.
+
+After the current unrelated acquisition has finished and the container is rebuilt,
+a bounded first original acquisition can be run with:
+
+```sh
+docker compose exec -T finance-dashboard \
+  python scripts/phase2_stan_sources.py \
+  --evidence-dir /data/source-evidence \
+  --countries PRT --since 1970-01-01 --acquire
+```
+
+Omit `--countries PRT` to acquire the complete **38-member OECD set**. This may
+require substantial disk space and publisher response time. Failed countries do
+not remove other originals. Without `--acquire`, the command only re-verifies
+the archived native originals. Original per-industry income residuals, source
+status flags, missing years and mismatched monetary scales remain visible.
+L01–L03 still require exact labour-hours, self-employment compensation, net
+operating-surplus and current-replacement-cost *net* capital identities;
+successful STAN storage does not accept any original scientific input role.
+
+
+
 Use `PYTHONPATH=src python scripts/phase2_corpus_status.py --candidates` to see the original dataset investigations for L01–L03. These are unverified publisher candidates; no empty source bindings are filled and no analysis is certified by the candidate list. After a native acquisition, summarize the saved JSON report without copying its full contents:
 
 ```sh

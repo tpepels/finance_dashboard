@@ -13,6 +13,16 @@ from test_cvm_profits import excerpt_package
 
 
 class ResearchArtifactTests(unittest.TestCase):
+    def test_stan_original_context_is_explicitly_separate_and_missing_by_default(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp) / "missing"
+            original = research_artifact_evidence(root, kinds={"stan"})
+            self.assertEqual(set(original), {"stan"})
+            self.assertEqual(original["stan"]["status"], "missing_original_stan")
+            self.assertFalse(original["stan"]["original_source_hash_verified"])
+            self.assertFalse(original["stan"]["first_publication_verified"])
+            self.assertFalse(root.exists())
+
     def test_scoped_evaluation_does_not_read_unrelated_original_archives(self):
         with TemporaryDirectory() as temp, patch("finance_dashboard.research_artifacts.read_icio_evidence",
                 side_effect=AssertionError("unrelated large matrix must not be read")):

@@ -9,6 +9,7 @@ from .cvm_profits import read_cvm_sources
 from .icio import read_icio_evidence
 from .market import instruments
 from .oecd_tiva import read_tiva_evidence
+from .stan_originals import read_stan_evidence
 from .sec_holdings import read_position_source
 from .taiwan_profits import read_taiwan_sources
 from .ucits_holdings import read_ucits_sources
@@ -240,6 +241,7 @@ def research_artifact_evidence(evidence_root: Path, *, holdings_root: Path | Non
     root = Path(evidence_root)
     readers = {"icio": (lambda: read_icio_evidence(root), "invalid_original_matrix_evidence"),
                "tiva": (lambda: read_tiva_evidence(root), "invalid_original_tiva_evidence"),
+               "stan": (lambda: read_stan_evidence(root), "invalid_original_stan_evidence"),
                "cvm": (lambda: _cvm_evidence(root), "invalid_original_cvm_evidence"),
                "taiwan_profits": (lambda: _taiwan_evidence(root), "invalid_original_taiwan_profit_evidence"),
                "amne": (lambda: read_amne_evidence(root), "invalid_original_amne_evidence"),

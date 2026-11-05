@@ -93,6 +93,21 @@ def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> 
             if (candidate.get("artifact_id") not in ARTIFACT_IDS or candidate.get("source_id") not in registry
                     or not all(isinstance(candidate.get(key), str) and candidate[key].strip() for key in ("measure", "sector", "condition"))):
                 errors.append(f"{ident}: invalid native source candidate reference")
+        publisher_candidates = requirement.get("publisher_candidates", [])
+        if (not isinstance(publisher_candidates, list)
+                or (publisher_candidates and
+                    (requirement.get("input_type") != "scalar_history" or requirement.get("series_ids")))):
+            errors.append(f"{ident}: unverified publisher candidates cannot replace original bindings")
+        elif any(not isinstance(candidate, dict)
+                 or set(candidate) != {"publisher", "dataset", "source_url",
+                                       "potential_original_measure", "status", "required_original_checks"}
+                 or candidate.get("status") != "unverified_candidate"
+                 or not all(isinstance(candidate.get(key), str) and candidate[key].strip()
+                     for key in ("publisher", "dataset", "source_url",
+                                 "potential_original_measure", "required_original_checks"))
+                 or not candidate.get("source_url", "").startswith("https://")
+                 for candidate in publisher_candidates):
+            errors.append(f"{ident}: unverified publisher candidate schema invalid")
         ids = requirement.get("series_ids")
         if not isinstance(ids, list) or any(not isinstance(sid, str) for sid in ids):
             errors.append(f"{ident}: requirement source bindings must be an array")

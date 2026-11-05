@@ -2561,7 +2561,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2584,7 +2584,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2607,7 +2607,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_PRODUCTIVITY_2",
@@ -2631,7 +2631,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2694,7 +2694,7 @@
         ]
       },
       "context_series_ids": [],
-      "context_artifact_ids": ["corporate_accounts"]
+      "context_artifact_ids": ["corporate_accounts", "stan"]
     },
     {
       "id": "L02",
@@ -2718,7 +2718,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2741,7 +2741,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2764,7 +2764,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2787,7 +2787,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2810,7 +2810,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2832,7 +2832,7 @@
         "labour.us.nonfarm_labour_share_index",
         "labour.us.pwt_labour_share"
       ],
-      "context_artifact_ids": ["corporate_accounts"]
+      "context_artifact_ids": ["corporate_accounts", "stan"]
     },
     {
       "id": "L03",
@@ -2856,7 +2856,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2879,7 +2879,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2902,7 +2902,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2925,7 +2925,7 @@
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
             "artifact_ids": [],
-            "source_candidates": [
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2955,7 +2955,9 @@
                 "source_id": "profit.oecd38.corporate_gross_surplus_gdp",
                 "sector": "S11",
                 "condition": "Select and verify common NOS, net fixed capital, employee compensation and CFC perimeter, currency and years before binding sector GVA."
-              },
+              }
+            ],
+            "publisher_candidates": [
               {
                 "publisher": "OECD",
                 "dataset": "OECD_STAN_2025",
@@ -2973,7 +2975,7 @@
         "profit.eu27.nonfinancial_gross_surplus_value_added",
         "profit.oecd38.corporate_gross_surplus_gdp"
       ],
-      "context_artifact_ids": ["corporate_accounts"]
+      "context_artifact_ids": ["corporate_accounts", "stan"]
     },
     {
       "id": "L04",
