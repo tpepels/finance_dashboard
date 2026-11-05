@@ -388,9 +388,6 @@ class MaintenanceManager:
                             result = backfill_batch(
                                 start,end,sorted(VINTAGE_IDS),api_key=key,
                                 client=client,max_requests=180,
-                                # Stay below FRED's 120 requests/minute limit:
-                                # https://fred.stlouisfed.org/docs/api/fred/errors.html
-                                pause_seconds=0.6,
                                 first_available=available_since,
                                 skip_failed=attempted_failed)
                             downloaded += result["downloaded_now"]
@@ -565,8 +562,6 @@ class MaintenanceManager:
                 while not cancelled.is_set():
                     result=backfill_batch(start,end,options["series_ids"],
                         api_key=key, client=client,
-                        # Same bounded spacing as full history synchronization.
-                        pause_seconds=0.6, first_available=available_since,
                         max_requests=options["max_requests"])
                     total_captured += result["downloaded_now"]
                     cycles+=1
