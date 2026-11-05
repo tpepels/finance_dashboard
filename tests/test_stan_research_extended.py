@@ -128,7 +128,10 @@ class IndependentOriginalComparisonTests(unittest.TestCase):
             self.assertFalse(report["cross_scope_join_performed"])
             self.assertFalse(result["cross_scope_reconciliation"][
                 "identities_computed_from_joined_scopes"])
-            self.assertEqual(result["scope_audits"][0]["identity_checks"][
+            old_scope = next(
+                s for s in result["scope_audits"]
+                if s["scope"] == "measure-B1G+D1+P51C+D29X39")
+            self.assertEqual(old_scope["identity_checks"][
                 "net_surplus_and_mixed_income"]["eligible_matched_industry_years"], 0)
 
     def test_cross_original_currency_incompatibility_is_counted(self):
