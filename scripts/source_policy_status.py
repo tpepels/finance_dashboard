@@ -55,6 +55,11 @@ def main(argv=None):
                 row["id"] for row in report["publishers"]
                 if not row["automated_download_allowed"]
             ],
+            "operator_acknowledgement_required": [
+                row["id"] for row in report["publishers"]
+                if row.get("require_direct_network_ack")
+                and not row.get("operator_acknowledged")
+            ],
             "publisher_requests_recorded": report["requests_recorded"],
             "catalog_references_classified": report[
                 "catalog_source_reference_coverage"]["source_references_classified"],
