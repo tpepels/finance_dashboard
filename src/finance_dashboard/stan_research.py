@@ -141,6 +141,7 @@ def audit_stan_originals(root: Path, *, countries: tuple[str, ...]) -> dict:
                            "scope_audits": []})
             continue
         scopes = []
+        verified_rows = []
         for scope in country_evidence["source_scopes"]:
             measures = tuple(scope["scope"].removeprefix("measure-").split("+"))
             raw = read_verified_stan_scope_csv(
@@ -152,8 +153,9 @@ def audit_stan_originals(root: Path, *, countries: tuple[str, ...]) -> dict:
                 "original_response_sha256": scope["original_response_sha256"],
                 **audit_stan_scope(raw, measures=measures),
             })
+            verified_rows.append((scope, _source_value_rows(raw)))
         comparison = reconcile_stan_source_scopes(
-            root, country=country, scopes=country_evidence["source_scopes"])
+            country=country, verified_scope_rows=verified_rows)
         report.append({
             "country": country, "status": "verified_independent_scope_audits",
             "scope_audits": scopes,
@@ -254,22 +256,15 @@ def _source_value_rows(raw: bytes) -> dict[tuple[str, int, str], tuple]:
 
 
 def reconcile_stan_source_scopes(
-        root: Path, *, country: str, scopes: list[dict]) -> dict:
-    """Independently compare overlapping original values, without joining them.
+        *, country: str, verified_scope_rows: list[tuple[dict, dict]]) -> dict:
+    """Compare overlapping independently verified originals without merging.
 
-    Every scope is reverified before reading. Mismatches between retrievals
-    remain explicit and cannot serve as a five-measure same-release identity.
+    The caller supplies rows from the original verified in this same audit
+    pass, so large archives do not require a redundant third full read.
     """
-    from itertools import combinations
     results = []
-    entries = []
-    for scope in scopes:
-        measures = tuple(scope["scope"].removeprefix("measure-").split("+"))
-        raw = read_verified_stan_scope_csv(
-            root, country=country, start_year=scope["requested_since"],
-            measures=measures)
-        entries.append((scope, _source_value_rows(raw)))
-    for (left, left_values), (right, right_values) in combinations(entries, 2):
+    for (left, left_values), (right, right_values) in combinations(
+            verified_scope_rows, 2):
         overlap = sorted(left_values.keys() & right_values.keys())
         numeric_changes = unit_changes = flag_changes = equal = 0
         examples = []
@@ -308,7 +303,7 @@ def reconcile_stan_source_scopes(
             "release_vintage_agreement_established": False,
         })
     return {
-        "distinct_original_scope_count": len(scopes),
+        "distinct_original_scope_count": len(verified_scope_rows),
         "compared_scope_pairs": len(results),
         "comparisons": results,
         "cross_scope_values_merged": False,
