@@ -116,13 +116,16 @@ class PolicyRegistry:
                 raise PolicyViolation(rule_id, "invalid_hostname")
         needed = ("limit", "window_seconds", "min_spacing_seconds",
                   "max_concurrent", "cooldown_429_seconds",
-                  "cooldown_503_seconds", "lease_seconds")
+                  "cooldown_503_seconds", "cooldown_access_denied_seconds",
+                  "cooldown_other_5xx_seconds", "lease_seconds")
         if any(not isinstance(rate.get(k), (int, float)) for k in needed):
             raise PolicyViolation(rule_id, "invalid_rate_schema")
         if (rate["limit"] < 1 or rate["window_seconds"] < 1
                 or rate["max_concurrent"] < 1 or rate["lease_seconds"] < 1
-                or any(rate[k] < 0 for k in ("min_spacing_seconds",
-                    "cooldown_429_seconds", "cooldown_503_seconds"))):
+                or any(rate[k] < 0 for k in (
+                    "min_spacing_seconds", "cooldown_429_seconds",
+                    "cooldown_503_seconds", "cooldown_access_denied_seconds",
+                    "cooldown_other_5xx_seconds"))):
             raise PolicyViolation(rule_id, "invalid_rate_bounds")
         if (not isinstance(restrictions.get("methods"), list)
                 or not restrictions["methods"]
@@ -360,11 +363,15 @@ class SourcePolicyGate:
             conn.execute("BEGIN IMMEDIATE")
             conn.execute("DELETE FROM leases WHERE id = ? AND policy_id = ?",
                          (lease, policy_id))
-            if status in (429, 503):
+            if status in (401, 403, 429) or (status is not None and status >= 500):
                 rule = self.registry.by_id[policy_id]
                 now = self.clock()
-                default = (rule.rate["cooldown_429_seconds"] if status == 429
-                           else rule.rate["cooldown_503_seconds"])
+                default = (
+                    rule.rate["cooldown_429_seconds"] if status == 429 else
+                    rule.rate["cooldown_503_seconds"] if status == 503 else
+                    rule.rate["cooldown_access_denied_seconds"]
+                    if status in (401, 403) else
+                    rule.rate["cooldown_other_5xx_seconds"])
                 after = self._retry_after(headers or {}, now)
                 until = max(now + default, after)
                 conn.execute(
@@ -394,7 +401,7 @@ class SourcePolicyGate:
         lease, policy_id = entry
         # A publisher block must be persisted before any subsequent request,
         # even if the caller never consumes the error response body.
-        if response.status_code in (429, 503):
+        if response.status_code in (401, 403, 429) or response.status_code >= 500:
             self.release(lease, policy_id, status=response.status_code,
                          headers=response.headers)
             return
