@@ -74,7 +74,7 @@ class BisTests(unittest.TestCase):
             return httpx.Response(200, json=fixture())
         transport = httpx.MockTransport(handler)
         with httpx.Client(transport=transport) as client:
-            result = BisPolicyClient(client, retries=0).fetch("policy_rate.us.bis", date(2026, 1, 1))
+            result = BisPolicyClient(client).fetch("policy_rate.us.bis", date(2026, 1, 1))
         self.assertEqual(seen["accept"], ACCEPT)
         self.assertIn("D.US", seen["url"])
         self.assertIn("startPeriod=2026-01-01", seen["url"])
@@ -83,7 +83,7 @@ class BisTests(unittest.TestCase):
     def test_provider_http_error_is_not_silenced(self):
         with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(404))) as client:
             with self.assertRaises(httpx.HTTPStatusError):
-                BisPolicyClient(client, retries=0).fetch("policy_rate.us.bis")
+                BisPolicyClient(client).fetch("policy_rate.us.bis")
 
     def test_no_unbounded_retry(self):
         calls = []
@@ -92,7 +92,7 @@ class BisTests(unittest.TestCase):
             return httpx.Response(503)
         with httpx.Client(transport=httpx.MockTransport(handler)) as client:
             with self.assertRaises(httpx.HTTPStatusError):
-                BisPolicyClient(client, retries=0).fetch("policy_rate.us.bis")
+                BisPolicyClient(client).fetch("policy_rate.us.bis")
         self.assertEqual(len(calls), 1)
 
 
