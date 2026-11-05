@@ -20,7 +20,6 @@ from io import StringIO
 import json
 import os
 from pathlib import Path
-import time
 from typing import Any
 
 import httpx
@@ -221,16 +220,13 @@ def parse_world_gdp(payload: Any) -> dict[int, Decimal]:
 
 
 class WisesheetsClient:
-    def __init__(self, key: str | None = None, client: httpx.Client | None = None,
-                 min_request_spacing: float = 0.34):
+    def __init__(self, key: str | None = None, client: httpx.Client | None = None):
         key = key or os.environ.get("WISESHEETS_API_KEY")
         if not key:
             raise WisesheetsError("WISESHEETS_API_KEY is required")
         self._own = client is None
         self.client = client or managed_client(timeout=30)
         self.headers = {"Authorization": f"Bearer {key}", "Accept": "application/json"}
-        self.spacing = min_request_spacing
-        self.last_request = 0.0
         self.requests_made = 0
 
     def close(self):
@@ -238,17 +234,12 @@ class WisesheetsClient:
             self.client.close()
 
     def _request(self, url: str, *, params: dict | None = None, authenticated: bool = True) -> Any:
-        if authenticated:
-            wait = self.spacing - (time.monotonic() - self.last_request)
-            if wait > 0:
-                time.sleep(wait)
         try:
             response = self.client.get(url, params=params,
                                        headers=self.headers if authenticated else {"Accept": "application/json"})
         except httpx.HTTPError as exc:
             raise WisesheetsError("Provider transport error; details redacted") from None
         if authenticated:
-            self.last_request = time.monotonic()
             self.requests_made += 1
         if response.status_code != 200:
             raise WisesheetsError(f"Provider refused request with status {response.status_code}")
