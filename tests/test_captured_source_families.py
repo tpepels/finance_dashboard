@@ -20,7 +20,7 @@ from finance_dashboard.database import Base,make_engine
 from finance_dashboard.providers import ProviderRouter,PINK_SHEET_URL
 from finance_dashboard.remaining_sources import BEA_Q_URL
 from finance_dashboard.service import IngestionService,current_observations
-from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_reconciliation import EvidenceError,reconcile
 
 FIXTURE=Path(__file__).parent/'fixtures/native_source_families'
@@ -141,7 +141,7 @@ class CapturedSourceFamilyTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root=Path(tmp);url='sqlite:///'+str(root/'history.db');engine=make_engine(url);Base.metadata.create_all(engine)
             with httpx.Client(transport=httpx.MockTransport(source)) as http:
-                service=IngestionService(engine,CapturedProvider(ProviderRouter(http),root))
+                service=IngestionService(engine,SourceAcquisition(ProviderRouter(http),root))
                 for sid in ids:
                     first=service.refresh(sid,full=True);repeat=service.refresh(sid,full=True)
                     self.assertGreater(first['versions_added'],0)
@@ -182,7 +182,7 @@ class CapturedSourceFamilyTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root=Path(tmp);url='sqlite:///'+str(root/'daily.db');engine=make_engine(url);Base.metadata.create_all(engine)
             with httpx.Client(transport=httpx.MockTransport(source)) as http:
-                service=IngestionService(engine,CapturedProvider(ProviderRouter(http),root))
+                service=IngestionService(engine,SourceAcquisition(ProviderRouter(http),root))
                 for sid in ids: self.assertGreater(service.refresh(sid,full=True)['received'],1)
             report=reconcile(url,root,ids)
             self.assertTrue(report['passed'],report)
