@@ -56,6 +56,11 @@ def main(argv=None):
                 if not row["automated_download_allowed"]
             ],
             "publisher_requests_recorded": report["requests_recorded"],
+            "catalog_references_classified": report[
+                "catalog_source_reference_coverage"]["source_references_classified"],
+            "catalog_reference_issues": report[
+                "catalog_source_reference_coverage"][
+                    "unclassified_or_invalid_source_references"],
         }
     print(json.dumps(report, separators=(",", ":") if args.brief else None,
                      indent=None if args.brief else 2))
