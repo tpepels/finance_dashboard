@@ -19,3 +19,4 @@ frontend/.vite/
 
 # Local persistent database and credential-adjacent state
 data-local/
+.playwright-mcp/*
