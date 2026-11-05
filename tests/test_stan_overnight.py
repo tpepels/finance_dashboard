@@ -113,5 +113,46 @@ class StanOvernightTests(unittest.TestCase):
             self.assertEqual(archive.read_bytes(), b"corrupt")
 
 
+    def test_all_archived_selects_every_verified_country(self):
+        with TemporaryDirectory() as t:
+            work = Path(t)
+            evidence = work / "originals"
+            evidence.mkdir()
+            for country in ("PRT", "DEU"):
+                source = original().replace(b",PRT,", ("," + country + ",").encode())
+                store_stan_original(
+                    source, country=country, start_year=1970,
+                    root=evidence, measures=STAN_VERIFIED_PORTUGAL_MEASURES)
+            code = run([
+                "--evidence-dir", str(evidence),
+                "--report-dir", str(work / "reports"),
+                "--all-archived", "--hours", "0",
+                "--stress-groups", "20", "--skip-full-suite",
+            ])
+            self.assertEqual(code, 0)
+            report_root = work / "reports"
+            session = next(p for p in report_root.iterdir() if p.is_dir())
+            summary = json.loads((session / "summary.json").read_text())
+            self.assertEqual(summary["countries"], ["DEU", "PRT"])
+            self.assertEqual(summary["cycles_passed"], 1)
+
+    def test_reports_cannot_be_written_inside_immutable_archive(self):
+        with TemporaryDirectory() as t:
+            work = Path(t)
+            evidence = work / "originals"
+            evidence.mkdir()
+            store_stan_original(
+                original(), country="PRT", start_year=1970,
+                root=evidence, measures=STAN_VERIFIED_PORTUGAL_MEASURES)
+            with self.assertRaises(SystemExit) as raised:
+                run([
+                    "--evidence-dir", str(evidence),
+                    "--report-dir", str(evidence / "reports"),
+                    "--hours", "0", "--skip-full-suite",
+                ])
+            self.assertEqual(raised.exception.code, 2)
+            self.assertFalse((evidence / "reports").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
