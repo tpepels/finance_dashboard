@@ -11,6 +11,8 @@ import os
 import time
 
 from .providers import ProviderRouter, PROVIDER_CODES
+from .source_capture import SourceAcquisition
+from pathlib import Path
 from .catalog import load_documents
 from .database import make_engine
 from .service import IngestionService, safe_source_failure_code
@@ -77,7 +79,10 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
             if not acquired:
                 log.warning("Another process owns the ingestion refresh lock")
                 return 1
-            service = IngestionService(engine, client)
+            service = IngestionService(
+                engine, SourceAcquisition(
+                    client, Path(os.environ.get(
+                        "FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence"))))
             chosen = [sid for sid in client.supported_ids()
                       if (series_ids is None or sid in series_ids)
                       and (providers is None or client.definitions[sid]["provider"] in providers)]
