@@ -62,7 +62,8 @@ def run_alfred(self, job_id, action, options, cancelled):
         while not cancelled.is_set():
             result=backfill_batch(start,end,options["series_ids"],
                 api_key=key, client=client,
-                max_requests=options["max_requests"])
+                max_requests=options["max_requests"],
+                first_available=available_since)
             total_captured += result["downloaded_now"]
             cycles+=1
             requested=result["source_vintages_requested"]
