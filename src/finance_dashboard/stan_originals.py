@@ -31,6 +31,10 @@ STAN_FLOW = "OECD.STI.PIE,DSD_STAN@DF_STAN_2025,1.0"
 STAN_DATAFLOW_ID = "OECD.STI.PIE:DSD_STAN@DF_STAN_2025(1.0)"
 STAN_ROOT = "https://sdmx.oecd.org/public/rest/data"
 STAN_MEASURES = ("B1G", "D1", "B2N", "P51C", "D29X39")
+# Four candidate measures were confirmed in the 2026-11-05 Portugal probe.
+# B2N returned no selection for PRT/_T/2020. Never assume it is absent
+# historically or insert zeros; archive four-measure evidence as partial.
+STAN_VERIFIED_PORTUGAL_MEASURES = ("B1G", "D1", "P51C", "D29X39")
 STAN_FIELDS = frozenset({
     "FREQ", "REF_AREA", "ACTIVITY", "MEASURE", "PRICE_BASE",
     "UNIT_MEASURE", "TIME_PERIOD", "OBS_VALUE",
@@ -67,11 +71,15 @@ def stan_source_request(country: str, start_year: int = 1970, *,
     return (f"{STAN_ROOT}/{STAN_FLOW}/{key}", params)
 
 
-def stan_source_identity(country: str, start_year: int) -> dict:
-    url, _ = stan_source_request(country, start_year)
+def stan_source_identity(country: str, start_year: int, *,
+                         measures: tuple[str, ...] | None = None) -> dict:
+    selection = STAN_MEASURES if measures is None else tuple(measures)
+    url, _ = stan_source_request(country, start_year, measures=selection)
     return {"provider": "OECD_STAN", "country": country,
             "source_key": STAN_FLOW + "/" + url.split(STAN_FLOW + "/", 1)[-1],
-            "requested_since": start_year}
+            "requested_since": start_year,
+            "native_measures": list(selection)}
+
 
 
 def parse_stan_original_csv(raw: bytes, *, country: str, start_year: int,
@@ -117,9 +125,9 @@ def parse_stan_original_csv(raw: bytes, *, country: str, start_year: int,
                 or row["PRICE_BASE"] != "V" or row["UNIT_MEASURE"] != "XDC"
                 or transaction not in allowed_measures
                 or (expected_activity is not None and activity != expected_activity)
-                or (end_year is not None and int(period) > end_year)
                 or not re.fullmatch(r"[A-Z0-9_]{1,32}", activity)
                 or not re.fullmatch(r"[0-9]{4}", period)
+                or (end_year is not None and int(period) > end_year)
                 or not start_year <= int(period) <= date.today().year):
             raise ProviderError("STAN source dimension identity is inconsistent")
         if "DATAFLOW" in fields and row["DATAFLOW"] != STAN_DATAFLOW_ID:
@@ -207,25 +215,38 @@ def parse_stan_original_csv(raw: bytes, *, country: str, start_year: int,
     }
 
 
-def _source_parent(root: Path, country: str, start_year: int) -> Path:
-    return Path(root) / "stan-2025" / country / str(start_year)
+def _source_parent(root: Path, country: str, start_year: int,
+                   measures: tuple[str, ...] | None = None) -> Path:
+    """Isolate each native selection; one receipt directory per source identity."""
+    selection = STAN_MEASURES if measures is None else tuple(measures)
+    stan_source_request(country, start_year, measures=selection)
+    return Path(root) / "stan-2025" / country / str(start_year) / (
+        "measure-" + "+".join(selection))
 
 
-def store_stan_original(raw: bytes, *, country: str, start_year: int, root: Path) -> dict:
+
+def store_stan_original(raw: bytes, *, country: str, start_year: int, root: Path,
+                        measures: tuple[str, ...] | None = None) -> dict:
     """Atomically retain a checked original + hashed provenance; append receipt."""
-    facts = parse_stan_original_csv(raw, country=country, start_year=start_year)
+    selection = STAN_MEASURES if measures is None else tuple(measures)
+    facts = parse_stan_original_csv(
+        raw, country=country, start_year=start_year, expected_measures=selection)
     root = Path(root)
     if not root.is_dir() or root.is_symlink():
         raise ProviderError("Existing original evidence root required")
-    identity = stan_source_identity(country, start_year)
-    url, query = stan_source_request(country, start_year)
+    identity = stan_source_identity(country, start_year, measures=selection)
+    url, query = stan_source_request(country, start_year, measures=selection)
+    # The acquisition requests SDMX flat CSV explicitly. Record the exact
+    # non-sensitive query format alongside the native source key.
+    query = {**query, "format": "csvfile"}
     digest = sha256(raw).hexdigest()
     content = {"source_identity": identity, "original_sha256": digest,
                "original_bytes": len(raw), "facts_sha256": sha256(canonical_bytes(facts)).hexdigest()}
     bundle_digest = sha256(canonical_bytes(content)).hexdigest()
-    parent = _source_parent(root, country, start_year)
+    parent = _source_parent(root, country, start_year, selection)
     if (parent.is_symlink() or parent.parent.is_symlink()
-            or parent.parent.parent.is_symlink()):
+            or parent.parent.parent.is_symlink()
+            or parent.parent.parent.parent.is_symlink()):
         raise ProviderError("Original STAN archive folder is a symbolic link")
     parent.mkdir(parents=True, exist_ok=True)
     bundle = parent / bundle_digest
@@ -249,7 +270,8 @@ def store_stan_original(raw: bytes, *, country: str, start_year: int, root: Path
                 "content_identity": content,
                 "source_url": url,
                 "source_request_parameters": query,
-                "scope": "all_reported_years_from_requested_start",
+                "scope": "selected_native_measures_all_industries_from_requested_start",
+                "requested_native_measures": list(selection),
                 "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
                 "original": {"file": "original.csv", "sha256": digest, "bytes": len(raw)},
                 "facts": facts,
@@ -274,107 +296,140 @@ def store_stan_original(raw: bytes, *, country: str, start_year: int, root: Path
             shutil.rmtree(staged)
 
 
-def read_stan_evidence(root: Path, *, countries: tuple[str, ...] | None = None) -> dict:
-    """Rehash original bytes and recompute claims from the same canonical parser.
+def _read_stan_scope(root: Path, country: str, start_year: int,
+                     selection: tuple[str, ...]) -> dict:
+    """Independently hash and parse one exact publisher selection and its receipts."""
+    folder = _source_parent(root, country, start_year, selection)
+    receipts = folder / "retrievals"
+    if not receipts.is_dir() or receipts.is_symlink() or folder.is_symlink():
+        raise EvidenceError("source_receipt_invalid")
+    files = sorted(p for p in receipts.glob("*.json") if not p.name.startswith("."))
+    if not files:
+        raise EvidenceError("missing_evidence")
+    identity = stan_source_identity(country, start_year, measures=selection)
+    # _selected_manifest rejects even a single mismatched or tampered receipt.
+    observed, manifest_hash, path, manifest, method = _selected_manifest(folder, identity)
+    if method != "acquisition_receipt" or manifest.get("source_identity") != identity:
+        raise EvidenceError("source_identity_mismatch")
+    if (manifest.get("requested_native_measures") != list(selection)
+            or manifest.get("source_url") != stan_source_request(
+                country, start_year, measures=selection)[0]
+            or manifest.get("source_request_parameters") != {
+                **stan_source_request(country, start_year, measures=selection)[1],
+                "format": "csvfile",
+            }):
+        raise EvidenceError("source_identity_mismatch")
+    raw, digest = _original_file(
+        path.parent, manifest["original"], "original.csv", binary=True)
+    facts = parse_stan_original_csv(
+        raw, country=country, start_year=start_year,
+        expected_measures=selection)
+    content = manifest.get("content_identity", {})
+    if (facts != manifest.get("facts")
+            or content.get("source_identity") != identity
+            or content.get("original_sha256") != digest
+            or content.get("facts_sha256") != sha256(canonical_bytes(facts)).hexdigest()):
+        raise EvidenceError("source_values_mismatch")
+    return {
+        "scope": "measure-" + "+".join(selection),
+        "requested_since": start_year,
+        "source_manifest_sha256": manifest_hash,
+        "original_response_sha256": digest,
+        "selection_method": method,
+        "retrieval_time": observed.isoformat(),
+        "numeric_observations": facts["numeric_observations"],
+        "native_measure_counts": facts["native_measure_observation_counts"],
+        "industry_count": facts["reported_industries"],
+        "years": facts["reported_years"],
+        "native_status_flag_counts": facts["native_status_flag_counts"],
+        "missing_candidate_measures": facts["missing_candidate_measures"],
+        "matched_five_measure_industry_years": facts["matched_five_measure_industry_years"],
+        "income_identity_residuals_nonzero": facts["nonzero_nominal_income_identity_residuals"],
+        "first_publication_verified": False,
+    }
 
-    A failed country does not erase independent, valid country evidence. This
-    reader does not trust metadata counts or create macro-series bindings.
+
+def read_stan_evidence(root: Path, *, countries: tuple[str, ...] | None = None) -> dict:
+    """Rehash each native scope independently; never merge partial series as truth.
+
+    Original publisher responses can differ by measure selection and historical
+    start date. The reader verifies every discovered scope and rejects an entire
+    country's certification on any invalid archive rather than ignoring it.
     """
     root = Path(root)
+    archive = root / "stan-2025"
+    if archive.is_symlink():
+        raise ValueError("STAN archive symbolic link")
     if countries is None:
-        archive = root / "stan-2025"
-        if archive.is_symlink():
-            raise ValueError("STAN archive symbolic link")
         countries = tuple(sorted(
-            p.name for p in archive.iterdir() if p.is_dir()
-            and p.name in OECD_MEMBER_ISO3
+            p.name for p in archive.iterdir() if p.is_dir() and
+            p.name in OECD_MEMBER_ISO3
         )) if archive.is_dir() else ()
     results = []
     for country in countries:
         if country not in OECD_MEMBER_ISO3:
             raise ValueError("Invalid OECD STAN country scope")
-        country_parent = root / "stan-2025" / country
-        if not country_parent.is_dir():
+        country_dir = archive / country
+        if not country_dir.is_dir():
             results.append({"country": country, "status": "missing_original_stan"})
             continue
+        starts, evidence, errors = set(), [], []
         try:
-            if country_parent.is_symlink():
+            if country_dir.is_symlink():
                 raise EvidenceError("source_directory_invalid")
-            starts = sorted(
-                int(folder.name) for folder in country_parent.iterdir()
-                if folder.is_dir() and re.fullmatch(r"[0-9]{4}", folder.name)
-            )
-            if not starts:
+            years = sorted(
+                p for p in country_dir.iterdir()
+                if p.is_dir() and re.fullmatch(r"[0-9]{4}", p.name))
+            if not years:
                 raise EvidenceError("missing_evidence")
-            # Prefer the widest available original history, not a narrower
-            # recent probe. Each acquisition start retains independent receipts.
-            start_year = min(starts)
-            parent = _source_parent(root, country, start_year)
-            receipt_files = parent / "retrievals"
-            if not receipt_files.is_dir() or receipt_files.is_symlink():
-                raise EvidenceError("source_receipt_invalid")
-            # The published retrieval has its own source key/start year.
-            # Source identity is loaded for the country, then verified by the
-            # same _selected_manifest/receipt routine as other originals.
-            retrievals = sorted(p for p in receipt_files.glob("*.json") if not p.name.startswith("."))
-            if not retrievals:
-                raise EvidenceError("missing_evidence")
-            # Read receipt identity only to select the fixed validated source scope;
-            # _selected_manifest independently verifies every receipt and hash.
-            identities = set()
-            for path in retrievals:
-                if path.is_symlink():
-                    raise EvidenceError("source_receipt_invalid")
-                receipt = json.loads(path.read_bytes())
-                identity = receipt["source_identity"]
-                if not (isinstance(identity, dict) and identity.get("country") == country
-                        and identity.get("provider") == "OECD_STAN"
-                        and isinstance(identity.get("requested_since"), int)):
-                    raise EvidenceError("source_identity_mismatch")
-                identities.add(canonical_bytes(identity))
-            if len(identities) != 1:
-                raise EvidenceError("inconsistent_original_stan_scope")
-            identity = json.loads(next(iter(identities)))
-            expected = stan_source_identity(country, identity["requested_since"])
-            if identity != expected:
-                raise EvidenceError("source_identity_mismatch")
-            retrieved, manifest_sha, manifest_path, manifest, selection = _selected_manifest(
-                parent, identity)
-            if selection != "acquisition_receipt" or manifest.get("source_identity") != identity:
-                raise EvidenceError("source_identity_mismatch")
-            raw, raw_hash = _original_file(
-                manifest_path.parent, manifest["original"], "original.csv", binary=True)
-            if not isinstance(manifest.get("facts"), dict):
-                raise EvidenceError("source_schema_invalid")
-            facts = parse_stan_original_csv(
-                raw, country=country, start_year=identity["requested_since"])
-            if (facts != manifest["facts"]
-                    or manifest["content_identity"]["original_sha256"] != raw_hash
-                    or manifest["content_identity"]["facts_sha256"] !=
-                    sha256(canonical_bytes(facts)).hexdigest()):
-                raise EvidenceError("source_values_mismatch")
-            results.append({
-                "country": country, "status": "verified_original_stan_partial",
-                "requested_since": start_year,
-                "available_requested_starts": starts,
-                "source_manifest_sha256": manifest_sha,
-                "original_response_sha256": raw_hash,
-                "selection_method": selection,
-                "observations": facts["numeric_observations"],
-                "industry_count": facts["reported_industries"],
-                "years": facts["reported_years"],
-                "missing_candidate_measures": facts["missing_candidate_measures"],
-                "native_status_flag_counts": facts["native_status_flag_counts"],
-                "income_identity_residuals_nonzero":
-                    facts["nonzero_nominal_income_identity_residuals"],
-                "matched_five_measure_industry_years":
-                    facts["matched_five_measure_industry_years"],
-                "original_role_bindings_created": 0,
-                "first_publication_verified": False,
-            })
+            for year_dir in years:
+                if year_dir.is_symlink():
+                    raise EvidenceError("source_directory_invalid")
+                start_year = int(year_dir.name)
+                starts.add(start_year)
+                scopes = sorted(year_dir.iterdir())
+                if not scopes:
+                    raise EvidenceError("missing_evidence")
+                for scoped_dir in scopes:
+                    if scoped_dir.is_symlink() or not scoped_dir.is_dir():
+                        raise EvidenceError("source_directory_invalid")
+                    if not scoped_dir.name.startswith("measure-"):
+                        raise EvidenceError("source_directory_invalid")
+                    selection = tuple(scoped_dir.name.removeprefix("measure-").split("+"))
+                    try:
+                        stan_source_request(country, start_year, measures=selection)
+                        evidence.append(_read_stan_scope(root, country, start_year, selection))
+                    except (EvidenceError, ProviderError, OSError, KeyError, TypeError,
+                            ValueError, json.JSONDecodeError):
+                        errors.append({"start_year": start_year,
+                                       "scope": scoped_dir.name, "status": "invalid_original_stan"})
         except (EvidenceError, ProviderError, OSError, KeyError, TypeError,
                 ValueError, json.JSONDecodeError):
-            results.append({"country": country, "status": "invalid_original_stan"})
+            errors.append({"status": "invalid_original_stan_scope"})
+        if errors:
+            results.append({"country": country, "status": "invalid_original_stan",
+                            "scope_errors": errors,
+                            "verified_scopes_not_certified": len(evidence)})
+            continue
+        if not evidence:
+            results.append({"country": country, "status": "missing_original_stan"})
+            continue
+        # Observations/years are reported by scope, not naively added across
+        # overlapping publication requests. No implicit cross-source joins.
+        covered = {measure for scope in evidence
+                   for measure in scope["native_measure_counts"]}
+        results.append({
+            "country": country, "status": "verified_original_stan_partial",
+            "requested_since": min(starts),
+            "available_requested_starts": sorted(starts),
+            "source_scopes": evidence,
+            "observations": sum(scope["numeric_observations"] for scope in evidence),
+            "scope_observations_may_overlap": len(evidence) > 1,
+            "covered_native_measures": sorted(covered),
+            "missing_candidate_measures": sorted(set(STAN_MEASURES) - covered),
+            "original_role_bindings_created": 0,
+            "first_publication_verified": False,
+        })
     verified = [item for item in results if item["status"] == "verified_original_stan_partial"]
     return {
         "status": "verified_original_stan_partial" if verified else

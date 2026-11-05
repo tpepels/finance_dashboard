@@ -69,15 +69,42 @@ without exposing publisher HTML errors, creating source bindings, modifying
 SQLite or archiving unverified inputs. Publisher backpressure (429/503)
 stops further requests.
 
-The existing `--acquire` mode still supports native country-by-country
-full-history retrieval and immutable publisher CSV/manifest/receipt archival,
-but a failed publisher request never becomes a successful archive. Do not
-run large 1970-to-present all-industry requests across all OECD countries
-until the bounded control and individual measures have been verified.
-Without either `--diagnose` or `--acquire`, the command only rehashes
-the retained originals. Matching labour-hours, self-employed compensation,
-pure net operating surplus, current-cost net produced capital stock, and
-first-publication vintages remain unresolved for L01–L03.
+After the **2026-11-05 live diagnostic**, four original measures were
+retrievable for Portugal in 2020: B1G, D1, P51C, D29X39. The candidate B2N
+returned **HTTP 404 for PRT/_T/2020** (which is not proof of absence across
+industries/years); the final combined query returned **HTTP 429**. OECD
+documents a limit of **60 data downloads per hour** and discourages
+unnecessary repeated requests; VPN traffic may also be restricted:
+<https://www.oecd.org/en/data/insights/data-explainers/2024/11/Api-best-practices-and-recommendations.html>.
+
+The standard `--acquire` operation now requests the **four verified
+Portugal candidate codes** in a single multi-industry, historical query per
+country. It never fills missing B2N data and never claims a complete labour,
+income or capital accounting matrix. Original responses, full requested
+measure selections, request keys and source identities are archived under
+separate native-measure scopes. Receipt verification re-hashes each original
+response and re-parses the same native dimensions. Previously validated
+same-scope archives are reused without another OECD request.
+
+From the development machine, after the publisher rate limit has cleared:
+
+```sh
+docker compose exec -T finance-dashboard \
+  python scripts/phase2_stan_sources.py \
+  --evidence-dir /data/source-evidence \
+  --countries PRT --since 1970-01-01 --acquire
+```
+
+To request a different selection explicitly use `--measures B1G D1 B2N P51C D29X39`,
+without pretending the unsupported B2N 2020 selection is an original
+operating-surplus source. A 429 or 503 ends the batch and marks unrequested
+countries as deferred. No automatic retry loop or artificial imputation is
+permitted. Successfully verified partial archives remain readable and all
+missing candidate measures, observed years, native observation status flags
+and the unavailable scientific-role bindings are exposed. Do not rerun the
+eight-request `--diagnose` sequence; retain the 2026-11-05 probe results.
+A full history is not certified merely because `--since 1970` was
+requested; it must be verified from actual source periods and native dimensions.
 
 Use `PYTHONPATH=src python scripts/phase2_corpus_status.py --candidates` to see the original dataset investigations for L01–L03. These are unverified publisher candidates; no empty source bindings are filled and no analysis is certified by the candidate list. After a native acquisition, summarize the saved JSON report without copying its full contents:
 

@@ -9,7 +9,8 @@ import unittest
 import httpx
 
 from finance_dashboard.stan_originals import (
-    STAN_DATAFLOW_ID, parse_stan_original_csv, read_stan_evidence,
+    STAN_DATAFLOW_ID, STAN_VERIFIED_PORTUGAL_MEASURES,
+    parse_stan_original_csv, read_stan_evidence,
     stan_source_request, store_stan_original,
 )
 from finance_dashboard.research_artifacts import research_artifact_evidence
@@ -132,7 +133,8 @@ class StanOriginalTests(unittest.TestCase):
             first = store_stan_original(raw, country="PRT", start_year=2024, root=root)
             again = store_stan_original(raw, country="PRT", start_year=2024, root=root)
             self.assertEqual(first["bundle_digest"], again["bundle_digest"])
-            bundle = root / "stan-2025" / "PRT" / "2024" / first["bundle_digest"]
+            bundle = (root / "stan-2025" / "PRT" / "2024" /
+                      "measure-B1G+D1+B2N+P51C+D29X39" / first["bundle_digest"])
             self.assertEqual((bundle / "original.csv").read_bytes(), raw)
             self.assertEqual(first["original_response_sha256"], sha256(raw).hexdigest())
             self.assertEqual(len(list((bundle.parent / "retrievals").glob("*.json"))), 2)
@@ -165,6 +167,49 @@ class StanOriginalTests(unittest.TestCase):
             self.assertEqual(evidence["country_results"][0]["available_requested_starts"],
                              [1970, 2024])
 
+    def test_distinct_measure_scopes_preserve_originals_and_rehash_every_scope(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            four = example(skip=("B2N",))
+            scope = store_stan_original(
+                four, country="PRT", start_year=2024, root=root,
+                measures=STAN_VERIFIED_PORTUGAL_MEASURES)
+            full = store_stan_original(
+                example(), country="PRT", start_year=2024, root=root)
+            self.assertNotEqual(scope["bundle_digest"], full["bundle_digest"])
+            result = read_stan_evidence(root, countries=("PRT",))
+            self.assertEqual(result["country_count"], 1)
+            report = result["country_results"][0]
+            self.assertEqual(len(report["source_scopes"]), 2)
+            self.assertFalse(report["missing_candidate_measures"])
+            self.assertTrue(report["scope_observations_may_overlap"])
+            self.assertFalse(result["native_values_aggregated"])
+            self.assertFalse(result["full_history_verified"])
+            # Any altered original makes the entire country archive invalid.
+            four_path = (root / "stan-2025" / "PRT" / "2024" /
+                         "measure-B1G+D1+P51C+D29X39" /
+                         scope["bundle_digest"] / "original.csv")
+            four_path.write_bytes(b"tampered")
+            invalid = read_stan_evidence(root, countries=("PRT",))
+            self.assertEqual(invalid["country_count"], 0)
+            self.assertEqual(invalid["country_results"][0]["status"],
+                             "invalid_original_stan")
+
+    def test_partial_archive_keeps_b2n_unresolved_in_scientific_readiness(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            stored = store_stan_original(
+                example(skip=("B2N",)), country="PRT", start_year=2024,
+                root=root, measures=STAN_VERIFIED_PORTUGAL_MEASURES)
+            self.assertEqual(stored["facts"]["missing_candidate_measures"], ["B2N"])
+            inspected = read_stan_evidence(root, countries=("PRT",))
+            self.assertEqual(inspected["country_results"][0][
+                "covered_native_measures"], sorted(STAN_VERIFIED_PORTUGAL_MEASURES))
+            self.assertEqual(inspected["country_results"][0][
+                "missing_candidate_measures"], ["B2N"])
+            self.assertFalse(inspected["first_publication_verified"])
+            self.assertFalse(inspected["complete_same_industry_compensation_capital_matrix_verified"])
+
     def test_missing_root_is_read_only_and_explicit(self):
         with TemporaryDirectory() as temp:
             root = Path(temp) / "not-present"
@@ -174,7 +219,7 @@ class StanOriginalTests(unittest.TestCase):
             self.assertFalse(data["original_source_hash_verified"])
 
     def test_cli_acquires_originals_without_database_rows_or_foreign_source_data(self):
-        raw = example()
+        raw = example(skip=("B2N",))
         calls = []
         def respondent(request):
             calls.append(str(request.url))
@@ -188,6 +233,11 @@ class StanOriginalTests(unittest.TestCase):
             self.assertEqual(report["original_responses_archived"], 1)
             self.assertEqual(report["acquisition_failures"], 1)
             self.assertEqual(report["source_evidence"]["country_count"], 1)
+            self.assertEqual(report["requested_native_measures"],
+                             list(STAN_VERIFIED_PORTUGAL_MEASURES))
+            self.assertEqual(report["unresolved_candidate_measures"], ["B2N"])
+            self.assertEqual(report["source_evidence"]["country_results"][0][
+                "missing_candidate_measures"], ["B2N"])
             self.assertFalse(report["scientific_analysis_certified"])
             self.assertTrue(report["no_macro_database_writes"])
             self.assertFalse(any(p.suffix in {".db", ".sqlite3"} for p in root.rglob("*")))
