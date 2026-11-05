@@ -14,6 +14,7 @@ from .database import (
 )
 from .market import EcbFxClient, MarketDataError, MarketHistory, PriceBar, YahooMarketClient, instruments, performance
 from .service import safe_source_failure_code
+from .source_policy import PolicyDeferred
 
 
 def _price_values(row):
@@ -155,7 +156,7 @@ class MarketIngestionService:
         except Exception as exc:
             with Session(self.engine) as session, session.begin():
                 run = session.get(MarketIngestionRun, run_id)
-                run.status = "failed"
+                run.status = "deferred" if isinstance(exc, PolicyDeferred) else "failed"
                 run.ended_at = now_utc()
                 run.error = safe_source_failure_code(exc)
             raise
@@ -205,7 +206,7 @@ class MarketIngestionService:
         except Exception as exc:
             with Session(self.engine) as session, session.begin():
                 run=session.get(FxIngestionRun,run_id)
-                run.status="failed"
+                run.status="deferred" if isinstance(exc, PolicyDeferred) else "failed"
                 run.ended_at=now_utc()
                 run.error=safe_source_failure_code(exc)
             raise
