@@ -53,6 +53,8 @@ python scripts/phase2_comparative_corpus.py \
   --database-url sqlite+pysqlite:////data/finance.sqlite3 \
   --source-evidence-dir /data/source-evidence \
   --backup-dir /data/backups/phase2-acquisition \
+  --vintage-dir /data/vintages \
+  --holdings-dir /data/holdings \
   --new-sources --acquire --assess-all --store \
   > /data/phase2-native-report.json
 ```
@@ -63,6 +65,9 @@ It writes an unpruned, independently verified **before** backup, acquires comple
 publisher histories through the existing append-only ingestion and SHA-256 original-response
 capture, then writes a verified **after** backup. It independently reconciles all 59
 histories and evaluates the 35 analyses using the single canonical research engine.
+ALFRED information-available-as-of snapshots and original fund holdings are
+evaluated from their explicitly selected archives without treating either as
+evidence of observation first publication. Missing archives remain missing.
 The output identifies failed acquisitions, mismatching source histories and the
 remaining original-method, publisher-dimension and release-vintage barriers.
 A success exit code for 59 sources **does not certify** the research analyses.

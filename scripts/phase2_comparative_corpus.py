@@ -214,6 +214,8 @@ def main(argv=None):
     parser.add_argument("--source-evidence-dir", help="Explicit existing source archive; required for acquisition and --store")
     parser.add_argument("--holdings-dir", default=os.environ.get("FINANCE_HOLDINGS_DIR"),
                         help="Explicit original holdings archive; omitted means holdings are not checked")
+    parser.add_argument("--vintage-dir", default=os.environ.get("FINANCE_VINTAGE_DIR"),
+                        help="Explicit original as-of publication archive; not proof of first publication")
     parser.add_argument("--acquire", action="store_true", help="Append complete source histories and preserve original responses")
     parser.add_argument("--backup-dir", help="Explicit directory for verified before/after research backups")
     parser.add_argument("--assess-all", action="store_true",
@@ -306,6 +308,7 @@ def main(argv=None):
                 from finance_dashboard.research_runtime import evaluate_corpus
                 evaluation = evaluate_corpus(engine, registry,
                     load_research_corpus(ROOT), evidence_root=root,
+                    vintage_root=Path(args.vintage_dir) if args.vintage_dir else None,
                     holdings_root=Path(args.holdings_dir) if args.holdings_dir else None)
                 report["scientific_gaps"] = scientific_gap_summary(
                     evaluation.public_report, source_proof=evaluation.source_proof
@@ -317,6 +320,7 @@ def main(argv=None):
             print(json.dumps(report, indent=2))
             return 0 if report["passed"] else 1
         evaluation = evaluate_corpus(engine, registry, document, evidence_root=root,
+            vintage_root=Path(args.vintage_dir) if args.vintage_dir is not None else None,
             holdings_root=Path(args.holdings_dir) if args.holdings_dir is not None else None)
         proof = evaluation.source_proof
         report = evaluation.comparative

@@ -60,6 +60,8 @@ class TargetedPhase2SourcesTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--new-sources", result.stdout)
+        self.assertIn("--vintage-dir", result.stdout)
+        self.assertIn("--holdings-dir", result.stdout)
 
     def test_cli_requires_verified_backup_target_for_any_acquisition(self):
         root = Path(__file__).resolve().parents[1]
