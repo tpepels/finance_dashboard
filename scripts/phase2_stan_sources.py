@@ -23,7 +23,7 @@ from finance_dashboard.stan_originals import (
     store_stan_original,
 )
 from finance_dashboard.stan_research import audit_stan_originals
-from finance_dashboard.source_policy import managed_client
+from finance_dashboard.source_policy import managed_client, require_managed_client
 from finance_dashboard.stan_metadata import (
     STRUCTURE_URL, STRUCTURE_PARAMS, STRUCTURE_ACCEPT,
     MAX_STRUCTURE_BYTES, parse_stan_measure_structure,
@@ -48,6 +48,7 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
           for measure in STAN_MEASURES if measure != "B1G"],
         ("five_measure_total_activity_one_year", STAN_MEASURES, "_T", True),
     ]
+    require_managed_client(client)
     results = []
     for name, measures, activity, with_format in tests:
         url, params = stan_source_request(country, year, measures=measures,
@@ -119,6 +120,7 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
 
 def discover_measure_codes(client) -> dict:
     """One official SDMX structure request; no data or archive writes."""
+    require_managed_client(client)
     report = {
         "phase": "phase2", "operation": "stan_publisher_measure_metadata",
         "state": "source_check_failed", "publisher_requests": 1,
@@ -161,6 +163,7 @@ def probe_surplus(client, *, country: str, year: int) -> dict:
     income. The live 2025 publisher dataflow must still validate each code.
     """
     from hashlib import sha256
+    require_managed_client(client)
     checks = []
     for candidate in STAN_SURPLUS_CANDIDATES:
         url, params = stan_source_request(
@@ -227,6 +230,7 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
     this run immediately. The country cache uses independently rehashed bytes.
     Requests never silently fill the unverified B2N role.
     """
+    require_managed_client(client)
     if not root.is_dir() or root.is_symlink():
         raise ValueError("existing_non_symlink_evidence_directory_required")
     if max_requests is not None and max_requests < 1:
