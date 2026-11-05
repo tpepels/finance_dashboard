@@ -1,5 +1,44 @@
 # Development plan — authoritative five-phase roadmap
 
+## OECD STAN publisher feedback and metadata correction — 2026-11-05
+
+**Observed archived run:** Portugal's verified original has 4,639 distinct
+industry-years, of which 3,294 contain all four acquired measures.
+The originally probed combined-surplus candidates `B2N_B3N` and `B2G_B3G`
+returned HTTP 404 for PRT/_T/2020. The expansion ran four publisher
+requests and verified CHE (7,767 observations), CHL (6,052), and COL
+(9,446), while CRI returned HTTP 429; no other pending country was
+requested. The resulting evidence reader reports eight verified countries
+including earlier cached archives. **Do not repeat acquisition during
+publisher backpressure.**
+
+**Corrected code provenance:** [OECD STAN sources and methods,
+2020, table 4.3](https://doi.org/10.1787/ece98fd3-en) prints the
+net combined-surplus SNA code as `B2N_B3_N` (with the underscore before
+N), not our earlier `B2N_B3N`. That historic spelling is now used in
+candidate-specific research code; it is **not proof** that the 2025
+SDMX codelist accepts that ID. The current OECD Data Explorer displays
+net/gross mixed-income series for some countries, establishing that
+the measure concept has current coverage somewhere, not its exact 2025
+identifier or Portugal's selected-year availability.
+
+The new standalone, read-only `--discover-measures` command requests
+**one** official STAN 2025 structure document (SDMX XML with
+`references=all`) and extracts the specific `MEASURE` dimension's
+codelist and source SHA-256. It displays IDs and labels mentioning
+surplus/mixed income, checks the historic candidate IDs, rejects
+invalid/ambiguous metadata and stops on a rate-limit response.
+Use only after publisher request capacity has recovered:
+
+```bash
+python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --discover-measures --brief
+```
+
+Follow up with `--resolve-surplus` **only after** identifying a
+publisher-supported code and verifying a bounded 2025 STAN sample.
+No extra historical original has been accepted and no G06/L01–L03
+scientific acceptance has been granted by this development increment.
+
 ## OECD STAN source follow-up — 2026-11-05 (Phase 2, acquisition partial)
 
 Portugal's original 1970–2024 STAN 2025 response for four native measures
