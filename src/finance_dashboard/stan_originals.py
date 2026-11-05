@@ -38,7 +38,7 @@ STAN_VERIFIED_PORTUGAL_MEASURES = ("B1G", "D1", "P51C", "D29X39")
 # Additional publisher candidates from OECD STAN income-account terminology.
 # A recognized code is NOT proof of availability in the current STAN dataflow;
 # --resolve-surplus must verify an actual native CSV response.
-STAN_SURPLUS_CANDIDATES = ("B2N_B3N", "B2G_B3G")
+STAN_SURPLUS_CANDIDATES = ("B2N_B3_N", "B2G_B3G")
 STAN_ALLOWED_MEASURES = frozenset((*STAN_MEASURES, *STAN_SURPLUS_CANDIDATES))
 STAN_FIELDS = frozenset({
     "FREQ", "REF_AREA", "ACTIVITY", "MEASURE", "PRICE_BASE",
