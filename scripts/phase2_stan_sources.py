@@ -404,9 +404,17 @@ def brief_report(data: dict) -> dict:
         for c in data["country_audits"][:5]:
             scopes = []
             for s in c["scope_audits"][:3]:
+                coverage = s["coverage"]
                 scopes.append({
                     "scope": s["scope"], "industry_years": s["distinct_industry_years"],
                     "core_four_overlap": s["core_four_matched_industry_years"],
+                    "years_observed": coverage["observed_year_count"],
+                    "flags": coverage["source_status_flag_counts"],
+                    "measure_spans": {
+                        key: [value["first_observed_year"], value["last_observed_year"],
+                              value["numeric_observations"]]
+                        for key, value in coverage["per_measure"].items()
+                    },
                     "identities": {
                         name: {"matched": v["eligible_matched_industry_years"],
                                "outside_precision": v["outside_printed_precision_bounds"],
@@ -415,9 +423,24 @@ def brief_report(data: dict) -> dict:
                         for name, v in s["identity_checks"].items()
                     },
                 })
+            compare = c.get("cross_scope_reconciliation", {})
+            comparisons = compare.get("comparisons", [])
             countries.append({
                 "country": c["country"], "status": c["status"], "scopes": scopes,
                 "additional_scopes": max(0, len(c["scope_audits"]) - 3),
+                "cross_scope": {
+                    "pairs": compare.get("compared_scope_pairs", 0),
+                    "overlap": sum(x["same_measure_industry_year_overlap"]
+                                   for x in comparisons),
+                    "value_disagreements": sum(
+                        x["numeric_value_disagreements_same_unit"]
+                        for x in comparisons),
+                    "unit_conflicts": sum(
+                        x["incompatible_or_unreported_units"]
+                        for x in comparisons),
+                    "flag_changes": sum(x["source_flag_changes"]
+                                        for x in comparisons),
+                },
             })
         return {"operation": "audit", "countries": countries,
                 "additional_countries": max(0, len(data["country_audits"]) - 5),
