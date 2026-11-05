@@ -14,6 +14,8 @@ interface SourceRow {
   regular_cadence_assumed?: boolean;
   complete_for_pinned_release?: boolean;
   published_through?: string | null; published_release?: string | null;
+  evidence_kind?: string | null; evidence_scope?: string | null;
+  evidence_bundle_digest?: string | null; evidence_receipt_recorded?: boolean;
 }
 interface Coverage {
   asof: string;
@@ -159,7 +161,12 @@ export default function SourceCoveragePanel() {
                   <small>Complete for {item.published_release} (through {item.published_through})</small>}
               </td>
               <td>{item.latest_source_date ?? '—'}</td>
-              <td>{item.last_attempt_state}</td>
+              <td>{item.last_attempt_state}
+                {item.evidence_kind && <small>
+                  Evidence: {item.evidence_scope || item.evidence_kind}
+                  {item.evidence_receipt_recorded ? ' · archived receipt' : ' · no linked receipt'}
+                </small>}
+              </td>
             </tr>)}</tbody>
           </table>
           {rows.length === 0 && <p>No sources match these filters.</p>}
