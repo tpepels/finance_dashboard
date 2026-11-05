@@ -52,7 +52,7 @@ def parse_bis_national_credit_gaps(payload: Any, *,
             raise GlobalCreditError("Unexpected geography in BIS gap query")
         for k,row in node.get("observations",{}).items():
             label=_dimension_code(obs_dims,k)["TIME_PERIOD"]
-            from .providers import _date, _value
+            from .provider_parsers import _date, _value
             day=_date(label,"Q")
             value=_value(row[0])
             if value is None:
