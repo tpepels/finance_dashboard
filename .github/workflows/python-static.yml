@@ -1,0 +1,25 @@
+name: Python static checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile Python modules
+        run: python -m compileall -q src scripts tests migrations
+      - name: Install Ruff
+        run: python -m pip install ruff==0.14.3
+      - name: Check syntax and critical Python errors
+        run: ruff check --select E9,F63,F7 src scripts tests migrations
