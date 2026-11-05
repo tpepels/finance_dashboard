@@ -73,6 +73,13 @@ class PublisherTransport(httpx.BaseTransport):
                 headers=response.headers)
             return response
 
+        # Mock transports and in-memory responses may already be closed
+        # before the policy transport receives them. No live publisher
+        # stream remains in that case; release the concurrency permit now.
+        if response.is_closed:
+            self.gate.release(lease, policy.id)
+            return response
+
         touched = [self.gate.clock()]
         def heartbeat():
             now = self.gate.clock()
