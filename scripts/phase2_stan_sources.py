@@ -388,7 +388,9 @@ def brief_report(data: dict) -> dict:
             "requests": data.get("publisher_requests"),
             "backpressure": data["stopped_on_publisher_backpressure"],
             "last_country_requested": data.get("last_country_requested"),
-            "verified_countries": data["source_evidence"]["country_count"],
+            "countries_with_selected_scope": sum(
+                r["status"] in ("retained", "already_verified") for r in rows),
+            "countries_with_any_verified_scope": data["source_evidence"]["country_count"],
             "events": [{
                 "country": r["country"], "status": r["status"],
                 "http": r.get("http_status"), "observations": r.get("numeric_observations"),
