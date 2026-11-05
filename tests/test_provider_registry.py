@@ -9,7 +9,7 @@ from finance_dashboard.catalog import load_documents
 from finance_dashboard.bis import FetchedSeries
 from finance_dashboard.provider_registry import PROVIDER_CODES, PROVIDER_REGISTRY
 from finance_dashboard.providers import ProviderRouter
-from finance_dashboard.provider_adapters import HANDLERS
+from finance_dashboard import provider_adapters
 
 
 class ProviderRegistryTests(unittest.TestCase):
@@ -18,9 +18,8 @@ class ProviderRegistryTests(unittest.TestCase):
                   if row["status"] == "mapped"}
         self.assertFalse(mapped - PROVIDER_CODES)
         self.assertEqual(len(PROVIDER_CODES), 38)
-        self.assertEqual(set(HANDLERS), set(PROVIDER_REGISTRY))
         for code, registration in PROVIDER_REGISTRY.items():
-            self.assertEqual(HANDLERS[code].__name__, registration.handler)
+            self.assertTrue(callable(getattr(provider_adapters, registration.handler, None)))
             self.assertIn(registration.acquisition,
                           {"response", "native", "local", "derived", "unsupported"})
             self.assertIn(registration.refresh_scope, {"full", "windowed"})
@@ -32,7 +31,7 @@ class ProviderRegistryTests(unittest.TestCase):
         with httpx.Client(transport=httpx.MockTransport(
                 lambda req: self.fail("Unexpected publisher request"))) as client:
             router = ProviderRouter(client)
-            with patch.dict(HANDLERS, {"FRED": lambda *args: expected}):
+            with patch.object(provider_adapters, "fetch_fred", lambda *args: expected):
                 self.assertIs(router.fetch(series), expected)
 
     def test_full_snapshot_and_overlap_are_registered_not_duplicated(self):
