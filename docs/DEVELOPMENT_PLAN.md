@@ -17,13 +17,16 @@ duplicating its original bundle; changed publisher bytes create a distinct
 immutable bundle, retaining the previous version. A corrupted older response
 invalidates the country's evidence status rather than being silently ignored.
 
-STAN accounting audits compare adjacent preserved versions of the *same*
-publisher selection using the canonical original-value reconciliation
-algorithm. The current/latest version remains the default for scientific
-coverage; historical versions are compared for changes without joining their
-observations or replacing the earlier originals. A revision is **not**
-interpreted as the observation's first-publication date, an accepted
-published national submission, or a valid Marxian surplus measure.
+STAN accounting audits compare chronologically adjacent acquisition
+**receipts** of the *same* publisher selection using the canonical
+original-value reconciliation algorithm. This captures source histories such
+as A → B → A, including numerical differences, source-flag changes, unit
+conflicts, and observations added or removed from successive responses.
+The current/latest receipt remains the default for scientific coverage;
+historical versions are compared without joining their observations or
+replacing earlier originals. A revision is **not** interpreted as an
+observation's first-publication date, an accepted published national
+submission, or a valid Marxian surplus measure.
 
 Read-only inspection:
 

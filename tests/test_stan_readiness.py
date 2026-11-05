@@ -144,6 +144,36 @@ class StanReadinessTests(unittest.TestCase):
             self.assertEqual([c["numeric_value_disagreements_same_unit"]
                               for c in comparisons], [1, 1])
 
+    def test_added_native_observations_are_reported_as_revisions(self):
+        from finance_dashboard.stan_research import audit_stan_originals
+        from finance_dashboard.stan_originals import STAN_DATAFLOW_ID
+        with TemporaryDirectory() as t:
+            root = Path(t)
+            selection = STAN_VERIFIED_PORTUGAL_MEASURES
+            original_raw = original(selection)
+            added = (
+                f"{STAN_DATAFLOW_ID},A,PRT,_T,B1G,V,XDC,2021,105,A,6,EUR\n"
+            ).encode()
+            store_stan_original(
+                original_raw, country="PRT", start_year=1970,
+                root=root, measures=selection)
+            store_stan_original(
+                original_raw + added, country="PRT", start_year=1970,
+                root=root, measures=selection)
+            audit = audit_stan_originals(root, countries=("PRT",))
+            pair = audit["country_audits"][0]["scope_audits"][0][
+                "revision_reconciliation"]["comparisons"][0]
+            self.assertEqual(pair["same_measure_industry_year_overlap"], 4)
+            self.assertEqual(pair["numeric_value_disagreements_same_unit"], 0)
+            self.assertEqual(pair["right_only_numeric_observations"], 1)
+            self.assertEqual(pair["left_only_numeric_observations"], 0)
+            readiness = summarize_stan_readiness(
+                root, countries=("PRT",))["country_readiness"][0]
+            self.assertTrue(readiness["same_selection_version_disagreements"])
+            self.assertEqual(readiness["historical_revision_examples"][0][
+                "observations_added"], 1)
+            self.assertFalse(readiness["same_scope_identity_observations"])
+
     def test_individually_present_measure_rows_need_same_industry_year(self):
         with TemporaryDirectory() as t:
             raw = original(STAN_VERIFIED_PORTUGAL_MEASURES).replace(

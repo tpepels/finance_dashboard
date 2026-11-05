@@ -305,6 +305,11 @@ def reconcile_stan_source_scopes(
     for (left, left_values), (right, right_values) in combinations(
             verified_scope_rows, 2):
         overlap = sorted(left_values.keys() & right_values.keys())
+        # Unlike differing source selections, two versions of the *same*
+        # selection can gain or lose entire published observations. Record
+        # missingness changes without filling any value.
+        only_left = sorted(left_values.keys() - right_values.keys())
+        only_right = sorted(right_values.keys() - left_values.keys())
         numeric_changes = unit_changes = flag_changes = equal = 0
         examples = []
         for key in overlap:
@@ -334,6 +339,14 @@ def reconcile_stan_source_scopes(
             "right_start_year": right["requested_since"],
             "right_sha256": right["original_response_sha256"],
             "same_measure_industry_year_overlap": len(overlap),
+            "left_only_numeric_observations": len(only_left),
+            "right_only_numeric_observations": len(only_right),
+            "left_only_examples": [{
+                "activity": a, "year": y, "measure": m
+            } for a, y, m in only_left[:3]],
+            "right_only_examples": [{
+                "activity": a, "year": y, "measure": m
+            } for a, y, m in only_right[:3]],
             "equal_value_same_unit": equal,
             "numeric_value_disagreements_same_unit": numeric_changes,
             "incompatible_or_unreported_units": unit_changes,
@@ -410,6 +423,8 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
             row["numeric_value_disagreements_same_unit"]
             or row["incompatible_or_unreported_units"]
             or row["source_flag_changes"]
+            or row["left_only_numeric_observations"]
+            or row["right_only_numeric_observations"]
             for row in revisions)
         cross = item["cross_scope_reconciliation"]["comparisons"]
         cross_conflicts = any(
@@ -477,6 +492,8 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
                     "value_disagreements": change["numeric_value_disagreements_same_unit"],
                     "flag_changes": change["source_flag_changes"],
                     "unit_conflicts": change["incompatible_or_unreported_units"],
+                    "observations_removed": change["left_only_numeric_observations"],
+                    "observations_added": change["right_only_numeric_observations"],
                 } for change in revisions[:5]
             ],
             "non_A_identity_flags_present": any_flag,
