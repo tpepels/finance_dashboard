@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 import json
 import logging
@@ -14,22 +16,65 @@ from .providers import ProviderRouter, PROVIDER_CODES
 from .catalog import load_documents
 from .database import make_engine
 from .service import IngestionService, safe_source_failure_code
+from .source_policy import PolicyDeferred
 from .developer_logs import record_event
 
 log = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class RefreshTask:
+    """A scheduled source operation independent of provider implementation."""
+    family: str
+    source_id: str
+    execute: Callable[[], dict]
+    progress_label: str
+
+
+def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
+                          stopped=None) -> int:
+    """One failure/deferral/progress lifecycle for macro, market and FX jobs.
+
+    Policy deferrals are non-retryable within this batch. Every task advances
+    progress exactly once. Stored observations remain untouched on failure.
+    """
+    failures = 0
+    total = len(tasks)
+    for index, task in enumerate(tasks, 1):
+        if stopped is not None and stopped.is_set():
+            break
+        try:
+            report = task.execute()
+            log.info("%s refreshed: %s", task.family, json.dumps(report))
+        except PolicyDeferred:
+            failures += 1
+            record_event(task.family, "source_deferred", level="warning",
+                         source_id=task.source_id,
+                         reason="source_policy_deferred")
+            log.warning("%s source deferred by canonical publisher policy: %s",
+                        task.family, task.source_id)
+        except Exception as exc:
+            failures += 1
+            record_event(task.family, "source_failed", level="error",
+                         source_id=task.source_id,
+                         reason=safe_source_failure_code(exc))
+            log.error("%s refresh failed: %s (publisher details redacted)",
+                      task.family, task.source_id)
+        if progress is not None:
+            progress(index, total, task.progress_label)
+    return failures
+
+
 def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 series_ids: set[str] | None = None, progress=None,
                 stopped=None) -> int:
-    failures = 0
+    """Canonical macro refresh uses the same task execution contract as markets."""
     client = ProviderRouter()
     try:
         unknown = series_ids - set(client.supported_ids()) if series_ids is not None else set()
         if unknown:
             raise ValueError("Unknown series IDs: " + ", ".join(sorted(unknown)))
         with engine.connect() as conn:
-            # PostgreSQL advisory lock stops two scheduled workers changing one series concurrently.
             if engine.dialect.name == "postgresql":
                 locked = conn.execute(text("SELECT pg_try_advisory_lock(75390812)")).scalar()
                 if not locked:
@@ -40,83 +85,58 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 chosen = [sid for sid in client.supported_ids()
                           if (series_ids is None or sid in series_ids)
                           and (providers is None or client.definitions[sid]["provider"] in providers)]
-                for index, series_id in enumerate(chosen, 1):
-                    if stopped is not None and stopped.is_set():
-                        break
-                    try:
-                        report = service.refresh(series_id, full=full)
-                        log.info("refreshed: %s", json.dumps(report))
-                    except Exception as exc:
-                        failures += 1
-                        record_event("macro", "source_failed", level="error",
-                                     source_id=series_id,
-                                     reason=safe_source_failure_code(exc))
-                        log.error("macro refresh failed: %s (provider error redacted to protect credentials)", series_id)
-                    if progress is not None:
-                        progress(index, len(chosen), series_id)
+                tasks = [
+                    RefreshTask(
+                        family="macro", source_id=sid,
+                        execute=lambda sid=sid: service.refresh(sid, full=full),
+                        progress_label=sid,
+                    )
+                    for sid in chosen
+                ]
+                return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
             finally:
                 if engine.dialect.name == "postgresql":
                     conn.execute(text("SELECT pg_advisory_unlock(75390812)"))
     finally:
         client.close()
-    return failures
 
 
 def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
                        currencies: set[str] | None = None,
                        full: bool = False, progress=None, stopped=None) -> int:
-    """Full-history EOD adjustment refresh plus overlapping ECB currency history.
+    """FX-first market refresh without its former per-market throttle loop.
 
-    A provider failure remains visible and does not destroy last-known-good
-    values. Prices always refresh complete history because historical dividend
-    adjustments can revise dates far older than a recent overlap.
+    The canonical policy gate owns request spacing, shared publisher quotas,
+    transport failures and durable cooldowns for both clients.
     """
     from .market import EcbFxClient, YahooMarketClient, instruments
     from .market_service import MarketIngestionService
 
-    failures = 0
     yahoo, ecb = YahooMarketClient(), EcbFxClient()
     try:
         service = MarketIngestionService(engine, yahoo, ecb)
-        # FX first: market queries can convert to EUR as soon as prices arrive.
         fx = sorted(currencies if currencies is not None else ("USD", "GBP", "CHF"))
         market = sorted(instrument_ids if instrument_ids is not None else instruments())
-        total = len(fx) + len(market)
-        completed = 0
-        for currency in fx:
-            if stopped is not None and stopped.is_set():
-                break
-            try:
-                log.info("fx refresh: %s", json.dumps(service.refresh_fx(currency, full=full)))
-            except Exception as exc:
-                failures += 1
-                record_event("fx", "source_failed", level="error",
-                             source_id=currency,
-                             reason=safe_source_failure_code(exc))
-                log.error("fx refresh failed: %s (source error redacted)", currency)
-            completed += 1
-            if progress is not None:
-                progress(completed, total, "FX:" + currency)
-        if stopped is None or not stopped.is_set():
-            for sid in market:
-                if stopped is not None and stopped.is_set():
-                    break
-                try:
-                    log.info("market refresh: %s", json.dumps(service.refresh_instrument(sid, full=full)))
-                except Exception as exc:
-                    failures += 1
-                    record_event("markets", "source_failed", level="error",
-                                 source_id=sid,
-                                 reason=safe_source_failure_code(exc))
-                    log.error("market refresh failed: %s (source error redacted)", sid)
-                completed += 1
-                if progress is not None:
-                    progress(completed, total, sid)
-                time.sleep(0.15)  # avoid tight request bursts on the unofficial API
+        tasks = [
+            RefreshTask(
+                family="fx", source_id=currency,
+                execute=lambda currency=currency: service.refresh_fx(
+                    currency, full=full),
+                progress_label="FX:" + currency,
+            ) for currency in fx
+        ]
+        tasks.extend(
+            RefreshTask(
+                family="markets", source_id=sid,
+                execute=lambda sid=sid: service.refresh_instrument(
+                    sid, full=full),
+                progress_label=sid,
+            ) for sid in market
+        )
+        return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
     finally:
         yahoo.close()
         ecb.close()
-    return failures
 
 
 def main(argv: list[str] | None = None) -> int:
