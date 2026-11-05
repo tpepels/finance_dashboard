@@ -111,8 +111,12 @@ class PolicyRegistry:
                for key, _ in parse_qsl(request.url.query.decode("utf-8"),
                                        keep_blank_values=True)):
             raise PolicyViolation(policy.id, "prohibited_query_parameter")
-        if rules["require_direct_network_ack"] and os.environ.get(
-                "FINANCE_OECD_DIRECT_NETWORK_ACK") != "1":
+        acknowledgements = {
+            value.strip() for value in os.environ.get(
+                "FINANCE_SOURCE_POLICY_ACKNOWLEDGED", "").split(",")
+            if value.strip()
+        }
+        if rules["require_direct_network_ack"] and policy.id not in acknowledgements:
             raise PolicyViolation(policy.id, "direct_network_origin_not_confirmed")
         if rules["require_contact_user_agent"]:
             agent = request.headers.get("user-agent", "")
