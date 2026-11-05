@@ -28,11 +28,14 @@ const LABELS: Record<string,string> = {
   collection_disabled: 'Collector disabled; no saved data',
   not_ingested: 'Not yet imported',
   collection_failed: 'Last import failed; no stored data',
+  collection_deferred: 'Source policy deferred collection; no stored data',
+  refresh_deferred_with_data: 'Source policy deferred refresh; previous observations retained',
   refresh_failed_with_data: 'Last refresh failed; previous observations retained',
   source_unresolved: 'Source mapping unresolved',
 };
 const ATTENTION = new Set([
   'stale','collection_disabled','not_ingested','collection_failed',
+  'collection_deferred','refresh_deferred_with_data',
   'refresh_failed_with_data','source_unresolved',
 ]);
 
@@ -129,7 +132,7 @@ export default function SourceCoveragePanel() {
           </label>
           <label>Coverage status
             <select aria-label="Coverage status" value={selection} onChange={e => setSelection(e.target.value)}>
-              <option value="issues">Missing, stale or failed</option>
+              <option value="issues">Missing, stale, failed or deferred</option>
               <option value="all">All {report.items.length} sources</option>
             </select>
           </label>
