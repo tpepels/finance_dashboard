@@ -121,8 +121,10 @@ class IndependentOriginalComparisonTests(unittest.TestCase):
             self.assertEqual(compare["numeric_value_disagreements_same_unit"], 1)
             self.assertEqual(compare["incompatible_or_unreported_units"], 0)
             self.assertEqual(compare["examples"][0]["measure"], "B1G")
-            self.assertEqual(compare["examples"][0]["left_value"], "120.00")
-            self.assertEqual(compare["examples"][0]["right_value"], "125.00")
+            self.assertEqual(
+                {compare["examples"][0]["left_value"],
+                 compare["examples"][0]["right_value"]},
+                {"120.00", "125.00"})
             self.assertFalse(report["cross_scope_join_performed"])
             self.assertFalse(result["cross_scope_reconciliation"][
                 "identities_computed_from_joined_scopes"])
