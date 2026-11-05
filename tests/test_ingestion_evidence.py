@@ -16,6 +16,9 @@ from finance_dashboard.database import Base, IngestionRun, ObservationVersion
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.service import IngestionService
+from finance_dashboard.source_evidence_audit import (
+    SourceEvidenceIntegrityError, verify_ingestion_receipt,
+)
 
 
 class IngestionEvidenceTests(unittest.TestCase):
@@ -58,6 +61,14 @@ class IngestionEvidenceTests(unittest.TestCase):
                             run.evidence_scope)
                         self.assertTrue((folder.parent / "retrievals" /
                                          run.evidence_receipt_name).is_file())
+                        verified = verify_ingestion_receipt(
+                            root / "evidence", series_id=run.series_id,
+                            scope=run.evidence_scope,
+                            bundle_digest=run.evidence_bundle_digest,
+                            receipt_name=run.evidence_receipt_name)
+                        self.assertEqual(
+                            verified["status"], "verified_immutable_original_response")
+                        self.assertFalse(verified["first_publication_verified"])
                     self.assertEqual(session.query(ObservationVersion).count(), 1)
                 self.assertEqual(len(calls), 2)
                 self.assertEqual(sha256(payload).hexdigest(),
@@ -69,6 +80,27 @@ class IngestionEvidenceTests(unittest.TestCase):
                     self.assertNotIn("private-secret-key", path.read_text())
             finally:
                 engine.dispose()
+
+    def test_audit_detects_modified_original_without_recovering_over_it(self):
+        raw = b'{"observations":[{"date":"2024-01-02","value":"3.95"}]}'
+        with TemporaryDirectory() as temp, patch.dict("os.environ", {
+                "FRED_API_KEY": "secret"}):
+            root = Path(temp)
+            with httpx.Client(transport=httpx.MockTransport(
+                    lambda req: httpx.Response(200, content=raw))) as client:
+                gateway = SourceAcquisition(ProviderRouter(client), root)
+                gateway.fetch("bond.us.nominal_10y")
+            evidence = gateway.last_evidence
+            bundle = root / "responses" / "bond.us.nominal_10y" / evidence["bundle_digest"]
+            original = bundle / "response-0.bin"
+            original.write_bytes(b"corrupted")
+            with self.assertRaises(SourceEvidenceIntegrityError) as raised:
+                verify_ingestion_receipt(
+                    root, series_id="bond.us.nominal_10y",
+                    scope=evidence["scope"], bundle_digest=evidence["bundle_digest"],
+                    receipt_name=evidence["receipt_name"])
+            self.assertEqual(raised.exception.code, "source_original_hash_mismatch")
+            self.assertEqual(original.read_bytes(), b"corrupted")
 
     def test_failed_parse_keeps_earlier_history_and_is_not_certified(self):
         calls = []
