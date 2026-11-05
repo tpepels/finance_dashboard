@@ -89,6 +89,21 @@ class PublisherTransport(httpx.BaseTransport):
         self.delegate.close()
 
 
+def require_managed_client(client: httpx.Client) -> httpx.Client:
+    """Reject unmanaged production injection; allow explicit HTTPX test mocks.
+
+    Constructors may accept test clients for deterministic fixtures. A live
+    production HTTPX client must use PublisherTransport, including all redirects
+    and streams. An injected MockTransport can only execute its local handler.
+    """
+    if not isinstance(client, httpx.Client):
+        raise PolicyViolation("transport", "unsupported_injected_client")
+    transport = getattr(client, "_transport", None)
+    if not isinstance(transport, (PublisherTransport, httpx.MockTransport)):
+        raise PolicyViolation("transport", "unmanaged_injected_client")
+    return client
+
+
 def managed_client(*, policy_gate: SourcePolicyGate | None = None, **kwargs) -> httpx.Client:
     """Create the sole production HTTP client, including stream-safe policy.
 
