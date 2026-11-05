@@ -46,9 +46,10 @@ rows are written by this path.
 Reproducible local execution (existing `/data/source-evidence` archive):
 
 ```bash
-python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --audit
-python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --resolve-surplus --acquire --since 1970-01-01
-python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --expand --since 1970-01-01 --max-requests 4
+python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --audit --brief
+python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --resolve-surplus --acquire --since 1970-01-01 --brief
+python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --expand --since 1970-01-01 --max-requests 4 --brief
+# --brief emits one JSON line; omit it for full provenance/diagnostic detail.
 # Resume the next batch with --after-country <last_country_requested>.
 # If a net/gross combined measure is publisher-verified, pass its full exact
 # five-measure --measures selection to --expand on subsequent batches.
