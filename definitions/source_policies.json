@@ -46,7 +46,8 @@
       "hosts": [
         "www.oecd.org",
         "webfs-sti.oecd.org",
-        "stats.oecd.org"
+        "stats.oecd.org",
+        "data-explorer.oecd.org"
       ],
       "classification": "internal_conservative",
       "evidence_url": "https://www.oecd.org/en/data/insights/data-explainers/2024/09/api.html",
@@ -185,7 +186,9 @@
       "id": "world-bank",
       "hosts": [
         "api.worldbank.org",
-        "thedocs.worldbank.org"
+        "thedocs.worldbank.org",
+        "data.worldbank.org",
+        "www.worldbank.org"
       ],
       "classification": "internal_conservative",
       "evidence_url": "https://datahelpdesk.worldbank.org/knowledgebase/articles/902064",
@@ -254,7 +257,8 @@
     {
       "id": "bis",
       "hosts": [
-        "stats.bis.org"
+        "stats.bis.org",
+        "data.bis.org"
       ],
       "classification": "internal_conservative",
       "evidence_url": "https://www.bis.org/statistics/",
@@ -289,7 +293,8 @@
       "id": "imf",
       "hosts": [
         "www.imf.org",
-        "api.imf.org"
+        "api.imf.org",
+        "data.imf.org"
       ],
       "classification": "internal_conservative",
       "evidence_url": "https://www.imf.org/en/Data",
@@ -462,7 +467,8 @@
     {
       "id": "siblis",
       "hosts": [
-        "siblisresearch.supabase.co"
+        "siblisresearch.supabase.co",
+        "siblisresearch.com"
       ],
       "classification": "internal_conservative",
       "evidence_url": "https://siblisresearch.com/",
@@ -1117,7 +1123,8 @@
     {
       "id": "fdic",
       "hosts": [
-        "api.fdic.gov"
+        "api.fdic.gov",
+        "www.fdic.gov"
       ],
       "evidence_url": "https://banks.data.fdic.gov/docs/",
       "classification": "internal_conservative",
