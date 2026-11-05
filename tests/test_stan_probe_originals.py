@@ -19,7 +19,8 @@ from finance_dashboard.stan_probe_originals import (
 )
 from scripts.phase2_stan_sources import (
     acquire, main, plan_expansion, probe_surplus,
-    resolve_stan_country_selection, select_verified_stan_measures,
+    ordered_stan_acquisition_countries, resolve_stan_country_selection,
+    select_verified_stan_measures,
 )
 
 
@@ -305,6 +306,33 @@ class NativeSelectionEvidenceTests(unittest.TestCase):
             self.assertEqual(read_stan_probe_evidence(
                 root, country="PRT", year=2020,
                 measures=("B2N_B3_N",))["verified_measures"], ["B2N_B3_N"])
+
+    def test_plan_prioritizes_original_surplus_evidence_country_without_changing_membership(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_stan_structure(STRUCTURE, root=root)
+            store_stan_probe_original(
+                original(), root=root, country="PRT",
+                year=2020, measure="B2N_B3_N")
+            chosen = select_verified_stan_measures(
+                root, anchor_country="PRT", probe_year=2020)
+            countries = ("AUS", "DEU", "PRT")
+            ordered = ordered_stan_acquisition_countries(
+                countries, selection=chosen, anchor_country="PRT")
+            self.assertEqual(ordered, ("PRT", "AUS", "DEU"))
+            self.assertEqual(set(ordered), set(countries))
+            self.assertEqual(ordered_stan_acquisition_countries(
+                countries, selection=chosen, anchor_country="PRT",
+                preserve_cursor=True), countries)
+            capture = StringIO()
+            with redirect_stdout(capture):
+                status = main([
+                    "--evidence-dir", tmp, "--countries", *countries,
+                    "--plan-expansion", "--brief"])
+            self.assertEqual(status, 0)
+            output = json.loads(capture.getvalue())
+            self.assertEqual(output["next_batch"], ["PRT", "AUS", "DEU"])
+            self.assertEqual(output["publisher_requests_made"], 0)
 
     def test_cli_plan_and_expand_share_one_source_proven_measure_selection(self):
         with TemporaryDirectory() as tmp:

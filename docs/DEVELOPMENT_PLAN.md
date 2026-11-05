@@ -24,7 +24,11 @@ A corrupt structure, source or probe original blocks further acquisition.
 An explicitly specified surplus code unsupported by both proofs is rejected
 *before the first network request*. The `--source-anchor` switch controls the
 country whose verified observations justify the default (PRT by default);
-selection does not assert availability in any other country or year.
+selection does not assert availability in any other country or year. For a
+source-proven five-measure selection, the verified anchor is scheduled first,
+before attempting other countries; explicit `--after-country` cursors retain
+their requested order. Read-only planning and active acquisition use the
+same ordering and no country is silently added or excluded.
 
 The per-invocation `--max-requests` limit now applies to the *combined* exact
 year probe and subsequent full country request in `--resolve-surplus --acquire`,

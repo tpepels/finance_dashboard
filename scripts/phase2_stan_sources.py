@@ -329,6 +329,22 @@ def resolve_stan_country_selection(root: Path, *, anchor_country: str,
         }
     return plan
 
+
+def ordered_stan_acquisition_countries(countries: tuple[str, ...], *,
+                                       selection: dict, anchor_country: str,
+                                       preserve_cursor: bool = False) -> tuple[str, ...]:
+    """Test the native surplus selection in its evidenced country first.
+
+    Applies to source-proven surplus selections only. Exact requested country
+    membership is preserved, and an explicit --after-country cursor retains
+    its requested order.
+    """
+    if (preserve_cursor or anchor_country not in countries
+            or not set(selection["native_measures"]) & set(STAN_SURPLUS_CANDIDATES)):
+        return countries
+    return (anchor_country, *(country for country in countries
+                              if country != anchor_country))
+
 def probe_surplus(client, *, country: str, year: int,
                   candidates: tuple[str, ...] | None = None,
                   archive_root: Path | None = None,
@@ -1023,8 +1039,10 @@ def main(argv=None) -> int:
         if chosen["state"].startswith("blocked_"):
             emit_report(chosen, brief=args.brief)
             return 1
+        ordered = ordered_stan_acquisition_countries(
+            countries, selection=chosen, anchor_country=args.source_anchor)
         result = plan_expansion(
-            args.evidence_dir, countries=countries, start_year=since.year,
+            args.evidence_dir, countries=ordered, start_year=since.year,
             measures=tuple(chosen["native_measures"]),
             max_requests=args.max_requests or 4)
         result["selection_evidence"] = chosen["selection_evidence"]
@@ -1106,8 +1124,11 @@ def main(argv=None) -> int:
         if chosen["state"].startswith("blocked_"):
             emit_report(chosen, brief=args.brief)
             return 1
+        ordered = ordered_stan_acquisition_countries(
+            countries, selection=chosen, anchor_country=args.source_anchor,
+            preserve_cursor=bool(args.after_country))
         with managed_client(timeout=60, follow_redirects=False) as client:
-            report = acquire(client, args.evidence_dir, countries=countries,
+            report = acquire(client, args.evidence_dir, countries=ordered,
                              start_year=since.year,
                              measures=tuple(chosen["native_measures"]),
                              max_requests=(args.max_requests if args.max_requests is not None
