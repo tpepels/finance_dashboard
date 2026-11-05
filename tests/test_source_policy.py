@@ -89,6 +89,15 @@ class PolicyRegistryTests(PolicyHarness):
             PolicyRegistry(self.catalog)
         self.assertEqual(ex.exception.reason, "ambiguous_publisher_hostname")
 
+    def test_external_redistribution_is_refused_without_verified_rights(self):
+        with self.assertRaises(PolicyViolation) as exc:
+            self.registry.require_redistribution_clearance(
+                "https://api.stlouisfed.org/fred/series/observations")
+        self.assertEqual(exc.exception.reason, "redistribution_not_cleared")
+        with self.assertRaises(PolicyViolation):
+            self.registry.require_redistribution_clearance(
+                "https://www.ishares.com/path/latest-holdings.csv")
+
     def test_restricted_collection_and_method_denied(self):
         gate = self.gate()
         with self.assertRaises(PolicyViolation) as ex:
