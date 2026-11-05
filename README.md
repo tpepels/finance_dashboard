@@ -40,7 +40,26 @@ python -m pip install -e '.[test]'
 
 Do not confuse this offline registry report with the database/source-reconciliation acceptance run.
 
-The default offline inventory is deliberately short. Use `--details` for per-analysis mapping counts or `--json` for structured output. **It does not claim that all 35 analyses are blocked**: empirical readiness requires reading original evidence and stored observations.
+The default offline inventory is deliberately short. Use `--details` for per-analysis mapping counts or `--json` for structured output.
+
+For a bounded read-only official OECD STAN original-field check (not an acquisition or L01–L03 source certification), run from the existing development stack:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_source_probe.py \
+  --stan-candidates --since 2024-01-01
+```
+
+The probe checks publisher HTTP status, native measure dimensions, exact country-industry observation counts and source-body SHA-256. It does not store observations or establish matched capital-stock valuation or first-publication vintages.
+
+Use `PYTHONPATH=src python scripts/phase2_corpus_status.py --candidates` to see the original dataset investigations for L01–L03. These are unverified publisher candidates; no empty source bindings are filled and no analysis is certified by the candidate list. After a native acquisition, summarize the saved JSON report without copying its full contents:
+
+```sh
+cat phase2-native-report.json | docker compose exec -T finance-dashboard \
+  python scripts/phase2_corpus_status.py --run-report -
+```
+
+Run this pipe on the media-server host from `~/media-stack`, where the acquisition JSON was saved. No second copy in `/data` is required. Add `--details` for per-analysis gap rows or `--json` for machine-readable, credential-free diagnostics. This command does not reopen the database or rehash the original evidence, and reports incomplete source acquisition as a nonzero exit status.
+ **It does not claim that all 35 analyses are blocked**: empirical readiness requires reading original evidence and stored observations.
 
 To acquire and independently reconcile the seven newly integrated publisher families
 (**59 mapped series**) and produce the empirical 35-analysis gap report, run this
@@ -123,4 +142,4 @@ The Doeswijk–Swinkels USD nominal global **multiasset** research-portfolio ret
 
 `python -m finance_dashboard.icio --package RR_WLD_2026_593.zip --readme ReadMe_ICIO_small.xlsx` verifies and archives the identified original 2022 OECD regular matrix and its source accounting diagnostics. `/api/source-evidence/icio` reports those diagnostics. The present original has accounting residuals above serialization-rounding bounds; it is preserved with a failing gate and is never silently rebalanced.
 
-The full Python suite accepts `TEST_POSTGRES_URL` for a disposable PostgreSQL database, `TEST_ICIO_PACKAGE` for the original 55 MB replication ZIP, `TEST_GLOBAL_MARKET_PACKAGE` for the original global-return workbook and `TEST_CVM_PACKAGE` for the original annual ZIP. External checks are explicitly skipped when their inputs are absent, including during the ordinary Docker build. Tests never need the live production database.
+The full Python suite accepts `TEST_POSTGRES_URL` for a disposable PostgreSQL database, `TEST_ICIO_PACKAGE` for the original 55 MB replication ZIP, `TEST_GLOBAL_MARKET_PACKAGE` for the original global-return workbook and `TEST_CVM_PACKAGE` for the original annual ZIP. External checks are explicitly skipped when their inputs are absent, including during the ordinary Docker build. Tests never need the development research database.

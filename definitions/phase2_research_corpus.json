@@ -2560,7 +2560,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "gross value added (published nominal and volume components)",
+                "status": "unverified_candidate",
+                "required_original_checks": "Establish original STAN GVA measurement, industry classification, current/volume price basis, currency, same years and original revision metadata."
+              }
+            ]
           },
           {
             "role": "oecd_matched_hours",
@@ -2573,7 +2583,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "annual hours worked (employees and self-employed where published)",
+                "status": "unverified_candidate",
+                "required_original_checks": "Establish matching industry scope, hours units, employee/proprietor perimeter and aligned periods before comparing output per hour."
+              }
+            ]
           },
           {
             "role": "oecd_matched_compensation",
@@ -2586,7 +2606,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_PRODUCTIVITY_2",
+                "source_url": "https://data-explorer.oecd.org/vis?df%5Bag%5D=OECD.SDD.TPS&df%5Bid%5D=DSD_PDB%40DF_PDB&df%5Bvs%5D=2.0",
+                "potential_original_measure": "labour compensation, including any imputed self-employed component",
+                "status": "unverified_candidate",
+                "required_original_checks": "Verify whether publisher reports/imputes self-employed labour compensation for the exact same industry, year and hours perimeter; employee-only pay is insufficient."
+              }
+            ]
           },
           {
             "role": "oecd_matched_output_deflator",
@@ -2600,7 +2630,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "same-industry value-added volume and current-price basis for deflator",
+                "status": "unverified_candidate",
+                "required_original_checks": "Verify explicit original implicit VA deflator or a documented same-release current/volume identity, chain-linking and common index reference; do not use CPI."
+              }
+            ]
           }
         ],
         "variants": [
@@ -2677,7 +2717,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "D1 compensation of employees",
+                "status": "unverified_candidate",
+                "required_original_checks": "Verify D1 for each exact industry and same-country/year, original currency/scale, and employees-only rather than proprietors."
+              }
+            ]
           },
           {
             "role": "net_operating_surplus",
@@ -2690,7 +2740,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "B2N net operating surplus and mixed income",
+                "status": "unverified_candidate",
+                "required_original_checks": "Verify B2N separation of net operating surplus from net mixed income; mixed-income aggregates cannot be relabelled pure surplus value."
+              }
+            ]
           },
           {
             "role": "consumption_fixed_capital",
@@ -2703,7 +2763,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "P51C consumption of fixed capital",
+                "status": "unverified_candidate",
+                "required_original_checks": "Verify exact original P51C industry split, same market/price scope, same year and accounting release."
+              }
+            ]
           },
           {
             "role": "net_production_taxes",
@@ -2716,7 +2786,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "D29 less D39 other production taxes/subsidies",
+                "status": "unverified_candidate",
+                "required_original_checks": "Confirm published industry net production-tax definition and sign; product taxes must not be substituted."
+              }
+            ]
           },
           {
             "role": "gross_value_added",
@@ -2729,7 +2809,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "B1G gross value added",
+                "status": "unverified_candidate",
+                "required_original_checks": "Match the original industry, price valuation, currency, annual period and accounting adjustment scope of CE/NOS/CFC/taxes."
+              }
+            ]
           }
         ],
         "variants": []
@@ -2765,7 +2855,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "B2N net operating surplus",
+                "status": "unverified_candidate",
+                "required_original_checks": "Separate pure NOS from mixed income and independently match the capital-stock sector/industry, valuation and source years."
+              }
+            ]
           },
           {
             "role": "net_fixed_capital",
@@ -2778,7 +2878,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "net produced fixed capital stock, current replacement valuation",
+                "status": "unverified_candidate",
+                "required_original_checks": "Check whether the original series is NET rather than gross/volume/capital services, current-cost vs historical and same produced-asset and sector perimeter."
+              }
+            ]
           },
           {
             "role": "employee_compensation",
@@ -2791,7 +2901,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "D1 compensation of employees",
+                "status": "unverified_candidate",
+                "required_original_checks": "Prove same industry/sector/year, currency and price basis as NOS, net capital and CFC; exclude mixed income."
+              }
+            ]
           },
           {
             "role": "consumption_fixed_capital",
@@ -2804,7 +2924,17 @@
             },
             "temporal_requirement": "first_publication",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "source_candidates": [
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "P51C consumption of fixed capital",
+                "status": "unverified_candidate",
+                "required_original_checks": "Verify annual CFC as a flow on precisely the net capital asset perimeter; do not mix accumulated depreciation."
+              }
+            ]
           },
           {
             "role": "gross_value_added",
@@ -2825,6 +2955,14 @@
                 "source_id": "profit.oecd38.corporate_gross_surplus_gdp",
                 "sector": "S11",
                 "condition": "Select and verify common NOS, net fixed capital, employee compensation and CFC perimeter, currency and years before binding sector GVA."
+              },
+              {
+                "publisher": "OECD",
+                "dataset": "OECD_STAN_2025",
+                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+                "potential_original_measure": "B1G gross value added",
+                "status": "unverified_candidate",
+                "required_original_checks": "Select only GVA that matches same industry/sector of NOS, capital stock, CE and CFC; retained corporate-account S11 alone is not proof."
               }
             ]
           }

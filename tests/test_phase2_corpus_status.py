@@ -40,6 +40,27 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertIn("C01: scalar", full)
         self.assertIn("P05: scalar", full)
 
+    def test_unverified_oecd_candidates_cover_fourteen_original_l01_l03_roles_without_binding(self):
+        r = self.report
+        self.assertEqual(r["unverified_source_candidate_roles"], 14)
+        self.assertEqual({item["id"] for item in r["analyses_with_unverified_candidates"]},
+                         {"L01", "L02", "L03"})
+        for item in r["analyses_with_unverified_candidates"]:
+            for role in item["roles"]:
+                self.assertIn(role["role"], next(
+                    a for a in r["analyses"] if a["id"] == item["id"]
+                )["unbound_scalar_roles"])
+                for candidate in role["candidate_sources"]:
+                    self.assertEqual(candidate["status"], "unverified_candidate")
+                    self.assertTrue(candidate["source_url"].startswith("https://"))
+                    self.assertTrue(candidate["required_original_checks"])
+        output = format_inventory(r, candidates=True)
+        self.assertIn("L03/net_fixed_capital", output)
+        self.assertIn("L01/oecd_matched_hours", output)
+        self.assertIn("not mapped, fetched or scientifically verified", output)
+        self.assertEqual(r["scalar_bound_roles"], 103)
+        self.assertFalse(r["empirical_readiness_evaluated"])
+
     def test_machine_readable_mode_does_not_invent_data_evidence(self):
         stream = StringIO()
         with redirect_stdout(stream):
