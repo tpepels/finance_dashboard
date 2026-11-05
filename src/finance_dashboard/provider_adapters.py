@@ -1,6 +1,6 @@
 """Canonical provider adapters. One registered callable per provider family.
 
-Parser definitions live in providers.py; this module is loaded only on a
+Parser definitions live in provider_parsers.py; this module is loaded only on a
 validated fetch. It holds no parallel fallback dispatcher.
 """
 from __future__ import annotations
@@ -657,44 +657,3 @@ def fetch_imf_datamapper(self, series_id, start, item, key):
     response = self._get(url)
     observations = parse_imf_mapper(response.json(), region, identifier, start)
     return FetchedSeries(series_id, str(response.request.url), None, observations)
-
-HANDLERS = {
-    "BIS": fetch_bis,
-    "WID": fetch_wid,
-    "OECD_TIVA": fetch_oecd_tiva,
-    "FRENCH_RETURNS": fetch_french_returns,
-    "SWINKELS_RETURNS": fetch_french_returns,
-    "GLOBAL_MARKET_RETURNS": fetch_french_returns,
-    "FRED": fetch_fred,
-    "ECB": fetch_ecb,
-    "WORLD_BANK": fetch_world_bank,
-    "WORLD_LISTED_CAP_SHARE": fetch_world_listed_cap_share,
-    "SIBLIS_WORLD_PE": fetch_siblis_world_pe,
-    "SIBLIS_WORLD_EARNINGS_YIELD": fetch_siblis_world_pe,
-    "MSCI_PUBLISHED_TOP10": fetch_msci_published_top10,
-    "OECD_CORPORATE_GDPWEIGHTED": fetch_oecd_corporate_gdpweighted,
-    "EUROSTAT_CORPORATE_GDP": fetch_eurostat_corporate_gdp,
-    "EUROSTAT_NFC_PROFIT_GVA": fetch_eurostat_nfc_profit_gva,
-    "BIS_WORLD_WEIGHTED": fetch_bis_world_weighted,
-    "ILO_LABOUR_PRODUCTIVITY_RATIO": fetch_ilo_labour_productivity_ratio,
-    "WISESHEETS_SNAPSHOT": fetch_wisesheets_snapshot,
-    "BEA_Q": fetch_bea_q,
-    "MSCI_NETR": fetch_msci_netr,
-    "GOLD_MSCI_CORR": fetch_gold_msci_corr,
-    "CORGANO_SPOT": fetch_corgano_spot,
-    "BIS_PROPERTY": fetch_bis_property,
-    "BIS_DSR": fetch_bis_dsr,
-    "BIS_CREDIT_GAP": fetch_bis_credit_gap,
-    "BIS_TOTAL_CREDIT": fetch_bis_total_credit,
-    "FED_G17_DIFFUSION": fetch_fed_g17_diffusion,
-    "OFR_FSI": fetch_ofr_fsi,
-    "BOJ_TSS": fetch_boj_tss,
-    "OECD_CLI": fetch_oecd_cli,
-    "IMF_BOP_IIP": fetch_imf_bop_iip,
-    "FDIC_BANKFIND": fetch_fdic_bankfind,
-    "SIBLIS_FREE": fetch_siblis_free,
-    "WORLD_BANK_PINK_SHEET": fetch_world_bank_pink_sheet,
-    "UN_SDG": fetch_un_sdg,
-    "SHILLER": fetch_shiller,
-    "IMF_DATAMAPPER": fetch_imf_datamapper,
-}
