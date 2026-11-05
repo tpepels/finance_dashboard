@@ -24,18 +24,25 @@ class PolicyArchitectureTests(unittest.TestCase):
                 continue
             tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
             aliases = {
-                name.asname or name.name for node in tree.body
+                name.asname or name.name for node in ast.walk(tree)
                 if isinstance(node, ast.Import)
                 for name in node.names if name.name == "httpx"
+            }
+            directly_imported = {
+                name.asname or name.name for node in ast.walk(tree)
+                if isinstance(node, ast.ImportFrom) and node.module == "httpx"
+                for name in node.names if name.name in forbidden
             }
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Call):
                     continue
                 method = node.func
-                if (isinstance(method, ast.Attribute)
-                        and isinstance(method.value, ast.Name)
-                        and method.value.id in aliases
-                        and method.attr in forbidden):
+                direct = isinstance(method, ast.Name) and method.id in directly_imported
+                attribute = (
+                    isinstance(method, ast.Attribute)
+                    and isinstance(method.value, ast.Name)
+                    and method.value.id in aliases and method.attr in forbidden)
+                if direct or attribute:
                     bypasses.append(f"{source.relative_to(ROOT)}:{node.lineno}")
         self.assertEqual(bypasses, [],
                          "Unmanaged outbound HTTPX bypasses: " + ", ".join(bypasses))
