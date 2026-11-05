@@ -12,12 +12,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .providers import ProviderRouter
+from .source_policy import PolicyDeferred, PolicyViolation
 from .catalog import load_documents
 from .database import IngestionRun, ObservationVersion, SeriesRow, now_utc
 
 
 def safe_source_failure_code(exc: BaseException) -> str:
     """Fixed vocabulary only; credentials, full URLs and provider bodies never persist."""
+    if isinstance(exc, PolicyDeferred):
+        return "source_policy_deferred"
+    if isinstance(exc, PolicyViolation):
+        return "source_policy_denied"
     if isinstance(exc, httpx.HTTPStatusError):
         code = exc.response.status_code
         return "provider_http_" + str(code) if 400 <= code < 600 else "provider_failed"
