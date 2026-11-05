@@ -22,8 +22,9 @@ from finance_dashboard.stan_originals import (
     parse_stan_original_csv, read_stan_evidence, stan_source_request,
     store_stan_original,
 )
-from finance_dashboard.stan_research import audit_stan_originals
-from finance_dashboard.source_policy import managed_client, require_managed_client
+from finance_dashboard.stan_research import audit_stan_originals, summarize_stan_readiness
+from finance_dashboard.source_policy import (managed_client, require_managed_client,
+                                            publisher_interruption)
 from finance_dashboard.stan_metadata import (
     STRUCTURE_URL, STRUCTURE_PARAMS, STRUCTURE_ACCEPT,
     MAX_STRUCTURE_BYTES, parse_stan_measure_structure,
@@ -50,6 +51,7 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
     ]
     require_managed_client(client)
     results = []
+    sent_requests = 0
     for name, measures, activity, with_format in tests:
         url, params = stan_source_request(country, year, measures=measures,
                                           activity=activity, end_year=year)
@@ -59,6 +61,7 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
                 "measures_requested": list(measures),
                 "year": year, "format_parameter": with_format,
                 "state": "source_check_failed"}
+        interruption = None
         try:
             with client.stream("GET", url, params=params,
                                headers={"Accept": "text/csv"}) as response:
@@ -90,25 +93,29 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
         except Exception as exc:
             # Raw error payloads and URLs are never displayed or accepted.
             item["reason_type"] = type(exc).__name__
-            if item.get("http_status") == 429:
-                item["failure_category"] = "publisher_rate_limited"
-            elif item.get("http_status", 0) >= 500:
-                item["failure_category"] = "publisher_http_5xx"
+            interruption = publisher_interruption(exc, item.get("http_status"))
+            if interruption:
+                item["failure_category"] = interruption["category"]
+                if interruption["policy_stop"]:
+                    item["retry_after_seconds"] = interruption.get("retry_after_seconds")
             elif item.get("http_status") in (204, 404):
                 item["failure_category"] = "no_published_observations_for_selection"
             elif item.get("http_status") in (400, 406, 422):
                 item["failure_category"] = "publisher_rejected_source_filter"
             else:
                 item["failure_category"] = "transport_or_native_schema"
+        if interruption is None or interruption["request_emitted"]:
+            sent_requests += 1
         results.append(item)
-        if item.get("http_status") in (429, 503):
-            break  # Respect publisher backpressure; do not retry blindly.
+        if interruption is not None:
+            break  # Shared policy owns cooldowns; stop this diagnostic batch.
     return {
         "phase": "phase2",
         "operation": "oecd_stan_native_request_diagnostics",
         "country": country, "probe_year": year,
         "checks": results,
-        "publisher_requests": len(results),
+        "publisher_requests": sent_requests,
+        "checks_performed": len(results),
         "no_archive_writes": True, "no_macro_database_writes": True,
         "original_role_bindings_created": 0,
         "full_historical_acquisition_verified": False,
@@ -142,6 +149,14 @@ def discover_measure_codes(client) -> dict:
         report["state"] = "validated_publisher_measure_codelist"
     except Exception as exc:
         report["reason_type"] = type(exc).__name__
+        interruption = publisher_interruption(exc, report.get("http_status"))
+        if interruption:
+            report["failure_category"] = interruption["category"]
+            if not interruption["request_emitted"]:
+                report["publisher_requests"] = 0
+            if interruption["policy_stop"]:
+                report["retry_after_seconds"] = interruption.get("retry_after_seconds")
+            return report
         code = report.get("http_status")
         if code == 429:
             report["failure_category"] = "publisher_rate_limited"
@@ -165,12 +180,15 @@ def probe_surplus(client, *, country: str, year: int) -> dict:
     from hashlib import sha256
     require_managed_client(client)
     checks = []
+    sent_requests = 0
+    stopped = False
     for candidate in STAN_SURPLUS_CANDIDATES:
         url, params = stan_source_request(
             country, year, measures=(candidate,),
             activity="_T", end_year=year)
         entry = {"candidate_measure": candidate, "probe_year": year,
                  "state": "source_check_failed"}
+        interruption = None
         try:
             with client.stream("GET", url, params={**params, "format": "csvfile"},
                                headers={"Accept": "text/csv"}) as response:
@@ -194,26 +212,25 @@ def probe_surplus(client, *, country: str, year: int) -> dict:
                          source_sha256=sha256(raw).hexdigest())
         except Exception as exc:
             entry["reason_type"] = type(exc).__name__
-            code = entry.get("http_status")
-            if code == 429:
-                entry["failure_category"] = "publisher_rate_limited"
-            elif code == 503:
-                entry["failure_category"] = "publisher_unavailable"
-            elif code == 404:
+            interruption = publisher_interruption(exc, entry.get("http_status"))
+            if interruption:
+                entry["failure_category"] = interruption["category"]
+                entry["retry_after_seconds"] = interruption.get("retry_after_seconds")
+            elif entry.get("http_status") == 404:
                 entry["failure_category"] = "no_published_observations_for_selection"
-            elif isinstance(code, int) and code >= 500:
-                entry["failure_category"] = "publisher_http_5xx"
             else:
                 entry["failure_category"] = "publisher_rejected_or_invalid_native_csv"
+        if interruption is None or interruption["request_emitted"]:
+            sent_requests += 1
         checks.append(entry)
-        if entry.get("http_status") in (429, 503):
+        if interruption is not None:
+            stopped = True
             break
     return {
         "phase": "phase2", "operation": "native_stan_surplus_code_probe",
         "country": country, "checks": checks,
-        "publisher_requests": len(checks),
-        "stopped_on_publisher_backpressure": any(
-            item.get("http_status") in (429, 503) for item in checks),
+        "publisher_requests": sent_requests,
+        "stopped_on_publisher_backpressure": stopped,
         "no_archive_writes": True, "no_macro_database_writes": True,
         "code_availability_requires_live_csv": True,
         "scientific_analysis_certified": False,
@@ -242,14 +259,18 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
     stan_source_request(countries[0], start_year, measures=selection)
     report = []
     backpressure = None
+    policy_stop = None
+    retry_after_seconds = None
     publisher_requests = 0
     for number, country in enumerate(countries, start=1):
         entry = {"country": country, "status": "acquisition_failed",
                  "requested_native_measures": list(selection),
                  "unresolved_candidate_measures": sorted(set(STAN_MEASURES) - set(selection))}
-        if backpressure:
-            entry.update(status="deferred_publisher_backpressure",
-                         failure_category=backpressure)
+        if backpressure or policy_stop:
+            entry.update(
+                status=("deferred_publisher_backpressure" if backpressure
+                        else "skipped_source_policy_block"),
+                failure_category=backpressure or policy_stop)
             report.append(entry)
             continue
         if not quiet:
@@ -302,16 +323,18 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
         except Exception as exc:
             entry["reason_type"] = type(exc).__name__
             code = entry.get("http_status")
-            if code == 429:
-                backpressure = "publisher_rate_limited"
-                entry["failure_category"] = backpressure
-            elif code == 503:
-                backpressure = "publisher_unavailable"
-                entry["failure_category"] = backpressure
+            interruption = publisher_interruption(exc, code)
+            if interruption:
+                entry["failure_category"] = interruption["category"]
+                if interruption["policy_stop"]:
+                    policy_stop = interruption["category"]
+                    retry_after_seconds = interruption.get("retry_after_seconds")
+                    publisher_requests -= 1  # Never transmitted beyond the gate.
+                    entry["status"] = "blocked_source_policy"
+                else:
+                    backpressure = interruption["category"]
             elif code == 404:
                 entry["failure_category"] = "no_published_observations_for_selection"
-            elif isinstance(code, int) and code >= 500:
-                entry["failure_category"] = "publisher_http_5xx"
             else:
                 entry["failure_category"] = "transport_or_native_schema"
             if not quiet:
@@ -329,6 +352,9 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
         "already_verified_archives": sum(item["status"] == "already_verified" for item in report),
         "acquisition_failures": sum(item["status"] not in completed for item in report),
         "stopped_on_publisher_backpressure": backpressure is not None,
+        "stopped_on_source_policy": policy_stop is not None,
+        "stop_reason": backpressure or policy_stop,
+        "retry_after_seconds": retry_after_seconds,
         "publisher_requests": publisher_requests,
         "request_budget": max_requests,
         "deferred_request_budget": sum(
@@ -397,6 +423,16 @@ def plan_expansion(root: Path, *, countries: tuple[str, ...],
 
 def brief_report(data: dict) -> dict:
     """Presentation summary only; source verification and archives are unchanged."""
+    if data.get("operation") == "stan_readiness":
+        return {
+            "operation": "stan_readiness",
+            "status_counts": data["status_counts"],
+            "verified_scope_countries": data["verified_scope_countries"],
+            "same_scope_identity_countries": data["same_scope_identity_countries"],
+            "examples": data["country_readiness"][:5],
+            "additional_countries": max(0, len(data["country_readiness"]) - 5),
+            "scientific_analysis_certified": False,
+        }
     if data.get("operation") == "stan_expansion_plan":
         return {
             "operation": "plan_expansion",
@@ -454,6 +490,8 @@ def brief_report(data: dict) -> dict:
             "statuses": dict(sorted(Counter(r["status"] for r in rows).items())),
             "requests": data.get("publisher_requests"),
             "backpressure": data["stopped_on_publisher_backpressure"],
+            "policy_stop": data.get("stopped_on_source_policy", False),
+            "stop_reason": data.get("stop_reason"),
             "last_country_requested": data.get("last_country_requested"),
             "countries_with_selected_scope": sum(
                 r["status"] in ("retained", "already_verified") for r in rows),
@@ -562,6 +600,8 @@ def main(argv=None) -> int:
     parser.add_argument("--resolve-surplus", action="store_true",
                         help="Probe bounded native net/gross combined-surplus candidates; "
                              "with --acquire, retain a separate five-measure source")
+    parser.add_argument("--readiness", action="store_true",
+                        help="Read-only per-country STAN source and identity readiness; no publisher calls")
     parser.add_argument("--audit", action="store_true",
                         help="Read-only, per-scope original industry-year overlap and identity audit")
     parser.add_argument("--measures", nargs="+", choices=sorted(STAN_ALLOWED_MEASURES),
@@ -588,11 +628,12 @@ def main(argv=None) -> int:
         parser.error("Use either --expand or --acquire")
     if args.plan_expansion and (
             args.acquire or args.expand or args.audit or args.diagnose
-            or args.resolve_surplus or args.discover_measures or args.after_country):
+            or args.resolve_surplus or args.discover_measures or args.after_country
+            or args.readiness):
         parser.error("--plan-expansion is a standalone read-only operation")
     if args.discover_measures and (
             args.expand or args.acquire or args.resolve_surplus or args.diagnose
-            or args.audit or args.measures or args.after_country):
+            or args.audit or args.measures or args.after_country or args.readiness):
         parser.error("--discover-measures is a standalone read-only operation")
     if args.resolve_surplus and (args.expand or args.diagnose or args.audit or
                                  len(countries) != 1 or args.measures):
@@ -600,6 +641,10 @@ def main(argv=None) -> int:
     if (args.diagnose or args.resolve_surplus) and not (
             1970 <= args.probe_year <= date.today().year):
         parser.error("--probe-year is outside the supported historical period")
+    if args.readiness and (args.acquire or args.expand or args.diagnose or
+                           args.resolve_surplus or args.audit or args.measures
+                           or args.discover_measures or args.plan_expansion):
+        parser.error("--readiness is a standalone read-only operation")
     if args.audit and (args.acquire or args.expand or args.diagnose):
         parser.error("--audit is read-only")
     try:
@@ -609,6 +654,10 @@ def main(argv=None) -> int:
         stan_source_request(countries[0], since.year)
     except ValueError:
         parser.error("Invalid YYYY-01-01 source start")
+    if args.readiness:
+        report = summarize_stan_readiness(args.evidence_dir, countries=countries)
+        emit_report(report, brief=args.brief)
+        return 1 if report["invalid_original_countries"] else 0
     if args.plan_expansion:
         selection = (tuple(args.measures) if args.measures
                      else STAN_VERIFIED_PORTUGAL_MEASURES)
@@ -672,7 +721,7 @@ def main(argv=None) -> int:
                              quiet=args.brief)
         emit_report(report, brief=args.brief)
         if args.expand:
-            failed = any(
+            failed = report["stopped_on_source_policy"] or any(
                 item["status"] not in (
                     "retained", "already_verified", "deferred_request_budget")
                 for item in report["acquisitions"])

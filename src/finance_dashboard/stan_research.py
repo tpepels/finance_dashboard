@@ -309,3 +309,98 @@ def reconcile_stan_source_scopes(
         "cross_scope_values_merged": False,
         "identities_computed_from_joined_scopes": False,
     }
+
+
+def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
+    """Assess independently verified native STAN scopes for research preparation.
+
+    One original may cover a subset of industries, years and measures. Never
+    combine separate retrievals or sum country/industry totals. An identity
+    matching printed precision is only a diagnostic, not a certification.
+    """
+    audits = audit_stan_originals(root, countries=countries)
+    statuses = Counter()
+    countries_result = []
+    invalid = []
+    same_scope_countries = 0
+    verified_countries = 0
+    for item in audits["country_audits"]:
+        country = item["country"]
+        if item["status"] != "verified_independent_scope_audits":
+            status = ("invalid_original_archive" if item["status"] == "invalid_original_stan"
+                      else "missing_verified_original")
+            if status == "invalid_original_archive":
+                invalid.append(country)
+            statuses[status] += 1
+            countries_result.append({
+                "country": country, "status": status,
+                "verified_scopes": 0, "same_scope_identity_observations": False,
+            })
+            continue
+        verified_countries += 1
+        scopes = item["scope_audits"]
+        net = [s["identity_checks"]["net_surplus_and_mixed_income"] for s in scopes]
+        gross = [s["identity_checks"]["gross_surplus_and_mixed_income"] for s in scopes]
+        any_matched = any(
+            check["eligible_matched_industry_years"] > 0
+            for check in (*net, *gross))
+        any_residual = any(
+            check["outside_printed_precision_bounds"] > 0
+            for check in (*net, *gross))
+        any_flag = any(
+            check["groups_with_non_A_source_flags"] > 0
+            for check in (*net, *gross))
+        if any_matched:
+            same_scope_countries += 1
+        cross = item["cross_scope_reconciliation"]["comparisons"]
+        cross_conflicts = any(
+            s["numeric_value_disagreements_same_unit"]
+            or s["incompatible_or_unreported_units"]
+            or s["source_flag_changes"]
+            for s in cross)
+        if any_residual:
+            status = "accounting_residuals_require_investigation"
+        elif cross_conflicts:
+            status = "retrieval_disagreements_require_investigation"
+        elif any_matched and any_flag:
+            status = "identity_overlap_contains_uninterpreted_flags"
+        elif any_matched:
+            status = "same_scope_identity_diagnostic_available"
+        elif any(s["core_four_matched_industry_years"] > 0 for s in scopes):
+            status = "four_measure_coverage_only"
+        else:
+            status = "insufficient_same_scope_measure_coverage"
+        statuses[status] += 1
+        countries_result.append({
+            "country": country, "status": status,
+            "verified_scopes": len(scopes),
+            "same_scope_identity_observations": any_matched,
+            "core_four_max_industry_years_in_single_scope": max(
+                s["core_four_matched_industry_years"] for s in scopes),
+            "net_max_matched_in_single_scope": max(
+                c["eligible_matched_industry_years"] for c in net),
+            "gross_max_matched_in_single_scope": max(
+                c["eligible_matched_industry_years"] for c in gross),
+            "native_measure_sets": [
+                s["requested_native_measures"] for s in scopes],
+            "retrieval_scope_disagreements": cross_conflicts,
+            "non_A_identity_flags_present": any_flag,
+            "identity_residuals_outside_printed_precision": any_residual,
+        })
+    return {
+        "phase": "phase2", "operation": "stan_readiness",
+        "countries_checked": list(countries),
+        "verified_scope_countries": verified_countries,
+        "same_scope_identity_countries": same_scope_countries,
+        "invalid_original_countries": invalid,
+        "status_counts": dict(sorted(statuses.items())),
+        "country_readiness": countries_result,
+        "observations_merged_across_retrievals": False,
+        "industries_aggregated": False,
+        "source_status_flag_meanings_verified": False,
+        "publication_vintages_aligned": False,
+        "first_publication_verified": False,
+        "scientific_analysis_certified": False,
+        "publisher_requests": 0, "no_archive_writes": True,
+        "no_macro_database_writes": True,
+    }

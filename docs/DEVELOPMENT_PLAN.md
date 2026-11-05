@@ -1,5 +1,35 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 STAN research readiness and publisher interruption handling — 2026-11-05
+
+The STAN original-acquisition CLI now respects the canonical request-policy
+gate for pre-transmission deferrals and access blocks, as well as HTTP 401,
+403, 429 and 5xx backpressure. Once a publisher-wide stop is observed, it
+does not issue more requests for later countries or probe candidates. A
+policy-rejected request is not counted as transmitted; cooldown time is
+reported without leaking URLs or credentials. The source policy ledger
+remains the only quota and retry scheduler.
+
+`--readiness --brief` produces an **offline**, individually rehashed,
+country-by-country source readiness report from native originals. It
+distinguishes invalid/missing archives, four-measure overlap, same-response
+net/gross accounting eligibility, rounding residuals, unverified source
+flags, and observed disagreements between separately archived retrievals.
+The summary reports the **maximum within one scope**, not an additive sum
+of overlapping retrievals. No accepted source data, source IDs, original
+bytes, receipts, or historical observations are modified.
+
+Run after deployment:
+
+```bash
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --readiness --brief
+```
+
+This is a diagnostic research gate, not acceptance of OECD surplus codes,
+original publication vintages, or any L01–L03 Marxian profit/surplus
+construct. The entire Phase 2/35-analysis certification remains open.
+
+
 ## Phase 2 architectural consolidation — provider, acquisition and maintenance (2026-11-05)
 
 **Implementation committed on `main`; complete runtime verification remains

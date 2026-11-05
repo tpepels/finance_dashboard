@@ -190,3 +190,32 @@ def policy_summary() -> dict:
     report["catalog_source_reference_coverage"] = catalog_source_policy_audit(
         gate.registry)
     return report
+
+
+
+def publisher_interruption(error: BaseException, status_code: int | None = None) -> dict | None:
+    """Classify publisher-wide stop conditions once for all acquisition callers.
+
+    A transport-level policy refusal means no HTTP request was emitted.
+    HTTP access errors/backpressure mandate stopping the current batch;
+    further attempts are scheduled by the canonical policy ledger, not here.
+    Never expose request URLs, credentials or response bodies.
+    """
+    if isinstance(error, PolicyDeferred):
+        return {"category": "source_policy_deferred", "policy_stop": True,
+                "request_emitted": False,
+                "retry_after_seconds": error.retry_after_seconds}
+    if isinstance(error, PolicyViolation):
+        return {"category": "source_policy_blocked", "policy_stop": True,
+                "request_emitted": False}
+    if status_code in (401, 403):
+        category = "publisher_access_denied"
+    elif status_code == 429:
+        category = "publisher_rate_limited"
+    elif status_code == 503:
+        category = "publisher_unavailable"
+    elif isinstance(status_code, int) and status_code >= 500:
+        category = "publisher_http_5xx"
+    else:
+        return None
+    return {"category": category, "policy_stop": False, "request_emitted": True}

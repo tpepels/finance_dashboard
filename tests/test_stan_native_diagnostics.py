@@ -36,8 +36,8 @@ class StanNativeDiagnosticsTests(unittest.TestCase):
             return httpx.Response(500, content=b"Do not expose upstream HTML or keys")
         with httpx.Client(transport=httpx.MockTransport(respondent)) as client:
             result = diagnose_publisher(client, country="PRT", year=2020)
-        self.assertEqual(result["publisher_requests"], 8)
-        self.assertEqual(len(requests), 8)
+        self.assertEqual(result["publisher_requests"], 4)
+        self.assertEqual(len(requests), 4)
         checks = {item["check"]: item for item in result["checks"]}
         control = checks["published_value_added_control"]
         self.assertEqual(control["state"], "validated_native_csv")
@@ -48,9 +48,10 @@ class StanNativeDiagnosticsTests(unittest.TestCase):
         self.assertIn("format=csvfile", str(requests[0].url))
         self.assertNotIn("format=csvfile", str(requests[1].url))
         self.assertEqual(requests[0].url.params["endPeriod"], "2020")
-        self.assertEqual(checks["native_measure_B2N"]["http_status"], 500)
-        self.assertEqual(checks["five_measure_total_activity_one_year"]["failure_category"],
+        self.assertEqual(checks["native_measure_D1"]["http_status"], 500)
+        self.assertEqual(checks["native_measure_D1"]["failure_category"],
                          "publisher_http_5xx")
+        self.assertNotIn("native_measure_B2N", checks)
         self.assertTrue(result["no_archive_writes"])
         self.assertTrue(result["no_macro_database_writes"])
         self.assertFalse(result["scientific_analysis_certified"])
@@ -67,7 +68,7 @@ class StanNativeDiagnosticsTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(result["publisher_requests"], 1)
         self.assertEqual(result["checks"][0]["http_status"], 503)
-        self.assertEqual(result["checks"][0]["failure_category"], "publisher_http_5xx")
+        self.assertEqual(result["checks"][0]["failure_category"], "publisher_unavailable")
         self.assertNotIn("Retry after maintenance", json.dumps(result))
 
     def test_429_is_rate_limiting_and_stops_probe_requests(self):
