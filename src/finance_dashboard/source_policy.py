@@ -210,14 +210,17 @@ class PolicyRegistry:
 class _ManagedResponseStream(httpx.SyncByteStream):
     """Hold concurrency lease until all source body bytes are consumed/closed."""
 
-    def __init__(self, original: httpx.SyncByteStream, release):
+    def __init__(self, original: httpx.SyncByteStream, release, heartbeat):
         self.original = original
         self.release_callback = release
+        self.heartbeat = heartbeat
         self.closed = False
 
     def __iter__(self):
         try:
-            yield from self.original
+            for chunk in self.original:
+                self.heartbeat()
+                yield chunk
         finally:
             self.close()
 
@@ -356,6 +359,26 @@ class SourcePolicyGate:
                     pass
         return now
 
+    def keepalive(self, lease: str, policy_id: str) -> None:
+        """Renew a live download lease; never resurrect an expired reservation."""
+        now = self.clock()
+        rate = self.registry.by_id[policy_id].rate
+        conn = self._connection()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                "UPDATE leases SET expires_at = ? "
+                "WHERE id = ? AND policy_id = ? AND expires_at > ?",
+                (now + rate["lease_seconds"], lease, policy_id, now))
+            if row.rowcount != 1:
+                raise PolicyViolation(policy_id, "download_lease_expired")
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.close()
+
     def release(self, lease: str, policy_id: str, *,
                 status: int | None = None, headers=None) -> None:
         conn = self._connection()
@@ -407,8 +430,14 @@ class SourcePolicyGate:
             return
         # HTTPX response hooks run on headers before a streamed body has been
         # consumed. Concurrency applies to the whole download, not just headers.
+        last_touch = [self.clock()]
+        def heartbeat():
+            now = self.clock()
+            if now - last_touch[0] >= 30:
+                self.keepalive(lease, policy_id)
+                last_touch[0] = now
         response.stream = _ManagedResponseStream(
-            response.stream, lambda: self.release(lease, policy_id))
+            response.stream, lambda: self.release(lease, policy_id), heartbeat)
 
     def report(self) -> dict:
         """Read only policy-state diagnostics; redact URLs and all credentials."""
