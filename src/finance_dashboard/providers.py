@@ -66,5 +66,8 @@ class ProviderRouter:
         spec = get_provider(provider)
         if spec is None:
             raise SourceUnavailable(f"No validated adapter for provider: {provider}")
-        from .provider_adapters import HANDLERS
-        return HANDLERS[provider](self, series_id, start, item, key)
+        from . import provider_adapters
+        handler = getattr(provider_adapters, spec.handler, None)
+        if not callable(handler):
+            raise RuntimeError("Registered provider handler unavailable")
+        return handler(self, series_id, start, item, key)
