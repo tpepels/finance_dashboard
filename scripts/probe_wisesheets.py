@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import httpx
+from finance_dashboard.source_policy import managed_client, managed_get
 
 KEY = os.environ.get("WISESHEETS_API_KEY")
 if not KEY:
@@ -28,7 +29,7 @@ requests = [
     }),
     ("universe", "/companies/", {"limit": 2}),
 ]
-with httpx.Client(timeout=15, follow_redirects=False, headers=HEADERS) as client:
+with managed_client(timeout=15, follow_redirects=False, headers=HEADERS) as client:
     for label, path, params in requests:
         try:
             r = client.get(ROOT + path, params=params)
