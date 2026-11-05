@@ -292,10 +292,106 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
     }
 
 
+
+def brief_report(data: dict) -> dict:
+    """Presentation summary only; source verification and archives are unchanged."""
+    if "surplus_probe" in data:
+        probe = data["surplus_probe"]
+        out = {
+            "operation": "resolve_surplus", "country": probe["country"],
+            "selected": data.get("selected_observed_surplus_measure"),
+            "checks": [{
+                "measure": row["candidate_measure"], "state": row["state"],
+                "http": row.get("http_status"), "failure": row.get("failure_category"),
+            } for row in probe["checks"]],
+            "publisher_backpressure": probe["stopped_on_publisher_backpressure"],
+        }
+        if "acquisition" in data:
+            out["acquisition"] = brief_report(data["acquisition"])
+        if "accounting_audit" in data:
+            out["accounting_audit"] = brief_report(data["accounting_audit"])
+        return out
+    if "diagnostics" in data:
+        return {"operation": "diagnose", "countries": [{
+            "country": country["country"], "checks": [{
+                "check": row["check"], "http": row.get("http_status"),
+                "state": row["state"], "failure": row.get("failure_category"),
+            } for row in country["checks"]]
+        } for country in data["diagnostics"]]}
+    op = data.get("operation")
+    if op == "original_stan_industry_acquisition":
+        from collections import Counter
+        rows = data["acquisitions"]
+        exceptional = [r for r in rows if r["status"] not in (
+            "already_verified", "deferred_request_budget")]
+        return {
+            "operation": "acquire", "measures": data["requested_native_measures"],
+            "statuses": dict(sorted(Counter(r["status"] for r in rows).items())),
+            "requests": data.get("publisher_requests"),
+            "backpressure": data["stopped_on_publisher_backpressure"],
+            "last_country_requested": data.get("last_country_requested"),
+            "verified_countries": data["source_evidence"]["country_count"],
+            "events": [{
+                "country": r["country"], "status": r["status"],
+                "http": r.get("http_status"), "observations": r.get("numeric_observations"),
+                "failure": r.get("failure_category"),
+            } for r in exceptional[:5]],
+            "additional_events": max(0, len(exceptional) - 5),
+            "scientific_analysis_certified": False,
+        }
+    if op == "stan_original_industry_accounting_audit":
+        countries = []
+        for c in data["country_audits"][:5]:
+            scopes = []
+            for s in c["scope_audits"][:3]:
+                scopes.append({
+                    "scope": s["scope"], "industry_years": s["distinct_industry_years"],
+                    "core_four_overlap": s["core_four_matched_industry_years"],
+                    "identities": {
+                        name: {"matched": v["eligible_matched_industry_years"],
+                               "outside_precision": v["outside_printed_precision_bounds"],
+                               "non_A": v["groups_with_non_A_source_flags"],
+                               "largest": v["largest_residual_examples"][:1]}
+                        for name, v in s["identity_checks"].items()
+                    },
+                })
+            countries.append({
+                "country": c["country"], "status": c["status"], "scopes": scopes,
+                "additional_scopes": max(0, len(c["scope_audits"]) - 3),
+            })
+        return {"operation": "audit", "countries": countries,
+                "additional_countries": max(0, len(data["country_audits"]) - 5),
+                "cross_scope_join_performed": False, "scientific_analysis_certified": False}
+    if op == "original_stan_evidence_inspection":
+        e = data["source_evidence"]
+        return {
+            "operation": "inspect", "status": e["status"],
+            "verified_countries": e["country_count"],
+            "countries": [{
+                "country": c["country"], "status": c["status"],
+                "observations": c.get("observations"),
+                "measures": c.get("covered_native_measures"),
+                "scopes": len(c.get("source_scopes", [])),
+            } for c in e["country_results"][:5]],
+            "additional_countries": max(0, len(e["country_results"]) - 5),
+            "full_history_verified": e["full_history_verified"],
+        }
+    return data
+
+
+def emit_report(data: dict, *, brief: bool) -> None:
+    if brief:
+        print(json.dumps(brief_report(data), separators=(",", ":")))
+    else:
+        print(json.dumps(data, indent=2))
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-dir", type=Path, required=True,
                         help="Existing original source-evidence archive root")
+    parser.add_argument("--brief", action="store_true",
+                        help="One-line summary instead of full JSON")
     parser.add_argument("--countries", nargs="+",
                         default=sorted(OECD_MEMBER_ISO3),
                         help="OECD ISO3 member codes (default: all 38 countries)")
@@ -358,7 +454,7 @@ def main(argv=None) -> int:
         with httpx.Client(timeout=45, follow_redirects=False) as client:
             results = [diagnose_publisher(client, country=country, year=args.probe_year)
                        for country in countries]
-        print(json.dumps({"diagnostics": results}, indent=2))
+        emit_report({"diagnostics": results}, brief=args.brief)
         return 0 if all(
             any(check["state"] == "validated_native_csv" for check in report["checks"])
             for report in results
@@ -382,12 +478,12 @@ def main(argv=None) -> int:
         if args.acquire and "acquisition" in result:
             result["accounting_audit"] = audit_stan_originals(
                 args.evidence_dir, countries=countries)
-        print(json.dumps(result, indent=2))
+        emit_report(result, brief=args.brief)
         return 0 if (selected and (not args.acquire or
                  result.get("acquisition", {}).get("acquisition_failures") == 0)) else 1
     if args.audit:
-        print(json.dumps(audit_stan_originals(
-            args.evidence_dir, countries=countries), indent=2))
+        emit_report(audit_stan_originals(
+            args.evidence_dir, countries=countries), brief=args.brief)
         return 0
     if args.acquire or args.expand:
         import httpx
@@ -397,7 +493,7 @@ def main(argv=None) -> int:
                              measures=tuple(args.measures) if args.measures else None,
                              max_requests=(args.max_requests if args.max_requests is not None
                                            else 4 if args.expand else None))
-        print(json.dumps(report, indent=2))
+        emit_report(report, brief=args.brief)
         if args.expand:
             failed = any(
                 item["status"] not in (
@@ -407,12 +503,12 @@ def main(argv=None) -> int:
         return 1 if report["acquisition_failures"] or (
             report["source_evidence"]["country_count"] != len(countries)) else 0
     evidence = read_stan_evidence(args.evidence_dir, countries=countries)
-    print(json.dumps({
+    emit_report({
         "phase": "phase2", "operation": "original_stan_evidence_inspection",
         "no_macro_database_writes": True,
         "source_evidence": evidence,
         "scientific_analysis_certified": False,
-    }, indent=2))
+    }, brief=args.brief)
     return 0 if evidence["country_count"] == len(countries) else 1
 
 
