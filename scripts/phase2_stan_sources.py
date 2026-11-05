@@ -399,7 +399,11 @@ def main(argv=None) -> int:
                                            else 4 if args.expand else None))
         print(json.dumps(report, indent=2))
         if args.expand:
-            return 1 if report["stopped_on_publisher_backpressure"] else 0
+            failed = any(
+                item["status"] not in (
+                    "retained", "already_verified", "deferred_request_budget")
+                for item in report["acquisitions"])
+            return 1 if failed or report["stopped_on_publisher_backpressure"] else 0
         return 1 if report["acquisition_failures"] or (
             report["source_evidence"]["country_count"] != len(countries)) else 0
     evidence = read_stan_evidence(args.evidence_dir, countries=countries)
