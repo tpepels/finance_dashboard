@@ -269,6 +269,7 @@ def read_snapshot(root: Path, series_id: str, asof: date) -> dict | None:
 def fetch_snapshot(series_id: str, asof: date, *, api_key: str,
                    client: httpx.Client, root: Path = ROOT) -> dict:
     """Official ALFRED as-of snapshot. No synthetic 'release at period' dating."""
+    require_managed_client(client)
     if series_id not in SOURCES:
         raise VintageError("Unmapped ALFRED source")
     if not api_key:
