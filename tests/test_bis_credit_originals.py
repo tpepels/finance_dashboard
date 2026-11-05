@@ -20,7 +20,7 @@ from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import Base, make_engine
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.service import IngestionService
-from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_reconciliation import EvidenceError, reconcile
 
 
@@ -183,7 +183,7 @@ class OriginalBisTotalCreditTests(unittest.TestCase):
             try:
                 with httpx.Client(transport=httpx.MockTransport(reply)) as client:
                     router = ProviderRouter(client=client)
-                    wrapped = CapturedProvider(router, evidence)
+                    wrapped = SourceAcquisition(router, evidence)
                     service = IngestionService(engine, wrapped)
                     first = service.refresh(sid, full=True)
                     self.assertEqual(first["versions_added"], 2)
