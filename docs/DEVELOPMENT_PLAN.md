@@ -1,5 +1,48 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 architectural consolidation — provider, acquisition and maintenance (2026-11-05)
+
+**Implementation committed on `main`; complete runtime verification remains
+required.** This is the next consolidation of the existing Phase 2 path,
+not a new product phase or a parallel runtime.
+
+| Former duplication or architectural gap | Canonical replacement |
+| --- | --- |
+| 38 provider codes and ~500 lines of conditional dispatch in `providers.py` | `provider_registry.py` declares 38 provider contracts, `provider_adapters.py` provides 35 source-family handlers, and `providers.py` is a ~70-line router; conditional fallback removed |
+| Provider-specific parsing mixed with network routing | `provider_parsers.py` contains original parsing definitions and native validation; existing consumers use that module directly; no old parser implementation remains in the router |
+| Full-snapshot refresh scope separately hardcoded in ingestion | Source registration owns `refresh_scope` and exceptional full-source keys; `IngestionService` uses the one registry |
+| HTTP original capture allowlist repeated and isolated from daily refresh | `SourceAcquisition` resolves acquisition mode through the same registry and is wired into the normal macro worker. It archives validated original bytes, receipts and exact full/partial retrieval scopes; dedicated native archives are reported as unlinked rather than fabricated |
+| Ingestion runs lacked a reproducible original-response reference | Nullable `evidence_kind`, `evidence_scope`, `evidence_bundle_digest`, and `evidence_receipt_name` columns, migration `20261105_06`; legacy runs stay NULL |
+| Source archive links were not independently checkable from ingestion history | `source_evidence_audit.py` verifies original bytes, SHA-256 content identities, manifests and receipts without provider calls or DB writes; `scripts/audit_ingestion_evidence.py --brief` reports coverage and integrity |
+| Maintenance option schemas and handler dispatch duplicated lists and nested conditionals | `maintenance_jobs.py` owns all 10 action contracts and canonical allowlist validation; `maintenance_handlers.py` owns registered handlers, `maintenance_sync.py` owns staged sync; `maintenance.py` now handles job lifecycle, persistence, cancellation and locking only |
+| Source health concealed difference between captured and unlinked originals | Source coverage/API and detailed UI show latest successful evidence mode, exact archived scope and receipt presence, without claiming publication vintage |
+
+**Provenance acceptance:** response bundles are append-only, selected by
+content/receipt identity, and existing files must not be reinterpreted or
+rewritten. `full_source_snapshot` describes the **requested retrieval scope**,
+not independently verified complete industry history or first-publication
+vintage; `requested_period_subset` is explicitly partial. Native and local
+sources retain their original specialized evidence policies and are not
+mislabelled as generic HTTP receipts. Existing observations and previous
+ingestion runs are retained. Failed validations quarantine invalid bytes and
+do not create successful evidence receipts.
+
+**Verification path:** the sole GitHub Python-static workflow compiles and
+checks syntax; it does not execute the full runtime suite. After pulling,
+build the Docker image (which also checks TypeScript), run the complete Python
+unittest suite, perform the read-only ingestion evidence audit, run Vitest,
+and let the existing offline overnight runner repeat full Python tests and
+STAN immutable-evidence checks. The migration runs through normal
+`alembic upgrade head` on container start, not through an archive reset.
+Do not claim these checks passed until local results confirm them.
+
+**Constraints remaining:** unclassified dynamic publisher URLs are denied
+by the source policy gate; historical native country/source completeness and
+surplus identity remain scientific verification gates. Existing archived
+pre-consolidation ingestion runs have no invented provenance receipt.
+Dataset dissemination licensing remains separately permission-gated.
+The data-analysis research Phase 2 does not close on structural refactoring.
+
 ## Architecture audit and consolidation sweep — 2026-11-05
 
 **Audit scope:** the application/worker/API entrypoints, publisher acquisition,
@@ -41,16 +84,12 @@ Existing overnight offline verification runs the full Python suite twice.
 GitHub CI remains the single static Python check; it does not certify these
 runtime/SQLite/HTTP lifecycle tests.
 
-**Audit findings remaining outside this consolidation scope:**
-the large `providers.py` parser/dispatcher and `maintenance.py` action
-orchestration still warrant a separate adapter-registry and declarative
-job-definition refactor after their behavioral contracts are fully inventoried.
-Explicit original-response capture is not wired to everyday ingestion; that
-requires a separate evidence-completeness policy rather than silently
-treating normal refreshes as verified original archives. Publisher network
-origin cannot be independently verified from a container, and third-party
-traffic on the same public IP is outside the shared ledger's visibility.
-No compatibility path or parallel rate-limit implementation was introduced.
+**Follow-up to this initial audit:** provider dispatch, maintenance
+action registration and routine original-response capture were consolidated
+in the Phase 2 architectural increment above. Publisher network origin
+cannot be independently verified from a container, and third-party traffic
+on the same public IP remains outside the shared ledger's visibility.
+No parallel request scheduler or legacy provider dispatcher remains.
 
 ## Phase 2 canonical publisher policy consolidation — 2026-11-05
 
