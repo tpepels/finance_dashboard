@@ -60,7 +60,7 @@ class ExtendedPhase2SourcesTests(unittest.TestCase):
         with httpx.Client(transport=httpx.MockTransport(handler)) as client:
             router=ProviderRouter(client=client)
             try:
-                with patch("finance_dashboard.providers.date") as fake_date:
+                with patch("finance_dashboard.provider_adapters.date") as fake_date:
                     fake_date.today.return_value=date(2026,11,4)
                     fake_date.side_effect=lambda *v:date(*v)
                     observed=router.fetch("prices.us.imf_cpi_inflation").observations
