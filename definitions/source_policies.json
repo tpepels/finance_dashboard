@@ -488,7 +488,7 @@
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
         "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "allow_automated_download": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -655,6 +655,296 @@
         "require_direct_network_ack": false,
         "require_contact_user_agent": false,
         "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "wid",
+      "hosts": [
+        "wid.world",
+        "www.wid.world"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://wid.world/data/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 360,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "dataverse",
+      "hosts": [
+        "dataverse.nl"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://dataverse.nl/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 360,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "figshare",
+      "hosts": [
+        "api.figshare.com"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://help.figshare.com/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 360,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "cvm-brazil",
+      "hosts": [
+        "dados.cvm.gov.br"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://dados.cvm.gov.br/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 360,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "nber",
+      "hosts": [
+        "www.nber.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://www.nber.org/research/business-cycle-dating",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "ilo",
+      "hosts": [
+        "rplumber.ilo.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://ilostat.ilo.org/data/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 360,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "msci",
+      "hosts": [
+        "www.msci.com"
+      ],
+      "classification": "restricted_use",
+      "evidence_url": "https://www.msci.com/terms-of-use",
+      "rate": {
+        "limit": 1,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 3600,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "bea-public",
+      "hosts": [
+        "apps.bea.gov",
+        "www.bea.gov"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://www.bea.gov/resources/developer",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 360,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "reuters-research",
+      "hosts": [
+        "www.researchgate.net"
+      ],
+      "classification": "restricted_use",
+      "evidence_url": "https://www.researchgate.net/",
+      "rate": {
+        "limit": 1,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 3600,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
