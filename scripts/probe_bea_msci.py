@@ -2,6 +2,7 @@
 from datetime import date
 import json
 import httpx
+from finance_dashboard.source_policy import managed_client, managed_get
 from html.parser import HTMLParser
 
 class Tables(HTMLParser):
@@ -22,7 +23,7 @@ class Tables(HTMLParser):
         elif tag=="table" and self.table is not None:
             self.tables.append(self.table);self.table=None
 
-with httpx.Client(timeout=12,follow_redirects=True) as client:
+with managed_client(timeout=12,follow_redirects=True) as client:
     url="https://apps.bea.gov/scb/issues/2026/05-may/0526-domestic-returns.htm"
     try:
         response=client.get(url)
