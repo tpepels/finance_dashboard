@@ -50,6 +50,16 @@ class DiagnosticJournalTests(unittest.TestCase):
         self.assertNotIn("VERYSECRET", path.read_text(encoding="utf-8"))
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
+    def test_canonical_policy_deferral_is_retained_as_safe_event(self):
+        record_event("macro", "source_deferred", level="warning",
+                     source_id="policy_rate.us.fed_upper",
+                     reason="source_policy_deferred", status="deferred")
+        events = read_events()
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event"], "source_deferred")
+        self.assertEqual(events[0]["status"], "deferred")
+        self.assertEqual(events[0]["reason"], "source_policy_deferred")
+
     def test_event_count_is_bounded_and_oldest_are_removed(self):
         for i in range(MAX_EVENTS + 7):
             record_event("macro", "source_failed", level="warning",
