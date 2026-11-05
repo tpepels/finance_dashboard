@@ -142,6 +142,11 @@ class PolicyRegistry:
         }
 
     def report(self) -> dict:
+        acknowledged = {
+            value.strip() for value in os.environ.get(
+                "FINANCE_SOURCE_POLICY_ACKNOWLEDGED", "").split(",")
+            if value.strip()
+        }
         return {
             "schema_version": 1,
             "version": self.version,
@@ -160,6 +165,7 @@ class PolicyRegistry:
                     "max_concurrent": p.rate["max_concurrent"],
                     "require_direct_network_ack":
                         p.restrictions["require_direct_network_ack"],
+                    "operator_acknowledged": p.id in acknowledged,
                     "automated_download_allowed":
                         p.restrictions["allow_automated_download"],
                     "redistribution": p.rights["redistribution"],
