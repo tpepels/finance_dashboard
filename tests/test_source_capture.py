@@ -11,7 +11,7 @@ from unittest.mock import patch
 import httpx
 
 from finance_dashboard.providers import ProviderRouter
-from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_policy import SourcePolicyGate, managed_client
 
 
@@ -30,7 +30,7 @@ class SourceCaptureTests(unittest.TestCase):
             with managed_client(
                     policy_gate=gate,
                     transport=httpx.MockTransport(respond)) as http:
-                result = CapturedProvider(
+                result = SourceAcquisition(
                     ProviderRouter(http), evidence).fetch("bond.us.nominal_10y")
                 self.assertEqual(result.observations[date(2024, 1, 2)],
                                  Decimal("3.95"))
@@ -51,7 +51,7 @@ class SourceCaptureTests(unittest.TestCase):
             with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(
                     200, content=raw, headers={"content-type": "application/json", "set-cookie": "private-cookie"}))) as http:
                 router = ProviderRouter(http)
-                captured = CapturedProvider(router, Path(temp))
+                captured = SourceAcquisition(router, Path(temp))
                 result = captured.fetch("bond.us.nominal_10y")
                 self.assertEqual(result.observations[date(2024, 1, 2)], Decimal('3.95'))
                 manifests = list(Path(temp).glob("responses/bond.us.nominal_10y/*/manifest.json"))
@@ -72,13 +72,13 @@ class SourceCaptureTests(unittest.TestCase):
         with TemporaryDirectory() as temp, patch.dict("os.environ", {"FRED_API_KEY": "key"}):
             with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(
                     200, json={"observations": [{"date": "2024-01-02", "value": "3.95"}]}))) as http:
-                captured = CapturedProvider(ProviderRouter(http), Path(temp))
+                captured = SourceAcquisition(ProviderRouter(http), Path(temp))
                 captured.fetch("bond.us.nominal_10y", date(2024, 1, 1))
                 path = next(Path(temp).glob("responses/bond.us.nominal_10y/*/manifest.json"))
                 self.assertEqual(json.loads(path.read_text())["scope"], "requested_period_subset")
             with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, text="bad-source"))) as http:
                 with self.assertRaises(ValueError):
-                    CapturedProvider(ProviderRouter(http), Path(temp)).fetch("bond.us.real_10y")
+                    SourceAcquisition(ProviderRouter(http), Path(temp)).fetch("bond.us.real_10y")
                 self.assertFalse(list(Path(temp).glob("responses/bond.us.real_10y/retrievals/*.json")))
                 self.assertEqual(http.event_hooks["response"], [])
 
@@ -89,7 +89,7 @@ class SourceCaptureTests(unittest.TestCase):
             with httpx.Client(transport=httpx.MockTransport(
                     lambda request: httpx.Response(403, content=raw, headers={
                         "content-type": "text/plain", "set-cookie": "private-cookie"}))) as client:
-                captured = CapturedProvider(ProviderRouter(client), Path(temp))
+                captured = SourceAcquisition(ProviderRouter(client), Path(temp))
                 with self.assertRaises(Exception):
                     captured.fetch("bond.us.nominal_10y")
                 files = list(Path(temp).glob(
@@ -115,7 +115,7 @@ class SourceCaptureTests(unittest.TestCase):
                 "FRED_API_KEY": "private-api-token"}):
             with httpx.Client(transport=httpx.MockTransport(
                     lambda request: httpx.Response(200, content=invalid))) as client:
-                captured = CapturedProvider(ProviderRouter(client), Path(temp))
+                captured = SourceAcquisition(ProviderRouter(client), Path(temp))
                 with self.assertRaises(ValueError):
                     captured.fetch("bond.us.real_10y")
                 files = list(Path(temp).glob(
@@ -135,5 +135,5 @@ class SourceCaptureTests(unittest.TestCase):
             def fetch(self, identifier, start=None):
                 return "dedicated_archive"
         with TemporaryDirectory() as temp:
-            self.assertEqual(CapturedProvider(Router(), Path(temp)).fetch("test"), "dedicated_archive")
+            self.assertEqual(SourceAcquisition(Router(), Path(temp)).fetch("test"), "dedicated_archive")
             self.assertEqual(list(Path(temp).iterdir()), [])
