@@ -158,7 +158,7 @@ class WiseTests(unittest.TestCase):
             self.assertIsNone(req.headers.get("authorization"))
             return httpx.Response(200,text="KEY,TIME_PERIOD,OBS_VALUE\nEXR.D.USD.EUR.SP00.A,2024-06-03,1.20")
         with httpx.Client(transport=httpx.MockTransport(handler)) as raw:
-            client=WisesheetsClient("TEST_SECRET",client=raw,min_request_spacing=0)
+            client=WisesheetsClient("TEST_SECRET",client=raw)
             self.assertEqual(client.plan()["code"],"free")
             self.assertEqual(client.fx_history("USD","2024-01-01")[date(2024,6,3)],D("1.20"))
             client.close()
