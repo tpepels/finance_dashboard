@@ -12,9 +12,39 @@ import httpx
 
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_policy import SourcePolicyGate, managed_client
 
 
 class SourceCaptureTests(unittest.TestCase):
+    def test_original_capture_integrates_with_managed_transport_and_immutable_receipts(self):
+        raw = b'{"observations":[{"date":"2024-01-02","value":"3.95"}]}'
+        with TemporaryDirectory() as temp, patch.dict(
+                "os.environ", {"FRED_API_KEY": "never-leak-secret"}):
+            evidence = Path(temp) / "evidence"
+            state = Path(temp) / "policy.sqlite"
+            request_count = []
+            def respond(request):
+                request_count.append(str(request.url))
+                return httpx.Response(200, content=raw)
+            gate = SourcePolicyGate(state_path=state)
+            with managed_client(
+                    policy_gate=gate,
+                    transport=httpx.MockTransport(respond)) as http:
+                result = CapturedProvider(
+                    ProviderRouter(http), evidence).fetch("bond.us.nominal_10y")
+                self.assertEqual(result.observations[date(2024, 1, 2)],
+                                 Decimal("3.95"))
+                self.assertEqual(http.event_hooks["response"], [])
+            manifests = list(evidence.glob(
+                "responses/bond.us.nominal_10y/*/manifest.json"))
+            self.assertEqual(len(manifests), 1)
+            manifest = json.loads(manifests[0].read_text())
+            self.assertEqual(manifest["sources"][0]["sha256"], sha256(raw).hexdigest())
+            self.assertEqual((manifests[0].parent / "response-0.bin").read_bytes(), raw)
+            self.assertEqual(len(request_count), 1)
+            self.assertTrue(state.is_file())
+            self.assertNotIn("never-leak-secret", manifests[0].read_text())
+
     def test_full_fetch_archives_original_bytes_and_safe_request_identity(self):
         raw = b'{"observations":[{"date":"2024-01-02","value":"3.95"}]}'
         with TemporaryDirectory() as temp, patch.dict("os.environ", {"FRED_API_KEY": "never-archive-this-secret"}):
