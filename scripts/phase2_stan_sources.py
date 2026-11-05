@@ -139,7 +139,7 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
         country_evidence = read_stan_evidence(root, countries=(country,))["country_results"][0]
         if country_evidence["status"] == "invalid_original_stan":
             entry.update(status="invalid_existing_original_archive",
-                         "failure_category": "original_archive_integrity")
+                         failure_category="original_archive_integrity")
             report.append(entry)
             continue
         matching_scope = "measure-" + "+".join(selection)
