@@ -35,6 +35,11 @@ STAN_MEASURES = ("B1G", "D1", "B2N", "P51C", "D29X39")
 # B2N returned no selection for PRT/_T/2020. Never assume it is absent
 # historically or insert zeros; archive four-measure evidence as partial.
 STAN_VERIFIED_PORTUGAL_MEASURES = ("B1G", "D1", "P51C", "D29X39")
+# Additional publisher candidates from OECD STAN income-account terminology.
+# A recognized code is NOT proof of availability in the current STAN dataflow;
+# --resolve-surplus must verify an actual native CSV response.
+STAN_SURPLUS_CANDIDATES = ("B2N_B3N", "B2G_B3G")
+STAN_ALLOWED_MEASURES = frozenset((*STAN_MEASURES, *STAN_SURPLUS_CANDIDATES))
 STAN_FIELDS = frozenset({
     "FREQ", "REF_AREA", "ACTIVITY", "MEASURE", "PRICE_BASE",
     "UNIT_MEASURE", "TIME_PERIOD", "OBS_VALUE",
@@ -57,7 +62,7 @@ def stan_source_request(country: str, start_year: int = 1970, *,
         raise ValueError("invalid_stan_country_or_period")
     selected = STAN_MEASURES if measures is None else tuple(measures)
     if (not selected or len(selected) != len(set(selected))
-            or any(value not in STAN_MEASURES for value in selected)):
+            or any(value not in STAN_ALLOWED_MEASURES for value in selected)):
         raise ValueError("invalid_stan_native_measure")
     if (activity is not None and not re.fullmatch(r"[A-Z0-9_]{1,32}", activity)):
         raise ValueError("invalid_stan_activity")
@@ -94,7 +99,7 @@ def parse_stan_original_csv(raw: bytes, *, country: str, start_year: int,
     """
     stan_source_request(country, start_year, measures=expected_measures,
                         activity=expected_activity, end_year=end_year)
-    allowed_measures = STAN_MEASURES if expected_measures is None else expected_measures
+    allowed_measures = STAN_ALLOWED_MEASURES if expected_measures is None else expected_measures
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_STAN_SOURCE_BYTES:
         raise ProviderError("STAN original response outside permitted byte bounds")
     try:
@@ -444,3 +449,21 @@ def read_stan_evidence(root: Path, *, countries: tuple[str, ...] | None = None) 
         "full_history_verified": False,
         "first_publication_verified": False,
     }
+
+
+def read_verified_stan_scope_csv(root: Path, *, country: str, start_year: int,
+                                 measures: tuple[str, ...]) -> bytes:
+    """Return exactly one independently verified original response, unmodified.
+
+    Selection and receipt verification reuse the canonical archive reader.
+    The second hash check protects the bytes passed to the research audit.
+    """
+    scope = _read_stan_scope(Path(root), country, start_year, tuple(measures))
+    folder = _source_parent(Path(root), country, start_year, tuple(measures))
+    identity = stan_source_identity(country, start_year, measures=tuple(measures))
+    _, _, path, manifest, _ = _selected_manifest(folder, identity)
+    raw, digest = _original_file(
+        path.parent, manifest["original"], "original.csv", binary=True)
+    if digest != scope["original_response_sha256"]:
+        raise EvidenceError("source_values_mismatch")
+    return raw
