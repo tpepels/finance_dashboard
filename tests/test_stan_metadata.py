@@ -130,6 +130,20 @@ class StanMetadataTests(unittest.TestCase):
             self.assertEqual(read_stan_structure(root)["status"],
                              "invalid_metadata_original_or_receipt")
 
+
+    def test_tampered_older_receipt_rejects_still_valid_newest_metadata(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_stan_structure(SAMPLE_XML, root=root)
+            revised = SAMPLE_XML.replace(b"Value added", b"Value added updated")
+            store_stan_structure(revised, root=root)
+            parent = root / "stan-2025" / "publisher-structure"
+            receipts = sorted((parent / "retrievals").glob("*.json"))
+            self.assertEqual(len(receipts), 2)
+            receipts[0].write_text('{"tampered":true}')
+            self.assertEqual(read_stan_structure(root)["status"],
+                             "invalid_metadata_original_or_receipt")
+
     def test_invalid_structure_does_not_create_certified_original(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -89,6 +89,61 @@ class StanReadinessTests(unittest.TestCase):
                              "identity_overlap_contains_uninterpreted_flags")
             self.assertFalse(report["source_status_flag_meanings_verified"])
 
+
+    def test_revisions_are_reported_without_equating_to_first_publication(self):
+        from finance_dashboard.stan_research import audit_stan_originals
+        with TemporaryDirectory() as t:
+            root = Path(t)
+            selection = STAN_VERIFIED_PORTUGAL_MEASURES
+            first = original(selection)
+            second = first.replace(b"_T,B1G,V,XDC,2020,100,",
+                                   b"_T,B1G,V,XDC,2020,101,")
+            for sample in (first, second):
+                store_stan_original(
+                    sample, country="PRT", start_year=1970,
+                    root=root, measures=selection)
+            audit = audit_stan_originals(root, countries=("PRT",))
+            scope = audit["country_audits"][0]["scope_audits"][0]
+            version = scope["revision_reconciliation"]
+            self.assertEqual(version["verified_original_versions"], 2)
+            self.assertEqual(version["adjacent_revisions_compared"], 1)
+            self.assertEqual(version["comparisons"][0][
+                "numeric_value_disagreements_same_unit"], 1)
+            self.assertFalse(version["source_revisions_equated_with_first_publication"])
+            report = summarize_stan_readiness(root, countries=("PRT",))
+            country = report["country_readiness"][0]
+            self.assertTrue(country["same_selection_version_disagreements"])
+            self.assertEqual(country["historical_original_versions_verified"], 2)
+            self.assertEqual(country["original_retrieval_receipts_verified"], 2)
+            self.assertEqual(country["core_four_max_industry_years_in_single_scope"], 1)
+            self.assertFalse(report["first_publication_verified"])
+
+    def test_retrieval_chronology_includes_return_to_earlier_original(self):
+        from finance_dashboard.stan_research import audit_stan_originals
+        from finance_dashboard.stan_originals import read_stan_evidence
+        with TemporaryDirectory() as t:
+            root = Path(t)
+            selection = STAN_VERIFIED_PORTUGAL_MEASURES
+            first = original(selection)
+            changed = first.replace(b"_T,B1G,V,XDC,2020,100,",
+                                    b"_T,B1G,V,XDC,2020,103,")
+            for payload in (first, changed, first):
+                store_stan_original(
+                    payload, country="PRT", start_year=1970,
+                    root=root, measures=selection)
+            scope = read_stan_evidence(root, countries=("PRT",))[
+                "country_results"][0]["source_scopes"][0]
+            self.assertEqual(scope["original_versions_verified"], 2)
+            self.assertEqual(scope["retrieval_receipts_verified"], 3)
+            self.assertEqual(scope["original_response_sha256"],
+                             scope["retrieval_history"][0]["original_response_sha256"])
+            audit = audit_stan_originals(root, countries=("PRT",))
+            comparisons = audit["country_audits"][0]["scope_audits"][0][
+                "revision_reconciliation"]["comparisons"]
+            self.assertEqual(len(comparisons), 2)
+            self.assertEqual([c["numeric_value_disagreements_same_unit"]
+                              for c in comparisons], [1, 1])
+
     def test_individually_present_measure_rows_need_same_industry_year(self):
         with TemporaryDirectory() as t:
             raw = original(STAN_VERIFIED_PORTUGAL_MEASURES).replace(

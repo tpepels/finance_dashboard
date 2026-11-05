@@ -103,6 +103,60 @@ class StanExpansionPlannerTests(unittest.TestCase):
             self.assertEqual(result["planned_publisher_requests"], 1)
             self.assertEqual(archive.read_bytes(), b"tampered")
 
+
+    def test_rolling_refresh_requires_explicit_switch_and_preserves_vintages(self):
+        import httpx
+        from finance_dashboard.stan_originals import read_stan_evidence
+        from scripts.phase2_stan_sources import acquire
+        samples = [raw("PRT"), raw("PRT").replace(b",2020,123,", b",2020,124,")]
+        calls = []
+        def respondent(request):
+            calls.append(str(request.url))
+            return httpx.Response(200, content=samples[len(calls) - 1])
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with httpx.Client(transport=httpx.MockTransport(respondent)) as client:
+                first = acquire(client, root, countries=("PRT",), start_year=1970)
+                cached = acquire(client, root, countries=("PRT",), start_year=1970)
+                refreshed = acquire(
+                    client, root, countries=("PRT",), start_year=1970,
+                    refresh_verified=True)
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(first["original_responses_archived"], 1)
+            self.assertEqual(cached["already_verified_archives"], 1)
+            self.assertEqual(refreshed["new_original_versions"], 1)
+            self.assertEqual(refreshed["refreshed_scopes"], 1)
+            self.assertEqual(refreshed["acquisitions"][0]["status"],
+                             "refreshed_revised")
+            scope = read_stan_evidence(root, countries=("PRT",))[
+                "country_results"][0]["source_scopes"][0]
+            self.assertEqual(scope["original_versions_verified"], 2)
+            self.assertEqual(scope["retrieval_receipts_verified"], 2)
+
+    def test_refetch_with_identical_bytes_appends_receipt_only(self):
+        import httpx
+        from finance_dashboard.stan_originals import read_stan_evidence
+        from scripts.phase2_stan_sources import acquire
+        calls = []
+        def respondent(request):
+            calls.append(str(request.url))
+            return httpx.Response(200, content=raw("PRT"))
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with httpx.Client(transport=httpx.MockTransport(respondent)) as client:
+                acquire(client, root, countries=("PRT",), start_year=1970)
+                refreshed = acquire(
+                    client, root, countries=("PRT",), start_year=1970,
+                    refresh_verified=True)
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(refreshed["acquisitions"][0]["status"],
+                             "refreshed_unchanged")
+            self.assertEqual(refreshed["new_original_versions"], 0)
+            scope = read_stan_evidence(root, countries=("PRT",))[
+                "country_results"][0]["source_scopes"][0]
+            self.assertEqual(scope["original_versions_verified"], 1)
+            self.assertEqual(scope["retrieval_receipts_verified"], 2)
+
     def test_invalid_request_budget_rejected(self):
         with TemporaryDirectory() as t:
             root = Path(t)

@@ -281,11 +281,13 @@ def probe_surplus(client, *, country: str, year: int,
 def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
             measures: tuple[str, ...] | None = None,
             max_requests: int | None = None,
-            quiet: bool = False) -> dict:
+            quiet: bool = False, refresh_verified: bool = False) -> dict:
     """Acquire only an exact declared native selection; no automatic retries.
 
     OECD publishes at most 60 data responses per hour; an HTTP 429/503 ends
     this run immediately. The country cache uses independently rehashed bytes.
+    A verified cache is never refreshed unless explicitly requested; refreshes
+    append a new receipt and preserve every previous publisher version.
     Requests never silently fill the unverified B2N role.
     """
     require_managed_client(client)
@@ -324,10 +326,14 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
             report.append(entry)
             continue
         matching_scope = "measure-" + "+".join(selection)
-        if any(item["scope"] == matching_scope
-               for item in country_evidence.get("source_scopes", [])
-               if item["requested_since"] == start_year):
-            entry.update(status="already_verified", cache_hit=True)
+        previous = next((
+            item for item in country_evidence.get("source_scopes", [])
+            if item["scope"] == matching_scope
+            and item["requested_since"] == start_year), None)
+        if previous is not None and not refresh_verified:
+            entry.update(status="already_verified", cache_hit=True,
+                         original_versions_verified=previous.get(
+                             "original_versions_verified", 1))
             report.append(entry)
             continue
         if max_requests is not None and publisher_requests >= max_requests:
@@ -351,13 +357,20 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
                 bytes(payload), country=country, start_year=start_year,
                 root=root, measures=selection,
             )
-            entry.update(status="retained",
-                         original_response_sha256=preserved["original_response_sha256"],
-                         bundle_digest=preserved["bundle_digest"],
-                         original_receipt_sha256=preserved["receipt_sha256"],
-                         numeric_observations=preserved["facts"]["numeric_observations"],
-                         observed_native_measure_counts=preserved[
-                             "facts"]["native_measure_observation_counts"])
+            prior_hash = previous["original_response_sha256"] if previous else None
+            revised = previous is not None and (
+                preserved["original_response_sha256"] != prior_hash)
+            entry.update(
+                status=("refreshed_revised" if revised else "refreshed_unchanged"
+                        if previous is not None else "retained"),
+                original_response_sha256=preserved["original_response_sha256"],
+                previous_original_sha256=prior_hash,
+                original_response_changed=revised,
+                bundle_digest=preserved["bundle_digest"],
+                original_receipt_sha256=preserved["receipt_sha256"],
+                numeric_observations=preserved["facts"]["numeric_observations"],
+                observed_native_measure_counts=preserved[
+                    "facts"]["native_measure_observation_counts"])
             if not quiet:
                 print(f"STAN {number}/{len(countries)}: retained",
                       file=sys.stderr, flush=True)
@@ -383,14 +396,22 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
                       file=sys.stderr, flush=True)
         report.append(entry)
     evidence = read_stan_evidence(root, countries=countries)
-    completed = {"retained", "already_verified"}
+    completed = {"retained", "already_verified",
+                 "refreshed_revised", "refreshed_unchanged"}
     return {
         "phase": "phase2", "operation": "original_stan_industry_acquisition",
         "requested_start_year": start_year, "countries_requested": len(countries),
         "requested_native_measures": list(selection),
         "unresolved_candidate_measures": sorted(set(STAN_MEASURES) - set(selection)),
-        "original_responses_archived": sum(item["status"] == "retained" for item in report),
+        "original_responses_archived": sum(
+            item["status"] in {"retained", "refreshed_revised", "refreshed_unchanged"}
+            for item in report),
         "already_verified_archives": sum(item["status"] == "already_verified" for item in report),
+        "refreshed_scopes": sum(item["status"] in (
+            "refreshed_revised", "refreshed_unchanged") for item in report),
+        "new_original_versions": sum(item["status"] in (
+            "retained", "refreshed_revised") for item in report),
+        "refresh_explicitly_requested": refresh_verified,
         "acquisition_failures": sum(item["status"] not in completed for item in report),
         "stopped_on_publisher_backpressure": backpressure is not None,
         "stopped_on_source_policy": policy_stop is not None,
@@ -495,6 +516,15 @@ def brief_report(data: dict) -> dict:
             "additional_incomplete": max(0,
                 sum(row["status"] == "insufficient_same_scope_measure_coverage"
                     for row in data["country_readiness"]) - 8),
+            "verified_source_revisions": [{
+                "country": row["country"],
+                "versions": row.get("historical_original_versions_verified"),
+                "receipts": row.get("original_retrieval_receipts_verified"),
+                "changed_originals": row.get("same_selection_version_disagreements"),
+                "revision_pairs": row.get("same_selection_revision_pairs"),
+            } for row in data["country_readiness"]
+               if row.get("historical_original_versions_verified", 0) >
+               row.get("verified_scopes", 0)][:8],
             "scientific_analysis_certified": False,
         }
     if data.get("operation") == "stan_expansion_plan":
@@ -582,7 +612,11 @@ def brief_report(data: dict) -> dict:
             "stop_reason": data.get("stop_reason"),
             "last_country_requested": data.get("last_country_requested"),
             "countries_with_selected_scope": sum(
-                r["status"] in ("retained", "already_verified") for r in rows),
+                r["status"] in ("retained", "already_verified",
+                                "refreshed_revised", "refreshed_unchanged")
+                for r in rows),
+            "original_revisions_archived": data.get("new_original_versions", 0),
+            "refreshed_scopes": data.get("refreshed_scopes", 0),
             "countries_with_any_verified_scope": data["source_evidence"]["country_count"],
             "events": [{
                 "country": r["country"], "status": r["status"],
@@ -598,8 +632,14 @@ def brief_report(data: dict) -> dict:
             scopes = []
             for s in c["scope_audits"][:3]:
                 coverage = s["coverage"]
+                revisions = s.get("revision_reconciliation", {})
                 scopes.append({
                     "scope": s["scope"], "industry_years": s["distinct_industry_years"],
+                    "versions": revisions.get("verified_original_versions", 1),
+                    "revision_pairs": revisions.get("adjacent_revisions_compared", 0),
+                    "revised_value_conflicts": sum(
+                        r["numeric_value_disagreements_same_unit"]
+                        for r in revisions.get("comparisons", [])),
                     "core_four_overlap": s["core_four_matched_industry_years"],
                     "years_observed": coverage["observed_year_count"],
                     "flags": coverage["source_status_flag_counts"],
@@ -681,6 +721,8 @@ def main(argv=None) -> int:
                         help="Read-only cached/missing/invalid country scope plan")
     parser.add_argument("--max-requests", type=int,
                         help="Limit new publisher requests; --expand defaults to 4")
+    parser.add_argument("--refresh-verified", action="store_true",
+                        help="Explicitly refetch existing exact selections; append immutable versions and receipts")
     parser.add_argument("--after-country", choices=sorted(OECD_MEMBER_ISO3),
                         help="Continue a sorted country batch after this ISO3 code")
     parser.add_argument("--discover-measures", action="store_true",
@@ -716,17 +758,21 @@ def main(argv=None) -> int:
             parser.error("No countries remain after --after-country")
     if args.max_requests is not None and args.max_requests < 1:
         parser.error("--max-requests must be positive")
+    if args.refresh_verified and not (args.acquire or args.expand):
+        parser.error("--refresh-verified requires --acquire or --expand")
     if args.expand and args.acquire:
         parser.error("Use either --expand or --acquire")
     if args.plan_expansion and (
             args.acquire or args.expand or args.audit or args.diagnose
             or args.resolve_surplus or args.discover_measures or args.after_country
-            or args.readiness or args.acquire_metadata or args.inspect_metadata):
+            or args.readiness or args.acquire_metadata or args.inspect_metadata
+            or args.refresh_verified):
         parser.error("--plan-expansion is a standalone read-only operation")
     if args.discover_measures and (
             args.expand or args.acquire or args.resolve_surplus or args.diagnose
             or args.audit or args.measures or args.after_country or args.readiness
-            or args.acquire_metadata or args.inspect_metadata):
+            or args.acquire_metadata or args.inspect_metadata
+            or args.refresh_verified):
         parser.error("--discover-measures is a standalone read-only operation")
     if args.resolve_surplus and (args.expand or args.diagnose or args.audit or
                                  len(countries) != 1 or args.measures):
@@ -737,7 +783,8 @@ def main(argv=None) -> int:
     if args.readiness and (args.acquire or args.expand or args.diagnose or
                            args.resolve_surplus or args.audit or args.measures
                            or args.discover_measures or args.plan_expansion
-                           or args.acquire_metadata or args.inspect_metadata):
+                           or args.acquire_metadata or args.inspect_metadata
+            or args.refresh_verified):
         parser.error("--readiness is a standalone read-only operation")
     if args.audit and (args.acquire or args.expand or args.diagnose):
         parser.error("--audit is read-only")
@@ -745,7 +792,8 @@ def main(argv=None) -> int:
         if (args.acquire_metadata and args.inspect_metadata
                 or args.acquire or args.expand or args.diagnose or args.audit
                 or args.resolve_surplus or args.measures or args.after_country
-                or args.discover_measures or args.plan_expansion or args.readiness):
+                or args.discover_measures or args.plan_expansion or args.readiness
+                or args.refresh_verified):
             parser.error("--acquire-metadata/--inspect-metadata require standalone use")
     try:
         since = date.fromisoformat(args.since)
@@ -811,7 +859,8 @@ def main(argv=None) -> int:
                 result["acquisition"] = acquire(
                     client, args.evidence_dir, countries=countries,
                     start_year=since.year, measures=selection,
-                    max_requests=args.max_requests, quiet=args.brief)
+                    max_requests=args.max_requests, quiet=args.brief,
+                    refresh_verified=args.refresh_verified)
         if args.acquire and "acquisition" in result:
             result["accounting_audit"] = audit_stan_originals(
                 args.evidence_dir, countries=countries)
@@ -830,12 +879,13 @@ def main(argv=None) -> int:
                              measures=tuple(args.measures) if args.measures else None,
                              max_requests=(args.max_requests if args.max_requests is not None
                                            else 4 if args.expand else None),
-                             quiet=args.brief)
+                             quiet=args.brief, refresh_verified=args.refresh_verified)
         emit_report(report, brief=args.brief)
         if args.expand:
             failed = report["stopped_on_source_policy"] or any(
                 item["status"] not in (
-                    "retained", "already_verified", "deferred_request_budget")
+                    "retained", "already_verified", "refreshed_revised",
+                    "refreshed_unchanged", "deferred_request_budget")
                 for item in report["acquisitions"])
             return 1 if failed or report["stopped_on_publisher_backpressure"] else 0
         return 1 if report["acquisition_failures"] or (

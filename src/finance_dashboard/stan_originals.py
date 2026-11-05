@@ -23,8 +23,8 @@ import tempfile
 from .bis import ProviderError
 from .oecd_corporate import OECD_MEMBER_ISO3
 from .source_capture import canonical_bytes
-from .source_evidence import record_acquisition_receipt
-from .source_reconciliation import EvidenceError, _original_file, _selected_manifest
+from .source_evidence import record_acquisition_receipt, verified_receipted_bundles
+from .source_reconciliation import EvidenceError, _original_file
 
 
 STAN_FLOW = "OECD.STI.PIE,DSD_STAN@DF_STAN_2025,1.0"
@@ -301,57 +301,92 @@ def store_stan_original(raw: bytes, *, country: str, start_year: int, root: Path
             shutil.rmtree(staged)
 
 
-def _read_stan_scope(root: Path, country: str, start_year: int,
-                     selection: tuple[str, ...]) -> dict:
-    """Independently hash and parse one exact publisher selection and its receipts."""
+def _verified_stan_scope_versions(root: Path, country: str, start_year: int,
+                                  selection: tuple[str, ...]) -> tuple[dict, dict]:
+    """Verify *every* original response ever retained for one native selection.
+
+    The shared original receipt reader verifies the complete provenance chain.
+    Native STAN validation then independently verifies each payload, its
+    published dimensions and its original facts, not just the latest bundle.
+    """
     folder = _source_parent(root, country, start_year, selection)
-    receipts = folder / "retrievals"
-    if not receipts.is_dir() or receipts.is_symlink() or folder.is_symlink():
-        raise EvidenceError("source_receipt_invalid")
-    files = sorted(p for p in receipts.glob("*.json") if not p.name.startswith("."))
-    if not files:
-        raise EvidenceError("missing_evidence")
     identity = stan_source_identity(country, start_year, measures=selection)
-    # _selected_manifest rejects even a single mismatched or tampered receipt.
-    observed, manifest_hash, path, manifest, method = _selected_manifest(folder, identity)
-    if method != "acquisition_receipt" or manifest.get("source_identity") != identity:
-        raise EvidenceError("source_identity_mismatch")
-    if (manifest.get("requested_native_measures") != list(selection)
-            or manifest.get("source_url") != stan_source_request(
-                country, start_year, measures=selection)[0]
-            or manifest.get("source_request_parameters") != {
-                **stan_source_request(country, start_year, measures=selection)[1],
-                "format": "csvfile",
-            }):
-        raise EvidenceError("source_identity_mismatch")
-    raw, digest = _original_file(
-        path.parent, manifest["original"], "original.csv", binary=True)
-    facts = parse_stan_original_csv(
-        raw, country=country, start_year=start_year,
-        expected_measures=selection)
-    content = manifest.get("content_identity", {})
-    if (facts != manifest.get("facts")
-            or content.get("source_identity") != identity
-            or content.get("original_sha256") != digest
-            or content.get("facts_sha256") != sha256(canonical_bytes(facts)).hexdigest()):
-        raise EvidenceError("source_values_mismatch")
+    receipts = verified_receipted_bundles(folder, identity)
+    url, query = stan_source_request(country, start_year, measures=selection)
+    parsed_versions = {}
+    retrieval_history = []
+    for receipt in receipts:
+        digest = receipt["bundle_digest"]
+        if digest not in parsed_versions:
+            manifest = receipt["manifest"]
+            if (manifest.get("schema_version") != 1
+                    or manifest.get("requested_native_measures") != list(selection)
+                    or manifest.get("source_url") != url
+                    or manifest.get("source_request_parameters") != {
+                        **query, "format": "csvfile"}
+                    or manifest.get("scope") !=
+                    "selected_native_measures_all_industries_from_requested_start"):
+                raise EvidenceError("source_identity_mismatch")
+            raw, original_sha = _original_file(
+                receipt["bundle_path"], manifest["original"],
+                "original.csv", binary=True)
+            facts = parse_stan_original_csv(
+                raw, country=country, start_year=start_year,
+                expected_measures=selection)
+            content = manifest.get("content_identity", {})
+            if (facts != manifest.get("facts")
+                    or content.get("source_identity") != identity
+                    or content.get("original_sha256") != original_sha
+                    or content.get("original_bytes") != len(raw)
+                    or content.get("facts_sha256") != sha256(canonical_bytes(facts)).hexdigest()
+                    or sha256(canonical_bytes(content)).hexdigest() != digest):
+                raise EvidenceError("source_values_mismatch")
+            parsed_versions[digest] = {
+                "bundle_digest": digest,
+                "source_manifest_sha256": receipt["manifest_sha256"],
+                "original_response_sha256": original_sha,
+                "numeric_observations": facts["numeric_observations"],
+                "native_measure_counts": facts["native_measure_observation_counts"],
+                "industry_count": facts["reported_industries"],
+                "years": facts["reported_years"],
+                "native_status_flag_counts": facts["native_status_flag_counts"],
+                "missing_candidate_measures": facts["missing_candidate_measures"],
+                "matched_five_measure_industry_years": facts[
+                    "matched_five_measure_industry_years"],
+                "income_identity_residuals_nonzero": facts[
+                    "nonzero_nominal_income_identity_residuals"],
+            }
+        # Repeated retrievals of identical original bytes append receipts, not
+        # duplicate bundles. Their latest observed retrieval is recorded.
+        parsed_versions[digest]["retrieval_time"] = receipt["observed_at"].isoformat()
+        retrieval_history.append({
+            "bundle_digest": digest,
+            "observed_at_utc": receipt["observed_at"].isoformat(),
+            "original_response_sha256": parsed_versions[digest]["original_response_sha256"],
+            "receipt_sha256": receipt["receipt_sha256"],
+        })
+    latest = receipts[-1]["bundle_digest"]
     return {
         "scope": "measure-" + "+".join(selection),
         "requested_since": start_year,
-        "source_manifest_sha256": manifest_hash,
-        "original_response_sha256": digest,
-        "selection_method": method,
-        "retrieval_time": observed.isoformat(),
-        "numeric_observations": facts["numeric_observations"],
-        "native_measure_counts": facts["native_measure_observation_counts"],
-        "industry_count": facts["reported_industries"],
-        "years": facts["reported_years"],
-        "native_status_flag_counts": facts["native_status_flag_counts"],
-        "missing_candidate_measures": facts["missing_candidate_measures"],
-        "matched_five_measure_industry_years": facts["matched_five_measure_industry_years"],
-        "income_identity_residuals_nonzero": facts["nonzero_nominal_income_identity_residuals"],
+        "selection_method": "acquisition_receipt",
+        **parsed_versions[latest],
+        "original_versions": sorted(
+            parsed_versions.values(), key=lambda version: (
+                version["retrieval_time"], version["bundle_digest"])),
+        "retrieval_receipts_verified": len(receipts),
+        "original_versions_verified": len(parsed_versions),
+        "retrieval_history": retrieval_history,
+        "revisions_detected": len(parsed_versions) > 1,
         "first_publication_verified": False,
-    }
+    }, parsed_versions
+
+
+def _read_stan_scope(root: Path, country: str, start_year: int,
+                     selection: tuple[str, ...]) -> dict:
+    """Return the latest independently verified version; audit *all* history."""
+    scope, _ = _verified_stan_scope_versions(root, country, start_year, selection)
+    return scope
 
 
 def read_stan_evidence(root: Path, *, countries: tuple[str, ...] | None = None) -> dict:
@@ -452,18 +487,26 @@ def read_stan_evidence(root: Path, *, countries: tuple[str, ...] | None = None) 
 
 
 def read_verified_stan_scope_csv(root: Path, *, country: str, start_year: int,
-                                 measures: tuple[str, ...]) -> bytes:
-    """Return exactly one independently verified original response, unmodified.
+                                 measures: tuple[str, ...],
+                                 bundle_digest: str | None = None) -> bytes:
+    """Return one exact original, rejecting any invalid older version or receipt.
 
-    Selection and receipt verification reuse the canonical archive reader.
-    The second hash check protects the bytes passed to the research audit.
+    An explicit bundle digest selects a retained publisher vintage *without*
+    combining it with other versions or changing the current-selection default.
     """
-    scope = _read_stan_scope(Path(root), country, start_year, tuple(measures))
-    folder = _source_parent(Path(root), country, start_year, tuple(measures))
-    identity = stan_source_identity(country, start_year, measures=tuple(measures))
-    _, _, path, manifest, _ = _selected_manifest(folder, identity)
+    selection = tuple(measures)
+    scope, versions = _verified_stan_scope_versions(
+        Path(root), country, start_year, selection)
+    selected = scope["bundle_digest"] if bundle_digest is None else bundle_digest
+    if selected not in versions:
+        raise EvidenceError("unverified_original_source_version")
+    folder = _source_parent(Path(root), country, start_year, selection)
+    manifest_path = folder / selected / "manifest.json"
+    if manifest_path.is_symlink():
+        raise EvidenceError("source_manifest_invalid")
+    manifest = json.loads(manifest_path.read_bytes())
     raw, digest = _original_file(
-        path.parent, manifest["original"], "original.csv", binary=True)
-    if digest != scope["original_response_sha256"]:
+        manifest_path.parent, manifest["original"], "original.csv", binary=True)
+    if digest != versions[selected]["original_response_sha256"]:
         raise EvidenceError("source_values_mismatch")
     return raw

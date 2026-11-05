@@ -1,5 +1,50 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 — immutable STAN publisher revisions and archival integrity (2026-11-05)
+
+The shared `verified_receipted_bundles` reader now checks **every** receipt
+and every referenced bundle for structural integrity, manifest hashes, source
+identity and unreceipted orphan bundles, not just the most recently observed
+receipt. STAN native source readers additionally reparse and rehash **every
+historical response version**, including versions superseded by a later
+retrieval. The published originals themselves are never modified.
+
+A STAN source request with an already verified country/selection remains a
+cache hit by default. `--refresh-verified` is an **explicit** opt-in used with
+`--acquire` or bounded `--expand`, subject to the same publisher policy
+ledger. A byte-identical response adds an immutable retrieval receipt without
+duplicating its original bundle; changed publisher bytes create a distinct
+immutable bundle, retaining the previous version. A corrupted older response
+invalidates the country's evidence status rather than being silently ignored.
+
+STAN accounting audits compare adjacent preserved versions of the *same*
+publisher selection using the canonical original-value reconciliation
+algorithm. The current/latest version remains the default for scientific
+coverage; historical versions are compared for changes without joining their
+observations or replacing the earlier originals. A revision is **not**
+interpreted as the observation's first-publication date, an accepted
+published national submission, or a valid Marxian surplus measure.
+
+Read-only inspection:
+
+```bash
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --readiness --brief
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --audit --brief
+```
+
+Optional bounded re-observation, **only after** confirming a permitted direct
+OECD network route and shared policy acknowledgement, and only where the
+investigator explicitly needs an additional source observation:
+
+```bash
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --acquire --refresh-verified --since 1970-01-01 --max-requests 1 --brief
+```
+
+This architecture increment does not make live publisher requests, does not
+establish cross-country release synchronisation, and does not close the
+remaining Phase 2 scientific acceptance gates.
+
+
 ## Phase 2 — empirical acquisition planning and original publisher structure (2026-11-05)
 
 Local user verification of the previous increment confirms **8/38 independently

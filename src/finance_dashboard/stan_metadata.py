@@ -9,15 +9,14 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
-import re
 import os
 import shutil
 import tempfile
 import xml.etree.ElementTree as ET
 
 from .source_capture import canonical_bytes
-from .source_evidence import record_acquisition_receipt
-from .source_reconciliation import EvidenceError, _original_file, _selected_manifest
+from .source_evidence import record_acquisition_receipt, verified_receipted_bundles
+from .source_reconciliation import EvidenceError, _original_file
 from .bis import ProviderError
 
 from .stan_originals import STAN_FLOW
@@ -142,54 +141,38 @@ def _validate_structure_bundle(bundle: Path) -> dict:
 
 
 def read_stan_structure(root: Path) -> dict:
-    """Read-only verification of every acquired structure version and receipt.
+    """Independently verify all archived publisher-structure source versions.
 
-    Returns a usable measure list only if *all* retained structure originals
-    and receipts verify. An XML structure does not prove availability for any
-    individual country, activity or year.
+    Receipt, manifest, bundle and orphan integrity rules are shared with every
+    versioned native original. A current codelist never certifies historical
+    country observations or source publication vintages.
     """
     parent = _structure_parent(root)
     if not parent.exists() and not parent.is_symlink():
         return {"status": "metadata_not_acquired", "originals_verified": 0,
                 "publisher_requests": 0, "no_archive_writes": True}
     try:
-        if (parent.is_symlink() or not parent.is_dir()
-                or parent.parent.is_symlink() or Path(root).is_symlink()):
+        if Path(root).is_symlink() or parent.parent.is_symlink():
             raise EvidenceError("publisher_structure_path_invalid")
-        bundles = {}
-        for item in parent.iterdir():
-            if item.name == "retrievals":
-                continue
-            if (item.is_symlink() or not re.fullmatch(r"[0-9a-f]{64}", item.name)):
-                raise EvidenceError("publisher_structure_directory_invalid")
-            bundles[item.name] = _validate_structure_bundle(item)
-        if not bundles:
-            raise EvidenceError("publisher_structure_original_missing")
-        observed, manifest_hash, path, manifest, method = _selected_manifest(
-            parent, STRUCTURE_IDENTITY)
-        referenced = {
-            json.loads(item.read_bytes())["bundle_digest"]
-            for item in (parent / "retrievals").iterdir()
-            if item.name.endswith(".json") and not item.name.startswith(".")
-        }
-        if referenced != set(bundles):
-            raise EvidenceError("publisher_structure_unreceipted_original")
-        if method != "acquisition_receipt" or path.parent.name not in bundles:
-            raise EvidenceError("publisher_structure_receipt_invalid")
-        if sha256(path.read_bytes()).hexdigest() != manifest_hash:
-            raise EvidenceError("publisher_structure_manifest_invalid")
-        selected = bundles[path.parent.name]["parsed"]
+        receipts = verified_receipted_bundles(parent, STRUCTURE_IDENTITY)
+        verified = {}
+        for receipt in receipts:
+            digest = receipt["bundle_digest"]
+            if digest not in verified:
+                verified[digest] = _validate_structure_bundle(receipt["bundle_path"])
+        selected = receipts[-1]
+        parsed = verified[selected["bundle_digest"]]["parsed"]
         return {
             "status": "verified_publisher_structure",
-            "originals_verified": len(bundles),
-            "bundle_digest": path.parent.name,
-            "latest_retrieval_time": observed.isoformat(),
-            **selected,
-            "publisher_requests": 0,
-            "no_archive_writes": True,
+            "originals_verified": len(verified),
+            "retrieval_receipts_verified": len(receipts),
+            "bundle_digest": selected["bundle_digest"],
+            "latest_retrieval_time": selected["observed_at"].isoformat(),
+            **parsed,
+            "publisher_requests": 0, "no_archive_writes": True,
         }
-    except (EvidenceError, ProviderError, OSError, KeyError, TypeError, ValueError,
-            UnicodeError, json.JSONDecodeError):
+    except (EvidenceError, ProviderError, OSError, KeyError, TypeError,
+            ValueError, UnicodeError, json.JSONDecodeError):
         return {"status": "invalid_metadata_original_or_receipt",
                 "originals_verified": 0, "publisher_requests": 0,
                 "no_archive_writes": True}

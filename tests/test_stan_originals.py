@@ -210,6 +210,57 @@ class StanOriginalTests(unittest.TestCase):
             self.assertFalse(inspected["first_publication_verified"])
             self.assertFalse(inspected["complete_same_industry_compensation_capital_matrix_verified"])
 
+
+    def test_retained_original_versions_recheck_every_prior_original_and_receipt(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            initial = example(gva="123")
+            revised = example(gva="124")
+            one = store_stan_original(
+                initial, country="PRT", start_year=1970, root=root)
+            two = store_stan_original(
+                revised, country="PRT", start_year=1970, root=root)
+            self.assertNotEqual(one["bundle_digest"], two["bundle_digest"])
+            evidence = read_stan_evidence(root, countries=("PRT",))
+            scope = evidence["country_results"][0]["source_scopes"][0]
+            self.assertEqual(scope["original_versions_verified"], 2)
+            self.assertEqual(scope["retrieval_receipts_verified"], 2)
+            self.assertTrue(scope["revisions_detected"])
+            self.assertEqual(scope["original_response_sha256"],
+                             sha256(revised).hexdigest())
+            folder = root / "stan-2025" / "PRT" / "1970" / (
+                "measure-B1G+D1+B2N+P51C+D29X39")
+            from finance_dashboard.stan_originals import read_verified_stan_scope_csv
+            self.assertEqual(read_verified_stan_scope_csv(
+                root, country="PRT", start_year=1970,
+                measures=("B1G", "D1", "B2N", "P51C", "D29X39"),
+                bundle_digest=one["bundle_digest"]), initial)
+            (folder / one["bundle_digest"] / "original.csv").write_bytes(
+                b"old original silently modified")
+            damaged = read_stan_evidence(root, countries=("PRT",))
+            self.assertEqual(damaged["country_results"][0]["status"],
+                             "invalid_original_stan")
+            with self.assertRaises(ValueError):
+                read_verified_stan_scope_csv(
+                    root, country="PRT", start_year=1970,
+                    measures=("B1G", "D1", "B2N", "P51C", "D29X39"))
+
+    def test_receiptless_orphan_bundle_is_not_discarded_or_accepted(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            saved = store_stan_original(
+                example(), country="PRT", start_year=1970, root=root)
+            parent = root / "stan-2025" / "PRT" / "1970" / (
+                "measure-B1G+D1+B2N+P51C+D29X39")
+            orphan = parent / ("a" * 64)
+            orphan.mkdir()
+            (orphan / "manifest.json").write_text("{}")
+            self.assertEqual(read_stan_evidence(
+                root, countries=("PRT",))["country_results"][0]["status"],
+                "invalid_original_stan")
+            self.assertEqual((parent / saved["bundle_digest"] /
+                              "original.csv").read_bytes(), example())
+
     def test_missing_root_is_read_only_and_explicit(self):
         with TemporaryDirectory() as temp:
             root = Path(temp) / "not-present"

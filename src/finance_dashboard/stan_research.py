@@ -144,16 +144,55 @@ def audit_stan_originals(root: Path, *, countries: tuple[str, ...]) -> dict:
         verified_rows = []
         for scope in country_evidence["source_scopes"]:
             measures = tuple(scope["scope"].removeprefix("measure-").split("+"))
-            raw = read_verified_stan_scope_csv(
-                root, country=country, start_year=scope["requested_since"],
-                measures=measures)
+            # The latest source version drives present-day coverage. Every
+            # historical original remains independently verified and adjacent
+            # versions are compared without ever merging their observations.
+            versions = scope["original_versions"]
+            version_rows = {}
+            current_raw = None
+            for version in versions:
+                raw = read_verified_stan_scope_csv(
+                    root, country=country, start_year=scope["requested_since"],
+                    measures=measures, bundle_digest=version["bundle_digest"])
+                revision_entry = {
+                    **scope,
+                    "original_response_sha256": version["original_response_sha256"],
+                }
+                version_rows[version["bundle_digest"]] = (
+                    revision_entry, _source_value_rows(raw))
+                if version["bundle_digest"] == scope["bundle_digest"]:
+                    current_raw = raw
+            previous = None
+            previous_digest = None
+            revision_comparisons = []
+            # A publisher can serve A, then B, then A again. Compare actual
+            # receipt chronology, not unique bundles sorted by last receipt.
+            for retrieval in scope["retrieval_history"]:
+                digest = retrieval["bundle_digest"]
+                current = version_rows[digest]
+                if previous is not None and digest != previous_digest:
+                    single = reconcile_stan_source_scopes(
+                        country=country, verified_scope_rows=[previous, current])
+                    revision_comparisons.extend(single["comparisons"])
+                previous, previous_digest = current, digest
+            if current_raw is None:
+                raise ValueError("verified_original_source_version_missing")
+            revisions = {
+                "verified_original_versions": len(versions),
+                "verified_retrieval_receipts": scope["retrieval_receipts_verified"],
+                "adjacent_revisions_compared": len(revision_comparisons),
+                "comparisons": revision_comparisons,
+                "original_versions_replaced": False,
+                "source_revisions_equated_with_first_publication": False,
+            }
             scopes.append({
                 "scope": scope["scope"],
                 "requested_since": scope["requested_since"],
                 "original_response_sha256": scope["original_response_sha256"],
-                **audit_stan_scope(raw, measures=measures),
+                "revision_reconciliation": revisions,
+                **audit_stan_scope(current_raw, measures=measures),
             })
-            verified_rows.append((scope, _source_value_rows(raw)))
+            verified_rows.append((scope, _source_value_rows(current_raw)))
         comparison = reconcile_stan_source_scopes(
             country=country, verified_scope_rows=verified_rows)
         report.append({
@@ -362,6 +401,16 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
             measure for measure, count in per_measure_max.items() if count == 0)
         if any_matched:
             same_scope_countries += 1
+        revisions = [
+            comparison
+            for scope in scopes
+            for comparison in scope["revision_reconciliation"]["comparisons"]
+        ]
+        version_conflicts = any(
+            row["numeric_value_disagreements_same_unit"]
+            or row["incompatible_or_unreported_units"]
+            or row["source_flag_changes"]
+            for row in revisions)
         cross = item["cross_scope_reconciliation"]["comparisons"]
         cross_conflicts = any(
             s["numeric_value_disagreements_same_unit"]
@@ -413,6 +462,23 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
             "native_measure_sets": [
                 s["requested_native_measures"] for s in scopes],
             "retrieval_scope_disagreements": cross_conflicts,
+            "historical_original_versions_verified": sum(
+                scope["revision_reconciliation"]["verified_original_versions"]
+                for scope in scopes),
+            "original_retrieval_receipts_verified": sum(
+                scope["revision_reconciliation"]["verified_retrieval_receipts"]
+                for scope in scopes),
+            "same_selection_version_disagreements": version_conflicts,
+            "same_selection_revision_pairs": len(revisions),
+            "historical_revision_examples": [
+                {
+                    "left_sha256": change["left_sha256"],
+                    "right_sha256": change["right_sha256"],
+                    "value_disagreements": change["numeric_value_disagreements_same_unit"],
+                    "flag_changes": change["source_flag_changes"],
+                    "unit_conflicts": change["incompatible_or_unreported_units"],
+                } for change in revisions[:5]
+            ],
             "non_A_identity_flags_present": any_flag,
             "identity_residuals_outside_printed_precision": any_residual,
         })
