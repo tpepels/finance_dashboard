@@ -18,7 +18,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 300,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -55,7 +57,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 300,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -87,7 +91,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 60,
         "cooldown_503_seconds": 120,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -119,7 +125,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 120,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -153,7 +161,9 @@
         "max_concurrent": 2,
         "cooldown_429_seconds": 600,
         "cooldown_503_seconds": 600,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -186,7 +196,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 120,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -219,7 +231,9 @@
         "max_concurrent": 2,
         "cooldown_429_seconds": 120,
         "cooldown_503_seconds": 120,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -251,7 +265,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 180,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -284,7 +300,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 180,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -316,7 +334,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 180,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -349,7 +369,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 180,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -382,7 +404,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 300,
         "cooldown_503_seconds": 300,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -414,7 +438,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 180,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -446,7 +472,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 180,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -478,7 +506,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 180,
         "cooldown_503_seconds": 180,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -510,7 +540,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 3600,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -542,7 +574,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 3600,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -577,7 +611,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 3600,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -609,7 +645,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 3600,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -644,7 +682,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 3600,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -677,7 +717,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -709,7 +751,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -741,7 +785,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -773,7 +819,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -805,7 +853,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -837,7 +887,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -869,7 +921,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -902,7 +956,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
@@ -934,7 +990,9 @@
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 1800,
-        "lease_seconds": 240
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
       },
       "restrictions": {
         "methods": [
