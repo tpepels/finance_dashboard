@@ -219,7 +219,9 @@ def run(argv=None) -> int:
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--report-dir", type=Path,
                         default=Path("/data/stan-overnight-reports"))
-    parser.add_argument("--countries", nargs="+", default=["PRT"])
+    parser.add_argument("--countries", nargs="+", help="Explicit ISO3 scope")
+    parser.add_argument("--all-archived", action="store_true",
+                        help="Verify every currently archived OECD STAN country")
     parser.add_argument("--hours", type=float, default=8.0)
     parser.add_argument("--interval-minutes", type=float, default=30.0)
     parser.add_argument("--stress-groups", type=int, default=2500)
@@ -233,15 +235,27 @@ def run(argv=None) -> int:
         parser.error("Use 20–20000 synthetic industry-year groups")
     if not 1 <= args.test_timeout_minutes <= 240:
         parser.error("Use a 1–240 minute test timeout")
-    if (not args.countries or len(args.countries) != len(set(args.countries))
+    if args.all_archived and args.countries:
+        parser.error("--all-archived and --countries are mutually exclusive")
+    if args.countries and (len(args.countries) != len(set(args.countries))
             or any(c not in OECD_MEMBER_ISO3 for c in args.countries)):
         parser.error("Invalid or duplicate ISO3 country scope")
+    if args.evidence_dir.is_symlink():
+        parser.error("Evidence root must not be a symbolic link")
     root = args.evidence_dir.resolve(strict=True)
     report_dir = args.report_dir.resolve(strict=False)
     if (not root.is_dir() or not (root / "stan-2025").is_dir()
             or root.is_symlink() or report_dir == root
             or root in report_dir.parents or report_dir in root.parents):
         parser.error("Reports and original source evidence must be separate directories")
+    if args.all_archived:
+        initial = read_stan_evidence(root)
+        if (not initial["country_results"]
+                or initial["country_count"] != len(initial["country_results"])):
+            parser.error("Every discovered STAN country must have valid verified originals")
+        countries = tuple(row["country"] for row in initial["country_results"])
+    else:
+        countries = tuple(args.countries or ["PRT"])
     report_dir.mkdir(parents=True, exist_ok=True)
     session = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     report_dir = report_dir / f"{session}-{os.getpid()}"
@@ -252,7 +266,7 @@ def run(argv=None) -> int:
     end = start + args.hours * 3600
     summary = {
         "operation": "offline_stan_overnight_verification",
-        "started_at_utc": utc_now(), "countries": args.countries,
+        "started_at_utc": utc_now(), "countries": list(countries),
         "duration_hours_requested": args.hours,
         "publisher_requests": 0, "macro_database_writes": 0,
         "original_archive_writes": 0,
@@ -273,7 +287,7 @@ def run(argv=None) -> int:
         cycle = 0
         while True:
             result = verify_cycle(
-                evidence_root=root, countries=tuple(args.countries),
+                evidence_root=root, countries=countries,
                 expected_archive=baseline, stress_groups=args.stress_groups,
                 seed=cycle + 1)
             summary["cycles_passed"] += 1
