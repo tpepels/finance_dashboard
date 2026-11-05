@@ -49,6 +49,7 @@ class SourceAcquisition:
     def __init__(self, router, evidence_root: Path):
         self.router = router
         self.evidence_root = Path(evidence_root)
+        self.last_evidence: dict | None = None
 
     def __getattr__(self, key):
         return getattr(self.router, key)
@@ -56,6 +57,12 @@ class SourceAcquisition:
     def fetch(self, series_id: str, start: date | None = None):
         definition = self.router.definitions.get(series_id, {})
         spec = get_provider(definition.get("provider", ""))
+        self.last_evidence = {
+            "kind": spec.acquisition if spec else "unsupported",
+            "scope": ("native_managed_unlinked" if spec and spec.acquisition == "native"
+                      else "not_independently_archived"),
+            "bundle_digest": None, "receipt_name": None,
+        }
         if spec is None:
             return self.router.fetch(series_id, start)
         # Native archives, local snapshots and derived values keep their
@@ -132,7 +139,13 @@ class SourceAcquisition:
                 (staging / "manifest.json").write_bytes(canonical_bytes(manifest))
                 os.rename(staging, bundle)
                 staging = None
-            record_acquisition_receipt(bundle, identity)
+            receipt = record_acquisition_receipt(bundle, identity)
+            self.last_evidence = {
+                "kind": "response",
+                "scope": "requested_period_subset" if start else "full_source_snapshot",
+                "bundle_digest": digest,
+                "receipt_name": receipt.name,
+            }
         except (OSError, KeyError, TypeError, ValueError) as exc:
             raise ProviderError("Original response could not be archived") from exc
         finally:
