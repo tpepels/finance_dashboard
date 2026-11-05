@@ -15,7 +15,6 @@ import json
 import os
 import re
 from pathlib import Path
-import time
 
 import httpx
 from .source_policy import managed_client, PolicyDeferred, PolicyViolation
