@@ -171,6 +171,31 @@ class DurableLimitTests(PolicyHarness):
         self.assertEqual(len(requests), 2)
         self.assertEqual(fresh.report()["state"][0]["last_http_status"], 429)
 
+    def test_access_denied_and_other_server_errors_cool_down_source(self):
+        for status, expected in ((403, 3600), (502, 120)):
+            with self.subTest(status=status), TemporaryDirectory() as temp:
+                isolated_gate = SourcePolicyGate(
+                    registry=self.registry,
+                    state_path=Path(temp) / "policy.sqlite",
+                    clock=self.clock, sleep=self.clock.sleep,
+                    max_wait_seconds=0)
+                transport = httpx.MockTransport(
+                    lambda request: httpx.Response(status))
+                with managed_client(policy_gate=isolated_gate,
+                                    transport=transport) as client:
+                    response = client.get(
+                        "https://api.stlouisfed.org/fred/series/observations")
+                    self.assertEqual(response.status_code, status)
+                next_gate = SourcePolicyGate(
+                    registry=self.registry,
+                    state_path=Path(temp) / "policy.sqlite",
+                    clock=self.clock, max_wait_seconds=0)
+                with self.assertRaises(PolicyDeferred) as exc:
+                    next_gate.reserve(self.registry.by_id["fred-v1"])
+                self.assertEqual(exc.exception.reason, "publisher_cooldown")
+                self.assertGreaterEqual(exc.exception.retry_at - self.clock(), expected)
+
+
     def test_503_default_cooldown_when_no_retry_after(self):
         def respond(request):
             return httpx.Response(503)
