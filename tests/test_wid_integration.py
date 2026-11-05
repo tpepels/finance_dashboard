@@ -14,7 +14,8 @@ from fastapi.testclient import TestClient
 from finance_dashboard.api import create_app
 from finance_dashboard.catalog import load_documents, validate
 from finance_dashboard.database import Base, make_engine
-from finance_dashboard.providers import ProviderRouter, SourceUnavailable
+from finance_dashboard.providers import ProviderRouter
+from finance_dashboard.provider_parsers import SourceUnavailable
 from finance_dashboard.service import IngestionService, current_observations
 from test_wid import fixtures
 

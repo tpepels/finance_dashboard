@@ -10,7 +10,9 @@ import httpx
 
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import Base, make_engine
-from finance_dashboard.providers import ProviderRouter, parse_shiller_sheet, ProviderError
+from finance_dashboard.providers import ProviderRouter
+from finance_dashboard.provider_parsers import parse_shiller_sheet
+from finance_dashboard.bis import ProviderError
 from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_reconciliation import reconcile
 from test_captured_source_families import xlsx_from_factual_cells
@@ -108,7 +110,7 @@ class MissingOriginalInputsTests(unittest.TestCase):
 
     def test_independent_commodity_selector_rejects_currency_or_scale_drift(self):
         from finance_dashboard.captured_sources import _pink_sheet
-        from finance_dashboard.providers import PINK_SHEET_URL
+        from finance_dashboard.provider_parsers import PINK_SHEET_URL
         from finance_dashboard.source_reconciliation import EvidenceError
         registry = {row["id"]: row for row in load_documents()[0]["series"]}
         for label, sid, unit in [("Natural gas, US", COMMODITIES[0], "mmbtu"),

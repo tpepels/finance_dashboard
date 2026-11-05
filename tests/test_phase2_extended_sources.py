@@ -5,9 +5,9 @@ import unittest
 from unittest.mock import patch
 
 import httpx
-from finance_dashboard.providers import (
-    ProviderRouter, parse_pink_sheet_brent, ProviderError,
-)
+from finance_dashboard.providers import ProviderRouter
+from finance_dashboard.bis import ProviderError
+from finance_dashboard.provider_parsers import parse_pink_sheet_brent
 from finance_dashboard.remaining_sources import parse_bea_q_table, DerivedDataError
 
 

@@ -5,9 +5,10 @@ import unittest
 from unittest.mock import patch
 import httpx
 
-from finance_dashboard.providers import (
-    ProviderRouter, ProviderError, SourceUnavailable,
-    parse_fred_csv, parse_fred_json, parse_fred_table_html, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape, parse_bis_credit_gap, parse_corgano_gold,
+from finance_dashboard.providers import ProviderRouter
+from finance_dashboard.bis import ProviderError
+from finance_dashboard.provider_parsers import (
+    SourceUnavailable, parse_fred_csv, parse_fred_json, parse_fred_table_html, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape, parse_bis_credit_gap, parse_corgano_gold,
 )
 
 

@@ -56,7 +56,7 @@ from .remaining_sources import (
 )
 
 
-from .providers import (
+from .provider_parsers import (
     SourceUnavailable,
     parse_fred_csv,
     parse_fred_table_html,

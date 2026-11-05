@@ -205,7 +205,7 @@ class ConstructedSourceTests(unittest.TestCase):
 
     def test_gold_correlation_requires_original_gold_and_index_and_consecutive_months(self):
         from test_captured_source_families import xlsx_from_factual_cells
-        from finance_dashboard.providers import PINK_SHEET_URL
+        from finance_dashboard.provider_parsers import PINK_SHEET_URL
         sid = 'gold.world.equity_correlation'
         gold_rows = [['Date', 'Gold'], ['', '($/troy oz)']]
         index_rows = []

@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 
 from finance_dashboard.catalog import load_documents, validate
 from finance_dashboard.database import Base, make_engine, IngestionRun, ObservationVersion
-from finance_dashboard.providers import ProviderRouter, SourceUnavailable
+from finance_dashboard.providers import ProviderRouter
+from finance_dashboard.provider_parsers import SourceUnavailable
 from finance_dashboard.research_returns import FRENCH_SERIES, SWINKELS_SERIES
 from finance_dashboard.service import IngestionService, current_observations
 from test_research_returns import FIXTURES, ODS, french_zip

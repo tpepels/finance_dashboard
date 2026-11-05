@@ -70,7 +70,8 @@ class GlobalMarketReturnsTests(unittest.TestCase):
         from sqlalchemy.orm import Session
         from finance_dashboard.catalog import load_documents,validate
         from finance_dashboard.database import Base,make_engine,IngestionRun
-        from finance_dashboard.providers import ProviderRouter,SourceUnavailable
+        from finance_dashboard.providers import ProviderRouter
+from finance_dashboard.provider_parsers import SourceUnavailable
         from finance_dashboard.service import IngestionService,current_observations
         from finance_dashboard.source_reconciliation import reconcile
         sid='returns.doeswijk_swinkels.global_multiasset.usd.nominal'

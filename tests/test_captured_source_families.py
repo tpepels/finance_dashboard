@@ -17,7 +17,8 @@ from sqlalchemy.orm import Session
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.captured_sources import _imf_mapper,_bea_q,_pink_sheet,_shiller,_ecb,_bis,_bis_policy_metadata
 from finance_dashboard.database import Base,make_engine
-from finance_dashboard.providers import ProviderRouter,PINK_SHEET_URL
+from finance_dashboard.providers import ProviderRouter
+from finance_dashboard.provider_parsers import PINK_SHEET_URL
 from finance_dashboard.remaining_sources import BEA_Q_URL
 from finance_dashboard.service import IngestionService,current_observations
 from finance_dashboard.source_capture import SourceAcquisition
