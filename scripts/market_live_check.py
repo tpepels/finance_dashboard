@@ -1,3 +1,4 @@
+from finance_dashboard.source_policy import managed_get
 """Short real feed acceptance with explicit venue, split and dividend evidence."""
 from finance_dashboard.market import instruments, YahooMarketClient, EcbFxClient
 import json
@@ -15,7 +16,7 @@ try:
         except Exception as exc:
             print(json.dumps({"id":key,"error":type(exc).__name__,"message":str(exc)[:400]}),flush=True)
             if key in ("nvda","vxus","qqq","bnd"):
-                response=httpx.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{item['source_symbol']}",
+                response=managed_get(f"https://query1.finance.yahoo.com/v8/finance/chart/{item['source_symbol']}",
                     params={"interval":"1d","period1":0,"period2":9999999999,"events":"div,splits"},
                     timeout=15,headers={"User-Agent":"Mozilla/5.0"})
                 if response.status_code==200:
