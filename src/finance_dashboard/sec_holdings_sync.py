@@ -188,6 +188,7 @@ def _candidate_status(status: int) -> str:
 def import_fund(mapping: dict, *, client: httpx.Client,
                 root: Path, max_filings: int=12,
                 earliest: date=date(2019,10,1)) -> dict:
+    require_managed_client(client)
     if not 1<=max_filings<=50:
         raise HoldingsError("SEC historical sync limited to 1–50 filings per fund")
     fund = mapping["instrument_id"]
