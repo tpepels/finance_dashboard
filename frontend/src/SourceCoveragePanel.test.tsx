@@ -66,6 +66,25 @@ describe('single-page source completeness panel', () => {
       String(url) === '/api/developer-log')).toBe(true);
   });
 
+  it('shows rate-limit deferrals separately from provider failures', async () => {
+    const deferred = {
+      ...missing, state: 'collection_deferred', last_attempt_state: 'deferred',
+      last_failure_code: 'source_policy_deferred',
+    };
+    vi.stubGlobal('fetch', vi.fn(async (url:string) => ({
+      ok: true,
+      json: async () => String(url)==='/api/maintenance'
+        ? {active_job_id:null,jobs:[],operations:['sync_current','sync_history']}
+        : {...payload, items: [recorded, deferred, market]},
+    })));
+    const user = userEvent.setup();
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/25 sources need attention/));
+    await user.click(screen.getByText(/Source diagnostics/));
+    expect(screen.getByText('Source policy deferred collection; no stored data')).toBeTruthy();
+    expect(screen.getByText('source_policy_deferred')).toBeTruthy();
+  });
+
   it('offers original dates, precise failure status and all families on request', async () => {
     const user = userEvent.setup();
     render(<SourceCoveragePanel/>);
