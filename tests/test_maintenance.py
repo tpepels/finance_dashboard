@@ -335,8 +335,7 @@ class MaintenanceApiTests(unittest.TestCase):
         def local_backfill(*args, **kwargs):
             return real_backfill_batch(*args, **kwargs, root=source_folder)
         with patch.dict("os.environ", {"FRED_API_KEY": "a"*32}), \
-             patch("finance_dashboard.maintenance.httpx.Client", return_value=client), \
-             patch("finance_dashboard.vintage.time.sleep"), \
+             patch("finance_dashboard.maintenance_handlers.managed_client", return_value=client), \
              patch("finance_dashboard.vintage.backfill_batch", side_effect=local_backfill):
             response = self.client.post("/api/maintenance", headers=HEADERS, json={
                 "action": "backfill_alfred", "series_ids": ["DGS10"],
