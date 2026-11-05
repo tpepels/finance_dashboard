@@ -11,7 +11,7 @@ from unittest.mock import patch
 import httpx
 
 from finance_dashboard.catalog import load_documents
-from finance_dashboard.source_capture import canonical_bytes, CapturedProvider
+from finance_dashboard.source_capture import canonical_bytes, SourceAcquisition
 from finance_dashboard.source_reconciliation import _reconcile_values
 from finance_dashboard.providers import ProviderRouter
 from test_macro_aggregates import published_html
@@ -68,7 +68,7 @@ class ConstructedSourceTests(unittest.TestCase):
         with TemporaryDirectory() as temp:
             root = Path(temp)
             with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=original))) as client:
-                CapturedProvider(ProviderRouter(client), root).fetch(sid)
+                SourceAcquisition(ProviderRouter(client), root).fetch(sid)
             item = audit(root, sid, {date(2024, 1, 2): Decimal('310.25')})
             self.assertTrue(item['source_values_match'], item)
             self.assertEqual(item['source_return_variant'], 'NETR')
@@ -80,7 +80,7 @@ class ConstructedSourceTests(unittest.TestCase):
             archive(other, sid, [(manifest['sources'][0]['url'], wrong)])
             self.assertEqual(audit(other, sid, {})['failure_code'], 'source_identity_mismatch')
             with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=original))) as client:
-                CapturedProvider(ProviderRouter(client), root).fetch(sid, date(2024, 1, 1))
+                SourceAcquisition(ProviderRouter(client), root).fetch(sid, date(2024, 1, 1))
             self.assertEqual(audit(root, sid, {})['failure_code'], 'source_snapshot_partial')
 
     def test_siblis_sparse_snapshots_and_same_universe_inverse_are_independent(self):
@@ -160,7 +160,7 @@ class ConstructedSourceTests(unittest.TestCase):
         with TemporaryDirectory() as temp:
             root = Path(temp)
             with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=native))) as client:
-                CapturedProvider(ProviderRouter(client), root).fetch(sid)
+                SourceAcquisition(ProviderRouter(client), root).fetch(sid)
             with patch('finance_dashboard.eurostat_corporate.parse_eurostat_annual_series', side_effect=AssertionError('ingestion parser used')):
                 item = audit(root, sid, values)
             self.assertTrue(item['source_values_match'], item)
@@ -224,7 +224,7 @@ class ConstructedSourceTests(unittest.TestCase):
             def respond(request):
                 return httpx.Response(200, content=workbook) if str(request.url).startswith(PINK_SHEET_URL) else httpx.Response(200, json=original)
             with httpx.Client(transport=httpx.MockTransport(respond)) as client:
-                captured = CapturedProvider(ProviderRouter(client), root).fetch(sid)
+                captured = SourceAcquisition(ProviderRouter(client), root).fetch(sid)
             expected = {date(2023, month, 1): Decimal(1) for month in range(1, 5)}
             self.assertEqual(captured.observations, expected)
             with patch('finance_dashboard.remaining_sources.gold_acwi_rolling_correlation', side_effect=AssertionError('ingestion formula used')):
