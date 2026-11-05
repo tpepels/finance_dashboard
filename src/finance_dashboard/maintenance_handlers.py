@@ -143,26 +143,12 @@ def run_backup(self, job_id, action, options, cancelled):
             "manifest": manifest.name,
             "components": confirmed["components"]}
 
-HANDLERS = {
-    "sync_current": run_sync,
-    "sync_history": run_sync,
-    "refresh_sources": run_refresh_sources,
-    "refresh_markets": run_refresh_markets,
-    "check_alfred": run_alfred,
-    "backfill_alfred": run_alfred,
-    "check_sec": run_check_sec,
-    "collect_sec": run_collect_sec,
-    "refresh_earnings": run_refresh_earnings,
-    "backup": run_backup,
-}
-if set(HANDLERS) != set(ACTION_REGISTRY):
-    raise RuntimeError("Maintenance handlers do not cover registered actions")
 
 def execute_action(manager, job_id: str, action: str, options: dict, cancelled):
     spec = ACTION_REGISTRY.get(action)
     if spec is None:
         raise MaintenanceBlocked("invalid_source")
-    handler = HANDLERS.get(action)
-    if handler is None or handler.__name__ != spec.handler:
-        raise RuntimeError("Invalid maintenance handler registration")
+    handler = globals().get(spec.handler)
+    if not callable(handler):
+        raise RuntimeError("Registered maintenance handler unavailable")
     return handler(manager, job_id, action, options, cancelled)
