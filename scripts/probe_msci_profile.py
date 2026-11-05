@@ -1,3 +1,4 @@
+from finance_dashboard.source_policy import managed_get
 """Probe MSCI ACWI official web page for dated weight and financial statistics."""
 import httpx,json,re
 urls=[
@@ -6,7 +7,7 @@ urls=[
 ]
 for url in urls:
  try:
-    r=httpx.get(url,timeout=18,follow_redirects=True,
+    r=managed_get(url,timeout=18,follow_redirects=True,
                 headers={"User-Agent":"Mozilla/5.0","Accept":"text/html"})
     html=r.text
     keys=["Top 10 constituents","NVIDIA","Index Market Cap","P/E","Data as of","MSCI ACWI Index"]
