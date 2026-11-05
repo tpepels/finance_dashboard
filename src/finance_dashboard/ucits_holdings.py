@@ -365,10 +365,11 @@ def collect_ucits_sources(*, root: Path, years=(2022,2023,2024,2025,2026),
                          progress=None, stopped=None) -> dict:
     """Acquire fixed public originals; respect redirects, denial and source identity."""
     import httpx
+from .source_policy import managed_client
     if len(years)>5 or any(year not in ANNUALS for year in years) or len(set(years))!=len(years):
         raise UcitsHoldingsError("Only the five independently verified annual documents may be acquired")
     owns=client is None
-    source=client or httpx.Client(timeout=60,follow_redirects=False)
+    source=client or managed_client(timeout=60,follow_redirects=False)
     jobs=[(year,annual_url(year)) for year in years]
     if include_current: jobs.append((None,CSV_URL))
     reports=[]
