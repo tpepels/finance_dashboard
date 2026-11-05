@@ -23,6 +23,7 @@ from finance_dashboard.stan_originals import (
     store_stan_original,
 )
 from finance_dashboard.stan_research import audit_stan_originals
+from finance_dashboard.source_policy import managed_client
 from finance_dashboard.stan_metadata import (
     STRUCTURE_URL, STRUCTURE_PARAMS, STRUCTURE_ACCEPT,
     MAX_STRUCTURE_BYTES, parse_stan_measure_structure,
@@ -614,7 +615,6 @@ def main(argv=None) -> int:
         return 1 if result["blocked_invalid_original_countries"] else 0
     if args.discover_measures:
         import httpx
-from finance_dashboard.source_policy import managed_client, managed_get
         with managed_client(timeout=45, follow_redirects=False) as client:
             result = discover_measure_codes(client)
         emit_report(result, brief=args.brief)
