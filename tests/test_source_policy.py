@@ -302,7 +302,7 @@ class DurableLimitTests(PolicyHarness):
     def test_lease_is_released_after_stream_close_not_headers(self):
         gate = self.gate()
         transport = httpx.MockTransport(lambda request: httpx.Response(
-            200, content=b"test source content"))
+            200, stream=httpx.ByteStream(b"test source content")))
         with managed_client(policy_gate=gate, transport=transport) as client:
             with client.stream(
                 "GET", "https://api.stlouisfed.org/fred/series/observations") as response:
