@@ -1,5 +1,87 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 STAN development increment — offline verification and architecture (2026-11-05)
+
+**Status: implemented in the repository, empirical execution pending; Phase 2
+remains open.** No historical originals, publisher acquisition receipts,
+macro tables, source identities or migrations are rewritten. The verified
+Portugal original hash remains
+`6d230a5b7f7a09388c20e52a1f8507fd0e1c914e0b62405d0ced0ce550d2fc40`.
+
+- The canonical `stan_research.py` reader now computes native
+  country/industry/year/measure completeness, annual support, currency and unit
+  transitions, missing-value counts, `OBS_STATUS` flag distributions,
+  pairwise/core-four overlaps, and gross/net identity residuals within *one
+  source response*. Industry aggregates and child sectors are never summed
+  as an additive GDP total.
+- Independently hash-verified STAN scopes can be compared across retrievals
+  for the **same** activity/year/measure. Numeric revisions, incompatible
+  currencies/units and observation-status changes are listed separately.
+  These contrasts are descriptive; values from different retrievals are
+  **never merged** to satisfy an identity or certify common vintage.
+  Already-verified raw rows are reused for comparisons instead of triggering
+  a third archive read.
+- `phase2_stan_sources.py --plan-expansion` builds a read-only
+  exact-measure/country cache plan, blocks corrupted originals and identifies
+  bounded pending country batches without OECD API requests. The existing
+  `--expand` path continues to stop on HTTP 429/503 and to
+  preserve every existing source/receipt.
+- `phase2_stan_overnight.py` runs two **complete** offline
+  Python suites, one at the start and one at the end, plus repeated per-country
+  provenance rehashes and accounting/revision audits, synthetic full and
+  incomplete-source property scenarios, controlled injected residuals,
+  and baseline-vs-after whole-archive fingerprints. Reports are per-session
+  JSON, JSONL and test logs, saved to a distinct directory **outside**
+  `/data/source-evidence`. No OECD request or macro DB write
+  exists in this runner. It fails on corruption, unverified expected originals,
+  an accounting regression or suite failure.
+- The Docker image now compiles all Python source, scripts, tests and
+  migrations and runs the application schema/config validation at build time.
+  The full backend unittest suite was moved from every Docker build to
+  the overnight runner. Frontend npm tests still run in the frontend build
+  stage. GitHub CI remains the single lightweight **Python static checks**
+  workflow; no expensive scheduled or parallel CI was added.
+- Focused regression modules cover exact-scope expansion planning, absent
+  and estimated observations, currency shifts, incomplete industry-year
+  matrices, surplus residuals, cross-scope retrieval disagreements, archive
+  tampering, deterministic stress and detached-run reporting. Code commits
+  alone do not prove these tests passed; the local full suite/soak results
+  remain a required verification step.
+
+**Operational path — one-time deploy and detached overnight run:**
+
+```bash
+cd ~/Projects/finance_dashboard
+git pull --ff-only
+docker compose up -d --build --no-deps finance-dashboard
+# First inspect current coverage, without publisher requests:
+docker compose exec -T finance-dashboard \
+  python scripts/phase2_stan_sources.py \
+  --evidence-dir /data/source-evidence \
+  --plan-expansion --brief
+# Start eight-hour offline verification; persists after terminal closes:
+bash scripts/run-stan-overnight.sh
+```
+
+The launcher prints a host-side log path, stores the process PID,
+and retains detailed reports under the persistent container volume
+`/data/stan-overnight-reports/<UTC session>-<pid>/`.
+Override the duration or workload with `STAN_HOURS=12` and
+`STAN_STRESS_GROUPS=5000` when desired. A one-pass smoke
+check can use `python scripts/phase2_stan_overnight.py --hours 0`
+in-container. **No unattended live OECD expansion is performed.** Resuming
+network acquisition requires a separate user-invoked step after metadata and
+rate-limit questions are resolved.
+
+**Open empirical gates:** confirm actual 2025-surplus identifier against
+publisher structure metadata, verify country-year native observations,
+interpret OECD status flags and source revisions, acquire historical
+member-country coverage after the publisher 429 cool-down, assess the actual
+observed industry/year identities, and establish vintage comparability.
+Synthetic regression success cannot fill these gaps or certify a Marxian
+surplus/profit measure. The approved full 35-question Phase 2 readiness and
+provenance contracts remain active and not complete.
+
 ## OECD STAN publisher feedback and metadata correction — 2026-11-05
 
 **Observed archived run:** Portugal's verified original has 4,639 distinct
