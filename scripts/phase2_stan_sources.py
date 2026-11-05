@@ -23,6 +23,10 @@ from finance_dashboard.stan_originals import (
     store_stan_original,
 )
 from finance_dashboard.stan_research import audit_stan_originals
+from finance_dashboard.stan_metadata import (
+    STRUCTURE_URL, STRUCTURE_PARAMS, STRUCTURE_ACCEPT,
+    MAX_STRUCTURE_BYTES, parse_stan_measure_structure,
+)
 
 
 def diagnose_publisher(client, *, country: str, year: int) -> dict:
@@ -110,6 +114,43 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
         "first_publication_verified": False,
     }
 
+
+
+def discover_measure_codes(client) -> dict:
+    """One official SDMX structure request; no data or archive writes."""
+    report = {
+        "phase": "phase2", "operation": "stan_publisher_measure_metadata",
+        "state": "source_check_failed", "publisher_requests": 1,
+        "no_archive_writes": True, "no_macro_database_writes": True,
+        "scientific_analysis_certified": False,
+    }
+    try:
+        with client.stream(
+                "GET", STRUCTURE_URL, params=STRUCTURE_PARAMS,
+                headers={"Accept": STRUCTURE_ACCEPT}) as response:
+            report["http_status"] = response.status_code
+            response.raise_for_status()
+            body = bytearray()
+            for chunk in response.iter_bytes():
+                if len(body) + len(chunk) > MAX_STRUCTURE_BYTES:
+                    raise ValueError("STAN publisher structure exceeds safe size")
+                body.extend(chunk)
+        report.update(parse_stan_measure_structure(bytes(body)))
+        report["state"] = "validated_publisher_measure_codelist"
+    except Exception as exc:
+        report["reason_type"] = type(exc).__name__
+        code = report.get("http_status")
+        if code == 429:
+            report["failure_category"] = "publisher_rate_limited"
+        elif code == 503:
+            report["failure_category"] = "publisher_unavailable"
+        elif code == 404:
+            report["failure_category"] = "publisher_structure_not_found"
+        elif isinstance(code, int) and code >= 500:
+            report["failure_category"] = "publisher_http_5xx"
+        else:
+            report["failure_category"] = "publisher_structure_invalid_or_unavailable"
+    return report
 
 
 def probe_surplus(client, *, country: str, year: int) -> dict:
@@ -301,6 +342,17 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
 
 def brief_report(data: dict) -> dict:
     """Presentation summary only; source verification and archives are unchanged."""
+    if data.get("operation") == "stan_publisher_measure_metadata":
+        return {
+            "operation": "discover_measures", "state": data["state"],
+            "http": data.get("http_status"),
+            "failure": data.get("failure_category"),
+            "measure_code_count": data.get("measure_code_count"),
+            "surplus_measures": data.get("surplus_measures"),
+            "historical_candidates_present": data.get("historical_candidates_present"),
+            "source_sha256": data.get("source_sha256"),
+            "country_coverage_verified": False,
+        }
     if "surplus_probe" in data:
         probe = data["surplus_probe"]
         out = {
@@ -411,6 +463,8 @@ def main(argv=None) -> int:
                         help="Limit new publisher requests; --expand defaults to 4")
     parser.add_argument("--after-country", choices=sorted(OECD_MEMBER_ISO3),
                         help="Continue a sorted country batch after this ISO3 code")
+    parser.add_argument("--discover-measures", action="store_true",
+                        help="One read-only publisher structure request; list actual surplus codes")
     parser.add_argument("--resolve-surplus", action="store_true",
                         help="Probe bounded native net/gross combined-surplus candidates; "
                              "with --acquire, retain a separate five-measure source")
@@ -438,6 +492,10 @@ def main(argv=None) -> int:
         parser.error("--max-requests must be positive")
     if args.expand and args.acquire:
         parser.error("Use either --expand or --acquire")
+    if args.discover_measures and (
+            args.expand or args.acquire or args.resolve_surplus or args.diagnose
+            or args.audit or args.measures or args.after_country):
+        parser.error("--discover-measures is a standalone read-only operation")
     if args.resolve_surplus and (args.expand or args.diagnose or args.audit or
                                  len(countries) != 1 or args.measures):
         parser.error("--resolve-surplus requires one country and no other mode/selection")
@@ -453,6 +511,12 @@ def main(argv=None) -> int:
         stan_source_request(countries[0], since.year)
     except ValueError:
         parser.error("Invalid YYYY-01-01 source start")
+    if args.discover_measures:
+        import httpx
+        with httpx.Client(timeout=45, follow_redirects=False) as client:
+            result = discover_measure_codes(client)
+        emit_report(result, brief=args.brief)
+        return 0 if result["state"] == "validated_publisher_measure_codelist" else 1
     if args.diagnose:
         if args.acquire:
             parser.error("--diagnose cannot be combined with --acquire")
