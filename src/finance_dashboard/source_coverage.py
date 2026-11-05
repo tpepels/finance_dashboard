@@ -87,6 +87,7 @@ SAFE_ERROR_CODES = {
     "provider_http_400", "provider_http_401", "provider_http_403",
     "provider_http_404", "provider_http_429", "provider_http_500",
     "provider_http_502", "provider_http_503", "provider_http_504",
+    "source_policy_deferred", "source_policy_denied",
     "source_parse_failed", "source_empty", "source_transport_failed",
     "source_invalid", "provider_failed", "fred_schema_invalid",
     "fred_empty", "fred_table_invalid", "source_date_invalid",
