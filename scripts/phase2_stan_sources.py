@@ -340,8 +340,70 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
 
 
 
+def plan_expansion(root: Path, *, countries: tuple[str, ...],
+                   start_year: int, measures: tuple[str, ...],
+                   max_requests: int = 4) -> dict:
+    """Read-only country acquisition plan using the canonical verified reader.
+
+    A missing selection is listed as pending, never treated as an implicit
+    source observation. Invalid archives are blocked rather than overwritten.
+    """
+    if not 1 <= max_requests <= 60:
+        raise ValueError("invalid_stan_request_budget")
+    if not countries:
+        raise ValueError("countries_required")
+    stan_source_request(countries[0], start_year, measures=measures)
+    evidence = read_stan_evidence(root, countries=countries)
+    selected_scope = "measure-" + "+".join(measures)
+    verified = []
+    pending = []
+    invalid = []
+    for row in evidence["country_results"]:
+        country = row["country"]
+        if row["status"] == "invalid_original_stan":
+            invalid.append(country)
+        elif any(
+                scope["scope"] == selected_scope
+                and scope["requested_since"] == start_year
+                for scope in row.get("source_scopes", [])):
+            verified.append(country)
+        else:
+            pending.append(country)
+    batches = [
+        pending[i:i + max_requests]
+        for i in range(0, len(pending), max_requests)
+    ]
+    return {
+        "phase": "phase2", "operation": "stan_expansion_plan",
+        "requested_start_year": start_year,
+        "native_measures": list(measures),
+        "scope": selected_scope,
+        "verified_countries": verified,
+        "pending_countries": pending,
+        "blocked_invalid_original_countries": invalid,
+        "request_budget_per_batch": max_requests,
+        "suggested_country_batches": batches,
+        "planned_publisher_requests": len(pending),
+        "publisher_requests_made": 0,
+        "no_archive_writes": True, "no_macro_database_writes": True,
+        "scientific_analysis_certified": False,
+    }
+
+
 def brief_report(data: dict) -> dict:
     """Presentation summary only; source verification and archives are unchanged."""
+    if data.get("operation") == "stan_expansion_plan":
+        return {
+            "operation": "plan_expansion",
+            "measures": data["native_measures"],
+            "verified": data["verified_countries"],
+            "pending_count": len(data["pending_countries"]),
+            "blocked_invalid": data["blocked_invalid_original_countries"],
+            "next_batch": data["suggested_country_batches"][0]
+                          if data["suggested_country_batches"] else [],
+            "batch_count": len(data["suggested_country_batches"]),
+            "publisher_requests_made": 0,
+        }
     if data.get("operation") == "stan_publisher_measure_metadata":
         return {
             "operation": "discover_measures", "state": data["state"],
@@ -484,6 +546,8 @@ def main(argv=None) -> int:
                         help="Download, validate and retain original responses (otherwise read-only)")
     parser.add_argument("--expand", action="store_true",
                         help="Bounded, resumable acquisition of OECD member originals")
+    parser.add_argument("--plan-expansion", action="store_true",
+                        help="Read-only cached/missing/invalid country scope plan")
     parser.add_argument("--max-requests", type=int,
                         help="Limit new publisher requests; --expand defaults to 4")
     parser.add_argument("--after-country", choices=sorted(OECD_MEMBER_ISO3),
@@ -517,6 +581,10 @@ def main(argv=None) -> int:
         parser.error("--max-requests must be positive")
     if args.expand and args.acquire:
         parser.error("Use either --expand or --acquire")
+    if args.plan_expansion and (
+            args.acquire or args.expand or args.audit or args.diagnose
+            or args.resolve_surplus or args.discover_measures or args.after_country):
+        parser.error("--plan-expansion is a standalone read-only operation")
     if args.discover_measures and (
             args.expand or args.acquire or args.resolve_surplus or args.diagnose
             or args.audit or args.measures or args.after_country):
@@ -536,6 +604,14 @@ def main(argv=None) -> int:
         stan_source_request(countries[0], since.year)
     except ValueError:
         parser.error("Invalid YYYY-01-01 source start")
+    if args.plan_expansion:
+        selection = (tuple(args.measures) if args.measures
+                     else STAN_VERIFIED_PORTUGAL_MEASURES)
+        result = plan_expansion(
+            args.evidence_dir, countries=countries, start_year=since.year,
+            measures=selection, max_requests=args.max_requests or 4)
+        emit_report(result, brief=args.brief)
+        return 1 if result["blocked_invalid_original_countries"] else 0
     if args.discover_measures:
         import httpx
         with httpx.Client(timeout=45, follow_redirects=False) as client:
