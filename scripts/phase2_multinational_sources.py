@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import httpx
+from finance_dashboard.source_policy import managed_client, managed_get
 
 from finance_dashboard.multinational_sources import (
     SOURCE_FILES, collect_multinational_source, read_multinational_evidence,
@@ -22,7 +23,7 @@ def main(argv=None):
     parser.add_argument("--output", type=Path, help="Create a new JSON audit file; existing files are preserved")
     args = parser.parse_args(argv)
     reports = {}
-    with httpx.Client(timeout=120, headers={"User-Agent": "GlobalCapitalMonitor/0.2 original-source-research"}) as client:
+    with managed_client(timeout=120, headers={"User-Agent": "GlobalCapitalMonitor/0.2 original-source-research"}) as client:
         for kind in dict.fromkeys(args.only):
             if args.import_directory is None:
                 collect_multinational_source(kind, root=args.source_evidence_dir, client=client)
