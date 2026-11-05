@@ -6,6 +6,8 @@ values, cash, collateral, other assets/liabilities and share classes remain dist
 """
 from __future__ import annotations
 
+from .source_policy import managed_client
+
 from datetime import datetime,timezone
 from decimal import Decimal
 from hashlib import sha256
@@ -252,7 +254,6 @@ def read_vanguard_ucits_sources(root: Path, *, summary: bool=False) -> dict:
 def collect_vanguard_ucits_sources(*, root: Path, report_keys=("annual-2026","semiannual-2025"),client=None) -> dict:
     """Acquire only the exact named official reports already independently inspected."""
     import httpx
-from .source_policy import managed_client
     if len(report_keys)>2 or len(set(report_keys))!=len(report_keys) or any(key not in REPORTS for key in report_keys):
         raise VanguardUcitsError("Only the independently verified original Vanguard reports may be acquired")
     owns=client is None
