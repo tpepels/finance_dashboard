@@ -1,5 +1,60 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 — preserved native surplus probes and evidence-driven acquisition (2026-11-05)
+
+This increment closes the gap between *verified native publisher metadata* and
+the actual country acquisition selection. Bounded STAN surplus probes are now
+independently validated native originals, with exact country, total-activity,
+measure, year, request parameters and publisher dataflow. When the operator
+explicitly selects `--resolve-surplus --acquire`, successful exact-year probes
+are retained byte-for-byte in a **separate `stan-2025/native-probes` archive**,
+using the canonical immutable source bundle, hashed original, append-only
+acquisition receipts, and complete historical version verification. Repeated
+probes read independently verified cached evidence and consume **zero**
+publisher requests. No probe enters a full-country archive, macro observation
+table, scientific surplus ratio or first-publication certificate.
+
+`--plan-expansion`, `--expand` and `--acquire` now share one read-only source
+selection. By default the four previously validated partial STAN measures are
+used. An independently verified exact-year original for a combined-surplus
+code, **plus the current verified OECD 2025 metadata codelist advertising
+that same code**, permits selection of the five-measure scope. Verified
+five-measure country originals can also supply that exact empirical proof.
+A corrupt structure, source or probe original blocks further acquisition.
+An explicitly specified surplus code unsupported by both proofs is rejected
+*before the first network request*. The `--source-anchor` switch controls the
+country whose verified observations justify the default (PRT by default);
+selection does not assert availability in any other country or year.
+
+The per-invocation `--max-requests` limit now applies to the *combined* exact
+year probe and subsequent full country request in `--resolve-surplus --acquire`,
+in addition to all existing durable publisher-wide limits and cooldowns.
+Positive probe evidence is retained when that local request budget is
+exhausted, allowing later `--expand` runs to resume country acquisition
+without repeating the same native-year probe. Missing/rejected probes do not
+turn into zeros or establish scientific source unavailability.
+
+Deployment sequence after verifying a permitted direct OECD route and policy
+acknowledgement:
+
+```bash
+# Offline: current scope recommendation, source proofs and pending countries
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --plan-expansion --brief
+# One bounded candidate probe and optional native country acquisition (uses
+# the operator-configured policy acknowledgement on the managed client)
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --resolve-surplus --acquire --probe-year 2020 --max-requests 3 --brief
+# Same selected scope as the read-only plan; resumes without prior duplicates
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --expand --max-requests 4 --brief
+```
+
+The existing 8 archived country selections, historical observations and all
+original source receipts remain unchanged. This creates no claim that the
+current 2025 flow has a specific surplus code until an actual retained original
+proves it, or that every country has a complete accounting identity. The
+35-analysis corpus still requires genuine missing originals, revision/release
+alignment, source population and accounting checks before scientific acceptance.
+
+
 ## Phase 2 — immutable STAN publisher revisions and archival integrity (2026-11-05)
 
 The shared `verified_receipted_bundles` reader now checks **every** receipt

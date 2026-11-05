@@ -23,6 +23,9 @@ from finance_dashboard.stan_originals import (
     store_stan_original,
 )
 from finance_dashboard.stan_research import audit_stan_originals, summarize_stan_readiness
+from finance_dashboard.stan_probe_originals import (
+    read_stan_probe_evidence, store_stan_probe_original,
+)
 from finance_dashboard.source_policy import (managed_client, require_managed_client,
                                             publisher_interruption)
 from finance_dashboard.stan_metadata import (
@@ -206,9 +209,131 @@ def plan_surplus_probe(root: Path) -> dict:
     }
 
 
+
+def select_verified_stan_measures(root: Path, *, anchor_country: str,
+                                  probe_year: int) -> dict:
+    """Determine a defensible native country selection from retained originals.
+
+    The canonical four known measure codes remain available as a partial
+    acquisition selection. A combined-surplus measure is added only when the
+    exact official publisher codelist and an original validated native response
+    from the specified country have both been independently verified. That
+    evidence does not establish availability for other countries or years.
+    """
+    stan_source_request(anchor_country, probe_year, measures=("B1G",),
+                        activity="_T", end_year=probe_year)
+    base = STAN_VERIFIED_PORTUGAL_MEASURES
+    gate = plan_surplus_probe(root)
+    output = {
+        "phase": "phase2", "operation": "stan_native_selection",
+        "anchor_country": anchor_country, "probe_year": probe_year,
+        "native_measures": list(base),
+        "selection_evidence": "previously_validated_four_measure_partial",
+        "publisher_structure_status": gate["metadata_status"],
+        "publisher_structure_sha256": gate["source_sha256"],
+        "publisher_requests": 0, "no_archive_writes": True,
+        "complete_historical_coverage_verified": False,
+        "scientific_analysis_certified": False,
+        "verified_surplus_measures": [],
+        "source_proofs": [],
+    }
+    if gate["metadata_status"] == "invalid_metadata_original_or_receipt":
+        output.update(state="blocked_invalid_structure_evidence")
+        return output
+    country = read_stan_evidence(root, countries=(anchor_country,))["country_results"][0]
+    if country["status"] == "invalid_original_stan":
+        output.update(state="blocked_invalid_original_stan")
+        return output
+    candidates = tuple(gate["candidate_measures"])
+    if not candidates:
+        output.update(
+            state=("no_supported_surplus_in_verified_structure"
+                   if gate["metadata_status"] == "verified_publisher_structure"
+                   else "publisher_structure_not_yet_acquired"))
+        return output
+    probe = read_stan_probe_evidence(
+        root, country=anchor_country, year=probe_year, measures=candidates)
+    if probe["invalid_measures"]:
+        output.update(state="blocked_invalid_archived_surplus_probe",
+                      invalid_probe_measures=probe["invalid_measures"])
+        return output
+    proofs = []
+    for item in probe["measures"]:
+        if item["state"] == "verified_native_csv":
+            proofs.append({
+                "measure": item["measure"],
+                "source_kind": "bounded_total_activity_original",
+                "source_sha256": item["original_sha256"],
+                "source_bundle_digest": item["bundle_digest"],
+            })
+    for scope in country.get("source_scopes", []):
+        observed = scope["native_measure_counts"]
+        if all(observed.get(code, 0) for code in base):
+            for code in candidates:
+                if observed.get(code, 0):
+                    proofs.append({
+                        "measure": code,
+                        "source_kind": "verified_full_country_native_original",
+                        "source_sha256": scope["original_response_sha256"],
+                        "source_bundle_digest": scope["bundle_digest"],
+                    })
+    available = [
+        code for code in STAN_SURPLUS_CANDIDATES
+        if any(item["measure"] == code for item in proofs)
+    ]
+    chosen = available[0] if available else None
+    if chosen is not None:
+        output.update(
+            state="verified_surplus_native_code",
+            native_measures=["B1G", "D1", chosen, "P51C", "D29X39"],
+            selection_evidence="current_structure_and_original_country_observation")
+    else:
+        output.update(state="publisher_surplus_code_not_yet_observed")
+    output["verified_surplus_measures"] = available
+    output["source_proofs"] = proofs
+    return output
+
+
+def resolve_stan_country_selection(root: Path, *, anchor_country: str,
+                                   probe_year: int,
+                                   explicit_measures: tuple[str, ...] | None) -> dict:
+    """One authorization boundary for planned and active STAN country scopes.
+
+    Read-only planning and live acquisition use exactly the same selection
+    decision, so a source-proven combined surplus code cannot be silently
+    replaced by a historic guessed code on a later execution.
+    """
+    plan = select_verified_stan_measures(
+        root, anchor_country=anchor_country, probe_year=probe_year)
+    if plan["state"].startswith("blocked_"):
+        return plan
+    if explicit_measures is not None:
+        stan_source_request(anchor_country, probe_year,
+                            measures=tuple(explicit_measures))
+        unsupported = sorted(
+            (set(explicit_measures) & set(STAN_SURPLUS_CANDIDATES))
+            - set(plan["verified_surplus_measures"]))
+        if unsupported:
+            return {
+                **plan,
+                "state": "blocked_unverified_surplus_selection",
+                "unverified_requested_codes": unsupported,
+                "requested_native_measures": list(explicit_measures),
+            }
+        plan = {
+            **plan, "native_measures": list(explicit_measures),
+            "selection_evidence": (
+                "explicit_with_native_surplus_proof"
+                if set(explicit_measures) & set(STAN_SURPLUS_CANDIDATES)
+                else "explicit_native_selection"),
+        }
+    return plan
+
 def probe_surplus(client, *, country: str, year: int,
-                  candidates: tuple[str, ...] | None = None) -> dict:
-    """At most two exact-year, total-activity candidate requests; no archive writes.
+                  candidates: tuple[str, ...] | None = None,
+                  archive_root: Path | None = None,
+                  max_requests: int | None = None) -> dict:
+    """Evidence-backed bounded probes; no historical-country coverage claim.
 
     OECD historical methods use B2N_B3_N and B2G_B3G for combined mixed
     income. The live 2025 publisher dataflow must still validate each code.
@@ -220,15 +345,48 @@ def probe_surplus(client, *, country: str, year: int,
             or len(set(requested)) != len(requested)
             or not set(requested) <= set(STAN_SURPLUS_CANDIDATES)):
         raise ValueError("invalid_verified_stan_surplus_candidates")
+    if max_requests is not None and max_requests < 0:
+        raise ValueError("invalid_stan_probe_request_budget")
+    if archive_root is not None and (
+            not Path(archive_root).is_dir() or Path(archive_root).is_symlink()):
+        raise ValueError("existing_non_symlink_evidence_directory_required")
+    cached = (read_stan_probe_evidence(
+        archive_root, country=country, year=year, measures=requested)
+        if archive_root is not None else None)
+    if cached is not None and cached["invalid_measures"]:
+        return {
+            "phase": "phase2", "operation": "native_stan_surplus_code_probe",
+            "country": country, "checks": [],
+            "publisher_requests": 0, "stopped_on_publisher_backpressure": False,
+            "blocked_invalid_archived_probes": cached["invalid_measures"],
+            "no_archive_writes": True, "scientific_analysis_certified": False,
+        }
+    cached_by_measure = {
+        item["measure"]: item for item in (cached or {}).get("measures", [])
+        if item["state"] == "verified_native_csv"}
     checks = []
     sent_requests = 0
     stopped = False
+    archived = 0
     for candidate in requested:
         url, params = stan_source_request(
             country, year, measures=(candidate,),
             activity="_T", end_year=year)
         entry = {"candidate_measure": candidate, "probe_year": year,
                  "state": "source_check_failed"}
+        if candidate in cached_by_measure:
+            proof = cached_by_measure[candidate]
+            entry.update(
+                state="validated_native_csv", cache_hit=True,
+                source_sha256=proof["original_sha256"],
+                original_numeric_observations=proof["numeric_observations"],
+                verified_source_receipts=proof["retrieval_receipts_verified"])
+            checks.append(entry)
+            continue
+        if max_requests is not None and sent_requests >= max_requests:
+            entry.update(state="deferred_request_budget")
+            checks.append(entry)
+            continue
         interruption = None
         try:
             with client.stream("GET", url, params={**params, "format": "csvfile"},
@@ -251,6 +409,14 @@ def probe_surplus(client, *, country: str, year: int,
                          original_numeric_observations=parsed["numeric_observations"],
                          observed_measure_counts=parsed["native_measure_observation_counts"],
                          source_sha256=sha256(raw).hexdigest())
+            if archive_root is not None:
+                proof = store_stan_probe_original(
+                    raw, country=country, year=year,
+                    measure=candidate, root=archive_root)
+                entry["original_evidence"] = {
+                    "bundle_digest": proof["bundle_digest"],
+                    "receipt_sha256": proof["receipt_sha256"]}
+                archived += 1
         except Exception as exc:
             entry["reason_type"] = type(exc).__name__
             interruption = publisher_interruption(exc, entry.get("http_status"))
@@ -272,7 +438,11 @@ def probe_surplus(client, *, country: str, year: int,
         "country": country, "checks": checks,
         "publisher_requests": sent_requests,
         "stopped_on_publisher_backpressure": stopped,
-        "no_archive_writes": True, "no_macro_database_writes": True,
+        "deferred_request_budget": sum(
+            row["state"] == "deferred_request_budget" for row in checks),
+        "original_probes_archived": archived,
+        "verified_cached_probes": sum(row.get("cache_hit", False) for row in checks),
+        "no_archive_writes": archived == 0, "no_macro_database_writes": True,
         "code_availability_requires_live_csv": True,
         "scientific_analysis_certified": False,
     }
@@ -534,6 +704,8 @@ def brief_report(data: dict) -> dict:
         return {
             "operation": "plan_expansion",
             "publisher_measure_metadata": data["publisher_measure_metadata"],
+            "selection_evidence": data.get("selection_evidence"),
+            "source_proofs": data.get("source_proofs", [])[:3],
             "incomplete_verified_scopes": data["verified_scopes_with_missing_measures"][:8],
             "measures": data["native_measures"],
             "verified": data["verified_countries"],
@@ -566,6 +738,18 @@ def brief_report(data: dict) -> dict:
             "archived": bool(data.get("original_evidence")),
             "receipt_sha256": data.get("original_evidence", {}).get("receipt_sha256"),
         }
+    if data.get("operation") == "stan_native_selection":
+        return {
+            "operation": "native_selection",
+            "state": data["state"],
+            "native_measures": data["native_measures"],
+            "selection_evidence": data["selection_evidence"],
+            "publisher_structure_status": data["publisher_structure_status"],
+            "verified_surplus_measures": data["verified_surplus_measures"],
+            "source_proofs": data["source_proofs"][:3],
+            "unverified_requested_codes": data.get("unverified_requested_codes", []),
+            "publisher_requests": 0,
+        }
     if data.get("operation") == "stan_surplus_metadata_gate":
         return {
             "operation": "surplus_metadata_gate",
@@ -590,6 +774,12 @@ def brief_report(data: dict) -> dict:
         }
         if "acquisition" in data:
             out["acquisition"] = brief_report(data["acquisition"])
+        if "full_country_acquisition" in data:
+            out["full_country_acquisition"] = data["full_country_acquisition"]
+        out["probe_archives_added"] = probe.get("original_probes_archived", 0)
+        out["probe_cache_hits"] = probe.get("verified_cached_probes", 0)
+        out["blocked_invalid_probe_archive"] = probe.get(
+            "blocked_invalid_archived_probes", [])
         if "accounting_audit" in data:
             out["accounting_audit"] = brief_report(data["accounting_audit"])
         return out
@@ -627,6 +817,8 @@ def brief_report(data: dict) -> dict:
                 "failure": r.get("failure_category"),
             } for r in exceptional[:5]],
             "additional_events": max(0, len(exceptional) - 5),
+            "selection_evidence": data.get("selection_evidence"),
+            "source_proofs": data.get("source_proofs", [])[:3],
             "scientific_analysis_certified": False,
         }
     if op == "stan_original_industry_accounting_audit":
@@ -747,7 +939,10 @@ def main(argv=None) -> int:
     parser.add_argument("--diagnose", action="store_true",
                         help="Bounded one-year publisher key/schema diagnostics, no archive writes")
     parser.add_argument("--probe-year", type=int, default=2020,
-                        help="Exact calendar year for --diagnose (default 2020)")
+                        help="Exact calendar year for publisher measure probes (default 2020)")
+    parser.add_argument("--source-anchor", choices=sorted(OECD_MEMBER_ISO3),
+                        default="PRT",
+                        help="Country whose independently verified native probe selects the default measure scope")
     args = parser.parse_args(argv)
     countries = tuple(dict.fromkeys(args.countries))
     if len(countries) != len(args.countries) or any(
@@ -780,7 +975,8 @@ def main(argv=None) -> int:
     if args.resolve_surplus and (args.expand or args.diagnose or args.audit or
                                  len(countries) != 1 or args.measures):
         parser.error("--resolve-surplus requires one country and no other mode/selection")
-    if (args.diagnose or args.resolve_surplus) and not (
+    if (args.diagnose or args.resolve_surplus
+            or args.plan_expansion or args.acquire or args.expand) and not (
             1970 <= args.probe_year <= date.today().year):
         parser.error("--probe-year is outside the supported historical period")
     if args.readiness and (args.acquire or args.expand or args.diagnose or
@@ -816,11 +1012,19 @@ def main(argv=None) -> int:
         emit_report(report, brief=args.brief)
         return 1 if report["invalid_original_countries"] else 0
     if args.plan_expansion:
-        selection = (tuple(args.measures) if args.measures
-                     else STAN_VERIFIED_PORTUGAL_MEASURES)
+        chosen = resolve_stan_country_selection(
+            args.evidence_dir, anchor_country=args.source_anchor,
+            probe_year=args.probe_year,
+            explicit_measures=tuple(args.measures) if args.measures else None)
+        if chosen["state"].startswith("blocked_"):
+            emit_report(chosen, brief=args.brief)
+            return 1
         result = plan_expansion(
             args.evidence_dir, countries=countries, start_year=since.year,
-            measures=selection, max_requests=args.max_requests or 4)
+            measures=tuple(chosen["native_measures"]),
+            max_requests=args.max_requests or 4)
+        result["selection_evidence"] = chosen["selection_evidence"]
+        result["source_proofs"] = chosen["source_proofs"]
         emit_report(result, brief=args.brief)
         return 1 if result["blocked_invalid_original_countries"] else 0
     if args.discover_measures or args.acquire_metadata:
@@ -849,7 +1053,9 @@ def main(argv=None) -> int:
         with managed_client(timeout=60, follow_redirects=False) as client:
             probe = probe_surplus(
                 client, country=countries[0], year=args.probe_year,
-                candidates=tuple(gate["candidate_measures"]))
+                candidates=tuple(gate["candidate_measures"]),
+                archive_root=args.evidence_dir if args.acquire else None,
+                max_requests=args.max_requests if args.acquire else None)
             result = {"surplus_probe": probe,
                       "metadata_source_sha256": gate["source_sha256"]}
             net, gross = STAN_SURPLUS_CANDIDATES
@@ -858,12 +1064,17 @@ def main(argv=None) -> int:
             selected = net if net in validated else gross if gross in validated else None
             result["selected_observed_surplus_measure"] = selected
             if args.acquire and selected and not probe["stopped_on_publisher_backpressure"]:
-                selection = ("B1G", "D1", selected, "P51C", "D29X39")
-                result["acquisition"] = acquire(
-                    client, args.evidence_dir, countries=countries,
-                    start_year=since.year, measures=selection,
-                    max_requests=args.max_requests, quiet=args.brief,
-                    refresh_verified=args.refresh_verified)
+                remaining = (None if args.max_requests is None else
+                             args.max_requests - probe["publisher_requests"])
+                if remaining == 0:
+                    result["full_country_acquisition"] = "deferred_request_budget"
+                else:
+                    selection = ("B1G", "D1", selected, "P51C", "D29X39")
+                    result["acquisition"] = acquire(
+                        client, args.evidence_dir, countries=countries,
+                        start_year=since.year, measures=selection,
+                        max_requests=remaining, quiet=args.brief,
+                        refresh_verified=args.refresh_verified)
         if args.acquire and "acquisition" in result:
             result["accounting_audit"] = audit_stan_originals(
                 args.evidence_dir, countries=countries)
@@ -875,14 +1086,22 @@ def main(argv=None) -> int:
             args.evidence_dir, countries=countries), brief=args.brief)
         return 0
     if args.acquire or args.expand:
-        import httpx
+        chosen = resolve_stan_country_selection(
+            args.evidence_dir, anchor_country=args.source_anchor,
+            probe_year=args.probe_year,
+            explicit_measures=tuple(args.measures) if args.measures else None)
+        if chosen["state"].startswith("blocked_"):
+            emit_report(chosen, brief=args.brief)
+            return 1
         with managed_client(timeout=60, follow_redirects=False) as client:
             report = acquire(client, args.evidence_dir, countries=countries,
                              start_year=since.year,
-                             measures=tuple(args.measures) if args.measures else None,
+                             measures=tuple(chosen["native_measures"]),
                              max_requests=(args.max_requests if args.max_requests is not None
                                            else 4 if args.expand else None),
                              quiet=args.brief, refresh_verified=args.refresh_verified)
+        report["selection_evidence"] = chosen["selection_evidence"]
+        report["source_proofs"] = chosen["source_proofs"]
         emit_report(report, brief=args.brief)
         if args.expand:
             failed = report["stopped_on_source_policy"] or any(
