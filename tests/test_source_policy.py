@@ -125,6 +125,9 @@ class PolicyRegistryTests(PolicyHarness):
                     "GET", "https://sdmx.oecd.org/public/rest/data")
             self.assertEqual(ex.exception.reason, "direct_network_origin_not_confirmed")
         with patch.dict("os.environ", {"FINANCE_SOURCE_POLICY_ACKNOWLEDGED": "oecd-sdmx"}):
+            report = self.registry.report()
+            oecd = next(p for p in report["publishers"] if p["id"] == "oecd-sdmx")
+            self.assertTrue(oecd["operator_acknowledged"])
             with self.assertRaises(PolicyViolation) as ex:
                 self.managed_request(
                     "GET", "https://sdmx.oecd.org/public/rest/data?lastNObservations=2")
