@@ -11,7 +11,7 @@ import httpx
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import Base, make_engine
 from finance_dashboard.providers import ProviderRouter, parse_shiller_sheet, ProviderError
-from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_reconciliation import reconcile
 from test_captured_source_families import xlsx_from_factual_cells
 
@@ -38,7 +38,7 @@ class MissingOriginalInputsTests(unittest.TestCase):
             Base.metadata.create_all(engine)
             try:
                 with httpx.Client(transport=httpx.MockTransport(response)) as client:
-                    service = IngestionService(engine, CapturedProvider(ProviderRouter(client), root))
+                    service = IngestionService(engine, SourceAcquisition(ProviderRouter(client), root))
                     service.refresh(SHILLER[0])
                     # The already-downloaded workbook revises a point far outside overlap.
                     rows[7][1] = 4.45
@@ -67,7 +67,7 @@ class MissingOriginalInputsTests(unittest.TestCase):
             Base.metadata.create_all(engine)
             try:
                 with httpx.Client(transport=httpx.MockTransport(response)) as client:
-                    provider = CapturedProvider(ProviderRouter(client), root)
+                    provider = SourceAcquisition(ProviderRouter(client), root)
                     service = IngestionService(engine, provider)
                     for sid in SHILLER + COMMODITIES:
                         first = service.refresh(sid, full=True)
