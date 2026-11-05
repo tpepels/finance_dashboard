@@ -15,10 +15,16 @@ VINTAGE_IDS = frozenset(VINTAGE_SOURCES)
 FX_IDS = frozenset(("USD", "GBP", "CHF"))
 
 
+SAFE_ERRORS = frozenset({
+    "invalid_source", "provider_blocked", "provider_failed",
+    "missing_credential", "access_denied", "rate_limited", "no_progress",
+    "source_invalid", "internal_error", "cancelled", "interrupted",
+})
+
 class MaintenanceBlocked(Exception):
     def __init__(self, code: str):
-        super().__init__(code)
-        self.code = code
+        self.code = code if code in SAFE_ERRORS else "provider_blocked"
+        super().__init__(self.code)
 
 
 @dataclass(frozen=True)
