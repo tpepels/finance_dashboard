@@ -4,7 +4,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-import time
 from typing import Any
 
 import httpx
@@ -112,13 +111,12 @@ def parse_bis_json(payload: dict[str, Any], series_id: str) -> tuple[dict[date, 
 class BisPolicyClient:
     """Small bounded, injectable HTTP client; no provider calls in the API process."""
 
-    def __init__(self, client: httpx.Client | None = None, retries: int = 2):
+    def __init__(self, client: httpx.Client | None = None):
         self.client = client or managed_client(
             timeout=httpx.Timeout(30.0), follow_redirects=False,
             headers={"User-Agent": "global-capital-monitor/0.2"}
         )
         self.owns_client = client is None
-        self.retries = retries
 
     def close(self) -> None:
         if self.owns_client:
@@ -130,20 +128,10 @@ class BisPolicyClient:
             raise ProviderError(f"Unsupported BIS series: {series_id}")
         url = f"{API_ROOT}/D.{country}"
         params = {"startPeriod": start.isoformat()} if start else {}
-        response = None
-        for attempt in range(self.retries + 1):
-            try:
-                response = self.client.get(url, params=params, headers={"Accept": ACCEPT})
-                if response.status_code in (429, 500, 502, 503, 504) and attempt < self.retries:
-                    time.sleep(min(2 ** attempt, 3))
-                    continue
-                response.raise_for_status()
-                break
-            except (httpx.TimeoutException, httpx.TransportError):
-                if attempt == self.retries:
-                    raise
-                time.sleep(min(2 ** attempt, 3))
-        assert response is not None
+        # All pacing, publisher cooldowns and request budgets are owned by the
+        # shared source-policy client. Never retry immediately on a block.
+        response = self.client.get(url, params=params, headers={"Accept": ACCEPT})
+        response.raise_for_status()
         if "json" not in response.headers.get("content-type", "").lower():
             raise ProviderError("BIS returned an unexpected content type")
         try:
