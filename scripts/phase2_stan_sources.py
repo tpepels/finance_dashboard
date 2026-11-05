@@ -115,7 +115,7 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
 def probe_surplus(client, *, country: str, year: int) -> dict:
     """At most two exact-year, total-activity candidate requests; no archive writes.
 
-    OECD historical methods use B2N_B3N and B2G_B3G for combined mixed
+    OECD historical methods use B2N_B3_N and B2G_B3G for combined mixed
     income. The live 2025 publisher dataflow must still validate each code.
     """
     from hashlib import sha256
