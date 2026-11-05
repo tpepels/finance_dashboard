@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date
 from os import environ
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, func, select, literal
 from sqlalchemy.orm import Session
 
 from .database import (
@@ -202,6 +202,13 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         "last_attempt_state": last["status"] if last else "never",
         "last_success_utc": successful["ended_at"].isoformat()
             if successful and successful["ended_at"] else None,
+        "evidence_kind": successful.get("evidence_kind") if successful else None,
+        "evidence_scope": successful.get("evidence_scope") if successful else None,
+        "evidence_bundle_digest": (
+            successful.get("evidence_bundle_digest") if successful else None),
+        "evidence_receipt_recorded": bool(
+            successful.get("evidence_receipt_name")) if successful else False,
+        "first_publication_verified": False,
         "last_failure_code": last_error
             if isinstance(last_error, str) and last_error in SAFE_ERROR_CODES
             else ("provider_failed" if last and last["status"] == "failed" else None),
@@ -210,16 +217,22 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
 
 def _runs(session: Session, model, key) -> tuple[dict, dict]:
     # Do not load ORM instances or source request/error text unnecessarily.
-    stmt = select(key, model.started_at, model.ended_at, model.status,
-                  model.error if hasattr(model, "error") else model.status).order_by(
-                      model.started_at.desc(), model.id.desc())
+    provenance_fields = (
+        "evidence_kind", "evidence_scope", "evidence_bundle_digest",
+        "evidence_receipt_name")
+    stmt = select(
+        key, model.started_at, model.ended_at, model.status,
+        model.error if hasattr(model, "error") else model.status,
+        *(getattr(model, field) if hasattr(model, field) else literal(None)
+          for field in provenance_fields)
+    ).order_by(model.started_at.desc(), model.id.desc())
     newest, successful = {}, {}
-    for sid, started, ended, status, failure in session.execute(stmt):
+    for sid, started, ended, status, failure, *provenance in session.execute(stmt):
         if sid not in newest:
             newest[sid] = {"started_at": started, "ended_at": ended,
                            "status": status, "error": failure if hasattr(model, "error") else None}
         if status == "success" and sid not in successful:
-            successful[sid] = {"ended_at": ended}
+            successful[sid] = {"ended_at": ended, **dict(zip(provenance_fields, provenance))}
     return newest, successful
 
 
