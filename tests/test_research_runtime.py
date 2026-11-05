@@ -18,7 +18,7 @@ from finance_dashboard.database import Base, ObservationVersion
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.research_corpus import load_research_corpus
 from finance_dashboard.service import IngestionService
-from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_capture import SourceAcquisition
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "phase2_native_inputs"
@@ -57,7 +57,7 @@ class ResearchRuntimeTests(unittest.TestCase):
                 with patch.dict("os.environ", {"FRED_API_KEY": "", "FRED_PUBLIC_CSV_FALLBACK": "1"}):
                     with httpx.Client(transport=httpx.MockTransport(
                             lambda request: httpx.Response(200, content=raw))) as client:
-                        service = IngestionService(engine, CapturedProvider(ProviderRouter(client), evidence))
+                        service = IngestionService(engine, SourceAcquisition(ProviderRouter(client), evidence))
                         self.assertEqual(service.refresh(sid, full=True)["status"], "success")
                 before_db = db.read_bytes()
                 before_files = {p.relative_to(evidence): p.read_bytes()
@@ -109,7 +109,7 @@ class ResearchRuntimeTests(unittest.TestCase):
             try:
                 with patch.dict("os.environ", {"FRED_API_KEY": "", "FRED_PUBLIC_CSV_FALLBACK": "1"}):
                     with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=raw))) as client:
-                        ingested = IngestionService(engine, CapturedProvider(ProviderRouter(client), root / "evidence")).refresh(sid, full=True)["versions_added"]
+                        ingested = IngestionService(engine, SourceAcquisition(ProviderRouter(client), root / "evidence")).refresh(sid, full=True)["versions_added"]
                 reconcile = runtime.reconcile_session
                 def append_revision(session, *args):
                     proof = reconcile(session, *args)
