@@ -115,6 +115,11 @@ def managed_client(*, policy_gate: SourcePolicyGate | None = None, **kwargs) -> 
         raise PolicyViolation("transport", "unapproved_proxy_or_transport_mount")
     kwargs["trust_env"] = False
     base = kwargs.pop("transport", None)
+    # Production callers may not supply arbitrary transports (including a
+    # proxy-configured HTTPTransport). Only bounded local mock handlers are
+    # injectable; the standard transport is always created here.
+    if base is not None and not isinstance(base, httpx.MockTransport):
+        raise PolicyViolation("transport", "unapproved_injected_transport")
     if base is None:
         base = httpx.HTTPTransport(
             verify=kwargs.get("verify", True),
