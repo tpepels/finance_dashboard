@@ -427,7 +427,8 @@
     {
       "id": "wisesheets",
       "hosts": [
-        "api.wisesheets.io"
+        "api.wisesheets.io",
+        "www.wisesheets.io"
       ],
       "classification": "internal_conservative",
       "evidence_url": "https://www.wisesheets.io/api/docs",
@@ -600,7 +601,8 @@
         "www.shillerdata.com",
         "shillerdata.com",
         "www.econ.yale.edu",
-        "www.stern.nyu.edu"
+        "www.stern.nyu.edu",
+        "img1.wsimg.com"
       ],
       "classification": "internal_conservative",
       "evidence_url": "https://shillerdata.com/",
@@ -993,6 +995,278 @@
         "lease_seconds": 240,
         "cooldown_access_denied_seconds": 3600,
         "cooldown_other_5xx_seconds": 120
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "ofr",
+      "hosts": [
+        "www.financialresearch.gov"
+      ],
+      "evidence_url": "https://www.financialresearch.gov/financial-stress-index/",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "fed-publications",
+      "hosts": [
+        "www.federalreserve.gov"
+      ],
+      "evidence_url": "https://www.federalreserve.gov/data.htm",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "bank-of-japan",
+      "hosts": [
+        "www.stat-search.boj.or.jp"
+      ],
+      "evidence_url": "https://www.boj.or.jp/en/statistics/",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "fdic",
+      "hosts": [
+        "api.fdic.gov"
+      ],
+      "evidence_url": "https://banks.data.fdic.gov/docs/",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "taiwan-exchange",
+      "hosts": [
+        "mopsfin.twse.com.tw"
+      ],
+      "evidence_url": "https://mops.twse.com.tw/",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "unu-wider",
+      "hosts": [
+        "www.wider.unu.edu"
+      ],
+      "evidence_url": "https://www.wider.unu.edu/",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "research-sites",
+      "hosts": [
+        "laurensswinkels.com"
+      ],
+      "evidence_url": "https://laurensswinkels.com/",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "allow_automated_download": true
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "msci-restricted-api",
+      "hosts": [
+        "app2.msci.com"
+      ],
+      "evidence_url": "https://www.msci.com/terms-of-use",
+      "classification": "restricted_use",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
       },
       "restrictions": {
         "methods": [
