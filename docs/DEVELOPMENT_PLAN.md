@@ -1,3 +1,5 @@
+# Development plan — authoritative five-phase roadmap
+
 ## OECD STAN source follow-up — 2026-11-05 (Phase 2, acquisition partial)
 
 Portugal's original 1970–2024 STAN 2025 response for four native measures
@@ -12,8 +14,9 @@ covers that year.
 
 The earlier requested `B2N` was not observed in the PRT/_T/2020 probe. The
 [OECD STAN sources-and-methods paper](https://doi.org/10.1787/ece98fd3-en)
-describes combined **net operating surplus and net mixed income** using the
-historical SNA identity B2N_B3N (and gross B2G_B3G). These two candidate codes
+describes combined **net operating surplus and net mixed income**, and the
+historical combined SNA code family includes B2N_B3N (net) and B2G_B3G
+(gross). These two candidate codes
 are now explicitly permitted in *new separate* native STAN selections, but
 their presence in the 2025 SDMX dataflow is **not yet confirmed by a live
 publisher sample**. The `--resolve-surplus` probe checks bounded PRT/_T/2020
@@ -55,9 +58,6 @@ Completion remains **blocked** pending actual 2025-source surplus-code
 confirmation, same-scope identity results, publisher flag interpretation,
 full country/year/industry coverage and historical first-publication evidence.
 This work must not be counted as closing scientific acceptance for L01–L03.
-
-
-# Development plan — authoritative five-phase roadmap
 
 **Decision date:** 2026-11-03. **Branch:** `main`. **State:** **PHASE 1 APPROVED/CLOSED by explicit user instruction; PHASE 2 ACTIVE.** Existing application data and functionality are preserved. Phase 2 may analyze the code/data inventory and implement the approved data-source/provenance corpus. Phases 3–5 remain not started under the revised contract.
 
