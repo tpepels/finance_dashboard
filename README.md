@@ -42,41 +42,42 @@ Do not confuse this offline registry report with the database/source-reconciliat
 
 The default offline inventory is deliberately short. Use `--details` for per-analysis mapping counts or `--json` for structured output.
 
-For a bounded read-only official OECD STAN original-field check (not an acquisition or L01–L03 source certification), run from the existing development stack:
+For OECD STAN 2025, the first Portugal full-history acquisition returned
+publisher **HTTP 500**, and no STAN originals were archived. The original
+adapter also wrongly expected `TRANSACTION` and `VALUATION` CSV fields,
+rather than the STAN-native `MEASURE` and `PRICE_BASE` dimensions.
+The current parser uses the native publisher field identities, and acquisition
+still refuses to invent or accept missing historical observations.
 
-```sh
-docker compose exec -T finance-dashboard python scripts/phase2_source_probe.py \
-  --stan-candidates --since 2024-01-01
-```
-
-The probe checks publisher HTTP status, native measure dimensions, exact country-industry observation counts and source-body SHA-256. It does not store observations or establish matched capital-stock valuation or first-publication vintages.
-
-The same validated STAN 2025 parser now supports **complete native, country-specific
-historical acquisition** (all OECD members by default), with immutable original CSV,
-SHA-256 content identity, append-only acquisition receipts, recomputed accounting
-diagnostics and explicit OECD observation-status flags. This is a structured
-country/industry/measure/year archive; it never writes synthetic macro scalars.
-
-After the current unrelated acquisition has finished and the container is rebuilt,
-a bounded first original acquisition can be run with:
+Before attempting the large historical request again, run the single
+read-only, narrowly bounded publisher diagnostic:
 
 ```sh
 docker compose exec -T finance-dashboard \
   python scripts/phase2_stan_sources.py \
   --evidence-dir /data/source-evidence \
-  --countries PRT --since 1970-01-01 --acquire
+  --countries PRT --since 1970-01-01 \
+  --diagnose --probe-year 2020
 ```
 
-Omit `--countries PRT` to acquire the complete **38-member OECD set**. This may
-require substantial disk space and publisher response time. Failed countries do
-not remove other originals. Without `--acquire`, the command only re-verifies
-the archived native originals. Original per-industry income residuals, source
-status flags, missing years and mismatched monetary scales remain visible.
-L01–L03 still require exact labour-hours, self-employment compensation, net
-operating-surplus and current-replacement-cost *net* capital identities;
-successful STAN storage does not accept any original scientific input role.
+The diagnostic issues at most eight one-year queries: a publisher-documented
+B1G value-added key for total activity with and without the CSV format query
+parameter, an all-industry B1G key, four other proposed input-measure keys,
+and the complete candidate group restricted to total activity. It reports
+HTTP status, safe failure categories and SHA-256 of accepted source CSVs,
+without exposing publisher HTML errors, creating source bindings, modifying
+SQLite or archiving unverified inputs. Publisher backpressure (429/503)
+stops further requests.
 
-
+The existing `--acquire` mode still supports native country-by-country
+full-history retrieval and immutable publisher CSV/manifest/receipt archival,
+but a failed publisher request never becomes a successful archive. Do not
+run large 1970-to-present all-industry requests across all OECD countries
+until the bounded control and individual measures have been verified.
+Without either `--diagnose` or `--acquire`, the command only rehashes
+the retained originals. Matching labour-hours, self-employed compensation,
+pure net operating surplus, current-cost net produced capital stock, and
+first-publication vintages remain unresolved for L01–L03.
 
 Use `PYTHONPATH=src python scripts/phase2_corpus_status.py --candidates` to see the original dataset investigations for L01–L03. These are unverified publisher candidates; no empty source bindings are filled and no analysis is certified by the candidate list. After a native acquisition, summarize the saved JSON report without copying its full contents:
 

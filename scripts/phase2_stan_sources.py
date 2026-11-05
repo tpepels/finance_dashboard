@@ -22,6 +22,90 @@ from finance_dashboard.stan_originals import (
 )
 
 
+def diagnose_publisher(client, *, country: str, year: int) -> dict:
+    """Bounded native SDMX request matrix; report statuses without storing bodies.
+
+    The first publisher-documented key (total activity, B1G, current national
+    currency) isolates endpoint and CSV handling. Further requests distinguish
+    a bad candidate measure from an oversized unbounded query.
+    """
+    from hashlib import sha256
+    from finance_dashboard.stan_originals import STAN_MEASURES, parse_stan_original_csv
+
+    tests = [
+        ("published_value_added_control", ("B1G",), "_T", True),
+        ("published_value_added_no_format", ("B1G",), "_T", False),
+        ("all_industries_value_added_one_year", ("B1G",), None, True),
+        *[(f"native_measure_{measure}", (measure,), "_T", True)
+          for measure in STAN_MEASURES if measure != "B1G"],
+        ("five_measure_total_activity_one_year", STAN_MEASURES, "_T", True),
+    ]
+    results = []
+    for name, measures, activity, with_format in tests:
+        url, params = stan_source_request(country, year, measures=measures,
+                                          activity=activity, end_year=year)
+        if with_format:
+            params = {**params, "format": "csvfile"}
+        item = {"check": name, "activity": activity or "all_industries",
+                "measures_requested": list(measures),
+                "year": year, "format_parameter": with_format,
+                "state": "source_check_failed"}
+        try:
+            with client.stream("GET", url, params=params,
+                               headers={"Accept": "text/csv"}) as response:
+                item["http_status"] = response.status_code
+                response.raise_for_status()
+                payload = bytearray()
+                for chunk in response.iter_bytes():
+                    if len(payload) + len(chunk) > MAX_STAN_SOURCE_BYTES:
+                        raise ValueError("Original source exceeds diagnostic limits")
+                    payload.extend(chunk)
+            # A 204 response is an empty published selection, not valid data.
+            if not payload:
+                item["state"] = "empty_response"
+            else:
+                raw = bytes(payload)
+                item["source_sha256"] = sha256(raw).hexdigest()
+                parsed = parse_stan_original_csv(
+                    raw, country=country, start_year=year,
+                    expected_measures=measures, expected_activity=activity,
+                    end_year=year,
+                )
+                item.update(
+                    state="validated_native_csv",
+                    original_numeric_observations=parsed["numeric_observations"],
+                    observed_measure_counts=parsed["native_measure_observation_counts"],
+                    observed_industries=parsed["reported_industries"],
+                    source_dataflow_field_verified=parsed["source_dataflow_field_verified"],
+                )
+        except Exception as exc:
+            # Raw error payloads and URLs are never displayed or accepted.
+            item["reason_type"] = type(exc).__name__
+            if item.get("http_status", 0) >= 500:
+                item["failure_category"] = "publisher_http_5xx"
+            elif item.get("http_status") in (204, 404):
+                item["failure_category"] = "no_published_observations_for_selection"
+            elif item.get("http_status") in (400, 406, 422):
+                item["failure_category"] = "publisher_rejected_source_filter"
+            else:
+                item["failure_category"] = "transport_or_native_schema"
+        results.append(item)
+        if item.get("http_status") in (429, 503):
+            break  # Respect publisher backpressure; do not retry blindly.
+    return {
+        "phase": "phase2",
+        "operation": "oecd_stan_native_request_diagnostics",
+        "country": country, "probe_year": year,
+        "checks": results,
+        "publisher_requests": len(results),
+        "no_archive_writes": True, "no_macro_database_writes": True,
+        "original_role_bindings_created": 0,
+        "full_historical_acquisition_verified": False,
+        "scientific_analysis_certified": False,
+        "first_publication_verified": False,
+    }
+
+
 def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int) -> dict:
     if not root.is_dir() or root.is_symlink():
         raise ValueError("existing_non_symlink_evidence_directory_required")
@@ -50,6 +134,9 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int) 
         except Exception as exc:
             # No original HTTP response, exception message or private paths in logs.
             entry["reason_type"] = type(exc).__name__
+            if entry.get("http_status", 0) >= 500:
+                entry["failure_category"] = "publisher_http_5xx"
+                entry["next_step"] = "Run --diagnose --countries " + country + " --probe-year 2020"
             print(f"STAN {number}/{len(countries)}: failed ({type(exc).__name__})",
                   file=sys.stderr, flush=True)
         report.append(entry)
@@ -78,6 +165,10 @@ def main(argv=None) -> int:
                         help="First requested source year, YYYY-01-01")
     parser.add_argument("--acquire", action="store_true",
                         help="Download, validate and retain original responses (otherwise read-only)")
+    parser.add_argument("--diagnose", action="store_true",
+                        help="Bounded one-year publisher key/schema diagnostics, no archive writes")
+    parser.add_argument("--probe-year", type=int, default=2020,
+                        help="Exact calendar year for --diagnose (default 2020)")
     args = parser.parse_args(argv)
     countries = tuple(dict.fromkeys(args.countries))
     if len(countries) != len(args.countries) or any(
@@ -90,6 +181,20 @@ def main(argv=None) -> int:
         stan_source_request(countries[0], since.year)
     except ValueError:
         parser.error("Invalid YYYY-01-01 source start")
+    if args.diagnose:
+        if args.acquire:
+            parser.error("--diagnose cannot be combined with --acquire")
+        if not 1970 <= args.probe_year <= date.today().year:
+            parser.error("Invalid --probe-year")
+        import httpx
+        with httpx.Client(timeout=45, follow_redirects=False) as client:
+            results = [diagnose_publisher(client, country=country, year=args.probe_year)
+                       for country in countries]
+        print(json.dumps({"diagnostics": results}, indent=2))
+        return 0 if all(
+            any(check["state"] == "validated_native_csv" for check in report["checks"])
+            for report in results
+        ) else 1
     if args.acquire:
         import httpx
         with httpx.Client(timeout=60, follow_redirects=False) as client:

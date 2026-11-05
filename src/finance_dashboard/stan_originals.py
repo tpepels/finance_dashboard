@@ -32,7 +32,7 @@ STAN_DATAFLOW_ID = "OECD.STI.PIE:DSD_STAN@DF_STAN_2025(1.0)"
 STAN_ROOT = "https://sdmx.oecd.org/public/rest/data"
 STAN_MEASURES = ("B1G", "D1", "B2N", "P51C", "D29X39")
 STAN_FIELDS = frozenset({
-    "FREQ", "REF_AREA", "ACTIVITY", "TRANSACTION", "VALUATION",
+    "FREQ", "REF_AREA", "ACTIVITY", "MEASURE", "PRICE_BASE",
     "UNIT_MEASURE", "TIME_PERIOD", "OBS_VALUE",
 })
 MAX_STAN_SOURCE_BYTES = 100_000_000
@@ -40,12 +40,31 @@ MAX_STAN_SOURCE_ROWS = 1_000_000
 IDENTITY = "OECD_STAN_2025_INDUSTRY_ORIGINAL"
 
 
-def stan_source_request(country: str, start_year: int = 1970) -> tuple[str, dict]:
+def stan_source_request(country: str, start_year: int = 1970, *,
+                        measures: tuple[str, ...] | None = None,
+                        activity: str | None = None,
+                        end_year: int | None = None) -> tuple[str, dict]:
+    """Exact native six-dimension key from the OECD 2025 Data Explorer.
+
+    Omitted activity means all published industries. Small, explicitly bounded
+    queries are used for live identity diagnostics, never treated as history.
+    """
     if country not in OECD_MEMBER_ISO3 or not 1970 <= start_year <= date.today().year:
         raise ValueError("invalid_stan_country_or_period")
-    key = "A." + country + ".." + "+".join(STAN_MEASURES) + ".V.XDC"
-    return (f"{STAN_ROOT}/{STAN_FLOW}/{key}",
-            {"startPeriod": str(start_year), "dimensionAtObservation": "AllDimensions"})
+    selected = STAN_MEASURES if measures is None else tuple(measures)
+    if (not selected or len(selected) != len(set(selected))
+            or any(value not in STAN_MEASURES for value in selected)):
+        raise ValueError("invalid_stan_native_measure")
+    if (activity is not None and not re.fullmatch(r"[A-Z0-9_]{1,32}", activity)):
+        raise ValueError("invalid_stan_activity")
+    if end_year is not None and not start_year <= end_year <= date.today().year:
+        raise ValueError("invalid_stan_period_window")
+    key = "A." + country + "." + (activity or "") + "." + "+".join(selected) + ".V.XDC"
+    params = {"startPeriod": str(start_year),
+              "dimensionAtObservation": "AllDimensions"}
+    if end_year is not None:
+        params["endPeriod"] = str(end_year)
+    return (f"{STAN_ROOT}/{STAN_FLOW}/{key}", params)
 
 
 def stan_source_identity(country: str, start_year: int) -> dict:
@@ -55,14 +74,19 @@ def stan_source_identity(country: str, start_year: int) -> dict:
             "requested_since": start_year}
 
 
-def parse_stan_original_csv(raw: bytes, *, country: str, start_year: int) -> dict:
+def parse_stan_original_csv(raw: bytes, *, country: str, start_year: int,
+                            expected_measures: tuple[str, ...] | None = None,
+                            expected_activity: str | None = None,
+                            end_year: int | None = None) -> dict:
     """Validate all requested native dimensions; summarize exact country-industry-years.
 
     Financial identities are diagnostics only: B2N includes mixed income and
     these source codes do not prove a pure Marxian surplus-value numerator.
     Report every source status flag without assuming it denotes official data.
     """
-    stan_source_request(country, start_year)
+    stan_source_request(country, start_year, measures=expected_measures,
+                        activity=expected_activity, end_year=end_year)
+    allowed_measures = STAN_MEASURES if expected_measures is None else expected_measures
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_STAN_SOURCE_BYTES:
         raise ProviderError("STAN original response outside permitted byte bounds")
     try:
@@ -88,10 +112,12 @@ def parse_stan_original_csv(raw: bytes, *, country: str, start_year: int) -> dic
         if None in row or any(value is None for value in row.values()):
             raise ProviderError("STAN row width changed")
         activity, transaction, period = (
-            row["ACTIVITY"], row["TRANSACTION"], row["TIME_PERIOD"])
+            row["ACTIVITY"], row["MEASURE"], row["TIME_PERIOD"])
         if (row["FREQ"] != "A" or row["REF_AREA"] != country
-                or row["VALUATION"] != "V" or row["UNIT_MEASURE"] != "XDC"
-                or transaction not in STAN_MEASURES
+                or row["PRICE_BASE"] != "V" or row["UNIT_MEASURE"] != "XDC"
+                or transaction not in allowed_measures
+                or (expected_activity is not None and activity != expected_activity)
+                or (end_year is not None and int(period) > end_year)
                 or not re.fullmatch(r"[A-Z0-9_]{1,32}", activity)
                 or not re.fullmatch(r"[0-9]{4}", period)
                 or not start_year <= int(period) <= date.today().year):

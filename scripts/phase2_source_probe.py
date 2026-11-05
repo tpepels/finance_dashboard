@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
-from hashlib import sha256
 import json
 from pathlib import Path
 import sys
@@ -51,47 +50,6 @@ CLAUDE_SOURCE_IDS = (
 )
 
 
-# OECD industry originals use the single typed parser and publisher key.
-# Read-only probing does not archive the body or create scalar bindings.
-from finance_dashboard.stan_originals import (
-    MAX_STAN_SOURCE_BYTES, parse_stan_original_csv, stan_source_request,
-)
-
-
-def probe_stan_candidates(client, *, since=date(2023, 1, 1)) -> dict:
-    """Read only official native industry responses, reusing the artifact parser."""
-    result = {
-        "probe": "phase2-oecd-stan-source-candidates",
-        "publisher": "OECD", "source_family": "STAN_2025",
-        "requested_from": since.isoformat(),
-        "no_database_writes": True,
-        "original_role_bindings_created": 0,
-        "all_l01_l03_original_roles_verified": False,
-        "first_publication_vintage_verified": False,
-        "state": "source_check_failed",
-    }
-    try:
-        url, params = stan_source_request("PRT", since.year)
-        response = client.get(url, params={**params, "format": "csvfile"},
-                              headers={"Accept": "csvfile"})
-        result["http_status"] = response.status_code
-        response.raise_for_status()
-        raw = response.content
-        if not raw or len(raw) > MAX_STAN_SOURCE_BYTES:
-            raise ValueError("Invalid or oversized native STAN response")
-        facts = parse_stan_original_csv(raw, country="PRT", start_year=since.year)
-        result.update(facts)
-        result.update(
-            state="sampled", original_response_sha256=sha256(raw).hexdigest(),
-            scope="Original source field feasibility only: no matched national-"
-                  "account industry series, released vintages or self-employed "
-                  "compensation/produced capital-stock identity certified.",
-        )
-    except Exception as exc:
-        result["reason_type"] = type(exc).__name__
-    return result
-
-
 def probe(router: ProviderRouter, ids=DEFAULT_IDS, since=date(2024, 1, 1)) -> dict:
     """Identity-preserving source sample; no data storage or raw provider URLs."""
     result = []
@@ -137,16 +95,8 @@ def main() -> int:
                           help="Probe a representative set of newly integrated source families, without database writes")
     selected.add_argument("--only", nargs="+",
                           help="Probe any registered exact series IDs, without database writes")
-    selected.add_argument("--stan-candidates", action="store_true",
-                          help="Read-only bounded official OECD STAN candidate field check for L01-L03")
     opts = parser.parse_args()
     since = date.fromisoformat(opts.since)
-    if opts.stan_candidates:
-        import httpx
-        with httpx.Client(timeout=35, follow_redirects=False) as client:
-            result = probe_stan_candidates(client, since=since)
-        print(json.dumps(result, indent=2))
-        return 0 if result["state"] == "sampled" else 1
     provider = ProviderRouter()
     try:
         ids = tuple(opts.only) if opts.only else CLAUDE_SOURCE_IDS if opts.new_sources else DEFAULT_IDS

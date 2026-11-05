@@ -16,7 +16,7 @@ from finance_dashboard.research_artifacts import research_artifact_evidence
 from scripts.phase2_stan_sources import acquire
 
 
-HEADER = ("DATAFLOW,FREQ,REF_AREA,ACTIVITY,TRANSACTION,VALUATION,UNIT_MEASURE,"
+HEADER = ("DATAFLOW,FREQ,REF_AREA,ACTIVITY,MEASURE,PRICE_BASE,UNIT_MEASURE,"
           "TIME_PERIOD,OBS_VALUE,OBS_STATUS,UNIT_MULT,CURRENCY\n")
 
 
@@ -32,6 +32,32 @@ def example(*, year=2024, country="PRT", activity="C", gva="123",
 
 
 class StanOriginalTests(unittest.TestCase):
+    def test_bounded_oecd_publisher_key_and_true_native_csv_columns(self):
+        url, params = stan_source_request(
+            "PRT", 2020, measures=("B1G",), activity="_T", end_year=2020)
+        self.assertIn("/A.PRT._T.B1G.V.XDC", url)
+        self.assertEqual(params["endPeriod"], "2020")
+        parsed = parse_stan_original_csv(
+            example(activity="_T", skip=("D1", "B2N", "P51C", "D29X39")),
+            country="PRT", start_year=2020,
+            expected_measures=("B1G",), expected_activity="_T",
+            end_year=2020,
+        )
+        self.assertEqual(parsed["numeric_observations"], 1)
+        self.assertEqual(parsed["native_measure_observation_counts"], {"B1G": 1})
+        self.assertFalse(parsed["all_l01_l03_original_roles_verified"])
+        # Old invented accounting column names must fail, not be silently used.
+        wrong_schema = example().replace(
+            b"ACTIVITY,MEASURE,PRICE_BASE", b"ACTIVITY,TRANSACTION,VALUATION")
+        with self.assertRaises(ValueError):
+            parse_stan_original_csv(wrong_schema, country="PRT", start_year=2024)
+        with self.assertRaises(ValueError):
+            stan_source_request("PRT", 2020, measures=("FAKE",), activity="_T",
+                                end_year=2020)
+        with self.assertRaises(ValueError):
+            stan_source_request("PRT", 2024, measures=("B1G",), activity="_T",
+                                end_year=2020)
+
     def test_publisher_request_is_bounded_and_uses_canonical_dimension_order(self):
         url, params = stan_source_request("PRT", 1970)
         self.assertIn("/A.PRT..B1G+D1+B2N+P51C+D29X39.V.XDC", url)
