@@ -1,11 +1,12 @@
 """Bounded source discovery: never commits data, symbols or token secrets."""
 import httpx
+from finance_dashboard.source_policy import managed_client, managed_get
 import json
 
 for symbol in ["VWCE.DE","VWRL.AS","IS3N.DE","SXR8.DE","VT","SPY","AAPL","GLD","ASML.AS"]:
     try:
         url=f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-        with httpx.Client(timeout=9) as client:
+        with managed_client(timeout=9) as client:
             r=client.get(url,params={"range":"1mo","interval":"1d","events":"div,splits"},
                          headers={"User-Agent":"Mozilla/5.0 (compatible; MarketDataValidation/1.0)"})
         status={"symbol":symbol,"status":r.status_code,"bytes":len(r.content)}
@@ -21,7 +22,7 @@ for symbol in ["VWCE.DE","VWRL.AS","IS3N.DE","SXR8.DE","VT","SPY","AAPL","GLD","
 for currency in ("USD","GBP","CHF"):
     url=f"https://data-api.ecb.europa.eu/service/data/EXR/D.{currency}.EUR.SP00.A"
     try:
-        r=httpx.get(url,params={"format":"csvdata","lastNObservations":"5"},timeout=9)
+        r=managed_get(url,params={"format":"csvdata","lastNObservations":"5"},timeout=9)
         print(json.dumps({"fx":currency,"status":r.status_code,"bytes":len(r.content),"csv_header":r.text.splitlines()[0][:180] if r.status_code==200 else ""}),flush=True)
     except Exception as exc:
         print(json.dumps({"fx":currency,"error":type(exc).__name__}),flush=True)
