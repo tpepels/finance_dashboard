@@ -590,7 +590,7 @@ class ProviderRouter:
             follow_redirects=False,
         )
         self.owns_client = client is None
-        self.bis = bis or BisPolicyClient(self.client, retries=1)
+        self.bis = bis or BisPolicyClient(self.client)
         self._wid = None
         self._tiva = None
         self._research_returns = None
@@ -615,23 +615,15 @@ class ProviderRouter:
             if sid not in self.supported_ids()]
 
     def _get(self, url: str, **kwargs) -> httpx.Response:
-        # Up to two attempts for transient upstream failures, no recursive retries.
-        import time
-        for attempt in range(2):
-            try:
-                response = self.client.get(url, **kwargs)
-                if response.status_code in (429, 500, 502, 503, 504) and attempt == 0:
-                    time.sleep(0.5)
-                    continue
-                if response.status_code >= 400:
-                    # Avoid embedding FRED API keys or signed URLs in errors/logs.
-                    raise SourceUnavailable(f"Provider HTTP {response.status_code} ({response.request.url.host})")
-                return response
-            except (httpx.TimeoutException, httpx.TransportError):
-                if attempt == 1:
-                    raise
-                time.sleep(0.5)
-        raise AssertionError("Unreachable")
+        # Policy-controlled transport owns request pacing and durable backoff.
+        # An unsuccessful response remains a distinct failure; scheduled
+        # refresh may try again after the canonical publisher cooldown.
+        response = self.client.get(url, **kwargs)
+        if response.status_code >= 400:
+            # Avoid embedding FRED API keys or signed URLs in errors/logs.
+            raise SourceUnavailable(
+                f"Provider HTTP {response.status_code} ({response.request.url.host})")
+        return response
 
     def fetch(self, series_id: str, start: date | None = None) -> FetchedSeries:
         item = self.definitions.get(series_id)
