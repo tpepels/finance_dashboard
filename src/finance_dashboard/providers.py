@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from .source_policy import managed_client
 
 from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES, _dimension_code, ACCEPT
 from .bis_credit import BIS_TC_ROOT, TC_SERIES, tc_key, parse_bis_total_credit
@@ -584,7 +585,7 @@ class ProviderRouter:
     """One configured client shared across the run. Explicitly refuse unresolved datasets."""
 
     def __init__(self, client: httpx.Client | None = None, bis=None):
-        self.client = client or httpx.Client(
+        self.client = client or managed_client(
             timeout=httpx.Timeout(30.0),
             follow_redirects=False,
         )
