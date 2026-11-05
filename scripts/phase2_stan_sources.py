@@ -614,7 +614,8 @@ def main(argv=None) -> int:
         return 1 if result["blocked_invalid_original_countries"] else 0
     if args.discover_measures:
         import httpx
-        with httpx.Client(timeout=45, follow_redirects=False) as client:
+from finance_dashboard.source_policy import managed_client, managed_get
+        with managed_client(timeout=45, follow_redirects=False) as client:
             result = discover_measure_codes(client)
         emit_report(result, brief=args.brief)
         return 0 if result["state"] == "validated_publisher_measure_codelist" else 1
@@ -622,7 +623,7 @@ def main(argv=None) -> int:
         if args.acquire:
             parser.error("--diagnose cannot be combined with --acquire")
         import httpx
-        with httpx.Client(timeout=45, follow_redirects=False) as client:
+        with managed_client(timeout=45, follow_redirects=False) as client:
             results = [diagnose_publisher(client, country=country, year=args.probe_year)
                        for country in countries]
         emit_report({"diagnostics": results}, brief=args.brief)
@@ -632,7 +633,7 @@ def main(argv=None) -> int:
         ) else 1
     if args.resolve_surplus:
         import httpx
-        with httpx.Client(timeout=60, follow_redirects=False) as client:
+        with managed_client(timeout=60, follow_redirects=False) as client:
             probe = probe_surplus(client, country=countries[0], year=args.probe_year)
             result = {"surplus_probe": probe}
             net, gross = STAN_SURPLUS_CANDIDATES
@@ -658,7 +659,7 @@ def main(argv=None) -> int:
         return 0
     if args.acquire or args.expand:
         import httpx
-        with httpx.Client(timeout=60, follow_redirects=False) as client:
+        with managed_client(timeout=60, follow_redirects=False) as client:
             report = acquire(client, args.evidence_dir, countries=countries,
                              start_year=since.year,
                              measures=tuple(args.measures) if args.measures else None,
