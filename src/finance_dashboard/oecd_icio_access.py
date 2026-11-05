@@ -16,6 +16,7 @@ import tempfile
 import zipfile
 
 import httpx
+from .source_policy import managed_client
 
 from .source_capture import canonical_bytes
 from .source_evidence import record_acquisition_receipt
@@ -95,7 +96,7 @@ def capture_publisher_access(evidence_root: Path, *, client: httpx.Client | None
     parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".publisher-access-", dir=parent))
     owned_client = client is None
-    client = client or httpx.Client(timeout=60, follow_redirects=False)
+    client = client or managed_client(timeout=60, follow_redirects=False)
     try:
         sources = []
         for name, url in PUBLISHER_URLS.items():
