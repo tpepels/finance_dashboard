@@ -4369,7 +4369,62 @@
             "input_requirement": "Independently sourced market-crisis/shock dates, separate from recession classifications."
           }
         ],
-        "variants": []
+        "variants": [
+          {
+            "id": "p03_french_developed_us_recession_context",
+            "label": "French developed-market USD research returns and retrospective US recession dates",
+            "kind": "approved_fallback",
+            "scope": "Monthly Kenneth French developed-market source-defined USD market-total return (Mkt-RF + same-file RF), matched RF return, and separately dated FRED USREC 0/1 US recession months. Independent original values joined exactly on published month-start labels.",
+            "series_ids": [
+              "returns.french.developed.market_total_usd",
+              "returns.french.developed.risk_free_usd",
+              "recession.us.nber_indicator"
+            ],
+            "frequency": "M",
+            "start": "1990-07-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Published academic research return series are not actual investment-portfolio NAV, exact fund holdings or an investable MSCI ACWI comparator.",
+              "FRED USREC represents retrospective NBER US recession dating; turning-point announcement timing differs from event dates and retrospective months cannot be treated as contemporaneous knowledge.",
+              "Separate original dated market shock events, actual allocation history, fees, taxes and independent synchronized release evidence remain absent.",
+              "The underlying values are native monthly percentage returns, not wealth index levels; this Phase 2 source panel does not compute portfolio drawdowns, convert currency or fill missing months.",
+              "First-publication eligibility and historical as-of vintage identity remain independently unverified.",
+              "The US recession overlay is not an independently documented recession chronology for every developed market."
+            ],
+            "satisfies_original_method": false
+          },
+          {
+            "id": "p03_french_emerging_us_recession_context",
+            "label": "French emerging-market USD research returns and retrospective US recession dates",
+            "kind": "approved_fallback",
+            "scope": "Monthly Kenneth French emerging-market source-defined USD market-total return (Mkt-RF + same-file RF), matched RF return, and separately dated FRED USREC 0/1 US recession months. Independent original values joined exactly on published month-start labels.",
+            "series_ids": [
+              "returns.french.emerging.market_total_usd",
+              "returns.french.emerging.risk_free_usd",
+              "recession.us.nber_indicator"
+            ],
+            "frequency": "M",
+            "start": "1989-07-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Published academic research return series are not actual investment-portfolio NAV, exact fund holdings or an investable MSCI ACWI comparator.",
+              "FRED USREC represents retrospective NBER US recession dating; turning-point announcement timing differs from event dates and retrospective months cannot be treated as contemporaneous knowledge.",
+              "Separate original dated market shock events, actual allocation history, fees, taxes and independent synchronized release evidence remain absent.",
+              "The underlying values are native monthly percentage returns, not wealth index levels; this Phase 2 source panel does not compute portfolio drawdowns, convert currency or fill missing months.",
+              "First-publication eligibility and historical as-of vintage identity remain independently unverified.",
+              "The US recession overlay is not an emerging-economy recession classification; regional economic cycles may differ."
+            ],
+            "satisfies_original_method": false
+          }
+        ]
       },
       "context_series_ids": [
         "returns.french.developed.market_excess_usd",

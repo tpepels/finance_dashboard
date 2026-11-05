@@ -284,3 +284,8 @@ The seven newly connected native publisher families contain **59 mapped scalar h
 
 
 **Failed publisher-response preservation (2026-11-05):** Existing native source capture retains HTTP error responses and successful HTTP bodies that fail publisher parsing in immutable `rejected-responses/<series-id>/<content-hash>/` bundles with sanitized request identity and raw SHA-256 evidence. These bundles are deliberately excluded from the original-value reconciliation and never become first-publication evidence or accepted data. Successful original responses keep the unchanged historical `responses/` contract. Verification requires running the source-capture focused tests in the development environment; live publisher failures have not yet been replayed here.
+
+
+### P03 bounded recession/academic-return variants (2026-11-05)
+
+Two approved second-tier academic alternatives now have native monthly Phase 2 comparison contracts. Each joins the original Kenneth French developed- or emerging-market USD market total return (Mkt-RF plus matched RF), its same-file RF, and the separately sourced retrospective NBER US recession indicator (FRED USREC). Exact month labels, native units and missingness are preserved; no currency transformation, portfolio wealth level or drawdown calculation is introduced. NBER event dates are not real-time announcement dates. The emerging-market panel does not imply matched foreign business-cycle identities. Both variants are approved fallbacks but do not satisfy the original P03 method or observation first-publication requirements. No existing ingestion adapters, database observations or publication-vintage proofs changed.

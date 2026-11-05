@@ -203,6 +203,40 @@ class ComparisonContractTests(unittest.TestCase):
         for role in self.contract("P02")["original_requirements"]:
             self.assertNotIn(sid, role["series_ids"])
 
+    def test_p03_academic_recession_fallbacks_keep_native_units_and_hindsight_limits(self):
+        original = self.contract("P03")["original_requirements"]
+        self.assertEqual(
+            next(role for role in original if role["role"] == "investment_total_return")["series_ids"],
+            ["equity.world.msci_acwi_netr_usd"])
+        self.assertEqual(
+            next(role for role in original if role["role"] == "benchmark_risk_free")["series_ids"], [])
+        self.assertEqual(
+            next(role for role in original if role["role"] == "market_shock_dates")["series_ids"], [])
+        for region, since in (("developed", "1990-07-01"), ("emerging", "1989-07-01")):
+            variant = self.variant("P03", f"p03_french_{region}_us_recession_context")
+            ids = [f"returns.french.{region}.market_total_usd",
+                   f"returns.french.{region}.risk_free_usd",
+                   "recession.us.nber_indicator"]
+            self.assertEqual(variant["series_ids"], ids)
+            self.assertEqual(variant["kind"], "approved_fallback")
+            self.assertFalse(variant["satisfies_original_method"])
+            self.assertEqual(variant["frequency"], "M")
+            self.assertEqual(variant["start"], since)
+            self.assertEqual(variant["join"], "exact_period_intersection")
+            self.assertEqual(variant["missingness"], "no_fill")
+            self.assertEqual(variant["temporal_mode"], "current_source_snapshot")
+            for sid in ids[:2]:
+                self.assertEqual(self.series[sid]["provider"], "FRENCH_RETURNS")
+                self.assertEqual(self.series[sid]["unit"], "percent")
+                self.assertEqual(self.series[sid]["frequency"], "M")
+                self.assertEqual(self.series[sid]["currency"], "USD")
+            self.assertEqual(self.series[ids[2]]["source_key"], "USREC")
+            self.assertEqual(self.series[ids[2]]["unit"], "index")
+            limitations = " ".join(variant["limitations"]).lower()
+            self.assertIn("retrospective", limitations)
+            self.assertIn("first-publication", limitations)
+            self.assertIn("does not compute portfolio drawdowns", limitations)
+
     def test_property_panel_and_dsr_baseline_do_not_invent_frequency_or_coverage(self):
         property_panel = self.variant("F06", "us_property_credit_dsr")
         self.assertEqual(property_panel["start"], "1999-01-01")
