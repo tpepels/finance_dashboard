@@ -39,6 +39,7 @@ class PolicyStatusTests(unittest.TestCase):
         self.assertEqual(report["catalog_reference_issues"], [])
         self.assertEqual(report["publisher_cooldowns"][0]["http_status"], 429)
         self.assertEqual(report["restricted_publishers"], ["ishares"])
+        self.assertEqual(report["operator_acknowledgement_required"], [])
         self.assertNotIn("source_url", output.getvalue())
 
     def test_classify_url_without_network(self):
