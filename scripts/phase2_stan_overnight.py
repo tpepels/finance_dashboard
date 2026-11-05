@@ -14,10 +14,12 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import time
+import traceback
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -241,6 +243,9 @@ def run(argv=None) -> int:
             or root in report_dir.parents or report_dir in root.parents):
         parser.error("Reports and original source evidence must be separate directories")
     report_dir.mkdir(parents=True, exist_ok=True)
+    session = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    report_dir = report_dir / f"{session}-{os.getpid()}"
+    report_dir.mkdir(mode=0o755)
     event_path = report_dir / "events.jsonl"
     summary_path = report_dir / "summary.json"
     start = time.monotonic()
@@ -307,6 +312,9 @@ def run(argv=None) -> int:
         summary["status"] = "fail"
         summary["failure_type"] = type(exc).__name__
         summary["failure_reason"] = str(exc)[:300]
+        failure_file = report_dir / "failure-traceback.txt"
+        failure_file.write_text(traceback.format_exc(), encoding="utf-8")
+        summary["failure_log"] = str(failure_file)
         return 1
     finally:
         summary["completed_at_utc"] = utc_now()
