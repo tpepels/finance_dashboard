@@ -33,10 +33,12 @@ COPY alembic.ini /app/alembic.ini
 COPY scripts/ /app/scripts/
 COPY scripts/run-standalone.sh /app/run-standalone.sh
 COPY --from=frontend-build /build/frontend/dist/ /app/site/
+# Fast, deterministic runtime build. The complete Python suite and repeated
+# original-source integrity/identity verification run separately with
+# scripts/phase2_stan_overnight.py; no tests contact the publisher at build time.
 RUN pip install --no-cache-dir . \
-    && python -m compileall -q /app/src /app/scripts \
+    && python -m compileall -q /app/src /app/scripts /app/tests /app/migrations \
     && python -m finance_dashboard validate \
-    && python -m unittest discover -s tests -p 'test_*.py' -v \
     && chmod 755 /app/run-standalone.sh
 EXPOSE 8080
 VOLUME /data
