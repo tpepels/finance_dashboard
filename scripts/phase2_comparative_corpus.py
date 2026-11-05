@@ -7,9 +7,11 @@ No panel certifies first-publication data or closes the 35-analysis gate.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import sqlite3
 import sys
 
 from sqlalchemy.engine import make_url
@@ -61,6 +63,17 @@ def checked_acquisition_target(database_url: str, evidence_root: Path) -> None:
         with Path(url.database).open("rb") as stream:
             if stream.read(16) != b"SQLite format 3\x00":
                 raise ValueError("valid_existing_sqlite_database_required")
+    if url.get_backend_name() == "sqlite":
+        # A valid SQLite header alone does not identify the finance research DB.
+        # Fail before creating ingestion rows in an unrelated SQLite database.
+        from urllib.parse import quote
+        uri = "file:" + quote(str(Path(url.database).resolve()), safe="/") + "?mode=ro"
+        with sqlite3.connect(uri, uri=True, timeout=30) as connection:
+            actual = {row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )}
+        if not {"series", "ingestion_runs", "observation_versions"}.issubset(actual):
+            raise ValueError("finance_history_schema_required")
     if not evidence_root.is_dir() or evidence_root.is_symlink():
         raise ValueError("existing_source_evidence_directory_required")
 
@@ -88,11 +101,110 @@ def targeted_source_summary(ids, acquisitions, proof):
                 "full_history_reconciled": verified[sid]["source_covers_all_stored_periods"],
                 "source_periods": verified[sid]["source_periods"],
                 "failure_code": verified[sid].get("failure_code"),
+                "original_response_sha256": verified[sid].get("source_sha256"),
+                "original_manifest_sha256": verified[sid].get("source_manifest_sha256"),
             }
             for sid in ids
         ],
         "passed": proof["passed"] and proof["all_stored_histories_reconciled"] and not any(row.get("status") == "failed" for row in acquisitions),
         "note": "Current original snapshots only: this does not verify observation first-publication vintages or certify any of the 35 analyses.",
+    }
+
+
+
+def verified_phase2_snapshot(database_url, evidence_root, backup_dir, *, label):
+    """Reuse existing online SQLite backup, including originals, with no pruning.
+
+    A dedicated per-run directory prevents the application's routine backup
+    retention from pruning this research checkpoint.
+    """
+    from finance_dashboard.backup import backup_local, verify_manifest
+    url = make_url(database_url)
+    if url.get_backend_name() != "sqlite":
+        raise ValueError("sqlite_research_backup_required")
+    database = Path(url.database).resolve()
+    root = database.parent
+    output = backup_dir / label
+    if backup_dir.is_symlink() or output.exists():
+        raise ValueError("unique_backup_directory_required")
+    evidence = {
+        "source-evidence": evidence_root,
+        "vintages": root / "vintages",
+        "holdings": root / "holdings",
+        "surplus": root / "surplus",
+    }
+    # Do not archive the backup directory into itself, directly or indirectly.
+    location = backup_dir.resolve()
+    for source in evidence.values():
+        original = source.resolve()
+        if location == original or location in original.parents or original in location.parents:
+            raise ValueError("backup_location_overlaps_source_archive")
+    result = backup_local(output, source_db=database, keep=365, evidence_roots=evidence)
+    basename = result["database"]["file"].removesuffix(".sqlite3")
+    receipt = output / (basename + ".json")
+    verify_manifest(receipt)
+    return {
+        "manifest": str(receipt),
+        "database_sha256": result["database"]["sha256"],
+        "evidence_archive_sha256": (
+            result["evidence_archive"]["sha256"] if result["evidence_archive"] else None
+        ),
+    }
+
+
+def scientific_gap_summary(report, *, source_proof):
+    """Describe every remaining failed scientific gate from current runtime evidence."""
+    by_analysis = {row["id"]: row for row in report["analyses"]}
+    gate_failures = {}
+    for analysis in report["analyses"]:
+        for role in analysis["requirements"]:
+            for check in role["checks"]:
+                if check["state"] != "passed":
+                    gate_failures[check["id"]] = gate_failures.get(check["id"], 0) + 1
+    return {
+        "empirical_readiness_evaluated": True,
+        "fully_accepted_analyses": report["acceptance_summary"]["fully_accepted_analyses"],
+        "failed_or_unverified_gate_counts": dict(sorted(gate_failures.items())),
+        "acceptance_summary": report["acceptance_summary"],
+        "role_resolution_summary": report["role_resolution_summary"],
+        "required_input_source_reconciliation": {
+            "checked": source_proof["series_count"],
+            "original_values_matching": source_proof["matched_series"],
+            "full_original_histories_reconciled": source_proof["fully_reconciled_series"],
+            "unverified_source_ids": [
+                {"id": row["series_id"], "failure_code": row.get("failure_code")}
+                for row in source_proof["series"]
+                if not row["source_covers_all_stored_periods"]
+            ],
+        },
+        "analysis_gaps": [
+            {
+                "id": row["id"],
+                "decision": row["decision"],
+                "original_decision": row["original"]["decision"],
+                "fallback_decision": row["fallback"]["decision"],
+                "unverified_roles": row["original"]["missing_or_partial_roles"],
+                "blocking_reasons": [item["code"] for item in row["reasons"]],
+                "unverified_role_gates": [
+                    {
+                        "role": role["role"],
+                        "input_type": role["input_type"],
+                        "failed_or_unverified_checks": [
+                            {"id": check["id"], "state": check["state"],
+                             "reason": check["code"]}
+                            for check in role["checks"] if check["state"] != "passed"
+                        ],
+                    }
+                    for role in by_analysis[row["id"]]["requirements"]
+                    if any(check["state"] != "passed" for check in role["checks"])
+                ],
+            }
+            for row in report["readiness_matrix"] if row["decision"] != "complete"
+        ],
+        "temporal_limitation": (
+            "Current original publisher snapshots do not establish each "
+            "observation's first publication or historical as-of eligibility."
+        ),
     }
 
 
@@ -103,6 +215,9 @@ def main(argv=None):
     parser.add_argument("--holdings-dir", default=os.environ.get("FINANCE_HOLDINGS_DIR"),
                         help="Explicit original holdings archive; omitted means holdings are not checked")
     parser.add_argument("--acquire", action="store_true", help="Append complete source histories and preserve original responses")
+    parser.add_argument("--backup-dir", help="Explicit directory for verified before/after research backups")
+    parser.add_argument("--assess-all", action="store_true",
+                        help="Evaluate all 35 analyses using current stored data and original evidence")
     parser.add_argument("--only", nargs="+", help="Approved analysis IDs; defaults to all available comparative variants")
     parser.add_argument("--store", action="store_true", help="Archive verified report and exact input/panel rows")
     parser.add_argument("--required-inputs", action="store_true",
@@ -113,13 +228,17 @@ def main(argv=None):
     selection.add_argument("--new-sources", action="store_true",
                            help="Reconcile all mapped sources from the seven newly integrated publisher families")
     args = parser.parse_args(argv)
-    if args.acquire and (not args.database_url or not args.source_evidence_dir):
-        parser.error("--acquire requires explicit --database-url and --source-evidence-dir")
+    if args.acquire and (not args.database_url or not args.source_evidence_dir or not args.backup_dir):
+        parser.error("--acquire requires explicit --database-url, --source-evidence-dir and --backup-dir")
     if args.store and not args.source_evidence_dir:
         parser.error("--store requires explicit --source-evidence-dir")
     source_only = bool(args.source_ids or args.new_sources)
-    if source_only and (args.only or args.required_inputs or args.store):
-        parser.error("--source-ids/--new-sources cannot be mixed with analysis filters or --store")
+    if source_only and (args.only or args.required_inputs or (args.store and not args.assess_all)):
+        parser.error("--source-ids/--new-sources cannot mix with analysis filters; --store requires --assess-all")
+    if args.assess_all and not source_only:
+        parser.error("--assess-all is only needed with --source-ids or --new-sources")
+    if args.backup_dir and not args.acquire:
+        parser.error("--backup-dir is only valid for explicit acquisition")
     database_url = args.database_url or os.environ.get("DATABASE_URL")
     evidence_dir = args.source_evidence_dir or os.environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")
     engine = None
@@ -147,9 +266,18 @@ def main(argv=None):
             raise ValueError("database required")
         root = Path(evidence_dir)
         acquisitions = []
+        backups = {}
         if args.acquire:
             checked_acquisition_target(database_url, root)
             os.environ["FINANCE_SOURCE_EVIDENCE_DIR"] = str(root)
+            # Verify a complete original state before any append-only ingestion.
+            # A distinct directory retains this research checkpoint indefinitely.
+            backup_root = Path(args.backup_dir) / (
+                "native-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+            )
+            backups["before"] = verified_phase2_snapshot(
+                database_url, root, backup_root, label="before"
+            )
             engine = make_engine(database_url)
             router = ProviderRouter()
             try:
@@ -161,12 +289,31 @@ def main(argv=None):
                         acquisitions.append({"series_id": sid, "status": "failed", "reason": safe_source_failure_code(exc)})
             finally:
                 router.close()
+            # Preserve the acquired originals and append-only observations
+            # before any optional expensive research evaluation.
+            backups["after"] = verified_phase2_snapshot(
+                database_url, root, backup_root, label="after"
+            )
         else:
             engine = _readonly_engine(database_url)
         if source_only:
-            # Always use the existing independent publisher-vs-storage proof.
-            # No second parsing or reconciliation algorithm is introduced.
+            # Independent selectors check raw publisher response bytes against
+            # database observation versions; no alternate reconciliation logic.
             report = targeted_source_summary(ids, acquisitions, reconcile(database_url, root, ids))
+            if backups:
+                report["verified_research_backups"] = backups
+            if args.assess_all:
+                from finance_dashboard.research_runtime import evaluate_corpus
+                evaluation = evaluate_corpus(engine, registry,
+                    load_research_corpus(ROOT), evidence_root=root,
+                    holdings_root=Path(args.holdings_dir) if args.holdings_dir else None)
+                report["scientific_gaps"] = scientific_gap_summary(
+                    evaluation.public_report, source_proof=evaluation.source_proof
+                )
+                if args.store:
+                    report["archived_comparative_receipt"] = store_comparative_corpus(
+                        evaluation.comparative, root
+                    )["receipt_path"]
             print(json.dumps(report, indent=2))
             return 0 if report["passed"] else 1
         evaluation = evaluate_corpus(engine, registry, document, evidence_root=root,
