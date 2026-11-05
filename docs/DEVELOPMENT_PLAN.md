@@ -1,3 +1,62 @@
+## OECD STAN source follow-up — 2026-11-05 (Phase 2, acquisition partial)
+
+Portugal's original 1970–2024 STAN 2025 response for four native measures
+(B1G, D1, P51C, D29X39) has been retrieved (HTTP 200) and independently
+SHA-256 verified: 16,169 numeric observations over 150 industry classifications,
+4,280/4,604/3,344/3,941 by respective measure. Source original SHA-256:
+`6d230a5b7f7a09388c20e52a1f8507fd0e1c914e0b62405d0ced0ce550d2fc40`.
+The archive contains 12,446 `A` and 3,723 `E` flags; their implications
+for research eligibility require the publisher's source metadata. Having a year
+listed somewhere in the response does not imply every industry and measure
+covers that year.
+
+The earlier requested `B2N` was not observed in the PRT/_T/2020 probe. The
+[OECD STAN sources-and-methods paper](https://doi.org/10.1787/ece98fd3-en)
+describes combined **net operating surplus and net mixed income** using the
+historical SNA identity B2N_B3N (and gross B2G_B3G). These two candidate codes
+are now explicitly permitted in *new separate* native STAN selections, but
+their presence in the 2025 SDMX dataflow is **not yet confirmed by a live
+publisher sample**. The `--resolve-surplus` probe checks bounded PRT/_T/2020
+native CSV responses, stops on HTTP 429/503, and can optionally retain a
+new five-measure historical response under a distinct immutable source scope.
+The verified four-measure Portugal source, hashes, manifests, and receipts
+must not be reinterpreted, rewritten, or replaced.
+
+The read-only `--audit` command independently rehashes receipts/originals,
+counts exact industry-year intersections, checks pairwise and four-measure
+coverage, and tests the *net* B1G − D1 − (B2N_B3N) − P51C − D29X39 and
+*gross* B1G − D1 − (B2G_B3G) − D29X39 accounting identities **only where
+all required measures occur in the same publisher retrieval**, with
+currency/unit consistency and original printed-precision residual bounds.
+It does not join independently published scopes, sum overlapping industry
+aggregates, infer source vintages, or certify a Marxian profit numerator.
+No source values are normalized or filled.
+
+Multi-country original acquisition uses the existing single canonical source
+archive, integrity-aware cache, explicit `--measures`, and `--expand` batches
+(default four new publisher requests). The report includes a
+`last_country_requested` cursor for a later `--after-country` call.
+A rate-limit response terminates publisher requests. Every country/measure
+selection is independently verified; absent data stay absent. No macro DB
+rows are written by this path.
+
+Reproducible local execution (existing `/data/source-evidence` archive):
+
+```bash
+python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --audit
+python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --resolve-surplus --acquire --since 1970-01-01
+python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --expand --since 1970-01-01 --max-requests 4
+# Resume the next batch with --after-country <last_country_requested>.
+# If a net/gross combined measure is publisher-verified, pass its full exact
+# five-measure --measures selection to --expand on subsequent batches.
+```
+
+Completion remains **blocked** pending actual 2025-source surplus-code
+confirmation, same-scope identity results, publisher flag interpretation,
+full country/year/industry coverage and historical first-publication evidence.
+This work must not be counted as closing scientific acceptance for L01–L03.
+
+
 # Development plan — authoritative five-phase roadmap
 
 **Decision date:** 2026-11-03. **Branch:** `main`. **State:** **PHASE 1 APPROVED/CLOSED by explicit user instruction; PHASE 2 ACTIVE.** Existing application data and functionality are preserved. Phase 2 may analyze the code/data inventory and implement the approved data-source/provenance corpus. Phases 3–5 remain not started under the revised contract.
