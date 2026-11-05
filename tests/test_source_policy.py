@@ -146,6 +146,20 @@ class DurableLimitTests(PolicyHarness):
         b.release(new_lease, policy.id)
         a.release(lease, policy.id)
 
+    def test_heartbeat_keeps_long_download_lease_active(self):
+        policy = self.registry.by_id["fred-v1"]
+        a, b = self.gate(), self.gate()
+        lease = a.reserve(policy)
+        self.clock.advance(25)
+        a.keepalive(lease, policy.id)
+        self.clock.advance(20)
+        with self.assertRaises(PolicyDeferred) as exc:
+            b.reserve(policy)
+        self.assertEqual(exc.exception.reason, "concurrency_limit")
+        a.release(lease, policy.id)
+        new_lease = b.reserve(policy)
+        b.release(new_lease, policy.id)
+
     def test_retry_after_and_429_cooldown_survive_new_client(self):
         requests = []
         def respond(request):
