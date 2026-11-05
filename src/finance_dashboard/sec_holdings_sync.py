@@ -468,6 +468,7 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
 def recover_fund_raw(mapping: dict, *, client: httpx.Client, root: Path,
                      max_filings: int=50, stopped=None) -> dict:
     """Recover exactly the stored original URLs, reconciling their immutable hashes."""
+    require_managed_client(client)
     if not 1<=max_filings<=50:
         raise HoldingsError("SEC raw recovery limited to 1–50 filings per fund")
     fund=mapping["instrument_id"]
