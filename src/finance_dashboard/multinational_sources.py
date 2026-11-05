@@ -7,6 +7,8 @@ bundle convention. Readers rebuild facts from the selected immutable originals.
 """
 from __future__ import annotations
 
+from .source_policy import require_managed_client
+
 from collections import Counter, defaultdict
 import csv
 from datetime import datetime, timezone
@@ -438,6 +440,7 @@ def read_meip_evidence(root: Path) -> dict:
 
 def collect_multinational_source(kind: str, *, root: Path, client) -> dict:
     """Fetch only the reviewed publisher routes and preserve their native bytes."""
+    require_managed_client(client)
     _source_identity(kind)
     payloads, metadata = {}, {}
     for name, url in SOURCE_FILES[kind].items():
