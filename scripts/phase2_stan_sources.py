@@ -177,7 +177,8 @@ def probe_surplus(client, *, country: str, year: int) -> dict:
 
 def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
             measures: tuple[str, ...] | None = None,
-            max_requests: int | None = None) -> dict:
+            max_requests: int | None = None,
+            quiet: bool = False) -> dict:
     """Acquire only an exact declared native selection; no automatic retries.
 
     OECD publishes at most 60 data responses per hour; an HTTP 429/503 ends
@@ -205,7 +206,9 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
                          failure_category=backpressure)
             report.append(entry)
             continue
-        print(f"STAN {number}/{len(countries)}: {country}", file=sys.stderr, flush=True)
+        if not quiet:
+            print(f"STAN {number}/{len(countries)}: {country}",
+                  file=sys.stderr, flush=True)
         country_evidence = read_stan_evidence(root, countries=(country,))["country_results"][0]
         if country_evidence["status"] == "invalid_original_stan":
             entry.update(status="invalid_existing_original_archive",
@@ -247,7 +250,9 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
                          numeric_observations=preserved["facts"]["numeric_observations"],
                          observed_native_measure_counts=preserved[
                              "facts"]["native_measure_observation_counts"])
-            print(f"STAN {number}/{len(countries)}: retained", file=sys.stderr, flush=True)
+            if not quiet:
+                print(f"STAN {number}/{len(countries)}: retained",
+                      file=sys.stderr, flush=True)
         except Exception as exc:
             entry["reason_type"] = type(exc).__name__
             code = entry.get("http_status")
@@ -263,8 +268,9 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
                 entry["failure_category"] = "publisher_http_5xx"
             else:
                 entry["failure_category"] = "transport_or_native_schema"
-            print(f"STAN {number}/{len(countries)}: failed ({type(exc).__name__})",
-                  file=sys.stderr, flush=True)
+            if not quiet:
+                print(f"STAN {number}/{len(countries)}: failed ({type(exc).__name__})",
+                      file=sys.stderr, flush=True)
         report.append(entry)
     evidence = read_stan_evidence(root, countries=countries)
     completed = {"retained", "already_verified"}
@@ -474,7 +480,7 @@ def main(argv=None) -> int:
                 result["acquisition"] = acquire(
                     client, args.evidence_dir, countries=countries,
                     start_year=since.year, measures=selection,
-                    max_requests=args.max_requests)
+                    max_requests=args.max_requests, quiet=args.brief)
         if args.acquire and "acquisition" in result:
             result["accounting_audit"] = audit_stan_originals(
                 args.evidence_dir, countries=countries)
@@ -492,7 +498,8 @@ def main(argv=None) -> int:
                              start_year=since.year,
                              measures=tuple(args.measures) if args.measures else None,
                              max_requests=(args.max_requests if args.max_requests is not None
-                                           else 4 if args.expand else None))
+                                           else 4 if args.expand else None),
+                             quiet=args.brief)
         emit_report(report, brief=args.brief)
         if args.expand:
             failed = any(
