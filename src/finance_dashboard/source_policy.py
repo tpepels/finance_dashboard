@@ -487,5 +487,44 @@ def managed_get(url: str, **kwargs) -> httpx.Response:
         return client.get(url, **kwargs)
 
 
+def catalog_source_policy_audit(
+        registry: PolicyRegistry | None = None) -> dict:
+    """Reconcile the source catalog's declared reference hosts with one registry.
+
+    Source-URL links may be documentation rather than live request endpoints.
+    This inventory is an additional gap check, not proof that arbitrary
+    dynamic request URLs have been discovered or authorized.
+    """
+    from .catalog import load_documents
+    catalog = (registry or PolicyRegistry())
+    series = load_documents()[0]["series"]
+    checked = 0
+    unresolved = []
+    for source in series:
+        url = source.get("source_url")
+        if not isinstance(url, str) or not url:
+            unresolved.append({
+                "series_id": source.get("id"), "reason": "missing_source_url"})
+            continue
+        checked += 1
+        try:
+            catalog.for_url(url)
+        except PolicyViolation as exc:
+            unresolved.append({
+                "series_id": source.get("id"), "reason": exc.reason})
+    return {
+        "series_catalog_count": len(series),
+        "source_references_classified": checked - len(unresolved),
+        "unclassified_or_invalid_source_references": unresolved,
+        "all_declared_references_classified": not unresolved,
+        "dynamic_network_origins_verified": False,
+        "no_network_requests": True,
+    }
+
+
 def policy_summary() -> dict:
-    return SourcePolicyGate().report()
+    gate = SourcePolicyGate()
+    report = gate.report()
+    report["catalog_source_reference_coverage"] = catalog_source_policy_audit(
+        gate.registry)
+    return report
