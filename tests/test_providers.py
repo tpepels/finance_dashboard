@@ -128,7 +128,7 @@ class ParserTests(unittest.TestCase):
     def test_imf_mapper_historical_only(self):
         from unittest.mock import patch
         # Treat year 2025 as historical and 2026 as current-year estimate/forecast.
-        with patch("finance_dashboard.providers.date") as fake_date:
+        with patch("finance_dashboard.provider_adapters.date") as fake_date:
             fake_date.today.return_value = date(2026, 11, 2)
             fake_date.side_effect = lambda *args: date(*args)
             raw = {"values": {"GGXWDG_NGDP": {"WEOWORLD": {
