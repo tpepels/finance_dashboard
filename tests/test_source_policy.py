@@ -119,12 +119,12 @@ class PolicyRegistryTests(PolicyHarness):
                 "GET", "https://data.sec.gov/submissions/CIK0000000010.json",
                 headers={"User-Agent": "python-httpx"})
         self.assertEqual(ex.exception.reason, "contact_user_agent_required")
-        with patch.dict("os.environ", {"FINANCE_OECD_DIRECT_NETWORK_ACK": ""}):
+        with patch.dict("os.environ", {"FINANCE_SOURCE_POLICY_ACKNOWLEDGED": ""}):
             with self.assertRaises(PolicyViolation) as ex:
                 self.managed_request(
                     "GET", "https://sdmx.oecd.org/public/rest/data")
             self.assertEqual(ex.exception.reason, "direct_network_origin_not_confirmed")
-        with patch.dict("os.environ", {"FINANCE_OECD_DIRECT_NETWORK_ACK": "1"}):
+        with patch.dict("os.environ", {"FINANCE_SOURCE_POLICY_ACKNOWLEDGED": "oecd-sdmx"}):
             with self.assertRaises(PolicyViolation) as ex:
                 self.managed_request(
                     "GET", "https://sdmx.oecd.org/public/rest/data?lastNObservations=2")
