@@ -232,9 +232,51 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(variant["checks"], ["tiva_value_added_share"])
         self.assertFalse(variant["satisfies_original_method"])
 
-    def test_external_credit_role_cannot_bind_a_gap_and_no_variant_claims_full_validation(self):
-        self.assertEqual(self.requirement("G05", "private_credit_outstanding")["series_ids"], [])
-        self.assertEqual(self.requirement("G05", "net_international_investment_position")["series_ids"], [])
+    def test_external_credit_stock_and_niip_are_native_sources_not_gap_proxies(self):
+        # Original G05 roles now have five concrete country series each.
+        # Registrations prove source identity, not acquisition or publication vintage.
+        countries = (("us", "US", "USA"), ("jp", "JP", "JPN"),
+                     ("de", "DE", "DEU"), ("cn", "CN", "CHN"),
+                     ("pt", "PT", "PRT"))
+        credit = self.requirement("G05", "private_credit_outstanding")
+        niip = self.requirement("G05", "net_international_investment_position")
+        self.assertEqual(credit["series_ids"], [
+            f"credit.{code}.private_nonfinancial_stock_bis" for code, _, _ in countries
+        ])
+        self.assertEqual(niip["series_ids"], [
+            f"external.{code}.imf_iip_net_position_usd" for code, _, _ in countries
+        ])
+        self.assertEqual(credit["expected"]["frequency"], "Q")
+        self.assertEqual(credit["expected"]["unit"], "billion_local_currency")
+        self.assertEqual(niip["expected"]["frequency"], "A")
+        self.assertEqual(niip["expected"]["unit"], "usd")
+        self.assertEqual(credit["temporal_requirement"], "first_publication")
+        self.assertEqual(niip["temporal_requirement"], "first_publication")
+        for (code, bis_country, imf_country), stock_id, niip_id in zip(
+                countries, credit["series_ids"], niip["series_ids"], strict=True):
+            with self.subTest(country=code):
+                stock = self.series[stock_id]
+                position = self.series[niip_id]
+                self.assertEqual(stock["provider"], "BIS_TOTAL_CREDIT")
+                self.assertIn(f"/Q.{bis_country}.P.A.M.XDC.A", stock["source_key"])
+                self.assertEqual(stock["geography"], bis_country)
+                self.assertEqual(stock["unit"], "billion_local_currency")
+                self.assertEqual(stock["frequency"], "Q")
+                self.assertNotIn("gap", stock_id)
+                self.assertEqual(position["provider"], "IMF_BOP_IIP")
+                self.assertIn(f"/{imf_country}..NIIP.USD.A", position["source_key"])
+                self.assertEqual(position["geography"], imf_country)
+                self.assertEqual(position["unit"], "usd")
+                self.assertEqual(position["frequency"], "A")
+
+        # The older bounded WEO/WDI annual panel remains a narrower comparison.
+        # It never substitutes the global credit gap or certifies G05's full method.
+        narrower = self.variant("G05", "weo_current_account_ratio_wdi_nominal_gdp")
+        self.assertFalse(set(narrower["series_ids"]) & set(credit["series_ids"]))
+        self.assertFalse(set(narrower["series_ids"]) & set(niip["series_ids"]))
+        self.assertFalse(narrower["satisfies_original_method"])
+        self.assertEqual(narrower["kind"], "approved_narrower")
+        self.assertEqual(narrower["temporal_mode"], "current_source_snapshot")
         for analysis_id in APPROVED_IDS:
             contract = self.contract(analysis_id)
             for variant in contract["variants"]:

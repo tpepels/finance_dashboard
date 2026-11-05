@@ -3781,7 +3781,7 @@
             "checks": [],
             "limitations": [
               "WEO ratios and WDI nominal GDP are different publisher releases; no current-account monetary flow is reconstructed.",
-              "Net international investment positions and private-credit stocks remain missing; this panel cannot answer their co-movement question.",
+              "IMF net international investment positions and BIS private-credit stocks are separately registered native source roles, but are not inputs to this narrow panel; their historical acquisition, dated conversions and synchronized publication evidence remain unverified by this comparison.",
               "Native current-source inputs only; no frequency transformation, economic-model estimate, synchronized release or observation first-publication verification is implied."
             ],
             "satisfies_original_method": false
