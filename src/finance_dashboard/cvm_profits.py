@@ -4,6 +4,8 @@ Keep issuer, fiscal period, report revision, native scale and parent attribution
 separate. A received date is authority metadata, not proved public availability.
 """
 from __future__ import annotations
+
+from .source_policy import require_managed_client
 import csv
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -263,6 +265,7 @@ def read_cvm_sources(root: Path) -> dict:
 
 def collect_cvm_annual_source(*,root: Path,year: int,client: httpx.Client) -> dict:
     """Canonical bounded publisher acquisition; no database or aggregate writes."""
+    require_managed_client(client)
     if not 2010<=year<=date.today().year:
         raise ProviderError('CVM annual archive year outside reviewed source range')
     url=BASE+f'dfp_cia_aberta_{year}.zip'
