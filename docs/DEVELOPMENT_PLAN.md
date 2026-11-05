@@ -1,5 +1,53 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 canonical publisher policy consolidation — 2026-11-05
+
+**Implementation on `main`; empirical integration verification outstanding.** One
+versioned, machine-readable publisher rule registry
+[`definitions/source_policies.json`](../definitions/source_policies.json)
+and one cross-process HTTP request enforcement component
+[`source_policy.py`](../src/finance_dashboard/source_policy.py) replace
+per-provider request throttling/retry paths. See
+[`SOURCE_POLICY.md`](SOURCE_POLICY.md) for the complete normative contract.
+
+The registry classifies 37 publisher/access services, exact host aliases,
+evidence URLs, official versus internal-conservative request limits,
+rights/licensing limitations, allowed automated access, request headers,
+network-origin restrictions, concurrency, rolling request windows, spacing,
+HTTP 401/403/429/503/other-5xx cooldowns, and publisher Retry-After. A durable
+SQLite ledger under `/data/source-policy` coordinates readers across manual
+maintenance, scheduled refresh and standalone collection processes. No unknown
+publisher origin can silently use an unrestricted generic HTTP client.
+The source catalog currently contains 262 series; all declared reference
+source URLs are classified by the policy registry, but dynamically assembled
+request URLs require separate network-level enforcement.
+
+The main provider, market, BIS, SEC, OECD, FRED/ALFRED, holdings, research,
+and source-discovery HTTPX callers now use `managed_client` or
+`managed_get`. Obsolete per-provider immediate retries and sleeps have been
+removed from the migrated core paths. AST regression guards reject direct
+unmanaged HTTPX constructors in runtime modules and source scripts. New
+regressions cover cross-process budgets, durable cooldowns, source rights,
+unknown-origin denial, and stream leases. The existing sole GitHub Actions
+workflow remains lightweight Python static checking.
+
+The API exposes `GET /api/source-policy`. A compact non-network CLI is:
+`docker compose exec -T finance-dashboard python scripts/source_policy_status.py --brief`.
+
+**Fail-closed operational constraint:** OECD SDMX requires the operator to
+confirm a permitted direct network route by setting
+`FINANCE_OECD_DIRECT_NETWORK_ACK=1` (default 0 blocks OECD requests).
+Container software cannot independently prove absence of a host-level VPN.
+Do not set this variable without checking outbound origin.
+
+The registry records `redistribution=not_cleared` until independently
+verified publisher rights exist. Actual HTTP success never certifies legal
+redistribution, historical release vintage, value accuracy, source completeness,
+or any scientific claim. The existing original archives, hashes, receipts and
+recoverability remain untouched. Full Phase 2 scientific acceptance is still
+incomplete. Remote GitHub static checks and local Docker/full offline suite
+must be executed before declaring the architectural migration verified.
+
 ## Phase 2 STAN development increment — offline verification and architecture (2026-11-05)
 
 **Status: implemented in the repository, empirical execution pending; Phase 2
