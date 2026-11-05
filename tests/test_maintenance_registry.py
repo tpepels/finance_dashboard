@@ -4,7 +4,8 @@ from unittest.mock import Mock, patch
 import unittest
 
 from finance_dashboard.maintenance_jobs import ACTION_REGISTRY, PUBLIC_ACTIONS, normalize_options
-from finance_dashboard.maintenance_handlers import HANDLERS, execute_action
+from finance_dashboard import maintenance_handlers
+from finance_dashboard.maintenance_handlers import execute_action
 
 
 class MaintenanceRegistryTests(unittest.TestCase):
@@ -18,10 +19,10 @@ class MaintenanceRegistryTests(unittest.TestCase):
 
     def test_declared_handlers_and_options_cover_all_public_actions(self):
         self.assertEqual(len(ACTION_REGISTRY), 10)
-        self.assertEqual(PUBLIC_ACTIONS, frozenset(HANDLERS))
+        self.assertEqual(PUBLIC_ACTIONS, frozenset(ACTION_REGISTRY))
         for action, spec in ACTION_REGISTRY.items():
             self.assertEqual(spec.action, action)
-            self.assertEqual(HANDLERS[action].__name__, spec.handler)
+            self.assertTrue(callable(getattr(maintenance_handlers, spec.handler, None)))
 
     def test_all_sync_and_refresh_options_have_one_canonical_normalizer(self):
         for action in ("sync_current", "sync_history"):
@@ -61,7 +62,7 @@ class MaintenanceRegistryTests(unittest.TestCase):
         manager, stop = Mock(), Mock()
         expected = {"status": "complete"}
         target = Mock(__name__="run_backup", return_value=expected)
-        with patch.dict(HANDLERS, {"backup": target}):
+        with patch.object(maintenance_handlers, "run_backup", target):
             self.assertIs(execute_action(manager, "job", "backup", {}, stop), expected)
         target.assert_called_once_with(manager, "job", "backup", {}, stop)
 
