@@ -14,7 +14,6 @@ from urllib.parse import urlsplit
 import os
 from pathlib import Path
 import re
-import time
 
 import httpx
 from .source_policy import managed_client
@@ -72,23 +71,8 @@ def read_verified_config(path: Path = CONFIG) -> list[dict]:
     return result
 
 
-def _get_transient_retry(client: httpx.Client, url: str,
-                         *, timeout: int) -> httpx.Response:
-    """Retry only temporary SEC 502/503/504 errors; preserve other failures.
-
-    SEC access-denial and rate-limit codes must not provoke a retry storm.
-    Three attempts maximum, with small bounded backoff and no request logging.
-    """
-    for attempt in range(3):
-        response = client.get(url, timeout=timeout)
-        if response.status_code not in (502, 503, 504) or attempt == 2:
-            return response
-        time.sleep(0.5 * (attempt + 1))
-    raise AssertionError("Unreachable")
-
-
 def _get_json(client: httpx.Client, url: str, evidence: list | None=None) -> dict:
-    response = _get_transient_retry(client, url, timeout=25)
+    response = client.get( url, timeout=25)
     response.raise_for_status()
     data = response.json()
     if not isinstance(data,dict):
@@ -223,7 +207,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
             continue
         payload=_get_json(client,SUBMISSIONS_URL+name, metadata_responses)
         rows.extend(_rows(payload))
-        time.sleep(.2)
+
     candidates = []
     seen = set()
     for item in sorted(rows, key=lambda row: (row["date"], row["accession"]), reverse=True):
@@ -268,12 +252,11 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         else:
             index_url = _official_index_url(cik, accession)
             try:
-                response = _get_transient_retry(client, index_url, timeout=25)
+                response = client.get( index_url, timeout=25)
                 if response.status_code == 404:
                     # EDGAR accepts either -index.htm or -index.html depending
                     # on submission era. Never follow arbitrary redirects.
-                    response = _get_transient_retry(
-                        client, index_url[:-3] + "html", timeout=25)
+                    response = client.get( index_url[:-3] + "html", timeout=25)
                 response.raise_for_status()
                 xml_name, evidence = _xml_in_filing_index(
                     response.text, expected, primary)
@@ -298,12 +281,12 @@ def import_fund(mapping: dict, *, client: httpx.Client,
             if evidence == "other_series":
                 skipped_series += 1
                 examined += 1
-                time.sleep(.18)
+
                 continue
             if xml_name is None:
                 missing_xml += 1
                 examined += 1
-                time.sleep(.18)
+
                 continue
 
         examined += 1
@@ -311,7 +294,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
                accession.replace("-", "") + "/" + xml_name)
         attempted_xml += 1
         try:
-            xml = _get_transient_retry(client, url, timeout=45)
+            xml = client.get( url, timeout=45)
             xml.raise_for_status()
             # Validator independently checks official CIK/accession, original
             # reported SEC series, form, holdings-period and issuer countries.
@@ -347,7 +330,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
             first_error_reason = (first_error_reason or
                 ("sec_filing_network_failed" if isinstance(exc, httpx.HTTPError)
                  else "sec_filing_response_invalid"))
-        time.sleep(.25)
+
 
     target_met = imported >= max_filings
     # Fewer than 50 verified source filings can still be complete when all
@@ -433,8 +416,6 @@ def check_sec_sources(*, config: Path = CONFIG,
             except (httpx.RequestError, HoldingsError, ValueError):
                 funds.append({"instrument_id": fund, "status": "blocked",
                               "reason": "sec_index_unavailable", "requests": 1})
-            if owns:
-                time.sleep(.2)
     finally:
         if owns:
             source.close()
@@ -516,7 +497,7 @@ def recover_fund_raw(mapping: dict, *, client: httpx.Client, root: Path,
                     name=page.get("name","")
                     if PAGE.fullmatch(name):
                         rows.extend(_rows(_get_json(client,SUBMISSIONS_URL+name,metadata_responses)))
-                        time.sleep(.2)
+
             found=[r for r in rows if r["accession"]==old["accession"]]
             if len(found)!=1:
                 raise HoldingsError("Stored accession not uniquely verified by SEC metadata")
@@ -530,7 +511,7 @@ def recover_fund_raw(mapping: dict, *, client: httpx.Client, root: Path,
             if (not match or match.group(2)!=old["accession"].replace("-","")
                 or str(int(match.group(1)))!=str(int(mapping["cik"]))):
                 raise HoldingsError("Stored original SEC URL identity invalid")
-            response=_get_transient_retry(client,old["source_url"],timeout=45)
+            response=client.get(old["source_url"],timeout=45)
             response.raise_for_status()
             current=parse_nport(response.content,instrument_id=fund,accession=old["accession"],
                 filing_url=old["source_url"],sec_metadata=metadata,
@@ -539,7 +520,7 @@ def recover_fund_raw(mapping: dict, *, client: httpx.Client, root: Path,
             store_source_bundle(response.content,sec_metadata=metadata,aggregate=old,
                                 root=root,metadata_responses=metadata_responses)
             recovered+=1
-            time.sleep(.25)
+
         except httpx.HTTPStatusError as exc:
             errors+=1
             if exc.response.status_code in (400,401,403,429) or exc.response.status_code>=500:
