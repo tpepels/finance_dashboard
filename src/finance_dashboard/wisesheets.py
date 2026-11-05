@@ -24,6 +24,7 @@ import time
 from typing import Any
 
 import httpx
+from .source_policy import managed_client
 
 BASE = "https://api.wisesheets.io/v1"
 ECB = "https://data-api.ecb.europa.eu/service/data/EXR"
@@ -226,7 +227,7 @@ class WisesheetsClient:
         if not key:
             raise WisesheetsError("WISESHEETS_API_KEY is required")
         self._own = client is None
-        self.client = client or httpx.Client(timeout=30)
+        self.client = client or managed_client(timeout=30)
         self.headers = {"Authorization": f"Bearer {key}", "Accept": "application/json"}
         self.spacing = min_request_spacing
         self.last_request = 0.0
