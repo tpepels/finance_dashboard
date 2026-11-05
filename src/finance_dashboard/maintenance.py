@@ -16,6 +16,7 @@ import re
 import tempfile
 
 import httpx
+from .source_policy import managed_client
 from sqlalchemy.engine import Engine
 
 from .standalone import maintenance_network_lock, manual_sync_pending
@@ -363,7 +364,7 @@ class MaintenanceManager:
             try:
                 from .vintage import probe_access, backfill_batch, first_available_vintages
                 key = os.environ.get("FRED_API_KEY", "").strip()
-                with httpx.Client(timeout=25, headers={
+                with managed_client(timeout=25, headers={
                     "User-Agent":"GlobalCapitalMonitor/0.2"}) as client:
                     check = probe_access(api_key=key, client=client)
                     if check["status"] != "ready":
@@ -539,7 +540,7 @@ class MaintenanceManager:
         if action in ("check_alfred", "backfill_alfred"):
             from .vintage import probe_access, backfill_batch, first_available_vintages
             key = os.environ.get("FRED_API_KEY", "").strip()
-            with httpx.Client(timeout=25,headers={"User-Agent":"GlobalCapitalMonitor/0.2"}) as client:
+            with managed_client(timeout=25,headers={"User-Agent":"GlobalCapitalMonitor/0.2"}) as client:
                 check = probe_access(api_key=key, client=client)
                 if check["status"] != "ready":
                     return {"status": "blocked", "reason": check.get("reason", "provider_failed"),
