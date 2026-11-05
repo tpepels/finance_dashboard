@@ -38,7 +38,7 @@ class StanOriginalTests(unittest.TestCase):
         self.assertIn("/A.PRT._T.B1G.V.XDC", url)
         self.assertEqual(params["endPeriod"], "2020")
         parsed = parse_stan_original_csv(
-            example(activity="_T", skip=("D1", "B2N", "P51C", "D29X39")),
+            example(year=2020, activity="_T", skip=("D1", "B2N", "P51C", "D29X39")),
             country="PRT", start_year=2020,
             expected_measures=("B1G",), expected_activity="_T",
             end_year=2020,
@@ -46,6 +46,16 @@ class StanOriginalTests(unittest.TestCase):
         self.assertEqual(parsed["numeric_observations"], 1)
         self.assertEqual(parsed["native_measure_observation_counts"], {"B1G": 1})
         self.assertFalse(parsed["all_l01_l03_original_roles_verified"])
+        # The year window is enforced on returned source data, not just
+        # the requested URL: a 2024 row cannot satisfy a 2020 query.
+        with self.assertRaises(ValueError):
+            parse_stan_original_csv(
+                example(year=2024, activity="_T",
+                        skip=("D1", "B2N", "P51C", "D29X39")),
+                country="PRT", start_year=2020,
+                expected_measures=("B1G",), expected_activity="_T",
+                end_year=2020,
+            )
         # Old invented accounting column names must fail, not be silently used.
         wrong_schema = example().replace(
             b"ACTIVITY,MEASURE,PRICE_BASE", b"ACTIVITY,TRANSACTION,VALUATION")
