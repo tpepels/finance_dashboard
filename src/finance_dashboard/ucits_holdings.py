@@ -4,6 +4,8 @@ Reported fund positions and accounting controls only. No inferred identifiers,
 monthly interpolation, index constituents or derivative country look-through.
 """
 from __future__ import annotations
+
+from .source_policy import managed_client
 from collections import OrderedDict
 import csv
 from datetime import datetime, timezone
@@ -365,7 +367,6 @@ def collect_ucits_sources(*, root: Path, years=(2022,2023,2024,2025,2026),
                          progress=None, stopped=None) -> dict:
     """Acquire fixed public originals; respect redirects, denial and source identity."""
     import httpx
-from .source_policy import managed_client
     if len(years)>5 or any(year not in ANNUALS for year in years) or len(set(years))!=len(years):
         raise UcitsHoldingsError("Only the five independently verified annual documents may be acquired")
     owns=client is None
