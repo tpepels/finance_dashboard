@@ -22,6 +22,29 @@ from .maintenance_jobs import PUBLIC_ACTIONS, MaintenanceBlocked, normalize_opti
 from .maintenance_handlers import execute_action
 
 JOB_STATES = frozenset(("queued", "waiting", "running", "cancelling"))
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _save_atomic(path: Path, jobs: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", prefix=".jobs-", suffix=".tmp",
+            dir=path.parent, delete=False,
+        ) as out:
+            json.dump({"version": 1, "jobs": jobs[-30:]}, out, sort_keys=True, indent=2)
+            out.write("\n")
+            tmp = Path(out.name)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+        tmp = None
+    finally:
+        if tmp:
+            tmp.unlink(missing_ok=True)
+
+
 class BusyMaintenance(Exception):
     pass
 
