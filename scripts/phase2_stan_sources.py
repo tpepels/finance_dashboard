@@ -132,7 +132,7 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
                  "unresolved_candidate_measures": sorted(set(STAN_MEASURES) - set(selection))}
         if backpressure:
             entry.update(status="deferred_publisher_backpressure",
-                         "failure_category": backpressure)
+                         failure_category=backpressure)
             report.append(entry)
             continue
         print(f"STAN {number}/{len(countries)}: {country}", file=sys.stderr, flush=True)
