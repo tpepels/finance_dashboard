@@ -141,7 +141,7 @@ class IngestionService:
                         not isinstance(evidence.get("bundle_digest"), str)
                         or not re.fullmatch(r"[a-f0-9]{64}", evidence["bundle_digest"])
                         or not isinstance(evidence.get("receipt_name"), str)
-                        or not re.fullmatch(r"[0-9TZ-]+[a-f0-9]{32}\\.json",
+                        or not re.fullmatch(r"[0-9TZ-]+[a-f0-9]{32}\.json",
                                             evidence["receipt_name"])):
                     raise ValueError("Missing immutable source acquisition receipt")
             with Session(self.engine) as session, session.begin():
