@@ -85,6 +85,26 @@ describe('single-page source completeness panel', () => {
     expect(screen.getByText('source_policy_deferred')).toBeTruthy();
   });
 
+  it('labels archived full and partial originals without asserting publication vintage', async () => {
+    const archived = {
+      ...recorded, evidence_kind: 'response',
+      evidence_scope: 'requested_period_subset', evidence_receipt_recorded: true,
+      evidence_bundle_digest: 'a'.repeat(64),
+    };
+    vi.stubGlobal('fetch', vi.fn(async (url:string) => ({
+      ok: true,
+      json: async () => String(url)==='/api/maintenance'
+        ? {active_job_id:null,jobs:[],operations:['sync_current','sync_history']}
+        : {...payload, items: [archived, missing, market]},
+    })));
+    const user = userEvent.setup();
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/25 sources need attention/));
+    await user.click(screen.getByText(/Source diagnostics/));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Coverage status' }), 'all');
+    expect(screen.getByText(/requested_period_subset · archived receipt/)).toBeTruthy();
+  });
+
   it('offers original dates, precise failure status and all families on request', async () => {
     const user = userEvent.setup();
     render(<SourceCoveragePanel/>);
