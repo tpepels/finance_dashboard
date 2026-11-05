@@ -220,7 +220,7 @@ class SecSyncTests(unittest.TestCase):
         self.assertIsNone(doc)
         self.assertEqual(reason,"other_series")
 
-    def test_sec_server_503_is_retried_boundedly_and_403_is_not(self):
+    def test_sec_503_and_403_are_single_attempt_failures(self):
         from finance_dashboard.sec_holdings_sync import _get_json
         counts = {"success":0,"blocked":0,"unavailable":0}
 
@@ -236,19 +236,16 @@ class SecSyncTests(unittest.TestCase):
             counts["unavailable"] += 1
             return httpx.Response(503, json={"error":"temporarily unavailable"})
 
-        with httpx.Client(transport=httpx.MockTransport(handler)) as client, \
-             patch("finance_dashboard.sec_holdings_sync.time.sleep") as sleep:
-            self.assertEqual(_get_json(
-                client,"https://data.sec.gov/submissions/success.json")["cik"],
-                "123")
-            self.assertEqual(counts["success"],3)
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            with self.assertRaises(httpx.HTTPStatusError):
+                _get_json(client,"https://data.sec.gov/submissions/success.json")
+            self.assertEqual(counts["success"],1)
             with self.assertRaises(httpx.HTTPStatusError):
                 _get_json(client,"https://data.sec.gov/submissions/blocked.json")
             self.assertEqual(counts["blocked"],1)
             with self.assertRaises(httpx.HTTPStatusError):
                 _get_json(client,"https://data.sec.gov/submissions/unavailable.json")
-            self.assertEqual(counts["unavailable"],3)
-            self.assertEqual(sleep.call_count,4)
+            self.assertEqual(counts["unavailable"],1)
 
     def test_sec_index_http_403_does_not_scan_or_download_every_candidate(self):
         with TemporaryDirectory() as tmp:
