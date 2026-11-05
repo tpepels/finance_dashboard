@@ -190,7 +190,8 @@ class IngestionService:
             # A failed transaction leaves *all* earlier observations untouched.
             with Session(self.engine) as session, session.begin():
                 run = session.get(IngestionRun, run_id)
-                run.status = "failed"
+                run.status = (
+                    "deferred" if isinstance(exc, PolicyDeferred) else "failed")
                 run.ended_at = now_utc()
                 run.error = safe_source_failure_code(exc)
             raise
