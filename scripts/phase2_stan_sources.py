@@ -638,6 +638,7 @@ def plan_expansion(root: Path, *, countries: tuple[str, ...],
     pending = []
     invalid = []
     scope_measure_gaps = []
+    scopes_with_each_measure_observed = []
     for row in evidence["country_results"]:
         country = row["country"]
         if row["status"] == "invalid_original_stan":
@@ -652,8 +653,13 @@ def plan_expansion(root: Path, *, countries: tuple[str, ...],
                 pending.append(country)
             else:
                 verified.append(country)
-                absent = sorted(set(measures) - set(matched["native_measure_counts"]))
-                if absent:
+                absent = sorted(set(measures) - {
+                    measure for measure, count in matched["native_measure_counts"].items()
+                    if count > 0
+                })
+                if not absent:
+                    scopes_with_each_measure_observed.append(country)
+                else:
                     scope_measure_gaps.append({
                         "country": country,
                         "measures_without_numeric_observations": absent,
@@ -663,14 +669,28 @@ def plan_expansion(root: Path, *, countries: tuple[str, ...],
         pending[i:i + max_requests]
         for i in range(0, len(pending), max_requests)
     ]
+    metadata_state = read_stan_structure(root)["status"]
+    next_action = (
+        "repair_invalid_original_evidence" if invalid else
+        "acquire_verified_publisher_structure" if metadata_state == "metadata_not_acquired" else
+        "repair_invalid_publisher_structure" if metadata_state == "invalid_metadata_original_or_receipt" else
+        "bounded_country_original_acquisition" if pending else
+        "investigate_native_measure_gaps" if scope_measure_gaps else
+        "verify_accounting_and_release_eligibility"
+    )
     return {
         "phase": "phase2", "operation": "stan_expansion_plan",
+        "next_evidence_action": next_action,
         "requested_start_year": start_year,
         "native_measures": list(measures),
         "scope": selected_scope,
         "verified_countries": verified,
+        "verified_country_scopes_with_each_requested_measure_observed":
+            scopes_with_each_measure_observed,
+        "verified_country_scopes_missing_requested_numeric_measures":
+            [row["country"] for row in scope_measure_gaps],
         "verified_scopes_with_missing_measures": scope_measure_gaps,
-        "publisher_measure_metadata": read_stan_structure(root)["status"],
+        "publisher_measure_metadata": metadata_state,
         "pending_countries": pending,
         "blocked_invalid_original_countries": invalid,
         "request_budget_per_batch": max_requests,
@@ -720,6 +740,12 @@ def brief_report(data: dict) -> dict:
         return {
             "operation": "plan_expansion",
             "publisher_measure_metadata": data["publisher_measure_metadata"],
+            "next_evidence_action": data["next_evidence_action"],
+            "archived_country_scopes": len(data["verified_countries"]),
+            "archived_with_all_measures_observed": len(data[
+                "verified_country_scopes_with_each_requested_measure_observed"]),
+            "archived_missing_numeric_measures": data[
+                "verified_country_scopes_missing_requested_numeric_measures"],
             "selection_evidence": data.get("selection_evidence"),
             "source_proofs": data.get("source_proofs", [])[:3],
             "incomplete_verified_scopes": data["verified_scopes_with_missing_measures"][:8],

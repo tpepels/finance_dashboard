@@ -39,6 +39,10 @@ class StanExpansionPlannerTests(unittest.TestCase):
                 start_year=1970, measures=STAN_VERIFIED_PORTUGAL_MEASURES,
                 max_requests=2)
             self.assertEqual(result["verified_countries"], ["PRT"])
+            self.assertEqual(result[
+                "verified_country_scopes_with_each_requested_measure_observed"], ["PRT"])
+            self.assertEqual(result["next_evidence_action"],
+                             "acquire_verified_publisher_structure")
             self.assertEqual(result["pending_countries"],
                              ["CHE", "COL", "DEU", "FRA"])
             self.assertEqual(result["suggested_country_batches"],
@@ -64,6 +68,11 @@ class StanExpansionPlannerTests(unittest.TestCase):
                 root, countries=("PRT", "DEU"), start_year=1970,
                 measures=STAN_VERIFIED_PORTUGAL_MEASURES)
             self.assertEqual(report["verified_countries"], ["PRT"])
+            self.assertEqual(report[
+                "verified_country_scopes_with_each_requested_measure_observed"], [])
+            self.assertEqual(report[
+                "verified_country_scopes_missing_requested_numeric_measures"],
+                ["PRT"])
             self.assertEqual(report["pending_countries"], ["DEU"])
             self.assertEqual(report["publisher_measure_metadata"], "metadata_not_acquired")
             self.assertEqual(report["verified_scopes_with_missing_measures"], [{
@@ -71,6 +80,12 @@ class StanExpansionPlannerTests(unittest.TestCase):
                 "measures_without_numeric_observations": ["D29X39"],
                 "numeric_observations_in_source": 3,
             }])
+            compact = brief_report(report)
+            self.assertEqual(compact["archived_country_scopes"], 1)
+            self.assertEqual(compact["archived_with_all_measures_observed"], 0)
+            self.assertEqual(compact["archived_missing_numeric_measures"], ["PRT"])
+            self.assertEqual(compact["next_evidence_action"],
+                             "acquire_verified_publisher_structure")
 
     def test_different_original_measure_selection_is_not_cached_as_complete(self):
         with TemporaryDirectory() as t:

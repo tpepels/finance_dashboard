@@ -1,5 +1,104 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 — consolidated full-corpus operating batch and bounded source acquisition (2026-11-05)
+
+### Implemented architecture
+
+The new `finance_dashboard.phase2_workflow` layer derives a **single source
+action plan** from the canonical 35-analysis corpus, the live original-source
+reconciliation output and the publisher policy registry. It does **not**
+introduce a second provider registry, stored acceptance certificates, a second
+rate limiter, an alternative refresh client or editable scientific outcomes.
+
+For every mapped scalar series it distinguishes a fully reconciled original
+history; an acquisition candidate; a locally supplied source; an unsupported
+adapter; a blocked source mapping; or a prohibited/unclassified publisher
+reference. Priority is derived deterministically from the number of **approved
+analyses depending on the same exact source ID**, with one task per unique
+source. Fully verified originals are not re-downloaded to resolve an unrelated
+first-publication or population requirement. The cursor is based on the
+approved source graph, so it remains valid even when a source is subsequently
+acquired.
+
+All ingestion still goes through `IngestionService.refresh`,
+`SourceAcquisition`, `ProviderRouter` and the single durable
+`SourcePolicyGate`. The shared execution coordinator limits source **tasks**
+to 12 per invocation by default (override 1–120), stops after canonical
+policy denial/deferment or a controlled upstream 401/403/429/5xx, and defers
+remaining tasks without attempting any retry. Actual HTTP request counts can
+exceed source-task counts, because one original history may require multiple
+source requests. Only the policy gateway enforces the publisher's actual
+network allowance. Failure codes and progress logs contain no raw upstream
+messages, query URLs, secrets, or publisher payload bytes.
+
+`scripts/phase2_comparative_corpus.py --acquire` now reuses the same bounded
+executor rather than its former unbounded custom refresh loop. The original
+pre/post verified backups, current-source reconciliation and 35-analysis
+evaluation remain intact. New optional `--max-source-attempts`,
+`--after-source`, and `--brief` controls reduce publisher load and log size.
+No compatibility execution path remains for the previous unbounded for-loop.
+
+`scripts/phase2_operating_batch.py` is the unified orchestration entrypoint
+for all 35 analyses: one verified **read-only** inspection produces canonical
+gate counts, per-analysis blocking roles, source prioritization, source-policy
+dispositions, current STAN metadata, complete/sparse original country
+coverage and the next eligible bounded STAN batch. With explicit `--acquire`
+it additionally requires recoverable before-and-after SQLite+original archive
+snapshots, executes the same bounded source coordinator, and reassesses
+all 35 analyses against fresh original inputs. It does **not** silently
+perform STAN requests; those still require the explicit managed OECD route.
+Both readers and orchestrators preserve full histories, original bytes and
+all publisher accounting/precision failures.
+
+The STAN expansion planner now explicitly separates verified archived
+selections from archived selections with all requested measures actually
+observed. The latter still does **not** prove a same-industry/year matrix,
+economic identity, or first-publication vintage. `next_evidence_action`
+prioritizes missing/invalid official metadata before speculative surplus-code
+acquisition. The 2026-11-05 user output remains the starting empirical
+snapshot: 8 archives, 30 pending, and four archived selections with missing
+native numeric measures (CAN, CHE, CHL, COL). Source evidence may advance
+after the operator runs this batch; no status is hard-coded into the corpus.
+
+### Execution contract
+
+A single **read-only** and compact all-analysis report after deployment:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+  --evidence-dir /data/source-evidence --max-attempts 12
+```
+
+An explicitly requested bounded source-acquisition batch, **only** when the
+existing publisher network origin and access policies are satisfied:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+  --evidence-dir /data/source-evidence --acquire \
+  --backup-dir /data/phase2-backups --max-attempts 12
+```
+
+Actual source-provider HTTP traffic always flows through the shared
+publisher policy ledger. The output's source attempts are task counts, never
+a claim about total HTTP requests. Both commands print one compact JSON
+object by default; `--details` includes every analysis gate and
+`--output /data/phase2-reports/unique-name.json` creates a new report
+without overwriting another run. The output path must be outside original
+source evidence. Separate OECD country acquisitions remain deliberately
+operator-controlled and bounded.
+
+### Remaining empirical requirements
+
+The official current OECD STAN measure metadata has **not** been obtained in
+the user's latest report. Net/gross surplus native code support, same-scope
+accounting identities, 30 missing country responses and four sparse archived
+responses remain scientific blockers. The 35-analysis methods, separate
+original/fallback definitions, matching release-time eligibility and unresolved
+original-source coverage must also remain open until verified originals support
+them. This work is an integrated software architecture and diagnostic batch,
+not completion or certification of Phase 2.
+
+
 ## Phase 2 — preserved native surplus probes and evidence-driven acquisition (2026-11-05)
 
 This increment closes the gap between *verified native publisher metadata* and

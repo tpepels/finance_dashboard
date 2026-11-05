@@ -23,6 +23,8 @@ from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import make_engine
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.service import IngestionService, safe_source_failure_code
+from finance_dashboard.phase2_workflow import run_source_acquisition_batch
+from finance_dashboard.phase2_report_summary import summarize_saved_run
 from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_reconciliation import _readonly_engine, reconcile
 from finance_dashboard.research_corpus import load_research_corpus, validate_research_corpus
@@ -226,6 +228,12 @@ def main(argv=None):
                         help="Explicit original as-of publication archive; not proof of first publication")
     parser.add_argument("--acquire", action="store_true", help="Append complete source histories and preserve original responses")
     parser.add_argument("--backup-dir", help="Explicit directory for verified before/after research backups")
+    parser.add_argument("--max-source-attempts", type=int, default=12,
+                        help="Bound publisher-neutral ingestion to at most 12 source tasks by default (1–120)")
+    parser.add_argument("--after-source",
+                        help="Continue an explicit sorted source selection after this canonical ID")
+    parser.add_argument("--brief", action="store_true",
+                        help="Emit one compact JSON report for source-only reconciliation")
     parser.add_argument("--assess-all", action="store_true",
                         help="Evaluate all 35 analyses using current stored data and original evidence")
     parser.add_argument("--only", nargs="+", help="Approved analysis IDs; defaults to all available comparative variants")
@@ -249,6 +257,12 @@ def main(argv=None):
         parser.error("--assess-all is only needed with --source-ids or --new-sources")
     if args.backup_dir and not args.acquire:
         parser.error("--backup-dir is only valid for explicit acquisition")
+    if not 1 <= args.max_source_attempts <= 120:
+        parser.error("--max-source-attempts must be between 1 and 120")
+    if args.after_source and not args.acquire:
+        parser.error("--after-source requires --acquire")
+    if args.brief and not source_only:
+        parser.error("--brief requires --source-ids or --new-sources")
     database_url = args.database_url or os.environ.get("DATABASE_URL")
     evidence_dir = args.source_evidence_dir or os.environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")
     engine = None
@@ -272,6 +286,12 @@ def main(argv=None):
                           for variant in item["comparison_contract"]["variants"] for sid in variant["series_ids"]})
             if args.required_inputs:
                 ids = required_series_ids(document)
+        if args.after_source:
+            if args.after_source not in ids:
+                raise ValueError("unknown_source_acquisition_cursor")
+            ids = ids[ids.index(args.after_source) + 1:]
+            if not ids:
+                raise ValueError("no_remaining_sources_after_cursor")
         if not database_url:
             raise ValueError("database required")
         root = Path(evidence_dir)
@@ -294,19 +314,19 @@ def main(argv=None):
             router = ProviderRouter()
             try:
                 service = IngestionService(engine, SourceAcquisition(router, root))
-                for index, sid in enumerate(ids, start=1):
-                    print(f"PHASE2 source {index}/{len(ids)}: {sid}", file=sys.stderr, flush=True)
-                    try:
-                        result = service.refresh(sid, full=True)
-                        acquisitions.append(result)
-                        print(f"PHASE2 source {index}/{len(ids)}: success, "
-                              f"{result['versions_added']} new versions",
-                              file=sys.stderr, flush=True)
-                    except Exception as exc:
-                        code = safe_source_failure_code(exc)
-                        acquisitions.append({"series_id": sid, "status": "failed", "reason": code})
-                        print(f"PHASE2 source {index}/{len(ids)}: failed ({code})",
-                              file=sys.stderr, flush=True)
+                # One canonical coordinator for bounded source attempts and
+                # all publisher-level stop conditions. The original provider
+                # adapters, durable transport policy and ingestion remain
+                # unchanged. No second retry/quota scheduling path.
+                batch = run_source_acquisition_batch(
+                    [{"id": sid, "state": "acquisition_candidate"} for sid in ids],
+                    service.refresh, max_attempts=args.max_source_attempts)
+                acquisitions = batch["results"]
+                print("PHASE2 source acquisition: "
+                      f"{batch['attempted']} attempted; {batch['succeeded']} succeeded; "
+                      f"{batch['failed']} failed; {batch['deferred']} deferred; "
+                      f"stop={batch['stop_category'] or 'none'}",
+                      file=sys.stderr, flush=True)
             finally:
                 router.close()
             # Preserve the acquired originals and append-only observations
@@ -325,6 +345,9 @@ def main(argv=None):
             report = targeted_source_summary(ids, acquisitions, reconcile(database_url, root, ids))
             if backups:
                 report["verified_research_backups"] = backups
+                report["acquisition_batch"] = {
+                    key: value for key, value in batch.items()
+                    if key != "results"}
             if args.assess_all:
                 print("PHASE2 empirical assessment: evaluating 35 analyses",
                       file=sys.stderr, flush=True)
@@ -340,7 +363,25 @@ def main(argv=None):
                     report["archived_comparative_receipt"] = store_comparative_corpus(
                         evaluation.comparative, root
                     )["receipt_path"]
-            print(json.dumps(report, indent=2))
+            if args.brief:
+                saved = summarize_saved_run(report)
+                print(json.dumps({
+                    "operation": "phase2_source_batch",
+                    "selected": saved["selected_series"],
+                    "acquisition_states": saved["acquisition_states"],
+                    "reconciled_original_values": saved["source_values_matching"],
+                    "complete_original_histories": saved[
+                        "full_source_histories_reconciled"],
+                    "incomplete": saved["failed_or_incomplete_sources"][:12],
+                    "additional_incomplete": max(
+                        0, len(saved["failed_or_incomplete_sources"]) - 12),
+                    "scientific_gates_evaluated": saved[
+                        "empirical_scientific_gates_evaluated"],
+                    "accepted_analyses": saved["fully_accepted_analyses"],
+                    "acquisition_batch": report.get("acquisition_batch"),
+                }, separators=(",", ":")))
+            else:
+                print(json.dumps(report, indent=2))
             return 0 if report["passed"] else 1
         evaluation = evaluate_corpus(engine, registry, document, evidence_root=root,
             vintage_root=Path(args.vintage_dir) if args.vintage_dir is not None else None,
@@ -350,7 +391,9 @@ def main(argv=None):
         receipt = store_comparative_corpus(report, root) if args.store else None
         # Panel rows and publisher outputs stay in the private evidence archive.
         summary = compact_comparative_report(report)
-        summary.update(acquisitions=acquisitions, source_reconciliation={
+        summary.update(acquisitions=acquisitions, acquisition_batch=(
+            {key: value for key, value in batch.items() if key != "results"}
+            if args.acquire else None), source_reconciliation={
             key: value for key, value in proof.items() if key != "series"},
             source_failures=[{"series_id": item["series_id"], "failure_code": item.get("failure_code", item["evidence_status"])}
                              for item in proof["series"] if not item["source_values_match"]],
