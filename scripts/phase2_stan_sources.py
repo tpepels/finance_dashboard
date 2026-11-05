@@ -770,16 +770,20 @@ def brief_report(data: dict) -> dict:
                 "http": row.get("http_status"), "failure": row.get("failure_category"),
             } for row in probe["checks"]],
             "publisher_backpressure": probe["stopped_on_publisher_backpressure"],
-            "metadata_source_sha256": data.get("metadata_source_sha256"),
         }
+        if data.get("metadata_source_sha256"):
+            out["metadata_source_sha256"] = data["metadata_source_sha256"]
         if "acquisition" in data:
             out["acquisition"] = brief_report(data["acquisition"])
         if "full_country_acquisition" in data:
             out["full_country_acquisition"] = data["full_country_acquisition"]
-        out["probe_archives_added"] = probe.get("original_probes_archived", 0)
-        out["probe_cache_hits"] = probe.get("verified_cached_probes", 0)
-        out["blocked_invalid_probe_archive"] = probe.get(
-            "blocked_invalid_archived_probes", [])
+        if probe.get("original_probes_archived"):
+            out["probe_archives_added"] = probe["original_probes_archived"]
+        if probe.get("verified_cached_probes"):
+            out["probe_cache_hits"] = probe["verified_cached_probes"]
+        if probe.get("blocked_invalid_archived_probes"):
+            out["blocked_invalid_probe_archive"] = probe[
+                "blocked_invalid_archived_probes"]
         if "accounting_audit" in data:
             out["accounting_audit"] = brief_report(data["accounting_audit"])
         return out
@@ -1079,8 +1083,17 @@ def main(argv=None) -> int:
             result["accounting_audit"] = audit_stan_originals(
                 args.evidence_dir, countries=countries)
         emit_report(result, brief=args.brief)
-        return 0 if (selected and (not args.acquire or
-                 result.get("acquisition", {}).get("acquisition_failures") == 0)) else 1
+        # A complete local request budget may intentionally defer the historical
+        # fetch after archiving a valid native probe; it is a resumable partial
+        # success, never a claim that country history was acquired.
+        if not selected:
+            return 1
+        if result.get("full_country_acquisition") == "deferred_request_budget":
+            return 0
+        if args.acquire:
+            return 0 if result.get("acquisition", {}).get(
+                "acquisition_failures") == 0 else 1
+        return 0
     if args.audit:
         emit_report(audit_stan_originals(
             args.evidence_dir, countries=countries), brief=args.brief)
