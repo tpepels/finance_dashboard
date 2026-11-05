@@ -230,7 +230,9 @@ def main(argv=None) -> int:
             # Replan over all outstanding candidates. Original cursors remain
             # valid, but a completed task must not hide earlier failed tasks
             # from the next default run.
-            report["source_originals_modified"] = batch["succeeded"] > 0
+            archive_changed = (
+                before["evidence_archive_sha256"] != after["evidence_archive_sha256"])
+            report["source_originals_modified"] = archive_changed
             report["publisher_requests_made"] = None  # One source task may make multiple managed requests.
             report["acquisition"] = batch
             report["verified_recovery"] = {
@@ -238,6 +240,7 @@ def main(argv=None) -> int:
                 "after_sha256": after["database_sha256"],
                 "before_original_archive_sha256": before["evidence_archive_sha256"],
                 "after_original_archive_sha256": after["evidence_archive_sha256"],
+                "original_archive_changed": archive_changed,
                 "backups_verified": True,
             }
         final = emit_operating_report(report, details=args.details)
