@@ -6,7 +6,7 @@ values, cash, collateral, other assets/liabilities and share classes remain dist
 """
 from __future__ import annotations
 
-from .source_policy import managed_client
+from .source_policy import managed_client, require_managed_client
 
 from datetime import datetime,timezone
 from decimal import Decimal
@@ -257,7 +257,7 @@ def collect_vanguard_ucits_sources(*, root: Path, report_keys=("annual-2026","se
     if len(report_keys)>2 or len(set(report_keys))!=len(report_keys) or any(key not in REPORTS for key in report_keys):
         raise VanguardUcitsError("Only the independently verified original Vanguard reports may be acquired")
     owns=client is None
-    connection=client or managed_client(timeout=60,follow_redirects=False)
+    connection=require_managed_client(client) if client is not None else managed_client(timeout=60,follow_redirects=False)
     reports=[]
     try:
         cached=read_vanguard_ucits_sources(root,summary=True)["records"]

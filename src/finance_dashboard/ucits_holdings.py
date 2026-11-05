@@ -5,7 +5,7 @@ monthly interpolation, index constituents or derivative country look-through.
 """
 from __future__ import annotations
 
-from .source_policy import managed_client
+from .source_policy import managed_client, require_managed_client
 from collections import OrderedDict
 import csv
 from datetime import datetime, timezone
@@ -370,7 +370,7 @@ def collect_ucits_sources(*, root: Path, years=(2022,2023,2024,2025,2026),
     if len(years)>5 or any(year not in ANNUALS for year in years) or len(set(years))!=len(years):
         raise UcitsHoldingsError("Only the five independently verified annual documents may be acquired")
     owns=client is None
-    source=client or managed_client(timeout=60,follow_redirects=False)
+    source=require_managed_client(client) if client is not None else managed_client(timeout=60,follow_redirects=False)
     jobs=[(year,annual_url(year)) for year in years]
     if include_current: jobs.append((None,CSV_URL))
     reports=[]

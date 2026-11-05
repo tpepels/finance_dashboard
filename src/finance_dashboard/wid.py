@@ -21,6 +21,7 @@ import tempfile
 import httpx
 
 from .bis import FetchedSeries, ProviderError
+from .source_policy import require_managed_client
 from .source_evidence import record_acquisition_receipt
 
 WID_ROOT = "https://wid.world/bulk_download"
@@ -225,7 +226,7 @@ class WidClient:
     observations are returned. No network URL is derived from an arbitrary ID.
     """
     def __init__(self, client: httpx.Client, *, archive_dir: Path | None = None):
-        self.client = client
+        self.client = require_managed_client(client)
         self.archive_dir = Path(archive_dir) if archive_dir is not None else None
         self._areas: dict[str, WidBundle] = {}
 

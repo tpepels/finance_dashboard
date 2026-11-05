@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 
 import httpx
-from .source_policy import managed_client
+from .source_policy import managed_client, require_managed_client
 
 from .market import instruments
 from .sec_holdings import (parse_nport, store_snapshot, HoldingsError,
@@ -383,7 +383,7 @@ def check_sec_sources(*, config: Path = CONFIG,
         return {"status": "blocked", "reason": "missing_SEC_USER_AGENT",
                 "funds": [], "requests": 0}
     owns = client is None
-    source = client or managed_client(
+    source = require_managed_client(client) if client is not None else managed_client(
         headers={"User-Agent": agent, "Accept-Encoding": "gzip, deflate"},
         timeout=25, follow_redirects=False)
     funds = []

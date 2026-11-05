@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import httpx
-from .source_policy import managed_client
+from .source_policy import managed_client, require_managed_client
 
 API_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0"
 ACCEPT = "application/vnd.sdmx.data+json;version=1.0.0"
@@ -112,7 +112,7 @@ class BisPolicyClient:
     """Small bounded, injectable HTTP client; no provider calls in the API process."""
 
     def __init__(self, client: httpx.Client | None = None):
-        self.client = client or managed_client(
+        self.client = require_managed_client(client) if client is not None else managed_client(
             timeout=httpx.Timeout(30.0), follow_redirects=False,
             headers={"User-Agent": "global-capital-monitor/0.2"}
         )

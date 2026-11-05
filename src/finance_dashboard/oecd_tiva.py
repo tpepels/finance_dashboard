@@ -22,6 +22,7 @@ import tempfile
 import httpx
 
 from .bis import FetchedSeries, ProviderError
+from .source_policy import require_managed_client
 from .source_evidence import record_acquisition_receipt
 
 OECD_TIVA_ROOT = "https://sdmx.oecd.org/sti-public/rest/data"
@@ -256,7 +257,7 @@ def read_tiva_evidence(evidence_root: Path) -> dict:
 class TivaClient:
     """Two original selected-country batch downloads per collector lifetime."""
     def __init__(self, client: httpx.Client, *, archive_dir: Path | None = None):
-        self.client = client
+        self.client = require_managed_client(client)
         self.archive_dir = Path(archive_dir) if archive_dir is not None else None
         self._batches: dict[str, TivaBatch] = {}
         self._request_urls: dict[str, str] = {}

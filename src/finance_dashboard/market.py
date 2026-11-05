@@ -16,7 +16,7 @@ from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import httpx
-from .source_policy import managed_client
+from .source_policy import managed_client, require_managed_client
 
 from .catalog import DEFAULT_ROOT
 
@@ -189,7 +189,7 @@ def parse_yahoo_chart(payload: dict, instrument: dict, *, start: date | None = N
 class YahooMarketClient:
     def __init__(self, client: httpx.Client | None = None):
         self._owns = client is None
-        self.client = client or managed_client(timeout=30, headers={"User-Agent":"Mozilla/5.0"})
+        self.client = require_managed_client(client) if client is not None else managed_client(timeout=30, headers={"User-Agent":"Mozilla/5.0"})
 
     def close(self):
         if self._owns:
@@ -233,7 +233,7 @@ def parse_ecb_fx_csv(raw: str, currency: str) -> dict[date, Decimal]:
 class EcbFxClient:
     def __init__(self, client: httpx.Client | None = None):
         self._owns = client is None
-        self.client=client or managed_client(timeout=30)
+        self.client=require_managed_client(client) if client is not None else managed_client(timeout=30)
 
     def close(self):
         if self._owns:

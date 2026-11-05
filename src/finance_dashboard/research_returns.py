@@ -26,6 +26,7 @@ import zipfile
 import httpx
 
 from .bis import FetchedSeries, ProviderError
+from .source_policy import require_managed_client
 from .source_evidence import record_acquisition_receipt
 
 FRENCH_ROOT = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp"
@@ -343,7 +344,7 @@ def _archive(root: Path, area: str, responses: dict, bundle: ReturnsBundle, extr
 class ResearchReturnsClient:
     """Cache complete originals per collection lifetime; archive before returning."""
     def __init__(self, client: httpx.Client, *, archive_dir: Path | None = None):
-        self.client = client
+        self.client = require_managed_client(client)
         self.archive_dir = Path(archive_dir) if archive_dir is not None else None
         self._bundles: dict[str, ReturnsBundle] = {}
 

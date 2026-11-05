@@ -20,7 +20,7 @@ import shutil
 import tempfile
 
 import httpx
-from .source_policy import managed_client
+from .source_policy import managed_client, require_managed_client
 
 from .bis import ProviderError
 from .source_capture import canonical_bytes
@@ -169,7 +169,7 @@ def _sha(raw: bytes) -> str:
 def acquire_nber_chronology(evidence_root: Path, client: httpx.Client | None = None) -> Path:
     """Fetch the dates table, announcement index and every listed announcement once; archive bytes."""
     owned = client is None
-    client = client or managed_client(timeout=60, follow_redirects=False,
+    client = require_managed_client(client) if client is not None else managed_client(timeout=60, follow_redirects=False,
                                     headers={"User-Agent": "finance-dashboard-research/0.2 (private research)"})
     try:
         pages = {}

@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 
 import httpx
-from .source_policy import managed_client, PolicyDeferred, PolicyViolation
+from .source_policy import managed_client, PolicyDeferred, PolicyViolation, require_managed_client
 
 FRED_OBSERVATIONS = "https://api.stlouisfed.org/fred/series/observations"
 FRED_VINTAGE_DATES = "https://api.stlouisfed.org/fred/series/vintagedates"
@@ -417,7 +417,7 @@ def capture_previous_month(root: Path = ROOT, *,
     if not key:
         return {"asof":asof.isoformat(),"status":"disabled_no_key","captured":0,"errors":0}
     owns = client is None
-    source = client or managed_client(timeout=25,headers={
+    source = require_managed_client(client) if client is not None else managed_client(timeout=25,headers={
         "User-Agent":"GlobalCapitalMonitor/0.2"})
     captured=0
     errors=0
