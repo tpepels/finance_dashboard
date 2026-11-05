@@ -47,6 +47,53 @@ class PolicyArchitectureTests(unittest.TestCase):
         self.assertEqual(bypasses, [],
                          "Unmanaged outbound HTTPX bypasses: " + ", ".join(bypasses))
 
+    def test_no_duplicate_network_pacing_or_unmanaged_urllib_collectors(self):
+        """Publisher requests have one transport; timed loops are orchestration."""
+        allowed_local_smokes = {
+            "scripts/all_macro_pg_smoke.py",
+            "scripts/deployment_smoke.py",
+            "scripts/market_deployment_smoke.py",
+        }
+        allowed_scheduled_sleep = allowed_local_smokes | {
+            "scripts/phase2_stan_overnight.py",
+            "src/finance_dashboard/worker.py",
+        }
+        violations = []
+        sources = sorted([
+            *ROOT.joinpath("src", "finance_dashboard").rglob("*.py"),
+            *ROOT.joinpath("scripts").glob("*.py"),
+        ])
+        for source in sources:
+            relative = source.relative_to(ROOT).as_posix()
+            tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
+            urllib_aliases = {
+                name.asname or name.name
+                for node in ast.walk(tree)
+                if isinstance(node, ast.ImportFrom)
+                and node.module == "urllib.request"
+                for name in node.names if name.name == "urlopen"
+            }
+            module_aliases = {
+                name.asname or name.name
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Import)
+                for name in node.names if name.name == "time"
+            }
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                fn = node.func
+                if (isinstance(fn, ast.Name)
+                        and fn.id in urllib_aliases
+                        and relative not in allowed_local_smokes):
+                    violations.append(f"{relative}:{node.lineno}:unmanaged_urllib")
+                if (isinstance(fn, ast.Attribute)
+                        and isinstance(fn.value, ast.Name)
+                        and fn.value.id in module_aliases and fn.attr == "sleep"
+                        and relative not in allowed_scheduled_sleep):
+                    violations.append(f"{relative}:{node.lineno}:duplicate_throttle")
+        self.assertEqual(violations, [])
+
     def test_all_declared_series_reference_hosts_have_canonical_rules(self):
         from finance_dashboard.source_policy import catalog_source_policy_audit
         result = catalog_source_policy_audit()
