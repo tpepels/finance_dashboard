@@ -109,9 +109,11 @@ def audit_stan_scope(raw: bytes, *, measures: tuple[str, ...]) -> dict:
         if set(CORE).issubset(sample):
             all_four_groups += 1
             all_four_by_year[year] += 1
+    coverage = summarize_scope_coverage(raw, measures=measures)
     return {
         "requested_native_measures": list(measures),
         "distinct_industry_years": len(groups),
+        "coverage": coverage,
         "numeric_measure_counts": dict(sorted(available.items())),
         "core_four_measures": list(CORE),
         "core_four_matched_industry_years": all_four_groups,
@@ -150,9 +152,12 @@ def audit_stan_originals(root: Path, *, countries: tuple[str, ...]) -> dict:
                 "original_response_sha256": scope["original_response_sha256"],
                 **audit_stan_scope(raw, measures=measures),
             })
+        comparison = reconcile_stan_source_scopes(
+            root, country=country, scopes=country_evidence["source_scopes"])
         report.append({
             "country": country, "status": "verified_independent_scope_audits",
             "scope_audits": scopes,
+            "cross_scope_reconciliation": comparison,
             "scopes_are_distinct_publication_retrievals": len(scopes) > 1,
         })
     return {
@@ -163,4 +168,149 @@ def audit_stan_originals(root: Path, *, countries: tuple[str, ...]) -> dict:
         "published_data_vintage_synchronization_verified": False,
         "scientific_analysis_certified": False,
         "first_publication_verified": False,
+    }
+
+
+
+def summarize_scope_coverage(raw: bytes, *, measures: tuple[str, ...]) -> dict:
+    """Bounded per-year support, source flags and units from one original CSV.
+
+    Activity classifications can contain both total/parent and child sectors.
+    Counts here are non-additive descriptive source coverage, not GDP weights.
+    """
+    per_year: dict[int, dict] = {}
+    flags: Counter[str] = Counter()
+    by_measure: dict[str, Counter[int]] = {}
+    missing: Counter[str] = Counter()
+    measure_flags: dict[str, Counter[str]] = {}
+    units: dict[str, set[tuple[str, str]]] = {}
+    for row in csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))):
+        year, measure = int(row["TIME_PERIOD"]), row["MEASURE"]
+        flag = row.get("OBS_STATUS", "") or "unreported"
+        flags[flag] += 1
+        measure_flags.setdefault(measure, Counter())[flag] += 1
+        unit = (row.get("UNIT_MULT", ""), row.get("CURRENCY", ""))
+        units.setdefault(measure, set()).add(unit)
+        if row["OBS_VALUE"] in MISSING_VALUES:
+            missing[measure] += 1
+            continue
+        by_measure.setdefault(measure, Counter())[year] += 1
+        bucket = per_year.setdefault(year, {
+            "numeric": 0, "measure_counts": Counter(), "flags": Counter(),
+        })
+        bucket["numeric"] += 1
+        bucket["measure_counts"][measure] += 1
+        bucket["flags"][flag] += 1
+    year_details = {
+        str(y): {
+            "numeric": per_year[y]["numeric"],
+            "measure_counts": dict(sorted(per_year[y]["measure_counts"].items())),
+            "source_flags": dict(sorted(per_year[y]["flags"].items())),
+        }
+        for y in sorted(per_year)
+    }
+    summary = {}
+    for measure in sorted(set(measures) | set(measure_flags)):
+        periods = sorted(by_measure.get(measure, {}))
+        summary[measure] = {
+            "numeric_observations": sum(by_measure.get(measure, {}).values()),
+            "years_with_observations": len(periods),
+            "first_observed_year": periods[0] if periods else None,
+            "last_observed_year": periods[-1] if periods else None,
+            "missing_source_values": missing[measure],
+            "source_flags": dict(sorted(measure_flags.get(measure, {}).items())),
+            "published_unit_currency_pairs": [
+                {"unit_multiplier": mult, "currency": currency}
+                for mult, currency in sorted(units.get(measure, set()))
+            ],
+        }
+    return {
+        "min_year": min(per_year, default=None),
+        "max_year": max(per_year, default=None),
+        "observed_year_count": len(per_year),
+        "per_year": year_details,
+        "per_measure": summary,
+        "source_status_flag_counts": dict(sorted(flags.items())),
+        "source_estimate_share_of_rows": (
+            str(Decimal(flags["E"]) / sum(flags.values()))
+            if flags else None),
+        "contains_industry_hierarchies": True,
+        "observations_not_additively_aggregated": True,
+        "publisher_flag_meanings_independently_verified": False,
+    }
+
+
+def _source_value_rows(raw: bytes) -> dict[tuple[str, int, str], tuple]:
+    values = {}
+    for row in csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))):
+        if row["OBS_VALUE"] in MISSING_VALUES:
+            continue
+        key = (row["ACTIVITY"], int(row["TIME_PERIOD"]), row["MEASURE"])
+        values[key] = (
+            Decimal(row["OBS_VALUE"]), row.get("UNIT_MULT", ""),
+            row.get("CURRENCY", ""), row.get("OBS_STATUS", "") or "unreported",
+        )
+    return values
+
+
+def reconcile_stan_source_scopes(
+        root: Path, *, country: str, scopes: list[dict]) -> dict:
+    """Independently compare overlapping original values, without joining them.
+
+    Every scope is reverified before reading. Mismatches between retrievals
+    remain explicit and cannot serve as a five-measure same-release identity.
+    """
+    from itertools import combinations
+    results = []
+    entries = []
+    for scope in scopes:
+        measures = tuple(scope["scope"].removeprefix("measure-").split("+"))
+        raw = read_verified_stan_scope_csv(
+            root, country=country, start_year=scope["requested_since"],
+            measures=measures)
+        entries.append((scope, _source_value_rows(raw)))
+    for (left, left_values), (right, right_values) in combinations(entries, 2):
+        overlap = sorted(left_values.keys() & right_values.keys())
+        numeric_changes = unit_changes = flag_changes = equal = 0
+        examples = []
+        for key in overlap:
+            a, b = left_values[key], right_values[key]
+            comparable = a[1:3] == b[1:3] and all(a[1:3])
+            if not comparable:
+                unit_changes += 1
+            elif a[0] != b[0]:
+                numeric_changes += 1
+            else:
+                equal += 1
+            if a[3] != b[3]:
+                flag_changes += 1
+            if len(examples) < 5 and (not comparable or a[0] != b[0] or a[3] != b[3]):
+                examples.append({
+                    "activity": key[0], "year": key[1], "measure": key[2],
+                    "left_value": str(a[0]), "right_value": str(b[0]),
+                    "left_unit": [a[1], a[2]],
+                    "right_unit": [b[1], b[2]],
+                    "left_flag": a[3], "right_flag": b[3],
+                })
+        results.append({
+            "left_scope": left["scope"],
+            "left_start_year": left["requested_since"],
+            "left_sha256": left["original_response_sha256"],
+            "right_scope": right["scope"],
+            "right_start_year": right["requested_since"],
+            "right_sha256": right["original_response_sha256"],
+            "same_measure_industry_year_overlap": len(overlap),
+            "equal_value_same_unit": equal,
+            "numeric_value_disagreements_same_unit": numeric_changes,
+            "incompatible_or_unreported_units": unit_changes,
+            "source_flag_changes": flag_changes,
+            "examples": examples,
+            "release_vintage_agreement_established": False,
+        })
+    return {
+        "distinct_original_scope_count": len(scopes),
+        "compared_scope_pairs": len(results),
+        "comparisons": results,
+        "cross_scope_values_merged": False,
+        "identities_computed_from_joined_scopes": False,
     }
