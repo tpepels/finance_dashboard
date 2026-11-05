@@ -47,6 +47,41 @@ class PolicyArchitectureTests(unittest.TestCase):
         self.assertEqual(bypasses, [],
                          "Unmanaged outbound HTTPX bypasses: " + ", ".join(bypasses))
 
+    def test_source_adapters_cannot_accept_raw_injected_http_clients(self):
+        """Detect direct assignments and truthy fallback on injectable client.
+
+        A managed client or an explicit mock must pass the one shared
+        require_managed_client() guard before entering an adapter.
+        """
+        violations = []
+        for source in sorted(ROOT.joinpath("src", "finance_dashboard").rglob("*.py")):
+            if source.name.startswith("source_policy"):
+                continue
+            tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Assign):
+                    continue
+                for target in node.targets:
+                    if (isinstance(target, ast.Attribute)
+                            and target.attr == "client"
+                            and isinstance(target.value, ast.Name)
+                            and target.value.id == "self"
+                            and isinstance(node.value, ast.Name)
+                            and node.value.id == "client"):
+                        violations.append(f"{source.relative_to(ROOT)}:{node.lineno}")
+                expr = node.value
+                if (isinstance(expr, ast.BoolOp) and isinstance(expr.op, ast.Or)
+                        and any(isinstance(x, ast.Name) and x.id == "client"
+                                for x in expr.values)
+                        and any(isinstance(x, ast.Call)
+                                and isinstance(x.func, ast.Name)
+                                and x.func.id == "managed_client"
+                                for x in expr.values)):
+                    violations.append(f"{source.relative_to(ROOT)}:{node.lineno}")
+        self.assertEqual(violations, [],
+                         "Unchecked injectable HTTP source clients: " +
+                         ", ".join(violations))
+
     def test_no_duplicate_network_pacing_or_unmanaged_urllib_collectors(self):
         """Publisher requests have one transport; timed loops are orchestration."""
         allowed_local_smokes = {
