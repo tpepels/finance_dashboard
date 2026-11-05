@@ -23,7 +23,7 @@ from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import make_engine
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.service import IngestionService, safe_source_failure_code
-from finance_dashboard.source_capture import CapturedProvider
+from finance_dashboard.source_capture import SourceAcquisition
 from finance_dashboard.source_reconciliation import _readonly_engine, reconcile
 from finance_dashboard.research_corpus import load_research_corpus, validate_research_corpus
 from finance_dashboard.comparative_corpus import store_comparative_corpus, compact_comparative_report
@@ -293,7 +293,7 @@ def main(argv=None):
             engine = make_engine(database_url)
             router = ProviderRouter()
             try:
-                service = IngestionService(engine, CapturedProvider(router, root))
+                service = IngestionService(engine, SourceAcquisition(router, root))
                 for index, sid in enumerate(ids, start=1):
                     print(f"PHASE2 source {index}/{len(ids)}: {sid}", file=sys.stderr, flush=True)
                     try:
