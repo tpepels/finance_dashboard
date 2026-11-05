@@ -1,5 +1,57 @@
 # Development plan — authoritative five-phase roadmap
 
+## Architecture audit and consolidation sweep — 2026-11-05
+
+**Audit scope:** the application/worker/API entrypoints, publisher acquisition,
+source-policy registry and persistent quota ledger, macro/market/FX ingestion,
+original-response evidence capture, maintenance execution, diagnostic events,
+source coverage and the frontend state map. At audit start the repository
+contained 78 Python application modules, 26 Python scripts and 93 Python tests.
+This audit is the working evidence for the consolidation below; it is **not**
+a certification of scientific source-data completeness.
+
+| Identified architectural issue | Integrated resolution |
+| --- | --- |
+| Event-hook-only HTTP gating held failed-connection leases until expiry | Single `PublisherTransport` wraps the actual HTTPX transport and releases concurrency on connection/stream failure; rolling request quota still counts attempts |
+| Policy rules, SQLite ledger, and HTTP lifecycle concentrated in one large file | Split into `source_policy_types.py`, `source_policy_registry.py`, `source_policy_ledger.py`, and canonical `source_policy.py` transport/entrypoint; prior hook execution removed |
+| SQLite schema DDL executed on every publisher request | One-time thread-safe schema initialization per gate instance |
+| Distinct macro, FX and market loops repeated redaction, progress and failures | One `execute_refresh_tasks` scheduler and `RefreshTask` contract used across all three families |
+| Rate-limit deferral persisted as generic collection failure | Macro/FX/market ingestion histories now store `deferred` with fixed safe code; coverage, event journal and frontend show distinct deferred states |
+| Per-market ad hoc sleep after successful requests | Removed; publisher spacing is controlled only by the shared policy ledger |
+| PostgreSQL macro-only lock left SQLite and market jobs uncoordinated | `refresh_coordinator.py` provides one PostgreSQL advisory or SQLite-adjacent file lock across all macro/FX/market refreshes, including separate CLI processes |
+| No smoke test joining managed HTTP and original capture | Regression test verifies retained original bytes, immutable manifests, redacted credentials and correct HTTP event-hook behavior with the new transport |
+| New collectors could reintroduce unmanaged HTTPX, urllib or per-provider sleeping | AST architecture guards scan runtime modules and scripts; deliberate local-only smoke/overnight scheduler sleeps remain |
+| Existing UCITS collectors had malformed import indentation | Corrected; CI compiled successfully on the first corrected baseline before subsequent changes |
+
+**Contract boundaries:** the durable publisher ledger records request
+reservations, cooldowns, and active streaming leases; it never mutates source
+evidence. The refresh coordinator owns simultaneous writer exclusion, not
+publisher rate scheduling. Ingestion retains first-seen observation versions
+and distinct deferred/failed run statuses. Original-response capture remains
+an explicit operation; routine ingestion is **not** retroactively presented
+as independently archived raw source evidence.
+
+**Verification obligations:** `python -m compileall`, focused
+`test_source_policy*.py`, `test_refresh_architecture.py`,
+`test_refresh_coordinator.py`, `test_source_capture.py`,
+`test_source_coverage.py`, `test_developer_logs.py`,
+`test_targeted_refresh.py`, the full offline Python suite, and the frontend
+SourceCoveragePanel test must pass locally before accepting this sweep.
+Existing overnight offline verification runs the full Python suite twice.
+GitHub CI remains the single static Python check; it does not certify these
+runtime/SQLite/HTTP lifecycle tests.
+
+**Audit findings remaining outside this consolidation scope:**
+the large `providers.py` parser/dispatcher and `maintenance.py` action
+orchestration still warrant a separate adapter-registry and declarative
+job-definition refactor after their behavioral contracts are fully inventoried.
+Explicit original-response capture is not wired to everyday ingestion; that
+requires a separate evidence-completeness policy rather than silently
+treating normal refreshes as verified original archives. Publisher network
+origin cannot be independently verified from a container, and third-party
+traffic on the same public IP is outside the shared ledger's visibility.
+No compatibility path or parallel rate-limit implementation was introduced.
+
 ## Phase 2 canonical publisher policy consolidation — 2026-11-05
 
 **Implementation on `main`; empirical integration verification outstanding.** One
