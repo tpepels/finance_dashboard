@@ -19,6 +19,10 @@ services:
       FINANCE_VINTAGE_REFRESH: "${FINANCE_VINTAGE_REFRESH:-1}"
       FINANCE_SEC_HOLDINGS_REFRESH: "${FINANCE_SEC_HOLDINGS_REFRESH:-1}"
       SEC_USER_AGENT: "${SEC_USER_AGENT:-}"
+      # The shared SQLite ledger is separate from immutable source archives.
+      FINANCE_SOURCE_POLICY_DB: "/data/source-policy/rate-ledger.sqlite3"
+      # Publisher restricts VPN/anonymized OECD API access; explicit user attestation.
+      FINANCE_OECD_DIRECT_NETWORK_ACK: "${FINANCE_OECD_DIRECT_NETWORK_ACK:-0}"
       FINANCE_AUTO_BACKUP: "${FINANCE_AUTO_BACKUP:-1}"
       FINANCE_BACKUP_DIR: "/data/backups"
       FINANCE_BACKUP_KEEP: "${FINANCE_BACKUP_KEEP:-14}"
