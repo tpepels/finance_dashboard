@@ -30,18 +30,18 @@ def original(values, *, country="PRT", year=2020, activity="C",
 
 FOUR = (("B1G", "120.00"), ("D1", "70.00"), ("P51C", "12.00"),
         ("D29X39", "3.00"))
-NET_FIVE = FOUR + (("B2N_B3N", "35.00"),)
+NET_FIVE = FOUR + (("B2N_B3_N", "35.00"),)
 GROSS_FIVE = FOUR + (("B2G_B3G", "47.00"),)
-NET_SELECTION = ("B1G", "D1", "B2N_B3N", "P51C", "D29X39")
+NET_SELECTION = ("B1G", "D1", "B2N_B3_N", "P51C", "D29X39")
 GROSS_SELECTION = ("B1G", "D1", "B2G_B3G", "P51C", "D29X39")
 
 
 class StanSurplusResearchTests(unittest.TestCase):
     def test_new_codes_are_explicit_candidates_and_do_not_change_old_source_identity(self):
-        url, _ = stan_source_request("PRT", 2020, measures=("B2N_B3N",),
+        url, _ = stan_source_request("PRT", 2020, measures=("B2N_B3_N",),
                                      activity="_T", end_year=2020)
-        self.assertIn("/A.PRT._T.B2N_B3N.V.XDC", url)
-        self.assertEqual(STAN_SURPLUS_CANDIDATES, ("B2N_B3N", "B2G_B3G"))
+        self.assertIn("/A.PRT._T.B2N_B3_N.V.XDC", url)
+        self.assertEqual(STAN_SURPLUS_CANDIDATES, ("B2N_B3_N", "B2G_B3G"))
         old, _ = stan_source_request(
             "PRT", 1970, measures=STAN_VERIFIED_PORTUGAL_MEASURES)
         self.assertIn("/A.PRT..B1G+D1+P51C+D29X39.V.XDC", old)
@@ -84,7 +84,7 @@ class StanSurplusResearchTests(unittest.TestCase):
             self.assertEqual(old_audit["pairwise_matched_industry_years"]["B1G|D1"], 1)
             self.assertEqual(old_audit["identity_checks"][
                 "net_surplus_and_mixed_income"]["eligible_matched_industry_years"], 0)
-            net_audit = scopes["measure-B1G+D1+B2N_B3N+P51C+D29X39"]
+            net_audit = scopes["measure-B1G+D1+B2N_B3_N+P51C+D29X39"]
             identity = net_audit["identity_checks"]["net_surplus_and_mixed_income"]
             self.assertEqual(identity["eligible_matched_industry_years"], 1)
             self.assertEqual(identity["nonzero_exact_residuals"], 0)
@@ -102,7 +102,7 @@ class StanSurplusResearchTests(unittest.TestCase):
         self.assertEqual(gross["outside_printed_precision_bounds"], 0)
 
     def test_nontrivial_residual_exceeds_printed_precision_without_adjustment(self):
-        inconsistent = FOUR + (("B2N_B3N", "20.00"),)
+        inconsistent = FOUR + (("B2N_B3_N", "20.00"),)
         audit = audit_stan_scope(original(inconsistent), measures=NET_SELECTION)
         net = audit["identity_checks"]["net_surplus_and_mixed_income"]
         self.assertEqual(net["eligible_matched_industry_years"], 1)
@@ -139,9 +139,9 @@ class StanPublisherDiscoveryTests(unittest.TestCase):
         calls = []
         def respondent(request):
             calls.append(str(request.url))
-            if "B2N_B3N" in str(request.url):
+            if "B2N_B3_N" in str(request.url):
                 return httpx.Response(200, content=original(
-                    (("B2N_B3N", "35.00"),), activity="_T"))
+                    (("B2N_B3_N", "35.00"),), activity="_T"))
             return httpx.Response(404, content=b"not available")
         with httpx.Client(transport=httpx.MockTransport(respondent)) as client:
             result = probe_surplus(client, country="PRT", year=2020)
@@ -237,17 +237,17 @@ class StanBriefOutputTests(unittest.TestCase):
         payload = {
             "surplus_probe": {
                 "country": "PRT", "stopped_on_publisher_backpressure": False,
-                "checks": [{"candidate_measure": "B2N_B3N",
+                "checks": [{"candidate_measure": "B2N_B3_N",
                             "state": "validated_native_csv", "http_status": 200}],
             },
-            "selected_observed_surplus_measure": "B2N_B3N",
+            "selected_observed_surplus_measure": "B2N_B3_N",
         }
         buffer = StringIO()
         with redirect_stdout(buffer):
             emit_report(payload, brief=True)
         self.assertEqual(len(buffer.getvalue().splitlines()), 1)
         concise = json.loads(buffer.getvalue())
-        self.assertEqual(concise["selected"], "B2N_B3N")
+        self.assertEqual(concise["selected"], "B2N_B3_N")
         self.assertEqual(concise["checks"][0]["http"], 200)
         self.assertLess(len(buffer.getvalue()), 300)
 
