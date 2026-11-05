@@ -366,7 +366,7 @@ def _workbook_rows(raw,sheet):
 
 def _pink_sheet(raw,definition,url):
     from .source_reconciliation import EvidenceError
-    from .providers import PINK_SHEET_URL
+    from .provider_parsers import PINK_SHEET_URL
     selectors={
         'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Gold':('Gold','troy oz','usd_per_oz'),
         'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Crude oil, Brent':('Crude oil, Brent','bbl','usd_per_barrel'),
