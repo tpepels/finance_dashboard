@@ -30,7 +30,8 @@ from finance_dashboard.service import current_observations
 from finance_dashboard.wid import WID_SERIES
 from finance_dashboard.oecd_tiva import TIVA_SERIES
 from finance_dashboard.catalog import load_documents
-from finance_dashboard.source_capture import CAPTURE_PROVIDERS, canonical_bytes
+from finance_dashboard.source_capture import canonical_bytes
+from finance_dashboard.provider_registry import get_provider
 from finance_dashboard.captured_sources import captured_source
 from finance_dashboard.research_returns import FRENCH_SERIES, SWINKELS_SERIES
 from finance_dashboard.global_market_returns import GLOBAL_MARKET_SERIES
@@ -381,7 +382,7 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             except (OSError, ValueError):
                 failures[sid] = "original_msci_documents_missing_or_invalid"
             continue
-        if not definition or definition["provider"] not in CAPTURE_PROVIDERS:
+        if not definition or (registration := get_provider(definition["provider"])) is None or registration.acquisition != "response":
             failures[sid] = "source_reconciliation_unsupported"
             continue
         try:
