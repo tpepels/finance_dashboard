@@ -34,7 +34,7 @@ COPY scripts/ /app/scripts/
 COPY scripts/run-standalone.sh /app/run-standalone.sh
 COPY --from=frontend-build /build/frontend/dist/ /app/site/
 RUN pip install --no-cache-dir . \
-    && python -m compileall -q /app/src \
+    && python -m compileall -q /app/src /app/scripts \
     && python -m finance_dashboard validate \
     && python -m unittest discover -s tests -p 'test_*.py' -v \
     && chmod 755 /app/run-standalone.sh
