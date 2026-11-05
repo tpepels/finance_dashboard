@@ -277,34 +277,49 @@ def main(argv=None):
             backup_root = Path(args.backup_dir) / (
                 "native-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
             )
+            print("PHASE2 backup: verifying before-state", file=sys.stderr, flush=True)
             backups["before"] = verified_phase2_snapshot(
                 database_url, root, backup_root, label="before"
             )
+            print("PHASE2 backup: before-state verified", file=sys.stderr, flush=True)
             engine = make_engine(database_url)
             router = ProviderRouter()
             try:
                 service = IngestionService(engine, CapturedProvider(router, root))
-                for sid in ids:
+                for index, sid in enumerate(ids, start=1):
+                    print(f"PHASE2 source {index}/{len(ids)}: {sid}", file=sys.stderr, flush=True)
                     try:
-                        acquisitions.append(service.refresh(sid, full=True))
+                        result = service.refresh(sid, full=True)
+                        acquisitions.append(result)
+                        print(f"PHASE2 source {index}/{len(ids)}: success, "
+                              f"{result['versions_added']} new versions",
+                              file=sys.stderr, flush=True)
                     except Exception as exc:
-                        acquisitions.append({"series_id": sid, "status": "failed", "reason": safe_source_failure_code(exc)})
+                        code = safe_source_failure_code(exc)
+                        acquisitions.append({"series_id": sid, "status": "failed", "reason": code})
+                        print(f"PHASE2 source {index}/{len(ids)}: failed ({code})",
+                              file=sys.stderr, flush=True)
             finally:
                 router.close()
             # Preserve the acquired originals and append-only observations
             # before any optional expensive research evaluation.
+            print("PHASE2 backup: verifying after-state", file=sys.stderr, flush=True)
             backups["after"] = verified_phase2_snapshot(
                 database_url, root, backup_root, label="after"
             )
+            print("PHASE2 backup: after-state verified", file=sys.stderr, flush=True)
         else:
             engine = _readonly_engine(database_url)
         if source_only:
             # Independent selectors check raw publisher response bytes against
             # database observation versions; no alternate reconciliation logic.
+            print(f"PHASE2 reconciliation: {len(ids)} original histories", file=sys.stderr, flush=True)
             report = targeted_source_summary(ids, acquisitions, reconcile(database_url, root, ids))
             if backups:
                 report["verified_research_backups"] = backups
             if args.assess_all:
+                print("PHASE2 empirical assessment: evaluating 35 analyses",
+                      file=sys.stderr, flush=True)
                 from finance_dashboard.research_runtime import evaluate_corpus
                 evaluation = evaluate_corpus(engine, registry,
                     load_research_corpus(ROOT), evidence_root=root,
