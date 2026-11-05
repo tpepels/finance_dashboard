@@ -1,11 +1,13 @@
 """Durable process-safe publisher budgets, concurrency and cooldown ledger."""
 from __future__ import annotations
+from contextlib import closing
 from email.utils import parsedate_to_datetime
 import os
 from pathlib import Path
 import sqlite3
 import threading
 import time
+from urllib.parse import quote
 from uuid import uuid4
 from .source_policy_types import Policy, PolicyViolation, PolicyDeferred
 from .source_policy_registry import PolicyRegistry
@@ -72,6 +74,84 @@ class SourcePolicyGate:
             raise
         return connection
 
+    @staticmethod
+    def _availability_blocker(conn: sqlite3.Connection, policy: Policy,
+                              now: float) -> PolicyDeferred | None:
+        """Shared read-only decision for both diagnostics and real reservations.
+
+        A preflight can become stale immediately. Only reserve() is permitted
+        to grant an actual outbound HTTP request.
+        """
+        rate = policy.rate
+        row = conn.execute(
+            "SELECT next_at,cooldown_until FROM policy_state "
+            "WHERE policy_id = ?", (policy.id,)).fetchone()
+        next_at, cooldown = row if row is not None else (0.0, 0.0)
+        if cooldown > now:
+            return PolicyDeferred(policy.id, "publisher_cooldown", cooldown)
+        if next_at > now:
+            return PolicyDeferred(policy.id, "minimum_spacing", next_at)
+        count, earliest = conn.execute(
+            "SELECT COUNT(*), MIN(requested_at) FROM requests "
+            "WHERE policy_id = ? AND requested_at > ?",
+            (policy.id, now - rate["window_seconds"])).fetchone()
+        if count >= rate["limit"]:
+            return PolicyDeferred(
+                policy.id, "rolling_window_limit",
+                earliest + rate["window_seconds"] + 0.001)
+        active, lease_end = conn.execute(
+            "SELECT COUNT(*), MIN(expires_at) FROM leases "
+            "WHERE policy_id = ? AND expires_at > ?", (policy.id, now)
+        ).fetchone()
+        if active >= rate["max_concurrent"]:
+            return PolicyDeferred(policy.id, "concurrency_limit", lease_end)
+        return None
+
+    def availability(self, policy_id: str) -> dict:
+        """Read-only best-effort publisher preflight; never reserves quota.
+
+        Does not create policy tables, a database, requests or leases. Invalid
+        ledger state fails closed. The managed HTTP transport still performs
+        all exact-request rights, URL, identity and quota enforcement.
+        """
+        policy = self.registry.by_id.get(policy_id)
+        if policy is None:
+            raise PolicyViolation("registry", "unknown_publisher_policy")
+        if (not policy.restrictions["allow_automated_download"]
+                or policy.rights["internal_analysis"] != "allowed_with_attribution"):
+            return {"state": "blocked", "policy_id": policy.id,
+                    "reason": "automated_collection_not_cleared",
+                    "retry_at": None}
+        acknowledged = {
+            value.strip() for value in os.environ.get(
+                "FINANCE_SOURCE_POLICY_ACKNOWLEDGED", "").split(",")
+            if value.strip()
+        }
+        if (policy.restrictions["require_direct_network_ack"]
+                and policy.id not in acknowledged):
+            return {"state": "blocked", "policy_id": policy.id,
+                    "reason": "direct_network_origin_not_confirmed",
+                    "retry_at": None}
+        if self.state_path.is_symlink():
+            raise PolicyViolation("ledger", "symlink_state_forbidden")
+        if not self.state_path.exists():
+            return {"state": "ready", "policy_id": policy.id,
+                    "reason": None, "retry_at": None}
+        if not self.state_path.is_file():
+            raise PolicyViolation("ledger", "policy_state_unreadable")
+        uri = "file:" + quote(str(self.state_path.resolve()), safe="/") + "?mode=ro"
+        try:
+            with closing(sqlite3.connect(uri, uri=True, timeout=15)) as conn:
+                now = self.clock()
+                blocker = self._availability_blocker(conn, policy, now)
+        except sqlite3.DatabaseError as exc:
+            raise PolicyViolation("ledger", "policy_state_unreadable") from exc
+        if blocker is None:
+            return {"state": "ready", "policy_id": policy.id,
+                    "reason": None, "retry_at": None}
+        return {"state": "deferred", "policy_id": policy.id,
+                "reason": blocker.reason, "retry_at": blocker.retry_at}
+
     def _reserve_once(self, policy: Policy) -> str:
         now = self.clock()
         rate = policy.rate
@@ -84,26 +164,9 @@ class SourcePolicyGate:
             conn.execute(
                 "INSERT OR IGNORE INTO policy_state(policy_id) VALUES (?)",
                 (policy.id,))
-            next_at, cooldown, _ = conn.execute(
-                "SELECT next_at,cooldown_until,last_http_status "
-                "FROM policy_state WHERE policy_id = ?", (policy.id,)).fetchone()
-            if cooldown > now:
-                raise PolicyDeferred(policy.id, "publisher_cooldown", cooldown)
-            if next_at > now:
-                raise PolicyDeferred(policy.id, "minimum_spacing", next_at)
-            rows = conn.execute(
-                "SELECT COUNT(*), MIN(requested_at) FROM requests "
-                "WHERE policy_id = ? AND requested_at > ?",
-                (policy.id, now - rate["window_seconds"])).fetchone()
-            if rows[0] >= rate["limit"]:
-                raise PolicyDeferred(
-                    policy.id, "rolling_window_limit",
-                    rows[1] + rate["window_seconds"] + 0.001)
-            active = conn.execute(
-                "SELECT COUNT(*), MIN(expires_at) FROM leases WHERE policy_id = ?",
-                (policy.id,)).fetchone()
-            if active[0] >= rate["max_concurrent"]:
-                raise PolicyDeferred(policy.id, "concurrency_limit", active[1])
+            blocker = self._availability_blocker(conn, policy, now)
+            if blocker is not None:
+                raise blocker
             lease = uuid4().hex
             conn.execute(
                 "INSERT INTO requests(policy_id,requested_at) VALUES (?,?)",

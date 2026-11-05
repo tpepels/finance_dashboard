@@ -25,6 +25,7 @@ from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import make_engine
 from finance_dashboard.phase2_workflow import (
     run_source_acquisition_batch, source_acquisition_plan,
+    source_evidence_delta,
 )
 from finance_dashboard.phase2_role_workplan import (
     phase2_role_workplan, compact_role_workplan,
@@ -40,6 +41,7 @@ from finance_dashboard.research_runtime import evaluate_corpus
 from finance_dashboard.service import IngestionService, safe_source_failure_code
 from finance_dashboard.source_capture import SourceAcquisition, canonical_bytes
 from finance_dashboard.source_policy_registry import PolicyRegistry
+from finance_dashboard.source_policy_ledger import SourcePolicyGate
 from finance_dashboard.source_reconciliation import _readonly_engine
 from finance_dashboard.stan_research import summarize_stan_readiness
 from scripts.phase2_comparative_corpus import (
@@ -166,6 +168,20 @@ def emit_operating_report(report: dict, *, details: bool = False) -> dict:
         if not details:
             public["acquisition"]["results"] = public[
                 "acquisition"]["results"][:12]
+            public["acquisition"]["results_omitted"] = max(
+                0, len(report["acquisition"]["results"]) - 12)
+    if "source_evidence_delta" in public and not details:
+        public["source_evidence_delta"] = dict(public["source_evidence_delta"])
+        delta = public["source_evidence_delta"]
+        delta["newly_verified_omitted"] = max(0, len(delta["newly_verified"]) - 15)
+        delta["newly_verified"] = delta["newly_verified"][:15]
+        delta["no_longer_verified_omitted"] = max(
+            0, len(delta["no_longer_verified"]) - 15)
+        delta["no_longer_verified"] = delta["no_longer_verified"][:15]
+        delta["unverified_successes_omitted"] = max(
+            0, len(delta["successful_but_not_verified"]) - 15)
+        delta["successful_but_not_verified"] = delta[
+            "successful_but_not_verified"][:15]
     return public
 
 
@@ -188,6 +204,8 @@ def main(argv=None) -> int:
                         help="Plan the full candidate backlog; with --acquire, use a resumable multi-publisher journal")
     parser.add_argument("--run-dir", type=Path,
                         help="Unique out-of-archive acquisition sweep directory; required for --acquire --sweep")
+    parser.add_argument("--max-policy-wait-seconds", type=int, default=0,
+                        help="Optional bounded read-only budget preflight waiting in --sweep mode (0–14400 seconds)")
     parser.add_argument("--resume", action="store_true",
                         help="Resume and verify a previous --sweep --run-dir without repeating attempted tasks")
     parser.add_argument("--after-source", help="Resume after this exact canonical source ID")
@@ -214,6 +232,10 @@ def main(argv=None) -> int:
         parser.error("--sweep --acquire requires --run-dir")
     if args.sweep and args.after_source:
         parser.error("--after-source is incompatible with journal-based --sweep")
+    if not 0 <= args.max_policy_wait_seconds <= 14_400:
+        parser.error("--max-policy-wait-seconds must be 0–14400")
+    if args.max_policy_wait_seconds and not (args.sweep and args.acquire):
+        parser.error("--max-policy-wait-seconds requires --sweep --acquire")
     if args.acquire and args.backup_dir is None:
         parser.error("--acquire requires --backup-dir for verified recoverability")
     if args.backup_dir is not None and not args.acquire:
@@ -282,11 +304,24 @@ def main(argv=None) -> int:
                               f"{row['status']} {row.get('reason', '')}",
                               file=sys.stderr, flush=True)
 
+                    # Operational preflight never reserves a permit or
+                    # certifies a descriptive catalogue URL as the real API.
+                    # The managed HTTP client enforces exact live requests.
+                    budget_gate = SourcePolicyGate(registry=PolicyRegistry())
+                    def preflight(action):
+                        policy = action.get("publisher_policy")
+                        if not policy:
+                            return {"state": "ready", "reason": None,
+                                    "retry_at": None}
+                        return budget_gate.availability(policy)
+
                     batch = run_source_acquisition_batch(
                         report["source_coverage"]["selected_actions"],
                         service.refresh, max_attempts=args.max_attempts,
                         stop_scope="publisher" if args.sweep else "global",
-                        journal=journal, progress=progress)
+                        journal=journal, progress=progress,
+                        policy_preflight=preflight if args.sweep else None,
+                        max_wait_seconds=args.max_policy_wait_seconds)
                 finally:
                     router.close()
                     if write_engine is not None:
@@ -310,6 +345,8 @@ def main(argv=None) -> int:
             report["source_originals_modified"] = archive_changed
             report["publisher_requests_made"] = None
             report["acquisition"] = batch
+            report["source_evidence_delta"] = source_evidence_delta(
+                baseline.source_proof, refreshed.source_proof, batch)
             if journal_summary is not None:
                 report["sweep_journal"] = journal_summary
                 report["next_run_requires_explicit_resume_or_new_journal"] = True

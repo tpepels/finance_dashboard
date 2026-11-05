@@ -64,6 +64,66 @@ class PolicyHarness(unittest.TestCase):
             return client.request(method, url, headers=headers)
 
 
+class PolicyPreflightTests(PolicyHarness):
+    def test_uninitialized_preflight_never_creates_a_ledger(self):
+        gate = self.gate()
+        result = gate.availability("fred-v1")
+        self.assertEqual(result["state"], "ready")
+        self.assertFalse(self.state.exists())
+        self.assertFalse(self.state.parent.exists())
+
+    def test_exact_same_rolling_window_and_minimum_spacing_in_preflight(self):
+        self.registry.by_id["fred-v1"].rate["min_spacing_seconds"] = 4
+        gate = self.gate()
+        policy = self.registry.by_id["fred-v1"]
+        lease = gate.reserve(policy)
+        gate.release(lease, policy.id)
+        before = self.state.read_bytes()
+        wait = gate.availability("fred-v1")
+        self.assertEqual(wait["state"], "deferred")
+        self.assertEqual(wait["reason"], "minimum_spacing")
+        self.assertEqual(wait["retry_at"], self.clock.now + 4)
+        self.assertEqual(self.state.read_bytes(), before)
+        self.clock.advance(5)
+        self.assertEqual(gate.availability("fred-v1")["state"], "ready")
+        lease = gate.reserve(policy)
+        gate.release(lease, policy.id)
+        self.clock.advance(5)
+        self.assertEqual(gate.availability("fred-v1")["reason"],
+                         "rolling_window_limit")
+        self.clock.advance(61)
+        self.assertEqual(gate.availability("fred-v1")["state"], "ready")
+
+    def test_policy_cooldown_is_visible_but_never_cleared_by_preflight(self):
+        gate = self.gate()
+        policy = self.registry.by_id["fred-v1"]
+        lease = gate.reserve(policy)
+        gate.release(lease, policy.id, status=429)
+        now = self.clock.now
+        outcome = gate.availability("fred-v1")
+        self.assertEqual(outcome["state"], "deferred")
+        self.assertEqual(outcome["reason"], "publisher_cooldown")
+        self.assertEqual(outcome["retry_at"], now + 15)
+        self.clock.advance(16)
+        self.assertEqual(gate.availability("fred-v1")["state"], "ready")
+
+    def test_missing_direct_origin_acknowledgement_is_blocked_without_attempt(self):
+        with patch.dict("os.environ", {"FINANCE_SOURCE_POLICY_ACKNOWLEDGED": ""}):
+            outcome = self.gate().availability("oecd-sdmx")
+            self.assertEqual(outcome["state"], "blocked")
+            self.assertEqual(outcome["reason"],
+                             "direct_network_origin_not_confirmed")
+        self.assertFalse(self.state.exists())
+
+    def test_unknown_or_unreadable_ledger_fails_closed(self):
+        with self.assertRaises(PolicyViolation):
+            self.gate().availability("unregistered-publisher")
+        self.state.parent.mkdir()
+        self.state.write_text("invalid sqlite database")
+        with self.assertRaises(PolicyViolation):
+            self.gate().availability("fred-v1")
+
+
 class PolicyRegistryTests(PolicyHarness):
     def test_catalog_classification_and_exact_scope(self):
         self.assertGreaterEqual(len(self.registry.by_id), 15)

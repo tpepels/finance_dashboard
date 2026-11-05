@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 import re
+import time
 
 import httpx
 
@@ -37,6 +38,61 @@ def publisher_stop_reason(error: BaseException) -> str | None:
               or int(m.group(1)) >= 500):
         return safe
     return None
+
+
+def independently_reconciled_original(proof: dict | None) -> bool:
+    """Exactly the same source-level gate for planning and run comparisons."""
+    return bool(
+        proof and proof.get("source_values_match") is True
+        and proof.get("source_covers_all_stored_periods") is True
+        and (proof.get("stored_periods") or 0) > 0
+    )
+
+
+def source_evidence_delta(before: dict, after: dict, batch: dict) -> dict:
+    """Compare independently selected original proofs, not ingest statuses."""
+    baseline = {row["series_id"]: row for row in before["series"]}
+    latest = {row["series_id"]: row for row in after["series"]}
+    if len(baseline) != len(before["series"]) or len(latest) != len(after["series"]):
+        raise ValueError("duplicate_reconciled_source_id")
+    verified_before = {
+        sid for sid, row in baseline.items()
+        if independently_reconciled_original(row)
+    }
+    verified_after = {
+        sid for sid, row in latest.items()
+        if independently_reconciled_original(row)
+    }
+    success = sorted({
+        row["series_id"] for row in batch["results"]
+        if row["status"] == "success"
+    })
+    incomplete = []
+    for sid in success:
+        proof = latest.get(sid, {})
+        if sid in verified_after:
+            continue
+        incomplete.append({
+            "series_id": sid,
+            "failure_code": proof.get("failure_code") or
+                            "current_original_not_fully_reconciled",
+            "original_values_match": proof.get("source_values_match") is True,
+            "all_stored_periods_covered":
+                proof.get("source_covers_all_stored_periods") is True,
+        })
+    return {
+        "verified_before": len(verified_before),
+        "verified_after": len(verified_after),
+        "newly_verified": sorted(verified_after - verified_before),
+        "newly_verified_count": len(verified_after - verified_before),
+        "no_longer_verified": sorted(verified_before - verified_after),
+        "no_longer_verified_count": len(verified_before - verified_after),
+        "ingestion_success_count": len(success),
+        "successful_but_not_verified_count": len(incomplete),
+        "successful_but_not_verified": incomplete,
+        "proofs_recomputed_from_original_archives": True,
+        "first_publication_verified": False,
+    }
 
 
 def source_acquisition_plan(document: dict, registry: list[dict],
@@ -89,11 +145,7 @@ def source_acquisition_plan(document: dict, registry: list[dict],
         if not item:
             raise ValueError("unregistered_research_source")
         proof = proofs.get(sid)
-        confirmed = bool(
-            proof and proof.get("source_values_match") is True
-            and proof.get("source_covers_all_stored_periods") is True
-            and (proof.get("stored_periods") or 0) > 0
-        )
+        confirmed = independently_reconciled_original(proof)
         provider = get_provider(item["provider"])
         policy_id = None
         policy_blocker = None
@@ -239,107 +291,166 @@ def _publisher_interruption_scope(error: BaseException, policy_id: str | None,
 def run_source_acquisition_batch(selected_actions: list[dict], refresh,
                                  *, max_attempts: int | None = None,
                                  stop_scope: str = "global",
-                                 journal=None, progress=None) -> dict:
-    """Execute one bounded policy-compliant batch using canonical ingestion.
+                                 journal=None, progress=None,
+                                 policy_preflight=None, max_wait_seconds: float = 0,
+                                 clock=None, sleep=None) -> dict:
+    """One canonical coordinator for bounded, policy-respecting source tasks.
 
-    The managed transport is the only actual request quota enforcer. When
-    stop_scope='publisher', a publisher-specific stop only allows subsequent
-    requests to *verified other publishers*. If the upstream policy origin
-    cannot be proven, fail closed and stop the whole batch. Completed/failed
-    journal tasks are not retried, and unknown in-flight attempts are held
-    for manual verification on resume.
+    A preflight never authorizes an HTTP request. It only prevents avoidable
+    publisher quota failures *before* writing an immutable journal start.
+    Optional bounded waits defer other publishers first; the actual HTTP
+    policy gateway still reserves and verifies each individual request.
+    Neither completed failures nor interrupted journal attempts are retried.
     """
     limit = 400 if stop_scope == "publisher" else 120
     budget = len(selected_actions) if max_attempts is None else max_attempts
-    if (not isinstance(budget, int) or budget < 0 or budget > limit
+    if (type(budget) is not int or budget < 0 or budget > limit
             or stop_scope not in {"global", "publisher"}
-            or (journal is not None and stop_scope != "publisher")):
+            or (journal is not None and stop_scope != "publisher")
+            or not isinstance(max_wait_seconds, (int, float))
+            or not 0 <= max_wait_seconds <= 14_400
+            or (max_wait_seconds and policy_preflight is None)):
         raise ValueError("invalid_phase2_acquisition_budget")
     if len({a["id"] for a in selected_actions}) != len(selected_actions):
         raise ValueError("duplicate_canonical_acquisition_id")
     if any(a.get("state") != "acquisition_candidate" for a in selected_actions):
         raise ValueError("non_acquisition_source_scheduled")
-    results = []
+    get_time = clock or time.time
+    sleep_for = sleep or time.sleep
+    deadline = get_time() + max_wait_seconds
     stopped_policies = {}
     stopped_provider_dependencies = {}
     discovered_upstreams = {}
     global_stop = None
     attempted = 0
-    for index, action in enumerate(selected_actions, start=1):
-        sid = action["id"]
-        policy_id = action.get("publisher_policy")
-        previous = journal.already_attempted(sid) if journal is not None else None
-        if previous is not None:
-            row = {"series_id": sid, "status": "deferred_prior_attempt",
-                   "previous_status": previous["status"],
-                   "previous_reason": previous.get("reason")}
-            # The journal records fixed failure codes but historically did
-            # not record verified upstream publisher IDs. Do not guess the
-            # affected publisher from a possibly different catalog source URL:
-            # the durable transport ledger still enforces its cooldown.
-        elif global_stop:
-            row = {"series_id": sid, "status": "deferred_publisher_stop",
-                   "reason": global_stop}
-        elif policy_id in stopped_policies:
-            row = {"series_id": sid, "status": "deferred_publisher_stop",
-                   "reason": stopped_policies[policy_id]}
-        elif action.get("provider") in stopped_provider_dependencies:
-            row = {"series_id": sid, "status": "deferred_publisher_stop",
-                   "reason": stopped_provider_dependencies[action["provider"]]}
-        elif attempted >= budget:
-            row = {"series_id": sid, "status": "deferred_budget"}
-        else:
-            # The start event must be durable before *any* possible request.
-            if journal is not None:
-                journal.mark_started(sid)
-            attempted += 1
-            try:
-                record = refresh(sid, full=True)
-                if record.get("status") != "success":
-                    raise ValueError("unexpected_ingestion_status")
-                row = {"series_id": sid, "status": "success",
-                       "received": record.get("received", 0),
-                       "versions_added": record.get("versions_added", 0)}
-                if journal is not None:
-                    journal.mark_result(
-                        sid, status="success", received=row["received"],
-                        versions_added=row["versions_added"])
-            except Exception as error:
-                reason = safe_source_failure_code(error)
-                row = {"series_id": sid, "status": "failed", "reason": reason}
-                if journal is not None:
-                    journal.mark_result(sid, status="failed", reason=reason)
-                stopped = publisher_stop_reason(error)
-                if stopped:
-                    if stop_scope == "global":
-                        global_stop = stopped
-                    else:
-                        confirmed_policy = _publisher_interruption_scope(
-                            error, policy_id)
-                        if confirmed_policy is None:
-                            global_stop = stopped
-                        else:
-                            stopped_policies[confirmed_policy] = stopped
-                            if confirmed_policy != policy_id:
-                                # The original catalogue URL describes the
-                                # publication, but this adapter uses a verified
-                                # different API origin. Avoid repeating the
-                                # same denied dependency through this adapter.
-                                if action.get("provider"):
-                                    stopped_provider_dependencies[
-                                        action["provider"]] = stopped
-                                discovered_upstreams[sid] = {
-                                    "declared_policy": policy_id,
-                                    "verified_upstream_policy": confirmed_policy,
-                                    "stop_reason": stopped,
-                                }
-        results.append(row)
-        if progress is not None and row["status"] not in {
-                "deferred_prior_attempt", "deferred_publisher_stop",
-                "deferred_budget"}:
-            progress(index, len(selected_actions), row)
+    waiting_seconds = 0.0
+    rows = {}
+    pending = list(enumerate(selected_actions))
+    while pending:
+        deferred = []
+        for index, action in pending:
+            sid = action["id"]
+            policy_id = action.get("publisher_policy")
+            previous = journal.already_attempted(sid) if journal is not None else None
+            if previous is not None:
+                row = {"series_id": sid, "status": "deferred_prior_attempt",
+                       "previous_status": previous["status"],
+                       "previous_reason": previous.get("reason")}
+                # Legacy completed journal events have only a safe failure
+                # code, not a verified actual upstream ID. The HTTP policy
+                # gateway, not this inferred catalog ID, guards future work.
+            elif global_stop:
+                row = {"series_id": sid, "status": "deferred_publisher_stop",
+                       "reason": global_stop}
+            elif policy_id in stopped_policies:
+                row = {"series_id": sid, "status": "deferred_publisher_stop",
+                       "reason": stopped_policies[policy_id]}
+            elif action.get("provider") in stopped_provider_dependencies:
+                row = {"series_id": sid, "status": "deferred_publisher_stop",
+                       "reason": stopped_provider_dependencies[action["provider"]]}
+            elif attempted >= budget:
+                row = {"series_id": sid, "status": "deferred_budget"}
+            else:
+                availability = (
+                    policy_preflight(action) if policy_preflight is not None
+                    else {"state": "ready"}
+                )
+                state = availability["state"]
+                if state == "deferred":
+                    retry_at = availability.get("retry_at")
+                    if not isinstance(retry_at, (float, int)):
+                        raise ValueError("invalid_policy_preflight_retry")
+                    deferred.append((index, action, retry_at,
+                                     availability.get("reason")))
+                    continue
+                if state == "blocked":
+                    row = {"series_id": sid,
+                           "status": "deferred_policy_blocked",
+                           "reason": availability.get("reason")}
+                elif state != "ready":
+                    raise ValueError("invalid_policy_preflight_state")
+                else:
+                    # A durable start must precede the first possible request.
+                    if journal is not None:
+                        journal.mark_started(sid)
+                    attempted += 1
+                    try:
+                        record = refresh(sid, full=True)
+                        if record.get("status") != "success":
+                            raise ValueError("unexpected_ingestion_status")
+                        row = {"series_id": sid, "status": "success",
+                               "received": record.get("received", 0),
+                               "versions_added": record.get("versions_added", 0)}
+                        if journal is not None:
+                            journal.mark_result(
+                                sid, status="success", received=row["received"],
+                                versions_added=row["versions_added"])
+                    except Exception as error:
+                        reason = safe_source_failure_code(error)
+                        row = {"series_id": sid, "status": "failed",
+                               "reason": reason}
+                        if journal is not None:
+                            journal.mark_result(sid, status="failed",
+                                                reason=reason)
+                        stopped = publisher_stop_reason(error)
+                        if stopped:
+                            if stop_scope == "global":
+                                global_stop = stopped
+                            else:
+                                confirmed = _publisher_interruption_scope(
+                                    error, policy_id)
+                                if confirmed is None:
+                                    global_stop = stopped
+                                else:
+                                    stopped_policies[confirmed] = stopped
+                                    if confirmed != policy_id:
+                                        if action.get("provider"):
+                                            stopped_provider_dependencies[
+                                                action["provider"]] = stopped
+                                        discovered_upstreams[sid] = {
+                                            "declared_policy": policy_id,
+                                            "verified_upstream_policy": confirmed,
+                                            "stop_reason": stopped,
+                                        }
+            rows[index] = row
+            if progress is not None and row["status"] in {"success", "failed"}:
+                progress(index + 1, len(selected_actions), row)
+
+        if not deferred:
+            break
+        if global_stop or attempted >= budget:
+            for index, action, _, reason in deferred:
+                rows[index] = {
+                    "series_id": action["id"],
+                    "status": "deferred_publisher_stop" if global_stop
+                              else "deferred_budget",
+                    "reason": global_stop or reason,
+                }
+            break
+        # Freshly visited publishers may have become available while other
+        # independent sources were acquired. Re-check them before sleeping.
+        retry = min(item[2] for item in deferred)
+        remaining = deadline - get_time()
+        if max_wait_seconds <= 0 or retry > deadline or remaining <= 0:
+            for index, action, when, reason in deferred:
+                rows[index] = {
+                    "series_id": action["id"],
+                    "status": "deferred_policy_preflight",
+                    "reason": reason,
+                    "retry_at": when,
+                }
+            break
+        seconds = min(max(0.05, retry - get_time()), remaining)
+        sleep_for(seconds)
+        waiting_seconds += seconds
+        pending = [(index, action) for index, action, _, _ in deferred]
+    results = [rows[i] for i in range(len(selected_actions))]
     reason = global_stop or (
         next(iter(stopped_policies.values())) if stopped_policies else None)
+    preflight_blocked = sum(x["status"] == "deferred_policy_blocked"
+                            for x in results)
+    preflight_deferred = sum(x["status"] == "deferred_policy_preflight"
+                             for x in results)
     return {
         "phase": "phase2", "operation": "bounded_canonical_source_acquisition",
         "selected_sources": len(selected_actions),
@@ -347,6 +458,12 @@ def run_source_acquisition_batch(selected_actions: list[dict], refresh,
         "succeeded": sum(x["status"] == "success" for x in results),
         "failed": sum(x["status"] == "failed" for x in results),
         "deferred": sum(x["status"].startswith("deferred_") for x in results),
+        "policy_preflight_blocked": preflight_blocked,
+        "policy_preflight_deferred": preflight_deferred,
+        "policy_wait_seconds": round(waiting_seconds, 3),
+        "next_policy_retry_at": min(
+            (x["retry_at"] for x in results
+             if x["status"] == "deferred_policy_preflight"), default=None),
         "stop_category": reason,
         "global_stop_category": global_stop,
         "publisher_stop_categories": dict(sorted(stopped_policies.items())),
@@ -355,6 +472,7 @@ def run_source_acquisition_batch(selected_actions: list[dict], refresh,
             for sid, evidence in sorted(discovered_upstreams.items())
         ],
         "results": results,
+        "no_automatic_failed_source_retries": True,
         "no_automatic_retries": True,
         "publisher_policy_gateway_enforced_by_provider": True,
         "scientific_analysis_certified": False,

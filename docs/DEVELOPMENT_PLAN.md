@@ -1,5 +1,77 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 — publisher-budget preflight and independent source-proof delta (2026-11-05)
+
+The second live sweep resumed 45 source tasks: 37 ingestion successes and
+8 policy-deferrals, raising the cumulative journal to 74 tried sources
+(61 success, 13 failed, zero unresolved starts). Verified original histories
+increased from 125 to 140, not by 37: ingestion success and source
+reconciliation remain distinct. 109 scalar candidates and 30 missing OECD
+STAN country archives remain. Scientifically, 32 analyses are still blocked,
+3 conditional and none accepted. All publisher blocks and first-publication
+checks remain binding.
+
+### Shared, non-mutating publisher availability
+
+The durable `SourcePolicyGate` now exposes an **observational**
+`availability(policy_id)` decision. The same availability calculation is
+used by the actual HTTP reservation and the read-only preflight: publisher
+cooldowns, minimum spacing, rolling requests and concurrency leases are
+evaluated against the existing canonical ledger and policy registry. A
+read-only preflight never creates or modifies the ledger, allocates a request
+permit, changes a publisher rule, or circumvents the direct-network origin
+acknowledgement. The transport still validates every real request atomically.
+A newly required direct-route acknowledgement is reported as blocked, not
+invented. A missing or corrupt existing ledger cannot authorize traffic.
+
+The sweep now checks that publisher availability **before** recording a
+source's irreversible journal start. Sources deferred at preflight create
+no new start/result event and can therefore be retried by a later explicit
+`--resume` after the durable publisher limit permits them. Previously
+completed failed tasks or interrupted journal starts retain the strict
+no-automatic-repeat behavior. The preflight is advisory: a multi-request
+source may still be deferred by the authoritative gateway in the middle of
+a fetch; that attempted task remains recorded in the journal and requires
+a new explicit sweep after investigation.
+
+`--max-policy-wait-seconds` optionally allows the sweep to finish other
+eligible publisher tasks first, then wait **up to the requested bound**
+for deferred canonical publisher budgets before rechecking their
+availability. Without this option the sweep remains nonblocking. The
+per-run task budget and rolling HTTP windows remain independent.
+Unknown/mismatched publisher identity still stops traffic to protect
+origin-specific rules.
+
+### Evidence reconciliation delta
+
+The operating review now compares *independently verified* original-history
+IDs before and after acquisition, using exactly the source gate employed by
+the canonical research planner. It reports newly verified histories,
+previously verified histories that no longer reconcile, and ingestions
+reported successful but still failing original-source verification, along
+with fixed failure codes. This catches source revisions, provenance loss
+and incomplete historical coverage without fabricating accepted research
+analyses. Output remains compact with explicit omitted-row counts.
+
+To resume the existing immutable journal and permit bounded, policy-led
+waiting after deployment, run:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+  --evidence-dir /data/source-evidence \
+  --sweep --acquire --resume \
+  --run-dir /data/phase2-sweeps/full-20261105 \
+  --backup-dir /data/phase2-backups \
+  --max-attempts 200 --max-policy-wait-seconds 3600
+```
+
+An active publisher limit longer than the configured wait bound is left
+deferred without requesting its source. Already-attempted journal failures
+are never automatically retried. To start a new explicitly authorized
+sweep after those are investigated, use a fresh unique run directory.
+Do not delete prior evidence, the old journal, or the durable ledger.
+
+
 ## Phase 2 — production sweep result and upstream-policy provenance fix (2026-11-05)
 
 The first live scalar sweep attempted 29 of 144 eligible source tasks:
