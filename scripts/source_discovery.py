@@ -1,3 +1,4 @@
+from finance_dashboard.source_policy import managed_get
 """Bounded provider-protocol discovery, not production ingestion."""
 import json
 import httpx
@@ -16,7 +17,7 @@ URLS = {
 }
 for label,url in URLS.items():
     try:
-        response=httpx.get(url,timeout=10,follow_redirects=True)
+        response=managed_get(url,timeout=10,follow_redirects=True)
         result={"source":label,"status":response.status_code,"type":response.headers.get("content-type"),"bytes":len(response.content)}
         if label=="imf_mapper_debt" and response.status_code==200:
             payload=response.json()
