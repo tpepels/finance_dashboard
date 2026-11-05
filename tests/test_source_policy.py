@@ -104,6 +104,23 @@ class PolicyRegistryTests(PolicyHarness):
             self.registry.require_redistribution_clearance(
                 "https://www.ishares.com/path/latest-holdings.csv")
 
+    def test_unmanaged_injected_http_client_rejected(self):
+        from finance_dashboard.source_policy import require_managed_client
+        from finance_dashboard.providers import ProviderRouter
+        with httpx.Client() as unmanaged:
+            with self.assertRaises(PolicyViolation) as raised:
+                require_managed_client(unmanaged)
+            self.assertEqual(raised.exception.reason, "unmanaged_injected_client")
+            with self.assertRaises(PolicyViolation):
+                ProviderRouter(client=unmanaged)
+        with httpx.Client(transport=httpx.MockTransport(
+                lambda request: httpx.Response(200))) as test_client:
+            self.assertIs(require_managed_client(test_client), test_client)
+        with managed_client(policy_gate=self.gate(),
+                            transport=httpx.MockTransport(
+                                lambda request: httpx.Response(200))) as managed:
+            self.assertIs(require_managed_client(managed), managed)
+
     def test_restricted_collection_and_method_denied(self):
         with self.assertRaises(PolicyViolation) as ex:
             self.managed_request(
