@@ -18,7 +18,7 @@ from pathlib import Path
 import time
 
 import httpx
-from .source_policy import managed_client
+from .source_policy import managed_client, PolicyDeferred, PolicyViolation
 
 FRED_OBSERVATIONS = "https://api.stlouisfed.org/fred/series/observations"
 FRED_VINTAGE_DATES = "https://api.stlouisfed.org/fred/series/vintagedates"
@@ -149,6 +149,10 @@ def _snapshot_failure_diagnostic(exc: Exception) -> dict:
     Never return an HTTP exception's URL, response body, query parameters,
     or free-form error text: FRED API keys are part of its request URL.
     """
+    if isinstance(exc, PolicyDeferred):
+        return {"reason": "source_policy_deferred"}
+    if isinstance(exc, PolicyViolation):
+        return {"reason": "source_policy_denied"}
     if isinstance(exc, httpx.HTTPStatusError):
         return _safe_http_diagnostic(exc.response)
     if isinstance(exc, httpx.HTTPError):
@@ -423,10 +427,9 @@ def capture_previous_month(root: Path = ROOT, *,
             try:
                 fetch_snapshot(sid,asof,api_key=key,client=source,root=root)
                 captured+=1
-            except (httpx.HTTPError,ValueError,OSError,KeyError):
+            except (httpx.HTTPError,ValueError,OSError,KeyError,
+                    PolicyDeferred):
                 errors+=1
-            if owns:
-                time.sleep(.2)
     finally:
         if owns:
             source.close()
@@ -436,7 +439,7 @@ def capture_previous_month(root: Path = ROOT, *,
 
 def backfill_batch(start: date, end: date, series_ids: list[str], *,
                    api_key: str, client: httpx.Client, root: Path = ROOT,
-                   max_requests: int = 180, pause_seconds: float = 0.2,
+                   max_requests: int = 180,
                    first_available: dict[str, date] | None = None,
                    skip_failed: set[tuple[str, date]] | None = None) -> dict:
     """Resume full-range publication-vintage ingestion in bounded API batches.
@@ -448,7 +451,7 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
         or len(series_ids) != len(set(series_ids))
         or any(sid not in SOURCES for sid in series_ids)):
         raise VintageError("Invalid ALFRED historical backfill range or sources")
-    if not 1 <= max_requests <= 180 or pause_seconds < 0:
+    if not 1 <= max_requests <= 180:
         raise VintageError("ALFRED request budget must be between 1 and 180")
     if first_available is not None and set(first_available) != set(series_ids):
         raise VintageError("ALFRED publication bounds must cover every requested series")
@@ -473,20 +476,21 @@ def backfill_batch(start: date, end: date, series_ids: list[str], *,
         try:
             fetch_snapshot(sid, day, api_key=api_key, client=client, root=root)
             fetched += 1
-        except (VintageError, httpx.HTTPError, OSError, ValueError, KeyError) as exc:
+        except (VintageError, httpx.HTTPError, OSError, ValueError, KeyError,
+                PolicyDeferred) as exc:
             # A failing provider request must not dump a secret-bearing URL.
             failure = {"series_id": sid, "asof": day.isoformat()}
             failure.update(_snapshot_failure_diagnostic(exc))
-            if isinstance(exc, httpx.HTTPStatusError):
-                # 400/401/403 imply bad configuration or request schema;
-                # 429 means immediate retry would worsen rate limiting.
-                if exc.response.status_code in (400, 401, 403, 429):
+            if isinstance(exc, (PolicyDeferred, PolicyViolation)):
+                halted = failure["reason"]
+            elif isinstance(exc, httpx.HTTPStatusError):
+                # Configuration or publisher backpressure requires an explicit
+                # later retry; the central gate retains any 429 cooldown.
+                if exc.response.status_code in (400, 401, 403, 429, 503):
                     halted = failure["reason"]
             failures.append(failure)
             if halted:
                 break
-        if pause_seconds:
-            time.sleep(pause_seconds)
     outstanding = [(sid, day) for sid, day in periods
                    if read_snapshot(root, sid, day) is None]
     return {
@@ -566,7 +570,6 @@ def main() -> int:
                     failed += 1
                     # Never print provider request URLs: they contain the API key.
                     print(f"{sid} {day}: unavailable ({type(exc).__name__})")
-                time.sleep(0.2)
     print(f"ALFRED snapshots: stored/reused={ok}, failed={failed}")
     return 1 if failed else 0
 
