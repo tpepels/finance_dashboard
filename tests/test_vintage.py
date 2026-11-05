@@ -257,7 +257,7 @@ class VintageTests(unittest.TestCase):
             with httpx.Client(transport=httpx.MockTransport(handler)) as client:
                 batch = backfill_batch(date(2020,1,1),date(2024,12,31),
                     list(SOURCES),api_key="a" * 32,client=client,root=Path(tmp),
-                    max_requests=180,pause_seconds=0)
+                    max_requests=180)
             # All requested vintages remain missing after a rate-limit halt.
             # This must scale with the registered source set; Phase 2 added
             # several ALFRED sources, so a fixed old 3-series count is wrong.
@@ -287,11 +287,11 @@ class VintageTests(unittest.TestCase):
             with httpx.Client(transport=httpx.MockTransport(handler)) as client:
                 first = backfill_batch(date(2020,1,1), date(2020,2,29),
                     ["T10Y3M","SAHMREALTIME"],api_key="a"*32,client=client,
-                    root=Path(tmp),max_requests=2,pause_seconds=0)
+                    root=Path(tmp),max_requests=2)
                 excluded = {("SAHMREALTIME", date(2020,1,31))}
                 second = backfill_batch(date(2020,1,1), date(2020,2,29),
                     ["T10Y3M","SAHMREALTIME"],api_key="a"*32,client=client,
-                    root=Path(tmp),max_requests=2,pause_seconds=0,
+                    root=Path(tmp),max_requests=2,
                     skip_failed=excluded)
             self.assertEqual(first["failed_now"][0]["reason"],"fred_server_error")
             self.assertNotIn("z"*32,json.dumps(first))
@@ -356,13 +356,13 @@ class VintageTests(unittest.TestCase):
             with httpx.Client(transport=httpx.MockTransport(handler)) as client:
                 first=backfill_batch(date(2020,1,1),date(2020,3,31),
                     ["T10Y3M"],api_key="private",client=client,root=root,
-                    max_requests=2,pause_seconds=0)
+                    max_requests=2)
                 self.assertEqual(first["missing_after_run"],1)
                 self.assertEqual(first["downloaded_now"],2)
                 self.assertEqual(first["next_missing"]["asof"],"2020-03-31")
                 second=backfill_batch(date(2020,1,1),date(2020,3,31),
                     ["T10Y3M"],api_key="private",client=client,root=root,
-                    max_requests=2,pause_seconds=0)
+                    max_requests=2)
                 self.assertEqual(second["already_cached_before_run"],2)
                 self.assertEqual(second["downloaded_now"],1)
                 self.assertEqual(second["status"],"complete")
@@ -371,7 +371,7 @@ class VintageTests(unittest.TestCase):
                 with self.assertRaises(VintageError):
                     backfill_batch(date(2020,1,1),date(2020,3,31),
                         ["T10Y3M"],api_key="fake",client=client,root=root,
-                        max_requests=181,pause_seconds=0)
+                        max_requests=181)
 
     def test_first_real_publication_bounds_skip_unavailable_snapshots(self):
         calls = []
@@ -392,7 +392,7 @@ class VintageTests(unittest.TestCase):
                     ["T10Y3M"], api_key="a" * 32, client=client)
                 result = backfill_batch(date(2020,1,1), date(2020,3,31),
                     ["T10Y3M"], api_key="a" * 32, client=client,
-                    root=root, max_requests=4, pause_seconds=0,
+                    root=root, max_requests=4,
                     first_available=bounds)
             self.assertFalse((root/"T10Y3M"/"2020-01-31.json").exists())
             self.assertEqual(result["prepublication_excluded"], 1)
