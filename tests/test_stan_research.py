@@ -12,7 +12,7 @@ from finance_dashboard.stan_originals import (
     stan_source_request, store_stan_original,
 )
 from finance_dashboard.stan_research import audit_stan_originals, audit_stan_scope
-from scripts.phase2_stan_sources import acquire, probe_surplus
+from scripts.phase2_stan_sources import acquire, probe_surplus, brief_report, emit_report
 
 
 HEADER = ("DATAFLOW,FREQ,REF_AREA,ACTIVITY,MEASURE,PRICE_BASE,UNIT_MEASURE,"
@@ -192,6 +192,65 @@ class StanPublisherDiscoveryTests(unittest.TestCase):
             self.assertEqual(result["last_country_requested"], "DEU")
             self.assertEqual(archive.read_bytes(), portuguese)
             self.assertEqual(result["source_evidence"]["country_count"], 2)
+
+
+class StanBriefOutputTests(unittest.TestCase):
+    def test_read_only_audit_brief_keeps_matched_counts_and_residuals(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            store_stan_original(original(NET_FIVE), country="PRT",
+                                start_year=1970, root=root, measures=NET_SELECTION)
+            full = audit_stan_originals(root, countries=("PRT",))
+            short = brief_report(full)
+            self.assertEqual(short["operation"], "audit")
+            scope = short["countries"][0]["scopes"][0]
+            self.assertEqual(scope["industry_years"], 1)
+            self.assertEqual(scope["core_four_overlap"], 1)
+            net = scope["identities"]["net_surplus_and_mixed_income"]
+            self.assertEqual(net["matched"], 1)
+            self.assertEqual(net["outside_precision"], 0)
+            self.assertNotIn("core_four_overlap_by_year", str(short))
+            self.assertFalse(short["scientific_analysis_certified"])
+
+    def test_brief_acquisition_keeps_failure_and_cursor_information(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            requests = []
+            def respondent(request):
+                requests.append(str(request.url))
+                return httpx.Response(429, content=b"Do not print secret upstream body")
+            with httpx.Client(transport=httpx.MockTransport(respondent)) as client:
+                full = acquire(client, root, countries=("PRT", "DEU"),
+                               start_year=1970, max_requests=1, quiet=True)
+            short = brief_report(full)
+            self.assertEqual(short["operation"], "acquire")
+            self.assertEqual(short["requests"], 1)
+            self.assertTrue(short["backpressure"])
+            self.assertEqual(short["statuses"]["deferred_publisher_backpressure"], 1)
+            self.assertEqual(short["last_country_requested"], "PRT")
+            self.assertNotIn("Do not print", str(short))
+
+    def test_surplus_brief_and_single_line_emission(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        import json
+        payload = {
+            "surplus_probe": {
+                "country": "PRT", "stopped_on_publisher_backpressure": False,
+                "checks": [{"candidate_measure": "B2N_B3N",
+                            "state": "validated_native_csv", "http_status": 200}],
+            },
+            "selected_observed_surplus_measure": "B2N_B3N",
+        }
+        buffer = StringIO()
+        with redirect_stdout(buffer):
+            emit_report(payload, brief=True)
+        self.assertEqual(len(buffer.getvalue().splitlines()), 1)
+        concise = json.loads(buffer.getvalue())
+        self.assertEqual(concise["selected"], "B2N_B3N")
+        self.assertEqual(concise["checks"][0]["http"], 200)
+        self.assertLess(len(buffer.getvalue()), 300)
+
 
 
 if __name__ == "__main__":
