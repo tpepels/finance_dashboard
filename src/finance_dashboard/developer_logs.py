@@ -21,11 +21,13 @@ _TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
 _SCOPES = frozenset(("sync", "macro", "markets", "fx", "alfred",
                      "sec", "earnings", "backup", "system"))
 _EVENTS = frozenset(("queued", "started", "finished", "stage_finished",
-                     "source_failed", "collector_failed", "cancel_requested",
+                     "source_failed", "source_deferred", "collector_failed",
+                     "cancel_requested",
                      "scheduled_warning"))
 _LEVELS = frozenset(("info", "warning", "error"))
 _STATUSES = frozenset(("queued", "waiting", "running", "complete", "partial",
-                       "failed", "blocked", "cancelled", "interrupted", "skipped"))
+                       "failed", "deferred", "blocked", "cancelled",
+                       "interrupted", "skipped"))
 
 
 def _path() -> Path:
