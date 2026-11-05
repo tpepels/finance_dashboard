@@ -30,6 +30,7 @@ from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCE
 
 from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .source_coverage import build_coverage
+from .source_policy import policy_summary
 from .research_corpus import load_research_corpus, validate_research_corpus
 from .research_runtime import evaluate_corpus
 from .icio import read_icio_evidence
@@ -304,6 +305,11 @@ def create_app(engine=None) -> FastAPI:
             "events": read_events(limit=400),
             "retention": "Latest 400 structured events; latest 8 job summaries",
         }
+
+    @app.get("/api/source-policy")
+    def source_policy_status():
+        """Canonical publisher restrictions and current safe, redacted cooldowns."""
+        return policy_summary()
 
     @app.get("/api/source-coverage")
     def source_coverage():
