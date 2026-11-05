@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .providers import ProviderRouter
+from .provider_registry import get_provider
 from .source_policy import PolicyDeferred, PolicyViolation
 from .catalog import load_documents
 from .database import IngestionRun, ObservationVersion, SeriesRow, now_utc
@@ -111,13 +112,10 @@ class IngestionService:
         # These publishers deliver complete snapshots (some cached per run).
         # Reconcile every delivered period: old estimates can change outside the
         # ordinary overlap, and filtering would save no upstream requests.
-        complete_snapshot = definition["provider"] in {
-            "WID", "OECD_TIVA", "FRENCH_RETURNS", "SWINKELS_RETURNS", "GLOBAL_MARKET_RETURNS",
-            "SHILLER", "WORLD_BANK_PINK_SHEET", "IMF_DATAMAPPER", "BEA_Q",
-            "SIBLIS_WORLD_PE", "SIBLIS_WORLD_EARNINGS_YIELD", "GOLD_MSCI_CORR",
-            "FED_G17_DIFFUSION", "OFR_FSI", "BOJ_TSS", "OECD_CLI", "BIS_TOTAL_CREDIT", "IMF_BOP_IIP", "FDIC_BANKFIND",
-        }
-        complete_snapshot = complete_snapshot or definition["provider"] == "FRED" and definition["source_key"] in {"NFCI", "ANFCI"}
+        registration = get_provider(definition["provider"])
+        if registration is None:
+            raise ValueError("Mapped provider missing registration")
+        complete_snapshot = registration.requires_full_refresh(definition["source_key"])
         start = None if full or complete_snapshot or last_date is None else last_date - timedelta(days=overlap)
         run_id = str(uuid4())
         with Session(self.engine) as session, session.begin():
