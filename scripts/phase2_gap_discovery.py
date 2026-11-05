@@ -5,6 +5,7 @@ licensed vendor datasets in CI logs.
 """
 from __future__ import annotations
 import httpx
+from finance_dashboard.source_policy import managed_client, managed_get
 import json
 from urllib.parse import urlparse
 
@@ -20,7 +21,7 @@ URLS = {
   "bis_gap_us": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0/Q.US",
   "bis_topic": "https://data.bis.org/topics/CREDIT_GAPS/data",
 }
-with httpx.Client(timeout=9, follow_redirects=False) as client:
+with managed_client(timeout=9, follow_redirects=False) as client:
     for name,url in URLS.items():
         try:
             r=client.get(url,headers={"Accept":"application/vnd.sdmx.data+json;version=1.0.0"} if name in ("bis_gap_us","bis_gap_jp","bis_gap_ea") else {})
