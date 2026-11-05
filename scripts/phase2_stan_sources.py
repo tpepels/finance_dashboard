@@ -141,6 +141,8 @@ def probe_surplus(client, *, country: str, year: int) -> dict:
                 raw, country=country, start_year=year,
                 expected_measures=(candidate,), expected_activity="_T",
                 end_year=year)
+            if not parsed["source_dataflow_field_verified"]:
+                raise ValueError("Publisher native dataflow identity missing")
             entry.update(state="validated_native_csv",
                          original_numeric_observations=parsed["numeric_observations"],
                          observed_measure_counts=parsed["native_measure_observation_counts"],
@@ -337,6 +339,9 @@ def main(argv=None) -> int:
     if args.resolve_surplus and (args.expand or args.diagnose or args.audit or
                                  len(countries) != 1 or args.measures):
         parser.error("--resolve-surplus requires one country and no other mode/selection")
+    if (args.diagnose or args.resolve_surplus) and not (
+            1970 <= args.probe_year <= date.today().year):
+        parser.error("--probe-year is outside the supported historical period")
     if args.audit and (args.acquire or args.expand or args.diagnose):
         parser.error("--audit is read-only")
     try:
@@ -349,8 +354,6 @@ def main(argv=None) -> int:
     if args.diagnose:
         if args.acquire:
             parser.error("--diagnose cannot be combined with --acquire")
-        if not 1970 <= args.probe_year <= date.today().year:
-            parser.error("Invalid --probe-year")
         import httpx
         with httpx.Client(timeout=45, follow_redirects=False) as client:
             results = [diagnose_publisher(client, country=country, year=args.probe_year)
