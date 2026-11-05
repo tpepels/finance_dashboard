@@ -17,10 +17,12 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from finance_dashboard.oecd_corporate import OECD_MEMBER_ISO3
 from finance_dashboard.stan_originals import (
-    MAX_STAN_SOURCE_BYTES, STAN_MEASURES,
-    STAN_VERIFIED_PORTUGAL_MEASURES, read_stan_evidence, stan_source_request,
+    MAX_STAN_SOURCE_BYTES, STAN_MEASURES, STAN_ALLOWED_MEASURES,
+    STAN_SURPLUS_CANDIDATES, STAN_VERIFIED_PORTUGAL_MEASURES,
+    parse_stan_original_csv, read_stan_evidence, stan_source_request,
     store_stan_original,
 )
+from finance_dashboard.stan_research import audit_stan_originals
 
 
 def diagnose_publisher(client, *, country: str, year: int) -> dict:
@@ -109,8 +111,71 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
     }
 
 
+
+def probe_surplus(client, *, country: str, year: int) -> dict:
+    """At most two exact-year, total-activity candidate requests; no archive writes.
+
+    OECD historical methods use B2N_B3N and B2G_B3G for combined mixed
+    income. The live 2025 publisher dataflow must still validate each code.
+    """
+    from hashlib import sha256
+    checks = []
+    for candidate in STAN_SURPLUS_CANDIDATES:
+        url, params = stan_source_request(
+            country, year, measures=(candidate,),
+            activity="_T", end_year=year)
+        entry = {"candidate_measure": candidate, "probe_year": year,
+                 "state": "source_check_failed"}
+        try:
+            with client.stream("GET", url, params={**params, "format": "csvfile"},
+                               headers={"Accept": "text/csv"}) as response:
+                entry["http_status"] = response.status_code
+                response.raise_for_status()
+                payload = bytearray()
+                for chunk in response.iter_bytes():
+                    if len(payload) + len(chunk) > 2_000_000:
+                        raise ValueError("Publisher surplus probe exceeds 2 MB")
+                    payload.extend(chunk)
+            raw = bytes(payload)
+            parsed = parse_stan_original_csv(
+                raw, country=country, start_year=year,
+                expected_measures=(candidate,), expected_activity="_T",
+                end_year=year)
+            entry.update(state="validated_native_csv",
+                         original_numeric_observations=parsed["numeric_observations"],
+                         observed_measure_counts=parsed["native_measure_observation_counts"],
+                         source_sha256=sha256(raw).hexdigest())
+        except Exception as exc:
+            entry["reason_type"] = type(exc).__name__
+            code = entry.get("http_status")
+            if code == 429:
+                entry["failure_category"] = "publisher_rate_limited"
+            elif code == 503:
+                entry["failure_category"] = "publisher_unavailable"
+            elif code == 404:
+                entry["failure_category"] = "no_published_observations_for_selection"
+            elif isinstance(code, int) and code >= 500:
+                entry["failure_category"] = "publisher_http_5xx"
+            else:
+                entry["failure_category"] = "publisher_rejected_or_invalid_native_csv"
+        checks.append(entry)
+        if entry.get("http_status") in (429, 503):
+            break
+    return {
+        "phase": "phase2", "operation": "native_stan_surplus_code_probe",
+        "country": country, "checks": checks,
+        "publisher_requests": len(checks),
+        "stopped_on_publisher_backpressure": any(
+            item.get("http_status") in (429, 503) for item in checks),
+        "no_archive_writes": True, "no_macro_database_writes": True,
+        "code_availability_requires_live_csv": True,
+        "scientific_analysis_certified": False,
+    }
+
+
 def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
-            measures: tuple[str, ...] | None = None) -> dict:
+            measures: tuple[str, ...] | None = None,
+            max_requests: int | None = None) -> dict:
     """Acquire only an exact declared native selection; no automatic retries.
 
     OECD publishes at most 60 data responses per hour; an HTTP 429/503 ends
@@ -119,6 +184,8 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
     """
     if not root.is_dir() or root.is_symlink():
         raise ValueError("existing_non_symlink_evidence_directory_required")
+    if max_requests is not None and max_requests < 1:
+        raise ValueError("positive_request_budget_required")
     selection = (STAN_VERIFIED_PORTUGAL_MEASURES if measures is None
                  else tuple(measures))
     if not countries:
@@ -126,6 +193,7 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
     stan_source_request(countries[0], start_year, measures=selection)
     report = []
     backpressure = None
+    publisher_requests = 0
     for number, country in enumerate(countries, start=1):
         entry = {"country": country, "status": "acquisition_failed",
                  "requested_native_measures": list(selection),
@@ -149,8 +217,14 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
             entry.update(status="already_verified", cache_hit=True)
             report.append(entry)
             continue
+        if max_requests is not None and publisher_requests >= max_requests:
+            entry.update(status="deferred_request_budget",
+                         failure_category="request_budget_exhausted")
+            report.append(entry)
+            continue
         try:
             url, params = stan_source_request(country, start_year, measures=selection)
+            publisher_requests += 1
             with client.stream("GET", url, params={**params, "format": "csvfile"},
                                headers={"Accept": "text/csv"}) as response:
                 entry["http_status"] = response.status_code
@@ -201,6 +275,13 @@ def acquire(client, root: Path, *, countries: tuple[str, ...], start_year: int,
         "already_verified_archives": sum(item["status"] == "already_verified" for item in report),
         "acquisition_failures": sum(item["status"] not in completed for item in report),
         "stopped_on_publisher_backpressure": backpressure is not None,
+        "publisher_requests": publisher_requests,
+        "request_budget": max_requests,
+        "deferred_request_budget": sum(
+            item["status"] == "deferred_request_budget" for item in report),
+        "last_country_requested": next(
+            (item["country"] for item in reversed(report)
+             if "http_status" in item), None),
         "acquisitions": report,
         "source_evidence": evidence,
         "no_macro_database_writes": True,
@@ -220,7 +301,18 @@ def main(argv=None) -> int:
                         help="First requested source year, YYYY-01-01")
     parser.add_argument("--acquire", action="store_true",
                         help="Download, validate and retain original responses (otherwise read-only)")
-    parser.add_argument("--measures", nargs="+", choices=STAN_MEASURES,
+    parser.add_argument("--expand", action="store_true",
+                        help="Bounded, resumable acquisition of OECD member originals")
+    parser.add_argument("--max-requests", type=int,
+                        help="Limit new publisher requests; --expand defaults to 4")
+    parser.add_argument("--after-country", choices=sorted(OECD_MEMBER_ISO3),
+                        help="Continue a sorted country batch after this ISO3 code")
+    parser.add_argument("--resolve-surplus", action="store_true",
+                        help="Probe bounded native net/gross combined-surplus candidates; "
+                             "with --acquire, retain a separate five-measure source")
+    parser.add_argument("--audit", action="store_true",
+                        help="Read-only, per-scope original industry-year overlap and identity audit")
+    parser.add_argument("--measures", nargs="+", choices=sorted(STAN_ALLOWED_MEASURES),
                         help="Exact native measure selection for --acquire; default: "
                              "four confirmed Portugal measure codes, excluding unresolved B2N")
     parser.add_argument("--diagnose", action="store_true",
@@ -232,6 +324,21 @@ def main(argv=None) -> int:
     if len(countries) != len(args.countries) or any(
             country not in OECD_MEMBER_ISO3 for country in countries):
         parser.error("Invalid or duplicated OECD country")
+    if args.after_country:
+        if not args.expand or args.after_country not in countries:
+            parser.error("--after-country requires --expand and an included OECD member")
+        countries = countries[countries.index(args.after_country) + 1:]
+        if not countries:
+            parser.error("No countries remain after --after-country")
+    if args.max_requests is not None and args.max_requests < 1:
+        parser.error("--max-requests must be positive")
+    if args.expand and args.acquire:
+        parser.error("Use either --expand or --acquire")
+    if args.resolve_surplus and (args.expand or args.diagnose or args.audit or
+                                 len(countries) != 1 or args.measures):
+        parser.error("--resolve-surplus requires one country and no other mode/selection")
+    if args.audit and (args.acquire or args.expand or args.diagnose):
+        parser.error("--audit is read-only")
     try:
         since = date.fromisoformat(args.since)
         if since.month != 1 or since.day != 1:
@@ -253,13 +360,43 @@ def main(argv=None) -> int:
             any(check["state"] == "validated_native_csv" for check in report["checks"])
             for report in results
         ) else 1
-    if args.acquire:
+    if args.resolve_surplus:
+        import httpx
+        with httpx.Client(timeout=60, follow_redirects=False) as client:
+            probe = probe_surplus(client, country=countries[0], year=args.probe_year)
+            result = {"surplus_probe": probe}
+            net, gross = STAN_SURPLUS_CANDIDATES
+            validated = [item["candidate_measure"] for item in probe["checks"]
+                         if item["state"] == "validated_native_csv"]
+            selected = net if net in validated else gross if gross in validated else None
+            result["selected_observed_surplus_measure"] = selected
+            if args.acquire and selected and not probe["stopped_on_publisher_backpressure"]:
+                selection = ("B1G", "D1", selected, "P51C", "D29X39")
+                result["acquisition"] = acquire(
+                    client, args.evidence_dir, countries=countries,
+                    start_year=since.year, measures=selection,
+                    max_requests=args.max_requests)
+        if args.acquire and "acquisition" in result:
+            result["accounting_audit"] = audit_stan_originals(
+                args.evidence_dir, countries=countries)
+        print(json.dumps(result, indent=2))
+        return 0 if (selected and (not args.acquire or
+                 result.get("acquisition", {}).get("acquisition_failures") == 0)) else 1
+    if args.audit:
+        print(json.dumps(audit_stan_originals(
+            args.evidence_dir, countries=countries), indent=2))
+        return 0
+    if args.acquire or args.expand:
         import httpx
         with httpx.Client(timeout=60, follow_redirects=False) as client:
             report = acquire(client, args.evidence_dir, countries=countries,
                              start_year=since.year,
-                             measures=tuple(args.measures) if args.measures else None)
+                             measures=tuple(args.measures) if args.measures else None,
+                             max_requests=(args.max_requests if args.max_requests is not None
+                                           else 4 if args.expand else None))
         print(json.dumps(report, indent=2))
+        if args.expand:
+            return 1 if report["stopped_on_publisher_backpressure"] else 0
         return 1 if report["acquisition_failures"] or (
             report["source_evidence"]["country_count"] != len(countries)) else 0
     evidence = read_stan_evidence(args.evidence_dir, countries=countries)
