@@ -10,13 +10,12 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 import re
 
+import httpx
+
 from .provider_registry import get_provider
 from .service import safe_source_failure_code
 from .source_policy_registry import PolicyRegistry
 from .source_policy_types import PolicyDeferred, PolicyViolation
-
-
-UNVERIFIED_STATES = frozenset({"failed", "blocked", "incomplete", "not_checked"})
 
 
 def publisher_stop_reason(error: BaseException) -> str | None:
@@ -52,7 +51,7 @@ def source_acquisition_plan(document: dict, registry: list[dict],
     All analysis references, including contextual mappings, share one source
     ID; duplicates never generate extra publisher requests.
     """
-    if not 1 <= limit <= 120:
+    if not 1 <= limit <= 400:
         raise ValueError("invalid_phase2_source_attempt_limit")
     if (runtime_report.get("analysis_count") != len(document["analyses"])
             or len(runtime_report.get("analyses", [])) != len(document["analyses"])):
@@ -200,52 +199,141 @@ def source_acquisition_plan(document: dict, registry: list[dict],
     }
 
 
-def run_source_acquisition_batch(selected_actions: list[dict], refresh,
-                                 *, max_attempts: int | None = None) -> dict:
-    """Execute one bounded publisher-neutral batch against existing service.
+def _publisher_interruption_scope(error: BaseException, policy_id: str | None,
+                                  registry: PolicyRegistry | None = None) -> str | None:
+    """Scope a stop to a publisher only when the upstream origin is verified.
 
-    Refresh is the existing IngestionService.refresh interface. No callbacks
-    run after publisher access denial, 429/5xx, or policy deferral. The durable
-    rate gate remains the only scheduler; this coordinator neither retries nor
-    bypasses cooldowns.
+    A generic failure string is insufficient to establish which source is
+    affected. A mismatched/unknown origin forces a global batch stop; the
+    transport's own durable policy ledger is always authoritative.
     """
+    if not policy_id:
+        return None
+    actual_id = None
+    if isinstance(error, (PolicyDeferred, PolicyViolation)):
+        actual_id = error.policy_id
+    elif isinstance(error, httpx.HTTPStatusError):
+        try:
+            actual_id = (registry or PolicyRegistry()).for_url(
+                error.request.url).id
+        except (PolicyViolation, ValueError, TypeError):
+            return None
+    else:
+        # ProviderRouter emits an app-controlled fixed hostname in this
+        # exception category. Never use the rest of exception text or log it.
+        match = re.fullmatch(
+            r"Provider HTTP [0-9]{3} \(([a-z0-9.-]{1,253})\)", str(error))
+        if match:
+            try:
+                actual_id = (registry or PolicyRegistry()).for_url(
+                    "https://" + match.group(1)).id
+            except (PolicyViolation, ValueError, TypeError):
+                return None
+    return policy_id if actual_id == policy_id else None
+
+
+def run_source_acquisition_batch(selected_actions: list[dict], refresh,
+                                 *, max_attempts: int | None = None,
+                                 stop_scope: str = "global",
+                                 journal=None, progress=None) -> dict:
+    """Execute one bounded policy-compliant batch using canonical ingestion.
+
+    The managed transport is the only actual request quota enforcer. When
+    stop_scope='publisher', a publisher-specific stop only allows subsequent
+    requests to *verified other publishers*. If the upstream policy origin
+    cannot be proven, fail closed and stop the whole batch. Completed/failed
+    journal tasks are not retried, and unknown in-flight attempts are held
+    for manual verification on resume.
+    """
+    limit = 400 if stop_scope == "publisher" else 120
     budget = len(selected_actions) if max_attempts is None else max_attempts
-    if not isinstance(budget, int) or budget < 0 or budget > 120:
+    if (not isinstance(budget, int) or budget < 0 or budget > limit
+            or stop_scope not in {"global", "publisher"}
+            or (journal is not None and stop_scope != "publisher")):
         raise ValueError("invalid_phase2_acquisition_budget")
     if len({a["id"] for a in selected_actions}) != len(selected_actions):
         raise ValueError("duplicate_canonical_acquisition_id")
+    if any(a.get("state") != "acquisition_candidate" for a in selected_actions):
+        raise ValueError("non_acquisition_source_scheduled")
     results = []
-    interrupted = None
-    attempts = 0
-    for action in selected_actions:
-        if action.get("state") != "acquisition_candidate":
-            raise ValueError("non_acquisition_source_scheduled")
-        if interrupted:
-            results.append({"series_id": action["id"], "status": "deferred_publisher_stop",
-                            "reason": interrupted})
-            continue
-        if attempts >= budget:
-            results.append({"series_id": action["id"], "status": "deferred_budget"})
-            continue
-        attempts += 1
-        try:
-            record = refresh(action["id"], full=True)
-            if record.get("status") != "success":
-                raise ValueError("unexpected_ingestion_status")
-            results.append({"series_id": action["id"], **record})
-        except Exception as exc:
-            code = safe_source_failure_code(exc)
-            results.append({"series_id": action["id"], "status": "failed",
-                            "reason": code})
-            interrupted = publisher_stop_reason(exc)
+    stopped_policies = {}
+    global_stop = None
+    attempted = 0
+    for index, action in enumerate(selected_actions, start=1):
+        sid = action["id"]
+        policy_id = action.get("publisher_policy")
+        previous = journal.already_attempted(sid) if journal is not None else None
+        if previous is not None:
+            row = {"series_id": sid, "status": "deferred_prior_attempt",
+                   "previous_status": previous["status"],
+                   "previous_reason": previous.get("reason")}
+            # A publisher's historic stop remains in this one sweep. The next
+            # explicitly started sweep can try that publisher after its
+            # canonical cooldown; the current sweep never retries it.
+            prior_code = previous.get("reason")
+            if (policy_id and isinstance(prior_code, str)
+                    and (prior_code in {"source_policy_deferred",
+                                        "source_policy_denied"}
+                         or re.fullmatch(r"provider_http_(?:401|403|429|5[0-9]{2})",
+                                         prior_code))):
+                stopped_policies.setdefault(policy_id, prior_code)
+        elif global_stop:
+            row = {"series_id": sid, "status": "deferred_publisher_stop",
+                   "reason": global_stop}
+        elif policy_id in stopped_policies:
+            row = {"series_id": sid, "status": "deferred_publisher_stop",
+                   "reason": stopped_policies[policy_id]}
+        elif attempted >= budget:
+            row = {"series_id": sid, "status": "deferred_budget"}
+        else:
+            # The start event must be durable before *any* possible request.
+            if journal is not None:
+                journal.mark_started(sid)
+            attempted += 1
+            try:
+                record = refresh(sid, full=True)
+                if record.get("status") != "success":
+                    raise ValueError("unexpected_ingestion_status")
+                row = {"series_id": sid, "status": "success",
+                       "received": record.get("received", 0),
+                       "versions_added": record.get("versions_added", 0)}
+                if journal is not None:
+                    journal.mark_result(
+                        sid, status="success", received=row["received"],
+                        versions_added=row["versions_added"])
+            except Exception as error:
+                reason = safe_source_failure_code(error)
+                row = {"series_id": sid, "status": "failed", "reason": reason}
+                if journal is not None:
+                    journal.mark_result(sid, status="failed", reason=reason)
+                stopped = publisher_stop_reason(error)
+                if stopped:
+                    if stop_scope == "global":
+                        global_stop = stopped
+                    else:
+                        confirmed_policy = _publisher_interruption_scope(
+                            error, policy_id)
+                        if confirmed_policy is None:
+                            global_stop = stopped
+                        else:
+                            stopped_policies[confirmed_policy] = stopped
+        results.append(row)
+        if progress is not None and row["status"] not in {
+                "deferred_prior_attempt", "deferred_publisher_stop",
+                "deferred_budget"}:
+            progress(index, len(selected_actions), row)
+    reason = global_stop or (
+        next(iter(stopped_policies.values())) if stopped_policies else None)
     return {
         "phase": "phase2", "operation": "bounded_canonical_source_acquisition",
         "selected_sources": len(selected_actions),
-        "attempted": attempts,
+        "attempted": attempted,
         "succeeded": sum(x["status"] == "success" for x in results),
         "failed": sum(x["status"] == "failed" for x in results),
         "deferred": sum(x["status"].startswith("deferred_") for x in results),
-        "stop_category": interrupted,
+        "stop_category": reason,
+        "global_stop_category": global_stop,
+        "publisher_stop_categories": dict(sorted(stopped_policies.items())),
         "results": results,
         "no_automatic_retries": True,
         "publisher_policy_gateway_enforced_by_provider": True,

@@ -1,5 +1,77 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 — full-backlog sweep, crash-safe resume, and structured role workplan (2026-11-05)
+
+The empirical 2026-11-05 operating review identified **105 independently
+reconciled scalar histories; 144 additional eligible scalar acquisitions;
+four MSCI-restricted series; 44 structured original roles; and 21 unbound scalar
+roles**. Its scientific readiness remains 33 blocked, two conditional and zero
+accepted. Incomplete publisher dimensions and first-publication eligibility
+must never be upgraded through acquisition task success.
+
+The integrated operating command now supports **`--sweep`**: select the full
+canonical source backlog once, with a bounded task budget (default 200, maximum
+400), one writer at a time, and a durable per-source journal outside the
+original-data archive. A source is recorded as *started before any possible
+network request*. A crash between start and finish is held for manual review:
+`--resume` never resends unknown in-flight requests. Completed failed tasks are
+also not retried automatically in the same sweep. All journal events are
+append-only, linked to their exact start hash and verified against the
+publisher-policy registry SHA, approved research contract SHA and immutable
+canonical source ID graph. Changes to any of these require a **new sweep**.
+Journal entries represent operational attempts and cannot certify observations,
+publisher rights, release instants, or original economic methodology.
+
+The shared `run_source_acquisition_batch` executor now supports a
+publisher-scoped stop mode **only where the upstream policy origin can be
+independently matched to the canonical declared publisher**. A 401, 403, 429,
+5xx or policy-deferred response then blocks further requests to that publisher
+in the same sweep, without automatically suppressing other verified publishers.
+An unknown/mismatched origin stops the entire batch instead of weakening the
+policy. The original provider adapter and durable cross-process rolling HTTP
+rate ledger remain solely responsible for request permits, cooldowns, network
+origin restrictions and provider rights. A source task may issue multiple HTTP
+requests, so task counts must not be interpreted as publisher HTTP counts.
+The ordinary historical source acquisition mode still defaults to its
+conservative global-stop behavior.
+
+`phase2_role_workplan` derives a completely separate prioritized inventory
+of structured original artifacts and unmapped scalar roles from every live
+scientific input gate. It groups original artifact requirements by existing
+artifact ID and affected analysis, retains all unresolved native-dimension,
+accounting, period and release conditions, and never promotes an artifact
+classification into an accepted analytical series. The operating review
+includes this summary by default; `--details` provides every original role.
+
+One command initiates the full bounded original-source batch from a local
+Docker deployment. **Only do this where each publisher's required network
+origin and usage policy is satisfied.** The `--run-dir` must be unique and
+separate from raw source originals and backup archives:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+  --evidence-dir /data/source-evidence --sweep --acquire \
+  --run-dir /data/phase2-sweeps/full-20261105 \
+  --backup-dir /data/phase2-backups --max-attempts 200
+```
+
+Resume with the **same** command plus `--resume`. Never remove an unresolved
+journal start to trigger retries: review its persisted ingestion run and raw
+evidence first, then explicitly launch a separate new sweep if appropriate.
+Before and after each invocation, the existing independently verified backups
+protect the SQLite history database and original response archive; no source
+history is overwritten or truncated. Reports default to one compact JSON
+object with failed/deferred counts, per-publisher stop classifications, 35
+scientific readiness outcomes, non-scalar workstream groups and next actions.
+Progress is written to stderr with fixed, credential-free statuses.
+
+The OECD STAN 2025 publisher metadata remains missing in the user's supplied
+report. STAN acquisition is explicitly operator-triggered through the existing
+`--acquire-metadata`, `--resolve-surplus` and `--expand` managed commands,
+subject to the same durable OECD policy. The sweep must not quietly initiate
+new OECD requests or infer surplus from incomplete four-measure country data.
+
+
 ## Phase 2 — consolidated full-corpus operating batch and bounded source acquisition (2026-11-05)
 
 ### Implemented architecture

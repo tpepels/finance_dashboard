@@ -9,7 +9,9 @@ A single concise JSON result replaces giant manual diagnostics copies.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 from datetime import datetime, timezone
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
@@ -24,11 +26,20 @@ from finance_dashboard.database import make_engine
 from finance_dashboard.phase2_workflow import (
     run_source_acquisition_batch, source_acquisition_plan,
 )
+from finance_dashboard.phase2_role_workplan import (
+    phase2_role_workplan, compact_role_workplan,
+)
+from finance_dashboard.phase2_sweep_journal import (
+    Phase2SweepJournal, sweep_context,
+)
 from finance_dashboard.providers import ProviderRouter
-from finance_dashboard.research_corpus import load_research_corpus, validate_research_corpus
+from finance_dashboard.research_corpus import (
+    analysis_series_ids, load_research_corpus, validate_research_corpus,
+)
 from finance_dashboard.research_runtime import evaluate_corpus
 from finance_dashboard.service import IngestionService, safe_source_failure_code
-from finance_dashboard.source_capture import SourceAcquisition
+from finance_dashboard.source_capture import SourceAcquisition, canonical_bytes
+from finance_dashboard.source_policy_registry import PolicyRegistry
 from finance_dashboard.source_reconciliation import _readonly_engine
 from finance_dashboard.stan_research import summarize_stan_readiness
 from scripts.phase2_comparative_corpus import (
@@ -49,6 +60,12 @@ def build_phase2_operating_report(evaluation, document, registry, *,
         document, registry, evaluation.public_report, evaluation.source_proof,
         limit=max_attempts, after_id=after_id)
     all_countries = tuple(sorted(OECD_MEMBER_ISO3))
+    role_work = phase2_role_workplan(evaluation.public_report)
+    policy_summary = PolicyRegistry().report()
+    missing_direct_ack = sorted(
+        p["id"] for p in policy_summary["publishers"]
+        if p["require_direct_network_ack"] and not p["operator_acknowledged"]
+    )
     native = resolve_stan_country_selection(
         evidence_root, anchor_country="PRT", probe_year=2020,
         explicit_measures=None)
@@ -73,6 +90,13 @@ def build_phase2_operating_report(evaluation, document, registry, *,
         "research_decisions": action["analysis_decisions"],
         "gate_failures": action["gate_failure_counts"],
         "role_resolution": evaluation.public_report["role_resolution_summary"],
+        "non_scalar_work": compact_role_workplan(role_work),
+        "role_workplan_details": role_work,
+        "publisher_policy_preflight": {
+            "registry_sha256": policy_summary["registry_sha256"],
+            "direct_network_acknowledgement_missing": missing_direct_ack,
+            "host_policy_is_enforced_at_request_time": True,
+        },
         "source_coverage": {
             "referenced": action["sources_referenced"],
             "verified_original_histories":
@@ -126,6 +150,7 @@ def emit_operating_report(report: dict, *, details: bool = False) -> dict:
     public = dict(report)
     if not details:
         public.pop("analysis_gaps", None)
+        public.pop("role_workplan_details", None)
         if "source_coverage" in public:
             public["source_coverage"] = dict(public["source_coverage"])
             public["source_coverage"]["selected_actions"] = [
@@ -157,8 +182,14 @@ def main(argv=None) -> int:
     parser.add_argument("--holdings-dir", type=Path,
                         default=Path(os.environ["FINANCE_HOLDINGS_DIR"])
                         if os.environ.get("FINANCE_HOLDINGS_DIR") else None)
-    parser.add_argument("--max-attempts", type=int, default=12,
-                        help="Maximum source actions per bounded run (1–120)")
+    parser.add_argument("--max-attempts", type=int,
+                        help="Maximum source tasks; default 12, or up to 400 with --sweep")
+    parser.add_argument("--sweep", action="store_true",
+                        help="Plan the full candidate backlog; with --acquire, use a resumable multi-publisher journal")
+    parser.add_argument("--run-dir", type=Path,
+                        help="Unique out-of-archive acquisition sweep directory; required for --acquire --sweep")
+    parser.add_argument("--resume", action="store_true",
+                        help="Resume and verify a previous --sweep --run-dir without repeating attempted tasks")
     parser.add_argument("--after-source", help="Resume after this exact canonical source ID")
     parser.add_argument("--acquire", action="store_true",
                         help="Explicit original-source ingestion with verified before/after backups")
@@ -171,12 +202,31 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if not args.database_url:
         parser.error("existing --database-url or DATABASE_URL required")
-    if not 1 <= args.max_attempts <= 120:
-        parser.error("--max-attempts must be between 1 and 120")
+    if args.max_attempts is None:
+        args.max_attempts = 200 if args.sweep else 12
+    if not 1 <= args.max_attempts <= (400 if args.sweep else 120):
+        parser.error("--max-attempts must be 1–120, or 1–400 with --sweep")
+    if args.resume and not (args.sweep and args.acquire and args.run_dir):
+        parser.error("--resume requires --sweep --acquire --run-dir")
+    if args.run_dir and not (args.sweep and args.acquire):
+        parser.error("--run-dir requires --sweep --acquire")
+    if args.sweep and args.acquire and args.run_dir is None:
+        parser.error("--sweep --acquire requires --run-dir")
+    if args.sweep and args.after_source:
+        parser.error("--after-source is incompatible with journal-based --sweep")
     if args.acquire and args.backup_dir is None:
         parser.error("--acquire requires --backup-dir for verified recoverability")
     if args.backup_dir is not None and not args.acquire:
         parser.error("--backup-dir requires --acquire")
+    if args.run_dir is not None:
+        target = args.run_dir.absolute()
+        for protected in (args.evidence_dir, args.backup_dir):
+            if protected is None:
+                continue
+            protected = protected.absolute()
+            if (target == protected or protected in target.parents
+                    or target in protected.parents):
+                parser.error("--run-dir must be distinct from source originals and backups")
     if args.output is not None:
         if args.output.exists():
             parser.error("--output must not overwrite existing report")
@@ -196,45 +246,73 @@ def main(argv=None) -> int:
             vintage_root=args.vintage_dir, holdings_root=args.holdings_dir)
         report = build_phase2_operating_report(
             baseline, document, registry,
-            evidence_root=args.evidence_dir, max_attempts=args.max_attempts,
+            evidence_root=args.evidence_dir,
+            max_attempts=400 if args.sweep else args.max_attempts,
             after_id=args.after_source)
         if args.acquire:
             checked_acquisition_target(args.database_url, args.evidence_dir)
-            # Existing snapshots include the database and immutable raw originals.
-            checkpoint = args.backup_dir / (
-                "phase2-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ"))
-            before = verified_phase2_snapshot(
-                args.database_url, args.evidence_dir, checkpoint, label="before")
-            router = ProviderRouter()
-            try:
-                write_engine = make_engine(args.database_url)
-                service = IngestionService(
-                    write_engine, SourceAcquisition(router, args.evidence_dir))
-                batch = run_source_acquisition_batch(
-                    report["source_coverage"]["selected_actions"],
-                    service.refresh, max_attempts=args.max_attempts)
-            finally:
-                router.close()
-                if write_engine is not None:
-                    write_engine.dispose()
-                    write_engine = None
-            after = verified_phase2_snapshot(
-                args.database_url, args.evidence_dir, checkpoint, label="after")
+            journal_session = nullcontext(None)
+            if args.sweep:
+                all_source_ids = sorted({
+                    sid for analysis in document["analyses"]
+                    for sid in analysis_series_ids(analysis)
+                })
+                context = sweep_context(
+                    all_source_ids, PolicyRegistry().sha256,
+                    sha256(canonical_bytes(document)).hexdigest())
+                journal_session = Phase2SweepJournal(
+                    args.run_dir, context=context, create=not args.resume)
+
+            # Serialize one sweep writer for its entire backup-and-acquisition
+            # lifecycle. The before/after snapshots remain independently
+            # verified and never overwrite original publisher evidence.
+            with journal_session as journal:
+                checkpoint = args.backup_dir / (
+                    "phase2-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ"))
+                before = verified_phase2_snapshot(
+                    args.database_url, args.evidence_dir, checkpoint, label="before")
+                router = ProviderRouter()
+                try:
+                    write_engine = make_engine(args.database_url)
+                    service = IngestionService(
+                        write_engine, SourceAcquisition(router, args.evidence_dir))
+
+                    def progress(index, total, row):
+                        print(f"PHASE2 {index}/{total}: {row['series_id']} "
+                              f"{row['status']} {row.get('reason', '')}",
+                              file=sys.stderr, flush=True)
+
+                    batch = run_source_acquisition_batch(
+                        report["source_coverage"]["selected_actions"],
+                        service.refresh, max_attempts=args.max_attempts,
+                        stop_scope="publisher" if args.sweep else "global",
+                        journal=journal, progress=progress)
+                finally:
+                    router.close()
+                    if write_engine is not None:
+                        write_engine.dispose()
+                        write_engine = None
+                after = verified_phase2_snapshot(
+                    args.database_url, args.evidence_dir, checkpoint, label="after")
+                journal_summary = journal.summary() if journal is not None else None
             refreshed = evaluate_corpus(
                 read_engine, registry, document, evidence_root=args.evidence_dir,
                 vintage_root=args.vintage_dir, holdings_root=args.holdings_dir)
             report = build_phase2_operating_report(
                 refreshed, document, registry,
                 evidence_root=args.evidence_dir,
-                max_attempts=args.max_attempts)
-            # Replan over all outstanding candidates. Original cursors remain
-            # valid, but a completed task must not hide earlier failed tasks
-            # from the next default run.
+                max_attempts=12)
+            # Always show the next default pending actions, including previously
+            # failed source histories, separately from this sweep's immutable
+            # journal. Success is established only through original proofs.
             archive_changed = (
                 before["evidence_archive_sha256"] != after["evidence_archive_sha256"])
             report["source_originals_modified"] = archive_changed
-            report["publisher_requests_made"] = None  # One source task may make multiple managed requests.
+            report["publisher_requests_made"] = None
             report["acquisition"] = batch
+            if journal_summary is not None:
+                report["sweep_journal"] = journal_summary
+                report["next_run_requires_explicit_resume_or_new_journal"] = True
             report["verified_recovery"] = {
                 "before_sha256": before["database_sha256"],
                 "after_sha256": after["database_sha256"],
