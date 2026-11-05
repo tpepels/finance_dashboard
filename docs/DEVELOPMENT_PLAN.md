@@ -1,5 +1,42 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 — production sweep result and upstream-policy provenance fix (2026-11-05)
+
+The first live scalar sweep attempted 29 of 144 eligible source tasks:
+24 reported ingestion success, 5 failed, and 115 were deferred. Independently
+verified source histories rose from 105 to 125, with 31 analyses blocked and
+4 conditional; no first-publication or complete analysis acceptance was
+established. The sweep journal retained 29 completed attempts and zero
+unresolved starts; before/after database and original-evidence backups passed.
+
+The early stop exposed an acquisition-policy identity mismatch: the catalog's
+descriptive publisher page may use a different canonical policy ID from the
+actual API endpoint. A managed, typed `PolicyViolation` or
+`PolicyDeferred` contains the exact upstream policy ID and must not be
+reduced to the descriptive catalog host. The shared executor now recognizes
+an independently verified upstream policy ID even when it differs from the
+catalog policy. The affected API policy and the same provider adapter are
+blocked for the rest of that sweep; other independently identified publishers
+may continue. Unknown or unclassified origins still cause a global stop.
+The transport's durable publisher quotas, access-denial enforcement, and
+direct-network acknowledgement are unchanged.
+
+Old journals retained only fixed failure codes and cannot prove upstream
+policy identity retrospectively. On `--resume`, prior attempts remain
+non-retriable, but their failure reasons no longer falsely block all other
+sources that happen to share the catalog's descriptive policy. The original
+verified publisher rate/cooldown ledger still protects every request.
+The first sweep's documented missing `oecd-sdmx` direct-network
+acknowledgement remains **required** before any future OECD API acquisition;
+this change never fills that setting, changes rights, or attempts to bypass it.
+
+After deploying the amended code, resume the **same** immutable sweep
+journal with the same full command plus `--resume`. This continues the
+remaining eligible non-OECD work without reissuing the 29 prior attempts.
+Publisher rate deferrals may still occur and must be respected. Source
+success counts are neither guaranteed nor scientific proof; rerun the
+read-only operating review to assess newly verified histories separately.
+
 ## Phase 2 — full-backlog sweep, crash-safe resume, and structured role workplan (2026-11-05)
 
 The empirical 2026-11-05 operating review identified **105 independently

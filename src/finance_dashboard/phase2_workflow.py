@@ -203,12 +203,13 @@ def _publisher_interruption_scope(error: BaseException, policy_id: str | None,
                                   registry: PolicyRegistry | None = None) -> str | None:
     """Scope a stop to a publisher only when the upstream origin is verified.
 
-    A generic failure string is insufficient to establish which source is
-    affected. A mismatched/unknown origin forces a global batch stop; the
-    transport's own durable policy ledger is always authoritative.
+    A generic failure string is insufficient to establish which publisher is
+    affected. A publisher ID supplied by a policy exception or resolved from
+    a verified upstream HTTPS host is canonical, even if the catalog's
+    descriptive source URL belongs to a different publisher policy.
+    Unknown/unclassified origin still forces a global stop.
+    The durable publisher policy ledger remains authoritative.
     """
-    if not policy_id:
-        return None
     actual_id = None
     if isinstance(error, (PolicyDeferred, PolicyViolation)):
         actual_id = error.policy_id
@@ -229,7 +230,10 @@ def _publisher_interruption_scope(error: BaseException, policy_id: str | None,
                     "https://" + match.group(1)).id
             except (PolicyViolation, ValueError, TypeError):
                 return None
-    return policy_id if actual_id == policy_id else None
+    if actual_id is None:
+        return None
+    policies = (registry or PolicyRegistry()).by_id
+    return actual_id if actual_id in policies else None
 
 
 def run_source_acquisition_batch(selected_actions: list[dict], refresh,
@@ -257,6 +261,8 @@ def run_source_acquisition_batch(selected_actions: list[dict], refresh,
         raise ValueError("non_acquisition_source_scheduled")
     results = []
     stopped_policies = {}
+    stopped_provider_dependencies = {}
+    discovered_upstreams = {}
     global_stop = None
     attempted = 0
     for index, action in enumerate(selected_actions, start=1):
@@ -267,22 +273,19 @@ def run_source_acquisition_batch(selected_actions: list[dict], refresh,
             row = {"series_id": sid, "status": "deferred_prior_attempt",
                    "previous_status": previous["status"],
                    "previous_reason": previous.get("reason")}
-            # A publisher's historic stop remains in this one sweep. The next
-            # explicitly started sweep can try that publisher after its
-            # canonical cooldown; the current sweep never retries it.
-            prior_code = previous.get("reason")
-            if (policy_id and isinstance(prior_code, str)
-                    and (prior_code in {"source_policy_deferred",
-                                        "source_policy_denied"}
-                         or re.fullmatch(r"provider_http_(?:401|403|429|5[0-9]{2})",
-                                         prior_code))):
-                stopped_policies.setdefault(policy_id, prior_code)
+            # The journal records fixed failure codes but historically did
+            # not record verified upstream publisher IDs. Do not guess the
+            # affected publisher from a possibly different catalog source URL:
+            # the durable transport ledger still enforces its cooldown.
         elif global_stop:
             row = {"series_id": sid, "status": "deferred_publisher_stop",
                    "reason": global_stop}
         elif policy_id in stopped_policies:
             row = {"series_id": sid, "status": "deferred_publisher_stop",
                    "reason": stopped_policies[policy_id]}
+        elif action.get("provider") in stopped_provider_dependencies:
+            row = {"series_id": sid, "status": "deferred_publisher_stop",
+                   "reason": stopped_provider_dependencies[action["provider"]]}
         elif attempted >= budget:
             row = {"series_id": sid, "status": "deferred_budget"}
         else:
@@ -317,6 +320,19 @@ def run_source_acquisition_batch(selected_actions: list[dict], refresh,
                             global_stop = stopped
                         else:
                             stopped_policies[confirmed_policy] = stopped
+                            if confirmed_policy != policy_id:
+                                # The original catalogue URL describes the
+                                # publication, but this adapter uses a verified
+                                # different API origin. Avoid repeating the
+                                # same denied dependency through this adapter.
+                                if action.get("provider"):
+                                    stopped_provider_dependencies[
+                                        action["provider"]] = stopped
+                                discovered_upstreams[sid] = {
+                                    "declared_policy": policy_id,
+                                    "verified_upstream_policy": confirmed_policy,
+                                    "stop_reason": stopped,
+                                }
         results.append(row)
         if progress is not None and row["status"] not in {
                 "deferred_prior_attempt", "deferred_publisher_stop",
@@ -334,6 +350,10 @@ def run_source_acquisition_batch(selected_actions: list[dict], refresh,
         "stop_category": reason,
         "global_stop_category": global_stop,
         "publisher_stop_categories": dict(sorted(stopped_policies.items())),
+        "publisher_adapter_mismatches": [
+            {"series_id": sid, **evidence}
+            for sid, evidence in sorted(discovered_upstreams.items())
+        ],
         "results": results,
         "no_automatic_retries": True,
         "publisher_policy_gateway_enforced_by_provider": True,

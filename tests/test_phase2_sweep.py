@@ -20,6 +20,7 @@ from finance_dashboard.phase2_sweep_journal import (
 from finance_dashboard.phase2_workflow import (
     run_source_acquisition_batch, source_acquisition_plan,
 )
+from finance_dashboard.source_policy_types import PolicyViolation, PolicyDeferred
 from finance_dashboard.research_corpus import load_research_corpus, research_corpus_report
 from scripts.phase2_operating_batch import main
 
@@ -193,6 +194,96 @@ class PublisherScopedExecutionTests(unittest.TestCase):
         self.assertEqual(result["publisher_stop_categories"],
                          {"fred-v1": "provider_http_429"})
         self.assertIsNone(result["global_stop_category"])
+
+
+    def test_verified_dynamic_oecd_policy_denial_does_not_block_independent_publishers(self):
+        """A catalog documentation URL may differ from the actual API origin.
+
+        The managed policy exception identifies the restricted API exactly.
+        No acknowledgement is injected and no subsequent OAuth/API request to
+        the denied OECD origin can occur.
+        """
+        tasks = [
+            {"id": "oecd-dynamic", "state": "acquisition_candidate",
+             "publisher_policy": "oecd-documents", "provider": "OECD_CORPORATE_GDPWEIGHTED"},
+            {"id": "oecd-same-adapter", "state": "acquisition_candidate",
+             "publisher_policy": "oecd-documents", "provider": "OECD_CORPORATE_GDPWEIGHTED"},
+            {"id": "oecd-direct", "state": "acquisition_candidate",
+             "publisher_policy": "oecd-sdmx", "provider": "OECD_CLI"},
+            {"id": "fred-independent", "state": "acquisition_candidate",
+             "publisher_policy": "fred-v1", "provider": "FRED"},
+        ]
+        called = []
+        def refresh(sid, *, full):
+            called.append(sid)
+            if sid.startswith("oecd"):
+                raise PolicyViolation("oecd-sdmx", "direct_network_origin_not_confirmed")
+            return {"series_id": sid, "status": "success",
+                    "received": 23, "versions_added": 2}
+        result = run_source_acquisition_batch(
+            tasks, refresh, stop_scope="publisher", max_attempts=4)
+        self.assertEqual(called, ["oecd-dynamic", "fred-independent"])
+        self.assertEqual(result["attempted"], 2)
+        self.assertEqual(result["failed"], 1)
+        self.assertEqual(result["succeeded"], 1)
+        self.assertEqual(result["deferred"], 2)
+        self.assertIsNone(result["global_stop_category"])
+        self.assertEqual(result["publisher_stop_categories"],
+                         {"oecd-sdmx": "source_policy_denied"})
+        self.assertEqual(result["publisher_adapter_mismatches"], [{
+            "series_id": "oecd-dynamic",
+            "declared_policy": "oecd-documents",
+            "verified_upstream_policy": "oecd-sdmx",
+            "stop_reason": "source_policy_denied",
+        }])
+        self.assertEqual([item["status"] for item in result["results"]], [
+            "failed", "deferred_publisher_stop",
+            "deferred_publisher_stop", "success"])
+
+    def test_resumed_old_journal_does_not_guess_publisher_from_prior_failure(self):
+        """A stored fixed failure reason is not a reliable upstream policy ID."""
+        with TemporaryDirectory() as tmp:
+            directory = Path(tmp) / "sweep"
+            tasks = [
+                {"id": "a", "state": "acquisition_candidate",
+                 "provider": "OECD_CORPORATE_GDPWEIGHTED",
+                 "publisher_policy": "oecd-documents"},
+                {"id": "b", "state": "acquisition_candidate",
+                 "provider": "SHILLER", "publisher_policy": "research-papers"},
+            ]
+            with Phase2SweepJournal(
+                    directory, context=context(("a", "b")), create=True) as journal:
+                journal.mark_started("a")
+                journal.mark_result(
+                    "a", status="failed", reason="source_policy_denied")
+            calls = []
+            def refresh(sid, *, full):
+                calls.append(sid)
+                return {"status": "success", "received": 1, "versions_added": 0}
+            with Phase2SweepJournal(
+                    directory, context=context(("a", "b")), create=False) as journal:
+                result = run_source_acquisition_batch(
+                    tasks, refresh, stop_scope="publisher",
+                    journal=journal, max_attempts=2)
+            self.assertEqual(calls, ["b"])
+            self.assertEqual(result["attempted"], 1)
+            self.assertEqual(result["results"][0]["status"], "deferred_prior_attempt")
+            self.assertIsNone(result["global_stop_category"])
+
+    def test_unknown_policy_violation_origin_remains_global_stop(self):
+        tasks = [
+            {"id": "a", "state": "acquisition_candidate",
+             "publisher_policy": "fred-v1"},
+            {"id": "b", "state": "acquisition_candidate",
+             "publisher_policy": "bis"},
+        ]
+        def refresh(sid, *, full):
+            raise PolicyViolation("registry", "unclassified_publisher")
+        report = run_source_acquisition_batch(
+            tasks, refresh, stop_scope="publisher")
+        self.assertEqual(report["attempted"], 1)
+        self.assertEqual(report["global_stop_category"], "source_policy_denied")
+        self.assertEqual(report["publisher_stop_categories"], {})
 
     def test_unknown_origin_or_wrong_catalog_policy_forces_global_stop(self):
         tasks = [
