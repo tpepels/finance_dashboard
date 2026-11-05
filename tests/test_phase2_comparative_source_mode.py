@@ -1,7 +1,10 @@
 """Scoped original-source acquisition: safe targets and exact reconciliation decisions."""
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import os
 import sqlite3
+import subprocess
+import sys
 import unittest
 
 from finance_dashboard.catalog import load_documents
@@ -28,6 +31,34 @@ class TargetedPhase2SourcesTests(unittest.TestCase):
         for invalid in (["unknown"], [ids[0], ids[0]]):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 select_source_ids(self.registry, ids=invalid)
+
+    def test_import_source_mode_without_workbook_dependency(self):
+        """Targeted source tools and CLI help must run without artifact readers."""
+        root = Path(__file__).resolve().parents[1]
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(root / "src")
+        code = (
+            'import sys; sys.modules["python_calamine"] = None; '
+            'import scripts.phase2_comparative_corpus as module; '
+            'assert "finance_dashboard.research_runtime" not in sys.modules; '
+            'assert "finance_dashboard.research_artifacts" not in sys.modules; '
+            'assert module.select_source_ids('
+            '[{"id":"example", "status":"mapped", "provider":"OECD_CLI"}], '
+            'ids=["example"]) == ["example"]'
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code], cwd=root, env=env,
+            capture_output=True, text=True, timeout=25, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        result = subprocess.run(
+            [sys.executable, "scripts/phase2_comparative_corpus.py", "--help"],
+            cwd=root, env=env, capture_output=True, text=True,
+            timeout=25, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--new-sources", result.stdout)
 
     def test_existing_sqlite_database_and_source_archive_required_before_writes(self):
         with TemporaryDirectory() as temp:

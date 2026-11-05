@@ -24,7 +24,6 @@ from finance_dashboard.service import IngestionService, safe_source_failure_code
 from finance_dashboard.source_capture import CapturedProvider
 from finance_dashboard.source_reconciliation import _readonly_engine, reconcile
 from finance_dashboard.research_corpus import load_research_corpus, validate_research_corpus
-from finance_dashboard.research_runtime import evaluate_corpus, required_series_ids
 from finance_dashboard.comparative_corpus import store_comparative_corpus, compact_comparative_report
 
 
@@ -137,6 +136,9 @@ def main(argv=None):
         if source_only:
             ids = select_source_ids(registry, ids=args.source_ids, new_sources=args.new_sources)
         else:
+            # Only the full 35-analysis evaluation requires original workbook
+            # readers. Targeted native-source operations must not import them.
+            from finance_dashboard.research_runtime import evaluate_corpus, required_series_ids
             ids = sorted({sid for item in document["analyses"]
                           for variant in item["comparison_contract"]["variants"] for sid in variant["series_ids"]})
             if args.required_inputs:
