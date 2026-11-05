@@ -51,6 +51,27 @@ class StanExpansionPlannerTests(unittest.TestCase):
             self.assertEqual(short["verified"], ["PRT"])
             self.assertEqual(short["pending_count"], 4)
 
+    def test_requested_scope_with_missing_observations_is_not_claimed_complete(self):
+        with TemporaryDirectory() as t:
+            root = Path(t)
+            rows = raw("PRT").decode().splitlines(keepends=True)
+            incomplete = "".join(
+                r for r in rows if ",D29X39," not in r).encode()
+            store_stan_original(
+                incomplete, country="PRT", start_year=1970, root=root,
+                measures=STAN_VERIFIED_PORTUGAL_MEASURES)
+            report = plan_expansion(
+                root, countries=("PRT", "DEU"), start_year=1970,
+                measures=STAN_VERIFIED_PORTUGAL_MEASURES)
+            self.assertEqual(report["verified_countries"], ["PRT"])
+            self.assertEqual(report["pending_countries"], ["DEU"])
+            self.assertEqual(report["publisher_measure_metadata"], "metadata_not_acquired")
+            self.assertEqual(report["verified_scopes_with_missing_measures"], [{
+                "country": "PRT",
+                "measures_without_numeric_observations": ["D29X39"],
+                "numeric_observations_in_source": 3,
+            }])
+
     def test_different_original_measure_selection_is_not_cached_as_complete(self):
         with TemporaryDirectory() as t:
             root = Path(t)

@@ -318,7 +318,10 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
     combine separate retrievals or sum country/industry totals. An identity
     matching printed precision is only a diagnostic, not a certification.
     """
+    from .stan_metadata import read_stan_structure
+
     audits = audit_stan_originals(root, countries=countries)
+    metadata = read_stan_structure(root)
     statuses = Counter()
     countries_result = []
     invalid = []
@@ -350,6 +353,13 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
         any_flag = any(
             check["groups_with_non_A_source_flags"] > 0
             for check in (*net, *gross))
+        per_measure_max = {
+            measure: max(
+                s["numeric_measure_counts"].get(measure, 0) for s in scopes)
+            for measure in CORE
+        }
+        absent_measures = sorted(
+            measure for measure, count in per_measure_max.items() if count == 0)
         if any_matched:
             same_scope_countries += 1
         cross = item["cross_scope_reconciliation"]["comparisons"]
@@ -377,6 +387,25 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
             "same_scope_identity_observations": any_matched,
             "core_four_max_industry_years_in_single_scope": max(
                 s["core_four_matched_industry_years"] for s in scopes),
+            "per_measure_max_numeric": per_measure_max,
+            "core_measures_absent_in_all_scopes": absent_measures,
+            "no_core_overlap_reason": (
+                "measures_missing_from_archived_responses" if absent_measures
+                else "measures_have_no_common_industry_year"
+                if not any(s["core_four_matched_industry_years"] for s in scopes)
+                else None),
+            "per_scope_coverage": [{
+                "scope": s["scope"],
+                "requested_since": s["requested_since"],
+                "original_response_sha256": s["original_response_sha256"],
+                "measure_observations": s["numeric_measure_counts"],
+                "year_spans_by_measure": {
+                    k: [v["first_observed_year"], v["last_observed_year"]]
+                    for k, v in s["coverage"]["per_measure"].items()
+                },
+                "native_status_flags": s["coverage"]["source_status_flag_counts"],
+                "matched_four_measure_industry_years": s["core_four_matched_industry_years"],
+            } for s in scopes],
             "net_max_matched_in_single_scope": max(
                 c["eligible_matched_industry_years"] for c in net),
             "gross_max_matched_in_single_scope": max(
@@ -395,6 +424,14 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
         "invalid_original_countries": invalid,
         "status_counts": dict(sorted(statuses.items())),
         "country_readiness": countries_result,
+        "publisher_measure_metadata": metadata["status"],
+        "publisher_structure_source_sha256": metadata.get("source_sha256"),
+        "official_structure_has_net_surplus_code": (
+            "B2N_B3_N" in metadata.get("historical_candidates_present", [])
+            if metadata["status"] == "verified_publisher_structure" else None),
+        "official_structure_has_gross_surplus_code": (
+            "B2G_B3G" in metadata.get("historical_candidates_present", [])
+            if metadata["status"] == "verified_publisher_structure" else None),
         "observations_merged_across_retrievals": False,
         "industries_aggregated": False,
         "source_status_flag_meanings_verified": False,

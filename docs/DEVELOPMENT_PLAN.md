@@ -1,5 +1,51 @@
 # Development plan — authoritative five-phase roadmap
 
+## Phase 2 — empirical acquisition planning and original publisher structure (2026-11-05)
+
+Local user verification of the previous increment confirms **8/38 independently
+verified original country scopes**, comprising four countries with a joint
+four-measure industry-year intersection and four where the four measures have
+no common supported industry-year. **30 countries have no verified scope**.
+There is **no** same-retrieval surplus identity in those eight archives; zero
+testable identities must never be read as zero accounting discrepancies.
+
+The new metadata acquisition path retains the original OECD SDMX structure
+as an immutable, SHA-256 verified XML bundle with an append-only retrieval
+receipt, using the existing canonical source-evidence receipt contract.
+Versions are not overwritten when publisher metadata changes. A read-only
+inspector refuses to accept a corrupted bundle or receipt, even if a newer
+bundle is valid. The metadata codelist is evidence for available dimension
+identifiers, **not proof of values in a country or year**. It does not change
+the legacy STAN country manifest schema, historical measure contracts, or
+source retrievals.
+
+`--readiness` now distinguishes an absent requested native measure from
+individual measures that exist but do not overlap in the same industry-year.
+Country detail includes per-scope numeric counts, original measure/year spans,
+flags and source hashes, without aggregating overlapping publisher retrievals.
+`--plan-expansion` identifies cases where a verified selection nevertheless
+contains zero observations for one or more requested measures; such scopes
+remain scientifically incomplete. No source or historical observation is
+silently supplemented with another retrieval.
+
+Operational commands after a fresh deploy:
+
+```bash
+# Offline; safe before authorizing any external OECD traffic:
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --inspect-metadata --brief
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --readiness --brief
+# One explicitly authorized official metadata HTTP request, immutable capture:
+docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --acquire-metadata --brief
+```
+
+The last command is **not** automatic or safe to run without confirming the
+OECD access-policy acknowledged direct network route. Publisher quota,
+cooldowns, and network-origin restrictions apply before transmission.
+Expand original country coverage only in bounded batches after confirming
+metadata and available publisher capacity. The approved 35-analysis Phase 2
+scientific acceptance stays open.
+
+
 ## Phase 2 STAN research readiness and publisher interruption handling — 2026-11-05
 
 The STAN original-acquisition CLI now respects the canonical request-policy

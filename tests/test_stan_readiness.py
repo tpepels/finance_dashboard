@@ -89,6 +89,22 @@ class StanReadinessTests(unittest.TestCase):
                              "identity_overlap_contains_uninterpreted_flags")
             self.assertFalse(report["source_status_flag_meanings_verified"])
 
+    def test_individually_present_measure_rows_need_same_industry_year(self):
+        with TemporaryDirectory() as t:
+            raw = original(STAN_VERIFIED_PORTUGAL_MEASURES).replace(
+                b"_T,D1,V,XDC,2020,", b"_T,D1,V,XDC,2021,")
+            store_stan_original(
+                raw, country="PRT", start_year=1970, root=Path(t),
+                measures=STAN_VERIFIED_PORTUGAL_MEASURES)
+            row = summarize_stan_readiness(
+                Path(t), countries=("PRT",))["country_readiness"][0]
+            self.assertEqual(row["status"], "insufficient_same_scope_measure_coverage")
+            self.assertEqual(row["core_measures_absent_in_all_scopes"], [])
+            self.assertEqual(row["no_core_overlap_reason"],
+                             "measures_have_no_common_industry_year")
+            self.assertTrue(all(row["per_measure_max_numeric"].values()))
+            self.assertEqual(row["core_four_max_industry_years_in_single_scope"], 0)
+
     def test_overlapping_scopes_not_added_as_independent_observations(self):
         with TemporaryDirectory() as t:
             measures = ("B1G", "D1", "B2N_B3_N", "P51C", "D29X39")

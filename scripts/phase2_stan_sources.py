@@ -28,6 +28,7 @@ from finance_dashboard.source_policy import (managed_client, require_managed_cli
 from finance_dashboard.stan_metadata import (
     STRUCTURE_URL, STRUCTURE_PARAMS, STRUCTURE_ACCEPT,
     MAX_STRUCTURE_BYTES, parse_stan_measure_structure,
+    read_stan_structure, store_stan_structure,
 )
 
 
@@ -125,8 +126,8 @@ def diagnose_publisher(client, *, country: str, year: int) -> dict:
 
 
 
-def discover_measure_codes(client) -> dict:
-    """One official SDMX structure request; no data or archive writes."""
+def discover_measure_codes(client, *, archive_root: Path | None = None) -> dict:
+    """One governed SDMX structure request; optional immutable original capture."""
     require_managed_client(client)
     report = {
         "phase": "phase2", "operation": "stan_publisher_measure_metadata",
@@ -146,6 +147,10 @@ def discover_measure_codes(client) -> dict:
                     raise ValueError("STAN publisher structure exceeds safe size")
                 body.extend(chunk)
         report.update(parse_stan_measure_structure(bytes(body)))
+        if archive_root is not None:
+            report["original_evidence"] = store_stan_structure(
+                bytes(body), root=archive_root)
+            report["no_archive_writes"] = False
         report["state"] = "validated_publisher_measure_codelist"
     except Exception as exc:
         report["reason_type"] = type(exc).__name__
@@ -389,17 +394,28 @@ def plan_expansion(root: Path, *, countries: tuple[str, ...],
     verified = []
     pending = []
     invalid = []
+    scope_measure_gaps = []
     for row in evidence["country_results"]:
         country = row["country"]
         if row["status"] == "invalid_original_stan":
             invalid.append(country)
-        elif any(
-                scope["scope"] == selected_scope
-                and scope["requested_since"] == start_year
-                for scope in row.get("source_scopes", [])):
-            verified.append(country)
         else:
-            pending.append(country)
+            matched = next((
+                scope for scope in row.get("source_scopes", [])
+                if scope["scope"] == selected_scope
+                and scope["requested_since"] == start_year
+            ), None)
+            if matched is None:
+                pending.append(country)
+            else:
+                verified.append(country)
+                absent = sorted(set(measures) - set(matched["native_measure_counts"]))
+                if absent:
+                    scope_measure_gaps.append({
+                        "country": country,
+                        "measures_without_numeric_observations": absent,
+                        "numeric_observations_in_source": matched["numeric_observations"],
+                    })
     batches = [
         pending[i:i + max_requests]
         for i in range(0, len(pending), max_requests)
@@ -410,6 +426,8 @@ def plan_expansion(root: Path, *, countries: tuple[str, ...],
         "native_measures": list(measures),
         "scope": selected_scope,
         "verified_countries": verified,
+        "verified_scopes_with_missing_measures": scope_measure_gaps,
+        "publisher_measure_metadata": read_stan_structure(root)["status"],
         "pending_countries": pending,
         "blocked_invalid_original_countries": invalid,
         "request_budget_per_batch": max_requests,
@@ -429,13 +447,25 @@ def brief_report(data: dict) -> dict:
             "status_counts": data["status_counts"],
             "verified_scope_countries": data["verified_scope_countries"],
             "same_scope_identity_countries": data["same_scope_identity_countries"],
-            "examples": data["country_readiness"][:5],
-            "additional_countries": max(0, len(data["country_readiness"]) - 5),
+            "publisher_measure_metadata": data["publisher_measure_metadata"],
+            "incomplete_verified": [{
+                "country": row["country"],
+                "status": row["status"],
+                "per_measure_max_numeric": row.get("per_measure_max_numeric", {}),
+                "missing_in_all_scopes": row.get("core_measures_absent_in_all_scopes", []),
+                "core_four_overlap": row.get("core_four_max_industry_years_in_single_scope", 0),
+            } for row in data["country_readiness"]
+               if row["status"] == "insufficient_same_scope_measure_coverage"][:8],
+            "additional_incomplete": max(0,
+                sum(row["status"] == "insufficient_same_scope_measure_coverage"
+                    for row in data["country_readiness"]) - 8),
             "scientific_analysis_certified": False,
         }
     if data.get("operation") == "stan_expansion_plan":
         return {
             "operation": "plan_expansion",
+            "publisher_measure_metadata": data["publisher_measure_metadata"],
+            "incomplete_verified_scopes": data["verified_scopes_with_missing_measures"][:8],
             "measures": data["native_measures"],
             "verified": data["verified_countries"],
             "pending_count": len(data["pending_countries"]),
@@ -444,6 +474,15 @@ def brief_report(data: dict) -> dict:
                           if data["suggested_country_batches"] else [],
             "batch_count": len(data["suggested_country_batches"]),
             "publisher_requests_made": 0,
+        }
+    if data.get("operation") == "stan_inspected_publisher_measure_metadata":
+        return {
+            "operation": "inspect_metadata", "state": data["state"],
+            "status": data["metadata"]["status"],
+            "source_sha256": data["metadata"].get("source_sha256"),
+            "surplus_measures": data["metadata"].get("surplus_measures"),
+            "historical_candidates_present": data["metadata"].get("historical_candidates_present"),
+            "originals_verified": data["metadata"].get("originals_verified"),
         }
     if data.get("operation") == "stan_publisher_measure_metadata":
         return {
@@ -455,6 +494,8 @@ def brief_report(data: dict) -> dict:
             "historical_candidates_present": data.get("historical_candidates_present"),
             "source_sha256": data.get("source_sha256"),
             "country_coverage_verified": False,
+            "archived": bool(data.get("original_evidence")),
+            "receipt_sha256": data.get("original_evidence", {}).get("receipt_sha256"),
         }
     if "surplus_probe" in data:
         probe = data["surplus_probe"]
@@ -597,6 +638,10 @@ def main(argv=None) -> int:
                         help="Continue a sorted country batch after this ISO3 code")
     parser.add_argument("--discover-measures", action="store_true",
                         help="One read-only publisher structure request; list actual surplus codes")
+    parser.add_argument("--acquire-metadata", action="store_true",
+                        help="One governed publisher structure request, retain original XML and receipt")
+    parser.add_argument("--inspect-metadata", action="store_true",
+                        help="Read-only verification of retained OECD STAN structure XML")
     parser.add_argument("--resolve-surplus", action="store_true",
                         help="Probe bounded native net/gross combined-surplus candidates; "
                              "with --acquire, retain a separate five-measure source")
@@ -629,11 +674,12 @@ def main(argv=None) -> int:
     if args.plan_expansion and (
             args.acquire or args.expand or args.audit or args.diagnose
             or args.resolve_surplus or args.discover_measures or args.after_country
-            or args.readiness):
+            or args.readiness or args.acquire_metadata or args.inspect_metadata):
         parser.error("--plan-expansion is a standalone read-only operation")
     if args.discover_measures and (
             args.expand or args.acquire or args.resolve_surplus or args.diagnose
-            or args.audit or args.measures or args.after_country or args.readiness):
+            or args.audit or args.measures or args.after_country or args.readiness
+            or args.acquire_metadata or args.inspect_metadata):
         parser.error("--discover-measures is a standalone read-only operation")
     if args.resolve_surplus and (args.expand or args.diagnose or args.audit or
                                  len(countries) != 1 or args.measures):
@@ -643,10 +689,17 @@ def main(argv=None) -> int:
         parser.error("--probe-year is outside the supported historical period")
     if args.readiness and (args.acquire or args.expand or args.diagnose or
                            args.resolve_surplus or args.audit or args.measures
-                           or args.discover_measures or args.plan_expansion):
+                           or args.discover_measures or args.plan_expansion
+                           or args.acquire_metadata or args.inspect_metadata):
         parser.error("--readiness is a standalone read-only operation")
     if args.audit and (args.acquire or args.expand or args.diagnose):
         parser.error("--audit is read-only")
+    if args.acquire_metadata or args.inspect_metadata:
+        if (args.acquire_metadata and args.inspect_metadata
+                or args.acquire or args.expand or args.diagnose or args.audit
+                or args.resolve_surplus or args.measures or args.after_country
+                or args.discover_measures or args.plan_expansion or args.readiness):
+            parser.error("--acquire-metadata/--inspect-metadata require standalone use")
     try:
         since = date.fromisoformat(args.since)
         if since.month != 1 or since.day != 1:
@@ -654,6 +707,12 @@ def main(argv=None) -> int:
         stan_source_request(countries[0], since.year)
     except ValueError:
         parser.error("Invalid YYYY-01-01 source start")
+    if args.inspect_metadata:
+        result = read_stan_structure(args.evidence_dir)
+        emit_report({"operation": "stan_inspected_publisher_measure_metadata",
+                     "state": result["status"], "metadata": result},
+                    brief=args.brief)
+        return 0 if result["status"] == "verified_publisher_structure" else 1
     if args.readiness:
         report = summarize_stan_readiness(args.evidence_dir, countries=countries)
         emit_report(report, brief=args.brief)
@@ -666,10 +725,10 @@ def main(argv=None) -> int:
             measures=selection, max_requests=args.max_requests or 4)
         emit_report(result, brief=args.brief)
         return 1 if result["blocked_invalid_original_countries"] else 0
-    if args.discover_measures:
-        import httpx
+    if args.discover_measures or args.acquire_metadata:
         with managed_client(timeout=45, follow_redirects=False) as client:
-            result = discover_measure_codes(client)
+            result = discover_measure_codes(
+                client, archive_root=args.evidence_dir if args.acquire_metadata else None)
         emit_report(result, brief=args.brief)
         return 0 if result["state"] == "validated_publisher_measure_codelist" else 1
     if args.diagnose:
