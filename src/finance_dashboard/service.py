@@ -132,6 +132,18 @@ class IngestionService:
                 raise ValueError("Provider returned observations outside requested window")
             if any(day > (today or date.today()) for day in fetched.observations):
                 raise ValueError("Provider returned future-dated observations")
+            evidence = getattr(self.provider, "last_evidence", None)
+            if evidence is not None:
+                if not isinstance(evidence, dict) or evidence.get("kind") not in {
+                        "response", "native", "local", "derived", "unsupported"}:
+                    raise ValueError("Invalid source acquisition evidence kind")
+                if evidence["kind"] == "response" and (
+                        not isinstance(evidence.get("bundle_digest"), str)
+                        or not re.fullmatch(r"[a-f0-9]{64}", evidence["bundle_digest"])
+                        or not isinstance(evidence.get("receipt_name"), str)
+                        or not re.fullmatch(r"[0-9TZ-]+[a-f0-9]{32}\\.json",
+                                            evidence["receipt_name"])):
+                    raise ValueError("Missing immutable source acquisition receipt")
             with Session(self.engine) as session, session.begin():
                 # Serialize ingestion of a series in PostgreSQL via the parent series row.
                 session.execute(
@@ -180,6 +192,11 @@ class IngestionService:
                 run.status = "success"
                 run.request_url = fetched.request_url
                 run.response_prepared_at = fetched.prepared_at.isoformat() if fetched.prepared_at else None
+                if evidence is not None:
+                    run.evidence_kind = evidence["kind"]
+                    run.evidence_scope = evidence["scope"]
+                    run.evidence_bundle_digest = evidence["bundle_digest"]
+                    run.evidence_receipt_name = evidence["receipt_name"]
                 run.observations_received = len(fetched.observations)
                 run.versions_added = added
                 session.get(SeriesRow, series_id).updated_at = now_utc()
