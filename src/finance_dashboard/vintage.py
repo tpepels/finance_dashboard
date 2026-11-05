@@ -170,6 +170,7 @@ def _snapshot_failure_diagnostic(exc: Exception) -> dict:
 
 def probe_access(*, api_key: str, client: httpx.Client) -> dict:
     """Single bounded request, no persisted writes, with redacted diagnostics."""
+    require_managed_client(client)
     if not _key_format_ok(api_key):
         return {"status": "blocked", "reason": "fred_key_format_invalid",
                 "key_format": "FRED V1 requires 32 lowercase alphanumeric characters",
@@ -208,6 +209,7 @@ def first_available_vintages(series_ids: list[str], *, api_key: str,
     A series introduced after the research start date has no genuine earlier
     point-in-time observations. Those dates must be excluded, never imputed.
     """
+    require_managed_client(client)
     if any(sid not in SOURCES for sid in series_ids):
         raise VintageError("Unmapped ALFRED source")
     result = {}
