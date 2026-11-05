@@ -1,7 +1,6 @@
 """Cross-process source-policy contract, safety limits and HTTP client integration."""
 from __future__ import annotations
 
-from copy import deepcopy
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -57,6 +56,13 @@ class PolicyHarness(unittest.TestCase):
             clock=self.clock, sleep=self.clock.sleep,
             max_wait_seconds=max_wait_seconds)
 
+    def managed_request(self, method, url, *, headers=None):
+        """Exercise the real policy transport, never the removed hook API."""
+        with managed_client(
+                policy_gate=self.gate(),
+                transport=httpx.MockTransport(lambda r: httpx.Response(200))) as client:
+            return client.request(method, url, headers=headers)
+
 
 class PolicyRegistryTests(PolicyHarness):
     def test_catalog_classification_and_exact_scope(self):
@@ -99,31 +105,29 @@ class PolicyRegistryTests(PolicyHarness):
                 "https://www.ishares.com/path/latest-holdings.csv")
 
     def test_restricted_collection_and_method_denied(self):
-        gate = self.gate()
         with self.assertRaises(PolicyViolation) as ex:
-            gate.before_request(httpx.Request(
-                "GET", "https://www.ishares.com/uk/professionals/holdings.csv"))
+            self.managed_request(
+                "GET", "https://www.ishares.com/uk/professionals/holdings.csv")
         self.assertEqual(ex.exception.reason, "automated_download_not_cleared")
         with self.assertRaises(PolicyViolation):
-            gate.before_request(httpx.Request(
-                "POST", "https://api.stlouisfed.org/fred/series/observations"))
+            self.managed_request(
+                "POST", "https://api.stlouisfed.org/fred/series/observations")
 
     def test_sec_contact_identity_and_oecd_direct_network_ack(self):
-        gate = self.gate()
         with self.assertRaises(PolicyViolation) as ex:
-            gate.before_request(httpx.Request(
+            self.managed_request(
                 "GET", "https://data.sec.gov/submissions/CIK0000000010.json",
-                headers={"User-Agent": "python-httpx"}))
+                headers={"User-Agent": "python-httpx"})
         self.assertEqual(ex.exception.reason, "contact_user_agent_required")
         with patch.dict("os.environ", {"FINANCE_OECD_DIRECT_NETWORK_ACK": ""}):
             with self.assertRaises(PolicyViolation) as ex:
-                gate.before_request(httpx.Request(
-                    "GET", "https://sdmx.oecd.org/public/rest/data"))
+                self.managed_request(
+                    "GET", "https://sdmx.oecd.org/public/rest/data")
             self.assertEqual(ex.exception.reason, "direct_network_origin_not_confirmed")
         with patch.dict("os.environ", {"FINANCE_OECD_DIRECT_NETWORK_ACK": "1"}):
             with self.assertRaises(PolicyViolation) as ex:
-                gate.before_request(httpx.Request(
-                    "GET", "https://sdmx.oecd.org/public/rest/data?lastNObservations=2"))
+                self.managed_request(
+                    "GET", "https://sdmx.oecd.org/public/rest/data?lastNObservations=2")
             self.assertEqual(ex.exception.reason, "prohibited_query_parameter")
 
 
@@ -168,6 +172,44 @@ class DurableLimitTests(PolicyHarness):
         a.release(lease, policy.id)
         new_lease = b.reserve(policy)
         b.release(new_lease, policy.id)
+
+    def test_transport_failure_releases_concurrency_but_consumes_budget(self):
+        gate = self.gate()
+        def failed_connection(request):
+            raise httpx.ConnectError("unreachable", request=request)
+        with managed_client(
+                policy_gate=gate,
+                transport=httpx.MockTransport(failed_connection)) as client:
+            with self.assertRaises(httpx.ConnectError):
+                client.get("https://api.stlouisfed.org/fred/series/observations")
+        # Connection error does not deadlock another source behind a stale
+        # 30-second lease; the attempt still counts towards its rate budget.
+        token = self.gate().reserve(self.registry.by_id["fred-v1"])
+        self.gate().release(token, "fred-v1")
+        with self.assertRaises(PolicyDeferred) as exc:
+            self.gate().reserve(self.registry.by_id["fred-v1"])
+        self.assertEqual(exc.exception.reason, "rolling_window_limit")
+
+    def test_redirected_destination_is_independently_classified(self):
+        sent = []
+        def redirect(request):
+            sent.append(request.url.host)
+            return httpx.Response(302, headers={
+                "Location": "https://unclassified.invalid/secret"})
+        with managed_client(
+                policy_gate=self.gate(), follow_redirects=True,
+                transport=httpx.MockTransport(redirect)) as client:
+            with self.assertRaises(PolicyViolation):
+                client.get("https://api.stlouisfed.org/fred/series/observations")
+        self.assertEqual(sent, ["api.stlouisfed.org"])
+
+    def test_explicit_proxy_and_transport_mount_are_not_allowed(self):
+        with self.assertRaises(PolicyViolation):
+            managed_client(policy_gate=self.gate(), proxy="http://localhost:8080")
+        with self.assertRaises(PolicyViolation):
+            managed_client(policy_gate=self.gate(),
+                           mounts={"https://": httpx.MockTransport(
+                               lambda req: httpx.Response(200))})
 
     def test_retry_after_and_429_cooldown_survive_new_client(self):
         requests = []
@@ -261,8 +303,8 @@ class DurableLimitTests(PolicyHarness):
 
     def test_safe_error_codes_do_not_persist_request_url(self):
         with self.assertRaises(PolicyViolation) as e:
-            self.gate().before_request(httpx.Request(
-                "GET", "https://unknown.example.test/?token=private"))
+            self.managed_request(
+                "GET", "https://unknown.example.test/?token=private")
         self.assertEqual(safe_source_failure_code(e.exception), "source_policy_denied")
         policy = self.registry.by_id["fred-v1"]
         a, b = self.gate(), self.gate()
