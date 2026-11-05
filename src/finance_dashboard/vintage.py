@@ -18,6 +18,7 @@ from pathlib import Path
 import time
 
 import httpx
+from .source_policy import managed_client
 
 FRED_OBSERVATIONS = "https://api.stlouisfed.org/fred/series/observations"
 FRED_VINTAGE_DATES = "https://api.stlouisfed.org/fred/series/vintagedates"
@@ -413,7 +414,7 @@ def capture_previous_month(root: Path = ROOT, *,
     if not key:
         return {"asof":asof.isoformat(),"status":"disabled_no_key","captured":0,"errors":0}
     owns = client is None
-    source = client or httpx.Client(timeout=25,headers={
+    source = client or managed_client(timeout=25,headers={
         "User-Agent":"GlobalCapitalMonitor/0.2"})
     captured=0
     errors=0
@@ -526,7 +527,7 @@ def main() -> int:
     args = parser.parse_args()
     key = os.environ.get("FRED_API_KEY", "").strip()
     if args.check:
-        with httpx.Client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
+        with managed_client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
             result = probe_access(api_key=key, client=client)
         print(json.dumps(result, indent=2))
         return 0 if result["status"] == "ready" else 1
@@ -544,7 +545,7 @@ def main() -> int:
     if not _key_format_ok(key):
         parser.error("FRED_API_KEY must be a registered 32-character lowercase alphanumeric key")
     if args.backfill:
-        with httpx.Client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
+        with managed_client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
             first_available = first_available_vintages(
                 args.series, api_key=key, client=client)
             result = backfill_batch(args.start, args.end, args.series,
@@ -554,7 +555,7 @@ def main() -> int:
         print(json.dumps(result, indent=2))
         return 1 if result["failed_now"] else 0
     ok, failed = 0, 0
-    with httpx.Client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
+    with managed_client(timeout=25, headers={"User-Agent": "GlobalCapitalMonitor/0.2"}) as client:
         for day in months:
             for sid in args.series:
                 try:
