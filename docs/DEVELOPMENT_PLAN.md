@@ -88,7 +88,7 @@ The API exposes `GET /api/source-policy`. A compact non-network CLI is:
 
 **Fail-closed operational constraint:** OECD SDMX requires the operator to
 confirm a permitted direct network route by setting
-`FINANCE_OECD_DIRECT_NETWORK_ACK=1` (default 0 blocks OECD requests).
+`FINANCE_SOURCE_POLICY_ACKNOWLEDGED=oecd-sdmx` (default 0 blocks OECD requests).
 Container software cannot independently prove absence of a host-level VPN.
 Do not set this variable without checking outbound origin.
 
