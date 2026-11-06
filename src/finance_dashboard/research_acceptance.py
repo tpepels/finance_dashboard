@@ -16,7 +16,7 @@ same gates; analyses using one are ``conditional``, never ``accepted``.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from .source_original_gate import verified_original_rows
@@ -119,7 +119,26 @@ def _publisher_dimensions_gate(ids, expected, registry, originals) -> dict:
         scope="Cited per-series publisher review, checked against archived original metadata and the role's declared index base and price basis.")
 
 
-def _temporal_gate(role, ids, registry, originals, revisions, release_originals) -> dict:
+def _uncovered_history(row: dict, stored: dict) -> bool:
+    """True unless verified windows cover every stored period without a gap."""
+    first, last = stored.get("oldest_source_date"), stored.get("latest_source_date")
+    if not first or not last:
+        return True
+    reach = None
+    for start, end in row.get("verified_window_ranges", []):
+        start, end = date.fromisoformat(start), date.fromisoformat(end)
+        if reach is None:
+            if start > date.fromisoformat(first):
+                return True
+            reach = end
+        elif start > reach + timedelta(days=1):
+            return True
+        reach = max(reach, end)
+    return reach is None or reach < date.fromisoformat(last)
+
+
+def _temporal_gate(role, ids, registry, originals, revisions, release_originals,
+                   counts=None) -> dict:
     details = dict(required_mode=role["temporal_requirement"],
         verified_official_series_vintages=release_originals,
         original_publisher_series_vintage_count=len(release_originals),
@@ -145,7 +164,8 @@ def _temporal_gate(role, ids, registry, originals, revisions, release_originals)
             row = by_series.get(sid)
             if row and row["invalid_or_conflicting_original_windows"]:
                 conflicting.append(sid)
-            elif not row or not row["hash_verified_original_windows"]:
+            elif (not row or not row["hash_verified_original_windows"]
+                  or _uncovered_history(row, (counts or {}).get(sid, {}))):
                 pending.append(sid)
             else:
                 limitations.append({"series_id": sid, "code": "alfred_records_not_agency_first_release",
@@ -162,7 +182,7 @@ def _temporal_gate(role, ids, registry, originals, revisions, release_originals)
              else "passed")
     code = ("conflicting_alfred_revision_windows" if conflicting
             else "release_dating_review_missing" if missing
-            else "alfred_revision_windows_not_acquired" if pending
+            else "alfred_revision_windows_incomplete_for_stored_history" if pending
             else "publisher_vintage_archive_not_collected" if archives
             else "verified_original_values_required" if unverified
             else "release_dating_evidenced")
@@ -317,10 +337,15 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             "invalid_or_conflicting_original_windows": revision_sources[
                 registry[sid]["source_key"]][
                     "invalid_or_conflicting_windows"],
+            "verified_window_ranges": sorted(
+                [window["start"], window["end"]] for window in revision_sources[
+                    registry[sid]["source_key"]].get("windows", [])
+                if window.get("status") == "verified_original_revision_window"
+                and window.get("start") and window.get("end")),
         } for sid in ids if sid in registry
             and registry[sid].get("provider") == "FRED"
             and registry[sid]["source_key"] in revision_sources]
-        checks.append(_temporal_gate(role, ids, registry, originals, revisions, release_originals))
+        checks.append(_temporal_gate(role, ids, registry, originals, revisions, release_originals, counts))
         artifact = None
         if "icio" in role.get("artifact_ids", []) and matrix_available:
             artifact = {key: matrix.get(key) for key in (

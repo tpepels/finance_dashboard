@@ -48,7 +48,8 @@ class EvidencedEndStateTests(unittest.TestCase):
                     "comparison_contract": {"specification": "test", "original_requirements": roles,
                                             "variants": []}}
         sids = {p["series_id"] for p in proofs}
-        result = analysis_acceptance(analysis, self.by_id, {sid: {"stored_periods": 2} for sid in sids},
+        result = analysis_acceptance(analysis, self.by_id, {sid: {"stored_periods": 2,
+            "oldest_source_date": "2019-01-01", "latest_source_date": "2026-11-02"} for sid in sids},
             panels, observations_checked=True, source_proof={"series": proofs},
             alfred_revision_proof=revisions)
         return analysis, result
@@ -104,9 +105,17 @@ class EvidencedEndStateTests(unittest.TestCase):
             _, result = self.run_analysis([self.role(self.fred)], [self.proof(self.fred)],
                                           [self.panel(self.fred)], revisions)
             return self.gates(result["requirements"][0])["temporal_evidence"]
-        self.assertEqual(temporal(None)["code"], "alfred_revision_windows_not_acquired")
-        ok = {"series": {key: {"verified_windows": 3, "verified_observation_revision_rows": 40,
-                               "invalid_or_conflicting_windows": 0}}}
+        self.assertEqual(temporal(None)["code"], "alfred_revision_windows_incomplete_for_stored_history")
+        def windows(*ranges):
+            return {"series": {key: {"verified_windows": len(ranges), "verified_observation_revision_rows": 40,
+                "invalid_or_conflicting_windows": 0,
+                "windows": [{"status": "verified_original_revision_window", "start": a, "end": b}
+                            for a, b in ranges]}}}
+        # One window does not establish release timing for the stored history.
+        self.assertEqual(temporal(windows(("2020-01-01", "2020-12-31")))["state"], "incomplete")
+        # A gap between windows keeps the gate open.
+        self.assertEqual(temporal(windows(("2019-01-01", "2019-12-31"), ("2021-01-01", "2026-12-31")))["state"], "incomplete")
+        ok = windows(("2019-01-01", "2020-12-31"), ("2021-01-01", "2026-12-31"))
         gate = temporal(ok)
         self.assertEqual(gate["state"], "passed")
         self.assertEqual(gate["limitations"][0]["code"], "alfred_records_not_agency_first_release")
