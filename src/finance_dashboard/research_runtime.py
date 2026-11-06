@@ -14,14 +14,16 @@ from sqlalchemy.orm import Session
 from .comparative_corpus import build_comparative_corpus
 from .research_artifacts import research_artifact_evidence
 from .phase2_publication_evidence import publisher_vintage_evidence
-from .phase2_native_role_originals import native_role_original_evidence
-from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
 from .phase2_alfred_revisions import revision_inventory
-from .vintage import SOURCES
+from .phase2_unbound_sources import unbound_original_source_discovery
+from .stan_research import summarize_stan_readiness
+from .stan_metadata import read_stan_structure
+from .oecd_corporate import OECD_MEMBER_ISO3
+from .phase2_native_role_originals import native_role_original_evidence
 from .research_corpus import analysis_series_ids, research_corpus_report
 from .source_coverage import coverage_from_session
 from .source_reconciliation import reconcile_session
-from .vintage import available_snapshots
+from .vintage import available_snapshots, SOURCES
 
 
 @dataclass(frozen=True)
@@ -32,7 +34,9 @@ class CorpusEvaluation:
     artifact_evidence: dict | None = None
     publisher_vintage_proof: dict | None = None
     native_role_proof: dict | None = None
-    alfred_revision_proof: dict | None = None
+    revision_proof: dict | None = None
+    stan_readiness: dict | None = None
+    unbound_source_proof: dict | None = None
 
 
 def required_series_ids(document: dict) -> list[str]:
@@ -56,9 +60,6 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
     artifacts.update(key for analysis in document["analyses"]
                      for role in analysis["comparison_contract"]["original_requirements"]
                      for key in role["artifact_ids"])
-    # Approved original-method references can identify a native source family
-    # even before a scalar series has been bound to its research role.
-    artifacts.update(DOCUMENTED_NATIVE_DISCOVERY.values())
     with Session(engine, autoflush=False) as session:
         if engine.dialect.name == "postgresql":
             session.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"))
@@ -80,12 +81,16 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
          required_series_ids(document)})
         if vintage_root is not None else None)
     role_originals = native_role_original_evidence(document, root)
-    revisions = (revision_inventory(
+    stan = summarize_stan_readiness(root, countries=tuple(sorted(OECD_MEMBER_ISO3)))
+    unbound = unbound_original_source_discovery(
+        document, series_registry, structured, stan_readiness=stan,
+        stan_structure=read_stan_structure(root))
+    revised = (revision_inventory(
         Path(vintage_root),
         {item["source_key"] for item in series_registry
-         if item.get("provider") == "FRED" and
-         item.get("source_key") in SOURCES and
-         item["id"] in required_series_ids(document)})
+         if item.get("provider") == "FRED"
+         and item["id"] in required_series_ids(document)
+         and item["source_key"] in SOURCES})
         if vintage_root is not None else None)
     report = research_corpus_report(
         document, coverage,
@@ -95,9 +100,10 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
         source_reconciliation=proof, artifact_evidence=structured,
         publisher_vintage_proof=first_vintage,
         native_role_evidence=role_originals,
-        alfred_revision_proof=revisions)
+        publisher_revision_proof=revised,
+        unbound_source_evidence=unbound)
     return CorpusEvaluation(
         public_report=report, comparative=comparative, source_proof=proof,
         artifact_evidence=structured, publisher_vintage_proof=first_vintage,
-        native_role_proof=role_originals,
-        alfred_revision_proof=revisions)
+        native_role_proof=role_originals, revision_proof=revised,
+        stan_readiness=stan, unbound_source_proof=unbound)

@@ -245,6 +245,82 @@ def read_revision_window(root: Path, series_id: str, start: date,
     }
 
 
+def reconstruct_revision_asof(root: Path, series_id: str, *,
+                               start: date, end: date, capture_asof: date,
+                               requested_asof: date) -> dict:
+    """Reconstruct exact ALFRED-real-time values from one verified original.
+
+    Revalidates every receipt and every original page before exposing an
+    observation. No values are filled, shifted across dates or interpolated.
+    A value first recorded on ALFRED is not asserted to be its originating
+    agency's publication date.
+    """
+    _valid_dates(series_id, start, end, capture_asof)
+    if not start <= requested_asof <= capture_asof:
+        raise ValueError("alfred_projection_asof_outside_verified_original")
+    verified = read_revision_window(
+        root, series_id, start, end, capture_asof)
+    if verified["status"] != "verified_original_revision_window":
+        raise ValueError("alfred_original_revision_window_not_verified")
+    parent = _parent(root, series_id, start, end, capture_asof)
+    identity = _identity(series_id, start, end, capture_asof)
+    entries = verified_receipted_bundles(parent, identity)
+    bundle = entries[-1]["bundle_path"]
+    manifest = entries[-1]["manifest"]
+    values = defaultdict(list)
+    offset = 0
+    for meta in manifest["pages"]:
+        raw = (bundle / meta["file"]).read_bytes()
+        _, rows = _parse_page(raw, identity=identity, offset=offset)
+        offset += len(rows)
+        for item in rows:
+            values[item["date"]].append(item)
+    by_date = {}
+    for observation, intervals in sorted(values.items()):
+        valid = [row for row in intervals
+                 if row["realtime_start"] <= requested_asof.isoformat()
+                 <= row["realtime_end"]]
+        if len(valid) > 1:
+            raise ValueError("alfred_asof_duplicate_effective_revisions")
+        chosen = valid[0] if valid else None
+        by_date[observation] = {
+            "original_observation_date": observation,
+            "value_as_recorded_on_alfred_at_asof": (
+                chosen["value"] if chosen is not None else None),
+            "available_in_verified_alfred_snapshot":
+                bool(chosen and chosen["value"] is not None),
+            "reported_missing_in_alfred_snapshot":
+                bool(chosen and chosen["value"] is None),
+            "not_yet_available_at_asof": chosen is None,
+            "alfred_revision_effective_from": (
+                chosen["realtime_start"] if chosen else None),
+            "alfred_revision_effective_until": (
+                chosen["realtime_end"] if chosen else None),
+            "first_recorded_alfred_revision": min(
+                row["realtime_start"] for row in intervals),
+        }
+    return {
+        "operation": "original_alfred_asof_reconstruction",
+        "series_id": series_id, "window_start": start.isoformat(),
+        "window_end": end.isoformat(),
+        "selected_asof": requested_asof.isoformat(),
+        "verified_capture_asof": capture_asof.isoformat(),
+        "verified_original_sha256": verified["source_sha256"],
+        "observation_dates": len(by_date),
+        "numeric_values_at_asof": sum(
+            x["available_in_verified_alfred_snapshot"]
+            for x in by_date.values()),
+        "not_available_at_asof": sum(
+            x["not_yet_available_at_asof"] for x in by_date.values()),
+        "explicit_missing_at_asof": sum(
+            x["reported_missing_in_alfred_snapshot"] for x in by_date.values()),
+        "observations": by_date,
+        "source_observation_values_unmodified": True,
+        "earlier_agency_first_publication_not_verified": True,
+        "scientific_original_analysis_certified": False,
+    }
+
+
 def capture_revision_window(series_id: str, *, start: date, end: date,
                             asof: date, root: Path, api_key: str,
                             client: httpx.Client, max_pages: int = 10,
@@ -257,12 +333,16 @@ def capture_revision_window(series_id: str, *, start: date, end: date,
     if type(max_pages) is not int or not 1 <= max_pages <= MAX_PAGES_PER_WINDOW:
         raise ValueError("invalid_alfred_revision_page_budget")
     parent = _parent(root, series_id, start, end, asof)
-    if parent.exists() and not refresh:
+    if parent.exists():
+        # Verify *every* previous receipt and immutable source version
+        # before refreshing, not only when reusing the latest cache entry.
         current = read_revision_window(root, series_id, start, end, asof)
         if current["status"] != "verified_original_revision_window":
             raise ValueError("invalid_existing_revision_original")
-        return {**current, "publisher_requests": 0, "cache_hit": True}
-    if parent.is_symlink():
+        if not refresh:
+            return {**current, "publisher_requests": 0, "cache_hit": True}
+    if (parent.is_symlink() or parent.parent.is_symlink()
+            or parent.parent.parent.is_symlink()):
         raise ValueError("alfred_revision_parent_symlink")
     pages = []
     expected, offset = None, 0

@@ -169,8 +169,7 @@ def main(argv=None) -> int:
     parser.add_argument("--series", action="append", choices=sorted(SOURCES))
     parser.add_argument("--start", type=date.fromisoformat, required=True)
     parser.add_argument("--end", type=date.fromisoformat, required=True)
-    parser.add_argument("--asof", type=date.fromisoformat, required=True,
-                        help="Explicit fixed publisher vintage cutoff, reused for every resumed batch")
+    parser.add_argument("--asof", type=date.fromisoformat, default=date.today())
     parser.add_argument("--acquire", action="store_true")
     parser.add_argument("--refresh-existing", action="store_true")
     parser.add_argument("--max-requests", type=int, default=30)

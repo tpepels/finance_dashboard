@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any
 
 from .source_original_gate import verified_original_rows
-from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
 
 PUBLISHER_METADATA_FIELDS = (
     "source_native_unit", "source_native_unit_label", "source_currency", "source_sheet",
@@ -51,7 +50,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                         artifact_evidence: dict | None = None,
                         publisher_vintage_proof: dict | None = None,
                         native_role_evidence: dict | None = None,
-                        alfred_revision_proof: dict | None = None) -> dict[str, Any]:
+                        publisher_revision_proof: dict | None = None,
+                        unbound_source_evidence: dict | None = None) -> dict[str, Any]:
     """Evaluate all original roles using the current, independently checked inputs.
 
     `panels` must come from comparative_evidence_summary, which reconstructs
@@ -66,6 +66,13 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     # acceptance, acquisition planning and full-corpus diagnostics.
     originals = verified_original_rows(source_proof, registry, counts)
     matrix = (artifact_evidence or {}).get("icio", {}) if analysis["id"] == "G06" else {}
+    unbound_rows = {
+        (item["analysis_id"], item["role"]): item
+        for item in (unbound_source_evidence or {}).get("role_candidates", [])
+    }
+    if len(unbound_rows) != len(
+            (unbound_source_evidence or {}).get("role_candidates", [])):
+        raise ValueError("duplicate_unbound_original_source_role_identity")
     matrix_available = (matrix.get("original_source_hash_verified") is True
                         and type(matrix.get("year")) is int and 1995 <= matrix["year"] <= 2022
                         and type(matrix.get("accounting_passed")) is bool)
@@ -131,32 +138,33 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             registry[sid].get("provider") == "FRED" and
             published.get(registry[sid]["source_key"], {}).get("status") ==
             "verified_original_publisher_vintage"]
-        revision_sources = (alfred_revision_proof or {}).get("series", {})
-        revisions = [{
+        revisions = (publisher_revision_proof or {}).get("series", {})
+        revised_originals = [{
             "series_id": sid,
-            "alfred_source_key": registry[sid]["source_key"],
-            "hash_verified_original_windows": revision_sources[
+            "publisher_series": registry[sid]["source_key"],
+            "verified_original_revision_windows": revisions[
                 registry[sid]["source_key"]]["verified_windows"],
-            "original_revision_rows": revision_sources[
+            "verified_original_revision_rows": revisions[
                 registry[sid]["source_key"]][
                     "verified_observation_revision_rows"],
-            "invalid_or_conflicting_original_windows": revision_sources[
+            "invalid_or_conflicting_windows": revisions[
                 registry[sid]["source_key"]][
                     "invalid_or_conflicting_windows"],
+            "underlying_original_publisher_first_release_verified": False,
         } for sid in ids if sid in registry
             and registry[sid].get("provider") == "FRED"
-            and registry[sid]["source_key"] in revision_sources]
+            and revisions.get(registry[sid]["source_key"], {}).get(
+                "verified_windows", 0) > 0]
         checks.append(_gate(
             "temporal_evidence", "incomplete",
             "observation_release_eligibility_unverified", ids,
             required_mode=role["temporal_requirement"],
             verified_official_series_vintages=release_originals,
             original_publisher_series_vintage_count=len(release_originals),
-            verified_original_revision_sources=revisions,
-            alfred_windows_with_complete_realtime_intervals=sum(
-                row["hash_verified_original_windows"] for row in revisions),
+            verified_alfred_revision_windows=revised_originals,
+            verified_alfred_revision_source_series_count=len(revised_originals),
             observation_first_release_dates_verified=0,
-            scope="ALFRED historical real-time windows identify revisions as recorded by ALFRED, not necessarily initial publication by the producing institution. Every observation's original release time, matched historical coverage and common publisher release remain independently required."))
+            scope="Official first ALFRED series vintage is not the first published date of each observation. Original release synchronization and eligibility remain separate. Receipt time and current-source observations cannot certify them."))
         artifact = None
         if "icio" in role.get("artifact_ids", []) and matrix_available:
             artifact = {key: matrix.get(key) for key in (
@@ -177,39 +185,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                                missing_years=sorted(set(range(1995, 2023)) - set(years)))
             checks[3] = _gate("original_source_values", "passed", "original_artifact_hashes_verified",
                 scope="Original matrix bytes match the pinned replica ledger. Accounting validity is a separate failed check.")
-        # Some explicitly named original methods have a genuine typed native
-        # reader before any scalar catalog identity is scientifically bound.
-        # WIID survey rows, for example, retain welfare concept/scale/quality
-        # and cannot be collapsed to an assumed country-year Gini.
-        named_artifact = DOCUMENTED_NATIVE_DISCOVERY.get(
-            (analysis["id"], role["role"]))
-        named_evidence = (artifact_evidence or {}).get(
-            named_artifact, {}) if named_artifact else {}
-        if (not ids and named_evidence.get(
-                "original_source_hash_verified") is True):
-            checks[0] = _gate(
-                "source_binding", "incomplete",
-                "documented_native_original_without_scalar_identity",
-                scope="Retained original survey/structured source verified; no validated scalar variable, common units or period selection exists.")
-            checks[2] = _gate(
-                "stored_history", "incomplete",
-                "native_original_requires_matched_role_history")
-            checks[3] = _gate(
-                "original_source_values", "incomplete",
-                "source_original_available_without_exact_method_projection")
         partial = _partial_artifacts(role, artifact_evidence or {})
-        if named_artifact and named_evidence.get(
-                "original_source_hash_verified") is True:
-            partial.append({
-                "artifact_id": named_artifact,
-                "availability": "available_partial",
-                "original_source_hash_verified": True,
-                "original_role_satisfied": False,
-                "full_history_verified": False,
-                "first_publication_verified": False,
-                "scalar_binding_established": False,
-                "scope": "Native original rows require source-specific welfare measure, survey population, unit and release alignment before scalar derivation.",
-            })
         if not ids and partial:
             checks[0] = _gate("source_binding", "incomplete", "original_artifact_partial_scope",
                 scope="Verified structured originals are connected; complete original scope/history remains unverified.")
@@ -237,6 +213,38 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                 "original_source_values", "incomplete",
                 "original_native_source_file_hash_verified_but_method_unreconciled",
                 original_versions=attached["original_versions"])
+        # A verified native publisher scope can demonstrate that a specific
+        # STAN measure exists in original response bytes. An unbound scalar
+        # role still requires its exact economic measure identity, population
+        # and common edition: it may only advance from blocked to incomplete.
+        candidate = unbound_rows.get((analysis["id"], role["role"]))
+        original_scopes = [
+            entry for item in (candidate or {}).get("publisher_candidates", [])
+            for entry in item.get("original_numeric_scope_evidence", {}).get(
+                "reviewed_original_scopes", [])
+        ]
+        named_artifact = (candidate or {}).get("documented_native_artifact")
+        verified_named = (candidate or {}).get(
+            "documented_artifact_original_hash_verified") is True
+        if not ids and (original_scopes or verified_named):
+            checks[0] = _gate(
+                "source_binding", "incomplete",
+                "original_native_source_candidate_retrieved_not_exactly_bound",
+                scope="Original native source is retained but the approved economic original role is not yet mapped to a compatible scalar input.")
+            checks[2] = _gate(
+                "stored_history", "incomplete",
+                "partial_original_native_scopes_available",
+                retained_original_scopes=len(original_scopes),
+                reviewed_native_artifact=named_artifact if verified_named else None)
+            checks[3] = _gate(
+                "original_source_values", "incomplete",
+                "native_source_observations_require_original_method_mapping",
+                scope="Verified source bytes, not a native same-perimeter role history or first publication proof.")
+            if original_scopes and checks[1]["state"] == "not_checked":
+                checks[1] = _gate(
+                    "native_dimensions", "incomplete",
+                    "publisher_scope_original_rows_available_but_not_compatible",
+                    scope="Native publisher measure/industry/year evidence requires same-scope economic identity and complete dimension alignment.")
         state = _state(checks)
         result = {**role, "state": state, "accepted": state == "accepted",
             "sources_checked": observations_checked, "mapped_source_count": len(ids),
@@ -247,6 +255,14 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             result["original_artifact_evidence"] = artifact
         if partial:
             result["partial_artifact_evidence"] = partial
+        if candidate is not None:
+            result["reviewed_original_candidate_evidence"] = {
+                "original_native_scope_count": len(original_scopes),
+                "native_artifact": named_artifact,
+                "native_artifact_original_hash_verified": verified_named,
+                "source_candidates_not_automatically_bound": True,
+                "original_method_verified": False,
+            }
         if attached and attached.get("original_source_hash_verified") is True:
             result["attached_native_original"] = {
                 "status": attached["status"],

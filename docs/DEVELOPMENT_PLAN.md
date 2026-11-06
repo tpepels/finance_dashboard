@@ -1,149 +1,88 @@
 # Development plan — authoritative five-phase roadmap
 
 
-## Phase 2 — observation-level revision originals, native-source matching, input-shape consolidation and independent publisher routes (2026-11-06)
+## Phase 2 — authentic ALFRED revision windows and scope-backed original discovery (2026-11-06)
 
-This major implementation follows the integrated 35-analysis original-source
-architecture. It adds no competing HTTP transport, second research acceptance
-engine, synthetic original histories or compatibility path.
+### Complete original ALFRED revision pages; no synthetic historic dates
 
-### Historical ALFRED observation revisions
+`phase2_alfred_revisions` implements a publisher-policy-governed, independent
+`fred/series/observations` original archive using **output_type=1**
+("observations by real-time period"). It captures source observation dates,
+reported real-time start/end validity and untransformed `units=lin` source
+values. Daily source series use calendar-month windows; monthly/quarterly
+series use at most one calendar-year window. The exact API pagination, native
+response bytes and immutable receipt are retained and verified before an
+acquisition is accepted. The archive rejects duplicate or overlapping
+observation validity intervals, changed page counts, mismatching request
+identities, malformed/NaN measurements, unknown source IDs, wrong source
+version hashes, orphaned original bundles and incomplete pagination.
 
-`phase2_alfred_revisions` captures official FRED/ALFRED
-`fred/series/observations` with `output_type=1`, a historical real-time
-window from `1776-07-04` through a **pinned explicit as-of date**, and an
-explicit observation window. The API returns dates, values and real-time
-intervals; unlike a single calendar-month snapshot, it exposes distinct
-revisions of the same observation. Page offsets/counts and real-time intervals
-are validated *before* any original is published. Duplicate or overlapping
-realtime ranges, missing pages, changed mid-acquisition counts, unexpected
-source parameters, malformed/native nonfinite numbers, and oversized original
-responses fail closed.
+A second original-access function reconstructs the reported numeric value
+(or an explicit missing/previously unavailable state) at any requested
+historical ALFRED as-of date in the verified window. It returns the
+source-original revision date and content hash with the original native
+date/value, and **never** aggregates, interpolates, re-dates or rewrites a
+source series. Conflicting old publisher versions are preserved as separate
+originals and cannot be silently selected as scientific evidence.
 
-Exact publisher response JSON bytes are retained as page files in a
-SHA-256 content-addressed, immutable bundle, with a verified native audit,
-manifest and **append-only acquisition receipt**. Neither FRED API keys nor
-secret-bearing request URLs are written to provenance. Every prior version
-and original response page is independently rehashed on read. If an explicit
-re-fetch of the same as-of/observation window produces different published
-versions, both are retained and the window becomes *conflicted*; no selected
-current value is silently substituted.
+An original ALFRED as-of revision establishes an observation recorded as
+available on ALFRED at the requested as-of date. This does **not** prove that
+the underlying originating agency first published it on that date, nor that
+another publisher's country/method/time-series scope was the same.
+Consequently the official-revision evidence now appears in each affected
+scientific temporal gate while the first-publication gate remains incomplete
+until separately verified.
 
-`scripts/phase2_alfred_revision_batch.py` plans window sizes based on each
-registered original series frequency: daily series use calendar-month
-windows, monthly/quarterly originals use calendar-year windows. Acquisition
-is opt-in, bounded by one canonical publisher-policy transport plus a
-run-wide request cap. It is resumable: a repeated command with the same
-`--asof` skips independently verified windows and refuses corrupted ones.
-A temporary publisher error never publishes an incomplete window.
+`scripts/phase2_alfred_revision_batch.py` is read-only by default and,
+with `--acquire`, uses one bounded publisher-policy client with an exact
+per-run HTTP budget, limited pages per original window and countable
+per-source windows. Already verified windows are reused; unsuccessful
+partial paginated requests never publish a scientific original. The next
+missing window and exact reason for any policy/backpressure interruption are
+included in the compact report.
 
-Read-only window plan:
-
-```sh
-docker compose exec -T finance-dashboard python scripts/phase2_alfred_revision_batch.py \
-  --vintage-dir /data/vintages \
-  --series DGS10 --start 2020-01-01 --end 2021-12-31 \
-  --asof 2026-11-06
-```
-
-Explicit bounded original download (repeat the *identical* command to
-continue; publisher access, credentials and policy must actually be valid):
+Read-only plan for example US 10-year Treasury series:
 
 ```sh
 docker compose exec -T finance-dashboard python scripts/phase2_alfred_revision_batch.py \
-  --vintage-dir /data/vintages \
-  --series DGS10 --start 2020-01-01 --end 2021-12-31 \
-  --asof 2026-11-06 --acquire --max-requests 20 --max-windows 12
+  --vintage-dir /data/vintages --series DGS10 \
+  --start 2019-01-01 --end 2020-12-31 --asof 2021-01-01
 ```
 
-An observation's earliest revision recorded by ALFRED can **postdate** its
-first release by its original statistical publisher; historical source
-definitions can change, and an as-of value does not by itself establish
-common-release membership across multiple sources. Accordingly,
-`research_runtime`, `research_corpus_report`,
-`research_acceptance` and the compact Phase 2 operating report expose
-independently verified ALFRED revision windows and unresolved original
-first-publication gates without granting scientific approval.
+When the FRED key is configured and publisher policy allows requests:
 
-### Original STAN candidate observations for the 21 unbound scalar roles
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_alfred_revision_batch.py \
+  --vintage-dir /data/vintages --series DGS10 \
+  --start 2019-01-01 --end 2020-12-31 --asof 2021-01-01 \
+  --acquire --max-requests 12 --max-windows 4 --max-pages 3
+```
 
-`phase2_unbound_sources` now inspects source-receipted STAN scope diagnostics
-and original measure candidates for all 21 unbound scalar roles. It lists
-actual candidate-code numeric observations, original scope/country,
-retained source SHA, year spans and publisher-structure availability, while
-making the economic identity, matched country-industry-year population,
-currency and first-release checks distinct. The `B2N_B3_N` STAN code
-is explicitly a combined surplus/mixed-income concept; even a verified
-original value cannot prove a *pure* net operating surplus numerator.
+### Source-scoped evidence for all 21 unbound scalar original roles
 
-The official source registry already contains neighbouring histories
-(e.g. annual World Bank nominal GDP and research multiasset returns). These
-are identified only as **non-equivalent investigation leads** for
-quarterly national GDP or original global bond returns, never automatically
-bound to an unverified role. WIID original survey/Companion records are
-loaded through the existing source reader for the originally named L07
-Gini investigation. WIID observations remain structured, with their welfare
-concept and survey population rather than being silently collapsed to an
-undocumented scalar series.
+The unbound-source discovery layer now evaluates the current approved
+publisher candidates against **independently verified, already archived**
+native STAN original scopes and the publisher's retained measure metadata.
+It discloses observed source measure counts, country, industry/source request,
+year spans and original response hashes without silently combining separate
+retrievals. A combined net surplus/mixed-income series is never mislabeled
+as pure operating surplus, and a source native measure does not establish
+economic comparability, same-release use or first-publication eligibility.
 
-### Original structured native type and revision checks
+The 21-role inventory also identifies an existing registered WIID original
+artifact for the unbound survey Gini role, and identifies related existing
+catalog series for GDP, risk-free returns, world valuation and multiasset
+returns that are **not** substitutes for the original method.
 
-`phase2_native_shape` applies one canonical input-shape policy for all
-ten typed structured input families: original events, FX histories,
-accounting panels, positions, allocations, policies, scenario assumptions,
-entity mappings, filing panels and matrices. It requires native observation
-date keys for time-dependent records, numeric values for monetary/weight/FX
-inputs and related entity dimensions for relational inputs. Source record
-identity, finite numbers and missingness are rechecked with the original
-bytes. A user-provided column declaration cannot grant an economic
-methodology, unit/scale, currency, population or publication proof.
-
-`phase2_native_role_originals` now independently compares adjacent original
-file versions by SHA-256 record fingerprints and exact native unique keys.
-It reports source-record additions, removals and revisions and flags schema
-changes or reversion from A to B to A. Full history and original receipts
-are checked *before* allowing another version to be stored. No old raw
-source, manifest, receipt or provenance file is rewritten or erased.
-JSON NaN and Infinity are rejected, as are archive symlinks and corrupted
-older versions. Native original-source version changes are **not** promoted
-to first-publication dating or to scientific acceptance.
-
-### Multi-publisher UCITS acquisition and canonical policy routing
-
-The original structured UCITS acquisition grouped iShares and Vanguard in
-one all-or-nothing publisher task. Because those publishers have different
-canonical rights and source access restrictions, this could block permitted
-Vanguard originals when automated iShares collection is prohibited.
-`phase2_structured_acquisition` now exposes independently classified
-`ucits_holdings:vanguard` and `ucits_holdings:ishares` tasks, each with
-its own policy IDs, availability and immutable attempt-journal identity.
-Only permitted subtasks are selected. The original native iShares and
-Vanguard parsers, their manifests and the **single existing UCITS holdings
-reader** remain authoritative. The previous combined automatic download
-path was removed; direct external requests still pass through the sole
-managed transport and its canonical global/publisher budgets.
-
-The `phase2_structured_batch` journal context now includes the exact
-approved action IDs, so a changed selection cannot be silently treated as
-the same resumable acquisition. A journal must still be separate from all
-original data and backups.
-
-### Unified research interpretation
-
-All 35 analyses continue to use the existing single acceptance engine.
-Its source values, original native dimensional evidence, publication
-provenance and matched-coverage gates remain independent; the additional
-original evidence is visible to the operating review but **does not**
-pass an incomplete research comparison merely because a publisher source
-was acquired. Real, publisher-observed missingness, unreconciled source
-versions, non-equivalent data, user-supplied originals and unclear
-first-publication eligibility remain explicit blockers.
-
-**Scientific completion is still data-dependent.** These implemented
-workflows cannot acquire publishers that prohibit automated access, infer
-missing original observations, create original accounting definitions or
-assert pre-ALFRED public release instants. No live publisher originals were
-modified or fetched during this GitHub development batch.
+`research_runtime.evaluate_corpus` is now the sole producer of this source
+discovery, the same STAN readiness audit and independently verified ALFRED
+revision inventory for both research-acceptance gate reporting and operating
+reports. Unbound roles with observed native publisher data or a verified
+documented original advance from outright absent-source status to an explicit
+**partial** evidence state, never an accepted scalar binding. The operating
+review reports source scope and original revision counts without duplicating
+source crawls. Existing publisher archives and first-publication checks
+remain unchanged and no live publisher requests were made in development.
 
 
 
