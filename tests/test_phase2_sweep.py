@@ -1,4 +1,5 @@
 """Crash-safe Phase 2 sweep and publisher-neutral scheduling regression tests."""
+import corpus_counts
 from contextlib import redirect_stdout
 from hashlib import sha256
 from io import StringIO
@@ -318,13 +319,13 @@ class ScientificWorkplanTests(unittest.TestCase):
         self.assertEqual(work["structured_roles"], expected["structured_roles"])
         self.assertEqual(work["unbound_scalar_roles"],
                          expected["unbound_scalar_roles"])
-        self.assertEqual(work["total_original_roles"], 179)
-        self.assertEqual(work["structured_roles"], 39)
-        self.assertEqual(work["unbound_scalar_roles"], 17)
+        self.assertEqual(work["total_original_roles"], corpus_counts.ROLES)
+        self.assertEqual(work["structured_roles"], corpus_counts.STRUCTURED_ROLES)
+        self.assertEqual(work["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertGreater(work["unbound_scalar_roles_with_publisher_candidates"], 0)
         self.assertEqual(
             work["unbound_scalar_roles_with_publisher_candidates"] +
-            work["unbound_scalar_roles_without_publisher_candidates"], 17)
+            work["unbound_scalar_roles_without_publisher_candidates"], corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertTrue(any(
             x["dataset"] == "OECD_STAN_2025"
             for x in work["publisher_original_candidate_groups"]))
@@ -333,7 +334,7 @@ class ScientificWorkplanTests(unittest.TestCase):
         self.assertFalse(work["scientific_certification"])
         self.assertFalse(work["structured_artifact_acquisition_automated"])
         compact = compact_role_workplan(work)
-        self.assertEqual(compact["structured_roles"], 39)
+        self.assertEqual(compact["structured_roles"], corpus_counts.STRUCTURED_ROLES)
         self.assertTrue(compact["artifact_workstreams"])
         self.assertTrue(compact["publisher_original_candidate_groups"])
         self.assertEqual(

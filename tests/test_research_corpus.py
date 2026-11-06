@@ -1,4 +1,5 @@
 """Phase 2 full scientific-membership and provenance proof tests; offline."""
+import corpus_counts
 import copy
 import os
 from pathlib import Path
@@ -40,9 +41,9 @@ class ResearchCorpusTests(unittest.TestCase):
     def test_complete_35_and_49_verified_reference_contracts(self):
         self.assertEqual([], validate_research_corpus(
             self.document, self.series["series"]))
-        self.assertEqual(len(self.document["analyses"]), 37)
+        self.assertEqual(len(self.document["analyses"]), corpus_counts.ANALYSES)
         self.assertEqual(len(self.document["original_sources"]), 49)
-        self.assertEqual(len({r["id"] for r in self.document["analyses"]}), 37)
+        self.assertEqual(len({r["id"] for r in self.document["analyses"]}), corpus_counts.ANALYSES)
 
     def test_every_question_has_requirements_instead_of_editable_certificates(self):
         for item in self.document["analyses"]:
@@ -266,7 +267,7 @@ class ResearchCorpusTests(unittest.TestCase):
             "state": "available",
         }]}
         report = research_corpus_report(self.document, observed)
-        self.assertEqual(report["analysis_count"], 37)
+        self.assertEqual(report["analysis_count"], corpus_counts.ANALYSES)
         self.assertEqual(report["method_source_count"], 49)
         self.assertEqual(report["fully_validated_analysis_count"], 0)
         recession = next(x for x in report["analyses"] if x["id"] == "C02")

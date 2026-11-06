@@ -1,4 +1,5 @@
 """Original-source candidates and revised scientific temporal evidence."""
+import corpus_counts
 from copy import deepcopy
 import unittest
 
@@ -20,12 +21,12 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
     def test_all_21_roles_are_reviewed_without_invented_scalar_bindings(self):
         report = unbound_original_source_discovery(
             self.document, self.catalog, {})
-        self.assertEqual(report["unbound_scalar_roles"], 17)
+        self.assertEqual(report["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertEqual(report["automatically_bound_scalar_series"], 0)
         self.assertEqual(
             report["roles_with_reviewed_publisher_candidates"] +
             report["roles_requiring_new_publisher_discovery"] +
-            report["roles_with_named_native_original_artifact"], 17)
+            report["roles_with_named_native_original_artifact"], corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertEqual(next(
             r["documented_native_artifact"] for r in report["role_candidates"]
             if r["analysis_id"] == "L07" and r["role"] == "wiid_gini"), "wiid")
@@ -78,7 +79,7 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
         self.assertFalse(source["official_source_measure_verified_for_role"])
 
         summary = concise_unbound_discovery(report)
-        self.assertEqual(summary["unbound_scalar_roles"], 17)
+        self.assertEqual(summary["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertGreater(sum(r["original_native_observed_scope_count"]
                               for r in summary["outstanding_roles"]), 0)
 

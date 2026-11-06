@@ -1,4 +1,5 @@
 """Full structured-artifact capability and original-role coverage tests."""
+import corpus_counts
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -27,11 +28,11 @@ class StructuredCapabilitiesTests(unittest.TestCase):
         self.assertEqual(set(CAPABILITIES), ARTIFACT_IDS)
         self.assertEqual(len(CAPABILITIES), 13)
         matrix = original_artifact_matrix(self.document, {})
-        self.assertEqual(matrix["structured_roles"], 39)
+        self.assertEqual(matrix["structured_roles"], corpus_counts.STRUCTURED_ROLES)
         self.assertEqual(
             matrix["roles_with_registered_artifacts"] +
-            matrix["roles_without_registered_artifacts"], 39)
-        self.assertEqual(matrix["roles_without_registered_artifacts"], 24)
+            matrix["roles_without_registered_artifacts"], corpus_counts.STRUCTURED_ROLES)
+        self.assertEqual(matrix["roles_without_registered_artifacts"], corpus_counts.STRUCTURED_WITHOUT_ARTIFACTS)
         self.assertTrue(any(row["role_count"] for row in matrix[
             "artifact_workstreams"]))
         self.assertEqual({r["artifact_id"] for r in matrix[
@@ -173,8 +174,8 @@ class StructuredCapabilitiesTests(unittest.TestCase):
                 self.document, Path(tmp), holdings=None,
                 kinds=set(CAPABILITIES), cvm_year=2025,
                 agent=None, policy=PolicyRegistry())
-            self.assertEqual(result["structured_roles"], 39)
-            self.assertEqual(result["roles_without_registered_artifacts"], 24)
+            self.assertEqual(result["structured_roles"], corpus_counts.STRUCTURED_ROLES)
+            self.assertEqual(result["roles_without_registered_artifacts"], corpus_counts.STRUCTURED_WITHOUT_ARTIFACTS)
             self.assertTrue(any(
                 item["collection_state"] == "operator_original_required"
                 for item in result["artifact_workstreams"]))

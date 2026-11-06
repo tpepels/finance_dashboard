@@ -1,4 +1,5 @@
 """Whole-contract unbound roles and same-scope accounting reconciliation."""
+import corpus_counts
 import unittest
 
 from finance_dashboard.catalog import load_documents
@@ -35,11 +36,11 @@ class CompleteResearchSourceMatrixTests(unittest.TestCase):
     def test_all_21_unbound_source_roles_are_discovered_without_false_binding(self):
         result = unbound_original_source_discovery(
             self.document, self.catalog, {})
-        self.assertEqual(result["unbound_scalar_roles"], 17)
+        self.assertEqual(result["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertEqual(
             result["roles_with_reviewed_publisher_candidates"] +
             result["roles_requiring_new_publisher_discovery"] +
-            result["roles_with_named_native_original_artifact"], 17)
+            result["roles_with_named_native_original_artifact"], corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertEqual(result["automatically_bound_scalar_series"], 0)
         all_rows = result["role_candidates"]
         self.assertTrue(all(not row["exact_scalar_series_bound"]
@@ -48,7 +49,7 @@ class CompleteResearchSourceMatrixTests(unittest.TestCase):
         self.assertTrue(any(row["publisher_candidates"] for row in all_rows))
         self.assertTrue(any(not row["publisher_candidates"] for row in all_rows))
         summary = concise_unbound_discovery(result)
-        self.assertEqual(len(summary["outstanding_roles"]), 17)
+        self.assertEqual(len(summary["outstanding_roles"]), corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertFalse(summary["scientific_analysis_certified"])
 
     def test_stan_surplus_candidate_is_never_mislabelled_pure_operating_surplus(self):
@@ -77,9 +78,9 @@ class CompleteResearchSourceMatrixTests(unittest.TestCase):
                 "country_readiness": [],
                 "publisher_measure_metadata": "metadata_not_acquired",
             })
-        self.assertEqual(plan["analyses_checked"], 37)
-        self.assertEqual(plan["original_roles_checked"], 179)
-        self.assertEqual(len(plan["original_roles"]), 179)
+        self.assertEqual(plan["analyses_checked"], corpus_counts.ANALYSES)
+        self.assertEqual(plan["original_roles_checked"], corpus_counts.ROLES)
+        self.assertEqual(len(plan["original_roles"]), corpus_counts.ROLES)
         self.assertEqual(plan["stan"]["countries_checked"], 0)
         self.assertTrue(all(not row["scientific_original_role_accepted"]
                             for row in plan["original_roles"]))
@@ -88,7 +89,7 @@ class CompleteResearchSourceMatrixTests(unittest.TestCase):
         small = compact_accounting_workplan(plan)
         self.assertNotIn("original_roles", small)
         self.assertEqual(small["original_roles_with_missing_temporal_eligibility"],
-                         179)
+                         corpus_counts.ROLES)
 
 
 class STANNativeAccountingBridgeTests(unittest.TestCase):

@@ -1,4 +1,5 @@
 """Every original role retains independently derived, fail-closed acceptance gates."""
+import corpus_counts
 import copy
 import unittest
 
@@ -21,7 +22,7 @@ class ResearchAcceptanceTests(unittest.TestCase):
 
     def test_all_approved_roles_have_executable_named_gates_and_no_silent_success(self):
         report = research_corpus_report(self.document, series_registry=self.registry)
-        self.assertEqual(report["acceptance_summary"]["analysis_count"], 37)
+        self.assertEqual(report["acceptance_summary"]["analysis_count"], corpus_counts.ANALYSES)
         expected_count = sum(len(a["comparison_contract"]["original_requirements"])
                              for a in self.document["analyses"])
         self.assertEqual(report["acceptance_summary"]["required_input_roles"], expected_count)

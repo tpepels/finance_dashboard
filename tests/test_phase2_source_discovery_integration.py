@@ -1,4 +1,5 @@
 """Integrated official native candidate scopes and revision-gate projection."""
+import corpus_counts
 import unittest
 
 from finance_dashboard.catalog import load_documents
@@ -43,7 +44,7 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
             stan_readiness=readiness,
             stan_structure={"status": "verified_publisher_structure",
                             "historical_candidates_present": ["B2N_B3_N"]})
-        self.assertEqual(candidates["unbound_scalar_roles"], 17)
+        self.assertEqual(candidates["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
         d1 = next(
             row for row in candidates["role_candidates"]
             if row["analysis_id"] == "L02" and

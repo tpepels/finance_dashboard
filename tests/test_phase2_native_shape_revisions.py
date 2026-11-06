@@ -1,4 +1,5 @@
 """Contract-driven native original input types and revision accounting."""
+import corpus_counts
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import json
@@ -32,7 +33,7 @@ class TypedNativeRoleTests(unittest.TestCase):
                          "original_requirements"]
                      if role["input_type"] != "scalar_history"
                      and not role["artifact_ids"]]
-        self.assertEqual(len(remaining), 24)
+        self.assertEqual(len(remaining), corpus_counts.STRUCTURED_WITHOUT_ARTIFACTS)
         self.assertFalse({x["input_type"] for x in remaining} -
                          set(REQUIRED_ORIGINAL_SHAPES))
 

@@ -1,4 +1,5 @@
 """Phase 2 source-evidence API integration: never turn a stored source into a validated analysis."""
+import corpus_counts
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import os
@@ -36,12 +37,12 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         response = self.client.get("/api/research-corpus")
         self.assertEqual(response.status_code, 200)
         result = response.json()
-        self.assertEqual(result["analysis_count"], 37)
+        self.assertEqual(result["analysis_count"], corpus_counts.ANALYSES)
         self.assertEqual(result["method_source_count"], 49)
         self.assertEqual(result["fully_validated_analysis_count"], 0)
         self.assertEqual(result["analysis_with_any_stored_macro_observations"], 0)
         self.assertTrue(result["observations_checked"])
-        self.assertEqual(len({x["id"] for x in result["analyses"]}), 37)
+        self.assertEqual(len({x["id"] for x in result["analyses"]}), corpus_counts.ANALYSES)
         self.assertIn("G06", {x["id"] for x in result["analyses"]})
         self.assertNotIn("C04", {x["id"] for x in result["analyses"]})
 
