@@ -114,6 +114,16 @@ class EvidencedEndStateTests(unittest.TestCase):
         bad["series"][key]["invalid_or_conflicting_windows"] = 1
         self.assertEqual(temporal(bad)["state"], "failed")
 
+    def test_publisher_vintage_archive_keeps_temporal_gate_open(self):
+        archive = {"mode": "publisher_vintage_archive",
+                   "evidence_url": "https://example.org/archives", "reviewed_on": "2026-11-06"}
+        self.by_id[self.other].update(publisher_dimensions=REVIEW, release_dating=archive)
+        _, result = self.run_analysis([self.role(self.other)], [self.proof(self.other)], [self.panel(self.other)])
+        gate = self.gates(result["requirements"][0])["temporal_evidence"]
+        self.assertEqual((gate["state"], gate["code"]), ("incomplete", "publisher_vintage_archive_not_collected"))
+        self.assertEqual(gate["uncollected_vintage_archive_series"], [self.other])
+        self.assertFalse(result["phase2_resolved"])
+
     def test_source_asof_roles_pass_on_verified_original(self):
         self.by_id[self.other]["publisher_dimensions"] = REVIEW
         role = self.role(self.other, temporal_requirement="source_asof")

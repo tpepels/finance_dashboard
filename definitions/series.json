@@ -127,7 +127,12 @@
       "measurement": "Annual percent growth of GDP at constant local currency",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy."
+      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.real_growth.us",
@@ -143,7 +148,12 @@
       "measurement": "Annual percent growth of GDP at constant local currency",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy."
+      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.real_growth.eu",
@@ -159,7 +169,12 @@
       "measurement": "Annual percent growth of GDP at constant local currency",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy."
+      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.real_growth.cn",
@@ -175,7 +190,12 @@
       "measurement": "Annual percent growth of GDP at constant local currency",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy."
+      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.real_growth.in",
@@ -191,7 +211,12 @@
       "measurement": "Annual percent growth of GDP at constant local currency",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy."
+      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.real_growth.jp",
@@ -207,7 +232,12 @@
       "measurement": "Annual percent growth of GDP at constant local currency",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy."
+      "notes": "World Bank real GDP growth; annual observation, not a market-time-series proxy.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "valuation.domestic_cap_gdp.us",
@@ -223,7 +253,12 @@
       "measurement": "Listed domestic companies market capitalization divided by GDP",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Not equivalent to the full Buffett Indicator; listing domicile and gaps matter."
+      "notes": "Not equivalent to the full Buffett Indicator; listing domicile and gaps matter.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "valuation.domestic_cap_gdp.jp",
@@ -239,7 +274,12 @@
       "measurement": "Listed domestic companies market capitalization divided by GDP",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Not equivalent to the full Buffett Indicator; listing domicile and gaps matter."
+      "notes": "Not equivalent to the full Buffett Indicator; listing domicile and gaps matter.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "valuation.us.cape",
@@ -383,7 +423,12 @@
       "measurement": "IMF WEO DataMapper world general government gross debt, percent of GDP",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "IMF DataMapper currently shows April 2026 WEO, not the later October 2026 WEO portal. Historical figures may be IMF estimates; current/future projection years excluded."
+      "notes": "IMF DataMapper currently shows April 2026 WEO, not the later October 2026 WEO portal. Historical figures may be IMF estimates; current/future projection years excluded.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gold.usd.monthly_average",
@@ -527,7 +572,12 @@
       "measurement": "World Bank WDI world WFE-sourced market capitalization of domestically listed companies, annual USD, with variable country/exchange coverage",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "WLD aggregate of reporting markets, not all listed corporations worldwide. Excludes funds and duplicated foreign listings under WFE rules; coverage/methodology changes and missing countries may affect trend."
+      "notes": "WLD aggregate of reporting markets, not all listed corporations worldwide. Excludes funds and duplicated foreign listings under WFE rules; coverage/methodology changes and missing countries may affect trend.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "valuation.world.listed_market_cap_world_gdp",
@@ -543,7 +593,12 @@
       "measurement": "100 × annual WDI world listed-market capitalization current USD / annual WDI world GDP current USD, same calendar year",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Derived ratio of two WLD level series; differs from WDI CM.MKT.LCAP.GD.ZS weighted country-share aggregate. Capitalization coverage is narrower than GDP and time varying. Both annual and current-dollar."
+      "notes": "Derived ratio of two WLD level series; differs from WDI CM.MKT.LCAP.GD.ZS weighted country-share aggregate. Capitalization coverage is narrower than GDP and time varying. Both annual and current-dollar.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "valuation.world.global_trailing_pe",
@@ -1055,7 +1110,12 @@
       "measurement": "IMF WEO annual average consumer price inflation historical-year estimate",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "WEO current-year and projection years intentionally excluded; previously published years may still be revisions, not original historical publication vintages."
+      "notes": "WEO current-year and projection years intentionally excluded; previously published years may still be revisions, not original historical publication vintages.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "prices.jp.imf_cpi_inflation",
@@ -1071,7 +1131,12 @@
       "measurement": "IMF WEO annual average consumer price inflation historical-year estimate",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "WEO current-year and projections excluded; Japanese CPI definition differs from US."
+      "notes": "WEO current-year and projections excluded; Japanese CPI definition differs from US.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "prices.cn.imf_cpi_inflation",
@@ -1087,7 +1152,12 @@
       "measurement": "IMF WEO annual average consumer price inflation historical-year estimate",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "WEO current-year and projections excluded; China CPI basket and revisions differ from other countries."
+      "notes": "WEO current-year and projections excluded; China CPI basket and revisions differ from other countries.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "prices.commodity.brent_usd",
@@ -1311,7 +1381,12 @@
       "measurement": "IMF World Economic Outlook annual US current account balance divided by US nominal GDP",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Historical-year WEO estimates only; observations can be revised and are not dated release vintages."
+      "notes": "Historical-year WEO estimates only; observations can be revised and are not dated release vintages.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "external.jp.current_account_gdp",
@@ -1327,7 +1402,12 @@
       "measurement": "IMF WEO annual Japan current account balance in percent of GDP",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Trade, primary and secondary income make current account different from trade balance and NIIP stock."
+      "notes": "Trade, primary and secondary income make current account different from trade balance and NIIP stock.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "external.de.current_account_gdp",
@@ -1343,7 +1423,12 @@
       "measurement": "IMF WEO annual Germany current account balance percent of GDP",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "National balances should not be summed as percentages; aggregation requires appropriate original GDP levels."
+      "notes": "National balances should not be summed as percentages; aggregation requires appropriate original GDP levels.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "external.cn.current_account_gdp",
@@ -1359,7 +1444,12 @@
       "measurement": "IMF WEO annual China current account balance percent of GDP",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Reported national balance not national net foreign-asset position; country coverage/estimates vary."
+      "notes": "Reported national balance not national net foreign-asset position; country coverage/estimates vary.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "property.us.real_residential.bis",
@@ -2701,7 +2791,12 @@
       "measurement": "World Bank WDI annual GDP at current market prices, current US dollars",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks."
+      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.nominal_usd.fr",
@@ -2717,7 +2812,12 @@
       "measurement": "World Bank WDI annual GDP at current market prices, current US dollars",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks."
+      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.nominal_usd.pt",
@@ -2733,7 +2833,12 @@
       "measurement": "World Bank WDI annual GDP at current market prices, current US dollars",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks."
+      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.nominal_usd.de",
@@ -2749,7 +2854,12 @@
       "measurement": "World Bank WDI annual GDP at current market prices, current US dollars",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks."
+      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.nominal_usd.cn",
@@ -2765,7 +2875,12 @@
       "measurement": "World Bank WDI annual GDP at current market prices, current US dollars",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks."
+      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.nominal_usd.in",
@@ -2781,7 +2896,12 @@
       "measurement": "World Bank WDI annual GDP at current market prices, current US dollars",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks."
+      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.nominal_usd.jp",
@@ -2797,7 +2917,12 @@
       "measurement": "World Bank WDI annual GDP at current market prices, current US dollars",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks."
+      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.nominal_usd.world",
@@ -2813,7 +2938,12 @@
       "measurement": "World Bank WDI annual GDP at current market prices, current US dollars",
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
-      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks."
+      "notes": "Original NY.GDP.MKTP.CD nominal annual flow; not PPP, constant-price GDP or listed-company value added. National-currency values convert using official exchange rates or source alternative conversion factors. Country cohort excludes overlapping area aggregates; WLD is the separate publisher world denominator. Period/country coverage and release vintages require independent checks.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "inequality.us.pretax_income.top1",
@@ -3057,7 +3187,12 @@
       "measurement": "WEO annual real GDP growth, percent change, original published historical-year estimates",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Current-year/projection years excluded; WEO past years may be estimates or revisions. Original publication vintages and final/estimate flags are not supplied per observation."
+      "notes": "Current-year/projection years excluded; WEO past years may be estimates or revisions. Original publication vintages and final/estimate flags are not supplied per observation.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.real_growth.weo.jp",
@@ -3073,7 +3208,12 @@
       "measurement": "WEO annual real GDP growth, percent change, original published historical-year estimates",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Current-year/projection years excluded; WEO past years may be estimates or revisions. Original publication vintages and final/estimate flags are not supplied per observation."
+      "notes": "Current-year/projection years excluded; WEO past years may be estimates or revisions. Original publication vintages and final/estimate flags are not supplied per observation.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.real_growth.weo.cn",
@@ -3089,7 +3229,12 @@
       "measurement": "WEO annual real GDP growth, percent change, original published historical-year estimates",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Current-year/projection years excluded; WEO past years may be estimates or revisions. Original publication vintages and final/estimate flags are not supplied per observation."
+      "notes": "Current-year/projection years excluded; WEO past years may be estimates or revisions. Original publication vintages and final/estimate flags are not supplied per observation.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "stress.us.nfci",
@@ -3169,7 +3314,12 @@
       "measurement": "WEO USA general-government gross debt / GDP",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Original WEO national general-government gross debt/GDP. Past years may be revised estimates; current/projected years excluded. Private bank and corporate accounting perimeters remain different."
+      "notes": "Original WEO national general-government gross debt/GDP. Past years may be revised estimates; current/projected years excluded. Private bank and corporate accounting perimeters remain different.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "fiscal.jp.public_debt",
@@ -3185,7 +3335,12 @@
       "measurement": "WEO JPN general-government gross debt / GDP",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Original WEO national general-government gross debt/GDP. Past years may be revised estimates; current/projected years excluded. Private bank and corporate accounting perimeters remain different."
+      "notes": "Original WEO national general-government gross debt/GDP. Past years may be revised estimates; current/projected years excluded. Private bank and corporate accounting perimeters remain different.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "fiscal.cn.public_debt",
@@ -3201,7 +3356,12 @@
       "measurement": "WEO CHN general-government gross debt / GDP",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Original WEO national general-government gross debt/GDP. Past years may be revised estimates; current/projected years excluded. Private bank and corporate accounting perimeters remain different."
+      "notes": "Original WEO national general-government gross debt/GDP. Past years may be revised estimates; current/projected years excluded. Private bank and corporate accounting perimeters remain different.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.imf.org/en/Publications/WEO/weo-database/2024/April",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "concentration.global.msci_acwi_constituent_count",
@@ -3473,7 +3633,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator (headline CLI), monthly index with long-term average 100, OECD harmonised methodology",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Qualitative direction and turning-point signal relative to a detrended GDP reference series, not a growth rate or recession probability. The OECD dataflow descriptor carries a NonProductionDataflow annotation. Revised each month; release vintages are not published in this flow."
+      "notes": "Qualitative direction and turning-point signal relative to a detrended GDP reference series, not a growth rate or recession probability. The OECD dataflow descriptor carries a NonProductionDataflow annotation. Revised each month; release vintages are not published in this flow.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.jp.oecd_cli",
@@ -3489,7 +3654,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator, Japan, monthly index (average 100)",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "National CLI; the euro area is not published as a monthly CLI in this flow, so no euro-area series is claimed."
+      "notes": "National CLI; the euro area is not published as a monthly CLI in this flow, so no euro-area series is claimed.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.de.oecd_cli",
@@ -3505,7 +3675,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator, Germany, monthly index (average 100)",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "National CLI, not a euro-area aggregate."
+      "notes": "National CLI, not a euro-area aggregate.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.fr.oecd_cli",
@@ -3521,7 +3696,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator, France, monthly index (average 100)",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "National CLI, not a euro-area aggregate."
+      "notes": "National CLI, not a euro-area aggregate.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.gb.oecd_cli",
@@ -3537,7 +3717,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator, United Kingdom, monthly index (average 100)",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "National CLI."
+      "notes": "National CLI.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.cn.oecd_cli",
@@ -3553,7 +3738,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator, People's Republic of China, monthly index (average 100)",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "National CLI; coverage begins in 1992."
+      "notes": "National CLI; coverage begins in 1992.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.in.oecd_cli",
@@ -3569,7 +3759,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator, India, monthly index (average 100)",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "National CLI; coverage begins in 1994."
+      "notes": "National CLI; coverage begins in 1994.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.g7.oecd_cli",
@@ -3585,7 +3780,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator for the OECD-defined G7 area aggregate, monthly index (average 100)",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Publisher-defined area aggregate; not an average of the national series computed here."
+      "notes": "Publisher-defined area aggregate; not an average of the national series computed here.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.g20.oecd_cli",
@@ -3601,7 +3801,12 @@
       "measurement": "Original OECD amplitude-adjusted composite leading indicator for the OECD-defined G20 area aggregate, monthly index (average 100)",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Publisher-defined area aggregate; not an average of the national series computed here."
+      "notes": "Publisher-defined area aggregate; not an average of the national series computed here.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.us.oecd_cli_trend_restored",
@@ -3617,7 +3822,12 @@
       "measurement": "Original OECD CLI with the reference-series trend restored (published TR variant), monthly index",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Separate published concept from the amplitude-adjusted CLI; ends earlier because it follows the lagged reference series. The reference trend is not published as an independent series."
+      "notes": "Separate published concept from the amplitude-adjusted CLI; ends earlier because it follows the lagged reference series. The reference trend is not published as an independent series.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "activity.jp.oecd_cli_trend_restored",
@@ -3633,7 +3843,12 @@
       "measurement": "Original OECD CLI with the reference-series trend restored (published TR variant), Japan, monthly index",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Separate published concept from the amplitude-adjusted CLI; the reference trend is not published as an independent series."
+      "notes": "Separate published concept from the amplitude-adjusted CLI; the reference trend is not published as an independent series.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://www.oecd.org/en/publications/undertaking-revisions-and-real-time-data-analysis-using-the-oecd-main-economic-indicators-original-release-data-and-revisions-database_146528313656.html",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "credit.us.private_nonfinancial_stock_bis",

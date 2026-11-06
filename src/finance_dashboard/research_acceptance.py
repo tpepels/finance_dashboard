@@ -31,7 +31,7 @@ PUBLISHER_METADATA_FIELDS = (
 
 
 FALLBACK_POLICY = "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md"
-RELEASE_DATING_MODES = ("alfred_real_time", "not_published_by_publisher")
+RELEASE_DATING_MODES = ("alfred_real_time", "not_published_by_publisher", "publisher_vintage_archive")
 DIMENSION_FIELDS = ("population", "currency", "price_basis", "index_base")
 RESOLVED_ROLE_STATES = ("accepted", "unavailable_with_fallback")
 
@@ -136,7 +136,7 @@ def _temporal_gate(role, ids, registry, originals, revisions, release_originals)
             ids, unverified_originals=unverified, limitations=[], **details,
             scope="Point-in-time source as-of evidence is the verified archived original itself.")
     by_series = {row["series_id"]: row for row in revisions}
-    missing, pending, conflicting, limitations = [], [], [], []
+    missing, pending, conflicting, limitations, archives = [], [], [], [], []
     for sid in ids:
         declaration = (registry.get(sid) or {}).get("release_dating")
         if not valid_release_dating(declaration):
@@ -150,18 +150,25 @@ def _temporal_gate(role, ids, registry, originals, revisions, release_originals)
             else:
                 limitations.append({"series_id": sid, "code": "alfred_records_not_agency_first_release",
                     "evidence_url": declaration["evidence_url"]})
+        elif declaration["mode"] == "publisher_vintage_archive":
+            # The publisher keeps historical releases; until they are
+            # collected and verified the role cannot claim release timing.
+            archives.append(sid)
         else:
             limitations.append({"series_id": sid, "code": "release_dates_not_published_by_publisher",
                 "evidence_url": declaration["evidence_url"],
                 "detail": "Only the latest revised values are available; analyses cannot be evaluated as of a historical release date."})
-    state = ("failed" if conflicting else "incomplete" if missing or pending or unverified else "passed")
+    state = ("failed" if conflicting else "incomplete" if missing or pending or archives or unverified
+             else "passed")
     code = ("conflicting_alfred_revision_windows" if conflicting
             else "release_dating_review_missing" if missing
             else "alfred_revision_windows_not_acquired" if pending
+            else "publisher_vintage_archive_not_collected" if archives
             else "verified_original_values_required" if unverified
             else "release_dating_evidenced")
     return _gate("temporal_evidence", state, code, ids, missing_reviews=sorted(missing),
         pending_alfred_series=sorted(pending), conflicting_series=sorted(conflicting),
+        uncollected_vintage_archive_series=sorted(archives),
         unverified_originals=unverified, limitations=limitations, **details,
         scope="ALFRED windows record what ALFRED held, not necessarily the producing agency's first release; publishers without release vintages are accepted only with that limitation carried forward.")
 
