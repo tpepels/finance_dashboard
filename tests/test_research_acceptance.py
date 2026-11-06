@@ -150,11 +150,14 @@ class ResearchAcceptanceTests(unittest.TestCase):
         gates = evaluate(original)
         dimensions = gates["publisher_dimensions"]["original_metadata"]
         self.assertEqual(dimensions[0]["source_price_basis"], "real_cpi_deflated")
-        # Catalogue-declared dimensions pass once values are verified, with a carried limitation;
-        # V05 is predictive, so first-publication timing stays open without release dating.
+        # Catalogue-declared dimensions pass once values are verified, with a carried limitation.
+        # V05 is predictive; Shiller publishes no vintages, so timing passes only with that
+        # limitation stated, never as verified first release.
         self.assertEqual(gates["publisher_dimensions"]["state"], "passed")
         self.assertEqual(gates["publisher_dimensions"]["limitations"][0]["code"], "dimensions_as_declared_in_catalogue")
-        self.assertEqual(gates["temporal_evidence"]["state"], "incomplete")
+        self.assertEqual(gates["temporal_evidence"]["state"], "passed")
+        self.assertEqual(gates["temporal_evidence"]["limitations"][0]["code"], "release_dates_not_published_by_publisher")
+        self.assertEqual(gates["temporal_evidence"]["observation_first_release_dates_verified"], 0)
         unverified = evaluate({**original, "source_values_match": False})["publisher_dimensions"]
         self.assertEqual(unverified["original_metadata"], [])
         self.assertEqual(unverified["state"], "incomplete")

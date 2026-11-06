@@ -31,7 +31,8 @@ PUBLISHER_METADATA_FIELDS = (
 
 
 FALLBACK_POLICY = "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md"
-RELEASE_DATING_MODES = ("alfred_real_time", "not_published_by_publisher", "publisher_vintage_archive")
+RELEASE_DATING_MODES = ("alfred_real_time", "not_published_by_publisher", "publisher_vintage_archive",
+                        "unrevised_market_observation")
 DIMENSION_FIELDS = ("population", "currency", "price_basis", "index_base")
 RESOLVED_ROLE_STATES = ("accepted", "unavailable_with_fallback", "user_input")
 EVIDENCE_TIERS = ("descriptive", "predictive")
@@ -187,6 +188,12 @@ def _temporal_gate(role, ids, registry, originals, revisions, release_originals,
             else:
                 limitations.append({"series_id": sid, "code": "alfred_records_not_agency_first_release",
                     "evidence_url": declaration["evidence_url"]})
+        elif declaration["mode"] == "unrevised_market_observation":
+            # Daily market prices/yields are published once (next business
+            # day) and not revised; the observation date is its release date.
+            limitations.append({"series_id": sid, "code": "market_observation_assumed_unrevised",
+                "evidence_url": declaration["evidence_url"],
+                "detail": "Treated as known one business day after the observation date; occasional publisher corrections are not modelled."})
         elif declaration["mode"] == "publisher_vintage_archive":
             # The publisher keeps historical releases; until they are
             # collected and verified the role cannot claim release timing.

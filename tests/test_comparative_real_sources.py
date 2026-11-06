@@ -48,7 +48,8 @@ class RealComparativeRecoveryTests(unittest.TestCase):
                 self.assertTrue(proof["passed"], proof)
                 self.assertEqual(proof["matched_series"], 16)
                 report = build_comparative_corpus(session, registry, corpus, source_proof=proof)
-                self.assertEqual(report["bounded_current_vintage_panel_count"], 3)
+                # Declared variants; derived per-role panels are counted separately.
+                self.assertEqual(sum(p["state"] == "bounded_current_vintage_verified" for p in report["panels"] if "derived_from_role" not in p), 3)
                 self.assertEqual(report["fully_validated_analysis_count"], 0)
                 self.assertTrue(all(not panel["full_analysis_accepted"] for panel in report["panels"]))
                 receipt = store_comparative_corpus(report, evidence)

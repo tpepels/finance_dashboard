@@ -171,6 +171,15 @@ class EvidencedEndStateTests(unittest.TestCase):
         self.assertEqual(gate["uncollected_vintage_archive_series"], [self.other])
         self.assertFalse(result["phase2_resolved"])
 
+    def test_unrevised_market_observation_passes_with_limitation(self):
+        market = {"mode": "unrevised_market_observation",
+                  "evidence_url": "https://www.federalreserve.gov/releases/h15/", "reviewed_on": "2026-11-06"}
+        self.by_id[self.other].update(release_dating=market)
+        _, result = self.run_analysis([self.role(self.other)], [self.proof(self.other)], [self.panel(self.other)])
+        gate = self.gates(result["requirements"][0])["temporal_evidence"]
+        self.assertEqual(gate["state"], "passed")
+        self.assertEqual(gate["limitations"][0]["code"], "market_observation_assumed_unrevised")
+
     def test_source_asof_roles_pass_on_verified_original(self):
         self.by_id[self.other]["publisher_dimensions"] = REVIEW
         role = self.role(self.other, temporal_requirement="source_asof")

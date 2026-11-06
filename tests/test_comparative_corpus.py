@@ -202,8 +202,15 @@ class ComparativeCorpusTests(unittest.TestCase):
         self.assertEqual(len(derived), 1)
         self.assertEqual(derived[0]["series_ids"], [sid])
         covered = {r["role"] for r in c01["comparison_contract"]["original_requirements"]
-                   if any(set(r["series_ids"]) <= set(v["series_ids"]) for v in c01["comparison_contract"]["variants"])}
+                   if any(set(r["series_ids"]) <= set(v["series_ids"]) for v in c01["comparison_contract"]["variants"]
+                          if v["satisfies_original_method"])}
         self.assertFalse(covered & {v.get("derived_from_role") for v in variants})
+        # A narrower (non-original-method) variant does not stand in for the role's own join.
+        narrower = {r["role"] for r in c01["comparison_contract"]["original_requirements"]
+                    if r["series_ids"] and any(set(r["series_ids"]) <= set(v["series_ids"])
+                        for v in c01["comparison_contract"]["variants"] if not v["satisfies_original_method"])}
+        self.assertTrue(narrower)
+        self.assertTrue(narrower <= {v.get("derived_from_role") for v in variants})
         self.insert(sid, {"1990-01-01": "1", "1990-04-01": "2", "1990-10-01": "3"})
         unproved = next(p for p in self.build()["panels"] if p.get("derived_from_role") == "quarterly_real_gdp")
         self.assertFalse(unproved["requested_coverage_complete"])

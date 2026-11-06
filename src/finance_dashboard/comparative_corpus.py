@@ -199,7 +199,7 @@ COMMON_NATIVE_HISTORY = "common_native_history"
 
 def panel_variants(analysis: dict, registry) -> list[dict]:
     """Declared comparison variants plus one derived exact-join panel for each
-    bound role that no declared variant of the same analysis covers.
+    bound role that no declared original-method variant of the analysis covers.
 
     The approved corpus defines no analysis-specific period for those roles,
     so the derived panel spans the inputs' common native history. That is a
@@ -210,7 +210,10 @@ def panel_variants(analysis: dict, registry) -> list[dict]:
     derived = []
     for role in analysis["comparison_contract"]["original_requirements"]:
         ids = list(role["series_ids"])
-        if not ids or any(set(ids) <= set(v["series_ids"]) for v in declared):
+        # Only an original-method variant can stand in for the role's own
+        # exact join; narrower or fallback variants keep their own meaning.
+        if not ids or any(set(ids) <= set(v["series_ids"]) for v in declared
+                          if v.get("satisfies_original_method") is True):
             continue
         frequency = role["expected"].get("frequency") or (registry.get(ids[0]) or {}).get("frequency")
         derived.append({

@@ -5052,7 +5052,7 @@
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
-        "specification": "docs/PHASE1_ANALYSIS_SPECIFICATIONS.md#p06",
+        "specification": "docs/PHASE1_ANALYSIS_SPECIFICATIONS.md#p06--what-long-horizon-returns-do-current-valuations-and-yields-imply-and-how-uncertain-are-they",
         "original_requirements": [
           {
             "role": "us_cape",
@@ -5161,7 +5161,7 @@
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
-        "specification": "docs/PHASE1_ANALYSIS_SPECIFICATIONS.md#p07",
+        "specification": "docs/PHASE1_ANALYSIS_SPECIFICATIONS.md#p07--how-do-currency-exposure-and-hedging-costs-change-a-euro-based-investors-returns",
         "original_requirements": [
           {
             "role": "usd_per_eur",

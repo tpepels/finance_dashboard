@@ -95,7 +95,12 @@
       "measurement": "Ten-year constant maturity TIPS real yield",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Not the nominal 10Y yield; actual traded-market yield."
+      "notes": "Not the nominal 10Y yield; actual traded-market yield.",
+      "release_dating": {
+        "mode": "unrevised_market_observation",
+        "evidence_url": "https://www.federalreserve.gov/releases/h15/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "recession.us.sahm",
@@ -111,7 +116,12 @@
       "measurement": "Three-month unemployment mean versus prior 12-month minimum",
       "revision_policy": "real_time_method",
       "rights": "review_required",
-      "notes": "Primarily a recession onset indicator, not a leading crash predictor."
+      "notes": "Primarily a recession onset indicator, not a leading crash predictor.",
+      "release_dating": {
+        "mode": "alfred_real_time",
+        "evidence_url": "https://alfred.stlouisfed.org/series?seid=SAHMREALTIME",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "gdp.real_growth.world",
@@ -295,7 +305,12 @@
       "measurement": "Shiller U.S. cyclically adjusted price-to-earnings ratio (CAPE) from monthly workbook",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Official Robert Shiller monthly ie_data.xls; source workbook format may change, and redistribution rights require review. Not a global valuation measure."
+      "notes": "Official Robert Shiller monthly ie_data.xls; source workbook format may change, and redistribution rights require review. Not a global valuation measure.",
+      "release_dating": {
+        "mode": "not_published_by_publisher",
+        "evidence_url": "https://shillerdata.com/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "valuation.global.cape",
@@ -838,7 +853,12 @@
       "measurement": "FRED Treasury constant-maturity 10-year yield minus 3-month yield, daily percentage-point spread.",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Negative spread means inversion, not certain recession. US Treasury series, not global yield-curve signal."
+      "notes": "Negative spread means inversion, not certain recession. US Treasury series, not global yield-curve signal.",
+      "release_dating": {
+        "mode": "unrevised_market_observation",
+        "evidence_url": "https://www.federalreserve.gov/releases/h15/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "labour.jp.pwt_labour_share",
@@ -1046,7 +1066,12 @@
       "measurement": "US nominal 10-year par constant maturity government Treasury yield",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Nominal rate, not actual total-return benchmark or real bond yield."
+      "notes": "Nominal rate, not actual total-return benchmark or real bond yield.",
+      "release_dating": {
+        "mode": "unrevised_market_observation",
+        "evidence_url": "https://www.federalreserve.gov/releases/h15/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "bond.us.breakeven_10y",
@@ -1062,7 +1087,12 @@
       "measurement": "Nominal minus TIPS-linked 10-year rate, market breakeven inflation compensation",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Breakeven includes liquidity/risk premia; not a directly measured expectations-only series."
+      "notes": "Breakeven includes liquidity/risk premia; not a directly measured expectations-only series.",
+      "release_dating": {
+        "mode": "unrevised_market_observation",
+        "evidence_url": "https://www.federalreserve.gov/releases/h15/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "stress.us.high_yield_oas",
@@ -3075,7 +3105,12 @@
       "measurement": "Shiller nominal S&P Composite price in original workbook index points",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Nominal index points; historical S&P Composite population changes. Latest price may be a dated close instead of a completed monthly average."
+      "notes": "Nominal index points; historical S&P Composite population changes. Latest price may be a dated close instead of a completed monthly average.",
+      "release_dating": {
+        "mode": "not_published_by_publisher",
+        "evidence_url": "https://shillerdata.com/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "valuation.us.shiller_earnings",
@@ -3091,7 +3126,12 @@
       "measurement": "Shiller S&P Composite earnings in original workbook index points",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Original author-published annual earnings per index unit, interpolated to months by the source; blank recent cells stay absent."
+      "notes": "Original author-published annual earnings per index unit, interpolated to months by the source; blank recent cells stay absent.",
+      "release_dating": {
+        "mode": "not_published_by_publisher",
+        "evidence_url": "https://shillerdata.com/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "valuation.us.shiller_dividend",
@@ -3107,7 +3147,12 @@
       "measurement": "Shiller S&P Composite dividends in original workbook index points",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Original author-published annual dividends per index unit, interpolated to months by the source; blank recent cells stay absent."
+      "notes": "Original author-published annual dividends per index unit, interpolated to months by the source; blank recent cells stay absent.",
+      "release_dating": {
+        "mode": "not_published_by_publisher",
+        "evidence_url": "https://shillerdata.com/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "prices.us.shiller_cpi",
@@ -3123,7 +3168,12 @@
       "measurement": "Shiller workbook CPI in original workbook index points",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Source workbook CPI-U and historical extensions; source estimated latest cells remain source estimates. This is not independently observed vintage CPI."
+      "notes": "Source workbook CPI-U and historical extensions; source estimated latest cells remain source estimates. This is not independently observed vintage CPI.",
+      "release_dating": {
+        "mode": "not_published_by_publisher",
+        "evidence_url": "https://shillerdata.com/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "returns.us.shiller_real_total_return",
@@ -3139,7 +3189,12 @@
       "measurement": "Shiller real S&P Composite total-return level in original workbook index points",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Original author-constructed real total-return price with dividends reinvested and workbook CPI deflation. No nominal total-return identity, independent world population, investor costs or first release is inferred."
+      "notes": "Original author-constructed real total-return price with dividends reinvested and workbook CPI deflation. No nominal total-return identity, independent world population, investor costs or first release is inferred.",
+      "release_dating": {
+        "mode": "not_published_by_publisher",
+        "evidence_url": "https://shillerdata.com/",
+        "reviewed_on": "2026-11-06"
+      }
     },
     {
       "id": "prices.commodity.natural_gas_us_usd",
