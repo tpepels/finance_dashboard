@@ -2,6 +2,10 @@
 
 **Research date:** 2026-11-03. **Status:** research decision matrix; no application code, live source acquisition, current-program gap audit or dataset pipeline implementation. The ten owner choices and 35 scientific questions stay approved. This document establishes a **deterministic fallback method for four outstanding global-market research data needs**, not a silent substitution under the name of an inaccessible dataset. The user specifically requested to research lower-frequency/narrower alternatives *before development*, to avoid reopening source-method discussions when a provider endpoint fails.
 
+## Revision 2026-11-06
+
+The four hard original targets are resolved as follows. **G03** (consolidated global listed profits) is a deferred research extension. **G01** keeps its dated SEC N-PORT holdings fallback and adds MSCI's published top-10 share; dated historical ACWI weights stay unavailable. **P01** uses current issuer and SEC holdings files; dated historical UCITS holdings are descoped. **P02** uses the Swinkels US 10-year sovereign total return as an explicitly narrower bond leg; no free world aggregate bond total-return index exists. FX conversion uses ECB euro reference rates. See the [catalogue revision](PHASE1_ANALYSIS_CATALOGUE.md#revision-2026-11-06--decision-layer-evidence-tiers-and-eur-investor-view-owner-approved).
+
 ## Data maturity vocabulary
 
 - **R0 — Original verified file/data row:** source download or GitHub file was actually inspected, with schema, first/last observations, concept and known data gaps. This verifies **sample availability only**, not historical completeness or broad scientific validity.

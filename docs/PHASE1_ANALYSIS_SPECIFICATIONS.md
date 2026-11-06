@@ -2,6 +2,12 @@
 
 **Status: owner approved the six connected overview stories and exact 35-question editorial membership on 2026-11-03. Scientific methodological integration and final Phase 1 acceptance remain open.** Decision date: 2026-11-03. This is the **100%-ideal research definition**, not an implementation gap audit, a claim that any series is imported, or a statement that all proposed global data already exist. It supplements the [analysis catalogue](PHASE1_ANALYSIS_CATALOGUE.md) and follows the only active [development plan](DEVELOPMENT_PLAN.md).
 
+## Revision 2026-11-06 — evidence tiers, decision layer and EUR view (owner-approved)
+
+* **Evidence tiers.** C02 and V05 test predictive claims and require first-publication (real-time) data. All other analyses are descriptive and use the publisher's latest revised values; this is the correct data for describing history, and the limitation is shown with each analysis.
+* **Decision layer.** Every analysis states the investment or research decision it informs (`decision_informed` in the research corpus). P06 and P07 are added for a EUR-based ETF investor.
+* **Scope.** L04, G03 and V03 are deferred research extensions. Roles without free data are descoped with a stated reason, and their analyses are narrowed and labelled conditional.
+
 ## Owner-approved catalogue, preserved submethods and zero-fee source rule
 
 The five former headline identities **C04, M03, V04, L06, G04** are now subordinate scientific methods, retained below with original source-variable and inference contracts. The five new first-class research questions are **C06, F06, F07, L07, G06**. This makes 35 active headline questions plus 5 explicit supporting methods and matches the owner-approved [catalogue](PHASE1_ANALYSIS_CATALOGUE.md). Six connected multi-analysis stories replace six one-to-one homepage cards.
@@ -672,6 +678,40 @@ Each record specifies (1) original measured variable/source or source-defined pr
 **Interpretation boundary.** Backtest superiority can be sample-dependent and disappears after realistic costs; no buy/sell signal implied.
 
 **Recommended figure.** Matched-portfolio wealth/drawdown lines, turnover and cost attribution panels.
+
+**Sequence-of-returns risk (revision 2026-11-06).** With the owner's dated contribution/withdrawal plan (`withdrawal_plan`, an owner input), replay the same historical return paths with cash flows applied at their dates, and compare terminal wealth and maximum drawdown across starting years. Report the spread across start dates; it is historical, not a probability.
+
+### P06 — What long-horizon returns do current valuations and yields imply, and how uncertain are they?
+
+**Published variables and exact source identity.** Shiller US CAPE [S24]; Siblis world trailing earnings yield (sparse snapshots); US 10-year nominal and TIPS real yields (H.15/FRED) [S14]; ECB AAA euro area 10-year spot rate; euro area HICP.
+
+**Original research/method.** Campbell & Shiller (2001) [S25]: valuation ratios relate to subsequent long-horizon returns with wide error bands. Building blocks: equity real return ≈ cyclically adjusted earnings yield (1/CAPE); bond nominal return over its duration ≈ yield to maturity; real bond return ≈ TIPS yield, or nominal yield minus an explicitly stated inflation assumption for EUR.
+
+**Reproducible calculation and comparison.** Report each building block with its formula and date. Express equity estimates as a range, never a point. The width comes from the historical dispersion of realised 10-year real returns around the earnings-yield estimate (V05, real-time data only). Show EUR and USD views separately.
+
+**Method alternatives.** Dividend yield plus real payout growth; cross-sectional regional earnings yields where free data exist; survey-based expectations as a comparison only.
+
+**Conditions for a valid comparison.** Same horizon for equity and bond legs; real versus nominal never mixed; the inflation assumption stated; sparse world snapshots are not interpolated.
+
+**Interpretation boundary.** A planning range for savings rate and strategic allocation, not a forecast or timing signal. V05 decides how much weight the range deserves.
+
+**Recommended figure.** Range bars for equity and bond real-return estimates (EUR and USD) beside their input series.
+
+### P07 — How do currency exposure and hedging costs change a euro-based investor's returns?
+
+**Published variables and exact source identity.** ECB USD-per-EUR reference rate; ECB deposit facility rate [S12]; effective federal funds rate [S11]; MSCI ACWI net total return in USD; euro area HICP.
+
+**Original research/method.** Covered interest parity: the carry of hedging USD exposure to EUR is approximately the short-rate differential (EUR minus USD). This approximation of forward points is stated explicitly.
+
+**Reproducible calculation and comparison.** Convert USD total returns to unhedged EUR returns with the ECB reference rate. Approximate hedged returns as the USD return plus the short-rate differential. Compare cumulative returns, volatility and drawdowns of hedged and unhedged series over matched months.
+
+**Method alternatives.** Actual forward points if a free source is integrated; partial hedge ratios; hedging bonds but not equities (common practice).
+
+**Conditions for a valid comparison.** Same dates and return definitions; the reference rate is not a transaction rate; hedging costs and fund fees are stated separately.
+
+**Interpretation boundary.** Historical description of hedging outcomes; the hedge decision also depends on the owner's liabilities and horizon.
+
+**Recommended figure.** Hedged versus unhedged EUR wealth lines with a rate-differential panel.
 
 ## Source and original research register
 

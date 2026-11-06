@@ -2,6 +2,16 @@
 
 **Status: all ten product-intent decisions plus the revised six-story / 35-question / free-data-only scientific direction are APPROVED on 2026-11-03. Full scientific/method and integrated interface acceptance remains OPEN.** Governed by [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). This is a normative description of the desired application, not an audit of current features/data. Research reference URLs are methodological starting points, not proof of import eligibility or complete empirical results.
 
+## Revision 2026-11-06 (owner-directed, binding)
+
+The original ten decisions were framed by an assistant and accepted without overrides. After an independent review the owner directed these changes:
+
+* **Primary use:** long-term ETF portfolio decisions for a EUR-based investor (Lisbon). Home currency, euro area inflation and yields, hedging, costs, rebalancing and sequence risk are first-class. US series remain where they are the best free source.
+* **Evidence tiers:** real-time, first-publication data only where a predictive claim is tested (C02, V05 and any backtest). Descriptive analyses use verified latest revised values and show that limitation. Category E in the evidence taxonomy is the predictive tier.
+* **Forward-looking estimates allowed with uncertainty:** valuation-based expected-return ranges (P06) are model-based estimates (category C), calibrated by V05. They are not forecasts of crashes or timing signals.
+* **Decision layer:** every analysis names the decision it informs; political economy (L01–L07) is research context ranked below portfolio decisions; L04 is a deferred extension.
+* **Delivery:** Phase 2 completion is evidenced end states for the active analyses; work proceeds in end-to-end slices (data → analysis → chart) instead of waiting for the whole corpus. See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) and the [catalogue revision](PHASE1_ANALYSIS_CATALOGUE.md#revision-2026-11-06--decision-layer-evidence-tiers-and-eur-investor-view-owner-approved).
+
 ## Approved research direction, coverage and data-rights rule
 
 The user explicitly approved the [scientific coherence/free-source review](PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md). Six connected overview research experiences now govern the [active analysis catalogue](PHASE1_ANALYSIS_CATALOGUE.md); the former standalone C04/M03/V04/L06/G04 become preserved specialist subviews of C01/C02-M02/V01-M02/L01-L03/P02, and C06/F06/F07/L07/G06 become first-class analysis questions. All seven economic research domains remain represented.

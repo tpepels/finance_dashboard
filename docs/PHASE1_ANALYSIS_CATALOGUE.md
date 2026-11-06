@@ -2,6 +2,72 @@
 
 **Status: six connected overview experiences, five substitutions and 35 first-class question IDs OWNER-APPROVED on 2026-11-03; final integrated Phase 1 scientific/visual acceptance OPEN.** An **ideal research product** catalogue; it is **not** a current feature inventory or gap report. All entries need their own formal research record and peer-reviewed/official source review before Phase 1 sign-off. IDs are the approved stable first-class question identities, not chart or database IDs. Citation keys R01–R28 point to the [scientific charter](PHASE1_SCIENTIFIC_CHARTER.md); a source for one method never certifies every related derived inference.
 
+## Revision 2026-11-06 — decision layer, evidence tiers and EUR investor view (owner-approved)
+
+This revision was directed by the owner after an independent review of the original catalogue. It is binding and supersedes conflicting statements below.
+
+1. **Purpose first.** The product serves long-term ETF decisions for a EUR-based investor; macro and political-economy analyses provide context and are ranked by decision value.
+2. **Evidence tiers.** Predictive analyses (C02, V05) need real-time, first-publication data because look-ahead bias matters there. Descriptive analyses use verified latest revised values, with that limitation shown.
+3. **New decision analyses.** P06 (expected long-horizon return ranges with uncertainty) and P07 (currency exposure and hedging for a EUR investor). P05 adds sequence-of-returns risk from the owner's contribution/withdrawal plan.
+4. **Owner inputs.** Portfolio weights, rebalancing rules, costs, tax, duration and the withdrawal plan are owner-supplied parameters, never data-acquisition blockers.
+5. **Honest scope.** Analyses without free data are deferred; roles without free data are descoped with a reason and the analysis is labelled conditional.
+
+| ID | Evidence tier | Phase 2 scope | Decision informed |
+|---|---|---|---|
+| C01 | descriptive | active | Cyclical context when reviewing the equity/bond mix; context only, never a timing signal. |
+| C02 | predictive | active | Whether recession warnings justify a pre-planned review of liquidity reserves and bond allocation, judged only on information available at the time. |
+| C03 | descriptive | active | Whether regional growth differences justify deviating from market-cap regional weights (default: they do not). |
+| C05 | descriptive | active | How long drawdowns and recoveries last, for sizing cash reserves and rebalancing tolerance. |
+| C06 | descriptive | active | How much inflation protection (inflation-linked bonds, real assets) and which bond duration to hold. |
+| M01 | descriptive | active | The short-rate differential that sets the cash return and the carry cost or benefit of currency hedging. |
+| M02 | descriptive | active | Bond duration and the choice between nominal and inflation-linked bonds. |
+| M04 | descriptive | narrowed | Whether to currency-hedge foreign exposure as a EUR-based investor. |
+| F01 | descriptive | narrowed | Credit-cycle context for equity and corporate-bond risk; supports keeping a high-quality bond buffer. |
+| F02 | descriptive | active | Debt-service stress context for credit risk in bond holdings. |
+| F03 | descriptive | active | Whether credit vulnerabilities are building jointly, informing the credit versus government-bond mix. |
+| F04 | descriptive | active | Whether market stress is present now, to keep rebalancing disciplined (avoid forced selling); not an exit signal. |
+| F05 | descriptive | active | Where leverage is concentrated, as context for country and credit exposure. |
+| F06 | descriptive | active | Property and credit risk in the home market (Portugal/euro area) for real-estate and home-bias decisions. |
+| F07 | descriptive | active | Nonbank fragility context for liquidity-sensitive holdings such as corporate-bond and money-market funds. |
+| V01 | descriptive | active | Valuation context for expected equity returns and the strategic equity share; not for timing. |
+| V02 | descriptive | active | Cross-check of the valuation evidence used in expected-return ranges (P06). |
+| V03 | descriptive | deferred | Regional valuation context for regional tilts (deferred: no free regional history). |
+| V05 | predictive | active | Whether valuation historically carried usable information about long-horizon returns, which calibrates how much weight P06 ranges deserve. |
+| L01 | descriptive | active | Research context on productivity and pay; no direct portfolio decision. |
+| L02 | descriptive | active | Profit-share context for long-run earnings-growth assumptions in expected returns. |
+| L03 | descriptive | active | Capital and surplus context for long-run earnings-growth assumptions; research interest. |
+| L04 | descriptive | deferred | Political-economy research; no direct portfolio decision (deferred extension). |
+| L05 | descriptive | active | Wealth-distribution context; research interest, no direct portfolio decision. |
+| L07 | descriptive | active | Global inequality context; research interest, no direct portfolio decision. |
+| G01 | descriptive | active | Concentration risk inside a market-cap world ETF (e.g. whether to add an equal-weight or ex-top-holdings tilt). |
+| G02 | descriptive | active | Whether to accept market-cap regional weights of a world ETF versus economic size. |
+| G03 | descriptive | deferred | Global profit geography (deferred: no free consolidated listed-company data). |
+| G05 | descriptive | active | External-imbalance context for currency risk in foreign holdings. |
+| G06 | descriptive | active | Supply-chain exposure context; research interest. |
+| P01 | descriptive | narrowed | What the owned ETFs actually hold by country, sector and issuer, from current issuer and SEC holdings files. |
+| P02 | descriptive | narrowed | The equity/bond/gold mix: whether diversification held historically and in which regimes. |
+| P03 | descriptive | active | Drawdown tolerance and reserve sizing from historical crises. |
+| P04 | descriptive | narrowed | Sensitivity to inflation, rates and FX: duration, inflation-linked and hedging choices. |
+| P05 | descriptive | narrowed | Choice of rebalancing rule (calendar versus threshold), its cost, and exposure to sequence-of-returns risk under the owner's contribution/withdrawal plan. |
+| P06 | descriptive | active | Expected long-horizon return ranges for equities and bonds (EUR and USD), with uncertainty, for savings-rate and allocation planning. |
+| P07 | descriptive | active | Whether to currency-hedge foreign equity and bond exposure as a EUR-based investor. |
+
+### Deferred research extensions
+
+* **V03** — Comparable regional valuation histories (trailing/forward P/E by region) are not freely available; global and US valuation remain in V01 and P06.
+* **L04** — Marxian productive-sector estimates need theory-laden industry, capital and labour imputations without a free defensible source; lowest decision value. Kept as a research extension outside Phase 2 completion.
+* **G03** — Consolidated worldwide listed-parent profits are not freely available; national-accounts surplus or regional issuer samples would be a different concept.
+
+### Descoped roles
+
+* **M04 `exchange_rate_quotes`** — Replaced by explicit ECB reference-rate roles (USD and JPY per EUR).
+* **F01 `nominal_gdp`** — The published BIS credit-to-GDP ratio already embeds BIS's GDP denominator; a separate GDP series in another currency would not reproduce it.
+* **P01 `filing_availability`** — Dated historical holdings are not freely available for UCITS ETFs; P01 uses current issuer and SEC holdings files.
+* **P02 `global_bond_total_return`** — No free original world aggregate bond total-return index; P02 uses the US 10-year sovereign total return (Swinkels) as an explicitly narrower bond leg.
+* **P02 `currency_conversion`** — Replaced by the explicit ECB USD-per-EUR reference rate role for the EUR view.
+* **P04 `fx_quotes`** — Replaced by the explicit ECB USD-per-EUR reference rate role.
+* **P05 `execution_fx`** — Replaced by the explicit ECB USD-per-EUR reference rate role; actual execution FX is an owner input if needed.
+
 ## Owner-approved scientific/editorial changes and zero-fee dataset constraint
 
 The [critical coherence and free-data research review](PHASE1_COHERENCE_AND_FREE_DATA_REVIEW.md) critiques **all 35** original questions, identifies five overlaps and five missing subjects; the owner has explicitly **approved** the connected economic reading flow and the five fold/add substitutions. Former standalone methods are preserved as supporting workbench views. **No required paid subscription/API data sources**; narrower available measures retain their true names rather than passing as full original indexes or global profit.
