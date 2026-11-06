@@ -12,9 +12,9 @@
       "classification": "publisher_verified",
       "evidence_url": "https://www.oecd.org/en/data/insights/data-explainers/2024/11/Api-best-practices-and-recommendations.html",
       "rate": {
-        "limit": 55,
+        "limit": 20,
         "window_seconds": 3600,
-        "min_spacing_seconds": 1,
+        "min_spacing_seconds": 5,
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 300,
