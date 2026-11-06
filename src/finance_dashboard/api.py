@@ -337,6 +337,16 @@ def create_app(engine=None) -> FastAPI:
             vintage_root=Path(environ.get("FINANCE_VINTAGE_DIR", "/data/vintages")),
             holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))).public_report
 
+    @app.get("/api/decision/{analysis_id}")
+    def decision_analysis(analysis_id: str):
+        """EUR investor decision analyses computed from stored observed values."""
+        from .decision_analytics import load_p06, load_p07
+        loaders = {"P06": load_p06, "P07": load_p07}
+        if analysis_id not in loaders:
+            raise HTTPException(404, "Unknown decision analysis")
+        with Session(db) as session:
+            return loaders[analysis_id](session)
+
     @app.get("/api/research-corpus/{analysis_id}")
     def research_corpus_question(analysis_id: str):
         """Return explicit source references, missing evidence and fallbacks."""

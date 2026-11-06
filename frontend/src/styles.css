@@ -810,3 +810,22 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
   color: #cce4ea; border-color: #597987; background: #213b48; }
 .research-app[data-theme="dark"] .developer-log-overview,
 .research-app[data-theme="dark"] .developer-log-panel > small { color: #b4cdd7; }
+
+/* Decision layer (P06/P07) */
+.decision-container { max-width: 1420px; margin: 0 auto 30px; padding: 28px 36px 10px; }
+.decision-container > header h2 { font-size: 25px; letter-spacing: -.03em; margin: 7px 0 10px; color: var(--gcm-ink, #23454c); }
+.decision-container > header p { font-size: 13px; line-height: 1.6; color: var(--gcm-muted, #617b80); max-width: 900px; }
+.decision-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 18px; margin-top: 16px; }
+.decision-card { border: 1px solid var(--gcm-rule, #d6e1e0); border-radius: 6px; padding: 16px 18px; background: var(--gcm-surface, #fff); color: var(--gcm-ink, #23454c); }
+.decision-card-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.decision-card h3 { font-size: 16px; margin: 0; }
+.decision-question, .decision-note { font-size: 13px; color: var(--gcm-muted, #617b80); margin: 6px 0 10px; }
+.decision-chart { height: 300px; width: 100%; }
+.decision-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; font-variant-numeric: tabular-nums; }
+.decision-table th, .decision-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--gcm-rule, #e3eaea); }
+.decision-table th:first-child { text-align: left; font-weight: 500; }
+.decision-range { display: flex; flex-direction: column; gap: 2px; font-size: 13px; margin: 8px 0; }
+.decision-range-values { font-weight: 600; }
+.decision-limits { font-size: 12px; color: var(--gcm-muted, #617b80); padding-left: 18px; margin: 8px 0 0; }
+.research-app[data-theme="dark"] .decision-card { background: var(--gcm-surface); border-color: var(--gcm-rule); }
+@media (max-width: 640px) { .decision-container { padding: 20px 16px 6px; } }
