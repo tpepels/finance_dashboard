@@ -20,9 +20,9 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertEqual(r["analysis_count"], 37)
         self.assertEqual(r["method_source_count"], 49)
         self.assertEqual(r["scalar_roles"], 140)
-        self.assertEqual(r["scalar_bound_roles"], 122)
-        self.assertEqual(r["unbound_scalar_roles"], 18)
-        self.assertEqual(r["structured_roles"], 40)
+        self.assertEqual(r["scalar_bound_roles"], 123)
+        self.assertEqual(r["unbound_scalar_roles"], 17)
+        self.assertEqual(r["structured_roles"], 39)
         self.assertFalse(r["empirical_readiness_evaluated"])
         self.assertEqual(r["report_kind"], "source_contract_inventory")
         self.assertEqual(r["errors"], [])
@@ -58,7 +58,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertIn("L03/net_fixed_capital", output)
         self.assertIn("L01/oecd_matched_hours", output)
         self.assertIn("not mapped, fetched or scientifically verified", output)
-        self.assertEqual(r["scalar_bound_roles"], 122)
+        self.assertEqual(r["scalar_bound_roles"], 123)
         self.assertFalse(r["empirical_readiness_evaluated"])
 
     def test_machine_readable_mode_does_not_invent_data_evidence(self):
@@ -69,7 +69,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertFalse(parsed["empirical_readiness_evaluated"])
         self.assertNotIn("analyses", parsed)
-        self.assertEqual(parsed["unbound_scalar_roles"], 18)
+        self.assertEqual(parsed["unbound_scalar_roles"], 17)
 
 
 if __name__ == "__main__":

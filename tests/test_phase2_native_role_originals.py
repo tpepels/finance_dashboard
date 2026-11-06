@@ -32,7 +32,7 @@ class NativeOriginalRoleTests(unittest.TestCase):
     def register(self, root, path, document=None):
         return register_native_role_original(
             document or self.document, root=Path(root) / "evidence",
-            analysis_id="F07", role="fund_funding_mismatch",
+            analysis_id="V02", role="q_accounting_components",
             original=path,
             fields=["event_id", "event_date", "impact"],
             key_fields=["event_id"], numeric_fields=["impact"],
@@ -42,7 +42,7 @@ class NativeOriginalRoleTests(unittest.TestCase):
         with TemporaryDirectory() as temp:
             evidence = native_role_original_evidence(
                 self.document, Path(temp))
-            self.assertEqual(evidence["unbound_structured_roles"], 25)
+            self.assertEqual(evidence["unbound_structured_roles"], 24)
             self.assertEqual(evidence["hash_verified_partial_roles"], 0)
             self.assertEqual(evidence["invalid_archived_roles"], [])
             self.assertFalse(evidence["scientific_analysis_certified"])
@@ -66,7 +66,7 @@ class NativeOriginalRoleTests(unittest.TestCase):
             evidence = native_role_original_evidence(
                 self.document, Path(temp) / "evidence")
             self.assertEqual(evidence["hash_verified_partial_roles"], 1)
-            self.assertEqual(evidence["unbound_structured_roles"], 25)
+            self.assertEqual(evidence["unbound_structured_roles"], 24)
             self.assertEqual(evidence["invalid_archived_roles"], [])
 
     def test_registered_native_file_reaches_scientific_gate_without_false_acceptance(self):
@@ -79,9 +79,9 @@ class NativeOriginalRoleTests(unittest.TestCase):
                 self.document, series_registry=self.catalog,
                 native_role_evidence=evidence)
             role = next(
-                r for a in report["analyses"] if a["id"] == "F07"
+                r for a in report["analyses"] if a["id"] == "V02"
                 for r in a["requirements"]
-                if r["role"] == "fund_funding_mismatch")
+                if r["role"] == "q_accounting_components")
             self.assertTrue(role["attached_native_original"][
                 "original_source_hash_verified"])
             self.assertEqual(role["resolution"]["availability"], "available_partial")
@@ -118,27 +118,27 @@ class NativeOriginalRoleTests(unittest.TestCase):
             self.register(temp, source)
             original = next(
                 (Path(temp) / "evidence").glob(
-                    "native-role-originals/F07/fund_funding_mismatch/*/original.csv"))
+                    "native-role-originals/V02/q_accounting_components/*/original.csv"))
             original.write_text("event_id,event_date,impact\nchanged,2020-03-01,7\n")
             with self.assertRaises(ValueError):
                 read_native_role_original(
                     self.document, root=Path(temp) / "evidence",
-                    analysis_id="F07", role="fund_funding_mismatch")
+                    analysis_id="V02", role="q_accounting_components")
             evidence = native_role_original_evidence(
                 self.document, Path(temp) / "evidence")
             self.assertEqual(evidence["invalid_archived_roles"],
-                             ["F07:fund_funding_mismatch"])
+                             ["V02:q_accounting_components"])
         with TemporaryDirectory() as temp:
             self.register(temp, self.sample(temp))
             changed = deepcopy(self.document)
-            role = next(r for a in changed["analyses"] if a["id"] == "F07"
+            role = next(r for a in changed["analyses"] if a["id"] == "V02"
                         for r in a["comparison_contract"]["original_requirements"]
-                        if r["role"] == "fund_funding_mismatch")
+                        if r["role"] == "q_accounting_components")
             role["description"] += " edited"
             with self.assertRaisesRegex(ValueError, "contract"):
                 read_native_role_original(
                     changed, root=Path(temp) / "evidence",
-                    analysis_id="F07", role="fund_funding_mismatch")
+                    analysis_id="V02", role="q_accounting_components")
 
     def test_does_not_allow_scalar_source_substitution(self):
         with TemporaryDirectory() as temp:

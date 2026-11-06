@@ -182,7 +182,11 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(len(nonbank["series_ids"]), 4)
         self.assertFalse(nonbank["checks"])
         self.assertFalse(nonbank["satisfies_original_method"])
-        self.assertFalse(self.requirement("F07", "meaningful_sector_equity")["series_ids"])
+        # Equity is Z.1's own published equity-capital line, never assets minus liabilities.
+        equity = self.requirement("F07", "meaningful_sector_equity")["series_ids"]
+        self.assertEqual(equity, ["funding.us.broker_equity_capital", "funding.us.broker_total_liabilities_equity"])
+        self.assertFalse(set(equity) & set(nonbank["series_ids"]))
+        self.assertEqual(self.series["funding.us.broker_equity_capital"]["source_key"], "BOGZ1FL665080003Q")
         q = self.variant("V02", "bea_annual_q_definition_panel")
         self.assertEqual(q["frequency"], "A")
         self.assertEqual(len(q["series_ids"]), 3)

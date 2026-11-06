@@ -2061,11 +2061,16 @@
           {
             "role": "meaningful_sector_equity",
             "description": "Original same-perimeter positive accounting equity and total assets for any leverage method; financial assets minus total liabilities cannot be assumed equity.",
-            "series_ids": [],
+            "series_ids": [
+              "funding.us.broker_equity_capital",
+              "funding.us.broker_total_liabilities_equity"
+            ],
             "expected": {
               "frequency": "Q",
+              "unit": "million_usd",
               "geography": ["US"],
-              "concept": "Source-defined equity and compatible total assets"
+              "population": "US security brokers and dealers",
+              "concept": "Equity capital and same-perimeter balance-sheet total"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
@@ -2074,32 +2079,20 @@
           {
             "role": "finance_company_balance_sheet",
             "description": "Original named finance-company balance-sheet and funding inputs.",
-            "series_ids": [],
+            "series_ids": [
+              "funding.us.finance_company_total_assets",
+              "funding.us.finance_company_total_liabilities"
+            ],
             "expected": {
               "frequency": "Q",
+              "unit": "million_usd",
               "geography": ["US"],
-              "population": "Finance companies",
-              "concept": "Source-defined assets/liabilities/funding"
+              "population": "US finance companies",
+              "concept": "Total assets and total liabilities"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "accounting_panel",
-            "artifact_ids": [],
-            "input_requirement": "Original named finance-company balance-sheet and funding inputs."
-          },
-          {
-            "role": "fund_funding_mismatch",
-            "description": "Original named fund liquidity, obligations and redemption/funding mismatch inputs.",
-            "series_ids": [],
-            "expected": {
-              "frequency": "Q",
-              "geography": ["US"],
-              "population": "Explicitly named fund classes",
-              "concept": "Funding/liquidity structure with NAV treatment"
-            },
-            "temporal_requirement": "latest_revised",
-            "input_type": "accounting_panel",
-            "artifact_ids": [],
-            "input_requirement": "Original named fund liquidity, obligations and redemption/funding mismatch inputs."
+            "artifact_ids": []
           },
           {
             "role": "ofr_fsi",
@@ -2149,7 +2142,13 @@
       "context_artifact_ids": [],
       "evidence_tier": "descriptive",
       "decision_informed": "Nonbank fragility context for liquidity-sensitive holdings such as corporate-bond and money-market funds.",
-      "phase2_scope": "active"
+      "phase2_scope": "active",
+      "descoped_roles": [
+        {
+          "role": "fund_funding_mismatch",
+          "reason": "Financial Accounts publish fund assets and redeemable shares but no aggregate liquidity or redemption-mismatch measure; fund-level liquidity sits in SEC N-PORT/N-MFP filings, not integrated."
+        }
+      ]
     },
     {
       "id": "V01",

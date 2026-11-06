@@ -43,7 +43,7 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
             stan_readiness=readiness,
             stan_structure={"status": "verified_publisher_structure",
                             "historical_candidates_present": ["B2N_B3_N"]})
-        self.assertEqual(candidates["unbound_scalar_roles"], 18)
+        self.assertEqual(candidates["unbound_scalar_roles"], 17)
         d1 = next(
             row for row in candidates["role_candidates"]
             if row["analysis_id"] == "L02" and

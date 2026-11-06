@@ -32,7 +32,7 @@ class TypedNativeRoleTests(unittest.TestCase):
                          "original_requirements"]
                      if role["input_type"] != "scalar_history"
                      and not role["artifact_ids"]]
-        self.assertEqual(len(remaining), 25)
+        self.assertEqual(len(remaining), 24)
         self.assertFalse({x["input_type"] for x in remaining} -
                          set(REQUIRED_ORIGINAL_SHAPES))
 
