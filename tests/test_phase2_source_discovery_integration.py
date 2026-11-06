@@ -110,20 +110,27 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
         self.assertIn("L07", wiid["affected_analyses"])
         self.assertEqual(wiid["role_count"], 0)
         self.assertEqual(wiid["unbound_scalar_native_reference_count"], 1)
+        discovery = unbound_original_source_discovery(
+            self.document, self.catalog, artifact)
         report = research_corpus_report(
             self.document, series_registry=self.catalog,
-            artifact_evidence=artifact)
+            artifact_evidence=artifact,
+            unbound_source_evidence=discovery)
         gini = next(
             role for a in report["analyses"] if a["id"] == "L07"
             for role in a["requirements"] if role["role"] == "wiid_gini")
         self.assertEqual(gini["resolution"]["category"], 1)
         self.assertEqual(gini["resolution"]["availability"],
-                         "native_original_unconverted")
+                         "original_native_partial")
         self.assertFalse(gini["accepted"])
         self.assertFalse(gini["series_ids"])
         self.assertFalse(gini["first_publication_verified"])
-        self.assertEqual([a["artifact_id"] for a in
-                          gini["partial_artifact_evidence"]], ["wiid"])
+        self.assertEqual(
+            gini["reviewed_original_candidate_evidence"]["native_artifact"],
+            "wiid")
+        self.assertTrue(
+            gini["reviewed_original_candidate_evidence"][
+                "native_artifact_original_hash_verified"])
         self.assertEqual(report["fully_validated_analysis_count"], 0)
 
     def test_alfred_observation_revision_originals_are_read_but_not_automatically_certified(self):
@@ -135,24 +142,27 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
             "invalid_or_conflicting_windows": 0}
         report = research_corpus_report(
             self.document, series_registry=self.catalog,
-            alfred_revision_proof=revisions)
-        self.assertTrue(report["alfred_original_revision_inventory_checked"])
-        self.assertEqual(report["alfred_verified_source_revision_windows"], 3)
+            publisher_revision_proof=revisions)
+        self.assertTrue(report["official_alfred_revision_windows_checked"])
+        self.assertEqual(report["verified_original_alfred_revision_windows"], 3)
         c02 = next(a for a in report["analyses"] if a["id"] == "C02")
         link = next(
             l for l in c02["linked_sources"]
             if l["series_id"] == "rates.us.treasury_10y_3m_spread")
         self.assertEqual(link["original_source_asof"][
-            "official_revision_windows_verified"], 3)
+            "original_revision_windows_verified"], 3)
         self.assertEqual(link["original_source_asof"][
-            "official_revision_rows_verified"], 120)
+            "original_revision_rows_verified"], 120)
         role = next(r for r in c02["requirements"]
                     if r["role"] == "published_yield_spread")
         temporal = next(g for g in role["checks"]
                         if g["id"] == "temporal_evidence")
         self.assertEqual(temporal["state"], "incomplete")
-        self.assertEqual(temporal[
-            "alfred_windows_with_complete_realtime_intervals"], 3)
+        self.assertEqual(
+            temporal["verified_alfred_revision_source_series_count"], 1)
+        self.assertEqual(
+            temporal["verified_alfred_revision_windows"][0][
+                "verified_original_revision_windows"], 3)
         self.assertEqual(temporal["observation_first_release_dates_verified"],
                          0)
         self.assertFalse(role["accepted"])
