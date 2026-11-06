@@ -340,8 +340,8 @@ def create_app(engine=None) -> FastAPI:
     @app.get("/api/decision/{analysis_id}")
     def decision_analysis(analysis_id: str):
         """EUR investor decision analyses computed from stored observed values."""
-        from .decision_analytics import load_p06, load_p07
-        loaders = {"P06": load_p06, "P07": load_p07}
+        from .decision_analytics import load_f03, load_p06, load_p07
+        loaders = {"P06": load_p06, "P07": load_p07, "F03": load_f03}
         if analysis_id not in loaders:
             raise HTTPException(404, "Unknown decision analysis")
         with Session(db) as session:

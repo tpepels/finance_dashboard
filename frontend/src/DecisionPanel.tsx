@@ -18,6 +18,13 @@ export type P06 = {
   limitations: string[];
 };
 
+type History = { as_of: string; latest: number; own_percentile: number | null; deviation_from_own_mean: number; history_start: string } | null;
+export type F03 = { rows: { area: string; credit_gap: History; gap_guide_band: string | null; private_dsr: History }[];
+  guide: { low_pp: number; high_pp: number }; limitations: string[] };
+
+const BANDS: Record<string, string> = { above_10pp: 'Above 10 pp', between_2_and_10pp: '2–10 pp', below_2pp: 'Below 2 pp' };
+const AREAS: Record<string, string> = { US: 'United States', EA: 'Euro area', JP: 'Japan', DE: 'Germany', CN: 'China', PT: 'Portugal' };
+
 const pct = (value: number | null | undefined, digits = 1) =>
   value === null || value === undefined || Number.isNaN(value) ? '—' : `${(value * 100).toFixed(digits)}%`;
 
@@ -119,28 +126,48 @@ function ExpectedReturns({ data }: { data: P06 }) {
   </div>;
 }
 
+function CreditCard({ data }: { data: F03 }) {
+  return <div className="decision-card">
+    <div className="decision-card-head"><h3>F03 · Are credit vulnerabilities building?</h3></div>
+    <p className="decision-question">Informs the credit versus government-bond mix; context, not a timing signal.</p>
+    <table className="decision-table">
+      <thead><tr><th>Economy</th><th>Credit gap (pp)</th><th>BIS guide band</th><th>Debt service (% income)</th><th>Own-history percentile</th></tr></thead>
+      <tbody>{data.rows.map(row => <tr key={row.area}>
+        <th>{AREAS[row.area] ?? row.area}</th>
+        <td title={row.credit_gap?.as_of}>{row.credit_gap ? row.credit_gap.latest.toFixed(1) : '—'}</td>
+        <td>{row.gap_guide_band ? BANDS[row.gap_guide_band] : '—'}</td>
+        <td title={row.private_dsr?.as_of}>{row.private_dsr ? row.private_dsr.latest.toFixed(1) : '—'}</td>
+        <td>{row.private_dsr?.own_percentile != null ? `${Math.round(row.private_dsr.own_percentile * 100)}th` : '—'}</td>
+      </tr>)}</tbody>
+    </table>
+    <ul className="decision-limits">{data.limitations.map(item => <li key={item}>{item}</li>)}</ul>
+  </div>;
+}
+
 /** Decision layer for a euro-based ETF investor (Phase 1 revision 2026-11-06). */
 export default function DecisionPanel({ theme, dataVersion }: { theme: 'light' | 'dark'; dataVersion: number }) {
   const [p06, setP06] = useState<P06 | null>(null);
   const [p07, setP07] = useState<P07 | null>(null);
+  const [f03, setF03] = useState<F03 | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     let cancelled = false;
-    Promise.all([load<P06>('P06'), load<P07>('P07')]).then(([six, seven]) => {
-      if (!cancelled) { setP06(six); setP07(seven); setError(''); }
+    Promise.all([load<P06>('P06'), load<P07>('P07'), load<F03>('F03')]).then(([six, seven, credit]) => {
+      if (!cancelled) { setP06(six); setP07(seven); setF03(credit); setError(''); }
     }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'Unavailable'); });
     return () => { cancelled = true; };
   }, [dataVersion]);
   return <section className="decision-container" id="decisions">
     <header>
       <span className="research-eyebrow">Decisions</span>
-      <h2>Euro investor: expected returns and currency hedging</h2>
+      <h2>Euro investor: expected returns, hedging and credit risk</h2>
       <p>Computed from verified source observations; nothing is interpolated. Each card states the decision it informs and its limits.</p>
     </header>
     {error && <p className="decision-note" role="alert">{error}</p>}
     <div className="decision-grid">
       {p06 && <ExpectedReturns data={p06}/>}
       {p07 && <HedgeChart data={p07} theme={theme}/>}
+      {f03 && <CreditCard data={f03}/>}
     </div>
   </section>;
 }

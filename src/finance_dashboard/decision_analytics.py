@@ -237,3 +237,53 @@ def load_p06(session: Session) -> dict:
                                   data["global_earnings_yield"], latest, data["ea_hicp"])
     result["inputs"] = P06_INPUTS
     return result
+
+
+CREDIT_GAPS = {"US": "credit_gap.us.bis", "EA": "credit_gap.ea.bis", "JP": "credit_gap.jp.bis",
+               "DE": "credit_gap.de.bis", "CN": "credit_gap.cn.bis", "PT": "credit_gap.pt.bis"}
+PRIVATE_DSR = {"US": "debt_service.us.private.bis", "JP": "debt_service.jp.private.bis",
+               "DE": "debt_service.de.private.bis", "CN": "debt_service.cn.private.bis",
+               "PT": "debt_service.pt.private.bis"}
+# BIS/Basel III countercyclical buffer guide: buffer starts above a 2 pp gap and
+# reaches its maximum at 10 pp (Drehmann & Juselius 2013; BIS credit-gap notes).
+GAP_GUIDE_LOW, GAP_GUIDE_HIGH = 2.0, 10.0
+
+
+def own_history(points: list[tuple[date, float]]) -> dict | None:
+    """Latest value against the series' own history (no cross-country ranking)."""
+    if not points:
+        return None
+    points = sorted(points)
+    values = [v for _, v in points]
+    day, latest = points[-1]
+    mean = sum(values) / len(values)
+    below = sum(v < latest for v in values)
+    return {"as_of": day.isoformat(), "latest": latest, "history_start": points[0][0].isoformat(),
+            "observations": len(values), "own_mean": mean, "deviation_from_own_mean": latest - mean,
+            "own_percentile": below / (len(values) - 1) if len(values) > 1 else None}
+
+
+def f03_credit(gaps: dict, dsr: dict) -> dict:
+    rows = []
+    for area in sorted(set(gaps) | set(dsr)):
+        gap = own_history(gaps.get(area, []))
+        debt = own_history(dsr.get(area, []))
+        band = None
+        if gap:
+            band = ("above_10pp" if gap["latest"] > GAP_GUIDE_HIGH else
+                    "between_2_and_10pp" if gap["latest"] > GAP_GUIDE_LOW else "below_2pp")
+        rows.append({"area": area, "credit_gap": gap, "gap_guide_band": band, "private_dsr": debt})
+    return {"analysis_id": "F03", "rows": rows,
+            "guide": {"low_pp": GAP_GUIDE_LOW, "high_pp": GAP_GUIDE_HIGH},
+            "limitations": [
+                "The credit gap uses BIS's one-sided HP trend; it is an early-warning indicator with false positives, not a crisis forecast.",
+                "Debt-service ratios are compared with each economy's own history; raw levels are not comparable across countries.",
+                "A weighted average of national gaps is not a world credit gap; no aggregate is shown."]}
+
+
+def load_f03(session: Session) -> dict:
+    gaps = {area: _points(session, sid) for area, sid in CREDIT_GAPS.items()}
+    dsr = {area: _points(session, sid) for area, sid in PRIVATE_DSR.items()}
+    result = f03_credit(gaps, dsr)
+    result["inputs"] = {"credit_gap": CREDIT_GAPS, "private_dsr": PRIVATE_DSR}
+    return result

@@ -21,11 +21,16 @@ describe('DecisionPanel', () => {
   });
   it('renders ranges, limitations and the unavailable real view', async () => {
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
-    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url.endsWith('P06') ? p06 : p07)))));
+    const f03 = { rows: [{ area: 'JP', credit_gap: { as_of: '2026-01-01', latest: 5.7, own_percentile: 0.8, deviation_from_own_mean: 2, history_start: '1970-01-01' },
+      gap_guide_band: 'between_2_and_10pp', private_dsr: null }], guide: { low_pp: 2, high_pp: 10 }, limitations: ['Not a crisis forecast.'] };
+    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(
+      url.endsWith('P06') ? p06 : url.endsWith('F03') ? f03 : p07)))));
     render(<DecisionPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByText(/Historical range/)).toBeTruthy());
     expect(screen.getByText(/-4.0% to 8.3%/)).toBeTruthy();
     expect(screen.getByText('Approximate hedge.')).toBeTruthy();
     expect(screen.getByText(/Real returns appear once/)).toBeTruthy();
+    expect(screen.getByText('2–10 pp')).toBeTruthy();
+    expect(screen.getByText('Not a crisis forecast.')).toBeTruthy();
   });
 });

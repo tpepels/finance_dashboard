@@ -2,8 +2,8 @@
 from datetime import date
 import unittest
 
-from finance_dashboard.decision_analytics import (complete_months, contiguous_tail, month_end,
-                                                  p06_expected_returns, p07_hedging)
+from finance_dashboard.decision_analytics import (complete_months, contiguous_tail, f03_credit, month_end,
+                                                  own_history, p06_expected_returns, p07_hedging)
 
 
 def series(values, start=(2020, 1)):
@@ -57,6 +57,19 @@ class DecisionAnalyticsTests(unittest.TestCase):
         self.assertEqual(equity["calibration_windows"], 1)
         self.assertAlmostEqual(equity["range_real"]["p50"], 0.06, places=6)
         self.assertAlmostEqual(result["bonds"]["us_breakeven_10y"]["yield"], 0.022)
+
+    def test_credit_gap_bands_and_own_history_percentiles(self):
+        gaps = {"US": [(date(2020, 1, 1), -5.0), (date(2021, 1, 1), 1.0), (date(2022, 1, 1), 12.0)],
+                "PT": [(date(2022, 1, 1), 3.0)]}
+        dsr = {"US": [(date(2020, 1, 1), 15.0), (date(2021, 1, 1), 16.0), (date(2022, 1, 1), 14.0)]}
+        result = f03_credit(gaps, dsr)
+        rows = {r["area"]: r for r in result["rows"]}
+        self.assertEqual(rows["US"]["gap_guide_band"], "above_10pp")
+        self.assertEqual(rows["PT"]["gap_guide_band"], "between_2_and_10pp")
+        self.assertEqual(rows["US"]["private_dsr"]["own_percentile"], 0.0)
+        self.assertAlmostEqual(rows["US"]["private_dsr"]["deviation_from_own_mean"], -1.0)
+        self.assertIsNone(rows["PT"]["private_dsr"])
+        self.assertIsNone(own_history([]))
 
 
 if __name__ == "__main__":
