@@ -110,7 +110,14 @@ def _selected_manifest(parent, source_identity):
             raise ValueError("no published receipt")
     except (OSError, KeyError, TypeError, ValueError):
         raise EvidenceError("source_receipt_invalid") from None
-    selected = max(candidates, key=lambda item: (item[0], item[4]))
+    # Every receipt above is integrity-checked. Scheduled refreshes archive
+    # requested_period_subset overlap windows, which can never certify a
+    # history; they must not displace the newest full snapshot as evidence.
+    # Whether that snapshot still covers all stored periods is checked later.
+    full = [item for item in candidates if isinstance(item[3], dict)
+            and item[3].get("scope") == "full_source_snapshot"
+            and item[3].get("requested_from") is None]
+    selected = max(full or candidates, key=lambda item: (item[0], item[4]))
     return (*selected[:4], "acquisition_receipt")
 
 

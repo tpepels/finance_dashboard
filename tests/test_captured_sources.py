@@ -55,7 +55,7 @@ class CapturedSourcesTests(unittest.TestCase):
                 with self.assertRaises(EvidenceError):
                     _fred(bad,definition,'https://fred.stlouisfed.org/data/DGS2')
 
-    def test_full_fred_originals_compare_all_periods_and_reject_newer_partial_capture(self):
+    def test_full_fred_originals_compare_all_periods_and_newer_partial_capture_cannot_certify_revisions(self):
         sid = "bond.us.nominal_10y"
         original = {"count": 2, "offset": 0, "observations": [
             {"date": "2024-01-02", "value": "3.95"},
@@ -79,10 +79,21 @@ class CapturedSourcesTests(unittest.TestCase):
                 self.assertEqual(proof["source_periods"], 2)
                 self.assertRegex(proof["stored_observations_sha256"], r"^[0-9a-f]{64}$")
                 self.assertRegex(proof["source_contract_sha256"], r"^[0-9a-f]{64}$")
+                # A consistent scheduled overlap capture is preserved but does
+                # not displace the full snapshot as certification evidence.
                 captured.fetch(sid, date(2024, 1, 3))
-                partial = reconcile("sqlite:///" + str(db), root, [sid])
-                self.assertFalse(partial["passed"])
-                self.assertEqual(partial["series"][0]["failure_code"], "source_snapshot_partial")
+                self.assertTrue(reconcile("sqlite:///" + str(db), root, [sid])["passed"])
+            # A newer overlap that revised a value, now stored as the current
+            # version, must not let the stale full snapshot certify history.
+            revised = {"count": 1, "offset": 0, "observations": [{"date": "2024-01-03", "value": "3.99"}]}
+            with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=revised))) as http:
+                SourceAcquisition(ProviderRouter(http), root).fetch(sid, date(2024, 1, 3))
+            with sqlite3.connect(db) as connection:
+                connection.execute("INSERT INTO observation_versions(series_id,period,value,first_seen_at,ingestion_run_id) VALUES(?,?,?,?,?)",
+                    (sid, "2024-01-03", "3.99", "2026-11-05 10:00:00", "refresh-run"))
+            stale = reconcile("sqlite:///" + str(db), root, [sid])
+            self.assertFalse(stale["passed"])
+            self.assertFalse(stale["series"][0]["source_values_match"])
 
     def test_original_world_bank_geography_and_missing_years_are_not_filled(self):
         with TemporaryDirectory() as temp:

@@ -82,6 +82,23 @@ class SourceCaptureTests(unittest.TestCase):
                 self.assertFalse(list(Path(temp).glob("responses/bond.us.real_10y/retrievals/*.json")))
                 self.assertEqual(http.event_hooks["response"], [])
 
+    def test_later_overlap_capture_does_not_mask_full_snapshot_for_certification(self):
+        """Scheduled refreshes archive overlap windows; those receipts stay
+        preserved but cannot displace the newest full snapshot as evidence."""
+        from finance_dashboard.source_reconciliation import _selected_manifest
+        identity = {"provider": "FRED", "series_id": "bond.us.nominal_10y", "source_key": "DGS10"}
+        body = {"observations": [{"date": "2024-01-02", "value": "3.95"}]}
+        with TemporaryDirectory() as temp, patch.dict("os.environ", {"FRED_API_KEY": "key"}):
+            parent = Path(temp) / "responses" / "bond.us.nominal_10y"
+            with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200, json=body))) as http:
+                captured = SourceAcquisition(ProviderRouter(http), Path(temp))
+                captured.fetch("bond.us.nominal_10y", date(2024, 1, 1))
+                self.assertEqual(_selected_manifest(parent, identity)[3]["scope"], "requested_period_subset")
+                captured.fetch("bond.us.nominal_10y")
+                captured.fetch("bond.us.nominal_10y", date(2024, 1, 1))
+            self.assertEqual(len(list(parent.glob("retrievals/*.json"))), 3)
+            self.assertEqual(_selected_manifest(parent, identity)[3]["scope"], "full_source_snapshot")
+
     def test_failed_http_retains_raw_publisher_bytes_without_certifying(self):
         raw = b"Publisher temporarily rejected request"
         with TemporaryDirectory() as temp, patch.dict("os.environ", {

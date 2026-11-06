@@ -81,7 +81,11 @@ class ConstructedSourceTests(unittest.TestCase):
             self.assertEqual(audit(other, sid, {})['failure_code'], 'source_identity_mismatch')
             with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=original))) as client:
                 SourceAcquisition(ProviderRouter(client), root).fetch(sid, date(2024, 1, 1))
-            self.assertEqual(audit(root, sid, {})['failure_code'], 'source_snapshot_partial')
+            # The later overlap receipt is preserved, but the full snapshot
+            # remains the certification evidence.
+            later = audit(root, sid, {date(2024, 1, 2): Decimal('310.25')})
+            self.assertTrue(later['source_values_match'], later)
+            self.assertEqual(len(list(root.glob('responses/*/retrievals/*.json'))), 2)
 
     def test_siblis_sparse_snapshots_and_same_universe_inverse_are_independent(self):
         for sid, expected in [('valuation.world.global_trailing_pe', Decimal(20)),
