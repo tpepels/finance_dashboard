@@ -83,6 +83,104 @@ class IndependentPublisherSubsourcesTests(unittest.TestCase):
                          ["msci", "ishares", "vanguard-fund-docs"])
         self.assertFalse(plan["scientific_analysis_certified"])
 
+    def test_two_msci_pdfs_respect_shared_rate_and_resume_without_replay(self):
+        """A deferred second URL has no journal start and may resume safely."""
+        from finance_dashboard.msci_concentration_originals import (
+            msci_publisher_factsheet_identity,
+        )
+        from finance_dashboard.phase2_sweep_journal import (
+            Phase2SweepJournal, sweep_context,
+        )
+        from finance_dashboard.phase2_workflow import run_source_acquisition_batch
+        from finance_dashboard.source_policy import managed_client
+        from finance_dashboard.source_policy_ledger import SourcePolicyGate
+
+        class Clock:
+            def __init__(self):
+                self.now = 1000000.0
+            def __call__(self):
+                return self.now
+            def advance(self, seconds):
+                self.now += seconds
+
+        urls = (
+            "https://www.msci.com/documents/10199/2020/a.pdf",
+            "https://www.msci.com/documents/10199/2020/b.pdf",
+        )
+        fixture = (
+            Path(__file__).parent / "fixtures/holdings" /
+            "msci-acwi-2020-10-30-original.pdf"
+        ).read_bytes()
+        requested = []
+        def reply(request):
+            requested.append(str(request.url))
+            return httpx.Response(200, content=fixture)
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            evidence = root / "evidence"
+            plan = structured_operating_plan(
+                self.document, evidence, holdings=None,
+                kinds={"msci_concentration"}, cvm_year=None,
+                agent=None, policy=PolicyRegistry(),
+                msci_factsheet_urls=urls)
+            actions = plan["selected_actions"]
+            self.assertEqual(len(actions), 2)
+            self.assertEqual(
+                {a["id"] for a in actions},
+                {"msci_concentration:" + msci_publisher_factsheet_identity(url)
+                 for url in urls})
+            source_by_id = {action["id"]: action["source_url"]
+                            for action in actions}
+            selected_ids = sorted(source_by_id)
+            context = sweep_context(selected_ids, "0" * 64, "1" * 64)
+            clock = Clock()
+            gate = SourcePolicyGate(
+                registry=PolicyRegistry(), state_path=root / "rate-ledger.sqlite",
+                clock=clock, max_wait_seconds=0)
+            journal_path = root / "journal"
+            for turn in range(2):
+                with managed_client(
+                        policy_gate=gate,
+                        transport=httpx.MockTransport(reply)) as client:
+                    def refresh(action_id, *, full):
+                        self.assertTrue(full)
+                        name = action_id.partition(":")[2]
+                        result = collect_structured_original(
+                            "msci_concentration", root=evidence, client=client,
+                            subsource=name,
+                            msci_factsheet_url=source_by_id[action_id])
+                        return {"status": "success", "received": 1,
+                                "versions_added": int(
+                                    result["state"] == "retained_original")}
+
+                    with Phase2SweepJournal(
+                            journal_path, context=context,
+                            create=turn == 0) as journal:
+                        outcome = run_source_acquisition_batch(
+                            actions, refresh, max_attempts=2,
+                            stop_scope="publisher", journal=journal,
+                            policy_preflight=lambda row:
+                                gate.availability(row["publisher_policy"]))
+                        self.assertEqual(outcome["attempted"], 1)
+                        self.assertEqual(journal.summary()["tracked_attempts"],
+                                         turn + 1)
+                        self.assertEqual(
+                            [row["status"] for row in outcome["results"]],
+                            ["success", "deferred_policy_preflight"] if turn == 0
+                            else ["deferred_prior_attempt", "success"])
+                if turn == 0:
+                    self.assertEqual(len(requested), 1)
+                    clock.advance(3601)
+            self.assertEqual(requested, list(urls))
+            self.assertEqual(gate.report()["requests_recorded"], 1)
+            from finance_dashboard.msci_concentration_originals import (
+                read_msci_concentration_originals,
+            )
+            values, proof = read_msci_concentration_originals(evidence)
+            self.assertEqual(len(values), 1)
+            self.assertEqual(len(proof["original_document_proofs"]), 2)
+            self.assertEqual(len(list(evidence.rglob("original.pdf"))), 2)
+
     def test_native_vanguard_collector_reuses_existing_source_store(self):
         with TemporaryDirectory() as temp:
             with httpx.Client(transport=httpx.MockTransport(
