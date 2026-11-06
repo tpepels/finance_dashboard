@@ -289,7 +289,11 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(len(variant["series_ids"]), 4)
         self.assertEqual(variant["checks"], ["share_partition_100"])
         self.assertFalse(variant["satisfies_original_method"])
-        self.assertEqual(self.requirement("L05", "financial_asset_components")["series_ids"], [])
+        # Composition comes from separate DFA holdings levels, never from the net-worth share partition.
+        components = self.requirement("L05", "financial_asset_components")["series_ids"]
+        self.assertEqual(components, [f"wealth.us.{g}.equities_mutual_funds"
+                                      for g in ("top1", "next9", "middle40", "bottom50")])
+        self.assertFalse(set(components) & set(variant["series_ids"]))
         self.assertEqual(self.requirement("L05", "net_worth_top_point1")["series_ids"], ["wealth.us.top_point1_share"])
 
     def test_tiva_alternative_does_not_satisfy_missing_icio_matrices(self):

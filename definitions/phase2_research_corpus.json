@@ -3261,12 +3261,18 @@
           {
             "role": "financial_asset_components",
             "description": "Original DFA financial-wealth asset components by identical household group and release.",
-            "series_ids": [],
+            "series_ids": [
+              "wealth.us.top1.equities_mutual_funds",
+              "wealth.us.next9.equities_mutual_funds",
+              "wealth.us.middle40.equities_mutual_funds",
+              "wealth.us.bottom50.equities_mutual_funds"
+            ],
             "expected": {
               "frequency": "Q",
+              "unit": "million_usd",
               "geography": ["US"],
-              "population": "Same DFA household wealth groups",
-              "concept": "Financial asset stocks by category"
+              "population": "US households by DFA wealth group",
+              "concept": "Corporate equities and mutual fund shares by wealth group"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "accounting_panel",
@@ -3276,12 +3282,22 @@
           {
             "role": "group_assets_liabilities",
             "description": "Original same-release total household/group assets, liabilities and net-worth denominators.",
-            "series_ids": [],
+            "series_ids": [
+              "wealth.us.top1.assets",
+              "wealth.us.top1.liabilities",
+              "wealth.us.next9.assets",
+              "wealth.us.next9.liabilities",
+              "wealth.us.middle40.assets",
+              "wealth.us.middle40.liabilities",
+              "wealth.us.bottom50.assets",
+              "wealth.us.bottom50.liabilities"
+            ],
             "expected": {
               "frequency": "Q",
+              "unit": "million_usd",
               "geography": ["US"],
-              "population": "Same DFA household wealth groups",
-              "concept": "Balance-sheet stock denominators"
+              "population": "US households by DFA wealth group",
+              "concept": "Total assets and total liabilities by wealth group"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "accounting_panel",
