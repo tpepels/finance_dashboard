@@ -110,17 +110,17 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
         }, "verified_windows": 2, "invalid_or_conflicting_windows": 0}
         report = research_corpus_report(
             self.document, series_registry=self.catalog,
-            publisher_revision_proof=revisions)
-        self.assertTrue(report["official_alfred_revision_windows_checked"])
-        self.assertEqual(report["verified_original_alfred_revision_windows"], 2)
+            alfred_revision_proof=revisions)
+        self.assertTrue(report["alfred_original_revision_inventory_checked"])
+        self.assertEqual(report["alfred_verified_source_revision_windows"], 2)
         matches = [
             (analysis, role, item)
             for analysis in report["analyses"]
             for role in analysis["requirements"]
             for item in role["checks"]
             if item["id"] == "temporal_evidence"
-            and any(x["publisher_series"] == source
-                    for x in item.get("verified_alfred_revision_windows", []))
+            and any(x["alfred_source_key"] == source
+                    for x in item.get("verified_original_revision_sources", []))
         ]
         self.assertTrue(matches)
         for _, role, gate in matches:
@@ -136,7 +136,7 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
         ]
         self.assertTrue(linked)
         self.assertTrue(all(x["original_source_asof"][
-            "source_asof_revision_records_verified"] for x in linked))
+            "official_revision_windows_verified"] == 2 for x in linked))
         self.assertEqual(report["fully_validated_analysis_count"], 0)
 
 

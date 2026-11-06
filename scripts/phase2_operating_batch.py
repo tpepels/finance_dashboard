@@ -67,6 +67,7 @@ from scripts.phase2_stan_sources import (
     ordered_stan_acquisition_countries,
 )
 from finance_dashboard.oecd_corporate import OECD_MEMBER_ISO3
+from finance_dashboard.stan_metadata import read_stan_structure
 
 
 def build_phase2_operating_report(evaluation, document, registry, *,
@@ -110,7 +111,8 @@ def build_phase2_operating_report(evaluation, document, registry, *,
     if unbound is None:
         unbound = unbound_original_source_discovery(
             document, registry, evaluation.artifact_evidence or {},
-            stan_readiness=readiness)
+            stan_readiness=readiness,
+            stan_structure=read_stan_structure(evidence_root))
     native_checks = native_accounting_workplan(
         document, evaluation.public_report,
         evaluation.artifact_evidence or {}, readiness)
@@ -145,28 +147,32 @@ def build_phase2_operating_report(evaluation, document, registry, *,
                 "roles": item["role_count"],
                 "collection_state": item["collection_state"],
                 "policies": item["policy_ids"],
+                "independent_subsources": [{
+                    "id": source["subsource"],
+                    "collection_state": source["collection_state"],
+                    "policies": source["policy_ids"],
+                } for source in item.get("subsource_collectors", [])],
             } for item in original_uses["artifacts"]],
             "publisher_requests_made": 0,
             "scientific_certification": False,
         },
         "unbound_original_inputs": concise_unbound_discovery(unbound),
-        "original_alfred_revision_history": {
-            "source_series_checked": (
-                (evaluation.revision_proof or {}).get(
+        "historical_alfred_revision_originals": {
+            "registered_sources_checked": (
+                (evaluation.alfred_revision_proof or {}).get(
                     "source_series_checked", 0)),
-            "verified_original_windows": (
-                (evaluation.revision_proof or {}).get(
+            "hash_verified_original_windows": (
+                (evaluation.alfred_revision_proof or {}).get(
                     "verified_windows", 0)),
-            "invalid_or_conflicting_original_windows": (
-                (evaluation.revision_proof or {}).get(
+            "invalid_or_conflicting_source_windows": (
+                (evaluation.alfred_revision_proof or {}).get(
                     "invalid_or_conflicting_windows", 0)),
-            "recorded_revision_rows_verified": sum(
+            "observation_revision_rows_verified": sum(
                 item.get("verified_observation_revision_rows", 0)
-                for item in (evaluation.revision_proof or {}).get(
+                for item in (evaluation.alfred_revision_proof or {}).get(
                     "series", {}).values()),
-            "observation_level_original_publisher_first_publication_verified":
-                False,
-            "source_archive_read_only": True,
+            "observation_first_publication_verified": False,
+            "common_release_eligibility_verified": False,
         },
         "native_accounting": compact_accounting_workplan(native_checks),
         "scientific_input_bundle": {
