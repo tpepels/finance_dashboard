@@ -8,7 +8,7 @@ import sys
 import unittest
 
 from finance_dashboard.catalog import load_documents
-from scripts.phase2_comparative_corpus import (
+from finance_dashboard.comparative_workflow import (
     NATIVE_SOURCE_FAMILIES, checked_acquisition_target,
     scientific_gap_summary, select_source_ids, targeted_source_summary,
     verified_phase2_snapshot,
@@ -40,7 +40,7 @@ class TargetedPhase2SourcesTests(unittest.TestCase):
         env["PYTHONPATH"] = str(root / "src")
         code = (
             'import sys; sys.modules["python_calamine"] = None; '
-            'import scripts.phase2_comparative_corpus as module; '
+            'import finance_dashboard.comparative_workflow as module; '
             'assert "finance_dashboard.research_runtime" not in sys.modules; '
             'assert "finance_dashboard.research_artifacts" not in sys.modules; '
             'assert module.select_source_ids('
@@ -54,7 +54,7 @@ class TargetedPhase2SourcesTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
         result = subprocess.run(
-            [sys.executable, "scripts/phase2_comparative_corpus.py", "--help"],
+            [sys.executable, "-m", "finance_dashboard", "research", "compare", "--help"],
             cwd=root, env=env, capture_output=True, text=True,
             timeout=25, check=False,
         )
@@ -67,7 +67,7 @@ class TargetedPhase2SourcesTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         env = dict(os.environ)
         env["PYTHONPATH"] = str(root / "src")
-        command = [sys.executable, "scripts/phase2_comparative_corpus.py",
+        command = [sys.executable, "-m", "finance_dashboard", "research", "compare",
                    "--new-sources", "--acquire",
                    "--database-url", "sqlite:////nonexistent/research.sqlite3",
                    "--source-evidence-dir", "/nonexistent/evidence"]

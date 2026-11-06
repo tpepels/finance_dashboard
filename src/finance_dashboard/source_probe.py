@@ -7,8 +7,7 @@ import json
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+ROOT = Path(__file__).resolve().parents[2]
 
 from finance_dashboard.providers import ProviderRouter
 
@@ -86,7 +85,7 @@ def probe(router: ProviderRouter, ids=DEFAULT_IDS, since=date(2024, 1, 1)) -> di
     }
 
 
-def main() -> int:
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--since", default="2024-01-01",
                         help="First requested original observation (YYYY-MM-DD)")
@@ -95,7 +94,7 @@ def main() -> int:
                           help="Probe a representative set of newly integrated source families, without database writes")
     selected.add_argument("--only", nargs="+",
                           help="Probe any registered exact series IDs, without database writes")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     since = date.fromisoformat(opts.since)
     provider = ProviderRouter()
     try:

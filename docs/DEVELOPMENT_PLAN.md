@@ -32,7 +32,7 @@ Consequently the official-revision evidence now appears in each affected
 scientific temporal gate while the first-publication gate remains incomplete
 until separately verified.
 
-`scripts/phase2_alfred_revision_batch.py` is read-only by default and,
+`python -m finance_dashboard sources alfred-revisions` is read-only by default and,
 with `--acquire`, uses one bounded publisher-policy client with an exact
 per-run HTTP budget, limited pages per original window and countable
 per-source windows. Already verified windows are reused; unsuccessful
@@ -43,7 +43,7 @@ included in the compact report.
 Read-only plan for example US 10-year Treasury series:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_alfred_revision_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard sources alfred-revisions \
   --vintage-dir /data/vintages --series DGS10 \
   --start 2019-01-01 --end 2020-12-31 --asof 2021-01-01
 ```
@@ -51,7 +51,7 @@ docker compose exec -T finance-dashboard python scripts/phase2_alfred_revision_b
 When the FRED key is configured and publisher policy allows requests:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_alfred_revision_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard sources alfred-revisions \
   --vintage-dir /data/vintages --series DGS10 \
   --start 2019-01-01 --end 2020-12-31 --asof 2021-01-01 \
   --acquire --max-requests 12 --max-windows 4 --max-pages 3
@@ -115,7 +115,7 @@ re-fetch of the same as-of/observation window produces different published
 versions, both are retained and the window becomes *conflicted*; no selected
 current value is silently substituted.
 
-`scripts/phase2_alfred_revision_batch.py` plans window sizes based on each
+`python -m finance_dashboard sources alfred-revisions` plans window sizes based on each
 registered original series frequency: daily series use calendar-month
 windows, monthly/quarterly originals use calendar-year windows. Acquisition
 is opt-in, bounded by one canonical publisher-policy transport plus a
@@ -126,7 +126,7 @@ A temporary publisher error never publishes an incomplete window.
 Read-only window plan:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_alfred_revision_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard sources alfred-revisions \
   --vintage-dir /data/vintages \
   --series DGS10 --start 2020-01-01 --end 2021-12-31 \
   --asof 2026-11-06
@@ -136,7 +136,7 @@ Explicit bounded original download (repeat the *identical* command to
 continue; publisher access, credentials and policy must actually be valid):
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_alfred_revision_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard sources alfred-revisions \
   --vintage-dir /data/vintages \
   --series DGS10 --start 2020-01-01 --end 2021-12-31 \
   --asof 2026-11-06 --acquire --max-requests 20 --max-windows 12
@@ -264,7 +264,7 @@ hash-verified partial originals and invalid retained originals.
 Read the status of an approved role without changing evidence:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_register_native_role.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard sources register-native \
   --evidence-dir /data/source-evidence --analysis C05 --role independent_shock_events
 ```
 
@@ -272,7 +272,7 @@ Register an explicitly sourced original event CSV with its actual column names
 and a verified unique record key:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_register_native_role.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard sources register-native \
   --evidence-dir /data/source-evidence --analysis C05 --role independent_shock_events \
   --original /data/imports/approved-events.csv \
   --fields event_id event_date impact \
@@ -323,7 +323,7 @@ spacing/window/cooldown restrictions. `sec_holdings_sync.collect_configured`
 can accept this already managed client, eliminating its formerly separate
 transport lifecycle during the integrated acquisition run.
 
-`scripts/phase2_structured_batch.py` provides a read-only 44-role/native
+`python -m finance_dashboard research structured` provides a read-only 44-role/native
 capability review by default. With explicit `--acquire --run-dir`, it uses
 one immutable source-attempt journal, a canonical managed request cap and
 the existing publisher policy preflight, then independently reruns native
@@ -336,7 +336,7 @@ are not overwritten.
 Read-only:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_structured_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard research structured \
   --evidence-dir /data/source-evidence --holdings-dir /data/holdings
 ```
 
@@ -344,7 +344,7 @@ Explicit original collection, only where each real publisher's access rights,
 network origin and contact requirements are satisfied:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_structured_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard research structured \
   --evidence-dir /data/source-evidence --holdings-dir /data/holdings \
   --cvm-year 2025 --acquire --run-dir /data/phase2-sweeps/structured-originals-20261106 \
   --max-http-requests 30 --max-tasks 10
@@ -386,14 +386,14 @@ establishes them.
 Read-only:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_publication_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard sources publication \
   --vintage-dir /data/vintages
 ```
 
 For a configured, authorized FRED API connection:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_publication_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard sources publication \
   --vintage-dir /data/vintages --acquire --max-requests 10
 ```
 
@@ -420,7 +420,7 @@ comparisons simply because individual receipts exist.
 
 ### 5. Canonical integrated evidence-to-analysis execution
 
-The standard `scripts/phase2_operating_batch.py` now reads the fully
+The standard `python -m finance_dashboard research operating` now reads the fully
 integrated `CorpusEvaluation` evidence and reports the structured source
 workplan, the 21-source original-publisher investigation, native accounting
 coverage and all remaining scientifically unmatched original-input gates in
@@ -474,7 +474,7 @@ original-data archive and backup directory.
 Read-only preview of the exact current failed-source selection:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard research operating \
   --evidence-dir /data/source-evidence --sweep \
   --revisit-from /data/phase2-sweeps/full-20261105 \
   --revisit-mode failed
@@ -484,7 +484,7 @@ Explicit bounded retry into a **new** journal, only after checking applicable
 publisher origin restrictions and the original failure causes:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard research operating \
   --evidence-dir /data/source-evidence --sweep --acquire \
   --revisit-from /data/phase2-sweeps/full-20261105 \
   --revisit-mode failed \
@@ -550,7 +550,7 @@ A transition is strictly an audit of canonical gate outputs; it does not
 manufacture a scientific certificate or imply that incomplete publisher
 population, accounting or release-vintage requirements are resolved.
 
-`scripts/phase2_operating_batch.py --acquire` now attaches this
+`python -m finance_dashboard research operating --acquire` now attaches this
 `research_transitions` audit alongside independently selected original
 source reconciliation. The compact output contains the exact changed
 analysis IDs, readiness direction and affected gate types, with a bounded
@@ -578,7 +578,7 @@ durable transport policy and current policy registry.
 
 ### One bounded OECD STAN research acquisition entrypoint
 
-`scripts/phase2_stan_pipeline.py` is a thin workflow over the **existing**
+`python -m finance_dashboard stan pipeline` is a thin workflow over the **existing**
 `discover_measure_codes`, `probe_surplus`, `resolve_stan_country_selection`,
 `acquire`, `plan_expansion` and immutable native source archive. It introduces
 no new HTTP adapter, STAN parser, policy ledger, accounting criterion or
@@ -607,14 +607,14 @@ route and the canonical acknowledgement have been independently confirmed.
 Read-only operator plan:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_stan_pipeline.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard stan pipeline \
   --evidence-dir /data/source-evidence --max-requests 4
 ```
 
 Source-policy-governed bounded acquisition when access is permitted:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_stan_pipeline.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard stan pipeline \
   --evidence-dir /data/source-evidence --acquire --max-requests 4
 ```
 
@@ -682,7 +682,7 @@ To resume the existing immutable journal and permit bounded, policy-led
 waiting after deployment, run:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard research operating \
   --evidence-dir /data/source-evidence \
   --sweep --acquire --resume \
   --run-dir /data/phase2-sweeps/full-20261105 \
@@ -783,7 +783,7 @@ origin and usage policy is satisfied.** The `--run-dir` must be unique and
 separate from raw source originals and backup archives:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard research operating \
   --evidence-dir /data/source-evidence --sweep --acquire \
   --run-dir /data/phase2-sweeps/full-20261105 \
   --backup-dir /data/phase2-backups --max-attempts 200
@@ -837,14 +837,14 @@ source requests. Only the policy gateway enforces the publisher's actual
 network allowance. Failure codes and progress logs contain no raw upstream
 messages, query URLs, secrets, or publisher payload bytes.
 
-`scripts/phase2_comparative_corpus.py --acquire` now reuses the same bounded
+`python -m finance_dashboard research compare --acquire` now reuses the same bounded
 executor rather than its former unbounded custom refresh loop. The original
 pre/post verified backups, current-source reconciliation and 35-analysis
 evaluation remain intact. New optional `--max-source-attempts`,
 `--after-source`, and `--brief` controls reduce publisher load and log size.
 No compatibility execution path remains for the previous unbounded for-loop.
 
-`scripts/phase2_operating_batch.py` is the unified orchestration entrypoint
+`python -m finance_dashboard research operating` is the unified orchestration entrypoint
 for all 35 analyses: one verified **read-only** inspection produces canonical
 gate counts, per-analysis blocking roles, source prioritization, source-policy
 dispositions, current STAN metadata, complete/sparse original country
@@ -871,7 +871,7 @@ after the operator runs this batch; no status is hard-coded into the corpus.
 A single **read-only** and compact all-analysis report after deployment:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard research operating \
   --evidence-dir /data/source-evidence --max-attempts 12
 ```
 
@@ -879,7 +879,7 @@ An explicitly requested bounded source-acquisition batch, **only** when the
 existing publisher network origin and access policies are satisfied:
 
 ```sh
-docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+docker compose exec -T finance-dashboard python -m finance_dashboard research operating \
   --evidence-dir /data/source-evidence --acquire \
   --backup-dir /data/phase2-backups --max-attempts 12
 ```
@@ -948,12 +948,12 @@ acknowledgement:
 
 ```bash
 # Offline: current scope recommendation, source proofs and pending countries
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --plan-expansion --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --plan-expansion --brief
 # One bounded candidate probe and optional native country acquisition (uses
 # the operator-configured policy acknowledgement on the managed client)
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --resolve-surplus --acquire --probe-year 2020 --max-requests 3 --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --countries PRT --resolve-surplus --acquire --probe-year 2020 --max-requests 3 --brief
 # Same selected scope as the read-only plan; resumes without prior duplicates
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --expand --max-requests 4 --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --expand --max-requests 4 --brief
 ```
 
 The existing 8 archived country selections, historical observations and all
@@ -995,8 +995,8 @@ submission, or a valid Marxian surplus measure.
 Read-only inspection:
 
 ```bash
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --readiness --brief
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --audit --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --readiness --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --countries PRT --audit --brief
 ```
 
 Optional bounded re-observation, **only after** confirming a permitted direct
@@ -1004,7 +1004,7 @@ OECD network route and shared policy acknowledgement, and only where the
 investigator explicitly needs an additional source observation:
 
 ```bash
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --acquire --refresh-verified --since 1970-01-01 --max-requests 1 --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --countries PRT --acquire --refresh-verified --since 1970-01-01 --max-requests 1 --brief
 ```
 
 This architecture increment does not make live publisher requests, does not
@@ -1044,10 +1044,10 @@ Operational commands after a fresh deploy:
 
 ```bash
 # Offline; safe before authorizing any external OECD traffic:
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --inspect-metadata --brief
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --readiness --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --inspect-metadata --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --readiness --brief
 # One explicitly authorized official metadata HTTP request, immutable capture:
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --acquire-metadata --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --acquire-metadata --brief
 ```
 
 The last command is **not** automatic or safe to run without confirming the
@@ -1084,7 +1084,7 @@ bytes, receipts, or historical observations are modified.
 Run after deployment:
 
 ```bash
-docker compose exec -T finance-dashboard python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --readiness --brief
+docker compose exec -T finance-dashboard python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --readiness --brief
 ```
 
 This is a diagnostic research gate, not acceptance of OECD surplus codes,
@@ -1105,7 +1105,7 @@ not a new product phase or a parallel runtime.
 | Full-snapshot refresh scope separately hardcoded in ingestion | Source registration owns `refresh_scope` and exceptional full-source keys; `IngestionService` uses the one registry |
 | HTTP original capture allowlist repeated and isolated from daily refresh | `SourceAcquisition` resolves acquisition mode through the same registry and is wired into the normal macro worker. It archives validated original bytes, receipts and exact full/partial retrieval scopes; dedicated native archives are reported as unlinked rather than fabricated |
 | Ingestion runs lacked a reproducible original-response reference | Nullable `evidence_kind`, `evidence_scope`, `evidence_bundle_digest`, and `evidence_receipt_name` columns, migration `20261105_06`; legacy runs stay NULL |
-| Source archive links were not independently checkable from ingestion history | `source_evidence_audit.py` verifies original bytes, SHA-256 content identities, manifests and receipts without provider calls or DB writes; `scripts/audit_ingestion_evidence.py --brief` reports coverage and integrity |
+| Source archive links were not independently checkable from ingestion history | `source_evidence_audit.py` verifies original bytes, SHA-256 content identities, manifests and receipts without provider calls or DB writes; `python -m finance_dashboard sources audit --brief` reports coverage and integrity |
 | Maintenance option schemas and handler dispatch duplicated lists and nested conditionals | `maintenance_jobs.py` owns all 10 action contracts and canonical allowlist validation; `maintenance_handlers.py` owns registered handlers, `maintenance_sync.py` owns staged sync; `maintenance.py` now handles job lifecycle, persistence, cancellation and locking only |
 | Source health concealed difference between captured and unlinked originals | Source coverage/API and detailed UI show latest successful evidence mode, exact archived scope and receipt presence, without claiming publication vintage |
 
@@ -1215,7 +1215,7 @@ unknown-origin denial, and stream leases. The existing sole GitHub Actions
 workflow remains lightweight Python static checking.
 
 The API exposes `GET /api/source-policy`. A compact non-network CLI is:
-`docker compose exec -T finance-dashboard python scripts/source_policy_status.py --brief`.
+`docker compose exec -T finance-dashboard python -m finance_dashboard sources policies --brief`.
 
 **Fail-closed operational constraint:** OECD SDMX requires the operator to
 confirm a permitted direct network route by setting
@@ -1287,11 +1287,11 @@ git pull --ff-only
 docker compose up -d --build --no-deps finance-dashboard
 # First inspect current coverage, without publisher requests:
 docker compose exec -T finance-dashboard \
-  python scripts/phase2_stan_sources.py \
+  python -m finance_dashboard stan acquire \
   --evidence-dir /data/source-evidence \
   --plan-expansion --brief
 # Start eight-hour offline verification; persists after terminal closes:
-bash scripts/run-stan-overnight.sh
+python -m finance_dashboard stan overnight
 ```
 
 The launcher prints a host-side log path, stores the process PID,
@@ -1299,7 +1299,7 @@ and retains detailed reports under the persistent container volume
 `/data/stan-overnight-reports/<UTC session>-<pid>/`.
 Override the duration or workload with `STAN_HOURS=12` and
 `STAN_STRESS_GROUPS=5000` when desired. A one-pass smoke
-check can use `python scripts/phase2_stan_overnight.py --hours 0`
+check can use `python -m finance_dashboard stan overnight --hours 0`
 in-container. **No unattended live OECD expansion is performed.** Resuming
 network acquisition requires a separate user-invoked step after metadata and
 rate-limit questions are resolved.
@@ -1344,7 +1344,7 @@ invalid/ambiguous metadata and stops on a rate-limit response.
 Use only after publisher request capacity has recovered:
 
 ```bash
-python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --discover-measures --brief
+python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --discover-measures --brief
 ```
 
 Follow up with `--resolve-surplus` **only after** identifying a
@@ -1398,9 +1398,9 @@ rows are written by this path.
 Reproducible local execution (existing `/data/source-evidence` archive):
 
 ```bash
-python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --audit --brief
-python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --countries PRT --resolve-surplus --acquire --since 1970-01-01 --brief
-python scripts/phase2_stan_sources.py --evidence-dir /data/source-evidence --expand --since 1970-01-01 --max-requests 4 --brief
+python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --countries PRT --audit --brief
+python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --countries PRT --resolve-surplus --acquire --since 1970-01-01 --brief
+python -m finance_dashboard stan acquire --evidence-dir /data/source-evidence --expand --since 1970-01-01 --max-requests 4 --brief
 # --brief emits one JSON line; omit it for full provenance/diagnostic detail.
 # Resume the next batch with --after-country <last_country_requested>.
 # If a net/gross combined measure is publisher-verified, pass its full exact
@@ -1537,7 +1537,7 @@ The [source/corpus audit](PHASE2_SOURCE_COVERAGE_AUDIT.md) lists every approved 
 
 ## Phase 2 exact source integration — 2026-11-04
 
-After the 35-question inventory, the ingestion router has **eight original BIS quarterly debt-service ratios** (US P/H/N, Japan P, Germany P, China P, Portugal P/H) and **ten further original source definitions**: WEO historical CPI inflation for US/Japan/China, World Bank Pink Sheet Brent USD/barrel, US Treasury nominal 10Y and breakeven 10Y, US high-yield OAS and VIX, and published BEA Q2/Q3 in addition to existing Q1. These source IDs have full existing-ingestion/backfill integration, explicit original unit/period/source identifiers, strict BIS SDMX and Brent/BEA identity parsers, regression fixtures and 35-analysis source-reference updates. **Their presence in the catalog does NOT prove live retrieval or full 35-question source coverage.** `python scripts/phase2_source_probe.py --since 2024-01-01` performs read-only bounded original-source sample checks; it writes no database rows and never emits secrets. Source publication vintages are still separate from source response preparation and first local ingestion. Phase 2 remains **ACTIVE/INCOMPLETE**.
+After the 35-question inventory, the ingestion router has **eight original BIS quarterly debt-service ratios** (US P/H/N, Japan P, Germany P, China P, Portugal P/H) and **ten further original source definitions**: WEO historical CPI inflation for US/Japan/China, World Bank Pink Sheet Brent USD/barrel, US Treasury nominal 10Y and breakeven 10Y, US high-yield OAS and VIX, and published BEA Q2/Q3 in addition to existing Q1. These source IDs have full existing-ingestion/backfill integration, explicit original unit/period/source identifiers, strict BIS SDMX and Brent/BEA identity parsers, regression fixtures and 35-analysis source-reference updates. **Their presence in the catalog does NOT prove live retrieval or full 35-question source coverage.** `python -m finance_dashboard sources probe --since 2024-01-01` performs read-only bounded original-source sample checks; it writes no database rows and never emits secrets. Source publication vintages are still separate from source response preparation and first local ingestion. Phase 2 remains **ACTIVE/INCOMPLETE**.
 
 ## Phase 2 genuine ALFRED vintage expansion — 2026-11-04
 

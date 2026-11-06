@@ -16,7 +16,7 @@ from finance_dashboard.research_corpus import (
     load_research_corpus, research_corpus_report,
 )
 from finance_dashboard.source_policy_types import PolicyViolation
-from scripts.phase2_operating_batch import emit_operating_report
+from finance_dashboard.research_operating import emit_operating_report
 
 
 class ScientificTransitionsTests(unittest.TestCase):

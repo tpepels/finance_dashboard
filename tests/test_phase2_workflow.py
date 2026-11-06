@@ -19,7 +19,7 @@ from finance_dashboard.research_corpus import (
 )
 from finance_dashboard.research_runtime import CorpusEvaluation
 from finance_dashboard.source_policy_types import PolicyDeferred, PolicyViolation
-from scripts.phase2_operating_batch import (
+from finance_dashboard.research_operating import (
     build_phase2_operating_report, emit_operating_report, main,
 )
 

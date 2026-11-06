@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from scripts.phase2_register_structured_original import register_structured
+from finance_dashboard.register_structured_original import register_structured
 from finance_dashboard.icio import HISTORY_MATRICES
 from finance_dashboard.wiid_originals import FILES
 

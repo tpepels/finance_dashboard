@@ -12,7 +12,7 @@ from finance_dashboard.stan_originals import (
     stan_source_request, store_stan_original,
 )
 from finance_dashboard.stan_research import audit_stan_originals, audit_stan_scope
-from scripts.phase2_stan_sources import acquire, probe_surplus, brief_report, emit_report
+from finance_dashboard.stan_acquisition import acquire, probe_surplus, brief_report, emit_report
 
 
 HEADER = ("DATAFLOW,FREQ,REF_AREA,ACTIVITY,MEASURE,PRICE_BASE,UNIT_MEASURE,"

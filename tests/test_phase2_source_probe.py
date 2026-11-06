@@ -4,7 +4,7 @@ from decimal import Decimal
 import unittest
 
 from finance_dashboard.bis import FetchedSeries
-from scripts.phase2_source_probe import probe
+from finance_dashboard.source_probe import probe
 
 
 class RecordingSource:

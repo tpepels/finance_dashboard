@@ -13,8 +13,7 @@ import os
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+ROOT = Path(__file__).resolve().parents[2]
 
 from finance_dashboard.phase2_publication_evidence import (
     capture_first_series_vintage, publisher_vintage_evidence,

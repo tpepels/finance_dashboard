@@ -335,7 +335,7 @@ def collect_structured_original(kind: str, *, root: Path, client,
         reader.fetch(sorted(TIVA_SERIES)[0])
         return {"kind": kind, "state": "retained_original"}
     if kind == "stan":
-        from scripts.phase2_stan_pipeline import stan_pipeline
+        from finance_dashboard.stan_pipeline import stan_pipeline
         from .oecd_corporate import OECD_MEMBER_ISO3
         report = stan_pipeline(client, root,
                                countries=tuple(sorted(OECD_MEMBER_ISO3)),

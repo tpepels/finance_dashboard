@@ -9,7 +9,7 @@ from finance_dashboard.stan_metadata import (
     MAX_STRUCTURE_BYTES, parse_stan_measure_structure,
     read_stan_structure, store_stan_structure,
 )
-from scripts.phase2_stan_sources import (
+from finance_dashboard.stan_acquisition import (
     discover_measure_codes, plan_surplus_probe, probe_surplus, brief_report,
 )
 

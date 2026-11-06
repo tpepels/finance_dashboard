@@ -21,8 +21,7 @@ import sys
 import time
 import traceback
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+ROOT = Path(__file__).resolve().parents[2]
 
 from finance_dashboard.oecd_corporate import OECD_MEMBER_ISO3
 from finance_dashboard.stan_originals import (

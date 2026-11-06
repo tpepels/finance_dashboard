@@ -6,7 +6,7 @@ import unittest
 
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.research_corpus import load_research_corpus
-from scripts.phase2_corpus_status import build_inventory, format_inventory, main
+from finance_dashboard.research_corpus_cli import build_inventory, format_inventory, main
 
 
 class OfflineCorpusStatusTests(unittest.TestCase):

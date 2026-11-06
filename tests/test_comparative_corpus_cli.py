@@ -12,10 +12,7 @@ from finance_dashboard.database import Base
 
 class ComparativeCorpusCliTests(unittest.TestCase):
     def test_default_read_checks_unplotted_roles_without_emitting_acceptance_details(self):
-        script = Path(__file__).parents[1] / "scripts" / "phase2_comparative_corpus.py"
-        spec = importlib.util.spec_from_file_location("comparative_canonical_cli", script)
-        cli = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cli)
+        import finance_dashboard.comparative_workflow as cli
         with TemporaryDirectory() as temp:
             root = Path(temp)
             db = root / "history.db"
@@ -36,10 +33,7 @@ class ComparativeCorpusCliTests(unittest.TestCase):
             self.assertFalse((root / "evidence").exists())
 
     def test_required_role_report_covers_inputs_outside_variants_without_writes(self):
-        script = Path(__file__).parents[1] / "scripts" / "phase2_comparative_corpus.py"
-        spec = importlib.util.spec_from_file_location("comparative_roles_cli", script)
-        cli = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cli)
+        import finance_dashboard.comparative_workflow as cli
         with TemporaryDirectory() as temp:
             root = Path(temp)
             db = root / "history.db"
@@ -63,10 +57,7 @@ class ComparativeCorpusCliTests(unittest.TestCase):
             self.assertFalse((root / "evidence").exists())
 
     def test_readonly_empty_database_does_not_publish_or_claim_acceptance(self):
-        script = Path(__file__).parents[1] / "scripts" / "phase2_comparative_corpus.py"
-        spec = importlib.util.spec_from_file_location("comparative_cli", script)
-        cli = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cli)
+        import finance_dashboard.comparative_workflow as cli
         with TemporaryDirectory() as temp:
             root = Path(temp)
             db = root / "history.db"
@@ -89,10 +80,7 @@ class ComparativeCorpusCliTests(unittest.TestCase):
             self.assertFalse((root / "evidence").exists())
 
     def test_explicit_store_archives_the_evaluated_report_and_panel_hashes(self):
-        script = Path(__file__).parents[1] / "scripts" / "phase2_comparative_corpus.py"
-        spec = importlib.util.spec_from_file_location("comparative_store_cli", script)
-        cli = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cli)
+        import finance_dashboard.comparative_workflow as cli
         with TemporaryDirectory() as temp:
             root = Path(temp)
             db = root / "history.db"

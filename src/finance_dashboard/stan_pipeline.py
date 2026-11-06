@@ -15,16 +15,14 @@ import json
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "src"))
+ROOT = Path(__file__).resolve().parents[2]
 
 from finance_dashboard.oecd_corporate import OECD_MEMBER_ISO3
 from finance_dashboard.source_policy import managed_client
 from finance_dashboard.source_policy_ledger import SourcePolicyGate
 from finance_dashboard.source_policy_registry import PolicyRegistry
 from finance_dashboard.stan_metadata import read_stan_structure
-from scripts.phase2_stan_sources import (
+from finance_dashboard.stan_acquisition import (
     discover_measure_codes, plan_surplus_probe, probe_surplus,
     resolve_stan_country_selection, ordered_stan_acquisition_countries,
     acquire, plan_expansion,

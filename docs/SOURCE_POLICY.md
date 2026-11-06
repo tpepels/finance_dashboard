@@ -32,6 +32,6 @@ The ledger coordinates processes that share /data/source-policy/rate-ledger.sqli
 
 ## Diagnostics and change control
 
-Run `docker compose exec -T finance-dashboard python scripts/source_policy_status.py --brief` for compact cooldowns, the number of registered publishers, and blocked sources, without making a network request. To classify a URL, add `--check-url URL`. GET /api/source-policy exposes the same redacted registry/status from the local dashboard API.
+Run `docker compose exec -T finance-dashboard python -m finance_dashboard sources policies --brief` for compact cooldowns, the number of registered publishers, and blocked sources, without making a network request. To classify a URL, add `--check-url URL`. GET /api/source-policy exposes the same redacted registry/status from the local dashboard API.
 
 To revise a publisher rule: verify source documentation and permitted use, update the single versioned JSON registry, retain the evidence URL and classification, and run tests/test_source_policy.py and tests/test_source_policy_architecture.py. The architecture guard rejects unmanaged HTTPX clients in runtime modules/scripts. GitHub CI remains the Python-only static check; the full offline tests and overnight soak run locally.

@@ -11,7 +11,7 @@ from finance_dashboard.stan_originals import (
     STAN_DATAFLOW_ID, STAN_VERIFIED_PORTUGAL_MEASURES,
     read_stan_evidence, store_stan_original,
 )
-from scripts.phase2_stan_sources import acquire, diagnose_publisher
+from finance_dashboard.stan_acquisition import acquire, diagnose_publisher
 
 
 def value_added_original(*, activity="_T"):

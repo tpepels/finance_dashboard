@@ -122,7 +122,7 @@ class Phase2NewOriginalParserTests(unittest.TestCase):
                                              'METHODOLOGY="BPM5"').encode(), sid)
 
     def test_registered_probe_group_and_read_only_source_status(self):
-        from scripts.phase2_source_probe import CLAUDE_SOURCE_IDS, DEFAULT_IDS, probe
+        from finance_dashboard.source_probe import CLAUDE_SOURCE_IDS, DEFAULT_IDS, probe
         from finance_dashboard.catalog import load_documents
         sources = {row["id"]: row for row in load_documents()[0]["series"]}
         self.assertEqual(len(CLAUDE_SOURCE_IDS), 12)

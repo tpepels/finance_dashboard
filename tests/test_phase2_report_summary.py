@@ -9,7 +9,7 @@ import unittest
 from finance_dashboard.phase2_report_summary import (
     format_saved_run, load_saved_run, summarize_saved_run,
 )
-from scripts.phase2_corpus_status import main
+from finance_dashboard.research_corpus_cli import main
 
 
 def example():

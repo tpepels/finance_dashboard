@@ -14,7 +14,7 @@ from finance_dashboard.phase2_structured_acquisition import (
 from finance_dashboard.research_corpus import load_research_corpus
 from finance_dashboard.research_readiness import ARTIFACT_IDS
 from finance_dashboard.source_policy_registry import PolicyRegistry
-from scripts.phase2_structured_batch import structured_operating_plan
+from finance_dashboard.structured_workflow import structured_operating_plan
 
 
 class StructuredCapabilitiesTests(unittest.TestCase):

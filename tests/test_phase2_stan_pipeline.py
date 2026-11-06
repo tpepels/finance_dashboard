@@ -14,7 +14,7 @@ from finance_dashboard.stan_originals import (
     STAN_DATAFLOW_ID, read_stan_evidence,
 )
 from finance_dashboard.stan_probe_originals import read_stan_probe_evidence
-from scripts.phase2_stan_pipeline import main, stan_pipeline
+from finance_dashboard.stan_pipeline import main, stan_pipeline
 
 
 STRUCTURE = b"""<?xml version="1.0"?>
@@ -171,9 +171,9 @@ class OriginalSTANPipelineTests(unittest.TestCase):
                     "retry_at": 2000000000 if policy_state == "deferred"
                                 else None,
                 }
-                with patch("scripts.phase2_stan_pipeline.SourcePolicyGate") as gate:
+                with patch("finance_dashboard.stan_pipeline.SourcePolicyGate") as gate:
                     gate.return_value.availability.return_value = preflight
-                    with patch("scripts.phase2_stan_pipeline.managed_client") as client:
+                    with patch("finance_dashboard.stan_pipeline.managed_client") as client:
                         with redirect_stdout(output):
                             code = main([
                                 "--evidence-dir", tmp, "--countries", "PRT",

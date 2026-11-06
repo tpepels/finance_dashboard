@@ -22,7 +22,7 @@ from finance_dashboard.phase2_workflow import (
 )
 from finance_dashboard.source_policy_types import PolicyViolation, PolicyDeferred
 from finance_dashboard.research_corpus import load_research_corpus, research_corpus_report
-from scripts.phase2_operating_batch import main
+from finance_dashboard.research_operating import main
 
 
 POLICY = "0" * 64

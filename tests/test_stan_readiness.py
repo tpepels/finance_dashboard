@@ -15,7 +15,7 @@ from finance_dashboard.stan_originals import (
     store_stan_original,
 )
 from finance_dashboard.stan_research import summarize_stan_readiness
-from scripts.phase2_stan_sources import acquire, brief_report, probe_surplus
+from finance_dashboard.stan_acquisition import acquire, brief_report, probe_surplus
 
 
 HEADER = (

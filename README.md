@@ -27,7 +27,7 @@ Keep the source collectors, append-only historical observations, provenance, rel
 The offline registry inventory can run directly from a checkout, without a configured database and without the optional original-artifact parser being imported:
 
 ```sh
-PYTHONPATH=src python scripts/phase2_corpus_status.py
+PYTHONPATH=src python -m finance_dashboard research corpus
 ```
 
 The full application and original-source parsers **do** require the dependencies declared in `pyproject.toml` (including `python-calamine`). On a local Python installation, activate a project virtual environment and install the declared package rather than installing individual dependencies globally:
@@ -54,7 +54,7 @@ read-only, narrowly bounded publisher diagnostic:
 
 ```sh
 docker compose exec -T finance-dashboard \
-  python scripts/phase2_stan_sources.py \
+  python -m finance_dashboard stan acquire \
   --evidence-dir /data/source-evidence \
   --countries PRT --since 1970-01-01 \
   --diagnose --probe-year 2020
@@ -90,7 +90,7 @@ From the development machine, after the publisher rate limit has cleared:
 
 ```sh
 docker compose exec -T finance-dashboard \
-  python scripts/phase2_stan_sources.py \
+  python -m finance_dashboard stan acquire \
   --evidence-dir /data/source-evidence \
   --countries PRT --since 1970-01-01 --acquire
 ```
@@ -106,11 +106,11 @@ eight-request `--diagnose` sequence; retain the 2026-11-05 probe results.
 A full history is not certified merely because `--since 1970` was
 requested; it must be verified from actual source periods and native dimensions.
 
-Use `PYTHONPATH=src python scripts/phase2_corpus_status.py --candidates` to see the original dataset investigations for L01–L03. These are unverified publisher candidates; no empty source bindings are filled and no analysis is certified by the candidate list. After a native acquisition, summarize the saved JSON report without copying its full contents:
+Use `PYTHONPATH=src python -m finance_dashboard research corpus --candidates` to see the original dataset investigations for L01–L03. These are unverified publisher candidates; no empty source bindings are filled and no analysis is certified by the candidate list. After a native acquisition, summarize the saved JSON report without copying its full contents:
 
 ```sh
 cat phase2-native-report.json | docker compose exec -T finance-dashboard \
-  python scripts/phase2_corpus_status.py --run-report -
+  python -m finance_dashboard research corpus --run-report -
 ```
 
 Run this pipe on the media-server host from `~/media-stack`, where the acquisition JSON was saved. No second copy in `/data` is required. Add `--details` for per-analysis gap rows or `--json` for machine-readable, credential-free diagnostics. This command does not reopen the database or rehash the original evidence, and reports incomplete source acquisition as a nonzero exit status.
@@ -123,7 +123,7 @@ It uses the established SQLite and evidence paths; this is not a production oper
 It requires the full declared Python dependencies, including `python-calamine`.
 
 ```sh
-python scripts/phase2_comparative_corpus.py \
+python -m finance_dashboard research compare \
   --database-url sqlite+pysqlite:////data/finance.sqlite3 \
   --source-evidence-dir /data/source-evidence \
   --backup-dir /data/backups/phase2-acquisition \
@@ -153,7 +153,7 @@ full historical data and original structured artifacts. The original evidence
 bundles and separate verified backups remain under `/data`; copy recovery
 bundles off the same physical disk for independent disaster recovery.
 
-The single Compose service is `finance-dashboard`. The image now includes the full `scripts/` directory, original Fed reference evidence, existing tests and Phase 2 additions. **Build runs the existing acceptance tests and the new Phase 2 tests before it can complete.** A failed build means no tested new image was produced, so do not infer a successful deployment.
+The single Compose service is `finance-dashboard`. The image includes the application package, original Fed reference evidence, and offline test fixtures. Docker build validates syntax, catalog and frontend tests; the full Python offline integration suite runs in CI, not at Docker build time. Operational commands use `python -m finance_dashboard`.
 
 ```bash
 rtk git pull --ff-only
@@ -170,24 +170,24 @@ rtk proxy docker run --rm --entrypoint python finance-dashboard:verify \
 Read-only Phase 2 source check, without changing the SQLite database:
 
 ```bash
-docker compose exec -T finance-dashboard python scripts/phase2_source_probe.py --since 2024-01-01
+docker compose exec -T finance-dashboard python -m finance_dashboard sources probe --since 2024-01-01
 ```
 
 Source-contract inventory without network access or DB mutation:
 
 ```bash
-docker compose exec -T finance-dashboard python scripts/phase2_corpus_status.py
+docker compose exec -T finance-dashboard python -m finance_dashboard research corpus
 ```
 
 Run the Compose commands above from the existing `~/media-stack` project on `media-server`. Deploy a clean build there with `docker compose --progress plain build finance-dashboard` followed by `docker compose up -d --no-deps finance-dashboard`. Keep its existing `/srv/finance-dashboard:/data` mount. The repository's standalone Compose file instead uses `FINANCE_DATA_DIR`; do not start a second stack beside the existing service.
 
-Original WID inequality files and published OECD TiVA inputs retain their raw source snapshots under `/data/source-evidence`, included in verified backups. `scripts/phase2_source_reconcile.py` checks the raw source values against the latest stored observations without writing to the database. These sources still require comparative and release-vintage validation; passing tests or storing series does not complete Phase 2.
+Original WID inequality files and published OECD TiVA inputs retain their raw source snapshots under `/data/source-evidence`, included in verified backups. `python -m finance_dashboard sources reconcile` checks the raw source values against the latest stored observations without writing to the database. These sources still require comparative and release-vintage validation; passing tests or storing series does not complete Phase 2.
 
 The Phase 2 corpus now records explicit original input roles for all 35 approved questions and executable bounded comparison variants. `GET /api/research-corpus` derives their evidence from current observation versions and independently checked originals. Source availability, current-snapshot panels and full scientific acceptance are separate; Phase 2 remains incomplete.
 
 The canonical schema derives source references from original roles, native comparison variants and explicit context inputs. API and CLI share one evaluation transaction, so concurrent revisions cannot mix older reconciliation with newer coverage. Individual question requests inspect only their own sources and relevant artifacts. Holdings and regional profit summaries disclose partial availability without satisfying original worldwide roles.
 
-Run `python scripts/phase2_comparative_corpus.py --store` to reconcile available originals and archive exact input/panel rows. This reads the database; `--store` writes evidence artifacts. Add `--acquire` to explicitly refresh complete histories through existing append-only ingestion first. `--only M02 L01` limits the analyses; `--required-inputs` includes every original/context input and role diagnostics. `--holdings-dir` or `FINANCE_HOLDINGS_DIR` explicitly selects the existing holdings archive. Original responses, source contracts, native units, no-fill exclusions, hashes and temporal limits remain attached to the result.
+Run `python -m finance_dashboard research compare --store` to reconcile available originals and archive exact input/panel rows. This reads the database; `--store` writes evidence artifacts. Add `--acquire` to explicitly refresh complete histories through existing append-only ingestion first. `--only M02 L01` limits the analyses; `--required-inputs` includes every original/context input and role diagnostics. `--holdings-dir` or `FINANCE_HOLDINGS_DIR` explicitly selects the existing holdings archive. Original responses, source contracts, native units, no-fill exclusions, hashes and temporal limits remain attached to the result.
 
 French equity research portfolios and the pinned Swinkels sovereign-return workbook are named benchmark alternatives. Their native percent/decimal units and local currencies remain explicit. Full French outputs and large original matrices stay in private evidence; source fixtures document redistribution rights and exact original hashes.
 

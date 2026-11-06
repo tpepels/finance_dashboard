@@ -17,7 +17,7 @@ from finance_dashboard.stan_originals import (
 from finance_dashboard.stan_probe_originals import (
     read_stan_probe_evidence, store_stan_probe_original,
 )
-from scripts.phase2_stan_sources import (
+from finance_dashboard.stan_acquisition import (
     acquire, main, plan_expansion, probe_surplus,
     ordered_stan_acquisition_countries, resolve_stan_country_selection,
     select_verified_stan_measures,
@@ -286,7 +286,7 @@ class NativeSelectionEvidenceTests(unittest.TestCase):
             client = httpx.Client(transport=httpx.MockTransport(fetch))
             output = StringIO()
             try:
-                with patch("scripts.phase2_stan_sources.managed_client",
+                with patch("finance_dashboard.stan_acquisition.managed_client",
                            return_value=client):
                     with redirect_stdout(output):
                         status = main([
@@ -358,7 +358,7 @@ class NativeSelectionEvidenceTests(unittest.TestCase):
             client = httpx.Client(transport=httpx.MockTransport(fetch))
             output = StringIO()
             try:
-                with patch("scripts.phase2_stan_sources.managed_client",
+                with patch("finance_dashboard.stan_acquisition.managed_client",
                            return_value=client):
                     with redirect_stdout(output):
                         code = main([

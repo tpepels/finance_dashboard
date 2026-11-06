@@ -7,7 +7,7 @@ import unittest
 from finance_dashboard.stan_originals import (
     STAN_DATAFLOW_ID, STAN_VERIFIED_PORTUGAL_MEASURES, store_stan_original,
 )
-from scripts.phase2_stan_overnight import (
+from finance_dashboard.stan_verification import (
     run, snapshot_archive, stress_accounting, synthetic_original,
 )
 

@@ -16,8 +16,7 @@ import sys
 
 from sqlalchemy.engine import make_url
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+ROOT = Path(__file__).resolve().parents[2]
 
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import make_engine

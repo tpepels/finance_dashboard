@@ -5,16 +5,23 @@ import json
 import sys
 
 from .catalog import THEMES, build_report, load_documents, validate
+from .command_registry import GROUPS, dispatch
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] in GROUPS:
+        return dispatch(argv)
     parser = argparse.ArgumentParser(prog="finance_dashboard")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate", help="Check series and chart metadata")
     sub.add_parser("report", help="Report mapped, unresolved and rights-gated series")
     listing = sub.add_parser("list", help="List catalog series")
     listing.add_argument("--theme", choices=sorted(THEMES))
-    args = parser.parse_args()
+    for group in sorted(GROUPS):
+        sub.add_parser(group, help=f"Operational {group} commands")
+    args = parser.parse_args(argv)
     series, charts = load_documents()
     errors = validate(series, charts)
     if errors:
@@ -34,4 +41,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

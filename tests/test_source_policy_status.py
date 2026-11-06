@@ -5,12 +5,12 @@ from io import StringIO
 import unittest
 from unittest.mock import patch
 
-from scripts.source_policy_status import main
+from finance_dashboard.source_policy_cli import main
 
 
 class PolicyStatusTests(unittest.TestCase):
     def test_brief_local_registry_inventory(self):
-        with patch("scripts.source_policy_status.policy_summary", return_value={
+        with patch("finance_dashboard.source_policy_cli.policy_summary", return_value={
             "registry_sha256": "a" * 64,
             "publisher_count": 2, "host_count": 3,
             "unclassified_hosts_denied": True, "requests_recorded": 7,

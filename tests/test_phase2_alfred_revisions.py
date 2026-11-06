@@ -13,7 +13,7 @@ from finance_dashboard.phase2_alfred_revisions import (
     read_revision_window, revision_inventory,
     reconstruct_revision_asof,
 )
-from scripts.phase2_alfred_revision_batch import (
+from finance_dashboard.alfred_acquisition import (
     planned_revision_windows, revision_batch,
 )
 
@@ -202,7 +202,7 @@ class OriginalRevisionWindowsTests(unittest.TestCase):
             self.assertEqual(plan["planned_windows"], 3)
             self.assertEqual(plan["pending_after_batch"], 3)
             self.assertEqual(plan["publisher_requests"], 0)
-            with patch("scripts.phase2_alfred_revision_batch.SourcePolicyGate") as gate:
+            with patch("finance_dashboard.alfred_acquisition.SourcePolicyGate") as gate:
                 gate.return_value.availability.return_value = {
                     "state": "blocked", "reason": "publisher_origin_blocked",
                     "retry_at": None,

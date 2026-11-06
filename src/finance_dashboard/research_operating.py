@@ -17,9 +17,7 @@ import os
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "src"))
+ROOT = Path(__file__).resolve().parents[2]
 
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import make_engine
@@ -59,10 +57,10 @@ from finance_dashboard.source_policy_registry import PolicyRegistry
 from finance_dashboard.source_policy_ledger import SourcePolicyGate
 from finance_dashboard.source_reconciliation import _readonly_engine
 from finance_dashboard.stan_research import summarize_stan_readiness
-from scripts.phase2_comparative_corpus import (
+from finance_dashboard.comparative_workflow import (
     checked_acquisition_target, verified_phase2_snapshot,
 )
-from scripts.phase2_stan_sources import (
+from finance_dashboard.stan_acquisition import (
     plan_expansion, resolve_stan_country_selection,
     ordered_stan_acquisition_countries,
 )

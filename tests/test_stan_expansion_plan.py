@@ -7,7 +7,7 @@ from finance_dashboard.stan_originals import (
     STAN_DATAFLOW_ID, STAN_VERIFIED_PORTUGAL_MEASURES,
     store_stan_original,
 )
-from scripts.phase2_stan_sources import plan_expansion, brief_report
+from finance_dashboard.stan_acquisition import plan_expansion, brief_report
 
 
 def raw(country: str) -> bytes:
@@ -122,7 +122,7 @@ class StanExpansionPlannerTests(unittest.TestCase):
     def test_rolling_refresh_requires_explicit_switch_and_preserves_vintages(self):
         import httpx
         from finance_dashboard.stan_originals import read_stan_evidence
-        from scripts.phase2_stan_sources import acquire
+        from finance_dashboard.stan_acquisition import acquire
         samples = [raw("PRT"), raw("PRT").replace(b",2020,123,", b",2020,124,")]
         calls = []
         def respondent(request):
@@ -151,7 +151,7 @@ class StanExpansionPlannerTests(unittest.TestCase):
     def test_refetch_with_identical_bytes_appends_receipt_only(self):
         import httpx
         from finance_dashboard.stan_originals import read_stan_evidence
-        from scripts.phase2_stan_sources import acquire
+        from finance_dashboard.stan_acquisition import acquire
         calls = []
         def respondent(request):
             calls.append(str(request.url))

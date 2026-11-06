@@ -19,7 +19,7 @@ class PolicyArchitectureTests(unittest.TestCase):
         bypasses = []
         for source in sorted(
                 [*ROOT.joinpath("src", "finance_dashboard").rglob("*.py"),
-                 *ROOT.joinpath("scripts").glob("*.py")]):
+                 *ROOT.joinpath("src", "finance_dashboard").rglob("*.py")]):
             if source.name == "source_policy.py":
                 continue
             tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
@@ -84,19 +84,15 @@ class PolicyArchitectureTests(unittest.TestCase):
 
     def test_no_duplicate_network_pacing_or_unmanaged_urllib_collectors(self):
         """Publisher requests have one transport; timed loops are orchestration."""
-        allowed_local_smokes = {
-            "scripts/all_macro_pg_smoke.py",
-            "scripts/deployment_smoke.py",
-            "scripts/market_deployment_smoke.py",
-        }
+        allowed_local_smokes = {"src/finance_dashboard/operational_checks.py"}
         allowed_scheduled_sleep = allowed_local_smokes | {
-            "scripts/phase2_stan_overnight.py",
+            "src/finance_dashboard/stan_verification.py",
             "src/finance_dashboard/worker.py",
         }
         violations = []
         sources = sorted([
             *ROOT.joinpath("src", "finance_dashboard").rglob("*.py"),
-            *ROOT.joinpath("scripts").glob("*.py"),
+            *ROOT.joinpath("src", "finance_dashboard").rglob("*.py"),
         ])
         for source in sources:
             relative = source.relative_to(ROOT).as_posix()

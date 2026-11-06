@@ -14,7 +14,7 @@ from finance_dashboard.stan_originals import (
     stan_source_request, store_stan_original,
 )
 from finance_dashboard.research_artifacts import research_artifact_evidence
-from scripts.phase2_stan_sources import acquire
+from finance_dashboard.stan_acquisition import acquire
 
 
 HEADER = ("DATAFLOW,FREQ,REF_AREA,ACTIVITY,MEASURE,PRICE_BASE,UNIT_MEASURE,"

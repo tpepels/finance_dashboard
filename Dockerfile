@@ -30,18 +30,17 @@ COPY data/reference/ /app/data/reference/
 COPY migrations/ /app/migrations/
 COPY tests/ /app/tests/
 COPY alembic.ini /app/alembic.ini
-COPY scripts/ /app/scripts/
-COPY scripts/run-standalone.sh /app/run-standalone.sh
+COPY start.sh /app/start.sh
 COPY --from=frontend-build /build/frontend/dist/ /app/site/
 # Fast, deterministic runtime build. The complete Python suite and repeated
 # original-source integrity/identity verification run separately with
-# scripts/phase2_stan_overnight.py; no tests contact the publisher at build time.
+# python -m finance_dashboard stan overnight; no tests contact the publisher at build time.
 RUN pip install --no-cache-dir . \
-    && python -m compileall -q /app/src /app/scripts /app/tests /app/migrations \
+    && python -m compileall -q /app/src /app/tests /app/migrations \
     && python -m finance_dashboard validate \
-    && chmod 755 /app/run-standalone.sh
+    && chmod 755 /app/start.sh
 EXPOSE 8080
 VOLUME /data
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=3)"
-ENTRYPOINT ["/bin/sh", "/app/run-standalone.sh"]
+ENTRYPOINT ["/bin/sh", "/app/start.sh"]

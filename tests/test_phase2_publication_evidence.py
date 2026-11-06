@@ -10,7 +10,7 @@ from finance_dashboard.phase2_publication_evidence import (
     capture_first_series_vintage, publisher_vintage_evidence,
     read_first_series_vintage,
 )
-from scripts.phase2_publication_batch import publication_batch
+from finance_dashboard.publication_acquisition import publication_batch
 
 
 KEY = "a" * 32
