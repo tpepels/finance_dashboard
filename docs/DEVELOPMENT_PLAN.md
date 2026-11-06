@@ -33,17 +33,18 @@ Implemented in `research_acceptance.py` and validated on every run of `python -m
 
 See the measured numbers in the latest `research operating` report; the summary below is updated at each milestone.
 
-Measured with `research operating` after the 2026-11-06 sweeps: 247 of 268 catalogue sources have independently verified original histories.
+Measured after the 2026-11-06 evening sweeps: about 280 of 341 catalogue sources have independently verified original histories (the count moves as daily refreshes add periods beyond the latest archived snapshot until the next sweep).
 
 | State | Analyses |
 |---|---|
-| Accepted (11) | C01, C03, C06, M01, M02, F02, F03, F05, F06, G05, P07 |
-| Conditional (5) | M04, F01, P02, P04, P05 (narrowed roles, stated in the catalogue) |
+| Accepted (13) | C01, C03, C05, C06, F02, F03, F05, F06, G05, L05, M01, P03, P07 |
+| Conditional (5) | F01, F07, M04, P02, P05 (narrowed or descoped roles, stated in the catalogue) |
 | Deferred (3) | L04, G03, V03 (research extensions outside Phase 2 completion) |
-| Waiting on one source (4) | P06 and V01 (Shiller CAPE original, publisher cooldown), V05 (Shiller), F04 (high-yield spread history coverage) |
-| Blocked on data work (14) | C02, C05, F07, V02, L01, L02, L03, L05, L07, G01, G02, G06 (accounting check fails), P01, P03 |
+| Incomplete, awaiting collection (9) | F04 (Baa fallback ingest), G02, L07, M02/P04 (refresh timing), P06/V01/V05 (Shiller cooldown), V02 (BEA rows ingest) |
+| Blocked (6) | C02 (NBER announcements), G01 (N-PORT history), L01 (industry-matched OECD inputs), L02/L03 (47 OECD sector series, 20 requests/hour), P01 (UCITS holdings) |
+| Failed (1) | G06 (ICIO matrices not collected; TiVA rounding check fixed, not yet deployed) |
 
-16 of 34 active analyses are resolved; Phase 2 is **not** complete.
+18 of 34 active analyses are resolved; Phase 2 is **not** complete.
 
 ## Done since the revision (2026-11-06)
 
