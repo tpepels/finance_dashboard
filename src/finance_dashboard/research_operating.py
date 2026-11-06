@@ -488,7 +488,9 @@ def main(argv=None) -> int:
                     key: value for key, value in revisit.items()
                     if key != "selected_actions"}
             report["source_evidence_delta"] = source_evidence_delta(
-                baseline.source_proof, refreshed.source_proof, batch)
+                baseline.source_proof, refreshed.source_proof, batch,
+                catalog=registry, before_report=baseline.public_report,
+                after_report=refreshed.public_report)
             report["research_transitions"] = research_evidence_transitions(
                 baseline.public_report, refreshed.public_report)
             if journal_summary is not None:
