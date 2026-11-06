@@ -171,6 +171,48 @@ class ComparativeCorpusTests(unittest.TestCase):
         self.assertFalse(panel["requested_coverage_complete"])
         self.assertNotIn("2020-07-01", panel["matched_periods"])
 
+    def test_coverage_ignores_trailing_lag_and_records_publisher_absences_only_when_reconciled(self):
+        """end=latest_common: a faster publisher's newer periods are not gaps.
+        Interior absences count as complete only when every input equals the
+        publisher's verified full snapshot; they are recorded, never filled."""
+        variant = next(v for a in self.document["analyses"] if a["id"] == "M02"
+                       for v in a["comparison_contract"]["variants"])
+        start = date.fromisoformat(variant["start"])
+        days = [start.replace(day=start.day + offset).isoformat() for offset in range(0, 6)]
+        self.insert(YIELDS[0], {d: "4" for d in days})            # newest day ahead
+        self.insert(YIELDS[1], {d: "1.5" for d in days[:5] if d != days[2]})  # publisher-absent day
+        self.insert(YIELDS[2], {d: "2.5" for d in days[:5]})
+        unreconciled = self.panel(self.build(), "M02")
+        self.assertFalse(unreconciled["requested_coverage_complete"])
+        panel = self.panel(self.build(self.proof(YIELDS)), "M02")
+        self.assertTrue(panel["source_reconciled"])
+        self.assertTrue(panel["requested_coverage_complete"])
+        self.assertNotIn(days[2], panel["matched_periods"])
+        coverage = panel["input_coverage"]
+        self.assertEqual(coverage[YIELDS[0]]["trailing_after_common"], [days[5]])
+        self.assertEqual(coverage[YIELDS[0]]["publisher_absent_periods"], [days[2]])
+        self.assertEqual(coverage[YIELDS[1]]["publisher_absent_periods"], [])
+        self.assertEqual(panel["coverage_limitations"][0]["code"], "publisher_absent_periods_excluded_from_join")
+
+    def test_uncovered_bound_role_gets_one_derived_common_history_panel(self):
+        sid = "activity.us.real_gdp_level"
+        c01 = next(a for a in self.document["analyses"] if a["id"] == "C01")
+        variants = self.runtime().panel_variants(c01, self.registry)
+        derived = [v for v in variants if v.get("derived_from_role") == "quarterly_real_gdp"]
+        self.assertEqual(len(derived), 1)
+        self.assertEqual(derived[0]["series_ids"], [sid])
+        covered = {r["role"] for r in c01["comparison_contract"]["original_requirements"]
+                   if any(set(r["series_ids"]) <= set(v["series_ids"]) for v in c01["comparison_contract"]["variants"])}
+        self.assertFalse(covered & {v.get("derived_from_role") for v in variants})
+        self.insert(sid, {"1990-01-01": "1", "1990-04-01": "2", "1990-10-01": "3"})
+        unproved = next(p for p in self.build()["panels"] if p.get("derived_from_role") == "quarterly_real_gdp")
+        self.assertFalse(unproved["requested_coverage_complete"])
+        panel = next(p for p in self.build(self.proof([sid]))["panels"] if p.get("derived_from_role") == "quarterly_real_gdp")
+        self.assertEqual(panel["matched_periods"][0], "1990-01-01")
+        self.assertTrue(panel["requested_coverage_complete"])
+        self.assertEqual(panel["input_coverage"][sid]["publisher_absent_periods"], ["1990-07-01"])
+        self.assertIn("common native history", panel["limitations"][0])
+
     def test_dfa_partition_and_tiva_identity_check_real_matched_values(self):
         dfa = ["wealth.us.top1_share", "wealth.us.next9_share", "wealth.us.middle40_share", "wealth.us.bottom50_share"]
         for sid, value in zip(dfa, ["32", "38", "28", "2"]): self.insert(sid, {"2020-01-01": value})

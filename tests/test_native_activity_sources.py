@@ -73,7 +73,7 @@ class NativeActivitySourceTests(unittest.TestCase):
                     self.assertEqual(len(values["gdp.nominal_usd.world"]), 66)
                     panel_report = build_comparative_corpus(session, registry, corpus, source_proof=proof)
                     self.assertEqual(panel_report["bounded_current_vintage_panel_count"], 3)
-                    self.assertEqual(sorted(p["matched_period_count"] for p in panel_report["panels"]), [4, 4, 6])
+                    self.assertEqual(sorted(p["matched_period_count"] for p in panel_report["panels"] if "derived_from_role" not in p), [4, 4, 6])
                     self.assertEqual(panel_report["fully_validated_analysis_count"], 0)
                     self.assertTrue(all(not p["first_publication_verified"] for p in panel_report["panels"]))
             finally:

@@ -200,11 +200,49 @@ def _check_values(identifier: str, rows: list[dict], series_ids: list[str]) -> d
             "interpretation": "Source-accounting consistency check on matched native values; no predictive or causal validation."}
 
 
+COMMON_NATIVE_HISTORY = "common_native_history"
+
+
+def panel_variants(analysis: dict, registry) -> list[dict]:
+    """Declared comparison variants plus one derived exact-join panel for each
+    bound role that no declared variant of the same analysis covers.
+
+    The approved corpus defines no analysis-specific period for those roles,
+    so the derived panel spans the inputs' common native history. That is a
+    stated limitation, never an implied research window.
+    """
+    registry = _registry(registry)
+    declared = list(analysis["comparison_contract"]["variants"])
+    derived = []
+    for role in analysis["comparison_contract"]["original_requirements"]:
+        ids = list(role["series_ids"])
+        if not ids or any(set(ids) <= set(v["series_ids"]) for v in declared):
+            continue
+        frequency = role["expected"].get("frequency") or (registry.get(ids[0]) or {}).get("frequency")
+        derived.append({
+            "id": "role_" + role["role"] + "_common_history",
+            "label": "Derived exact join for role " + role["role"],
+            "kind": "original_scope",
+            "scope": "Role inputs joined on exact native periods over their common native history.",
+            "series_ids": ids, "frequency": frequency,
+            "start": COMMON_NATIVE_HISTORY, "end": "latest_common",
+            "join": "exact_period_intersection", "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot", "checks": [],
+            "limitations": ["No analysis-specific window is approved for this role; periods are matched over the inputs' common native history."],
+            "satisfies_original_method": True, "derived_from_role": role["role"],
+        })
+    return declared + derived
+
+
 def _panel(analysis: dict, variant: dict, registry: dict, inputs: dict,
            proof: dict, proof_invalid: bool) -> dict:
     ids = variant["series_ids"]
     frequency = variant["frequency"]
-    start = date.fromisoformat(variant["start"])
+    if variant["start"] == COMMON_NATIVE_HISTORY:
+        firsts = [min((_row(row)["period"] for row in inputs.get(sid, [])), default=None) for sid in ids]
+        start = (date.fromisoformat(max(firsts)) if firsts and all(firsts) else date.max)
+    else:
+        start = date.fromisoformat(variant["start"])
     failures = []
     metadata = {}
     for sid in ids:
@@ -296,9 +334,25 @@ def _panel(analysis: dict, variant: dict, registry: dict, inputs: dict,
         state = "bounded_current_vintage_verified"
     # Partial source histories remain useful bounded evidence. They do not
     # become full requested coverage merely by truncating to the intersection.
-    requested_complete = bool(common) and frequency != "D" and all(
-        not item["requested_leading_periods_uncovered"] and not item["missing_internal_periods"]
-        and not item["excluded_from_match"] for item in coverage.values())
+    # The window ends at the latest common period, so a faster publisher's
+    # newer periods are trailing lag, not gaps. Interior absences (excluded
+    # periods and regular-grid holes, or any daily calendar gap) are accepted
+    # only when every input equals the publisher's verified full snapshot:
+    # the absence is then the publisher's, recorded and never filled.
+    last_common = common[-1] if common else None
+    for item in coverage.values():
+        item["trailing_after_common"] = [p for p in item["excluded_from_match"]
+                                         if last_common is not None and p > last_common]
+        item["publisher_absent_periods"] = sorted(
+            {p for p in item["excluded_from_match"] if last_common is None or p <= last_common}
+            | set(item["missing_internal_periods"] or []))
+    requested_complete = bool(common) and source_reconciled and all(
+        not item["requested_leading_periods_uncovered"] for item in coverage.values())
+    coverage_limitations = [{
+        "code": "publisher_absent_periods_excluded_from_join", "series_id": sid,
+        "period_count": len(item["publisher_absent_periods"]),
+        "detail": "Periods absent from the publisher's verified full snapshot (or present in only some inputs) are excluded from the exact join; no value is filled."
+    } for sid, item in coverage.items() if requested_complete and item["publisher_absent_periods"]]
     result = {
         "analysis_id": analysis["id"], "variant_id": variant["id"],
         "label": variant["label"], "kind": variant["kind"], "scope": variant["scope"],
@@ -320,6 +374,7 @@ def _panel(analysis: dict, variant: dict, registry: dict, inputs: dict,
         "input_versions_sha256": payload_digest({sid: coverage[sid]["all_current_versions_sha256"] for sid in ids}),
         "checks": checks, "state": state, "failure_codes": sorted(set(failures)),
         "source_reconciled": source_reconciled, "requested_coverage_complete": requested_complete,
+        "coverage_limitations": coverage_limitations,
         "first_publication_verified": False, "source_asof_verified": False,
         "full_analysis_accepted": False,
         "native_input_scope_matches_original_method": variant["satisfies_original_method"],
@@ -327,6 +382,8 @@ def _panel(analysis: dict, variant: dict, registry: dict, inputs: dict,
     }
     if "baseline_window" in variant:
         result["baseline_window"] = variant["baseline_window"]
+    if "derived_from_role" in variant:
+        result["derived_from_role"] = variant["derived_from_role"]
     result["panel_sha256"] = payload_digest(result)
     return result
 
@@ -341,13 +398,13 @@ def build_comparative_corpus(session, registry, document, *, source_proof: dict 
     inputs = {}
     proof, invalid = _proof_index(source_proof)
     for analysis in document["analyses"]:
-        for variant in analysis["comparison_contract"]["variants"]:
+        for variant in panel_variants(analysis, registry):
             for sid in variant["series_ids"]:
                 if sid not in inputs:
                     inputs[sid] = [_row(row) for row in current_observations(session, sid)]
     panels = [_panel(analysis, variant, registry, inputs, proof, invalid)
               for analysis in document["analyses"]
-              for variant in analysis["comparison_contract"]["variants"]]
+              for variant in panel_variants(analysis, registry)]
     result = {"schema_version": 1, "phase": "phase2", "temporal_mode": "current_source_snapshot",
         "checked_at_utc": datetime.now(timezone.utc).isoformat(),
         "definition_sha256": payload_digest(document),
@@ -372,7 +429,7 @@ def validate_comparative_corpus(report: dict, registry, document: dict, *, sessi
         if report.get("definition_sha256") != payload_digest(document) or report.get("registry_sha256") != payload_digest(registry):
             errors.append("stale_comparison_contract")
         variants = {(analysis["id"], variant["id"]): (analysis, variant)
-                    for analysis in document["analyses"] for variant in analysis["comparison_contract"]["variants"]}
+                    for analysis in document["analyses"] for variant in panel_variants(analysis, registry)}
         if len(report["panels"]) != len(variants):
             errors.append("incomplete_panel_evidence")
         seen, current = set(), {}
@@ -480,17 +537,20 @@ def comparative_evidence_summary(report: dict | None, registry, document: dict) 
     fields = ("analysis_id", "variant_id", "label", "kind", "scope", "frequency", "series_ids",
               "temporal_mode", "declared_window", "join", "missingness", "matched_period_count",
               "matched_rows_sha256", "input_versions_sha256", "checks", "state", "failure_codes",
-              "source_reconciled", "requested_coverage_complete", "first_publication_verified",
+              "source_reconciled", "requested_coverage_complete", "coverage_limitations", "first_publication_verified",
               "source_asof_verified", "full_analysis_accepted", "native_input_scope_matches_original_method",
-              "limitations", "panel_sha256", "baseline_window", "source_metadata_scope")
+              "limitations", "panel_sha256", "baseline_window", "source_metadata_scope", "derived_from_role")
     panels = []
     for panel in report["panels"]:
         item = {key: panel[key] for key in fields if key in panel}
         item["first_matched_observation"] = panel["matched_periods"][0] if panel["matched_periods"] else None
         item["last_matched_observation"] = panel["matched_periods"][-1] if panel["matched_periods"] else None
         item["input_coverage"] = {sid: {key:value for key,value in coverage.items()
-            if key not in ("excluded_from_match", "missing_internal_periods")} | {
+            if key not in ("excluded_from_match", "missing_internal_periods",
+                           "trailing_after_common", "publisher_absent_periods")} | {
                 "excluded_from_match_count": len(coverage["excluded_from_match"]),
+                "trailing_after_common_count": len(coverage["trailing_after_common"]),
+                "publisher_absent_period_count": len(coverage["publisher_absent_periods"]),
                 "missing_internal_period_count": len(coverage["missing_internal_periods"])
                     if coverage["missing_internal_periods"] is not None else None}
             for sid, coverage in panel["input_coverage"].items()}
@@ -506,7 +566,7 @@ def compact_comparative_report(report: dict) -> dict:
     result["panels"] = [{key: panel[key] for key in (
         "analysis_id", "variant_id", "label", "scope", "frequency", "state", "failure_codes",
         "matched_period_count", "panel_sha256", "matched_rows_sha256", "input_versions_sha256",
-        "checks", "source_reconciled", "requested_coverage_complete", "first_publication_verified",
+        "checks", "source_reconciled", "requested_coverage_complete", "coverage_limitations", "first_publication_verified",
         "full_analysis_accepted", "limitations", "source_metadata_scope")}
         for panel in report["panels"]]
     return result

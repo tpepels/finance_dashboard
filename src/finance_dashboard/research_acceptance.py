@@ -277,7 +277,11 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         checks.append(_gate("matched_periods", "passed" if complete else "incomplete",
             "requested_periods_exactly_matched" if complete else "requested_period_coverage_incomplete",
             ids, variants=[p["variant_id"] for p in covering],
-            scope="Exact native-period joins; no fill. Daily calendars require independent evidence."))
+            limitations=[dict(item, variant_id=p["variant_id"]) for p in complete[:1]
+                         for item in p.get("coverage_limitations", []) if item["series_id"] in ids]
+                + [{"code": "no_approved_analysis_window_common_native_history", "variant_id": p["variant_id"]}
+                   for p in complete[:1] if p.get("derived_from_role")],
+            scope="Exact native-period joins; no fill. Interior absences are accepted only against verified full publisher snapshots and are carried as limitations."))
         checks.append(_publisher_dimensions_gate(ids, expected, registry, originals))
         # Independently verified original publisher-vintage dates add
         # provenance to the role, without inventing first-release dates for
