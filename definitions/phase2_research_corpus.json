@@ -1641,7 +1641,26 @@
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": []
+            "artifact_ids": [],
+            "verified_unavailability": {
+              "reviewed_on": "2026-11-06",
+              "reason": "Since April 2026 FRED serves only the latest three years of the ICE BofA high-yield OAS; the full history is licensed by ICE and not freely available, so the stored history cannot stay verified as days roll off.",
+              "evidence_urls": [
+                "https://fred.stlouisfed.org/series/BAMLH0A0HYM2"
+              ],
+              "fallback": {
+                "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+                "series_ids": ["credit.us.baa_10y_spread"],
+                "expected": {
+                  "frequency": "D",
+                  "unit": "percentage_points",
+                  "geography": ["US"],
+                  "population": "Moody's seasoned Baa corporate bonds",
+                  "concept": "Corporate minus Treasury yield spread"
+                },
+                "population_difference": "Lower investment-grade (Baa) yield spread versus 10-year Treasury, not option-adjusted and not high-yield; available since 1986."
+              }
+            }
           }
         ],
         "variants": [

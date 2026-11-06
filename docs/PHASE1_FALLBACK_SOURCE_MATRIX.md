@@ -4,7 +4,7 @@
 
 ## Revision 2026-11-06
 
-The four hard original targets are resolved as follows. **G03** (consolidated global listed profits) is a deferred research extension. **G01** keeps its dated SEC N-PORT holdings fallback and adds MSCI's published top-10 share; dated historical ACWI weights stay unavailable. **P01** uses current issuer and SEC holdings files; dated historical UCITS holdings are descoped. **P02** uses the Swinkels US 10-year sovereign total return as an explicitly narrower bond leg; no free world aggregate bond total-return index exists. FX conversion uses ECB euro reference rates. See the [catalogue revision](PHASE1_ANALYSIS_CATALOGUE.md#revision-2026-11-06--decision-layer-evidence-tiers-and-eur-investor-view-owner-approved).
+The four hard original targets are resolved as follows. **G03** (consolidated global listed profits) is a deferred research extension. **G01** keeps its dated SEC N-PORT holdings fallback and adds MSCI's published top-10 share; dated historical ACWI weights stay unavailable. **P01** uses current issuer and SEC holdings files; dated historical UCITS holdings are descoped. **P02** uses the Swinkels US 10-year sovereign total return as an explicitly narrower bond leg; no free world aggregate bond total-return index exists. FX conversion uses ECB euro reference rates. **F04** high-yield OAS: since April 2026 FRED keeps only three years of ICE BofA history; the approved fallback is Moody's Baa minus 10-year Treasury (FRED BAA10Y), a lower-investment-grade spread. See the [catalogue revision](PHASE1_ANALYSIS_CATALOGUE.md#revision-2026-11-06--decision-layer-evidence-tiers-and-eur-investor-view-owner-approved).
 
 ## Data maturity vocabulary
 

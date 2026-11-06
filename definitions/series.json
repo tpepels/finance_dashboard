@@ -4689,6 +4689,22 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "Replaces ECB ICP U2 series discontinued after December 2025 (2026 rebasing and EA21 composition). Eurostat also publishes first-release values in prc_hicp_fpd."
+    },
+    {
+      "id": "credit.us.baa_10y_spread",
+      "name": "Moody's Baa corporate yield minus 10-year Treasury",
+      "theme": "credit_recession",
+      "status": "mapped",
+      "provider": "FRED",
+      "source_key": "BAA10Y",
+      "source_url": "https://fred.stlouisfed.org/series/BAA10Y",
+      "geography": "US",
+      "frequency": "D",
+      "unit": "percentage_points",
+      "measurement": "Moody's seasoned Baa corporate bond yield minus 10-year Treasury constant-maturity yield, daily percentage points",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Lower-investment-grade spread with history since 1986; not option-adjusted and not the high-yield universe."
     }
   ]
 }
