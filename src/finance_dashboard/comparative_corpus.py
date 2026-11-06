@@ -145,7 +145,9 @@ def _check_values(identifier: str, rows: list[dict], series_ids: list[str]) -> d
     tolerances = {"yield_decomposition": Decimal("0.015"),
                   # Four shares published to 0.1pp: 4 * half a rounding unit.
                   "share_partition_100": Decimal("0.2"),
-                  "tiva_value_added_share": Decimal("0.001")}
+                  # Same 0.01 pp materiality bound as the TiVA identity audit:
+                  # OECD shares are rounded at 0.001 pp from unrounded levels.
+                  "tiva_value_added_share": Decimal("0.01")}
     if identifier not in tolerances:
         return {"id": identifier, "passed": False, "failure_code": "unknown_comparison_check"}
     fine_wealth_ids = {f"wealth.us.{group}_share" for group in ("top_point1", "next_point9", "next9", "middle40", "bottom50")}
