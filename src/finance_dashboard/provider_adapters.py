@@ -375,6 +375,38 @@ def fetch_eurostat_hicp(self, series_id, start, item, key):
     return FetchedSeries(series_id, str(response.request.url), None, values)
 
 
+OECD_TABLE14_ROOT = "https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/"
+# Non-financial corporations (S11), uses side, current prices, national currency.
+OECD_NFC_TRANSACTIONS = frozenset({"B1G", "D1", "B2N", "P51C", "D29X39"})
+OECD_NFC_COUNTRIES = frozenset({"USA", "DEU", "FRA", "JPN", "PRT", "GBR", "ITA", "ESP", "NLD", "CAN"})
+
+
+def oecd_nfc_key(country: str, transaction: str) -> str:
+    return f"A.{country}.S11.S1.D.{transaction}._Z._Z.XDC.S.V.N.T0800"
+
+
+def fetch_oecd_nfc_accounts(self, series_id, start, item, key):
+    """Validate and fetch one OECD Table 14 non-financial corporate transaction."""
+    country, _, transaction = key.partition("/")
+    if country not in OECD_NFC_COUNTRIES or transaction not in OECD_NFC_TRANSACTIONS:
+        raise SourceUnavailable("Unapproved OECD non-financial corporate account series")
+    params = {"format": "csvfile"}
+    if start:
+        params["startPeriod"] = str(start.year)
+    response = self._get(OECD_TABLE14_ROOT + oecd_nfc_key(country, transaction), params=params)
+    rows = list(csv.DictReader(io.StringIO(response.text.lstrip("\ufeff"))))
+    out = {}
+    for row in rows:
+        if (row.get("REF_AREA") != country or row.get("SECTOR") != "S11" or row.get("TRANSACTION") != transaction
+                or row.get("ACCOUNTING_ENTRY") != "D" or row.get("UNIT_MULT") != "6"):
+            raise ProviderError("OECD Table 14 returned a different series")
+        if row.get("OBS_VALUE") not in (None, ""):
+            out[date(int(row["TIME_PERIOD"]), 1, 1)] = Decimal(row["OBS_VALUE"])
+    if not out:
+        raise ProviderError("OECD Table 14 response contains no usable observations")
+    return FetchedSeries(series_id, str(response.request.url), None, out)
+
+
 def fetch_bis_world_weighted(self, series_id, start, item, key):
     """Validate and fetch native data for BIS_WORLD_WEIGHTED."""
     provider = item["provider"]

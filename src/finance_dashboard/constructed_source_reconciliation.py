@@ -22,7 +22,7 @@ from .captured_sources import _FredOriginalTable, _add, _native_period, _pink_sh
 CONSTRUCTED_PROVIDERS = frozenset({'MSCI_NETR', 'SIBLIS_WORLD_PE',
     'SIBLIS_WORLD_EARNINGS_YIELD', 'WORLD_LISTED_CAP_SHARE', 'BIS_WORLD_WEIGHTED',
     'EUROSTAT_CORPORATE_GDP', 'EUROSTAT_NFC_PROFIT_GVA', 'OECD_CORPORATE_GDPWEIGHTED', 'GOLD_MSCI_CORR',
-    'EUROSTAT_HICP'})
+    'EUROSTAT_HICP', 'OECD_NFC_ACCOUNTS'})
 
 
 def _error(code='source_identity_mismatch'):
@@ -73,7 +73,7 @@ def constructed_source(root, definition, select_manifest, original_file):
         count = {'MSCI_NETR': 1, 'SIBLIS_WORLD_PE': 1, 'SIBLIS_WORLD_EARNINGS_YIELD': 1,
                  'WORLD_LISTED_CAP_SHARE': 2, 'BIS_WORLD_WEIGHTED': 2,
                  'EUROSTAT_CORPORATE_GDP': 3, 'EUROSTAT_NFC_PROFIT_GVA': 1,
-                 'OECD_CORPORATE_GDPWEIGHTED': 3, 'GOLD_MSCI_CORR': 2, 'EUROSTAT_HICP': 1}[provider]
+                 'OECD_CORPORATE_GDPWEIGHTED': 3, 'GOLD_MSCI_CORR': 2, 'EUROSTAT_HICP': 1, 'OECD_NFC_ACCOUNTS': 1}[provider]
         if len(sources) != count:
             _error('source_response_ambiguous')
         # Verify *all* raw dependencies before parsing any of them.
@@ -99,6 +99,12 @@ def constructed_source(root, definition, select_manifest, original_file):
             values = _world_gap(raw, sources, definition)
             details = {'source_weight_lag_years': 1, 'source_coverage_floor_percent': 80,
                        'source_excluded_overlapping_geographies': ['XM']}
+        elif provider == 'OECD_NFC_ACCOUNTS':
+            if definition['frequency'] != 'A' or definition['unit'] != 'million_local_currency': _error()
+            values = _oecd_nfc(raw[0], sources[0]['url'], definition)
+            details = {'source_native_unit': 'million_national_currency', 'source_currency': definition.get('currency'),
+                       'source_population': 'Non-financial corporations (S11), national accounts',
+                       'source_price_basis': 'current_prices'}
         elif provider == 'EUROSTAT_HICP':
             if definition['source_key'] != 'prc_hicp_minr/M.I25.TOTAL.EA' or definition['frequency'] != 'M' or definition['unit'] != 'index': _error()
             values = _eurostat_hicp(raw[0], sources[0]['url'])
@@ -288,6 +294,29 @@ def _eurostat(raw, url, sector, measure, *, dataset='nasa_10_nf_tr', unit='CP_ME
     values, seen = {}, set()
     for label, index in times.items(): _add(values, seen, _native_period(label, 'A'), payload['value'].get(str(index)))
     if any(value < 0 for value in values.values()): _error('source_value_invalid')
+    return values
+
+
+def _oecd_nfc(raw, url, definition):
+    country, _, transaction = definition['source_key'].partition('/')
+    if not re.fullmatch('[A-Z]{3}', country) or transaction not in {'B1G', 'D1', 'B2N', 'P51C', 'D29X39'}: _error()
+    key = f'A.{country}.S11.S1.D.{transaction}._Z._Z.XDC.S.V.N.T0800'
+    query = parse_qs(urlsplit(url).query)
+    if set(query) - {'format', 'startPeriod'} or query.get('format') != ['csvfile'] or 'startPeriod' in query: _error('source_snapshot_partial')
+    _url(url, 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/'+key)
+    fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE14(1.1)', 'FREQ': 'A', 'REF_AREA': country,
+             'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1', 'ACCOUNTING_ENTRY': 'D', 'TRANSACTION': transaction,
+             'INSTR_ASSET': '_Z', 'EXPENDITURE': '_Z', 'UNIT_MEASURE': 'XDC', 'VALUATION': 'S', 'PRICE_BASE': 'V',
+             'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T0800', 'UNIT_MULT': '6'}
+    reader = csv.DictReader(io.StringIO(raw.decode('utf-8-sig')))
+    if not reader.fieldnames or not (set(fixed) | {'CURRENCY', 'TIME_PERIOD', 'OBS_VALUE'}) <= set(reader.fieldnames): _error('source_schema_invalid')
+    values, seen = {}, set()
+    for row in reader:
+        if any(row.get(name) != value for name, value in fixed.items()): _error()
+        if definition.get('currency') and row['CURRENCY'] != definition['currency']: _error()
+        _add(values, seen, _native_period(row['TIME_PERIOD'], 'A'), row['OBS_VALUE'])
+    # Operating surplus and net production taxes can be negative; flows below cannot.
+    if transaction in {'B1G', 'D1', 'P51C'} and any(value < 0 for value in values.values()): _error('source_value_invalid')
     return values
 
 
