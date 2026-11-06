@@ -119,6 +119,18 @@ def build_phase2_operating_report(evaluation, document, registry, *,
         "non_scalar_work": compact_role_workplan(role_work),
         "structured_original_work": {
             "structured_roles": structured["structured_roles"],
+            "native_unassigned_role_imports": {
+                "roles_available_for_explicit_original_import": (
+                    (evaluation.native_role_proof or {}).get(
+                        "unbound_structured_roles", 0)),
+                "hash_verified_partial_role_imports": (
+                    (evaluation.native_role_proof or {}).get(
+                        "hash_verified_partial_roles", 0)),
+                "invalid_existing_native_originals": (
+                    (evaluation.native_role_proof or {}).get(
+                        "invalid_archived_roles", [])),
+                "imported_data_is_not_original_method_certified": True,
+            },
             "roles_without_native_original_artifact":
                 structured["roles_without_registered_artifacts"],
             "native_artifacts_with_collectors":

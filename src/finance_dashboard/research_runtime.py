@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from .comparative_corpus import build_comparative_corpus
 from .research_artifacts import research_artifact_evidence
 from .phase2_publication_evidence import publisher_vintage_evidence
+from .phase2_native_role_originals import native_role_original_evidence
 from .research_corpus import analysis_series_ids, research_corpus_report
 from .source_coverage import coverage_from_session
 from .source_reconciliation import reconcile_session
@@ -27,6 +28,7 @@ class CorpusEvaluation:
     source_proof: dict
     artifact_evidence: dict | None = None
     publisher_vintage_proof: dict | None = None
+    native_role_proof: dict | None = None
 
 
 def required_series_ids(document: dict) -> list[str]:
@@ -70,13 +72,16 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
          if item.get("provider") == "FRED" and item["id"] in
          required_series_ids(document)})
         if vintage_root is not None else None)
+    role_originals = native_role_original_evidence(document, root)
     report = research_corpus_report(
         document, coverage,
         vintages=available_snapshots(Path(vintage_root))
         if vintage_root is not None else None,
         series_registry=series_registry, comparative_evidence=comparative,
         source_reconciliation=proof, artifact_evidence=structured,
-        publisher_vintage_proof=first_vintage)
+        publisher_vintage_proof=first_vintage,
+        native_role_evidence=role_originals)
     return CorpusEvaluation(
         public_report=report, comparative=comparative, source_proof=proof,
-        artifact_evidence=structured, publisher_vintage_proof=first_vintage)
+        artifact_evidence=structured, publisher_vintage_proof=first_vintage,
+        native_role_proof=role_originals)

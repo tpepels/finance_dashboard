@@ -1,6 +1,69 @@
 # Development plan — authoritative five-phase roadmap
 
 
+## Phase 2 — explicit originals for the 28 unassigned structured roles (2026-11-06)
+
+All 44 approved structured input roles are now addressable through exactly
+one of two routes: 16 roles have approved native artifact associations and
+28 require an explicit source of the original event, allocation, accounting,
+foreign-exchange, portfolio or policy data before their full scientific
+scope can be verified.
+
+The new `phase2_native_role_originals` importer allows **only** these 28
+unassigned approved original roles to receive a CSV/JSON source selected and
+supplied by the operator. It enforces the exact current approved role contract
+identity (SHA-256), format, declared native columns, unique record identifiers,
+finite numeric values, missing numeric observations and ISO original record
+dates. It archives the unmodified input bytes, immutable manifest,
+content-addressed bundle, and append-only acquisition receipt. Every retained
+version and receipt is reread/rehashed, and malformed/corrupt archives fail
+closed; no source history is overwritten or truncated.
+
+**Limits**: a supplied file and checked native bytes do not prove that its
+economic variables, issuer/industry population, FX convention, historical
+periods, filing availability or earliest public release satisfy the analysis
+method. The associated source-binding, stored-history, original-value and
+publisher/temporal gates remain **incomplete**, never passed merely because
+native records exist. All 35 analyses consume this through the original
+`research_runtime.evaluate_corpus` and `research_acceptance` path. The
+operating report distinguishes 28 importable original roles, imported
+hash-verified partial originals and invalid retained originals.
+
+Read the status of an approved role without changing evidence:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_register_native_role.py \
+  --evidence-dir /data/source-evidence --analysis C05 --role independent_shock_events
+```
+
+Register an explicitly sourced original event CSV with its actual column names
+and a verified unique record key:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_register_native_role.py \
+  --evidence-dir /data/source-evidence --analysis C05 --role independent_shock_events \
+  --original /data/imports/approved-events.csv \
+  --fields event_id event_date impact \
+  --keys event_id --numeric impact --date-field event_date
+```
+
+For fixed, previously reviewed **manual original imports** the new
+`phase2_register_structured_original.py` command routes the explicitly
+provided files to existing exact source parsers and stores; it does not
+download restricted hosts or reinterpret reviewed original/source hashes.
+Supported route identities: ICIO pinned package+ReadMe or year-pinned
+matrix+ReadMe, WIID four official files, and MSCI original factsheet PDF
+with a specified source URL. Existing source-specific official importers
+remain the only authors of native parsed evidence and versioned receipts.
+No parallel legacy parser or scientific acceptance shortcut is created.
+
+This development makes all 44 structured roles *operationally representable*.
+Full collection and scientific verification still require original files or
+publisher permissions and exact method checks for those that are absent.
+Software cannot infer historical original economic observations, scope or
+release evidence from filenames, source page descriptions, user imports,
+or provider download success.
+
 ## Phase 2 — structured original collectors, unbound-source review, original publisher vintages, native accounting and 35-analysis integration (2026-11-06)
 
 ### 1. All typed original artifacts and collection capabilities

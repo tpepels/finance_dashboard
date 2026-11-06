@@ -48,7 +48,8 @@ def _partial_artifacts(role: dict, evidence: dict) -> list[dict]:
 def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: list[dict], *,
                         observations_checked: bool, source_proof: dict | None = None,
                         artifact_evidence: dict | None = None,
-                        publisher_vintage_proof: dict | None = None) -> dict[str, Any]:
+                        publisher_vintage_proof: dict | None = None,
+                        native_role_evidence: dict | None = None) -> dict[str, Any]:
     """Evaluate all original roles using the current, independently checked inputs.
 
     `panels` must come from comparative_evidence_summary, which reconstructs
@@ -165,6 +166,25 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             if checks[1]["state"] == "not_checked":
                 checks[1] = _gate("native_dimensions", "incomplete", "original_artifact_partial_dimensions",
                     scope="Native artifact scope is disclosed; it does not establish the complete original population/mapping.")
+        # The 28 operator-originated structured roles can retain exact
+        # immutable native files without pretending that declared columns
+        # prove the economic method, complete history or first release.
+        attached = (native_role_evidence or {}).get("roles", {}).get(
+            analysis["id"] + ":" + role["role"])
+        if (attached and attached.get("original_source_hash_verified") is True
+                and not ids and not role.get("artifact_ids")):
+            checks[0] = _gate(
+                "source_binding", "incomplete", "exact_native_original_file_attached",
+                scope="Archived original source bytes are linked to this approved role; publisher population and method remain unverified.")
+            checks[2] = _gate(
+                "stored_history", "incomplete", "original_native_partial_history",
+                native_records=attached["native_facts"]["record_count"],
+                first_record=attached["native_facts"]["earliest_record_date"],
+                last_record=attached["native_facts"]["latest_record_date"])
+            checks[3] = _gate(
+                "original_source_values", "incomplete",
+                "original_native_source_file_hash_verified_but_method_unreconciled",
+                original_versions=attached["original_versions"])
         state = _state(checks)
         result = {**role, "state": state, "accepted": state == "accepted",
             "sources_checked": observations_checked, "mapped_source_count": len(ids),
@@ -175,6 +195,15 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             result["original_artifact_evidence"] = artifact
         if partial:
             result["partial_artifact_evidence"] = partial
+        if attached and attached.get("original_source_hash_verified") is True:
+            result["attached_native_original"] = {
+                "status": attached["status"],
+                "original_source_hash_verified": True,
+                "native_facts": attached["native_facts"],
+                "origin": attached["origin"],
+                "first_publication_verified": False,
+                "original_economic_scope_verified": False,
+            }
         requirements.append(result)
     scientific_failures = [{"variant_id": panel["variant_id"], "panel_sha256": panel.get("panel_sha256"),
                             "check": check}

@@ -307,6 +307,7 @@ def research_corpus_report(
     source_reconciliation: dict[str, Any] | None = None,
     artifact_evidence: dict[str, Any] | None = None,
     publisher_vintage_proof: dict[str, Any] | None = None,
+    native_role_evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Join runtime evidence; declarations and source counts cannot grant approval."""
     from .comparative_corpus import comparative_evidence_summary
@@ -389,7 +390,8 @@ def research_corpus_report(
         acceptance = analysis_acceptance(row, original_by_local_id, counts, panel_evidence,
             observations_checked=observations is not None, source_proof=source_reconciliation,
             artifact_evidence=artifact_evidence,
-            publisher_vintage_proof=publisher_vintage_proof)
+            publisher_vintage_proof=publisher_vintage_proof,
+            native_role_evidence=native_role_evidence)
         external_coverage = {item["id"]: item for item in (observations or {}).get("items", []) if item.get("family") == "fx"}
         requirements = []
         for role in acceptance.pop("requirements"):
@@ -450,6 +452,11 @@ def research_corpus_report(
             publisher_vintage_proof.get("verified_series_vintage_sources", 0)
             if publisher_vintage_proof is not None else None),
         "observation_level_first_release_verified": False,
+        "structured_native_role_originals_checked":
+            native_role_evidence is not None,
+        "structured_native_roles_with_hash_verified_partial_originals": (
+            native_role_evidence.get("hash_verified_partial_roles", 0)
+            if native_role_evidence is not None else None),
         "alfred_sources_with_populated_asof": sum(
             item.get("populated_vintage_count", 0) > 0
             for item in vintage_by_id.values()
