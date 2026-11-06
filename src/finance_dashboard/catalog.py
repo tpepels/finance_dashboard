@@ -101,6 +101,14 @@ def validate(
             errors.append(f"{label}: unsupported unit")
         if item.get("frequency") is not None and item["frequency"] not in FREQUENCIES:
             errors.append(f"{label}: unsupported frequency")
+        # Cited Phase 2 reviews; the acceptance gates share these validators.
+        from .research_acceptance import valid_publisher_dimensions, valid_release_dating
+        if "publisher_dimensions" in item and not valid_publisher_dimensions(item["publisher_dimensions"]):
+            errors.append(f"{label}: invalid publisher_dimensions review")
+        if "release_dating" in item and not valid_release_dating(item["release_dating"]):
+            errors.append(f"{label}: invalid release_dating review")
+        if (item.get("release_dating", {}) or {}).get("mode") == "alfred_real_time" and item.get("provider") != "FRED":
+            errors.append(f"{label}: alfred_real_time release dating requires a FRED source")
 
     seen_charts: set[str] = set()
     for index, chart in enumerate(charts):

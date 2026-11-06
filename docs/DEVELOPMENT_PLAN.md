@@ -1,3 +1,40 @@
+## Phase 2 acceptance redefined as evidenced end states — owner decision (2026-11-06)
+
+**Binding.** Before this decision two of the seven role gates
+(`publisher_dimensions`, `temporal_evidence`) were hard-coded `incomplete`, so
+no role or analysis could ever be accepted regardless of evidence, and 158/168
+roles demanded per-observation agency first-release dates that most publishers
+(OECD, World Bank, WID, MSCI, BIS, IMF …) do not publish. The owner chose
+**evidenced end states**. Phase 2 is complete when every one of the 35
+analyses is `accepted` or `conditional` in `research_acceptance`:
+
+| Role end state | Requirement |
+|---|---|
+| `accepted` | All seven gates pass: binding, native dimensions, stored history, independently verified original values, exact matched periods, publisher dimensions, temporal evidence. |
+| `unavailable_with_fallback` | Role carries a cited `verified_unavailability` (reason, HTTPS evidence, review date) naming a fallback from `docs/PHASE1_FALLBACK_SOURCE_MATRIX.md` whose own series pass **all seven gates**, plus the stated population difference. |
+
+An analysis is `accepted` when every role is accepted and the original
+comparison bundle passes; `conditional` when, in addition, at least one role is
+`unavailable_with_fallback`. Everything else stays `blocked` with the open gates
+named in the readiness reasons.
+
+* **Publisher dimensions** pass from a cited per-series
+  `publisher_dimensions` review in `definitions/series.json` (population,
+  currency, price basis, index base; `null` = not applicable; HTTPS evidence;
+  ISO review date) for a series whose original values are independently
+  verified. Any contradiction with the archived original's currency, the
+  registry currency, or the role's expected index base/price basis **fails**.
+* **Temporal evidence** passes per series from a cited `release_dating` review:
+  `alfred_real_time` (FRED only) requires hash-verified, non-conflicting ALFRED
+  windows and carries the limitation that ALFRED records are not agency first
+  release; `not_published_by_publisher` passes with the explicit limitation
+  that only latest revised values exist. `source_asof` roles pass on a
+  verified archived original.
+* Review fields are excluded from the source-contract digest, so adding or
+  revising a review never invalidates archived original proofs.
+* Limitations are carried on every role, analysis and readiness decision;
+  they are never dropped to make a result look complete.
+
 ## Phase 2 MSCI ACWI original-document acquisition continuation (2026-11-06)
 
 The prior manual-URL-only native collector now has a real official default

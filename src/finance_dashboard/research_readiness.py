@@ -93,10 +93,12 @@ def role_resolution(role, counts, registry, *, external_coverage=None, artifact_
 
 def readiness_decision(analysis, requirements, acceptance, panels):
     missing = [role["role"] for role in requirements
-               if any(check["state"] != "passed" for check in role["checks"]
-                      if check["id"] in {"source_binding", "stored_history", "original_source_values", "native_dimensions"})]
+               if role["state"] != "unavailable_with_fallback"
+               and any(check["state"] != "passed" for check in role["checks"]
+                       if check["id"] in {"source_binding", "stored_history", "original_source_values", "native_dimensions"})]
     failures = acceptance["scientific_failures"]
-    original = "complete" if acceptance["accepted"] else "blocked" if missing or failures else "conditional"
+    original = ("complete" if acceptance["accepted"] else "blocked" if missing or failures
+                else "conditional")
     alternatives = [p for p in panels if p.get("kind") in {"approved_narrower", "approved_fallback"}
                     and p.get("state") == "bounded_current_vintage_verified"]
     # A narrower native panel is evidence, not automatically a completed
@@ -107,15 +109,32 @@ def readiness_decision(analysis, requirements, acceptance, panels):
         for key in option.get("artifact_ids", []) if artifacts.get(key, {}).get("bounded_data_verified") is True})
     fallback_defined = analysis.get("fallback_options") or any(p.get("kind") == "approved_fallback" for p in analysis["comparison_contract"]["variants"])
     fallback = "conditional" if approved_alternatives or structured else "blocked" if fallback_defined else "not_applicable"
-    decision = "complete" if original == "complete" else "conditional" if original == "conditional" or fallback == "conditional" else "blocked"
+    # Phase 2 evidenced end states: "complete" (every role accepted),
+    # "conditional" (resolved, some roles through a verified-unavailable
+    # fallback), otherwise "blocked" naming the gates still open.
+    if acceptance["state"] == "accepted":
+        decision = "complete"
+    elif acceptance["state"] == "conditional":
+        decision = "conditional"
+    else:
+        decision = "blocked"
     reasons = []
     if missing:
         reasons.append({"code": "exact_original_inputs_missing_or_partial", "roles": missing})
     if failures:
         reasons.append({"code": "original_scientific_failure", "count": len(failures)})
-    if not acceptance["accepted"]:
-        reasons.append({"code": "publisher_and_release_eligibility_incomplete",
-                        "detail": "Complete population/price-basis/common-release and observation first-publication eligibility remain unverified."})
+    open_gates = {}
+    for role in requirements:
+        if role["state"] in ("accepted", "unavailable_with_fallback"):
+            continue
+        for check in role["checks"]:
+            if check["state"] != "passed":
+                open_gates.setdefault(check["id"], []).append(role["role"])
+    for gate, roles in sorted(open_gates.items()):
+        reasons.append({"code": gate + "_open", "roles": sorted(set(roles))})
+    if acceptance["comparison"]["state"] != "passed":
+        reasons.append({"code": "original_comparison_open",
+                        "roles": acceptance["comparison"].get("uncovered_roles", [])})
     return {"id": analysis["id"], "decision": decision,
         "original": {"decision": original, "scalar_bound_roles": sum(bool(r["series_ids"]) for r in requirements),
                      "required_roles": len(requirements), "missing_or_partial_roles": missing,
@@ -126,7 +145,8 @@ def readiness_decision(analysis, requirements, acceptance, panels):
                      "verified_native_variants": [p["variant_id"] for p in approved_alternatives],
                      "verified_structured_alternatives": structured,
                      "limitations": "Native alternative coverage is bounded; no alternative silently satisfies the original method or first-release contract."},
-        "reasons": reasons, "production_integration_ready": acceptance["accepted"]}
+        "reasons": reasons, "limitations": acceptance.get("limitations", []),
+        "production_integration_ready": acceptance["state"] in ("accepted", "conditional")}
 
 
 def resolution_summary(analyses):

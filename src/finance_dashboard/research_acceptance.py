@@ -2,11 +2,21 @@
 
 Consumes the corpus runtime's validated panel projection, never editable source
 certificates. A source binding, a bounded comparison and a complete original
-scientific contract have separate gates. No publisher-dimension or observation
-first-release verifier exists yet; those gates remain explicitly incomplete.
+scientific contract have separate gates.
+
+Phase 2 evidenced end states (owner decision 2026-11-06): a role is
+``accepted`` only when every gate passes. Publisher dimensions pass from a
+cited per-series ``publisher_dimensions`` review that no archived original or
+role expectation contradicts. Temporal evidence passes from verified ALFRED
+real-time windows, or from a cited ``not_published_by_publisher`` finding that
+is carried as an explicit role limitation, or (``source_asof`` roles) from a
+verified original. A role whose exact source is verified unavailable resolves
+as ``unavailable_with_fallback`` only when its approved fallback passes the
+same gates; analyses using one are ``conditional``, never ``accepted``.
 """
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from .source_original_gate import verified_original_rows
@@ -18,6 +28,142 @@ PUBLISHER_METADATA_FIELDS = (
     "source_workbook_notes", "source_database_vintage", "source_dataset",
     "source_projection_start_year", "source_metadata_last_modified", "source_publisher_metadata",
 )
+
+
+FALLBACK_POLICY = "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md"
+RELEASE_DATING_MODES = ("alfred_real_time", "not_published_by_publisher")
+DIMENSION_FIELDS = ("population", "currency", "price_basis", "index_base")
+RESOLVED_ROLE_STATES = ("accepted", "unavailable_with_fallback")
+
+
+def _iso_date(value) -> bool:
+    try:
+        return isinstance(value, str) and date.fromisoformat(value).isoformat() == value
+    except ValueError:
+        return False
+
+
+def _cited(declaration) -> bool:
+    return (isinstance(declaration, dict)
+            and isinstance(declaration.get("evidence_url"), str)
+            and declaration["evidence_url"].startswith("https://")
+            and _iso_date(declaration.get("reviewed_on")))
+
+
+def valid_publisher_dimensions(declaration) -> bool:
+    """A cited review; every field is explicit (null means not applicable)."""
+    return (_cited(declaration)
+            and isinstance(declaration.get("population"), str) and declaration["population"].strip() != ""
+            and all(field in declaration and (declaration[field] is None or (
+                isinstance(declaration[field], str) and declaration[field].strip()))
+                for field in DIMENSION_FIELDS))
+
+
+def valid_release_dating(declaration) -> bool:
+    return _cited(declaration) and declaration.get("mode") in RELEASE_DATING_MODES
+
+
+def valid_unavailability(declaration) -> bool:
+    fallback = declaration.get("fallback") if isinstance(declaration, dict) else None
+    return (isinstance(declaration, dict) and _iso_date(declaration.get("reviewed_on"))
+            and isinstance(declaration.get("reason"), str) and declaration["reason"].strip() != ""
+            and isinstance(declaration.get("evidence_urls"), list) and declaration["evidence_urls"]
+            and all(isinstance(url, str) and url.startswith("https://") for url in declaration["evidence_urls"])
+            and isinstance(fallback, dict) and fallback.get("reference") == FALLBACK_POLICY
+            and isinstance(fallback.get("series_ids"), list) and fallback["series_ids"]
+            and all(isinstance(sid, str) for sid in fallback["series_ids"])
+            and isinstance(fallback.get("expected"), dict)
+            and isinstance(fallback.get("population_difference"), str)
+            and fallback["population_difference"].strip() != "")
+
+
+def _publisher_dimensions_gate(ids, expected, registry, originals) -> dict:
+    missing, unverified, contradictions = [], [], []
+    for sid in ids:
+        source = registry.get(sid) or {}
+        declaration = source.get("publisher_dimensions")
+        if not valid_publisher_dimensions(declaration):
+            missing.append(sid)
+            declaration = None
+        if sid not in originals:
+            unverified.append(sid)
+        if declaration is None:
+            continue
+        declared = (declaration.get("currency") or "").upper() or None
+        observed = (originals.get(sid, {}).get("source_currency") or "").upper() or None
+        registered = (source.get("currency") or "").upper() or None
+        for label, value in (("original_source_currency", observed), ("registry_currency", registered)):
+            if value is not None and declared != value:
+                contradictions.append({"series_id": sid, "field": "currency", "against": label,
+                                       "declared": declared, "observed": value})
+        for field in ("index_base", "price_basis"):
+            if field in expected and declaration.get(field) != expected[field]:
+                contradictions.append({"series_id": sid, "field": field, "against": "role_expected",
+                                       "declared": declaration.get(field), "observed": expected[field]})
+    state = ("incomplete" if not ids else "failed" if contradictions
+             else "incomplete" if missing or unverified else "passed")
+    code = ("publisher_dimensions_unbound" if not ids
+            else "publisher_dimensions_contradicted" if contradictions
+            else "publisher_dimension_review_missing" if missing
+            else "original_values_required_for_dimension_review" if unverified
+            else "publisher_dimensions_reviewed_and_uncontradicted")
+    return _gate("publisher_dimensions", state, code, ids,
+        required_evidence=["population", "currency_and_quote", "price_basis_and_index_base"],
+        expected=expected, missing_reviews=sorted(missing), unverified_originals=sorted(unverified),
+        contradictions=contradictions,
+        reviews=[{"series_id": sid, **registry[sid]["publisher_dimensions"]}
+                 for sid in ids if valid_publisher_dimensions((registry.get(sid) or {}).get("publisher_dimensions"))],
+        original_metadata=[{"series_id": sid, "source_sha256": originals[sid]["source_sha256"],
+            **{key: originals[sid][key] for key in PUBLISHER_METADATA_FIELDS if key in originals[sid]}}
+            for sid in ids if sid in originals],
+        scope="Cited per-series publisher review, checked against archived original metadata and the role's declared index base and price basis.")
+
+
+def _temporal_gate(role, ids, registry, originals, revisions, release_originals) -> dict:
+    details = dict(required_mode=role["temporal_requirement"],
+        verified_official_series_vintages=release_originals,
+        original_publisher_series_vintage_count=len(release_originals),
+        verified_original_revision_sources=revisions,
+        alfred_windows_with_complete_realtime_intervals=sum(
+            row["hash_verified_original_windows"] for row in revisions),
+        observation_first_release_dates_verified=0)
+    if not ids:
+        return _gate("temporal_evidence", "incomplete", "temporal_evidence_unbound", ids, **details)
+    unverified = sorted(sid for sid in ids if sid not in originals)
+    if role["temporal_requirement"] == "source_asof":
+        return _gate("temporal_evidence", "incomplete" if unverified else "passed",
+            "verified_original_asof_required" if unverified else "verified_original_source_asof",
+            ids, unverified_originals=unverified, limitations=[], **details,
+            scope="Point-in-time source as-of evidence is the verified archived original itself.")
+    by_series = {row["series_id"]: row for row in revisions}
+    missing, pending, conflicting, limitations = [], [], [], []
+    for sid in ids:
+        declaration = (registry.get(sid) or {}).get("release_dating")
+        if not valid_release_dating(declaration):
+            missing.append(sid)
+        elif declaration["mode"] == "alfred_real_time":
+            row = by_series.get(sid)
+            if row and row["invalid_or_conflicting_original_windows"]:
+                conflicting.append(sid)
+            elif not row or not row["hash_verified_original_windows"]:
+                pending.append(sid)
+            else:
+                limitations.append({"series_id": sid, "code": "alfred_records_not_agency_first_release",
+                    "evidence_url": declaration["evidence_url"]})
+        else:
+            limitations.append({"series_id": sid, "code": "release_dates_not_published_by_publisher",
+                "evidence_url": declaration["evidence_url"],
+                "detail": "Only the latest revised values are available; analyses cannot be evaluated as of a historical release date."})
+    state = ("failed" if conflicting else "incomplete" if missing or pending or unverified else "passed")
+    code = ("conflicting_alfred_revision_windows" if conflicting
+            else "release_dating_review_missing" if missing
+            else "alfred_revision_windows_not_acquired" if pending
+            else "verified_original_values_required" if unverified
+            else "release_dating_evidenced")
+    return _gate("temporal_evidence", state, code, ids, missing_reviews=sorted(missing),
+        pending_alfred_series=sorted(pending), conflicting_series=sorted(conflicting),
+        unverified_originals=unverified, limitations=limitations, **details,
+        scope="ALFRED windows record what ALFRED held, not necessarily the producing agency's first release; publishers without release vintages are accepted only with that limitation carried forward.")
 
 
 def _gate(identifier: str, state: str, code: str, series_ids=(), **details) -> dict:
@@ -77,7 +223,22 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     matrix_available = (matrix.get("original_source_hash_verified") is True
                         and type(matrix.get("year")) is int and 1995 <= matrix["year"] <= 2022
                         and type(matrix.get("accounting_passed")) is bool)
-    for role in analysis["comparison_contract"]["original_requirements"]:
+    # Declared fallbacks are evaluated first, through the identical gates,
+    # so each original role can be resolved against its finished result.
+    originals_roles = list(analysis["comparison_contract"]["original_requirements"])
+    roles = []
+    fallback_results: dict[str, dict] = {}
+    for role in originals_roles:
+        unavailability = role.get("verified_unavailability")
+        if unavailability is not None and valid_unavailability(unavailability):
+            fallback = unavailability["fallback"]
+            roles.append({"role": role["role"], "description": role["description"],
+                          "series_ids": list(fallback["series_ids"]), "expected": fallback["expected"],
+                          "temporal_requirement": role["temporal_requirement"],
+                          "input_type": role["input_type"], "artifact_ids": [],
+                          "_fallback_for": role["role"]})
+    roles.extend(originals_roles)
+    for role in roles:
         ids = role["series_ids"]
         expected = role["expected"]
         checks = [_gate("source_binding", "passed" if ids else "blocked",
@@ -117,13 +278,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             "requested_periods_exactly_matched" if complete else "requested_period_coverage_incomplete",
             ids, variants=[p["variant_id"] for p in covering],
             scope="Exact native-period joins; no fill. Daily calendars require independent evidence."))
-        checks.append(_gate("publisher_dimensions", "incomplete", "publisher_dimensions_unverified", ids,
-            required_evidence=["population", "currency_and_quote", "price_basis_and_index_base", "common_release"],
-            expected=expected,
-            original_metadata=[{"series_id": sid, "source_sha256": originals[sid]["source_sha256"],
-                **{key: originals[sid][key] for key in PUBLISHER_METADATA_FIELDS if key in originals[sid]}}
-                for sid in ids if sid in originals],
-            scope="Independently selected original metadata and author estimation notes are disclosed. Complete publisher population/base and common-release eligibility are not inferred from numeric fidelity."))
+        checks.append(_publisher_dimensions_gate(ids, expected, registry, originals))
         # Independently verified original publisher-vintage dates add
         # provenance to the role, without inventing first-release dates for
         # individual observations or assuming synchronized source versions.
@@ -154,17 +309,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         } for sid in ids if sid in registry
             and registry[sid].get("provider") == "FRED"
             and registry[sid]["source_key"] in revision_sources]
-        checks.append(_gate(
-            "temporal_evidence", "incomplete",
-            "observation_release_eligibility_unverified", ids,
-            required_mode=role["temporal_requirement"],
-            verified_official_series_vintages=release_originals,
-            original_publisher_series_vintage_count=len(release_originals),
-            verified_original_revision_sources=revisions,
-            alfred_windows_with_complete_realtime_intervals=sum(
-                row["hash_verified_original_windows"] for row in revisions),
-            observation_first_release_dates_verified=0,
-            scope="ALFRED historical real-time windows identify revisions as recorded by ALFRED, not necessarily initial publication by the producing institution. Every observation's original release time, matched historical coverage and common publisher release remain independently required."))
+        checks.append(_temporal_gate(role, ids, registry, originals, revisions, release_originals))
         artifact = None
         if "icio" in role.get("artifact_ids", []) and matrix_available:
             artifact = {key: matrix.get(key) for key in (
@@ -279,6 +424,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         result = {**role, "state": state, "accepted": state == "accepted",
             "sources_checked": observations_checked, "mapped_source_count": len(ids),
             "sources_with_observations": len(stored), "first_publication_verified": False,
+            "limitations": [item for check in checks for item in check.get("limitations", [])],
             "source_asof_verified": False, "checks": checks,
             "blocking_checks": [item["id"] for item in checks if item["state"] != "passed"]}
         if artifact is not None:
@@ -305,6 +451,25 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                 "first_publication_verified": False,
                 "original_economic_scope_verified": False,
             }
+        if role.get("_fallback_for"):
+            fallback_results[role["_fallback_for"]] = result
+            continue
+        unavailability = role.get("verified_unavailability")
+        if unavailability is not None:
+            fallback = fallback_results.get(role["role"])
+            result["verified_unavailability"] = {
+                "declaration_valid": valid_unavailability(unavailability),
+                "reason": unavailability.get("reason") if isinstance(unavailability, dict) else None,
+                "fallback_state": fallback["state"] if fallback else "not_evaluated",
+            }
+            if fallback is not None:
+                result["fallback_evaluation"] = fallback
+            if not result["accepted"] and fallback is not None and fallback["accepted"]:
+                result["state"] = "unavailable_with_fallback"
+                result["limitations"] = result["limitations"] + fallback["limitations"] + [{
+                    "code": "exact_source_unavailable_fallback_used",
+                    "fallback_series_ids": fallback["series_ids"],
+                    "population_difference": unavailability["fallback"]["population_difference"]}]
         requirements.append(result)
     scientific_failures = [{"variant_id": panel["variant_id"], "panel_sha256": panel.get("panel_sha256"),
                             "check": check}
@@ -338,33 +503,43 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     # Input acquisition can use several native-frequency panels. Requiring
     # every role in one panel made mixed-frequency specifications impossible;
     # converting their values here would prematurely implement Phase 3.
-    covered = {role["role"] for role in requirements if role["series_ids"]
-        and set(role["series_ids"]).issubset({sid for panel in originals for sid in panel["series_ids"]})}
+    panel_ids = {sid for panel in originals for sid in panel["series_ids"]}
+    def effective_ids(role):
+        if role["state"] == "unavailable_with_fallback":
+            return role["fallback_evaluation"]["series_ids"]
+        return role["series_ids"]
+    covered = {role["role"] for role in requirements if effective_ids(role)
+        and set(effective_ids(role)).issubset(panel_ids)}
     uncovered = sorted(role["role"] for role in requirements if role["role"] not in covered)
     comparison = _gate("original_comparison", "passed" if not uncovered else "incomplete",
         "original_native_input_bundle_verified" if not uncovered else "complete_original_comparison_outstanding",
         variants=sorted(p["variant_id"] for p in originals),
         covered_roles=sorted(covered), uncovered_roles=uncovered,
         scope="Original native input bundle only; temporal transformations and methodological alignment belong to Phase 3.")
-    checks = [{"state": r["state"]} for r in requirements] + [comparison]
+    checks = [{"state": "passed" if r["state"] in RESOLVED_ROLE_STATES else r["state"]}
+              for r in requirements] + [comparison]
     if scientific_failures:
         checks.append({"state": "failed"})
     state = _state(checks)
+    if state == "accepted" and any(r["state"] == "unavailable_with_fallback" for r in requirements):
+        state = "conditional"
     result = {"contract_version": 1, "specification": analysis["comparison_contract"]["specification"],
         "state": state, "accepted": state == "accepted", "required_input_roles": len(requirements),
         "accepted_input_roles": sum(r["accepted"] for r in requirements),
+        "phase2_resolved": state in ("accepted", "conditional"),
+        "limitations": [item for r in requirements for item in r["limitations"]],
         "requirements": requirements, "comparison": comparison, "scientific_failures": scientific_failures,
         "blocking_roles": [r["role"] for r in requirements if not r["accepted"]],
         "interpretation": "Original analysis acceptance requires every role and original comparison gate. Bounded native alternatives remain separately labelled."}
     fallbacks = analysis.get("fallback_options", [])
     if analysis["id"] == "G06":
         result["source_investigations"] = {key: matrix[key] for key in ("publisher_acquisition", "release_comparison") if key in matrix}
-    policy = "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md"
+    policy = FALLBACK_POLICY
     if fallbacks and all(option.get("reference") == policy for option in fallbacks):
         result["source_resolution"] = {
             "classification": "certified" if result["accepted"] else "conditional",
             "policy_reference": policy,
-            "phase2_resolved": result["accepted"],
+            "phase2_resolved": result["phase2_resolved"],
             "unmet_original_roles": result["blocking_roles"],
             "comparison_outstanding": comparison["state"] != "passed",
             "scientific_failure_count": len(scientific_failures),
@@ -373,7 +548,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                 and p.get("state") == "bounded_current_vintage_verified"),
             "partial_artifact_ids": sorted({artifact["artifact_id"] for role in requirements
                 for artifact in role.get("partial_artifact_evidence", [])}),
-            "conditions": "Exact source identity, historical coverage, publisher dimensions and temporal eligibility remain required. Named alternatives retain their own populations; missing implementation or evidence is not an unavailable-source finding.",
+            "conditions": "Exact source identity, historical coverage, publisher dimensions and temporal eligibility remain required. Named alternatives retain their own populations; only a cited verified_unavailability whose fallback passes every gate resolves a role.",
         }
     return result
 
@@ -383,7 +558,8 @@ def acceptance_summary(analyses: list[dict]) -> dict:
         "required_input_roles": sum(row["acceptance"]["required_input_roles"] for row in analyses),
         "accepted_input_roles": sum(row["acceptance"]["accepted_input_roles"] for row in analyses),
         "fully_accepted_analyses": sum(row["acceptance"]["accepted"] for row in analyses),
+        "phase2_resolved_analyses": sum(row["acceptance"]["state"] in ("accepted", "conditional") for row in analyses),
         "analysis_states": {state: sum(row["acceptance"]["state"] == state for row in analyses)
-                            for state in ("accepted", "failed", "blocked", "incomplete", "not_checked")},
+                            for state in ("accepted", "conditional", "failed", "blocked", "incomplete", "not_checked")},
         "role_states": {state: sum(role["state"] == state for row in analyses for role in row["requirements"])
-                        for state in ("accepted", "failed", "blocked", "incomplete", "not_checked")}}
+                        for state in ("accepted", "unavailable_with_fallback", "failed", "blocked", "incomplete", "not_checked")}}

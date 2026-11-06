@@ -93,6 +93,13 @@ def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> 
             if (candidate.get("artifact_id") not in ARTIFACT_IDS or candidate.get("source_id") not in registry
                     or not all(isinstance(candidate.get(key), str) and candidate[key].strip() for key in ("measure", "sector", "condition"))):
                 errors.append(f"{ident}: invalid native source candidate reference")
+        if "verified_unavailability" in requirement:
+            from .research_acceptance import valid_unavailability
+            unavailability = requirement["verified_unavailability"]
+            if not valid_unavailability(unavailability):
+                errors.append(f"{ident}: invalid verified_unavailability declaration")
+            elif any(sid not in registry for sid in unavailability["fallback"]["series_ids"]):
+                errors.append(f"{ident}: verified_unavailability fallback references unknown series")
         publisher_candidates = requirement.get("publisher_candidates", [])
         if (not isinstance(publisher_candidates, list)
                 or (publisher_candidates and
