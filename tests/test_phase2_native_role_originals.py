@@ -42,7 +42,7 @@ class NativeOriginalRoleTests(unittest.TestCase):
         with TemporaryDirectory() as temp:
             evidence = native_role_original_evidence(
                 self.document, Path(temp))
-            self.assertEqual(evidence["unbound_structured_roles"], 28)
+            self.assertEqual(evidence["unbound_structured_roles"], 25)
             self.assertEqual(evidence["hash_verified_partial_roles"], 0)
             self.assertEqual(evidence["invalid_archived_roles"], [])
             self.assertFalse(evidence["scientific_analysis_certified"])
@@ -66,7 +66,7 @@ class NativeOriginalRoleTests(unittest.TestCase):
             evidence = native_role_original_evidence(
                 self.document, Path(temp) / "evidence")
             self.assertEqual(evidence["hash_verified_partial_roles"], 1)
-            self.assertEqual(evidence["unbound_structured_roles"], 28)
+            self.assertEqual(evidence["unbound_structured_roles"], 25)
             self.assertEqual(evidence["invalid_archived_roles"], [])
 
     def test_registered_native_file_reaches_scientific_gate_without_false_acceptance(self):

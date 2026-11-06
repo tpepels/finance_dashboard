@@ -187,9 +187,11 @@ def fetch_fred(self, series_id, start, item, key):
 def fetch_ecb(self, series_id, start, item, key):
     """Validate and fetch native data for ECB."""
     provider = item["provider"]
-    if not key.startswith("FM."):
-        raise SourceUnavailable(f"Unsupported ECB dataset: {key}")
-    url = f"{ECB_ROOT}/FM/{key[3:]}"
+    from .captured_sources import _ECB_SERIES
+    if key not in _ECB_SERIES:
+        raise SourceUnavailable(f"Unsupported ECB series: {key}")
+    dataset = _ECB_SERIES[key][0]
+    url = f"{ECB_ROOT}/{dataset}/{key[len(dataset) + 1:]}"
     params = {"format": "csvdata"}
     if start:
         params["startPeriod"] = start.isoformat()

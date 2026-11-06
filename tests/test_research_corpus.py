@@ -26,7 +26,7 @@ class ResearchCorpusTests(unittest.TestCase):
             'from finance_dashboard.research_corpus import load_research_corpus, '
             'validate_research_corpus; from finance_dashboard.catalog import load_documents; '
             'corpus = load_research_corpus(); registry, _ = load_documents(); '
-            'assert len(corpus["analyses"]) == 35; '
+            'assert len(corpus["analyses"]) == 37; '
             'assert validate_research_corpus(corpus, registry["series"]) == []'
         )
         env = dict(os.environ)
@@ -40,9 +40,9 @@ class ResearchCorpusTests(unittest.TestCase):
     def test_complete_35_and_49_verified_reference_contracts(self):
         self.assertEqual([], validate_research_corpus(
             self.document, self.series["series"]))
-        self.assertEqual(len(self.document["analyses"]), 35)
+        self.assertEqual(len(self.document["analyses"]), 37)
         self.assertEqual(len(self.document["original_sources"]), 49)
-        self.assertEqual(len({r["id"] for r in self.document["analyses"]}), 35)
+        self.assertEqual(len({r["id"] for r in self.document["analyses"]}), 37)
 
     def test_every_question_has_requirements_instead_of_editable_certificates(self):
         for item in self.document["analyses"]:
@@ -106,7 +106,7 @@ class ResearchCorpusTests(unittest.TestCase):
         edited["analyses"][1]["id"] = edited["analyses"][0]["id"]
         issues = validate_research_corpus(edited, self.series["series"])
         self.assertTrue(any("duplicate analysis" in x for x in issues))
-        self.assertTrue(any("expected all 35" in x for x in issues))
+        self.assertTrue(any("expected all 37" in x for x in issues))
 
     def test_reject_unapproved_id_with_unchanged_family_count(self):
         edited = copy.deepcopy(self.document)
@@ -114,7 +114,7 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertTrue(original.startswith("C"))
         edited["analyses"][0]["id"] = "C07"
         issues = validate_research_corpus(edited, self.series["series"])
-        self.assertTrue(any("expected all 35" in issue for issue in issues))
+        self.assertTrue(any("expected all 37" in issue for issue in issues))
         self.assertTrue(any(original in issue and "C07" in issue for issue in issues))
 
     def test_reject_fake_primary_source_and_context_series(self):
@@ -266,7 +266,7 @@ class ResearchCorpusTests(unittest.TestCase):
             "state": "available",
         }]}
         report = research_corpus_report(self.document, observed)
-        self.assertEqual(report["analysis_count"], 35)
+        self.assertEqual(report["analysis_count"], 37)
         self.assertEqual(report["method_source_count"], 49)
         self.assertEqual(report["fully_validated_analysis_count"], 0)
         recession = next(x for x in report["analyses"] if x["id"] == "C02")

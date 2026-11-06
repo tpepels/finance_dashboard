@@ -21,7 +21,7 @@ class ResearchAcceptanceTests(unittest.TestCase):
 
     def test_all_approved_roles_have_executable_named_gates_and_no_silent_success(self):
         report = research_corpus_report(self.document, series_registry=self.registry)
-        self.assertEqual(report["acceptance_summary"]["analysis_count"], 35)
+        self.assertEqual(report["acceptance_summary"]["analysis_count"], 37)
         expected_count = sum(len(a["comparison_contract"]["original_requirements"])
                              for a in self.document["analyses"])
         self.assertEqual(report["acceptance_summary"]["required_input_roles"], expected_count)
@@ -31,6 +31,11 @@ class ResearchAcceptanceTests(unittest.TestCase):
             self.assertFalse(analysis["acceptance"]["accepted"])
             self.assertEqual(analysis["acceptance"]["required_input_roles"], len(analysis["requirements"]))
             for requirement in analysis["requirements"]:
+                if requirement.get("supply") == "user":
+                    # Owner parameters are inputs, not publisher data: one explicit gate.
+                    self.assertEqual([g["id"] for g in requirement["checks"]], ["user_supplied"])
+                    self.assertEqual(requirement["state"], "user_input")
+                    continue
                 self.assertEqual({g["id"] for g in requirement["checks"]}, {
                     "source_binding", "native_dimensions", "stored_history",
                     "original_source_values", "matched_periods", "publisher_dimensions", "temporal_evidence"})
@@ -145,9 +150,14 @@ class ResearchAcceptanceTests(unittest.TestCase):
         gates = evaluate(original)
         dimensions = gates["publisher_dimensions"]["original_metadata"]
         self.assertEqual(dimensions[0]["source_price_basis"], "real_cpi_deflated")
-        self.assertEqual(gates["publisher_dimensions"]["state"], "incomplete")
+        # Catalogue-declared dimensions pass once values are verified, with a carried limitation;
+        # V05 is predictive, so first-publication timing stays open without release dating.
+        self.assertEqual(gates["publisher_dimensions"]["state"], "passed")
+        self.assertEqual(gates["publisher_dimensions"]["limitations"][0]["code"], "dimensions_as_declared_in_catalogue")
         self.assertEqual(gates["temporal_evidence"]["state"], "incomplete")
-        self.assertEqual(evaluate({**original, "source_values_match": False})["publisher_dimensions"]["original_metadata"], [])
+        unverified = evaluate({**original, "source_values_match": False})["publisher_dimensions"]
+        self.assertEqual(unverified["original_metadata"], [])
+        self.assertEqual(unverified["state"], "incomplete")
 
     def test_fresh_numeric_proof_covers_roles_outside_panels_but_not_partial_or_wrong_contracts(self):
         sid = self.m02["comparison_contract"]["original_requirements"][0]["series_ids"][0]

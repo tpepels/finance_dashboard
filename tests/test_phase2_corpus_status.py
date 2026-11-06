@@ -17,12 +17,12 @@ class OfflineCorpusStatusTests(unittest.TestCase):
 
     def test_exact_approved_roles_and_no_empirical_readiness_claim(self):
         r = self.report
-        self.assertEqual(r["analysis_count"], 35)
+        self.assertEqual(r["analysis_count"], 37)
         self.assertEqual(r["method_source_count"], 49)
-        self.assertEqual(r["scalar_roles"], 124)
-        self.assertEqual(r["scalar_bound_roles"], 103)
-        self.assertEqual(r["unbound_scalar_roles"], 21)
-        self.assertEqual(r["structured_roles"], 44)
+        self.assertEqual(r["scalar_roles"], 140)
+        self.assertEqual(r["scalar_bound_roles"], 122)
+        self.assertEqual(r["unbound_scalar_roles"], 18)
+        self.assertEqual(r["structured_roles"], 40)
         self.assertFalse(r["empirical_readiness_evaluated"])
         self.assertEqual(r["report_kind"], "source_contract_inventory")
         self.assertEqual(r["errors"], [])
@@ -33,7 +33,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         output = format_inventory(self.report)
         self.assertLess(len(output.splitlines()), 40)
         self.assertIn("NOT EVALUATED", output)
-        self.assertIn("F01: nominal_gdp", output)
+        self.assertIn("L01: oecd_matched_value_added", output)
         self.assertIn("L07: wiid_gini", output)
         self.assertNotIn('"decision": "blocked"', output)
         full = format_inventory(self.report, details=True)
@@ -58,7 +58,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertIn("L03/net_fixed_capital", output)
         self.assertIn("L01/oecd_matched_hours", output)
         self.assertIn("not mapped, fetched or scientifically verified", output)
-        self.assertEqual(r["scalar_bound_roles"], 103)
+        self.assertEqual(r["scalar_bound_roles"], 122)
         self.assertFalse(r["empirical_readiness_evaluated"])
 
     def test_machine_readable_mode_does_not_invent_data_evidence(self):
@@ -69,7 +69,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertFalse(parsed["empirical_readiness_evaluated"])
         self.assertNotIn("analyses", parsed)
-        self.assertEqual(parsed["unbound_scalar_roles"], 21)
+        self.assertEqual(parsed["unbound_scalar_roles"], 18)
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@ class WorkflowTests(unittest.TestCase):
     def test_complete_35_analysis_and_original_role_source_graph(self):
         result = source_acquisition_plan(
             self.document, self.registry, self.report, self.proof, limit=12)
-        self.assertEqual(result["analysis_count"], 35)
+        self.assertEqual(result["analysis_count"], 37)
         self.assertEqual(set(a["id"] for a in result["analyses"]),
                          {a["id"] for a in self.document["analyses"]})
         expected = {sid for a in self.document["analyses"]
@@ -209,8 +209,8 @@ class WorkflowTests(unittest.TestCase):
             report = build_phase2_operating_report(
                 evaluation, self.document, self.registry,
                 evidence_root=Path(tmp), max_attempts=12)
-            self.assertEqual(report["analyses"], 35)
-            self.assertEqual(len(report["analysis_gaps"]), 35)
+            self.assertEqual(report["analyses"], 37)
+            self.assertEqual(len(report["analysis_gaps"]), 37)
             self.assertEqual(report["stan"]["verified_original_countries"], 0)
             self.assertEqual(report["stan"]["pending_exact_selection_countries"], 38)
             self.assertEqual(report["stan"]["publisher_metadata"], "metadata_not_acquired")
@@ -223,7 +223,7 @@ class WorkflowTests(unittest.TestCase):
             self.assertIn("gate_failures", compact)
             self.assertLess(len(json.dumps(compact)), 18_000)
             detailed = emit_operating_report(report, details=True)
-            self.assertEqual(len(detailed["analysis_gaps"]), 35)
+            self.assertEqual(len(detailed["analysis_gaps"]), 37)
             self.assertTrue(all(
                 row["first_publication_verified"] is False
                 for row in detailed["analysis_gaps"]))

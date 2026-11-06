@@ -15,8 +15,9 @@ from .catalog import DEFAULT_ROOT
 from .comparative_corpus import CHECK_IDS
 from .research_readiness import ARTIFACT_IDS, INPUT_TYPES, role_resolution, readiness_decision, resolution_summary
 
-FAMILIES = {"C": 5, "M": 3, "F": 7, "V": 4, "L": 6, "G": 5, "P": 5}
-# Exact owner-approved 35 first-class IDs: per-family totals alone do not
+FAMILIES = {"C": 5, "M": 3, "F": 7, "V": 4, "L": 6, "G": 5, "P": 7}
+# Exact owner-approved first-class IDs (35 + P06/P07 since the 2026-11-06
+# Phase 1 revision): per-family totals alone do not
 # detect a wrong replacement within a family.
 APPROVED_ANALYSIS_IDS = frozenset((
     "C01", "C02", "C03", "C05", "C06",
@@ -25,10 +26,11 @@ APPROVED_ANALYSIS_IDS = frozenset((
     "V01", "V02", "V03", "V05",
     "L01", "L02", "L03", "L04", "L05", "L07",
     "G01", "G02", "G03", "G05", "G06",
-    "P01", "P02", "P03", "P04", "P05",
-))
+    "P01", "P02", "P03", "P04", "P05", "P06", "P07",
+))  # P06/P07: EUR investor decision layer, Phase 1 revision 2026-11-06
 SUPPORTING_METHODS = {"C04", "M03", "V04", "L06", "G04"}
-TEMPORAL_REQUIREMENTS = {"current_source_snapshot", "source_asof", "first_publication"}
+TEMPORAL_REQUIREMENTS = {"current_source_snapshot", "source_asof", "first_publication", "latest_revised"}
+USER_SUPPLY_INPUT_TYPES = {"allocation", "policy", "scenario_parameter", "positions", "entity_mapping"}
 # Only reviewed catalogue metadata and safe census fields enter the API.
 # Ingestion request URLs and upstream error text may contain credentials.
 SOURCE_CONTRACT_FIELDS = (
@@ -57,6 +59,43 @@ def analysis_series_ids(analysis: dict) -> list[str]:
     return sorted(set(analysis.get("context_series_ids", [])) | {
         sid for binding in contract["original_requirements"] + contract["variants"]
         for sid in binding["series_ids"]})
+
+
+def _validate_phase1_revision(ident: str, row: dict) -> list[str]:
+    """Phase 1 revision (owner decision 2026-11-06): evidence tier, decision
+    informed, scope and descoped roles are explicit for every analysis."""
+    from .research_acceptance import EVIDENCE_TIERS, PHASE2_SCOPES
+    errors = []
+    tier = row.get("evidence_tier")
+    if tier not in EVIDENCE_TIERS:
+        errors.append(f"{ident}: evidence_tier must be descriptive or predictive")
+    if not isinstance(row.get("decision_informed"), str) or not row["decision_informed"].strip():
+        errors.append(f"{ident}: decision_informed must name the decision the analysis supports")
+    scope = row.get("phase2_scope")
+    if scope not in PHASE2_SCOPES:
+        errors.append(f"{ident}: phase2_scope must be active or deferred_extension")
+    if scope == "deferred_extension" and not str(row.get("deferral_reason", "")).strip():
+        errors.append(f"{ident}: deferred analyses must state a deferral_reason")
+    descoped = row.get("descoped_roles", [])
+    if (not isinstance(descoped, list) or any(
+            not isinstance(item, dict) or set(item) != {"role", "reason"}
+            or not all(isinstance(item[k], str) and item[k].strip() for k in item) for item in descoped)):
+        errors.append(f"{ident}: descoped_roles must list role and reason")
+    contract = row.get("comparison_contract") or {}
+    roles = [r for r in contract.get("original_requirements") or [] if isinstance(r, dict)]
+    active = {r.get("role") for r in roles}
+    if isinstance(descoped, list) and any(isinstance(item, dict) and item.get("role") in active for item in descoped):
+        errors.append(f"{ident}: a descoped role cannot remain in original_requirements")
+    for role in roles:
+        if "supply" in role and (role["supply"] != "user" or role.get("series_ids")
+                                 or role.get("input_type") not in USER_SUPPLY_INPUT_TYPES):
+            errors.append(f"{ident}: only unbound owner parameters may be supply=user")
+        if role.get("supply") == "user" or role.get("input_type") != "scalar_history":
+            continue
+        expected = "first_publication" if tier == "predictive" else "latest_revised"
+        if role.get("temporal_requirement") not in (expected, "source_asof"):
+            errors.append(f"{ident}: {tier} scalar roles require {expected} temporal evidence")
+    return errors
 
 
 def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> list[str]:
@@ -272,6 +311,7 @@ def validate_research_corpus(
         if any(field in row for field in ("evidence_status", "coverage", "comparative_corpus_validated")):
             errors.append(f"{ident}: editable evidence certificate forbidden; runtime evidence required")
         errors.extend(_validate_comparison_contract(ident, row.get("comparison_contract"), registry))
+        errors.extend(_validate_phase1_revision(ident, row))
         fallbacks = row.get("fallback_options")
         if not isinstance(fallbacks, list):
             errors.append(f"{ident}: fallback_options must be an array")
@@ -292,7 +332,7 @@ def validate_research_corpus(
         missing = sorted(APPROVED_ANALYSIS_IDS - seen)
         unexpected = sorted(seen - APPROVED_ANALYSIS_IDS)
         errors.append(
-            "corpus: expected all 35 approved scientific question IDs by domain"
+            f"corpus: expected all {len(APPROVED_ANALYSIS_IDS)} approved scientific question IDs by domain"
             f" (missing={missing}, unexpected={unexpected})"
         )
     if not {"G01", "G03", "P01", "P02"}.issubset(seen):

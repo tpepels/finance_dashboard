@@ -39,7 +39,7 @@ class ScientificTransitionsTests(unittest.TestCase):
         gate = check["id"]
         check["state"] = "passed"
         result = research_evidence_transitions(before, after)
-        self.assertEqual(result["analysis_count"], 35)
+        self.assertEqual(result["analysis_count"], 37)
         self.assertEqual(result["readiness_improvements"], [analysis["id"]])
         self.assertEqual(result["readiness_regressions"], [])
         self.assertEqual(result["newly_passed_gates"][gate], 1)
@@ -100,7 +100,7 @@ class ScientificTransitionsTests(unittest.TestCase):
         transitions = research_evidence_transitions(self.base, after)
         result = emit_operating_report(
             {"research_transitions": transitions}, details=False)
-        self.assertEqual(result["research_transitions"]["analysis_count"], 35)
+        self.assertEqual(result["research_transitions"]["analysis_count"], 37)
         self.assertIn("changed_analysis_count", result["research_transitions"])
         self.assertNotIn("gate_changes",
                          result["research_transitions"]["changed_analyses"][0])

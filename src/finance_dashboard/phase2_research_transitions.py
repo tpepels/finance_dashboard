@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import Counter
 
 
-READINESS_ORDER = {"blocked": 0, "conditional": 1, "accepted": 2}
+READINESS_ORDER = {"blocked": 0, "deferred": 0, "conditional": 1, "accepted": 2, "complete": 2}
 
 
 def _analyses(report: dict) -> dict:

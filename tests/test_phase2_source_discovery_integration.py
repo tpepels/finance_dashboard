@@ -43,7 +43,7 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
             stan_readiness=readiness,
             stan_structure={"status": "verified_publisher_structure",
                             "historical_candidates_present": ["B2N_B3_N"]})
-        self.assertEqual(candidates["unbound_scalar_roles"], 21)
+        self.assertEqual(candidates["unbound_scalar_roles"], 18)
         d1 = next(
             row for row in candidates["role_candidates"]
             if row["analysis_id"] == "L02" and
@@ -82,16 +82,12 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
             row["role"] == "wiid_gini")
         self.assertTrue(gini["documented_artifact_original_hash_verified"])
         self.assertFalse(gini["exact_scalar_series_bound"])
-        gdp = next(
-            row for row in inventory["role_candidates"]
-            if row["analysis_id"] == "F01" and
-            row["role"] == "nominal_gdp")
-        references = gdp["related_existing_catalog_inputs_not_equivalent"]
-        self.assertTrue(any(
-            r["series_id"] == "gdp.nominal_usd.us" for r in references))
-        self.assertTrue(all(
-            row["rejected_as_direct_original_role_binding"]
-            for row in references))
+        # F01 nominal_gdp was descoped (2026-11-06): BIS publishes the ratio itself.
+        self.assertFalse(any(row["analysis_id"] == "F01" and row["role"] == "nominal_gdp"
+                             for row in inventory["role_candidates"]))
+        for row in inventory["role_candidates"]:
+            self.assertTrue(all(ref["rejected_as_direct_original_role_binding"]
+                                for ref in row.get("related_existing_catalog_inputs_not_equivalent", [])))
         self.assertEqual(inventory["automatically_bound_scalar_series"], 0)
 
     def test_native_wiid_original_reaches_gini_role_but_no_scalar_is_inferred(self):

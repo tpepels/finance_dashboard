@@ -14,7 +14,7 @@ class ResearchReadinessTests(unittest.TestCase):
         self.assertEqual(document["schema_version"], 4)
         self.assertEqual(validate_research_corpus(document, registry), [])
         roles = [r for a in report["analyses"] for r in a["requirements"]]
-        self.assertEqual(len(roles), 168)
+        self.assertEqual(len(roles), 180)
         for role in roles:
             self.assertIn(role["input_type"], {"scalar_history", "matrix", "positions", "entity_mapping",
                 "filing_panel", "events", "allocation", "policy", "fx_history", "accounting_panel", "scenario_parameter"})
@@ -25,15 +25,15 @@ class ResearchReadinessTests(unittest.TestCase):
         self.assertEqual(matrix["resolution"]["category"], 3)
         self.assertNotEqual(matrix["requirement_status"], "missing_scalar")
         summary = report["role_resolution_summary"]
-        self.assertEqual(summary["role_count"], 168)
-        self.assertEqual(summary["scalar_roles"] + summary["structured_roles"], 168)
+        self.assertEqual(summary["role_count"], 180)
+        self.assertEqual(summary["scalar_roles"] + summary["structured_roles"], 180)
         self.assertLess(summary["unbound_scalar_roles"], 88)
 
     def test_readiness_matrix_covers_35_and_preserves_original_blockers(self):
         report = research_corpus_report(load_research_corpus(), series_registry=load_documents()[0]["series"])
-        self.assertEqual(len(report["readiness_matrix"]), 35)
+        self.assertEqual(len(report["readiness_matrix"]), 37)
         for row in report["readiness_matrix"]:
-            self.assertIn(row["decision"], {"complete", "conditional", "blocked"})
+            self.assertIn(row["decision"], {"complete", "conditional", "blocked", "deferred"})
             self.assertNotEqual(row["decision"], "complete")
             self.assertTrue(row["reasons"])
             self.assertIn("original", row)

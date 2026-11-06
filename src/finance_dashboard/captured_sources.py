@@ -256,16 +256,35 @@ def _world_bank(payload, definition):
     return values
 
 
+# Approved ECB data-portal series: dataset, native frequency, catalogue unit,
+# expected SDMX dimension columns, permitted native unit codes, currency.
+_ECB_SERIES = {
+    'FM.D.U2.EUR.4F.KR.DFR.LEV': ('FM', 'D', 'percent',
+        {'FREQ': 'D', 'REF_AREA': 'U2', 'CURRENCY': 'EUR', 'UNIT_MULT': '0'}, {'PCPA', 'PC'}, 'EUR'),
+    'ICP.M.U2.N.000000.4.INX': ('ICP', 'M', 'index',
+        {'FREQ': 'M', 'REF_AREA': 'U2', 'ADJUSTMENT': 'N', 'ICP_ITEM': '000000',
+         'STS_INSTITUTION': '4', 'ICP_SUFFIX': 'INX'}, None, None),
+    'YC.B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y': ('YC', 'D', 'percent',
+        {'FREQ': 'B', 'REF_AREA': 'U2', 'CURRENCY': 'EUR', 'DATA_TYPE_FM': 'SR_10Y'}, None, 'EUR'),
+    **{f'EXR.D.{cur}.EUR.SP00.A': ('EXR', 'D', 'currency_per_eur',
+        {'FREQ': 'D', 'CURRENCY': cur, 'CURRENCY_DENOM': 'EUR', 'EXR_TYPE': 'SP00', 'EXR_SUFFIX': 'A'},
+        None, None) for cur in ('USD', 'JPY', 'GBP', 'CHF')},
+}
+ECB_DATASETS = frozenset(item[0] for item in _ECB_SERIES.values())
+
+
 def _ecb(body,definition,url):
     from .source_reconciliation import EvidenceError
     from urllib.parse import urlsplit,parse_qs
     parts=urlsplit(url)
     key=definition['source_key']
+    if key not in _ECB_SERIES:
+        raise EvidenceError('source_identity_mismatch')
+    dataset,frequency,unit_name,dimensions,unit_codes,currency=_ECB_SERIES[key]
     if (parts.scheme!='https' or parts.netloc!='data-api.ecb.europa.eu'
-            or parts.path!='/service/data/FM/'+key[3:]
+            or parts.path!='/service/data/'+dataset+'/'+key[len(dataset)+1:]
             or parse_qs(parts.query)!={'format':['csvdata']}
-            or key!='FM.D.U2.EUR.4F.KR.DFR.LEV'
-            or definition['frequency']!='D' or definition['unit']!='percent'):
+            or definition['frequency']!=frequency or definition['unit']!=unit_name):
         raise EvidenceError('source_identity_mismatch')
     rows=csv.DictReader(io.StringIO(body))
     if not rows.fieldnames or not {'KEY','TIME_PERIOD','OBS_VALUE'}<=set(rows.fieldnames):
@@ -274,20 +293,22 @@ def _ecb(body,definition,url):
     native_units=set()
     publisher_metadata={field:set() for field in ('TITLE','TITLE_COMPL','COMPILATION','COVERAGE','SOURCE_AGENCY','SOURCE_PUB')}
     for row in rows:
-        if row['KEY']!=key or any(row.get(field,expected)!=expected for field,expected in (
-                ('FREQ','D'),('REF_AREA','U2'),('CURRENCY','EUR'),('UNIT_MULT','0'))):
+        if row['KEY']!=key or any(row.get(field,expected)!=expected for field,expected in dimensions.items()):
             raise EvidenceError('source_identity_mismatch')
         unit=row.get('UNIT') or row.get('UNIT_MEASURE')
         if unit:
-            if unit not in {'PCPA','PC'}: raise EvidenceError('source_identity_mismatch')
+            if unit_codes is not None and unit not in unit_codes: raise EvidenceError('source_identity_mismatch')
             native_units.add(unit)
         for field,reported in publisher_metadata.items():
             if row.get(field): reported.add(row[field])
-        _add(values,seen,_native_period(row['TIME_PERIOD'],'D'),row['OBS_VALUE'])
-    return values,{'source_native_unit':'percent','source_currency':'EUR',
+        _add(values,seen,_native_period(row['TIME_PERIOD'],frequency),row['OBS_VALUE'])
+    metadata={'source_native_unit':unit_name,
         'source_native_unit_codes':sorted(native_units),'source_key':key,
         'source_publisher_metadata':{field:sorted(values) for field,values in publisher_metadata.items() if values},
         'individual_observation_first_publication_verified':False}
+    if currency is not None:
+        metadata['source_currency']=currency
+    return values,metadata
 
 
 def _imf_mapper(payload,definition,url):

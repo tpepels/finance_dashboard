@@ -27,11 +27,11 @@ class StructuredCapabilitiesTests(unittest.TestCase):
         self.assertEqual(set(CAPABILITIES), ARTIFACT_IDS)
         self.assertEqual(len(CAPABILITIES), 13)
         matrix = original_artifact_matrix(self.document, {})
-        self.assertEqual(matrix["structured_roles"], 44)
+        self.assertEqual(matrix["structured_roles"], 40)
         self.assertEqual(
             matrix["roles_with_registered_artifacts"] +
-            matrix["roles_without_registered_artifacts"], 44)
-        self.assertEqual(matrix["roles_without_registered_artifacts"], 28)
+            matrix["roles_without_registered_artifacts"], 40)
+        self.assertEqual(matrix["roles_without_registered_artifacts"], 25)
         self.assertTrue(any(row["role_count"] for row in matrix[
             "artifact_workstreams"]))
         self.assertEqual({r["artifact_id"] for r in matrix[
@@ -173,8 +173,8 @@ class StructuredCapabilitiesTests(unittest.TestCase):
                 self.document, Path(tmp), holdings=None,
                 kinds=set(CAPABILITIES), cvm_year=2025,
                 agent=None, policy=PolicyRegistry())
-            self.assertEqual(result["structured_roles"], 44)
-            self.assertEqual(result["roles_without_registered_artifacts"], 28)
+            self.assertEqual(result["structured_roles"], 40)
+            self.assertEqual(result["roles_without_registered_artifacts"], 25)
             self.assertTrue(any(
                 item["collection_state"] == "operator_original_required"
                 for item in result["artifact_workstreams"]))

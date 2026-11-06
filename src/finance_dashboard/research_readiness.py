@@ -93,7 +93,7 @@ def role_resolution(role, counts, registry, *, external_coverage=None, artifact_
 
 def readiness_decision(analysis, requirements, acceptance, panels):
     missing = [role["role"] for role in requirements
-               if role["state"] != "unavailable_with_fallback"
+               if role["state"] not in ("unavailable_with_fallback", "user_input")
                and any(check["state"] != "passed" for check in role["checks"]
                        if check["id"] in {"source_binding", "stored_history", "original_source_values", "native_dimensions"})]
     failures = acceptance["scientific_failures"]
@@ -114,8 +114,8 @@ def readiness_decision(analysis, requirements, acceptance, panels):
     # fallback), otherwise "blocked" naming the gates still open.
     if acceptance["state"] == "accepted":
         decision = "complete"
-    elif acceptance["state"] == "conditional":
-        decision = "conditional"
+    elif acceptance["state"] in ("conditional", "deferred"):
+        decision = acceptance["state"]
     else:
         decision = "blocked"
     reasons = []
@@ -125,7 +125,7 @@ def readiness_decision(analysis, requirements, acceptance, panels):
         reasons.append({"code": "original_scientific_failure", "count": len(failures)})
     open_gates = {}
     for role in requirements:
-        if role["state"] in ("accepted", "unavailable_with_fallback"):
+        if role["state"] in ("accepted", "unavailable_with_fallback", "user_input"):
             continue
         for check in role["checks"]:
             if check["state"] != "passed":

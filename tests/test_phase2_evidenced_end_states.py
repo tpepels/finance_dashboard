@@ -74,7 +74,8 @@ class EvidencedEndStateTests(unittest.TestCase):
     def test_missing_review_or_unverified_original_stays_incomplete(self):
         _, result = self.run_analysis([self.role(self.other)], [self.proof(self.other)], [self.panel(self.other)])
         gates = self.gates(result["requirements"][0])
-        self.assertEqual(gates["publisher_dimensions"]["code"], "publisher_dimension_review_missing")
+        self.assertEqual(gates["publisher_dimensions"]["code"], "publisher_dimensions_declared_and_uncontradicted")
+        self.assertEqual(gates["publisher_dimensions"]["limitations"][0]["code"], "dimensions_as_declared_in_catalogue")
         self.assertEqual(gates["temporal_evidence"]["code"], "release_dating_review_missing")
         self.by_id[self.other].update(publisher_dimensions=REVIEW, release_dating=NOT_PUBLISHED)
         _, result = self.run_analysis([self.role(self.other)], [self.proof(self.other, source_values_match=False)],
@@ -83,6 +84,43 @@ class EvidencedEndStateTests(unittest.TestCase):
         self.assertEqual(gates["publisher_dimensions"]["state"], "incomplete")
         self.assertEqual(gates["temporal_evidence"]["state"], "incomplete")
         self.assertFalse(result["phase2_resolved"])
+
+    def test_descriptive_tier_accepts_latest_revised_values_with_limitation(self):
+        role = self.role(self.other, temporal_requirement="latest_revised")
+        _, result = self.run_analysis([role], [self.proof(self.other)], [self.panel(self.other)])
+        self.assertEqual(result["requirements"][0]["state"], "accepted")
+        codes = [x["code"] for x in result["limitations"]]
+        self.assertIn("latest_revised_values_not_real_time", codes)
+        self.assertIn("dimensions_as_declared_in_catalogue", codes)
+        _, result = self.run_analysis([role], [self.proof(self.other, source_values_match=False)],
+                                      [self.panel(self.other)])
+        self.assertEqual(self.gates(result["requirements"][0])["temporal_evidence"]["state"], "incomplete")
+
+    def test_owner_parameters_resolve_and_descoped_or_deferred_analyses_are_explicit(self):
+        weights = {"role": "weights", "description": "owner weights", "series_ids": [], "expected": {},
+                   "temporal_requirement": "source_asof", "input_type": "allocation",
+                   "artifact_ids": [], "supply": "user"}
+        data = self.role(self.other, temporal_requirement="latest_revised")
+        analysis = {"id": "X02", "fallback_options": [], "comparison_contract": {
+            "specification": "t", "original_requirements": [weights, data], "variants": []}}
+        sid = self.other
+        def run(**extra):
+            return analysis_acceptance({**analysis, **extra}, self.by_id,
+                {sid: {"stored_periods": 2, "oldest_source_date": "2019-01-01", "latest_source_date": "2026-11-02"}},
+                [self.panel(sid)], observations_checked=True, source_proof={"series": [self.proof(sid)]})
+        result = run()
+        self.assertEqual(result["requirements"][0]["state"], "user_input")
+        self.assertEqual(result["state"], "accepted")
+        descoped = run(descoped_roles=[{"role": "history", "reason": "No free source"}])
+        self.assertEqual(descoped["state"], "conditional")
+        self.assertIn("role_descoped_by_phase1_revision", [x["code"] for x in descoped["limitations"]])
+        deferred = run(phase2_scope="deferred_extension", deferral_reason="Research extension")
+        self.assertEqual(deferred["state"], "deferred")
+        self.assertFalse(deferred["phase2_resolved"])
+        summary = acceptance_summary([{"acceptance": deferred, "requirements": deferred["requirements"]},
+                                      {"acceptance": descoped, "requirements": descoped["requirements"]}])
+        self.assertTrue(summary["phase2_complete"])
+        self.assertEqual(summary["active_analyses"], 1)
 
     def test_review_contradicted_by_original_or_role_fails(self):
         self.by_id[self.other].update(publisher_dimensions={**REVIEW, "currency": "EUR"}, release_dating=NOT_PUBLISHED)

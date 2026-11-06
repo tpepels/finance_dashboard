@@ -33,7 +33,9 @@ PUBLISHER_METADATA_FIELDS = (
 FALLBACK_POLICY = "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md"
 RELEASE_DATING_MODES = ("alfred_real_time", "not_published_by_publisher", "publisher_vintage_archive")
 DIMENSION_FIELDS = ("population", "currency", "price_basis", "index_base")
-RESOLVED_ROLE_STATES = ("accepted", "unavailable_with_fallback")
+RESOLVED_ROLE_STATES = ("accepted", "unavailable_with_fallback", "user_input")
+EVIDENCE_TIERS = ("descriptive", "predictive")
+PHASE2_SCOPES = ("active", "deferred_extension")
 
 
 def _iso_date(value) -> bool:
@@ -100,16 +102,23 @@ def _publisher_dimensions_gate(ids, expected, registry, originals) -> dict:
             if field in expected and declaration.get(field) != expected[field]:
                 contradictions.append({"series_id": sid, "field": field, "against": "role_expected",
                                        "declared": declaration.get(field), "observed": expected[field]})
+    # Tiered evidence (owner decision 2026-11-06): the curated catalogue
+    # declaration, checked against the verified original, suffices; a cited
+    # review adds evidence and contradiction checks but is not required.
     state = ("incomplete" if not ids else "failed" if contradictions
-             else "incomplete" if missing or unverified else "passed")
+             else "incomplete" if unverified else "passed")
     code = ("publisher_dimensions_unbound" if not ids
             else "publisher_dimensions_contradicted" if contradictions
-            else "publisher_dimension_review_missing" if missing
             else "original_values_required_for_dimension_review" if unverified
+            else "publisher_dimensions_declared_and_uncontradicted" if missing
             else "publisher_dimensions_reviewed_and_uncontradicted")
+    limitations = ([{"code": "dimensions_as_declared_in_catalogue", "series_ids": sorted(missing),
+                     "detail": "Population, currency and price basis follow the curated catalogue declaration of the publisher series; no separate cited review."}]
+                   if state == "passed" and missing else [])
     return _gate("publisher_dimensions", state, code, ids,
         required_evidence=["population", "currency_and_quote", "price_basis_and_index_base"],
         expected=expected, missing_reviews=sorted(missing), unverified_originals=sorted(unverified),
+        limitations=limitations,
         contradictions=contradictions,
         reviews=[{"series_id": sid, **registry[sid]["publisher_dimensions"]}
                  for sid in ids if valid_publisher_dimensions((registry.get(sid) or {}).get("publisher_dimensions"))],
@@ -149,6 +158,14 @@ def _temporal_gate(role, ids, registry, originals, revisions, release_originals,
     if not ids:
         return _gate("temporal_evidence", "incomplete", "temporal_evidence_unbound", ids, **details)
     unverified = sorted(sid for sid in ids if sid not in originals)
+    if role["temporal_requirement"] == "latest_revised":
+        return _gate("temporal_evidence", "incomplete" if unverified else "passed",
+            "verified_original_required" if unverified else "latest_revised_values_verified",
+            ids, unverified_originals=unverified, **details,
+            limitations=[] if unverified else [{"code": "latest_revised_values_not_real_time",
+                "series_ids": sorted(ids),
+                "detail": "Descriptive analysis uses the publisher's latest revised values; it does not show what was known at past dates."}],
+            scope="Descriptive evidence tier: latest revised values from a verified original.")
     if role["temporal_requirement"] == "source_asof":
         return _gate("temporal_evidence", "incomplete" if unverified else "passed",
             "verified_original_asof_required" if unverified else "verified_original_source_asof",
@@ -266,6 +283,17 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                           "_fallback_for": role["role"]})
     roles.extend(originals_roles)
     for role in roles:
+        if role.get("supply") == "user":
+            # Owner-supplied parameters (weights, policies, costs, holdings
+            # exports) are inputs to the application, not publisher data.
+            check = _gate("user_supplied", "passed", "owner_supplied_parameter", (),
+                          scope="Provided by the owner at analysis time; never fetched or inferred.")
+            requirements.append({**role, "state": "user_input", "accepted": False,
+                "sources_checked": observations_checked, "mapped_source_count": 0,
+                "sources_with_observations": 0, "first_publication_verified": False,
+                "limitations": [], "source_asof_verified": False, "checks": [check],
+                "blocking_checks": []})
+            continue
         ids = role["series_ids"]
         expected = role["expected"]
         checks = [_gate("source_binding", "passed" if ids else "blocked",
@@ -546,7 +574,9 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         return role["series_ids"]
     covered = {role["role"] for role in requirements if effective_ids(role)
         and set(effective_ids(role)).issubset(panel_ids)}
-    uncovered = sorted(role["role"] for role in requirements if role["role"] not in covered)
+    # Owner-supplied parameters are not publisher data and join no comparison bundle.
+    uncovered = sorted(role["role"] for role in requirements
+                       if role["role"] not in covered and role["state"] != "user_input")
     comparison = _gate("original_comparison", "passed" if not uncovered else "incomplete",
         "original_native_input_bundle_verified" if not uncovered else "complete_original_comparison_outstanding",
         variants=sorted(p["variant_id"] for p in originals),
@@ -557,13 +587,23 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     if scientific_failures:
         checks.append({"state": "failed"})
     state = _state(checks)
-    if state == "accepted" and any(r["state"] == "unavailable_with_fallback" for r in requirements):
+    descoped = analysis.get("descoped_roles", [])
+    if state == "accepted" and (descoped or any(
+            r["state"] == "unavailable_with_fallback" for r in requirements)):
         state = "conditional"
+    if analysis.get("phase2_scope") == "deferred_extension":
+        state = "deferred"
     result = {"contract_version": 1, "specification": analysis["comparison_contract"]["specification"],
         "state": state, "accepted": state == "accepted", "required_input_roles": len(requirements),
         "accepted_input_roles": sum(r["accepted"] for r in requirements),
         "phase2_resolved": state in ("accepted", "conditional"),
-        "limitations": [item for r in requirements for item in r["limitations"]],
+        "evidence_tier": analysis.get("evidence_tier"),
+        "decision_informed": analysis.get("decision_informed"),
+        "limitations": [item for r in requirements for item in r["limitations"]] + [
+            {"code": "role_descoped_by_phase1_revision", "role": item["role"], "detail": item["reason"]}
+            for item in descoped] + ([{"code": "deferred_research_extension",
+                                       "detail": analysis.get("deferral_reason")}]
+                                     if state == "deferred" else []),
         "requirements": requirements, "comparison": comparison, "scientific_failures": scientific_failures,
         "blocking_roles": [r["role"] for r in requirements if not r["accepted"]],
         "interpretation": "Original analysis acceptance requires every role and original comparison gate. Bounded native alternatives remain separately labelled."}
@@ -595,7 +635,10 @@ def acceptance_summary(analyses: list[dict]) -> dict:
         "accepted_input_roles": sum(row["acceptance"]["accepted_input_roles"] for row in analyses),
         "fully_accepted_analyses": sum(row["acceptance"]["accepted"] for row in analyses),
         "phase2_resolved_analyses": sum(row["acceptance"]["state"] in ("accepted", "conditional") for row in analyses),
+        "active_analyses": sum(row["acceptance"]["state"] != "deferred" for row in analyses),
+        "phase2_complete": all(row["acceptance"]["state"] in ("accepted", "conditional", "deferred")
+                               for row in analyses),
         "analysis_states": {state: sum(row["acceptance"]["state"] == state for row in analyses)
-                            for state in ("accepted", "conditional", "failed", "blocked", "incomplete", "not_checked")},
+                            for state in ("accepted", "conditional", "deferred", "failed", "blocked", "incomplete", "not_checked")},
         "role_states": {state: sum(role["state"] == state for row in analyses for role in row["requirements"])
-                        for state in ("accepted", "unavailable_with_fallback", "failed", "blocked", "incomplete", "not_checked")}}
+                        for state in ("accepted", "unavailable_with_fallback", "user_input", "failed", "blocked", "incomplete", "not_checked")}}

@@ -10,6 +10,7 @@ APPROVED_IDS = {
     "F01", "F02", "F03", "F04", "F05", "F06", "F07",
     "V01", "V02", "V03", "V05", "L01", "L02", "L03", "L04", "L05", "L07",
     "G01", "G02", "G03", "G05", "G06", "P01", "P02", "P03", "P04", "P05",
+    "P06", "P07",
 }
 
 
@@ -20,6 +21,9 @@ class ComparisonContractTests(unittest.TestCase):
         cls.analyses = {row["id"]: row for row in cls.document["analyses"]}
         registry = json.loads((ROOT / "definitions/series.json").read_text())
         cls.series = {row["id"]: row for row in registry["series"]}
+
+    def contract_row(self, analysis_id):
+        return self.analyses[analysis_id]
 
     def contract(self, analysis_id):
         contract = self.analyses[analysis_id].get("comparison_contract")
@@ -55,7 +59,7 @@ class ComparisonContractTests(unittest.TestCase):
                     self.assertTrue(requirement["description"])
                     self.assertIsInstance(requirement["expected"], dict)
                     self.assertIn(requirement["temporal_requirement"], {
-                        "current_source_snapshot", "source_asof", "first_publication"})
+                        "current_source_snapshot", "source_asof", "first_publication", "latest_revised"})
                     ids = requirement["series_ids"]
                     self.assertEqual(len(ids), len(set(ids)))
                     self.assertTrue(set(ids).issubset(self.series))
@@ -135,7 +139,8 @@ class ComparisonContractTests(unittest.TestCase):
                                  ("us_output_deflator", "IPDNBS")):
             requirement = self.requirement("L01", role)
             self.assertEqual(requirement["expected"]["index_base"], "2017=100")
-            self.assertEqual(requirement["temporal_requirement"], "first_publication")
+            # Descriptive evidence tier (Phase 1 revision 2026-11-06).
+            self.assertEqual(requirement["temporal_requirement"], "latest_revised")
             self.assertEqual(self.series[requirement["series_ids"][0]]["source_key"], source_key)
         cpi = self.variant("L01", "us_nonfarm_cpi_real_compensation")
         self.assertEqual(set(cpi["series_ids"]), {
@@ -190,7 +195,10 @@ class ComparisonContractTests(unittest.TestCase):
         panel = self.variant("M04", "us_effective_funds_ecb_deposit_inputs")
         self.assertEqual(panel["frequency"], "D")
         self.assertFalse(panel["satisfies_original_method"])
-        self.assertFalse(self.requirement("M04", "exchange_rate_quotes")["series_ids"])
+        # Phase 1 revision: generic FX quotes became explicit ECB reference-rate roles.
+        self.assertIn("exchange_rate_quotes", {item["role"] for item in self.contract_row("M04")["descoped_roles"]})
+        self.assertEqual(self.requirement("M04", "usd_per_eur")["series_ids"], ["fx.usd_per_eur.ecb"])
+        self.assertEqual(self.requirement("M04", "jpy_per_eur")["series_ids"], ["fx.jpy_per_eur.ecb"])
 
     def test_global_multiasset_fallback_is_not_bound_as_original_equity_or_bonds(self):
         panel = self.variant("P02", "p02_doeswijk_swinkels_global_multiasset_usd")
@@ -232,8 +240,10 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(
             next(role for role in original if role["role"] == "investment_total_return")["series_ids"],
             ["equity.world.msci_acwi_netr_usd"])
+        # The USD one-month T-bill return is the matching-currency risk-free benchmark.
         self.assertEqual(
-            next(role for role in original if role["role"] == "benchmark_risk_free")["series_ids"], [])
+            next(role for role in original if role["role"] == "benchmark_risk_free")["series_ids"],
+            ["returns.french.developed.risk_free_usd"])
         self.assertEqual(
             next(role for role in original if role["role"] == "market_shock_dates")["series_ids"], [])
         for region, since in (("developed", "1990-07-01"), ("emerging", "1989-07-01")):
@@ -308,8 +318,8 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(credit["expected"]["unit"], "billion_local_currency")
         self.assertEqual(niip["expected"]["frequency"], "A")
         self.assertEqual(niip["expected"]["unit"], "usd")
-        self.assertEqual(credit["temporal_requirement"], "first_publication")
-        self.assertEqual(niip["temporal_requirement"], "first_publication")
+        self.assertEqual(credit["temporal_requirement"], "latest_revised")
+        self.assertEqual(niip["temporal_requirement"], "latest_revised")
         for (code, bis_country, imf_country), stock_id, niip_id in zip(
                 countries, credit["series_ids"], niip["series_ids"], strict=True):
             with self.subTest(country=code):

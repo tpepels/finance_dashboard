@@ -22,7 +22,9 @@ def source_contract(entry: dict) -> dict:
 
 # Likewise a role's cited unavailability finding is evidence about the role,
 # not its approved contract, which archived native role originals hash.
-ROLE_REVIEW_FIELDS = frozenset({"verified_unavailability"})
+# Evidence-policy fields (how a role is evidenced) are also excluded: changing
+# the evidence tier must not invalidate archived native role originals.
+ROLE_REVIEW_FIELDS = frozenset({"verified_unavailability", "temporal_requirement", "supply"})
 
 
 def role_contract(role: dict) -> dict:
@@ -40,7 +42,7 @@ FREQUENCIES = {"D", "W", "M", "Q", "A"}
 UNITS = {
     "percent", "percentage_points", "index", "usd", "ratio",
     "usd_per_oz", "usd_per_barrel", "usd_per_mmbtu", "usd_per_metric_ton", "billions_chained_usd", "million_usd", "persons", "thousands_persons", "count", "currency_per_usd",
-    "billion_local_currency", "thousand_usd",
+    "billion_local_currency", "thousand_usd", "currency_per_eur",
 }
 STATES = {"mapped", "unresolved"}
 RIGHTS = {"cc_by_4_0", "review_required", "unknown"}
