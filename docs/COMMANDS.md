@@ -59,7 +59,7 @@ The following are lazy functions under `finance_dashboard.operational_checks`, a
 2. Commands are parsed in the package and must not import another command *for reusable business logic*. The cross-command dependencies formerly in `scripts` now resolve to application modules.
 3. Only `start.sh` is permitted as a shell launcher. There are no Python scripts, production probe runners or compatibility aliases outside the package.
 4. CI installs the package, runs critical static checks and the entire deterministic offline Python suite, and exercises the supported CLI routes. Manual live provider checks remain explicit.
-5. Publisher requests continue through the existing managed policy client and policy ledger. No source policy, retry, cooldown or permission may be bypassed by CLI invocation.
+5. Publisher requests continue through the existing managed policy client and policy ledger. No centralized technical source limit, retry, cooldown or host-validation rule may be bypassed by CLI invocation. Licence metadata must never become a collection-suppression rule.
 6. All original-data archives, SHA-256 receipts, acquisition journals, backups, observation history and recovery conventions remain unchanged. This migration only changes code entry points and imports. No archive or database data is rewritten or deleted.
 7. An obsolete command may be removed only after its supported behavior has been migrated or explicitly classified as retired. Historical evidence remains retained in `/data` and archived documentation remains untouched.
 

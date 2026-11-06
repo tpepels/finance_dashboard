@@ -147,6 +147,28 @@ class PolicyArchitectureTests(unittest.TestCase):
             registry.for_url("https://sdmx.oecd.org/public/rest/dataflow/anything").id,
             "oecd-sdmx")
 
+    def test_no_duplicate_rights_based_acquisition_gate(self):
+        """No planner or collector can reintroduce a licence-based veto."""
+        forbidden = (
+            'restrictions["allow_automated_download"]',
+            "automated_download_not_cleared",
+            "internal_collection_not_cleared",
+            "publisher_collection_not_cleared",
+            "automated_collection_not_cleared",
+        )
+        for path in sorted(ROOT.joinpath("src", "finance_dashboard").rglob("*.py")):
+            if path.name == "source_policy_registry.py":
+                # Rejecting legacy schema keys is expected, not a request gate.
+                continue
+            source = path.read_text(encoding="utf-8")
+            for term in forbidden:
+                self.assertNotIn(term, source, str(path))
+        for path in sorted(ROOT.joinpath("src", "finance_dashboard").rglob("*.py")):
+            if path.name in {"source_policy_registry.py", "source_policy_types.py"}:
+                continue
+            source = path.read_text(encoding="utf-8")
+            self.assertNotIn('rights["internal_analysis"]', source, str(path))
+
     def test_canonical_policy_document_has_unknown_host_deny_and_explicit_rights(self):
         from finance_dashboard.source_policy import PolicyRegistry
         registry = PolicyRegistry()

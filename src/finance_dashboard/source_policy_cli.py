@@ -29,7 +29,8 @@ def main(argv=None):
             "limit": policy.rate["limit"],
             "window_seconds": policy.rate["window_seconds"],
             "source_rule_evidence": policy.evidence_url,
-            "automation_allowed": policy.restrictions["allow_automated_download"],
+            "collection_enabled": True,
+            "collection_mode": "personal_private_best_effort",
             "redistribution": policy.rights["redistribution"],
             "no_network_request": True,
         }
@@ -50,9 +51,11 @@ def main(argv=None):
                 for row in report["state"]
                 if row["cooldown_seconds_remaining"] > 0
             ],
-            "restricted_publishers": [
+            "collection_mode": report.get("collection_policy", {}).get(
+                "mode", "personal_private_best_effort"),
+            "licence_restricted_sources": [
                 row["id"] for row in report["publishers"]
-                if not row["automated_download_allowed"]
+                if row["classification"] in ("restricted_use", "unverified")
             ],
             "operator_acknowledgement_required": [
                 row["id"] for row in report["publishers"]

@@ -63,6 +63,16 @@ class StructuredCapabilitiesTests(unittest.TestCase):
         self.assertEqual(p["publisher_requests_made"], 0)
         self.assertFalse(p["scientific_certification"])
 
+    def test_restricted_use_metadata_does_not_block_ishares_acquisition_plan(self):
+        matrix = original_artifact_matrix(self.document, {})
+        with TemporaryDirectory() as temp:
+            p = collection_plan(
+                matrix, registry=PolicyRegistry(), holdings_dir=Path(temp))
+            ucits = next(row for row in p["artifacts"]
+                         if row["kind"] == "ucits_holdings")
+            self.assertEqual(ucits["collection_state"], "original_collection_candidate")
+            self.assertIn("ishares", ucits["authorized_subsources"])
+
     def test_existing_native_cvm_collector_reused_not_reimplemented(self):
         hits = []
         def handler(request):

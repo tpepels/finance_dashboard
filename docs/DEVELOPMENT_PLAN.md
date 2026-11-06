@@ -1,3 +1,11 @@
+> **Current acquisition mode (2026-11-06):** `personal_private_best_effort`.
+> Registered, technically accessible publisher sources are eligible for
+> bounded private collection regardless of unverified/restricted licence
+> metadata. No planner may reintroduce a licence-permission Boolean.
+> Publisher rate limits, cooldowns and access-denial handling remain enforced.
+> See [SOURCE_POLICY.md](SOURCE_POLICY.md). Historical sections below may
+> describe restrictions that applied before this change.
+
 # Development plan — authoritative five-phase roadmap
 
 ## Phase 2 — authentic ALFRED revision windows and scope-backed original discovery (2026-11-06)
@@ -197,13 +205,13 @@ to first-publication dating or to scientific acceptance.
 ### Multi-publisher UCITS acquisition and canonical policy routing
 
 The original structured UCITS acquisition grouped iShares and Vanguard in
-one all-or-nothing publisher task. Because those publishers have different
-canonical rights and source access restrictions, this could block permitted
-Vanguard originals when automated iShares collection is prohibited.
+one all-or-nothing publisher task. Because the old planner improperly conflated licensing metadata with network
+eligibility, it could suppress iShares and other available originals. The
+single private research collection mode now leaves licence status informational.
 `phase2_structured_acquisition` now exposes independently classified
 `ucits_holdings:vanguard` and `ucits_holdings:ishares` tasks, each with
 its own policy IDs, availability and immutable attempt-journal identity.
-Only permitted subtasks are selected. The original native iShares and
+Each supported, host-classified subsource can be selected independently. The original native iShares and
 Vanguard parsers, their manifests and the **single existing UCITS holdings
 reader** remain authoritative. The previous combined automatic download
 path was removed; direct external requests still pass through the sole
@@ -226,7 +234,7 @@ versions, non-equivalent data, user-supplied originals and unclear
 first-publication eligibility remain explicit blockers.
 
 **Scientific completion is still data-dependent.** These implemented
-workflows cannot acquire publishers that prohibit automated access, infer
+workflows cannot bypass server-side access denials, infer
 missing original observations, create original accounting definitions or
 assert pre-ALFRED public release instants. No live publisher originals were
 modified or fetched during this GitHub development batch.
@@ -281,8 +289,7 @@ docker compose exec -T finance-dashboard python -m finance_dashboard sources reg
 
 For fixed, previously reviewed **manual original imports** the new
 `phase2_register_structured_original.py` command routes the explicitly
-provided files to existing exact source parsers and stores; it does not
-download restricted hosts or reinterpret reviewed original/source hashes.
+provided files to existing exact source parsers and stores; it does not bypass access-denied hosts or reinterpret reviewed original/source hashes.
 Supported route identities: ICIO pinned package+ReadMe or year-pinned
 matrix+ReadMe, WIID four official files, and MSCI original factsheet PDF
 with a specified source URL. Existing source-specific official importers
@@ -290,8 +297,9 @@ remain the only authors of native parsed evidence and versioned receipts.
 No parallel legacy parser or scientific acceptance shortcut is created.
 
 This development makes all 44 structured roles *operationally representable*.
-Full collection and scientific verification still require original files or
-publisher permissions and exact method checks for those that are absent.
+Full collection and scientific verification still require source availability,
+implemented original-data collectors and exact method checks for those that
+are absent. Licence status is recorded but does not gate private acquisition.
 Software cannot infer historical original economic observations, scope or
 release evidence from filenames, source page descriptions, user imports,
 or provider download success.
@@ -340,8 +348,8 @@ docker compose exec -T finance-dashboard python -m finance_dashboard research st
   --evidence-dir /data/source-evidence --holdings-dir /data/holdings
 ```
 
-Explicit original collection, only where each real publisher's access rights,
-network origin and contact requirements are satisfied:
+Explicit original collection using registered endpoints, network-origin and
+contact requirements, and the central private-use rate limits:
 
 ```sh
 docker compose exec -T finance-dashboard python -m finance_dashboard research structured \
@@ -350,10 +358,11 @@ docker compose exec -T finance-dashboard python -m finance_dashboard research st
   --max-http-requests 30 --max-tasks 10
 ```
 
-A source-specific `--artifact` may be repeated to constrain the permitted
-acquisitions; `--resume` verifies the same journal. Source rights may block
-some artifacts (notably automated iShares downloads) and must not be bypassed
-with spoofed browser headers.
+A source-specific `--artifact` may be repeated to constrain acquisition
+selection; `--resume` verifies the same journal. iShares and Vanguard UCITS
+sources are both eligible for bounded requests through the canonical managed
+transport. Access-denied responses and incomplete collectors remain explicit;
+requests must not be retried with spoofed browser identities to evade denial.
 
 ### 2. Complete original-source investigation of unbound scalars
 

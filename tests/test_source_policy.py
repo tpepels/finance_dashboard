@@ -206,14 +206,61 @@ class PolicyRegistryTests(PolicyHarness):
                                 lambda request: httpx.Response(200))) as managed:
             self.assertIs(require_managed_client(managed), managed)
 
-    def test_restricted_collection_and_method_denied(self):
-        with self.assertRaises(PolicyViolation) as ex:
-            self.managed_request(
-                "GET", "https://www.ishares.com/uk/professionals/holdings.csv")
-        self.assertEqual(ex.exception.reason, "automated_download_not_cleared")
+    def test_private_collection_keeps_restricted_licence_metadata_separate(self):
+        """Accessible sources are governed by pacing, not unverified rights."""
+        origins = (
+            "https://www.ishares.com/uk/professionals/holdings.csv",
+            "https://www.msci.com/indexes/index/892400",
+            "https://app2.msci.com/data",
+            "https://www.researchgate.net/publication/123",
+            "https://goldprice.corgano.com/prices",
+        )
+        for url in origins:
+            with self.subTest(origin=url):
+                self.assertEqual(self.managed_request("GET", url).status_code, 200)
         with self.assertRaises(PolicyViolation):
             self.managed_request(
                 "POST", "https://api.stlouisfed.org/fred/series/observations")
+
+    def test_private_collection_still_honours_source_budget(self):
+        """An enabled publisher can still run out of its bounded quota."""
+        url = "https://www.msci.com/indexes/index/892400"
+        self.assertEqual(self.managed_request("GET", url).status_code, 200)
+        with self.assertRaises(PolicyDeferred) as exc:
+            self.managed_request("GET", url)
+        self.assertEqual(exc.exception.reason, "minimum_spacing")
+
+    def test_rights_classification_cannot_be_an_implicit_collection_gate(self):
+        raw = json.loads(self.catalog.read_text())
+        for row in raw["policies"]:
+            if row["id"] == "msci":
+                row["rights"]["internal_analysis"] = "not_cleared"
+        self.catalog.write_text(json.dumps(raw))
+        registry = PolicyRegistry(self.catalog)
+        gate = SourcePolicyGate(
+            registry=registry, state_path=self.state, clock=self.clock,
+            sleep=self.clock.sleep, max_wait_seconds=0)
+        with managed_client(
+                policy_gate=gate,
+                transport=httpx.MockTransport(lambda req: httpx.Response(200))) as client:
+            self.assertEqual(client.get("https://www.msci.com/indexes").status_code, 200)
+        with self.assertRaises(PolicyViolation):
+            registry.require_redistribution_clearance("https://www.msci.com/indexes")
+
+    def test_licence_boolean_and_unsafe_global_modes_cannot_regress(self):
+        original = json.loads(self.catalog.read_text())
+        malformed = json.loads(json.dumps(original))
+        malformed["policies"][0]["restrictions"]["allow_automated_download"] = False
+        self.catalog.write_text(json.dumps(malformed))
+        with self.assertRaises(PolicyViolation) as exc:
+            PolicyRegistry(self.catalog)
+        self.assertEqual(exc.exception.reason, "invalid_restrictions")
+        malformed = json.loads(json.dumps(original))
+        malformed["collection_policy"]["redistribution_enabled"] = True
+        self.catalog.write_text(json.dumps(malformed))
+        with self.assertRaises(PolicyViolation) as exc:
+            PolicyRegistry(self.catalog)
+        self.assertEqual(exc.exception.reason, "invalid_private_collection_mode")
 
     def test_sec_contact_identity_and_oecd_direct_network_ack(self):
         with self.assertRaises(PolicyViolation) as ex:

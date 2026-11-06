@@ -20,7 +20,7 @@ class IndependentPublisherSubsourcesTests(unittest.TestCase):
     def setUpClass(cls):
         cls.document = load_research_corpus()
 
-    def test_only_cleared_publisher_subsource_is_authorized(self):
+    def test_both_publisher_subsources_can_be_planned_independently(self):
         matrix = original_artifact_matrix(self.document, {})
         with TemporaryDirectory() as tmp:
             result = collection_plan(
@@ -30,22 +30,22 @@ class IndependentPublisherSubsourcesTests(unittest.TestCase):
                          if row["kind"] == "ucits_holdings")
             self.assertEqual(
                 ucits["collection_state"],
-                "partially_authorized_original_collection")
+                "original_collection_candidate")
             subs = {item["subsource"]: item
                     for item in ucits["subsource_collectors"]}
             self.assertEqual(set(subs), {"ishares", "vanguard"})
             self.assertEqual(
                 subs["ishares"]["collection_state"],
-                "publisher_collection_not_cleared")
+                "original_collection_candidate")
             self.assertEqual(
                 subs["vanguard"]["collection_state"],
                 "original_collection_candidate")
-            self.assertEqual(ucits["authorized_subsources"], ["vanguard"])
+            self.assertEqual(ucits["authorized_subsources"], ["ishares", "vanguard"])
             self.assertIn("ishares", ucits["policy_ids"])
             self.assertIn("vanguard-fund-docs", ucits["policy_ids"])
             self.assertFalse(result["scientific_certification"])
 
-    def test_one_authorized_subsource_is_independent_journal_action(self):
+    def test_each_source_is_independent_journal_action(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
             plan = structured_operating_plan(
@@ -54,8 +54,7 @@ class IndependentPublisherSubsourcesTests(unittest.TestCase):
                 kinds={"ucits_holdings"}, cvm_year=None,
                 agent=None, policy=PolicyRegistry())
             ids = [action["id"] for action in plan["selected_actions"]]
-            self.assertEqual(ids, ["ucits_holdings:vanguard"])
-            self.assertNotIn("ucits_holdings:ishares", ids)
+            self.assertEqual(ids, ["ucits_holdings:ishares", "ucits_holdings:vanguard"])
             self.assertNotIn("ucits_holdings", ids)
             row = plan["artifact_workstreams"][0]
             self.assertEqual(row["artifact_id"], "ucits_holdings")

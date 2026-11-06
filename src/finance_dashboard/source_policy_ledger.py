@@ -112,16 +112,13 @@ class SourcePolicyGate:
 
         Does not create policy tables, a database, requests or leases. Invalid
         ledger state fails closed. The managed HTTP transport still performs
-        all exact-request rights, URL, identity and quota enforcement.
+        all URL, identity and quota enforcement.
         """
         policy = self.registry.by_id.get(policy_id)
         if policy is None:
             raise PolicyViolation("registry", "unknown_publisher_policy")
-        if (not policy.restrictions["allow_automated_download"]
-                or policy.rights["internal_analysis"] != "allowed_with_attribution"):
-            return {"state": "blocked", "policy_id": policy.id,
-                    "reason": "automated_collection_not_cleared",
-                    "retry_at": None}
+        # The shared gate restricts technical availability, not licence status.
+        # This preflight must agree with PolicyRegistry.check_request.
         acknowledged = {
             value.strip() for value in os.environ.get(
                 "FINANCE_SOURCE_POLICY_ACKNOWLEDGED", "").split(",")

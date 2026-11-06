@@ -62,7 +62,7 @@ CAPABILITIES = {
         "Official TWSE/TPEx native boards and matching fiscal filing definition required"),
     "msci_concentration": StructuredCapability(
         "msci_concentration", "operator_original", "native_reader",
-        "Automated original document collection has no publisher clearance"),
+        "Native automated factsheet collector not implemented; local originals supported"),
     "corporate_accounts": StructuredCapability(
         "corporate_accounts", "operator_original", "native_reader",
         "Sector-account source filings require exact publication and perimeter proof"),
@@ -164,10 +164,10 @@ def original_artifact_matrix(document: dict, evidence: dict,
 
 
 def ucits_original_routes() -> dict[str, tuple[str, ...]]:
-    """Two source families, independently governed by publisher rights.
+    """Two independently paced publisher sources with one UCITS original reader.
 
-    An unapproved iShares download must not prevent permitted acquisition
-    of original Vanguard data. Both feed the same original UCITS reader.
+    Source access classification is technical and does not infer a licence;
+    the managed HTTP boundary supplies each publisher's durable request budget.
     """
     from .ucits_holdings import CSV_URL, ANNUALS, annual_url
     from .vanguard_ucits_holdings import REPORTS
@@ -188,10 +188,6 @@ def _classify_publisher_routes(
         except PolicyViolation:
             return sorted(ids), "publisher_api_host_unclassified"
         ids.add(policy.id)
-        if (not policy.restrictions["allow_automated_download"]
-                or policy.rights["internal_analysis"] !=
-                "allowed_with_attribution"):
-            return sorted(ids), "publisher_collection_not_cleared"
     return sorted(ids), None
 
 
@@ -263,9 +259,9 @@ def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
                             "original_collection_candidate"
                             for x in subsources)
             if not permitted:
-                blocker = "publisher_collection_not_cleared"
+                blocker = "publisher_api_host_unclassified"
             elif permitted != len(subsources):
-                blocker = "partially_authorized_original_collection"
+                blocker = "partially_classified_original_collection"
         else:
             route_ids, blocker = _classify_publisher_routes(
                 endpoints, policies)

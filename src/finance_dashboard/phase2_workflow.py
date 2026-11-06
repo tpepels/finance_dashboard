@@ -199,10 +199,6 @@ def source_acquisition_plan(document: dict, registry: list[dict],
         try:
             source_policy = policy.for_url(item["source_url"])
             policy_id = source_policy.id
-            if (not source_policy.restrictions["allow_automated_download"]
-                    or source_policy.rights["internal_analysis"] !=
-                    "allowed_with_attribution"):
-                policy_blocker = "publisher_collection_not_cleared"
         except (KeyError, TypeError, PolicyViolation):
             policy_blocker = "publisher_reference_unclassified"
         if confirmed:

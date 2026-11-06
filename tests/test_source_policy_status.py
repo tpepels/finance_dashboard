@@ -19,8 +19,8 @@ class PolicyStatusTests(unittest.TestCase):
                 "unclassified_or_invalid_source_references": [],
             },
             "publishers": [
-                {"id": "fred-v1", "automated_download_allowed": True},
-                {"id": "ishares", "automated_download_allowed": False},
+                {"id": "fred-v1", "classification": "publisher_verified", "collection_enabled": True},
+                {"id": "ishares", "classification": "restricted_use", "collection_enabled": True},
             ],
             "state": [
                 {"publisher": "fred-v1", "cooldown_seconds_remaining": 30,
@@ -38,7 +38,8 @@ class PolicyStatusTests(unittest.TestCase):
         self.assertEqual(report["catalog_references_classified"], 262)
         self.assertEqual(report["catalog_reference_issues"], [])
         self.assertEqual(report["publisher_cooldowns"][0]["http_status"], 429)
-        self.assertEqual(report["restricted_publishers"], ["ishares"])
+        self.assertEqual(report["licence_restricted_sources"], ["ishares"])
+        self.assertEqual(report["collection_mode"], "personal_private_best_effort")
         self.assertEqual(report["operator_acknowledgement_required"], [])
         self.assertNotIn("source_url", output.getvalue())
 

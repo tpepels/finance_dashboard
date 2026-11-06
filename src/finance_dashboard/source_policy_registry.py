@@ -18,9 +18,16 @@ class PolicyRegistry:
         raw = self.path.read_bytes()
         self.sha256 = sha256(raw).hexdigest()
         data = json.loads(raw)
-        if (data.get("schema_version") != 1 or data.get("unknown_host") != "deny"
+        if (data.get("schema_version") != 2 or data.get("unknown_host") != "deny"
                 or not isinstance(data.get("policies"), list)):
             raise PolicyViolation("registry", "invalid_or_permissive_schema")
+        scope = data.get("collection_policy")
+        if (not isinstance(scope, dict)
+                or scope.get("mode") != "personal_private_best_effort"
+                or scope.get("redistribution_enabled") is not False
+                or scope.get("operator_count") != 1):
+            raise PolicyViolation("registry", "invalid_private_collection_mode")
+        self.collection_policy = dict(scope)
         self.version = data.get("version")
         self.by_host: dict[str, Policy] = {}
         self.by_id: dict[str, Policy] = {}
@@ -77,8 +84,10 @@ class PolicyRegistry:
                 or any(m not in {"GET", "HEAD"} for m in restrictions["methods"])
                 or not isinstance(restrictions.get("blocked_query_parameters"), list)
                 or any(not isinstance(restrictions.get(k), bool) for k in (
-                    "require_direct_network_ack", "require_contact_user_agent",
-                    "allow_automated_download"))):
+                    "require_direct_network_ack", "require_contact_user_agent"))
+                or "allow_automated_download" in restrictions):
+            # Licence notes are metadata, never acquisition toggles. Refuse the
+            # obsolete boolean so a future catalog edit cannot restore it.
             raise PolicyViolation(rule_id, "invalid_restrictions")
         if (rights.get("internal_analysis") not in RIGHTS
                 or rights.get("redistribution") not in RIGHTS
@@ -104,8 +113,6 @@ class PolicyRegistry:
         rules = policy.restrictions
         if request.method.upper() not in rules["methods"]:
             raise PolicyViolation(policy.id, "method_not_permitted")
-        if not rules["allow_automated_download"]:
-            raise PolicyViolation(policy.id, "automated_download_not_cleared")
         blocked = {key.casefold() for key in rules["blocked_query_parameters"]}
         if any(key.casefold() in blocked
                for key, _ in parse_qsl(request.url.query.decode("utf-8"),
@@ -123,8 +130,9 @@ class PolicyRegistry:
             if ("@" not in agent and "http://" not in agent
                     and "https://" not in agent):
                 raise PolicyViolation(policy.id, "contact_user_agent_required")
-        if policy.rights["internal_analysis"] != "allowed_with_attribution":
-            raise PolicyViolation(policy.id, "internal_collection_not_cleared")
+        # Collection is best-effort for this private deployment. Rights
+        # classifications remain provenance metadata and never deny requests.
+        # Authentication, HTTP access errors and publisher cooldowns still apply.
 
     def require_redistribution_clearance(self, url: str) -> dict:
         """Fail closed for publication/export using a publisher's source data.
@@ -148,8 +156,10 @@ class PolicyRegistry:
             if value.strip()
         }
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "version": self.version,
+            "collection_policy": dict(self.collection_policy),
+            "collection_refused_for_unverified_licence": False,
             "registry_sha256": self.sha256,
             "publisher_count": len(self.by_id),
             "host_count": len(self.by_host),
@@ -166,8 +176,8 @@ class PolicyRegistry:
                     "require_direct_network_ack":
                         p.restrictions["require_direct_network_ack"],
                     "operator_acknowledged": p.id in acknowledged,
-                    "automated_download_allowed":
-                        p.restrictions["allow_automated_download"],
+                    "collection_enabled": True,
+                    "internal_analysis_rights": p.rights["internal_analysis"],
                     "redistribution": p.rights["redistribution"],
                     "licence_machine_verified":
                         p.rights["machine_verified_licence"],

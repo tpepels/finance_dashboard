@@ -4,6 +4,23 @@
 
 **Environment:** Development/research only; no separate production deployment or production database. Existing historical observations, source evidence and backups must still be preserved.
 
+## Private research acquisition policy
+
+This installation is operated for a single person's local, noncommercial research.
+The central default is **best-effort collection of accessible, registered publisher
+data**. A publisher's unknown licence, restricted-use classification, or missing
+redistribution permission is not a reason for the acquisition planner or
+managed HTTP client to skip a request. Download attempts use the shared,
+publisher-specific rate budgets, concurrency ceilings, retry/backoff and
+access-denial cooldowns. The application does not bypass authentication,
+paywalls or server-side denials; the user must provide any legitimately
+available credentials or original files through supported interfaces.
+
+Collected originals, source identifiers, licence metadata and receipts remain
+traceable and append-only. Collection is independent from scientific acceptance
+and **does not establish redistribution rights**. Full contract and regression
+checks: [Source policy](docs/SOURCE_POLICY.md).
+
 ## Start here: one implementation path
 
 - **[Authoritative development plan](docs/DEVELOPMENT_PLAN.md)** — phase gates, binding migration architecture decision (2026-11-04), acceptance and documentation policy. **Only active roadmap.**

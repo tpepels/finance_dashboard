@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "version": "2026-11-05",
+  "schema_version": 2,
+  "version": "2026-11-06-private-research",
   "unknown_host": "deny",
   "notes": "Rules are publisher-conservative, not licences. Rate caps apply across all configured clients/processes; publisher policy evidence classification is explicit. OECD request limit 60/hour; 55/hour is a safety margin. SEC 10/s; 8/s margin. Publisher 429/503 and Retry-After persist.",
   "policies": [
@@ -32,8 +32,7 @@
           "firstNObservations"
         ],
         "require_direct_network_ack": true,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -69,8 +68,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -103,8 +101,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -137,8 +134,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -173,8 +169,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": true,
-        "allow_automated_download": true
+        "require_contact_user_agent": true
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -210,8 +205,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -245,8 +239,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -280,8 +273,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -316,8 +308,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -350,8 +341,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -385,8 +375,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -420,8 +409,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -455,8 +443,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -490,8 +477,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -524,8 +510,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": false
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -558,8 +543,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": false
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -592,8 +576,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -630,8 +613,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -664,8 +646,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -701,8 +682,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -736,8 +716,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -770,8 +749,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -804,8 +782,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -838,8 +815,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -872,8 +848,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -906,8 +881,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -940,8 +914,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": false
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -975,8 +948,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1009,8 +981,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": false
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1043,8 +1014,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1077,8 +1047,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1111,8 +1080,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1146,8 +1114,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1180,8 +1147,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1214,8 +1180,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1248,8 +1213,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": true
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1282,8 +1246,7 @@
         ],
         "blocked_query_parameters": [],
         "require_direct_network_ack": false,
-        "require_contact_user_agent": false,
-        "allow_automated_download": false
+        "require_contact_user_agent": false
       },
       "rights": {
         "internal_analysis": "allowed_with_attribution",
@@ -1291,5 +1254,20 @@
         "machine_verified_licence": false
       }
     }
-  ]
+  ],
+  "collection_policy": {
+    "mode": "personal_private_best_effort",
+    "operator_count": 1,
+    "redistribution_enabled": false,
+    "governing_rule": "source availability and provenance are independent of unknown or restricted licence status",
+    "technical_guards": [
+      "per_source_rate_limits",
+      "cooldowns",
+      "access_denial_backoff",
+      "bounded_concurrency",
+      "request_methods",
+      "known_hosts",
+      "safe_network_origin"
+    ]
+  }
 }
