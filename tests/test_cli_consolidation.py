@@ -16,8 +16,26 @@ ROOT = Path(__file__).resolve().parents[1]
 class CommandConsolidationTests(unittest.TestCase):
     def test_only_application_start_launcher_remains(self):
         self.assertTrue((ROOT / "start.sh").is_file())
-        self.assertFalse((ROOT / "scripts").exists())
+        # Ignored bytecode left by pre-consolidation checkouts is not a launcher.
+        leftovers = [p for p in (ROOT / "scripts").rglob("*")
+                     if p.is_file() and "__pycache__" not in p.parts]
+        self.assertEqual(leftovers, [])
         self.assertEqual(len(COMMANDS), 18)
+
+    def test_project_root_has_one_environment_aware_resolver(self):
+        """Installed (non-editable) runtimes must find /app/definitions."""
+        offenders = []
+        for path in (ROOT / "src" / "finance_dashboard").glob("*.py"):
+            if path.name != "catalog.py" and "parents[2]" in path.read_text(encoding="utf-8"):
+                offenders.append(path.name)
+        self.assertEqual(offenders, [])
+        import subprocess, sys, os
+        code = ("from finance_dashboard import research_operating, source_policy_registry;"
+                "print(research_operating.ROOT, source_policy_registry.POLICY_PATH.parent.parent)")
+        env = {**os.environ, "FINANCE_DASHBOARD_ROOT": "/srv/fd-root"}
+        out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True,
+                             text=True, check=True).stdout.split()
+        self.assertEqual(out, ["/srv/fd-root", "/srv/fd-root"])
 
     def test_supported_operations_import_and_expose_help(self):
         for route, (module, function) in COMMANDS.items():

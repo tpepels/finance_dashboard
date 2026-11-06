@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[2]
+from .catalog import DEFAULT_ROOT as ROOT  # honours FINANCE_DASHBOARD_ROOT in installed runtimes
 
 from finance_dashboard.oecd_corporate import OECD_MEMBER_ISO3
 from finance_dashboard.source_policy import managed_client

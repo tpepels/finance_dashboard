@@ -17,7 +17,7 @@ from pathlib import Path
 import sys
 import time
 
-ROOT = Path(__file__).resolve().parents[2]
+from .catalog import DEFAULT_ROOT as ROOT  # honours FINANCE_DASHBOARD_ROOT in installed runtimes
 
 from finance_dashboard.phase2_structured_acquisition import (
     CAPABILITIES, collection_plan, collect_structured_original,

@@ -16,7 +16,7 @@ import sys
 
 from sqlalchemy.engine import make_url
 
-ROOT = Path(__file__).resolve().parents[2]
+from .catalog import DEFAULT_ROOT as ROOT  # honours FINANCE_DASHBOARD_ROOT in installed runtimes
 
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.database import make_engine

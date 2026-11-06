@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[2]
+from .catalog import DEFAULT_ROOT as ROOT  # honours FINANCE_DASHBOARD_ROOT in installed runtimes
 
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.research_corpus import load_research_corpus, validate_research_corpus

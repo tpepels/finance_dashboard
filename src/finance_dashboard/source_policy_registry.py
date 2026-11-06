@@ -8,7 +8,8 @@ from urllib.parse import parse_qsl, urlsplit
 import httpx
 from .source_policy_types import Policy, PolicyViolation, ALLOWED_CLASSES, RIGHTS
 
-POLICY_PATH = Path(os.environ.get("FINANCE_DASHBOARD_ROOT", Path(__file__).resolve().parents[2])) / "definitions" / "source_policies.json"
+from .catalog import DEFAULT_ROOT
+POLICY_PATH = DEFAULT_ROOT / "definitions" / "source_policies.json"
 
 class PolicyRegistry:
     """Versioned publisher classification; reject duplicate/ambiguous host rules."""

@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[2]
+from .catalog import DEFAULT_ROOT as ROOT  # honours FINANCE_DASHBOARD_ROOT in installed runtimes
 
 from finance_dashboard.phase2_publication_evidence import (
     capture_first_series_vintage, publisher_vintage_evidence,

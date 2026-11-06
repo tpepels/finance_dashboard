@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[2]
+from .catalog import DEFAULT_ROOT as ROOT  # honours FINANCE_DASHBOARD_ROOT in installed runtimes
 
 from finance_dashboard.phase2_alfred_revisions import (
     capture_revision_window, read_revision_window, revision_inventory,
