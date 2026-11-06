@@ -184,6 +184,13 @@ def msci_publisher_factsheet_identity(source_url: str) -> str:
     if not isinstance(source_url, str) or len(source_url) > 2048:
         raise MsciOriginalError("Invalid MSCI original PDF URL")
     parts = urlparse(source_url)
+    if (parts.scheme == "https" and parts.hostname == "web.archive.org" and parts.port in (None, 443)
+            and not (parts.username or parts.password or parts.query or parts.fragment)
+            and _WAYBACK_FACTSHEET.fullmatch(parts.path)):
+        # Raw Internet Archive capture of the official factsheet URL.
+        if PolicyRegistry().for_url(source_url).id != "internet-archive":
+            raise MsciOriginalError("Internet Archive host not classified")
+        return "pdf-" + sha256(source_url.encode("utf-8")).hexdigest()[:20]
     if (parts.scheme != "https" or parts.hostname not in {"www.msci.com", "msci.com"}
             or parts.port not in (None, 443)
             or parts.username or parts.password or parts.query or parts.fragment

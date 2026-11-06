@@ -1,7 +1,8 @@
 """Only Wayback raw captures of the official ACWI factsheet are accepted."""
 import unittest
 
-from finance_dashboard.msci_concentration_originals import MsciOriginalError, _url_identity
+from finance_dashboard.msci_concentration_originals import (MsciOriginalError, _url_identity,
+                                                          msci_publisher_factsheet_identity)
 
 
 class WaybackFactsheetUrlTests(unittest.TestCase):
@@ -10,6 +11,12 @@ class WaybackFactsheetUrlTests(unittest.TestCase):
         self.assertRegex(_url_identity(url), r"^[0-9a-f]{16}$")
         old = "https://web.archive.org/web/20141222190859id_/http://www.msci.com:80/resources/factsheets/index_fact_sheet/msci-acwi-net.pdf"
         self.assertRegex(_url_identity(old), r"^[0-9a-f]{16}$")
+
+    def test_collection_accepts_raw_capture_only(self):
+        ok = "https://web.archive.org/web/20240131120000id_/https://www.msci.com/documents/10199/255599/msci-acwi-net.pdf"
+        self.assertTrue(msci_publisher_factsheet_identity(ok).startswith("pdf-"))
+        with self.assertRaises(MsciOriginalError):
+            msci_publisher_factsheet_identity(ok.replace("id_/", "/"))
 
     def test_other_wayback_targets_or_rewritten_captures_are_rejected(self):
         for url in (
