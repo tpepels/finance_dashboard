@@ -350,7 +350,9 @@ class ScientificWorkplanTests(unittest.TestCase):
         self.assertGreaterEqual(len(planned["selected_actions"]), 144)
         # No local source evidence supplied by this unit test; never bake the
         # user's live original-history counts into the static contract.
-        self.assertEqual(len(planned["blocked_source_actions"]), 4)
+        # Private best-effort collection no longer treats licence metadata as
+        # a reason to exclude a mapped acquisition candidate.
+        self.assertEqual(len(planned["blocked_source_actions"]), 0)
         self.assertTrue(all(not row["historical_completeness_confirmed"]
                             for row in planned["selected_actions"]))
         self.assertFalse(planned["scientific_analysis_certified"])
