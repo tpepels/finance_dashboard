@@ -126,9 +126,17 @@ def parse_msci_factsheet_pdf(original: bytes) -> dict:
                       "text_sha256":sha256(text.encode()).hexdigest()},"_extracted_text":text}
 
 
+# Internet Archive captures of the official factsheet URL, raw ("id_") form so
+# the archived bytes are MSCI's original PDF without Wayback rewriting.
+_WAYBACK_FACTSHEET=re.compile(
+    r"^/web/[0-9]{14}id_/https?://(?:www\.)?msci\.com/documents/10199/255599/msci-acwi-net\.pdf$")
+
+
 def _url_identity(source_url: str) -> str:
     address=urlparse(source_url)
-    if address.scheme!="https" or address.hostname not in APPROVED_HOSTS or address.username:
+    wayback=(address.hostname=="web.archive.org" and not address.query
+             and _WAYBACK_FACTSHEET.fullmatch(address.path) is not None)
+    if address.scheme!="https" or address.username or (address.hostname not in APPROVED_HOSTS and not wayback):
         raise MsciOriginalError("Unapproved original factsheet URL")
     return sha256(source_url.encode()).hexdigest()[:16]
 

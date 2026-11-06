@@ -1253,6 +1253,39 @@
         "redistribution": "not_cleared",
         "machine_verified_licence": false
       }
+    },
+    {
+      "id": "internet-archive",
+      "hosts": [
+        "web.archive.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://help.archive.org/help/wayback-machine-general-information/",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 60,
+        "min_spacing_seconds": 6,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 300,
+        "cooldown_503_seconds": 300,
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 300
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
     }
   ],
   "collection_policy": {
