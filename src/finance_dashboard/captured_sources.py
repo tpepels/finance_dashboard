@@ -55,7 +55,8 @@ def captured_source(root, definition, select_manifest, original_file):
         elif provider == 'IMF_DATAMAPPER':
             values,dimensions = _imf_mapper(json.loads(body,parse_float=Decimal),definition,source['url'])
         elif provider == 'BEA_Q':
-            values = _bea_q(body,definition,source['url'])
+            values = (_bea_table_row(body,definition,source['url']) if definition['source_key'].startswith(('BEA_2026_TABLE_A_','BEA_2026_TABLE_B_'))
+                      else _bea_q(body,definition,source['url']))
         elif provider == 'WORLD_BANK_PINK_SHEET':
             values,dimensions = _pink_sheet(raw,definition,source['url'])
         elif provider == 'SHILLER':
@@ -165,6 +166,7 @@ class _FredOriginalTable(HTMLParser):
         self.extra=[]
         self.extra_depth=0
         self.extra_containers=0
+        self.caption=None
 
     def handle_starttag(self,tag,attrs):
         attributes=dict(attrs)
@@ -177,7 +179,9 @@ class _FredOriginalTable(HTMLParser):
                 self.extra_depth+=1
         if tag=='table':
             if self.current is not None: raise ValueError('nested source table')
-            self.current={'id':attributes.get('id'),'rows':[]}
+            self.current={'id':attributes.get('id'),'rows':[],'caption':''}
+        elif tag=='caption' and self.current is not None:
+            self.caption=[]
         elif tag=='tr' and self.current is not None:
             if self.row is not None: raise ValueError('nested source row')
             self.row=[]
@@ -187,10 +191,14 @@ class _FredOriginalTable(HTMLParser):
 
     def handle_data(self,value):
         if self.cell is not None: self.cell.append(value)
+        if self.caption is not None: self.caption.append(value)
         if self.extra_depth: self.extra.append(value)
 
     def handle_endtag(self,tag):
         if tag=='div' and self.extra_depth: self.extra_depth-=1
+        if tag=='caption' and self.caption is not None:
+            self.current['caption']=' '.join(''.join(self.caption).split())
+            self.caption=None
         if tag in ('td','th') and self.cell is not None:
             self.row.append(''.join(self.cell).strip())
             self.cell=None
@@ -371,6 +379,37 @@ def _bea_q(body,definition,url):
         _add(values,seen,_native_period(row[0],'A'),numbers[column-1])
     if not values or min(values)!=date(1960,1,1) or len(values)!=max(values).year-1959:
         raise EvidenceError('source_truncated')
+    return values
+
+
+def _bea_table_row(body,definition,url):
+    """One published row of BEA's returns article Tables A/B (2004-2014 and 2015-2024 parts)."""
+    from .source_reconciliation import EvidenceError
+    from .remaining_sources import BEA_Q_URL
+    selectors={'BEA_2026_TABLE_B_NFC_PRODUCED_ASSETS':('Table B. Produced Assets of Domestic Nonfinancial Corporations','Nonfinancial corporations'),
+               'BEA_2026_TABLE_A_NFC_NET_OPERATING_SURPLUS':('Table A. Net Operating Surplus of Domestic Nonfinancial Corporations','Nonfinancial corporations')}
+    if (url!=BEA_Q_URL or definition['source_key'] not in selectors or definition['frequency']!='A'
+            or definition['unit']!='billion_usd'):
+        raise EvidenceError('source_identity_mismatch')
+    caption,label=selectors[definition['source_key']]
+    parser=_FredOriginalTable();parser.feed(body);parser.close()
+    parts=[t['rows'] for t in parser.tables if t['caption'].startswith(caption) and '[Billions of dollars]' in body]
+    if len(parts)!=2: raise EvidenceError('source_identity_mismatch')
+    values,seen={},set()
+    for rows in parts:
+        header=rows[0]
+        if not header or header[0]!='' or not all(re.fullmatch(r'[0-9]{4}',year) for year in header[1:]):
+            raise EvidenceError('source_schema_invalid')
+        matches=[row for row in rows[1:] if row and row[0]==label]
+        if len(matches)!=1 or len(matches[0])!=len(header): raise EvidenceError('source_schema_invalid')
+        for year,cell in zip(header[1:],matches[0][1:]):
+            try:
+                number=Decimal(cell.replace(',','').replace('\u2212','-'))
+            except InvalidOperation:
+                raise EvidenceError('source_value_invalid') from None
+            _add(values,seen,_native_period(year,'A'),number)
+    years=sorted(day.year for day in values)
+    if years!=list(range(years[0],years[-1]+1)): raise EvidenceError('source_truncated')
     return values
 
 

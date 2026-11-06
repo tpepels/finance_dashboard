@@ -5041,6 +5041,54 @@
       "revision_policy": "revisable",
       "rights": "cc_by_4_0",
       "notes": "Welfare measure follows the national survey (income or consumption, per capita); not comparable with WID national-income shares; gaps are years without a survey."
+    },
+    {
+      "id": "valuation.us.nfc_produced_assets_bea",
+      "name": "Produced assets of domestic nonfinancial corporations (BEA)",
+      "theme": "valuation",
+      "status": "mapped",
+      "provider": "BEA_Q",
+      "source_key": "BEA_2026_TABLE_B_NFC_PRODUCED_ASSETS",
+      "source_url": "https://apps.bea.gov/scb/issues/2026/05-may/0526-domestic-returns.htm",
+      "geography": "US",
+      "frequency": "A",
+      "unit": "billion_usd",
+      "measurement": "BEA returns article Table B: produced assets of domestic nonfinancial corporations at current cost, billions of dollars (replacement-cost Q denominator)",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "2004-2024 published in the 2026 article; same original as Table E Q ratios."
+    },
+    {
+      "id": "profit.us.nfc_net_operating_surplus_bea",
+      "name": "Net operating surplus of domestic nonfinancial corporations (BEA)",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "BEA_Q",
+      "source_key": "BEA_2026_TABLE_A_NFC_NET_OPERATING_SURPLUS",
+      "source_url": "https://apps.bea.gov/scb/issues/2026/05-may/0526-domestic-returns.htm",
+      "geography": "US",
+      "frequency": "A",
+      "unit": "billion_usd",
+      "measurement": "BEA returns article Table A: net operating surplus of domestic nonfinancial corporations, billions of dollars",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "2004-2024 published in the 2026 article; return numerator for BEA rates of return."
+    },
+    {
+      "id": "valuation.us.nfc_equity_market_value",
+      "name": "Nonfinancial corporate equities, market value (Z.1)",
+      "theme": "valuation",
+      "status": "mapped",
+      "provider": "FRED",
+      "source_key": "BOGZ1LM103164103A",
+      "source_url": "https://fred.stlouisfed.org/series/BOGZ1LM103164103A",
+      "geography": "US",
+      "frequency": "A",
+      "unit": "million_usd",
+      "measurement": "Federal Reserve Financial Accounts: nonfinancial corporate business corporate equities, liability, market value, annual, millions of dollars",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Financial Accounts nonfinancial corporate perimeter; BEA's Q numerator draws on Financial Accounts market values."
     }
   ]
 }

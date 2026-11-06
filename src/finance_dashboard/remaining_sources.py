@@ -98,6 +98,38 @@ def parse_bea_q_table(html: str, q_type: str, *, start: date | None = None) -> d
 
 
 
+BEA_TABLE_ROWS = {
+    "BEA_2026_TABLE_B_NFC_PRODUCED_ASSETS": "Table B. Produced Assets of Domestic Nonfinancial Corporations",
+    "BEA_2026_TABLE_A_NFC_NET_OPERATING_SURPLUS": "Table A. Net Operating Surplus of Domestic Nonfinancial Corporations",
+}
+
+
+def parse_bea_table_row(html: str, key: str, *, start: date | None = None) -> dict[date, Decimal]:
+    """The 'Nonfinancial corporations' row of BEA returns-article Table A or B, both year parts."""
+    import re
+    caption = BEA_TABLE_ROWS[key]
+    blocks = [block for block in re.findall(r"<table\b.*?</table>", html, re.S | re.I)
+              if caption in " ".join(re.sub(r"<[^>]+>", " ", (re.search(r"<caption\b.*?</caption>", block, re.S | re.I) or [""])[0]).split())]
+    if len(blocks) != 2:
+        raise DerivedDataError("BEA table parts missing or ambiguous")
+    values = {}
+    for block in blocks:
+        parser = HtmlTables()
+        parser.feed(block)
+        table = parser.tables[0]
+        years = table[0][1:]
+        rows = [row for row in table[1:] if row and row[0] == "Nonfinancial corporations"]
+        if len(rows) != 1 or len(rows[0]) != len(table[0]):
+            raise DerivedDataError("BEA nonfinancial corporate row missing or ambiguous")
+        for year, cell in zip(years, rows[0][1:]):
+            day = date(int(year), 1, 1)
+            if start is None or day >= start:
+                values[day] = Decimal(cell.replace(",", "").replace("\u2212", "-"))
+    if not values:
+        raise DerivedDataError("BEA table row has no values")
+    return values
+
+
 def parse_bea_q1(html: str, *, start: date | None = None) -> dict[date, Decimal]:
     """Compatibility-neutral named public BEA Q1 research variable."""
     return parse_bea_q_table(html, "Q1", start=start)

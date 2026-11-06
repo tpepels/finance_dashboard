@@ -193,7 +193,11 @@ class ComparisonContractTests(unittest.TestCase):
         self.assertEqual(q["frequency"], "A")
         self.assertEqual(len(q["series_ids"]), 3)
         self.assertNotIn("valuation.us.cape", q["series_ids"])
-        self.assertFalse(self.requirement("V02", "q_accounting_components")["series_ids"])
+        # Components are BEA's own published Table A/B rows, never back-solved from the Q ratios.
+        components = self.requirement("V02", "q_accounting_components")["series_ids"]
+        self.assertEqual({self.series[sid]["source_key"] for sid in components},
+                         {"BEA_2026_TABLE_B_NFC_PRODUCED_ASSETS", "BEA_2026_TABLE_A_NFC_NET_OPERATING_SURPLUS"})
+        self.assertFalse(set(components) & set(q["series_ids"]))
 
     def test_currency_context_reuses_the_existing_realized_rate_without_fx_substitution(self):
         self.assertEqual(self.requirement("M04", "effective_federal_funds")["series_ids"],

@@ -458,10 +458,14 @@ def fetch_bea_q(self, series_id, start, item, key):
         "BEA_2026_TABLE_E_Q2": "Q2",
         "BEA_2026_TABLE_E_Q3": "Q3",
     }
-    if key not in approved:
+    from .remaining_sources import BEA_TABLE_ROWS, parse_bea_table_row
+    if key not in approved and key not in BEA_TABLE_ROWS:
         raise SourceUnavailable("Unknown BEA Q table/version")
     response = self._get(BEA_Q_URL)
-    observations = parse_bea_q_table(response.text, approved[key], start=start)
+    if key in BEA_TABLE_ROWS:
+        observations = parse_bea_table_row(response.text, key, start=start)
+    else:
+        observations = parse_bea_q_table(response.text, approved[key], start=start)
     return FetchedSeries(series_id, BEA_Q_URL, None, observations)
 
 

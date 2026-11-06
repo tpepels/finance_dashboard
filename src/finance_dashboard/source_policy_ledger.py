@@ -189,7 +189,9 @@ class SourcePolicyGate:
                 return self._reserve_once(policy)
             except PolicyDeferred as exc:
                 remaining = exc.retry_at - self.clock()
-                if (exc.reason not in {"minimum_spacing", "concurrency_limit"}
+                # Short pacing waits (spacing, concurrency, a sub-second rolling
+                # window such as SEC's 8/s) are slept; long windows still raise.
+                if (exc.reason not in {"minimum_spacing", "concurrency_limit", "rolling_window_limit"}
                         or remaining <= 0 or waited + remaining > self.max_wait_seconds):
                     raise
                 self.sleep(remaining)

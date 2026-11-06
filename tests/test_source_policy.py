@@ -283,6 +283,24 @@ class PolicyRegistryTests(PolicyHarness):
             self.assertEqual(ex.exception.reason, "prohibited_query_parameter")
 
 
+class ShortWindowPacingTests(PolicyHarness):
+    def test_sub_second_rolling_window_is_paced_not_failed(self):
+        gate = self.gate(max_wait_seconds=3)
+        policy = self.registry.by_id["sec-edgar"]
+        limit = policy.rate["limit"]
+        for _ in range(limit + 2):
+            gate.release(gate.reserve(policy), policy.id)
+        self.assertTrue(self.clock.sleeps)
+        self.assertLess(sum(self.clock.sleeps), 3)
+
+    def test_long_rolling_window_still_raises(self):
+        gate = self.gate(max_wait_seconds=3)
+        policy = self.registry.by_id["fred-v1"]
+        with self.assertRaises(PolicyDeferred):
+            for _ in range(policy.rate["limit"] + 1):
+                gate.release(gate.reserve(policy), policy.id)
+
+
 class DurableLimitTests(PolicyHarness):
     def test_two_distinct_process_gates_share_rolling_window_and_expiry(self):
         a, b = self.gate(), self.gate()

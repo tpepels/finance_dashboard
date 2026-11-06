@@ -33,7 +33,7 @@ class NativeOriginalRoleTests(unittest.TestCase):
     def register(self, root, path, document=None):
         return register_native_role_original(
             document or self.document, root=Path(root) / "evidence",
-            analysis_id="V02", role="q_accounting_components",
+            analysis_id="L04", role="productive_labour_wages",
             original=path,
             fields=["event_id", "event_date", "impact"],
             key_fields=["event_id"], numeric_fields=["impact"],
@@ -80,9 +80,9 @@ class NativeOriginalRoleTests(unittest.TestCase):
                 self.document, series_registry=self.catalog,
                 native_role_evidence=evidence)
             role = next(
-                r for a in report["analyses"] if a["id"] == "V02"
+                r for a in report["analyses"] if a["id"] == "L04"
                 for r in a["requirements"]
-                if r["role"] == "q_accounting_components")
+                if r["role"] == "productive_labour_wages")
             self.assertTrue(role["attached_native_original"][
                 "original_source_hash_verified"])
             self.assertEqual(role["resolution"]["availability"], "available_partial")
@@ -119,27 +119,27 @@ class NativeOriginalRoleTests(unittest.TestCase):
             self.register(temp, source)
             original = next(
                 (Path(temp) / "evidence").glob(
-                    "native-role-originals/V02/q_accounting_components/*/original.csv"))
+                    "native-role-originals/L04/productive_labour_wages/*/original.csv"))
             original.write_text("event_id,event_date,impact\nchanged,2020-03-01,7\n")
             with self.assertRaises(ValueError):
                 read_native_role_original(
                     self.document, root=Path(temp) / "evidence",
-                    analysis_id="V02", role="q_accounting_components")
+                    analysis_id="L04", role="productive_labour_wages")
             evidence = native_role_original_evidence(
                 self.document, Path(temp) / "evidence")
             self.assertEqual(evidence["invalid_archived_roles"],
-                             ["V02:q_accounting_components"])
+                             ["L04:productive_labour_wages"])
         with TemporaryDirectory() as temp:
             self.register(temp, self.sample(temp))
             changed = deepcopy(self.document)
-            role = next(r for a in changed["analyses"] if a["id"] == "V02"
+            role = next(r for a in changed["analyses"] if a["id"] == "L04"
                         for r in a["comparison_contract"]["original_requirements"]
-                        if r["role"] == "q_accounting_components")
+                        if r["role"] == "productive_labour_wages")
             role["description"] += " edited"
             with self.assertRaisesRegex(ValueError, "contract"):
                 read_native_role_original(
                     changed, root=Path(temp) / "evidence",
-                    analysis_id="V02", role="q_accounting_components")
+                    analysis_id="L04", role="productive_labour_wages")
 
     def test_does_not_allow_scalar_source_substitution(self):
         with TemporaryDirectory() as temp:

@@ -2335,18 +2335,21 @@
           },
           {
             "role": "q_accounting_components",
-            "description": "Original annual market equity, book/market bonds, net liquid assets and net current-cost produced-assets denominator.",
-            "series_ids": [],
+            "description": "BEA returns-article Tables A/B: current-cost produced assets (the replacement-cost Q denominator) and net operating surplus of domestic nonfinancial corporations, from the same original as Table E.",
+            "series_ids": [
+              "valuation.us.nfc_produced_assets_bea",
+              "profit.us.nfc_net_operating_surplus_bea"
+            ],
             "expected": {
               "frequency": "A",
+              "unit": "billion_usd",
               "geography": ["US"],
               "population": "BEA domestic nonfinancial corporations",
-              "concept": "Supporting original Q numerator and denominator components"
+              "concept": "Q denominator and return numerator components"
             },
             "temporal_requirement": "latest_revised",
-            "input_type": "accounting_panel",
-            "artifact_ids": [],
-            "input_requirement": "Original annual market equity, book/market bonds, net liquid assets and net current-cost produced-assets denominator."
+            "input_type": "scalar_history",
+            "artifact_ids": []
           },
           {
             "role": "cape_context",
@@ -2358,6 +2361,21 @@
               "geography": ["US"],
               "population": "Shiller US listed equity sample",
               "concept": "Published ordinary CAPE"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "nfc_market_equity",
+            "description": "Financial Accounts market value of nonfinancial corporate equities, the source BEA draws on for the Q1 numerator; perimeter is Financial Accounts nonfinancial corporate business.",
+            "series_ids": ["valuation.us.nfc_equity_market_value"],
+            "expected": {
+              "frequency": "A",
+              "unit": "million_usd",
+              "geography": ["US"],
+              "population": "Financial Accounts nonfinancial corporate business",
+              "concept": "Market value of corporate equity outstanding"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",

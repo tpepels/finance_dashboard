@@ -36,3 +36,26 @@ class EcbSeriesFamilyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BeaTableRowTests(unittest.TestCase):
+    def test_table_b_row_is_selected_by_caption_and_both_year_parts(self):
+        from finance_dashboard.captured_sources import _bea_table_row
+        from finance_dashboard.remaining_sources import BEA_Q_URL, parse_bea_table_row
+        def part(caption, years, values):
+            head = "".join(f"<th>{y}</th>" for y in years)
+            cells = "".join(f"<td>{v}</td>" for v in values)
+            return (f"<table><caption>{caption}</caption><tr><th></th>{head}</tr>"
+                    f"<tr><td>Nonfinancial corporations</td>{cells}</tr>"
+                    f"<tr><td>Mining</td>{''.join('<td>1</td>' for _ in years)}</tr></table>")
+        b = "Table B. Produced Assets of Domestic Nonfinancial Corporations and Nonfinancial Industries"
+        body = ("[Billions of dollars]" + part(b + ", 2004–2005", ["2004", "2005"], ["10,829.7", "11,772.8"])
+                + part(b + ", 2006–2007", ["2006", "2007"], ["12,000.0", "13,000.5"])
+                + part("Table A. Net Operating Surplus of Domestic Nonfinancial Corporations, 2004–2005", ["2004", "2005"], ["988.6", "1"]))
+        key = "BEA_2026_TABLE_B_NFC_PRODUCED_ASSETS"
+        definition = {"source_key": key, "frequency": "A", "unit": "billion_usd"}
+        values = _bea_table_row(body, definition, BEA_Q_URL)
+        self.assertEqual(len(values), 4)
+        self.assertEqual(values, parse_bea_table_row(body, key))
+        with self.assertRaises(EvidenceError):
+            _bea_table_row(body.replace(b + ", 2006–2007", "Other table"), definition, BEA_Q_URL)
