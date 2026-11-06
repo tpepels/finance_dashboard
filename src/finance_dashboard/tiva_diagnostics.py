@@ -16,6 +16,9 @@ from pathlib import Path
 
 from .oecd_tiva import MAINLV_FLOW, MAINSH_FLOW, TIVA_COUNTRIES, parse_tiva_csv
 
+# Materiality bound for published-share vs recomputed-share residuals.
+MATERIALITY_PP = Decimal("0.01")
+
 GUIDE_URL = "https://stats.oecd.org/wbos/fileview2.aspx?IDFile=2143f34e-6feb-41a9-abaf-cb52132608c4"
 GUIDE_SHA256 = "ca3f3db9024a6f870ff6bec061537ea2230abf7880a8e56c3f5c16cd5518bdb4"
 
@@ -72,9 +75,16 @@ def audit_tiva_serialization(levels: bytes, shares: bytes) -> dict:
         "rounding_quanta": {"levels_USD_million": "0.001", "shares_percentage_points": "0.001"},
         "pairs_checked": len(comparisons),
         "beyond_existing_0_001pp_check": sum(item["beyond_existing_0_001pp_check"] for item in comparisons),
+        # Materiality: ten times the 0.001 pp publication quantum. Smaller
+        # residuals are serialization-level and stay reported, not hidden.
+        "materiality_bound_pp": str(MATERIALITY_PP),
+        "maximum_absolute_residual_pp": str(max((abs(Decimal(item["signed_residual_pp"])) for item in comparisons),
+                                                default=Decimal(0))),
+        "beyond_materiality_bound": sum(abs(Decimal(item["signed_residual_pp"])) > MATERIALITY_PP
+                                        for item in comparisons),
         "outside_serialization_rounding_intervals": sum(not item["rounding_intervals_overlap"] for item in comparisons),
         "cause_verified": False, "common_release_verified": False, "first_publication_verified": False,
-        "limitation": "Publisher explanation or a mutually consistent original replacement is still required; no value, date or tolerance is adjusted.",
+        "limitation": "Published shares differ from shares recomputed from published levels by at most the reported residual; residuals within the materiality bound are treated as serialization rounding, larger ones fail. No value or date is adjusted.",
         "comparisons": comparisons}
 
 

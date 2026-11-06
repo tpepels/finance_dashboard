@@ -240,7 +240,7 @@ def read_tiva_evidence(evidence_root: Path) -> dict:
                for identifier, values in sorted(observations.items())}
     complete = not any(missing.values())
     diagnostic = audit_tiva_serialization(bodies["levels"], bodies["shares"]) if complete else None
-    passed = diagnostic["beyond_existing_0_001pp_check"] == 0 if diagnostic else None
+    passed = diagnostic["beyond_materiality_bound"] == 0 if diagnostic else None
     return {"status": ("original_tiva_identity_passed" if passed else "original_tiva_identity_failed")
                 if complete else "partial_original_tiva_pair",
             **TIVA_IDENTITY, "original_source_hash_verified": True,

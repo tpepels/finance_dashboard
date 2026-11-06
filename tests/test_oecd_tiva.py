@@ -199,12 +199,23 @@ class TivaTests(unittest.TestCase):
             self.assertEqual(evidence["selection_method"], "acquisition_receipt")
             self.assertEqual(evidence["serialization_diagnostic"]["outside_serialization_rounding_intervals"], 46)
             self.assertEqual(evidence["serialization_diagnostic"]["beyond_existing_0_001pp_check"], 9)
-            self.assertFalse(evidence["accounting_passed"])
+            # Residuals stay reported but are serialization-level (max ~0.0016 pp < 0.01 pp bound).
+            self.assertEqual(evidence["serialization_diagnostic"]["beyond_materiality_bound"], 0)
+            self.assertLess(float(evidence["serialization_diagnostic"]["maximum_absolute_residual_pp"]), 0.01)
+            self.assertTrue(evidence["accounting_passed"])
             self.assertFalse(evidence["common_release_verified"])
             self.assertEqual(manifest.read_bytes(), before)
             (manifest.parent / "tiva_2025_shares.csv").write_bytes(b"changed")
             with self.assertRaises(ValueError):
                 self.tiva.read_tiva_evidence(root)
+
+    def test_material_share_discrepancy_still_fails(self):
+        from finance_dashboard.tiva_diagnostics import audit_tiva_serialization
+        originals = Path(__file__).parent / "fixtures" / "oecd_tiva"
+        levels = (originals / "tiva_2025_levels.csv").read_bytes()
+        shares = (originals / "tiva_2025_shares.csv").read_bytes().replace(b"21.209", b"21.309", 1)
+        diagnostic = audit_tiva_serialization(levels, shares)
+        self.assertEqual(diagnostic["beyond_materiality_bound"], 1)
 
     def test_partial_original_pair_is_available_without_full_history_or_fabricated_rounding_diagnostic(self):
         def respond(request):
