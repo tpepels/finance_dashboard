@@ -106,7 +106,7 @@ def _parse_page(raw: bytes, *, identity: dict, offset: int) -> tuple[int, list[d
                 except (InvalidOperation, ValueError) as exc:
                     raise ValueError("alfred_revision_number_invalid") from exc
                 if not number.is_finite():
-                    raise ValueError("alfred_revision_number_nonfinite")
+                    raise ValueError("alfred_revision_numeric_nonfinite")
                 value = str(number)
             cleaned.append({
                 "date": observation.isoformat(),
