@@ -31,9 +31,9 @@ _APPROVED_NATIVE_CANDIDATES = {
 # An approved original role can refer to a registered native publication even
 # when there is no approved *scalar* catalog binding yet. This never converts
 # structured records to a scalar ID or changes the 35-analysis method.
-DOCUMENTED_NATIVE_DISCOVERY = {
-    ("L07", "wiid_gini"): "wiid",
-}
+# L07's survey Gini is bound to World Bank PIP survey series since 2026-11-06;
+# no role currently needs this path, which remains available for future ones.
+DOCUMENTED_NATIVE_DISCOVERY: dict[tuple[str, str], str] = {}
 
 # Nearby, existing real datasets to inspect. All fail at least one of the
 # original method's requirements and must never be used as automatic fallbacks.

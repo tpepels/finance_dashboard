@@ -102,7 +102,9 @@ class ComparisonContractTests(unittest.TestCase):
         top1 = self.requirement("L07", "pretax_income_top1")
         self.assertEqual(len(top1["series_ids"]), 6)
         self.assertTrue(all(".pretax_income.top1" in sid for sid in top1["series_ids"]))
-        self.assertEqual(self.requirement("L07", "wiid_gini")["series_ids"], [])
+        # Survey Gini comes from World Bank PIP survey series, never from wealth or WID shares.
+        gini = self.requirement("L07", "wiid_gini")["series_ids"]
+        self.assertTrue(gini and all(sid.endswith(".gini_survey_wdi") for sid in gini))
         income = self.variant("L07", "wid_pretax_income_top10_bottom50")
         self.assertEqual(len(income["series_ids"]), 12)
         self.assertTrue(all(".pretax_income." in sid for sid in income["series_ids"]))

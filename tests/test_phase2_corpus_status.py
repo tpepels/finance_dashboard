@@ -35,7 +35,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertLess(len(output.splitlines()), 40)
         self.assertIn("NOT EVALUATED", output)
         self.assertIn("L01: oecd_matched_value_added", output)
-        self.assertIn("L07: wiid_gini", output)
+        self.assertIn("V03: regional_trailing_pe", output)
         self.assertNotIn('"decision": "blocked"', output)
         full = format_inventory(self.report, details=True)
         self.assertIn("C01: scalar", full)

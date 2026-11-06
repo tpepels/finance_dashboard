@@ -3440,11 +3440,19 @@
           },
           {
             "role": "wiid_gini",
-            "description": "Independent UNU-WIDER WIID/Companion country-survey Gini with original income/consumption welfare measure and units.",
-            "series_ids": [],
+            "description": "Independent country household-survey Gini from the World Bank Poverty and Inequality Platform (WDI SI.POV.GINI), welfare measure per national survey; free alternative to WIID with the same survey-Gini concept.",
+            "series_ids": [
+              "inequality.us.gini_survey_wdi",
+              "inequality.fr.gini_survey_wdi",
+              "inequality.pt.gini_survey_wdi",
+              "inequality.cn.gini_survey_wdi",
+              "inequality.in.gini_survey_wdi"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Source survey population and equivalence scale",
+              "unit": "index",
+              "geography": ["USA", "FRA", "PRT", "CHN", "IND"],
+              "population": "National household survey population",
               "concept": "Survey Gini, distinct from WID national-account income shares"
             },
             "temporal_requirement": "latest_revised",

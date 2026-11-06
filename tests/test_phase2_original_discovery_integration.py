@@ -27,9 +27,9 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
             report["roles_with_reviewed_publisher_candidates"] +
             report["roles_requiring_new_publisher_discovery"] +
             report["roles_with_named_native_original_artifact"], corpus_counts.UNBOUND_SCALAR_ROLES)
-        self.assertEqual(next(
-            r["documented_native_artifact"] for r in report["role_candidates"]
-            if r["analysis_id"] == "L07" and r["role"] == "wiid_gini"), "wiid")
+        # L07's survey Gini is bound (World Bank PIP), so it is no longer an unbound candidate.
+        self.assertFalse(any(r["analysis_id"] == "L07" and r["role"] == "wiid_gini"
+                             for r in report["role_candidates"]))
         self.assertTrue(any(
             r["related_existing_catalog_inputs_not_equivalent"]
             for r in report["role_candidates"]))

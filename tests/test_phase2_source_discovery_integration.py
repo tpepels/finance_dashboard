@@ -71,18 +71,12 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
         self.assertFalse(mixed["official_source_measure_verified_for_role"])
         self.assertFalse(candidates["scientific_analysis_certified"])
 
-    def test_wiid_is_documented_native_original_and_nearby_inputs_are_not_bindings(self):
+    def test_bound_survey_gini_leaves_no_native_discovery_and_nearby_inputs_are_not_bindings(self):
         inventory = unbound_original_source_discovery(
             self.document, self.catalog,
             {"wiid": {"original_source_hash_verified": True}})
-        self.assertEqual(DOCUMENTED_NATIVE_DISCOVERY[("L07","wiid_gini")],
-                         "wiid")
-        gini = next(
-            row for row in inventory["role_candidates"]
-            if row["analysis_id"] == "L07" and
-            row["role"] == "wiid_gini")
-        self.assertTrue(gini["documented_artifact_original_hash_verified"])
-        self.assertFalse(gini["exact_scalar_series_bound"])
+        self.assertEqual(DOCUMENTED_NATIVE_DISCOVERY, {})
+        self.assertFalse(any(row["analysis_id"] == "L07" for row in inventory["role_candidates"]))
         # F01 nominal_gdp was descoped (2026-11-06): BIS publishes the ratio itself.
         self.assertFalse(any(row["analysis_id"] == "F01" and row["role"] == "nominal_gdp"
                              for row in inventory["role_candidates"]))
@@ -91,37 +85,14 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
                                 for ref in row.get("related_existing_catalog_inputs_not_equivalent", [])))
         self.assertEqual(inventory["automatically_bound_scalar_series"], 0)
 
-    def test_native_wiid_original_reaches_gini_role_but_no_scalar_is_inferred(self):
-        from finance_dashboard.phase2_structured_acquisition import (
-            original_artifact_matrix,
-        )
-        artifact = {"wiid": {
-            "status": "verified_original_wiid_release_partial",
-            "original_source_hash_verified": True,
-            "full_history_verified": False,
-            "first_publication_verified": False,
-        }}
-        matrix = original_artifact_matrix(self.document, artifact)
-        wiid = next(x for x in matrix["artifact_workstreams"]
-                    if x["artifact_id"] == "wiid")
-        self.assertIn("L07", wiid["affected_analyses"])
-        self.assertEqual(wiid["role_count"], 0)
-        self.assertEqual(wiid["unbound_scalar_native_reference_count"], 1)
-        report = research_corpus_report(
-            self.document, series_registry=self.catalog,
-            artifact_evidence=artifact)
-        gini = next(
-            role for a in report["analyses"] if a["id"] == "L07"
-            for role in a["requirements"] if role["role"] == "wiid_gini")
-        self.assertEqual(gini["resolution"]["category"], 1)
-        self.assertEqual(gini["resolution"]["availability"],
-                         "native_original_unconverted")
-        self.assertFalse(gini["accepted"])
-        self.assertFalse(gini["series_ids"])
-        self.assertFalse(gini["first_publication_verified"])
-        self.assertEqual([a["artifact_id"] for a in
-                          gini["partial_artifact_evidence"]], ["wiid"])
-        self.assertEqual(report["fully_validated_analysis_count"], 0)
+    def test_survey_gini_binds_world_bank_survey_series_not_wid_shares(self):
+        gini = next(r for a in self.document["analyses"] if a["id"] == "L07"
+                    for r in a["comparison_contract"]["original_requirements"] if r["role"] == "wiid_gini")
+        self.assertEqual(len(gini["series_ids"]), 5)
+        self.assertTrue(all(sid.endswith(".gini_survey_wdi") for sid in gini["series_ids"]))
+        sources = {row["id"]: row for row in self.catalog}
+        self.assertTrue(all(sources[sid]["source_key"].endswith("/SI.POV.GINI") for sid in gini["series_ids"]))
+        self.assertFalse(any(".pretax_income." in sid for sid in gini["series_ids"]))
 
     def test_alfred_observation_revision_originals_are_read_but_not_automatically_certified(self):
         revisions = {"series": {"T10Y3M": {
