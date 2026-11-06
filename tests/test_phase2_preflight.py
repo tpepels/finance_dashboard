@@ -183,6 +183,12 @@ class ProvenanceDeltaTests(unittest.TestCase):
         self.assertEqual(delta["successful_but_not_verified_count"], 2)
         self.assertEqual({x["series_id"] for x in delta[
             "successful_but_not_verified"]}, {"b", "d"})
+        self.assertEqual(delta["successful_but_not_verified_categories"], {
+            "source_coverage_incomplete": 1, "source_hash_mismatch": 1})
+        self.assertEqual(delta["no_longer_verified_diagnoses"][0]["series_id"],
+                         "b")
+        self.assertEqual(delta["no_longer_verified_diagnoses"][0]["diagnosis"],
+                         "source_hash_mismatch")
         self.assertFalse(delta["first_publication_verified"])
 
     def test_duplicate_source_proofs_fail_closed(self):

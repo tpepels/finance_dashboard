@@ -49,6 +49,44 @@ def independently_reconciled_original(proof: dict | None) -> bool:
     )
 
 
+def unverified_original_diagnosis(proof: dict | None) -> dict:
+    """Canonical read-only classification, never a synthetic evidence value."""
+    if proof is None:
+        code = "original_not_in_reconciliation"
+        result = {"diagnosis": code, "evidence_status": "not_checked"}
+    else:
+        failure = proof.get("failure_code")
+        if failure:
+            code = failure
+        elif (proof.get("stored_periods") or 0) <= 0:
+            code = "stored_history_missing"
+        elif proof.get("mismatched_source_values"):
+            code = "original_and_stored_values_disagree"
+        elif proof.get("missing_source_periods"):
+            code = "original_periods_not_stored"
+        elif proof.get("extra_stored_periods"):
+            code = "stored_periods_not_in_selected_original"
+        elif proof.get("source_values_match") is not True:
+            code = "original_source_values_unverified"
+        elif proof.get("source_covers_all_stored_periods") is not True:
+            code = "original_historical_coverage_unverified"
+        else:
+            code = "not_independently_verified"
+        result = {
+            "diagnosis": code,
+            "evidence_status": proof.get("evidence_status", "not_checked"),
+            "stored_periods": proof.get("stored_periods"),
+            "selected_original_periods": proof.get("source_periods"),
+            "original_periods_not_stored": len(
+                proof.get("missing_source_periods") or []),
+            "stored_periods_not_in_original": len(
+                proof.get("extra_stored_periods") or []),
+            "numeric_value_disagreements": len(
+                proof.get("mismatched_source_values") or []),
+        }
+    return result
+
+
 def source_evidence_delta(before: dict, after: dict, batch: dict) -> dict:
     """Compare independently selected original proofs, not ingest statuses."""
     baseline = {row["series_id"]: row for row in before["series"]}
@@ -69,17 +107,20 @@ def source_evidence_delta(before: dict, after: dict, batch: dict) -> dict:
     })
     incomplete = []
     for sid in success:
-        proof = latest.get(sid, {})
+        proof = latest.get(sid)
         if sid in verified_after:
             continue
         incomplete.append({
             "series_id": sid,
-            "failure_code": proof.get("failure_code") or
+            "failure_code": (proof or {}).get("failure_code") or
                             "current_original_not_fully_reconciled",
-            "original_values_match": proof.get("source_values_match") is True,
+            "original_values_match":
+                (proof or {}).get("source_values_match") is True,
             "all_stored_periods_covered":
-                proof.get("source_covers_all_stored_periods") is True,
+                (proof or {}).get("source_covers_all_stored_periods") is True,
+            **unverified_original_diagnosis(proof),
         })
+    categories = Counter(item["diagnosis"] for item in incomplete)
     return {
         "verified_before": len(verified_before),
         "verified_after": len(verified_after),
@@ -87,8 +128,12 @@ def source_evidence_delta(before: dict, after: dict, batch: dict) -> dict:
         "newly_verified_count": len(verified_after - verified_before),
         "no_longer_verified": sorted(verified_before - verified_after),
         "no_longer_verified_count": len(verified_before - verified_after),
+        "no_longer_verified_diagnoses": [{
+            "series_id": sid, **unverified_original_diagnosis(latest.get(sid))}
+            for sid in sorted(verified_before - verified_after)],
         "ingestion_success_count": len(success),
         "successful_but_not_verified_count": len(incomplete),
+        "successful_but_not_verified_categories": dict(sorted(categories.items())),
         "successful_but_not_verified": incomplete,
         "proofs_recomputed_from_original_archives": True,
         "first_publication_verified": False,
@@ -387,31 +432,35 @@ def run_source_acquisition_batch(selected_actions: list[dict], refresh,
                                 versions_added=row["versions_added"])
                     except Exception as error:
                         reason = safe_source_failure_code(error)
+                        stopped = publisher_stop_reason(error)
+                        confirmed = (
+                            _publisher_interruption_scope(error, policy_id)
+                            if stopped and stop_scope == "publisher" else None)
                         row = {"series_id": sid, "status": "failed",
                                "reason": reason}
+                        if confirmed:
+                            row["verified_upstream_policy"] = confirmed
                         if journal is not None:
-                            journal.mark_result(sid, status="failed",
-                                                reason=reason)
-                        stopped = publisher_stop_reason(error)
+                            journal.mark_result(
+                                sid, status="failed", reason=reason,
+                                verified_upstream_policy=confirmed,
+                                verified_policy_stop=stopped if confirmed else None)
                         if stopped:
                             if stop_scope == "global":
                                 global_stop = stopped
+                            elif confirmed is None:
+                                global_stop = stopped
                             else:
-                                confirmed = _publisher_interruption_scope(
-                                    error, policy_id)
-                                if confirmed is None:
-                                    global_stop = stopped
-                                else:
-                                    stopped_policies[confirmed] = stopped
-                                    if confirmed != policy_id:
-                                        if action.get("provider"):
-                                            stopped_provider_dependencies[
-                                                action["provider"]] = stopped
-                                        discovered_upstreams[sid] = {
-                                            "declared_policy": policy_id,
-                                            "verified_upstream_policy": confirmed,
-                                            "stop_reason": stopped,
-                                        }
+                                stopped_policies[confirmed] = stopped
+                                if confirmed != policy_id:
+                                    if action.get("provider"):
+                                        stopped_provider_dependencies[
+                                            action["provider"]] = stopped
+                                    discovered_upstreams[sid] = {
+                                        "declared_policy": policy_id,
+                                        "verified_upstream_policy": confirmed,
+                                        "stop_reason": stopped,
+                                    }
             rows[index] = row
             if progress is not None and row["status"] in {"success", "failed"}:
                 progress(index + 1, len(selected_actions), row)

@@ -1,5 +1,100 @@
 # Development plan — authoritative five-phase roadmap
 
+
+## Phase 2 — consolidated scientific transitions, source-stop provenance and native STAN pipeline (2026-11-06)
+
+This larger development batch integrates three previously separate
+requirements while keeping the existing policy, original-response and
+scientific acceptance layers authoritative.
+
+### 35-analysis scientific regressions and source provenance
+
+`finance_dashboard.phase2_research_transitions` compares two independently
+evaluated research-runtime reports across all 35 approved analyses and all
+their original roles. The comparison rejects changed memberships, reordered
+roles, changed gate identities and duplicate gates instead of silently
+mixing incompatible research contracts. It identifies readiness
+improvements/regressions by analysis, verified gates newly passing, previously
+passing gates lost, and incomplete/blocked state changes by original role.
+A transition is strictly an audit of canonical gate outputs; it does not
+manufacture a scientific certificate or imply that incomplete publisher
+population, accounting or release-vintage requirements are resolved.
+
+`scripts/phase2_operating_batch.py --acquire` now attaches this
+`research_transitions` audit alongside independently selected original
+source reconciliation. The compact output contains the exact changed
+analysis IDs, readiness direction and affected gate types, with a bounded
+number of representative rows and explicit omitted counts. `--details`
+retains every role/gate transition for further diagnosis. A successful
+download that does not prove numeric source fidelity has a prioritized
+evidence diagnosis, including categories for unavailable/invalid originals,
+stored observations outside the selected original, missing stored source
+periods and numeric value disagreements. These are not source-repair
+instructions to mutate or discard historic records.
+
+### Publisher-stop origin recorded in the immutable sweep journal
+
+The publisher-neutral sweep now appends a separately validated pair
+`verified_upstream_policy` and `verified_policy_stop` to **new** failed
+journal events when a typed transport/publisher exception independently
+proves which policy blocked the source. Pair presence, allowed categories,
+matching failure code and immutable start hash are verified on journal
+reopening. Old event schema and older unannotated receipts remain valid
+and readable: their descriptive source policy must never be retroactively
+asserted to be the actual HTTP origin. Verified upstream identifiers are
+operational diagnostics; they do not authorize future requests or permanently
+extend a cooldown. Each future request is still checked by the one canonical
+durable transport policy and current policy registry.
+
+### One bounded OECD STAN research acquisition entrypoint
+
+`scripts/phase2_stan_pipeline.py` is a thin workflow over the **existing**
+`discover_measure_codes`, `probe_surplus`, `resolve_stan_country_selection`,
+`acquire`, `plan_expansion` and immutable native source archive. It introduces
+no new HTTP adapter, STAN parser, policy ledger, accounting criterion or
+compatibility mode. Its default is completely read-only.
+
+With explicit `--acquire`, it spends **one total publisher request budget**
+across the official SDMX-2025 metadata codelist, one-year native surplus
+probes, and historical country originals. The candidate must be advertised
+by the actual official codelist **and** observed in an immutable publisher
+response for the anchor country; a four-measure partial archive cannot
+grant the surplus identity. Only after this gate passes can the complete
+five-measure original scope be requested for other countries. The anchor
+is acquired first; previous original responses and receipts are reverified
+and reused without rerequesting them. Requests stop on publisher policy
+denial, 429/503 or a local request budget; all incomplete stages and
+country scopes remain explicit. The workflow never inserts synthetic zeros,
+edits a previous publisher response, writes scalar macro rows or certifies
+historic economic identity.
+
+The source user's latest confirmed empirical baseline remains eight STAN
+country archives with 30 countries pending, and no verified original 2025
+publisher measure metadata. The immediate pipeline action is therefore an
+official codelist request **only after** a permitted direct OECD network
+route and the canonical acknowledgement have been independently confirmed.
+
+Read-only operator plan:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_stan_pipeline.py \
+  --evidence-dir /data/source-evidence --max-requests 4
+```
+
+Source-policy-governed bounded acquisition when access is permitted:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_stan_pipeline.py \
+  --evidence-dir /data/source-evidence --acquire --max-requests 4
+```
+
+The same command can be issued again with a fresh budget; previously
+verified exact source originals and receipts are reused, not overwritten.
+Unverified source selections and absent publisher metadata do not become
+scientific failures that can be passed with alternative guessed codes.
+The separately managed scalar sweep and its immutable journal remain intact.
+
+
 ## Phase 2 — publisher-budget preflight and independent source-proof delta (2026-11-05)
 
 The second live sweep resumed 45 source tasks: 37 ingestion successes and

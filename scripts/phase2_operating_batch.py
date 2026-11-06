@@ -30,6 +30,9 @@ from finance_dashboard.phase2_workflow import (
 from finance_dashboard.phase2_role_workplan import (
     phase2_role_workplan, compact_role_workplan,
 )
+from finance_dashboard.phase2_research_transitions import (
+    research_evidence_transitions, compact_research_transitions,
+)
 from finance_dashboard.phase2_sweep_journal import (
     Phase2SweepJournal, sweep_context,
 )
@@ -170,6 +173,9 @@ def emit_operating_report(report: dict, *, details: bool = False) -> dict:
                 "acquisition"]["results"][:12]
             public["acquisition"]["results_omitted"] = max(
                 0, len(report["acquisition"]["results"]) - 12)
+    if "research_transitions" in public and not details:
+        public["research_transitions"] = compact_research_transitions(
+            public["research_transitions"])
     if "source_evidence_delta" in public and not details:
         public["source_evidence_delta"] = dict(public["source_evidence_delta"])
         delta = public["source_evidence_delta"]
@@ -178,6 +184,10 @@ def emit_operating_report(report: dict, *, details: bool = False) -> dict:
         delta["no_longer_verified_omitted"] = max(
             0, len(delta["no_longer_verified"]) - 15)
         delta["no_longer_verified"] = delta["no_longer_verified"][:15]
+        delta["no_longer_verified_diagnoses_omitted"] = max(
+            0, len(delta["no_longer_verified_diagnoses"]) - 15)
+        delta["no_longer_verified_diagnoses"] = delta[
+            "no_longer_verified_diagnoses"][:15]
         delta["unverified_successes_omitted"] = max(
             0, len(delta["successful_but_not_verified"]) - 15)
         delta["successful_but_not_verified"] = delta[
@@ -347,6 +357,8 @@ def main(argv=None) -> int:
             report["acquisition"] = batch
             report["source_evidence_delta"] = source_evidence_delta(
                 baseline.source_proof, refreshed.source_proof, batch)
+            report["research_transitions"] = research_evidence_transitions(
+                baseline.public_report, refreshed.public_report)
             if journal_summary is not None:
                 report["sweep_journal"] = journal_summary
                 report["next_run_requires_explicit_resume_or_new_journal"] = True

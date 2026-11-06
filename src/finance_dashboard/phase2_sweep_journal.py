@@ -28,6 +28,17 @@ MAX_EVENT_BYTES = 8_192
 MAX_CONTEXT_BYTES = 128_000
 
 
+def _verified_stop_valid(policy_id: str | None, category: str | None) -> bool:
+    if not isinstance(policy_id, str) or not _ID.fullmatch(policy_id):
+        return False
+    if not isinstance(category, str) or not _SAFE_REASON.fullmatch(category):
+        return False
+    return category in {
+        "source_policy_denied", "source_policy_deferred",
+        "provider_http_401", "provider_http_403", "provider_http_429",
+    } or bool(re.fullmatch(r"provider_http_5[0-9]{2}", category))
+
+
 def _check_ancestors(path: Path) -> None:
     target = Path(path).absolute()
     if any(part.is_symlink() for part in (target, *target.parents)):
@@ -177,12 +188,25 @@ class Phase2SweepJournal(AbstractContextManager):
                     or not 0 <= result["versions_added"] <= 10**9):
 
                 raise ValueError("sweep_result_integrity_invalid")
+            origin = result.get("verified_upstream_policy")
+            stop = result.get("verified_policy_stop")
+            if ((origin is None) != (stop is None)
+                    or (origin is not None and (
+                        result["status"] != "failed"
+                        or stop != result["reason"]
+                        or not _verified_stop_valid(origin, stop)
+                    ))):
+                raise ValueError("sweep_result_upstream_identity_invalid")
         self._state = {
             sid: {"status": "started_without_result" if sid not in results
                   else results[sid]["status"],
                   "reason": results.get(sid, {}).get("reason"),
                   "received": results.get(sid, {}).get("received"),
-                  "versions_added": results.get(sid, {}).get("versions_added")}
+                  "versions_added": results.get(sid, {}).get("versions_added"),
+                  "verified_upstream_policy": results.get(sid, {}).get(
+                      "verified_upstream_policy"),
+                  "verified_policy_stop": results.get(sid, {}).get(
+                      "verified_policy_stop")}
             for sid in starts
         }
 
@@ -201,7 +225,9 @@ class Phase2SweepJournal(AbstractContextManager):
         self._state[sid] = {"status": "started_without_result"}
 
     def mark_result(self, sid: str, *, status: str, reason: str = "none",
-                    received: int = 0, versions_added: int = 0):
+                    received: int = 0, versions_added: int = 0,
+                    verified_upstream_policy: str | None = None,
+                    verified_policy_stop: str | None = None):
         if self._lock_fd is None or sid not in self._state:
             raise ValueError("sweep_journal_not_started")
         if (self._state[sid]["status"] != "started_without_result"
@@ -209,29 +235,55 @@ class Phase2SweepJournal(AbstractContextManager):
                 or not _SAFE_REASON.fullmatch(reason)
                 or type(received) is not int or not 0 <= received <= 10**9
                 or type(versions_added) is not int
-                or not 0 <= versions_added <= 10**9):
+                or not 0 <= versions_added <= 10**9
+                or (verified_upstream_policy is None)
+                   != (verified_policy_stop is None)
+                or (verified_upstream_policy is not None
+                    and (status != "failed" or
+                         not _verified_stop_valid(
+                             verified_upstream_policy, verified_policy_stop)
+                         or verified_policy_stop != reason))):
             raise ValueError("sweep_journal_invalid_result")
         source = self.root / "events" / (self._stem(sid) + ".start.json")
-        _write_once(self.root / "events" / (self._stem(sid) + ".result.json"), {
+        event = {
             "schema_version": 1, "kind": "result", "source_id": sid,
             "at_utc": datetime.now(timezone.utc).isoformat(),
             "start_sha256": sha256(source.read_bytes()).hexdigest(),
             "status": status, "reason": reason,
             "received": received, "versions_added": versions_added,
-        })
+        }
+        if verified_upstream_policy is not None:
+            event.update(
+                verified_upstream_policy=verified_upstream_policy,
+                verified_policy_stop=verified_policy_stop)
+        _write_once(self.root / "events" / (self._stem(sid) + ".result.json"),
+                    event)
         self._state[sid] = {
             "status": status, "reason": reason,
             "received": received, "versions_added": versions_added,
+            "verified_upstream_policy": verified_upstream_policy,
+            "verified_policy_stop": verified_policy_stop,
         }
 
     def summary(self) -> dict:
+        from collections import Counter
+
         states = {state: sum(item["status"] == state
                              for item in self._state.values())
                   for state in ("success", "failed", "started_without_result")}
+        failures = Counter(
+            item["reason"] for item in self._state.values()
+            if item["status"] == "failed")
+        upstream = Counter(
+            item["verified_upstream_policy"] for item in self._state.values()
+            if item.get("verified_upstream_policy"))
         return {
             "journal_path": str(self.root),
             "tracked_attempts": len(self._state),
             "attempt_statuses": states,
+            "failure_categories": dict(sorted(failures.items())),
+            "verified_upstream_policy_stops": dict(sorted(upstream.items())),
+            "verified_upstream_errors_rechecked_against_current_policy": False,
             "inflight_requires_review": sorted(
                 sid for sid, item in self._state.items()
                 if item["status"] == "started_without_result"),
