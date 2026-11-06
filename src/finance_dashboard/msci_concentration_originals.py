@@ -157,6 +157,50 @@ def store_msci_concentration_original(original: bytes, *, source_url: str, root:
         if temporary is not None: shutil.rmtree(temporary,ignore_errors=True)
 
 
+def collect_msci_concentration_factsheet(*, root: Path, client,
+                                          source_url: str) -> Path:
+    """Bounded, publisher-governed fetch into the existing immutable archive.
+
+    The operator provides a concrete original PDF endpoint. An index landing
+    page, a mutable citation to an old value, or a failed response does not
+    count as an acquired observation. The retained PDF establishes its own
+    observed date; first-publication time remains unverified.
+    """
+    from urllib.parse import urlsplit
+    from .source_policy import require_managed_client
+    from .source_policy_registry import PolicyRegistry
+
+    require_managed_client(client)
+    parts = urlsplit(source_url)
+    if (parts.query or parts.fragment or parts.username or parts.password
+            or parts.hostname not in {"www.msci.com", "msci.com"}):
+        raise MsciOriginalError("A public MSCI original PDF URL is required")
+    _url_identity(source_url)
+    policy = PolicyRegistry().for_url(source_url)
+    if policy.id != "msci":
+        raise MsciOriginalError("MSCI factsheet host is not publisher-classified")
+
+    payload = bytearray()
+    with client.stream("GET", source_url, follow_redirects=False) as response:
+        response.raise_for_status()
+        size = response.headers.get("content-length")
+        if size is not None:
+            try:
+                bounded = int(size)
+            except ValueError as exc:
+                raise MsciOriginalError("Invalid factsheet content length") from exc
+            if bounded < 1 or bounded > MAXIMUM_PDF_BYTES:
+                raise MsciOriginalError("Original factsheet exceeds byte limit")
+        for chunk in response.iter_bytes():
+            if len(payload) + len(chunk) > MAXIMUM_PDF_BYTES:
+                raise MsciOriginalError("Original factsheet exceeds byte limit")
+            payload.extend(chunk)
+    if not payload.startswith(b"%PDF-"):
+        raise MsciOriginalError("Publisher response is not an original PDF")
+    return store_msci_concentration_original(
+        bytes(payload), source_url=source_url, root=root)
+
+
 def _verify_original(folder: Path) -> tuple[dict,dict]:
     try:
         manifest=json.loads((folder/"manifest.json").read_text())

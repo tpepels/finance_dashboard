@@ -12,7 +12,16 @@ data**. A publisher's unknown licence, restricted-use classification, or missing
 redistribution permission is not a reason for the acquisition planner or
 managed HTTP client to skip a request. Download attempts use the shared,
 publisher-specific rate budgets, concurrency ceilings, retry/backoff and
-access-denial cooldowns. The application does not bypass authentication,
+access-denial cooldowns. The existing mapped adapters for Corgano spot gold, Siblis free CAPE and
+UN SDG world statistics are enabled for bounded acquisition attempts.
+For an official MSCI ACWI factsheet PDF, use
+`python -m finance_dashboard research structured --artifact msci_concentration
+--msci-factsheet-url URL --evidence-dir /data/source-evidence
+--acquire --run-dir /data/phase2-sweeps/msci-original`. The source PDF is
+dated and checked, then recorded as immutable original evidence; this does
+not infer missing historical months.
+
+The application does not bypass authentication,
 paywalls or server-side denials; the user must provide any legitimately
 available credentials or original files through supported interfaces.
 

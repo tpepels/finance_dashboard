@@ -41,8 +41,10 @@ class StructuredCapabilitiesTests(unittest.TestCase):
                             for r in matrix["artifact_workstreams"]))
         self.assertIn("stan", matrix["native_collectors_available"])
         self.assertIn("ucits_holdings", matrix["native_collectors_available"])
-        self.assertIn("msci_concentration",
-                      matrix["direct_originals_requiring_explicit_registration"])
+        self.assertIn("msci_concentration", matrix["native_collectors_available"])
+        self.assertNotIn(
+            "msci_concentration",
+            matrix["direct_originals_requiring_explicit_registration"])
 
     def test_live_policy_preclassification_and_explicit_archive_root(self):
         matrix = original_artifact_matrix(self.document, {})
@@ -53,7 +55,7 @@ class StructuredCapabilitiesTests(unittest.TestCase):
                          "original_collection_candidate")
         self.assertIn("oecd-sdmx", by_kind["stan"]["policy_ids"])
         self.assertEqual(by_kind["msci_concentration"]["collection_state"],
-                         "operator_original_required")
+                         "required_publisher_scope_missing")
         self.assertEqual(by_kind["sec_holdings"]["collection_state"],
                          "original_holdings_archive_path_required")
         self.assertEqual(by_kind["ucits_holdings"]["collection_state"],
@@ -72,6 +74,27 @@ class StructuredCapabilitiesTests(unittest.TestCase):
                          if row["kind"] == "ucits_holdings")
             self.assertEqual(ucits["collection_state"], "original_collection_candidate")
             self.assertIn("ishares", ucits["authorized_subsources"])
+
+    def test_registered_msci_original_endpoint_enables_bounded_collection(self):
+        matrix = original_artifact_matrix(self.document, {})
+        url = "https://www.msci.com/research/specific-acwi-factsheet.pdf"
+        with TemporaryDirectory() as temp:
+            p = collection_plan(
+                matrix, registry=PolicyRegistry(),
+                holdings_dir=Path(temp), msci_factsheet_url=url)
+            row = next(item for item in p["artifacts"]
+                       if item["kind"] == "msci_concentration")
+            self.assertEqual(row["collection_state"], "original_collection_candidate")
+            self.assertEqual(row["policy_ids"], ["msci"])
+            self.assertEqual(p["publisher_requests_made"], 0)
+            work = structured_operating_plan(
+                self.document, Path(temp), holdings=Path(temp),
+                kinds={"msci_concentration"}, cvm_year=None,
+                agent=None, policy=PolicyRegistry(), msci_factsheet_url=url)
+            self.assertEqual(
+                [item["id"] for item in work["selected_actions"]],
+                ["msci_concentration"])
+            self.assertFalse(work["scientific_analysis_certified"])
 
     def test_existing_native_cvm_collector_reused_not_reimplemented(self):
         hits = []

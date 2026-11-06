@@ -31,6 +31,60 @@ FACTORS - KEY EXPOSURES THAT DRIVE RISK AND RETURN
 
 
 class MsciOriginalTests(unittest.TestCase):
+    def test_original_pdf_download_uses_registered_client_and_immutable_archive(self):
+        import httpx
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        pdf = (Path(__file__).parent /
+               "fixtures/holdings/msci-acwi-2020-10-30-original.pdf").read_bytes()
+        url = "https://www.msci.com/research/published-acwi-2020.pdf"
+        requested = []
+        def handler(req):
+            requested.append(str(req.url))
+            return httpx.Response(200, content=pdf,
+                                  headers={"content-length": str(len(pdf))})
+        with TemporaryDirectory() as temp:
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                root = Path(temp)
+                first = originals.collect_msci_concentration_factsheet(
+                    root=root, client=client, source_url=url)
+                second = originals.collect_msci_concentration_factsheet(
+                    root=root, client=client, source_url=url)
+                self.assertEqual(first, second)
+                values, evidence = originals.read_msci_concentration_originals(root)
+                self.assertEqual(len(values), 1)
+                self.assertTrue(evidence["source_sha256"])
+                self.assertEqual(requested, [url, url])
+                self.assertEqual(len(list((root / "msci-concentration").rglob("original.pdf"))), 1)
+
+    def test_original_pdf_fails_closed_without_writing_on_bad_response(self):
+        import httpx
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        url = "https://www.msci.com/research/acwi.pdf"
+        attempts = []
+        for response in (
+            httpx.Response(200, content=b"<html>not a PDF</html>"),
+            httpx.Response(200, content=b"%PDF-", headers={
+                "content-length": str(originals.MAXIMUM_PDF_BYTES + 1)}),
+            httpx.Response(302, headers={"location": "https://other.invalid/file.pdf"}),
+        ):
+            with self.subTest(response=response.status_code), TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                with httpx.Client(transport=httpx.MockTransport(
+                        lambda req: response)) as client:
+                    with self.assertRaises(Exception):
+                        originals.collect_msci_concentration_factsheet(
+                            root=root, client=client, source_url=url)
+                self.assertFalse((root / "msci-concentration").exists())
+        with httpx.Client(transport=httpx.MockTransport(
+                lambda req: attempts.append(req) or httpx.Response(200))) as client:
+            with self.assertRaises(originals.MsciOriginalError):
+                originals.collect_msci_concentration_factsheet(
+                    root=Path("/unused"), client=client,
+                    source_url="https://www.msci.com/document.pdf?token=private")
+        self.assertFalse(attempts)
+
     def test_native_printed_total_is_retained_when_rounded_constituent_sum_differs(self):
         facts=originals.parse_msci_factsheet_text(FACTSHEET)
         self.assertEqual(facts["as_of"],"2026-10-30")

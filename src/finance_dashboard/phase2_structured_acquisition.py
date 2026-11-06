@@ -61,8 +61,9 @@ CAPABILITIES = {
         "taiwan_profits", "operator_original", "native_reader",
         "Official TWSE/TPEx native boards and matching fiscal filing definition required"),
     "msci_concentration": StructuredCapability(
-        "msci_concentration", "operator_original", "native_reader",
-        "Native automated factsheet collector not implemented; local originals supported"),
+        "msci_concentration", "publisher_collector", "native_reader",
+        "Bounded original MSCI factsheet PDF through shared publisher transport",
+        ("msci_factsheet_url",)),
     "corporate_accounts": StructuredCapability(
         "corporate_accounts", "operator_original", "native_reader",
         "Sector-account source filings require exact publication and perimeter proof"),
@@ -191,7 +192,8 @@ def _classify_publisher_routes(
     return sorted(ids), None
 
 
-def task_policy_hosts(kind: str, *, cvm_year: int | None = None) -> tuple[str, ...]:
+def task_policy_hosts(kind: str, *, cvm_year: int | None = None,
+                      msci_factsheet_url: str | None = None) -> tuple[str, ...]:
     """Exact registered collector URLs, never guessed from a document page."""
     if kind == "nber_chronology":
         from .nber_chronology import SITE, DATES_PATH, INDEX_PATH
@@ -216,13 +218,16 @@ def task_policy_hosts(kind: str, *, cvm_year: int | None = None) -> tuple[str, .
     if kind == "ucits_holdings":
         return tuple(url for group in ucits_original_routes().values()
                      for url in group)
+    if kind == "msci_concentration" and msci_factsheet_url:
+        return (msci_factsheet_url,)
     return ()
 
 
 def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
                     cvm_year: int | None = None,
                     holdings_dir: Path | None = None,
-                    sec_user_agent: str | None = None) -> dict:
+                    sec_user_agent: str | None = None,
+                    msci_factsheet_url: str | None = None) -> dict:
     """Preclassify actual API hosts and required operator inputs before traffic."""
     policies = registry or PolicyRegistry()
     result = []
@@ -231,7 +236,9 @@ def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
         if not group["affected_analyses"]:
             continue
         capability = CAPABILITIES[kind]
-        endpoints = task_policy_hosts(kind, cvm_year=cvm_year)
+        endpoints = task_policy_hosts(
+            kind, cvm_year=cvm_year,
+            msci_factsheet_url=msci_factsheet_url)
         ids = set()
         blocker = None
         subsources = []
@@ -300,7 +307,8 @@ def collect_structured_original(kind: str, *, root: Path, client,
                                 holdings_dir: Path | None = None,
                                 sec_user_agent: str | None = None,
                                 stan_max_requests: int = 4,
-                                subsource: str | None = None) -> dict:
+                                subsource: str | None = None,
+                                msci_factsheet_url: str | None = None) -> dict:
     """Invoke only existing registered native acquisition and receipt logic."""
     from .source_policy import require_managed_client
     require_managed_client(client)
@@ -345,6 +353,16 @@ def collect_structured_original(kind: str, *, root: Path, client,
             raise ValueError("stan_original_collection_did_not_complete")
         return {"kind": kind, "state": report["state"],
                 "requests_reported": report["publisher_requests"]}
+    if kind == "msci_concentration":
+        if not msci_factsheet_url:
+            raise ValueError("msci_publisher_factsheet_url_required")
+        from .msci_concentration_originals import (
+            collect_msci_concentration_factsheet,
+        )
+        archive = collect_msci_concentration_factsheet(
+            root=root, client=client, source_url=msci_factsheet_url)
+        return {"kind": kind, "archive": archive.name,
+                "state": "retained_original"}
     if kind == "ucits_holdings":
         if subsource == "ishares":
             from .ucits_holdings import collect_ucits_sources

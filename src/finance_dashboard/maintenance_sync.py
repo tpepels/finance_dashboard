@@ -252,5 +252,5 @@ def run_sync(self, job_id: str, *, history: bool, options: dict, cancelled) -> d
             "mode":"historical" if history else "current",
             "parts":stage_results,
             "limitations":("Source coverage, publication dates, and "
-                           "unavailable source rights must be checked "
-                           "separately. Missing data are never invented.")}
+                           "separate source-rights metadata must be retained. "
+                           "Missing data are never invented.")}

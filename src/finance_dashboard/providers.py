@@ -34,13 +34,18 @@ class ProviderRouter:
             self.client.close()
 
     def supported_ids(self) -> list[str]:
-        return sorted(sid for sid, item in self.definitions.items()
-                      if item["status"] == "mapped" and item["provider"] in PROVIDER_CODES)
+        return sorted(
+            sid for sid, item in self.definitions.items()
+            if item["status"] == "mapped"
+            and (spec := get_provider(item["provider"])) is not None
+            and spec.acquisition != "unsupported"
+        )
 
     def blocked(self) -> list[dict]:
         return [{
             "series_id": sid, "provider": item["provider"],
-            "reason": "source_mapping_unresolved" if item["status"] != "mapped" else "adapter_unavailable",
+            "reason": "source_mapping_unresolved" if item["status"] != "mapped"
+                      else "adapter_unavailable",
             "notes": item["notes"],
         } for sid, item in self.definitions.items()
             if sid not in self.supported_ids()]
@@ -64,7 +69,7 @@ class ProviderRouter:
             raise SourceUnavailable(f"Source mapping unavailable: {series_id}")
         provider, key = item["provider"], item["source_key"]
         spec = get_provider(provider)
-        if spec is None:
+        if spec is None or spec.acquisition == "unsupported":
             raise SourceUnavailable(f"No validated adapter for provider: {provider}")
         from . import provider_adapters
         handler = getattr(provider_adapters, spec.handler, None)

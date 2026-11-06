@@ -41,13 +41,15 @@ from finance_dashboard.service import safe_source_failure_code
 
 def structured_operating_plan(document: dict, root: Path, *, holdings: Path | None,
                               kinds: set[str] | None, cvm_year: int | None,
-                              agent: str | None, policy: PolicyRegistry) -> dict:
+                              agent: str | None, policy: PolicyRegistry,
+                              msci_factsheet_url: str | None = None) -> dict:
     originals = research_artifact_evidence(root, holdings_root=holdings,
                                            kinds=kinds)
     matrix = original_artifact_matrix(document, originals, included=kinds)
     plan = collection_plan(
         matrix, registry=policy, cvm_year=cvm_year,
-        holdings_dir=holdings, sec_user_agent=agent)
+        holdings_dir=holdings, sec_user_agent=agent,
+        msci_factsheet_url=msci_factsheet_url)
     by_kind = {row["artifact_id"]: row for row in matrix["artifact_workstreams"]}
     actions = []
     for item in plan["artifacts"]:
@@ -114,6 +116,9 @@ def main(argv=None) -> int:
     parser.add_argument("--artifact", action="append",
                         choices=sorted(CAPABILITIES), help="Repeat to select native workflows")
     parser.add_argument("--cvm-year", type=int)
+    parser.add_argument(
+        "--msci-factsheet-url",
+        help="Direct public MSCI ACWI original PDF URL; classified, bounded and archived")
     parser.add_argument("--acquire", action="store_true")
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--resume", action="store_true")
@@ -151,12 +156,20 @@ def main(argv=None) -> int:
         plan = structured_operating_plan(
             document, args.evidence_dir,
             holdings=args.holdings_dir, kinds=kinds,
-            cvm_year=args.cvm_year, agent=agent, policy=policy)
+            cvm_year=args.cvm_year, agent=agent, policy=policy,
+            msci_factsheet_url=args.msci_factsheet_url)
         if args.acquire:
+            contract_digest = sha256(canonical_bytes(document)).hexdigest()
+            if args.msci_factsheet_url:
+                # Changing a mutable PDF endpoint cannot silently resume a
+                # previous immutable acquisition journal.
+                contract_digest = sha256(canonical_bytes({
+                    "research_contract_sha256": contract_digest,
+                    "msci_factsheet_url": args.msci_factsheet_url,
+                })).hexdigest()
             context = sweep_context(
                 sorted(action["id"] for action in plan["selected_actions"]),
-                policy.sha256,
-                sha256(canonical_bytes(document)).hexdigest())
+                policy.sha256, contract_digest)
             with Phase2SweepJournal(
                     args.run_dir, context=context,
                     create=not args.resume) as journal:
@@ -197,6 +210,7 @@ def main(argv=None) -> int:
                             cvm_year=args.cvm_year,
                             holdings_dir=args.holdings_dir,
                             sec_user_agent=agent,
+                            msci_factsheet_url=args.msci_factsheet_url,
                             stan_max_requests=max(1, args.max_http_requests -
                                                   client._transport.requests_reserved))
                         return {"status": "success",
@@ -213,7 +227,7 @@ def main(argv=None) -> int:
                 after = structured_operating_plan(
                     document, args.evidence_dir, holdings=args.holdings_dir,
                     kinds=kinds, cvm_year=args.cvm_year, agent=agent,
-                    policy=policy)
+                    policy=policy, msci_factsheet_url=args.msci_factsheet_url)
                 before_by_id = {
                     item["artifact_id"]: item for item in plan["artifact_workstreams"]}
                 original_new = [

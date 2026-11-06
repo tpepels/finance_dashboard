@@ -53,6 +53,22 @@ The following are lazy functions under `finance_dashboard.operational_checks`, a
 - `run-stan-overnight.sh`: removed; use `python -m finance_dashboard stan overnight` with the original options. Detachment/log rotation are host-process-management responsibilities.
 - `verify-architecture.sh`: removed; the commands it orchestrated are available as Python unittest, `sources audit`, and `sources policies`, and the offline suite runs in CI.
 
+## Private original-source collection
+
+```bash
+python -m finance_dashboard research structured \
+  --artifact msci_concentration \
+  --msci-factsheet-url https://www.msci.com/ACTUAL-ORIGINAL-ACWI-FACTSHEET.pdf \
+  --evidence-dir /data/source-evidence \
+  --acquire --run-dir /data/phase2-sweeps/msci-factsheet-20261106
+```
+
+The PDF URL above is a placeholder and must be replaced by an actual published
+document link. Its original as-of date is parsed from the PDF and verified;
+a successful request does not imply a complete monthly index history.
+Mapped Corgano, Siblis free and UN SDG scalar series are eligible for the
+ordinary bounded refresh and Phase 2 acquisition paths.
+
 ## Maintenance contract
 
 1. All future command entry points must be registered in `finance_dashboard.command_registry.COMMANDS`; domain operations belong in the application package.

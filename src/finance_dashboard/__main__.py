@@ -16,7 +16,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="finance_dashboard")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate", help="Check series and chart metadata")
-    sub.add_parser("report", help="Report mapped, unresolved and rights-gated series")
+    sub.add_parser("report", help="Report mapped, unresolved and rights-tagged series")
     listing = sub.add_parser("list", help="List catalog series")
     listing.add_argument("--theme", choices=sorted(THEMES))
     for group in sorted(GROUPS):

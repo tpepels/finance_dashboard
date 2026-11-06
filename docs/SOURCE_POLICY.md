@@ -79,12 +79,30 @@ endpoints will respond successfully, that required authentication exists, or
 that every source has a working original-data collector. The original
 restrictive licence metadata and conservative request budgets remain.
 
-`msci_concentration` still requires an operator-provided original factsheet
-because its native automated collector is not implemented. This is a missing
-collector, not a licence-permission veto. Existing native iShares and Vanguard
+`msci_concentration` can now fetch a **specific original MSCI ACWI PDF URL**
+via `research structured --artifact msci_concentration --msci-factsheet-url
+URL --evidence-dir DIR --acquire --run-dir JOURNAL`. The managed client
+checks the registered MSCI source host and rate ledger, refuses non-PDF
+content/redirects and downloads over the 5 MB limit, and routes valid originals
+to the existing immutable, SHA-256-verified factsheet reader. The URL is part
+of the journal contract digest, so an old journal cannot silently resume with
+a different PDF. Without a known direct original URL the collector is reported
+as `required_publisher_scope_missing`, never `licence_denied` or an invented
+historical observation. The existing local-original import remains supported. Existing native iShares and Vanguard
 UCITS collection tasks can both appear in the Phase 2 plan. A local original
 never authorizes claims about unavailable first-release vintages or continuous
 index-constituent history.
+
+## Previously excluded mapped scalar families
+
+The `CORGANO_SPOT`, `SIBLIS_FREE` and `UN_SDG` source registrations were
+inconsistently marked `unsupported` despite complete adapter functions and
+native parser tests. They now participate in the same standard mapped-series
+acquisition plan as other remote publishers. This permits **attempts** only:
+a daily gold quote cannot backfill spot history; sparse free CAPE snapshots do
+not establish continuous historical CAPE; UN SDG global estimates are not
+listed-company labour-profit measures. No source is automatically certified
+scientifically or published externally.
 
 ## Diagnostics
 

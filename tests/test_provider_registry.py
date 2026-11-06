@@ -24,6 +24,63 @@ class ProviderRegistryTests(unittest.TestCase):
                           {"response", "native", "local", "derived", "unsupported"})
             self.assertIn(registration.refresh_scope, {"full", "windowed"})
 
+    def test_reenabled_sources_use_one_managed_publisher_budget(self):
+        """Bounded HTTP requests reach real registered parsers, not stubs."""
+        from datetime import datetime, timezone
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from finance_dashboard.source_policy import managed_client
+        from finance_dashboard.source_policy_registry import PolicyRegistry
+        from finance_dashboard.source_policy_ledger import SourcePolicyGate
+
+        observed_hosts = []
+        def respond(request):
+            observed_hosts.append(request.url.host)
+            if request.url.host == "goldprice.corgano.com":
+                return httpx.Response(200, json={
+                    "data": {
+                        "metal": "gold", "symbol": "XAU",
+                        "price_usd": {"per_oz": 3900.25, "per_gram": 125.4,
+                                      "per_kg": 125400},
+                        "as_of": datetime.now(timezone.utc).isoformat(),
+                    },
+                    "meta": {"unit": "USD / troy oz",
+                              "source": "Swissquote bid/ask midpoint"},
+                })
+            if request.url.host == "siblisresearch.supabase.co":
+                return httpx.Response(200, json={
+                    "ticker": "ACWI", "ratio": "cape",
+                    "data": [{"trading_day (EOD)": "2025-09-30",
+                              "value": 30.75}],
+                })
+            if request.url.host == "unstats.un.org":
+                name = "SL_EMP_GTOTL" if "SL_EMP_GTOTL" in str(request.url) else "SL_EMP_PCAP"
+                return httpx.Response(200, json={
+                    "series": name, "geoAreaCode": 1,
+                    "dimensions": [{"value": "53.9",
+                                    "timePeriodStart": "2004",
+                                    "Age": "ALLAGE",
+                                    "Reporting Type": "G"}],
+                })
+            self.fail("Unclassified network request")
+        with TemporaryDirectory() as tmp:
+            gate = SourcePolicyGate(
+                registry=PolicyRegistry(), state_path=Path(tmp) / "rates.sqlite",
+                max_wait_seconds=0)
+            with managed_client(
+                    policy_gate=gate,
+                    transport=httpx.MockTransport(respond)) as client:
+                router = ProviderRouter(client)
+                self.assertTrue(router.fetch("gold.usd.spot").observations)
+                self.assertTrue(router.fetch("valuation.global.cape").observations)
+                self.assertTrue(router.fetch("labour.world.income_share").observations)
+                self.assertEqual(client._transport.requests_reserved, 3)
+            self.assertEqual(gate.report()["requests_recorded"], 3)
+        self.assertEqual(set(observed_hosts), {
+            "goldprice.corgano.com", "siblisresearch.supabase.co",
+            "unstats.un.org",
+        })
+
     def test_registered_dispatch_executes_only_selected_handler(self):
         series = "bond.us.nominal_10y"
         expected = FetchedSeries(series, "https://fred.stlouisfed.org/series/DGS10",
