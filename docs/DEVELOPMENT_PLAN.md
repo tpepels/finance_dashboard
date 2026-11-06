@@ -45,12 +45,29 @@ Measured with `research operating` after the 2026-11-06 sweeps: 247 of 268 catal
 
 16 of 34 active analyses are resolved; Phase 2 is **not** complete.
 
+## Done since the revision (2026-11-06)
+
+* **Slice A:** Decisions panel with P06 expected-return ranges and P07 hedged versus unhedged EUR returns (`/api/decision/{P06,P07}`).
+* **Slice B (first card):** F03 credit gaps against the BIS 2/10 pp guide and debt service against each economy's own history.
+* **Free alternative sources:**
+  * Eurostat ECOICOP v2 HICP replaces the discontinued ECB index.
+  * Moody's Baa−Treasury spread is the cited fallback for the ICE high-yield spread, which FRED now keeps for three years only.
+  * Internet Archive captures of MSCI's official ACWI factsheet supply concentration history.
+  * DFA wealth-group balance sheets (L05) and Z.1 broker-dealer equity and finance-company balance sheets (F07) come from FRED.
+  * The World Bank PIP survey Gini replaces WIID for L07.
+  * A curated, sourced shock-event register serves C05/P03.
+* **Corrected strictness:** TiVA identity check uses a 0.01 pp materiality bound (G06).
+* **Infrastructure:** OECD Table 14 non-financial corporate accounts provider for L02/L03, awaiting the country coverage check.
+
 ## Next slices
 
-1. **Slice A — EUR investor portfolio context** (Phase 3/4): P06 expected-return ranges and P07 hedged versus unhedged returns, built on accepted inputs, with one configurable chart each and their method/limitation panels.
-2. **Slice B — credit and valuation context:** F01–F06 (accepted or conditional) and V01, as configurable comparison charts.
-3. **Phase 2 data work, by decision value:** ECB series acquisition for P02/P04/P05/P07; current ETF holdings (P01) from issuer/SEC collectors; G01 N-PORT concentration history; a sourced shock-event register (C05, P03); Fed Z.1 (F07) and DFA components (L05); OECD national accounts (L01–L03); WIID Gini (L07); ICIO accounting failure (G06).
-4. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
+1. **Ingest and verify** the new FRED, MSCI and Eurostat series; complete UCITS holdings (P01, slow publisher limits).
+2. **L01–L03:** register OECD Table 14 S11 series for countries with complete coverage and bind the roles.
+3. **G01 history and P01 US holdings:** SEC N-PORT. Needs the owner's contact email for the SEC User-Agent.
+4. **V02 Q components:** BEA fixed-asset tables. A free BEA API key makes this simpler.
+5. **G06 full ICIO matrices:** a large download.
+6. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
+7. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
 
 ## Working rules
 
