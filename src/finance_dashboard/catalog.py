@@ -20,6 +20,16 @@ def source_contract(entry: dict) -> dict:
     return {key: value for key, value in entry.items() if key not in SOURCE_REVIEW_FIELDS}
 
 
+# Likewise a role's cited unavailability finding is evidence about the role,
+# not its approved contract, which archived native role originals hash.
+ROLE_REVIEW_FIELDS = frozenset({"verified_unavailability"})
+
+
+def role_contract(role: dict) -> dict:
+    """The approved role contract without cited review findings."""
+    return {key: value for key, value in role.items() if key not in ROLE_REVIEW_FIELDS}
+
+
 DEFAULT_ROOT = Path(os.environ.get("FINANCE_DASHBOARD_ROOT", str(Path(__file__).resolve().parents[2])))
 THEMES = {
     "valuation", "labour_capital", "monetary_policy", "growth_inflation",

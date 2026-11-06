@@ -29,7 +29,7 @@ from sqlalchemy.pool import NullPool
 from finance_dashboard.service import current_observations
 from finance_dashboard.wid import WID_SERIES
 from finance_dashboard.oecd_tiva import TIVA_SERIES
-from finance_dashboard.catalog import load_documents
+from finance_dashboard.catalog import load_documents, source_contract
 from finance_dashboard.source_capture import canonical_bytes
 from finance_dashboard.provider_registry import get_provider
 from finance_dashboard.captured_sources import captured_source
@@ -426,7 +426,7 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             item.update(proof[sid])
             from .comparative_corpus import observation_values_digest
             item.update(stored_observations_sha256=observation_values_digest(db_values),
-                source_contract_sha256=sha256(canonical_bytes(registry[sid])).hexdigest())
+                source_contract_sha256=sha256(canonical_bytes(source_contract(registry[sid]))).hexdigest())
             item.update(source_periods=len(source), source_first_observation=min(source).isoformat(),
                 source_last_observation=max(source).isoformat(),
                 missing_source_periods=[period.isoformat() for period in missing],

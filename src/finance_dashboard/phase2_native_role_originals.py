@@ -21,6 +21,7 @@ import re
 import shutil
 import tempfile
 
+from .catalog import role_contract
 from .source_capture import canonical_bytes
 from .source_evidence import record_acquisition_receipt, verified_receipted_bundles
 from .source_policy_registry import PolicyRegistry
@@ -46,7 +47,7 @@ def _role(document: dict, analysis_id: str, name: str) -> dict:
         not item["artifact_ids"]]
     if len(roles) != 1:
         raise ValueError("role_has_separate_original_source_adapter")
-    return roles[0]
+    return role_contract(roles[0])
 
 
 def _identity(analysis_id: str, name: str) -> dict:

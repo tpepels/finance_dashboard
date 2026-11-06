@@ -119,6 +119,9 @@ class CapturedSourcesTests(unittest.TestCase):
             with patch("finance_dashboard.source_reconciliation.load_documents", return_value=(reviewed, charts)):
                 report = reconcile("sqlite:///" + str(db), root, [sid])
             self.assertTrue(report["passed"], report["series"][0].get("failure_code"))
+            # The proof must bind the same contract digest the acceptance gate checks.
+            from finance_dashboard.source_original_gate import verified_original_history
+            self.assertTrue(verified_original_history(report["series"][0], entry, 1))
 
     def test_original_world_bank_geography_and_missing_years_are_not_filled(self):
         with TemporaryDirectory() as temp:

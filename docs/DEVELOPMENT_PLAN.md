@@ -48,7 +48,7 @@ no fabricated values):
    every start; certification selected the newest receipt, so overlaps masked
    the newest full snapshot. The newest full snapshot is now the evidence
    (overlaps preserved; revised stored values still fail). Verified original
-   histories on the local corpus: 114 → 167 without network traffic.
+   histories on the local corpus rose without network traffic (strict gate count: 228 of 253 after the 2026-11-06 sweeps).
 3. **Exact-join coverage.** Daily panels could never be complete and trailing
    publication lag counted as a gap. Coverage now passes when inputs start by
    the requested start and are reconciled to verified full snapshots; publisher

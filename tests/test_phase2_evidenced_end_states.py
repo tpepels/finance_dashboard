@@ -173,6 +173,17 @@ class EvidencedEndStateTests(unittest.TestCase):
         entry["unit"] = "other"
         self.assertNotEqual(source_contract_digest(entry), before)
 
+    def test_unavailability_finding_does_not_change_native_role_contract(self):
+        from finance_dashboard.phase2_native_role_originals import _role
+        from finance_dashboard.research_corpus import load_research_corpus
+        document = load_research_corpus()
+        analysis, role = next((a, r) for a in document["analyses"]
+            for r in a["comparison_contract"]["original_requirements"]
+            if r["input_type"] != "scalar_history" and not r["artifact_ids"])
+        before = _role(document, analysis["id"], role["role"])
+        role["verified_unavailability"] = {"reviewed_on": "2026-11-06", "reason": "x"}
+        self.assertEqual(_role(document, analysis["id"], role["role"]), before)
+
     def test_catalog_rejects_malformed_reviews(self):
         series_doc, charts_doc = load_documents()
         doc = copy.deepcopy(series_doc)
