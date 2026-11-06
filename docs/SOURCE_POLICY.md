@@ -79,16 +79,29 @@ endpoints will respond successfully, that required authentication exists, or
 that every source has a working original-data collector. The original
 restrictive licence metadata and conservative request budgets remain.
 
-`msci_concentration` can now fetch a **specific original MSCI ACWI PDF URL**
-via `research structured --artifact msci_concentration --msci-factsheet-url
-URL --evidence-dir DIR --acquire --run-dir JOURNAL`. The managed client
-checks the registered MSCI source host and rate ledger, refuses non-PDF
-content/redirects and downloads over the 5 MB limit, and routes valid originals
-to the existing immutable, SHA-256-verified factsheet reader. The URL is part
-of the journal contract digest, so an old journal cannot silently resume with
-a different PDF. Without a known direct original URL the collector is reported
-as `required_publisher_scope_missing`, never `licence_denied` or an invented
-historical observation. The existing local-original import remains supported. Existing native iShares and Vanguard
+`msci_concentration` now supports the publisher's publicly listed, continuously
+updated USD ACWI factsheet URL as its **default** source:
+`https://www.msci.com/documents/10199/255599/msci-acwi-net.pdf`. Run
+`research structured --artifact msci_concentration --evidence-dir DIR
+--acquire --run-dir JOURNAL` to request that one source, subject to the
+canonical MSCI budget. The document's as-of date is read from the PDF and
+is not inferred from the URL.
+
+For independently located historical original MSCI PDFs, repeat
+`--msci-factsheet-url URL` up to 15 times. Each distinct direct PDF has
+its own deterministic action ID and independent journal result. Duplicate,
+unclassified, credential-bearing, query and fragment URLs are rejected
+before transmission. The shared managed client checks the publisher rate
+ledger, refuses non-PDF content, redirects and downloads above 5 MB, and
+routes valid originals to the existing immutable SHA-256-verified reader.
+An unchanged URL may serve revised PDF content or a newer as-of month;
+the archive keeps byte-distinct versions and receipts, without rewriting
+old ones. A journal from a different source list cannot silently resume.
+
+This is **bounded original-document acquisition**. It does not implement
+automatic historical-PDF URL discovery, authorize retries through access
+denials, prove all monthly factsheets exist or certify a complete time series.
+The existing local-original import remains supported. Existing native iShares and Vanguard
 UCITS collection tasks can both appear in the Phase 2 plan. A local original
 never authorizes claims about unavailable first-release vintages or continuous
 index-constituent history.

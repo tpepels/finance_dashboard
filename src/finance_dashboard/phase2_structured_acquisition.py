@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from .msci_concentration_originals import (
+    msci_publisher_factsheet_sources,
+)
 from pathlib import Path
 
 from .research_readiness import ARTIFACT_IDS
@@ -63,7 +66,7 @@ CAPABILITIES = {
     "msci_concentration": StructuredCapability(
         "msci_concentration", "publisher_collector", "native_reader",
         "Bounded original MSCI factsheet PDF through shared publisher transport",
-        ("msci_factsheet_url",)),
+        ()),
     "corporate_accounts": StructuredCapability(
         "corporate_accounts", "operator_original", "native_reader",
         "Sector-account source filings require exact publication and perimeter proof"),
@@ -193,7 +196,8 @@ def _classify_publisher_routes(
 
 
 def task_policy_hosts(kind: str, *, cvm_year: int | None = None,
-                      msci_factsheet_url: str | None = None) -> tuple[str, ...]:
+                      msci_factsheet_urls: tuple[str, ...] | None = None
+                      ) -> tuple[str, ...]:
     """Exact registered collector URLs, never guessed from a document page."""
     if kind == "nber_chronology":
         from .nber_chronology import SITE, DATES_PATH, INDEX_PATH
@@ -218,8 +222,9 @@ def task_policy_hosts(kind: str, *, cvm_year: int | None = None,
     if kind == "ucits_holdings":
         return tuple(url for group in ucits_original_routes().values()
                      for url in group)
-    if kind == "msci_concentration" and msci_factsheet_url:
-        return (msci_factsheet_url,)
+    if kind == "msci_concentration":
+        return tuple(url for _, url in msci_publisher_factsheet_sources(
+            msci_factsheet_urls))
     return ()
 
 
@@ -227,7 +232,7 @@ def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
                     cvm_year: int | None = None,
                     holdings_dir: Path | None = None,
                     sec_user_agent: str | None = None,
-                    msci_factsheet_url: str | None = None) -> dict:
+                    msci_factsheet_urls: tuple[str, ...] | None = None) -> dict:
     """Preclassify actual API hosts and required operator inputs before traffic."""
     policies = registry or PolicyRegistry()
     result = []
@@ -238,7 +243,7 @@ def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
         capability = CAPABILITIES[kind]
         endpoints = task_policy_hosts(
             kind, cvm_year=cvm_year,
-            msci_factsheet_url=msci_factsheet_url)
+            msci_factsheet_urls=msci_factsheet_urls)
         ids = set()
         blocker = None
         subsources = []
@@ -251,6 +256,24 @@ def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
         elif kind == "sec_holdings" and (
                 not sec_user_agent or "@" not in sec_user_agent):
             blocker = "original_sec_contact_user_agent_missing"
+        elif kind == "msci_concentration":
+            # Each explicit original PDF is its own journal action. The
+            # same current URL may publish a new as-of month next month;
+            # the original archive detects original-byte revisions.
+            for source_id, url in msci_publisher_factsheet_sources(
+                    msci_factsheet_urls):
+                route_ids, denied = _classify_publisher_routes((url,), policies)
+                ids.update(route_ids)
+                subsources.append({
+                    "subsource": source_id,
+                    "source_url": url,
+                    "policy_ids": route_ids,
+                    "collection_state": denied or "original_collection_candidate",
+                    "original_source_urls_checked": 1,
+                })
+            if any(source["collection_state"] != "original_collection_candidate"
+                   for source in subsources):
+                blocker = "publisher_api_host_unclassified"
         elif kind == "ucits_holdings":
             for name, urls in ucits_original_routes().items():
                 route_ids, denied = _classify_publisher_routes(
@@ -358,7 +381,10 @@ def collect_structured_original(kind: str, *, root: Path, client,
             raise ValueError("msci_publisher_factsheet_url_required")
         from .msci_concentration_originals import (
             collect_msci_concentration_factsheet,
+            msci_publisher_factsheet_identity,
         )
+        if subsource != msci_publisher_factsheet_identity(msci_factsheet_url):
+            raise ValueError("msci_original_source_identity_mismatch")
         archive = collect_msci_concentration_factsheet(
             root=root, client=client, source_url=msci_factsheet_url)
         return {"kind": kind, "archive": archive.name,

@@ -56,16 +56,27 @@ The following are lazy functions under `finance_dashboard.operational_checks`, a
 ## Private original-source collection
 
 ```bash
+# Current publisher USD ACWI factsheet (a continuously updated PDF URL).
 python -m finance_dashboard research structured \
   --artifact msci_concentration \
-  --msci-factsheet-url https://www.msci.com/ACTUAL-ORIGINAL-ACWI-FACTSHEET.pdf \
   --evidence-dir /data/source-evidence \
-  --acquire --run-dir /data/phase2-sweeps/msci-factsheet-20261106
+  --acquire --run-dir /data/phase2-sweeps/msci-current-20261106
+
+# Two distinct, explicitly located historical publisher PDF URLs.
+# Replace the placeholders with verified direct MSCI original document URLs.
+python -m finance_dashboard research structured \
+  --artifact msci_concentration \
+  --msci-factsheet-url https://www.msci.com/documents/10199/EXAMPLE-A.pdf \
+  --msci-factsheet-url https://www.msci.com/documents/10199/EXAMPLE-B.pdf \
+  --evidence-dir /data/source-evidence \
+  --acquire --run-dir /data/phase2-sweeps/msci-history-20261106
 ```
 
-The PDF URL above is a placeholder and must be replaced by an actual published
-document link. Its original as-of date is parsed from the PDF and verified;
-a successful request does not imply a complete monthly index history.
+Each explicit PDF URL is a separate journal action and consumes the shared
+MSCI rate allowance. The source's exact as-of month is extracted from the
+original PDF, not guessed from its URL. A success does not establish a complete
+historical index-constituent series. Resume with `--resume` and the same
+`--run-dir` and URL set to avoid repeating completed actions.
 Mapped Corgano, Siblis free and UN SDG scalar series are eligible for the
 ordinary bounded refresh and Phase 2 acquisition paths.
 

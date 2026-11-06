@@ -25,6 +25,12 @@ SERIES_ID="concentration.global.msci_acwi_published_top10"
 APPROVED_HOSTS={"www.msci.com","msci.com","foro.masdividendos.com",
                 "schweizerfinanzblog.ch","indexalyzer.com","gestiyon.com"}
 MAXIMUM_PDF_BYTES=5_000_000
+# Official continuously updated USD ACWI net-return index factsheet. Its
+# as-of month is read from the downloaded PDF; never inferred from this URL.
+CURRENT_ACWI_FACTSHEET_URL = (
+    "https://www.msci.com/documents/10199/255599/msci-acwi-net.pdf"
+)
+MAX_FACTSHEET_SOURCES = 15
 SOURCE="MSCI_ACWI_ORIGINAL_FACTSHEET_PDF"
 _DATE=r"(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+[0-9]{1,2},\s+[0-9]{4}"
 _ROW=re.compile(r"^\s*(.+?)\s+(?:([A-Z]{2})\s+)?([0-9,]+\.[0-9]+)\s+([0-9]+\.[0-9]+)(?:\s+(.+?))?\s*$")
@@ -157,6 +163,44 @@ def store_msci_concentration_original(original: bytes, *, source_url: str, root:
         if temporary is not None: shutil.rmtree(temporary,ignore_errors=True)
 
 
+
+def msci_publisher_factsheet_identity(source_url: str) -> str:
+    """A deterministic acquisition ID for one public original PDF endpoint.
+
+    A changed endpoint is a different journal action, even if both ultimately
+    publish the same index/month. URL credentials and query secrets are rejected
+    before they can enter the provenance report or immutable journal.
+    """
+    from .source_policy_registry import PolicyRegistry
+    if not isinstance(source_url, str) or len(source_url) > 2048:
+        raise MsciOriginalError("Invalid MSCI original PDF URL")
+    parts = urlparse(source_url)
+    if (parts.scheme != "https" or parts.hostname not in {"www.msci.com", "msci.com"}
+            or parts.port not in (None, 443)
+            or parts.username or parts.password or parts.query or parts.fragment
+            or not parts.path.startswith("/") or parts.path == "/"
+            or "/../" in parts.path or "/./" in parts.path):
+        raise MsciOriginalError("A public MSCI original PDF URL is required")
+    if PolicyRegistry().for_url(source_url).id != "msci":
+        raise MsciOriginalError("MSCI original PDF host not classified")
+    return "pdf-" + sha256(source_url.encode("utf-8")).hexdigest()[:20]
+
+
+def msci_publisher_factsheet_sources(
+        urls: tuple[str, ...] | None = None) -> tuple[tuple[str, str], ...]:
+    """Bound the set of original documents; default to the publisher's current PDF."""
+    targets = (CURRENT_ACWI_FACTSHEET_URL,) if urls is None else urls
+    if (not isinstance(targets, (tuple, list))
+            or not 1 <= len(targets) <= MAX_FACTSHEET_SOURCES
+            or any(not isinstance(url, str) for url in targets)
+            or len(set(targets)) != len(targets)):
+        raise MsciOriginalError("Invalid MSCI original PDF source selection")
+    identities = tuple((msci_publisher_factsheet_identity(url), url)
+                       for url in targets)
+    if len({identity for identity, _ in identities}) != len(identities):
+        raise MsciOriginalError("Ambiguous MSCI original PDF source identity")
+    return identities
+
 def collect_msci_concentration_factsheet(*, root: Path, client,
                                           source_url: str) -> Path:
     """Bounded, publisher-governed fetch into the existing immutable archive.
@@ -166,19 +210,11 @@ def collect_msci_concentration_factsheet(*, root: Path, client,
     count as an acquired observation. The retained PDF establishes its own
     observed date; first-publication time remains unverified.
     """
-    from urllib.parse import urlsplit
     from .source_policy import require_managed_client
-    from .source_policy_registry import PolicyRegistry
 
     require_managed_client(client)
-    parts = urlsplit(source_url)
-    if (parts.query or parts.fragment or parts.username or parts.password
-            or parts.hostname not in {"www.msci.com", "msci.com"}):
-        raise MsciOriginalError("A public MSCI original PDF URL is required")
+    msci_publisher_factsheet_identity(source_url)
     _url_identity(source_url)
-    policy = PolicyRegistry().for_url(source_url)
-    if policy.id != "msci":
-        raise MsciOriginalError("MSCI factsheet host is not publisher-classified")
 
     payload = bytearray()
     with client.stream("GET", source_url, follow_redirects=False) as response:

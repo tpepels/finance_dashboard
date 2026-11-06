@@ -85,6 +85,37 @@ class MsciOriginalTests(unittest.TestCase):
                     source_url="https://www.msci.com/document.pdf?token=private")
         self.assertFalse(attempts)
 
+    def test_default_current_publisher_factsheet_and_explicit_sources(self):
+        current = originals.msci_publisher_factsheet_sources()
+        self.assertEqual(current, ((
+            originals.msci_publisher_factsheet_identity(
+                originals.CURRENT_ACWI_FACTSHEET_URL),
+            originals.CURRENT_ACWI_FACTSHEET_URL),))
+        self.assertIn("msci-acwi-net.pdf", current[0][1])
+        historical = "https://www.msci.com/documents/10199/255599/2020-acwi.pdf"
+        selected = originals.msci_publisher_factsheet_sources(
+            (historical, originals.CURRENT_ACWI_FACTSHEET_URL))
+        self.assertEqual(len(selected), 2)
+        self.assertNotEqual(selected[0][0], selected[1][0])
+        self.assertEqual(selected[0][1], historical)
+
+    def test_source_selection_is_bounded_and_fails_before_network(self):
+        valid = originals.CURRENT_ACWI_FACTSHEET_URL
+        invalid = (
+            (), (valid, valid),
+            tuple(f"https://www.msci.com/documents/{i}/acwi.pdf"
+                  for i in range(originals.MAX_FACTSHEET_SOURCES + 1)),
+            ("https://not-msci.com/documents/acwi.pdf",),
+            ("http://www.msci.com/documents/acwi.pdf",),
+            ("https://www.msci.com/documents/acwi.pdf?api_key=secret",),
+            ("https://www.msci.com/documents/acwi.pdf#page=1",),
+            ("https://other:pass@www.msci.com/documents/acwi.pdf",),
+        )
+        for selection in invalid:
+            with self.subTest(selection=selection):
+                with self.assertRaises(originals.MsciOriginalError):
+                    originals.msci_publisher_factsheet_sources(selection)
+
     def test_native_printed_total_is_retained_when_rounded_constituent_sum_differs(self):
         facts=originals.parse_msci_factsheet_text(FACTSHEET)
         self.assertEqual(facts["as_of"],"2026-10-30")

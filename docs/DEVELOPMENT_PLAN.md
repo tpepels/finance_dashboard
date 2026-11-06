@@ -1,3 +1,22 @@
+## Phase 2 MSCI ACWI original-document acquisition continuation (2026-11-06)
+
+The prior manual-URL-only native collector now has a real official default
+USD factsheet endpoint
+`https://www.msci.com/documents/10199/255599/msci-acwi-net.pdf`.
+This is a **mutable, currently published original**, never a historical
+archive with inferred prior dates. Multiple *explicitly discovered* historical
+MSCI PDF URLs can be supplied with repeatable `--msci-factsheet-url` (maximum
+15 per planned sweep). The shared source-policy ledger retains the MSCI
+publisher's very conservative budget; distinct URLs have distinct stable
+journal action IDs and immutable receipts. Revisited URLs may yield a later
+as-of month, but do not overwrite earlier original-byte versions. Unit tests
+cover current-default classification, multiple source identities, URL
+rejection, subsource routing and unchanged scientific non-certification.
+Real publisher responses and home-server collection remain unverified until
+executed against the connected source archives. Sparse original observations
+do not demonstrate continuous historical concentration, complete issuer
+membership or publication-time availability.
+
 > **Current acquisition mode (2026-11-06):** `personal_private_best_effort`.
 > Registered, technically accessible publisher sources are eligible for
 > bounded private collection regardless of unverified/restricted licence

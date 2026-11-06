@@ -61,6 +61,28 @@ class IndependentPublisherSubsourcesTests(unittest.TestCase):
             self.assertEqual(len(row["subsource_collectors"]), 2)
             self.assertFalse(plan["scientific_analysis_certified"])
 
+    def test_mixed_issuer_and_msci_sources_have_distinct_journal_tasks(self):
+        from finance_dashboard.msci_concentration_originals import (
+            msci_publisher_factsheet_identity,
+            CURRENT_ACWI_FACTSHEET_URL,
+        )
+        with TemporaryDirectory() as temp:
+            base = Path(temp)
+            plan = structured_operating_plan(
+                self.document, base, holdings=base / "holdings",
+                kinds={"msci_concentration", "ucits_holdings"},
+                cvm_year=None, agent=None, policy=PolicyRegistry())
+        tasks = plan["selected_actions"]
+        self.assertEqual(len(tasks), 3)
+        self.assertEqual(
+            [row["id"] for row in tasks],
+            ["msci_concentration:" + msci_publisher_factsheet_identity(
+                CURRENT_ACWI_FACTSHEET_URL),
+             "ucits_holdings:ishares", "ucits_holdings:vanguard"])
+        self.assertEqual([row["publisher_policy"] for row in tasks],
+                         ["msci", "ishares", "vanguard-fund-docs"])
+        self.assertFalse(plan["scientific_analysis_certified"])
+
     def test_native_vanguard_collector_reuses_existing_source_store(self):
         with TemporaryDirectory() as temp:
             with httpx.Client(transport=httpx.MockTransport(

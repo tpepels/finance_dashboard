@@ -55,7 +55,8 @@ class StructuredCapabilitiesTests(unittest.TestCase):
                          "original_collection_candidate")
         self.assertIn("oecd-sdmx", by_kind["stan"]["policy_ids"])
         self.assertEqual(by_kind["msci_concentration"]["collection_state"],
-                         "required_publisher_scope_missing")
+                         "original_collection_candidate")
+        self.assertEqual(len(by_kind["msci_concentration"]["subsource_collectors"]), 1)
         self.assertEqual(by_kind["sec_holdings"]["collection_state"],
                          "original_holdings_archive_path_required")
         self.assertEqual(by_kind["ucits_holdings"]["collection_state"],
@@ -81,7 +82,7 @@ class StructuredCapabilitiesTests(unittest.TestCase):
         with TemporaryDirectory() as temp:
             p = collection_plan(
                 matrix, registry=PolicyRegistry(),
-                holdings_dir=Path(temp), msci_factsheet_url=url)
+                holdings_dir=Path(temp), msci_factsheet_urls=(url,))
             row = next(item for item in p["artifacts"]
                        if item["kind"] == "msci_concentration")
             self.assertEqual(row["collection_state"], "original_collection_candidate")
@@ -90,11 +91,64 @@ class StructuredCapabilitiesTests(unittest.TestCase):
             work = structured_operating_plan(
                 self.document, Path(temp), holdings=Path(temp),
                 kinds={"msci_concentration"}, cvm_year=None,
-                agent=None, policy=PolicyRegistry(), msci_factsheet_url=url)
+                agent=None, policy=PolicyRegistry(), msci_factsheet_urls=(url,))
+            from finance_dashboard.msci_concentration_originals import (
+                msci_publisher_factsheet_identity,
+            )
+            expected_id = "msci_concentration:" + msci_publisher_factsheet_identity(url)
             self.assertEqual(
-                [item["id"] for item in work["selected_actions"]],
-                ["msci_concentration"])
+                [item["id"] for item in work["selected_actions"]], [expected_id])
+            self.assertEqual(work["selected_actions"][0]["source_url"], url)
             self.assertFalse(work["scientific_analysis_certified"])
+
+    def test_multi_pdf_originals_are_independent_bounded_tasks(self):
+        from finance_dashboard.msci_concentration_originals import (
+            msci_publisher_factsheet_identity,
+        )
+        urls = (
+            "https://www.msci.com/documents/10199/255599/2025-acwi.pdf",
+            "https://www.msci.com/documents/10199/255599/2026-acwi.pdf",
+        )
+        matrix = original_artifact_matrix(self.document, {})
+        with TemporaryDirectory() as temp:
+            work = structured_operating_plan(
+                self.document, Path(temp), holdings=Path(temp),
+                kinds={"msci_concentration"}, cvm_year=None,
+                agent=None, policy=PolicyRegistry(), msci_factsheet_urls=urls)
+        actions = work["selected_actions"]
+        self.assertEqual(len(actions), 2)
+        self.assertEqual([x["source_url"] for x in actions], list(urls))
+        self.assertEqual([x["id"] for x in actions], [
+            "msci_concentration:" + msci_publisher_factsheet_identity(url)
+            for url in urls
+        ])
+        self.assertTrue(all(x["publisher_policy"] == "msci" for x in actions))
+        self.assertEqual(len(set(x["id"] for x in actions)), 2)
+
+    def test_msci_collector_rejects_wrong_source_action_before_network(self):
+        from finance_dashboard.msci_concentration_originals import (
+            msci_publisher_factsheet_identity,
+        )
+        url = "https://www.msci.com/documents/10199/255599/acwi.pdf"
+        calls = []
+        with httpx.Client(transport=httpx.MockTransport(
+                lambda req: self.fail("Unexpected source request"))) as client:
+            with patch(
+                "finance_dashboard.msci_concentration_originals.collect_msci_concentration_factsheet"
+            ) as collect:
+                collect.return_value = Path("/evidence/abc")
+                with self.assertRaisesRegex(ValueError, "source_identity_mismatch"):
+                    collect_structured_original(
+                        "msci_concentration", root=Path("/unused"), client=client,
+                        subsource="pdf-wrong-id", msci_factsheet_url=url)
+                self.assertEqual(collect.call_count, 0)
+                result = collect_structured_original(
+                    "msci_concentration", root=Path("/unused"), client=client,
+                    subsource=msci_publisher_factsheet_identity(url),
+                    msci_factsheet_url=url)
+                self.assertEqual(result["archive"], "abc")
+                self.assertEqual(result["state"], "retained_original")
+                self.assertEqual(collect.call_count, 1)
 
     def test_existing_native_cvm_collector_reused_not_reimplemented(self):
         hits = []

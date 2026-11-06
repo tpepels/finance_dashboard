@@ -42,14 +42,14 @@ from finance_dashboard.service import safe_source_failure_code
 def structured_operating_plan(document: dict, root: Path, *, holdings: Path | None,
                               kinds: set[str] | None, cvm_year: int | None,
                               agent: str | None, policy: PolicyRegistry,
-                              msci_factsheet_url: str | None = None) -> dict:
+                              msci_factsheet_urls: tuple[str, ...] | None = None) -> dict:
     originals = research_artifact_evidence(root, holdings_root=holdings,
                                            kinds=kinds)
     matrix = original_artifact_matrix(document, originals, included=kinds)
     plan = collection_plan(
         matrix, registry=policy, cvm_year=cvm_year,
         holdings_dir=holdings, sec_user_agent=agent,
-        msci_factsheet_url=msci_factsheet_url)
+        msci_factsheet_urls=msci_factsheet_urls)
     by_kind = {row["artifact_id"]: row for row in matrix["artifact_workstreams"]}
     actions = []
     for item in plan["artifacts"]:
@@ -60,6 +60,7 @@ def structured_operating_plan(document: dict, root: Path, *, holdings: Path | No
                     continue
                 actions.append({
                     "id": item["kind"] + ":" + source["subsource"],
+                    "source_url": source.get("source_url"),
                     "provider": "structured:" + item["kind"],
                     "publisher_policy": source["policy_ids"][0],
                     "publisher_policies": source["policy_ids"],
@@ -117,8 +118,9 @@ def main(argv=None) -> int:
                         choices=sorted(CAPABILITIES), help="Repeat to select native workflows")
     parser.add_argument("--cvm-year", type=int)
     parser.add_argument(
-        "--msci-factsheet-url",
-        help="Direct public MSCI ACWI original PDF URL; classified, bounded and archived")
+        "--msci-factsheet-url", action="append",
+        help="Repeat to acquire multiple original dated MSCI ACWI PDF endpoints. "
+             "Omit for the publisher's currently updated USD index factsheet.")
     parser.add_argument("--acquire", action="store_true")
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--resume", action="store_true")
@@ -157,15 +159,22 @@ def main(argv=None) -> int:
             document, args.evidence_dir,
             holdings=args.holdings_dir, kinds=kinds,
             cvm_year=args.cvm_year, agent=agent, policy=policy,
-            msci_factsheet_url=args.msci_factsheet_url)
+            msci_factsheet_urls=(tuple(args.msci_factsheet_url)
+                                 if args.msci_factsheet_url else None))
         if args.acquire:
             contract_digest = sha256(canonical_bytes(document)).hexdigest()
-            if args.msci_factsheet_url:
-                # Changing a mutable PDF endpoint cannot silently resume a
-                # previous immutable acquisition journal.
+            if "msci_concentration" in kinds:
+                # The source list is a journal contract even when the default
+                # publisher URL was selected without an explicit CLI flag.
+                from .msci_concentration_originals import (
+                    msci_publisher_factsheet_sources,
+                )
+                sources = msci_publisher_factsheet_sources(
+                    tuple(args.msci_factsheet_url)
+                    if args.msci_factsheet_url else None)
                 contract_digest = sha256(canonical_bytes({
                     "research_contract_sha256": contract_digest,
-                    "msci_factsheet_url": args.msci_factsheet_url,
+                    "msci_factsheet_source_ids": [item[0] for item in sources],
                 })).hexdigest()
             context = sweep_context(
                 sorted(action["id"] for action in plan["selected_actions"]),
@@ -200,6 +209,9 @@ def main(argv=None) -> int:
                                 "retry_at": max(x["retry_at"] for x in deferred),
                             }
                         return {"state": "ready"}
+                    actions_by_id = {
+                        action["id"]: action for action in plan["selected_actions"]
+                    }
                     def refresh(action_id, *, full):
                         if not full:
                             raise ValueError("structured_original_requires_full")
@@ -210,7 +222,8 @@ def main(argv=None) -> int:
                             cvm_year=args.cvm_year,
                             holdings_dir=args.holdings_dir,
                             sec_user_agent=agent,
-                            msci_factsheet_url=args.msci_factsheet_url,
+                            msci_factsheet_url=actions_by_id[
+                                action_id].get("source_url"),
                             stan_max_requests=max(1, args.max_http_requests -
                                                   client._transport.requests_reserved))
                         return {"status": "success",
@@ -227,7 +240,9 @@ def main(argv=None) -> int:
                 after = structured_operating_plan(
                     document, args.evidence_dir, holdings=args.holdings_dir,
                     kinds=kinds, cvm_year=args.cvm_year, agent=agent,
-                    policy=policy, msci_factsheet_url=args.msci_factsheet_url)
+                    policy=policy,
+                    msci_factsheet_urls=(tuple(args.msci_factsheet_url)
+                                         if args.msci_factsheet_url else None))
                 before_by_id = {
                     item["artifact_id"]: item for item in plan["artifact_workstreams"]}
                 original_new = [
