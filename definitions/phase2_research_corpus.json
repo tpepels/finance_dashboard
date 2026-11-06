@@ -659,16 +659,17 @@
           },
           {
             "role": "independent_shock_events",
-            "description": "Independently documented shock-event dates and pre-shock reference eligibility; a pandemic shock is distinct from NBER recession months.",
+            "description": "Independently documented shock-event dates and pre-shock reference eligibility; a pandemic shock is distinct from NBER recession months. Curated sourced register: definitions/shock_events.json.",
             "series_ids": [],
             "expected": {
               "geography": ["US"],
               "concept": "Dated shock events and recovery reference periods"
             },
-            "temporal_requirement": "latest_revised",
+            "temporal_requirement": "source_asof",
             "input_type": "events",
             "artifact_ids": [],
-            "input_requirement": "Independently documented shock-event dates and pre-shock reference eligibility; a pandemic shock is distinct from NBER recession months."
+            "input_requirement": "Independently documented shock-event dates and pre-shock reference eligibility; a pandemic shock is distinct from NBER recession months.",
+            "supply": "user"
           }
         ],
         "variants": [
@@ -4651,15 +4652,16 @@
           },
           {
             "role": "market_shock_dates",
-            "description": "Independently sourced market-crisis/shock dates, separate from recession classifications.",
+            "description": "Independently sourced market-crisis/shock dates, separate from recession classifications. Curated sourced register: definitions/shock_events.json.",
             "series_ids": [],
             "expected": {
               "concept": "Dated market-shock evidence"
             },
-            "temporal_requirement": "latest_revised",
+            "temporal_requirement": "source_asof",
             "input_type": "events",
             "artifact_ids": [],
-            "input_requirement": "Independently sourced market-crisis/shock dates, separate from recession classifications."
+            "input_requirement": "Independently sourced market-crisis/shock dates, separate from recession classifications.",
+            "supply": "user"
           }
         ],
         "variants": [

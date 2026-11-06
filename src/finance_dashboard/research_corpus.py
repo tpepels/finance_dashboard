@@ -30,7 +30,8 @@ APPROVED_ANALYSIS_IDS = frozenset((
 ))  # P06/P07: EUR investor decision layer, Phase 1 revision 2026-11-06
 SUPPORTING_METHODS = {"C04", "M03", "V04", "L06", "G04"}
 TEMPORAL_REQUIREMENTS = {"current_source_snapshot", "source_asof", "first_publication", "latest_revised"}
-USER_SUPPLY_INPUT_TYPES = {"allocation", "policy", "scenario_parameter", "positions", "entity_mapping"}
+# Owner parameters and owner-curated sourced registers (e.g. shock events).
+USER_SUPPLY_INPUT_TYPES = {"allocation", "policy", "scenario_parameter", "positions", "entity_mapping", "events"}
 # Only reviewed catalogue metadata and safe census fields enter the API.
 # Ingestion request URLs and upstream error text may contain credentials.
 SOURCE_CONTRACT_FIELDS = (

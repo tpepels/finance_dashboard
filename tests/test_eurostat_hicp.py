@@ -34,6 +34,9 @@ class EurostatHicpTests(unittest.TestCase):
             self.assertEqual(result.observations[date(2026, 10, 1)], Decimal("101.9"))
             manifest = json.loads(next(Path(temp).glob("responses/*/*/manifest.json")).read_text())
             self.assertEqual(manifest["scope"], "full_source_snapshot")
+            # The recorded URL must identify the exact series for the independent reader.
+            self.assertEqual(_eurostat_hicp(json.dumps(payload()).encode(), manifest["sources"][0]["url"])[date(2026, 10, 1)],
+                             Decimal("101.9"))
         raw = json.dumps(payload()).encode()
         values = _eurostat_hicp(raw, URL)
         self.assertEqual(values[date(2026, 9, 1)], Decimal("101.5"))

@@ -26,7 +26,7 @@ SAFE_QUERY = frozenset({"series_id", "file_type", "observation_start", "id", "co
                         "per_page", "date", "startPeriod", "sinceTimePeriod", "freq", "unit", "direct",
                         "sector", "na_item", "geo", "index_codes", "currency_symbol", "index_variant",
                         "data_frequency", "start_date", "end_date", "agg_by", "agg_sum_fields", "agg_limit",
-                        "limit", "fields", "agg_sort_by", "agg_sort_order"})
+                        "limit", "fields", "agg_sort_by", "agg_sort_order", "coicop18"})
 SAFE_HEADERS = frozenset({"content-type", "last-modified", "etag", "date"})
 MAX_RESPONSE_BYTES = 50_000_000
 

@@ -347,3 +347,17 @@ class ResearchCorpusTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ShockEventRegisterTests(unittest.TestCase):
+    def test_every_event_is_dated_sourced_and_unique(self):
+        import json
+        from datetime import date
+        from pathlib import Path
+        doc = json.loads((Path(__file__).resolve().parents[1] / "definitions" / "shock_events.json").read_text())
+        ids = [e["id"] for e in doc["events"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        for event in doc["events"]:
+            date.fromisoformat(event["date"])
+            self.assertTrue(event["source_url"].startswith("https://"))
+            self.assertTrue(event["label"].strip())

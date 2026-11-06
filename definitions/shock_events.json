@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "description": "Curated, sourced market and economic shock events for C05/P03 annotations. Dates are the event day named by the cited official source; they are not recession dates (see the NBER chronology).",
+  "events": [
+    {"id": "crash_1987", "date": "1987-10-19", "geography": "US", "category": "equity_crash", "label": "Stock market crash (Black Monday)", "source_url": "https://www.federalreservehistory.org/essays/stock-market-crash-of-1987"},
+    {"id": "russia_ltcm_1998", "date": "1998-08-17", "geography": "GLOBAL", "category": "credit_liquidity", "label": "Russian default and devaluation; LTCM near-failure followed", "source_url": "https://www.federalreservehistory.org/essays/ltcm-near-failure"},
+    {"id": "lehman_2008", "date": "2008-09-15", "geography": "GLOBAL", "category": "banking_crisis", "label": "Lehman Brothers bankruptcy filing", "source_url": "https://www.federalreservehistory.org/essays/great-recession-and-its-aftermath"},
+    {"id": "draghi_2012", "date": "2012-07-26", "geography": "EA", "category": "policy_backstop", "label": "ECB President Draghi: \"whatever it takes\"", "source_url": "https://www.ecb.europa.eu/press/key/date/2012/html/sp120726.en.html"},
+    {"id": "covid_pandemic_2020", "date": "2020-03-11", "geography": "GLOBAL", "category": "pandemic_shock", "label": "WHO characterizes COVID-19 as a pandemic", "source_url": "https://www.who.int/director-general/speeches/detail/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020"},
+    {"id": "fed_facilities_2020", "date": "2020-03-23", "geography": "US", "category": "policy_backstop", "label": "Federal Reserve announces extensive new market support measures", "source_url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20200323b.htm"},
+    {"id": "fed_liftoff_2022", "date": "2022-03-16", "geography": "US", "category": "monetary_tightening", "label": "FOMC raises the federal funds target range (start of 2022 tightening)", "source_url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20220316a.htm"},
+    {"id": "svb_2023", "date": "2023-03-10", "geography": "US", "category": "banking_crisis", "label": "Silicon Valley Bank closed; FDIC appointed receiver", "source_url": "https://www.fdic.gov/news/press-releases/2023/pr23016.html"}
+  ]
+}
