@@ -38,7 +38,8 @@ class CompleteResearchSourceMatrixTests(unittest.TestCase):
         self.assertEqual(result["unbound_scalar_roles"], 21)
         self.assertEqual(
             result["roles_with_reviewed_publisher_candidates"] +
-            result["roles_requiring_new_publisher_discovery"], 21)
+            result["roles_requiring_new_publisher_discovery"] +
+            result["roles_with_named_native_original_artifact"], 21)
         self.assertEqual(result["automatically_bound_scalar_series"], 0)
         all_rows = result["role_candidates"]
         self.assertTrue(all(not row["exact_scalar_series_bound"]

@@ -44,6 +44,19 @@ def role_resolution(role, counts, registry, *, external_coverage=None, artifact_
         return {"category": 1, "classification": "existing_source_unconnected", "connected": False,
             "availability": "partial_reference_quotes", "external_sources": available,
             "reason": "Existing EUR-base reference FX histories are stored. Required pair, fixing/execution policy, original fidelity and missing currencies still need verification; these do not establish issuer fiscal FX or portfolio execution."}
+    if role["input_type"] == "scalar_history" and role.get(
+            "partial_artifact_evidence"):
+        return {
+            "category": 1,
+            "classification": "existing_source_unconnected",
+            "connected": False,
+            "availability": "native_original_unconverted",
+            "artifact_ids": [
+                item["artifact_id"] for item in
+                role["partial_artifact_evidence"]],
+            "exact_role_satisfied": False,
+            "reason": "Verified original structured source exists, but native methodological selection, scalar transformation, comparable periods and first publication are not yet verified.",
+        }
     if role["input_type"] != "scalar_history":
         attached = role.get("attached_native_original")
         if attached and attached.get("original_source_hash_verified") is True:

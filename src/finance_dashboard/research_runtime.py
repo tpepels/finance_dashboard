@@ -15,6 +15,9 @@ from .comparative_corpus import build_comparative_corpus
 from .research_artifacts import research_artifact_evidence
 from .phase2_publication_evidence import publisher_vintage_evidence
 from .phase2_native_role_originals import native_role_original_evidence
+from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
+from .phase2_alfred_revisions import revision_inventory
+from .vintage import SOURCES
 from .research_corpus import analysis_series_ids, research_corpus_report
 from .source_coverage import coverage_from_session
 from .source_reconciliation import reconcile_session
@@ -29,6 +32,7 @@ class CorpusEvaluation:
     artifact_evidence: dict | None = None
     publisher_vintage_proof: dict | None = None
     native_role_proof: dict | None = None
+    alfred_revision_proof: dict | None = None
 
 
 def required_series_ids(document: dict) -> list[str]:
@@ -52,6 +56,9 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
     artifacts.update(key for analysis in document["analyses"]
                      for role in analysis["comparison_contract"]["original_requirements"]
                      for key in role["artifact_ids"])
+    # Approved original-method references can identify a native source family
+    # even before a scalar series has been bound to its research role.
+    artifacts.update(DOCUMENTED_NATIVE_DISCOVERY.values())
     with Session(engine, autoflush=False) as session:
         if engine.dialect.name == "postgresql":
             session.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"))
@@ -73,6 +80,13 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
          required_series_ids(document)})
         if vintage_root is not None else None)
     role_originals = native_role_original_evidence(document, root)
+    revisions = (revision_inventory(
+        Path(vintage_root),
+        {item["source_key"] for item in series_registry
+         if item.get("provider") == "FRED" and
+         item.get("source_key") in SOURCES and
+         item["id"] in required_series_ids(document)})
+        if vintage_root is not None else None)
     report = research_corpus_report(
         document, coverage,
         vintages=available_snapshots(Path(vintage_root))
@@ -80,8 +94,10 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
         series_registry=series_registry, comparative_evidence=comparative,
         source_reconciliation=proof, artifact_evidence=structured,
         publisher_vintage_proof=first_vintage,
-        native_role_evidence=role_originals)
+        native_role_evidence=role_originals,
+        alfred_revision_proof=revisions)
     return CorpusEvaluation(
         public_report=report, comparative=comparative, source_proof=proof,
         artifact_evidence=structured, publisher_vintage_proof=first_vintage,
-        native_role_proof=role_originals)
+        native_role_proof=role_originals,
+        alfred_revision_proof=revisions)

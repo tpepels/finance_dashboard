@@ -53,6 +53,20 @@ def structured_operating_plan(document: dict, root: Path, *, holdings: Path | No
     by_kind = {row["artifact_id"]: row for row in matrix["artifact_workstreams"]}
     actions = []
     for item in plan["artifacts"]:
+        subsources = item.get("subsource_collectors", [])
+        if subsources:
+            for source in subsources:
+                if source["collection_state"] != "original_collection_candidate":
+                    continue
+                actions.append({
+                    "id": item["kind"] + ":" + source["subsource"],
+                    "provider": "structured:" + item["kind"],
+                    "publisher_policy": source["policy_ids"][0],
+                    "publisher_policies": source["policy_ids"],
+                    "affected_analyses": item["affected_analyses"],
+                    "state": "acquisition_candidate",
+                })
+            continue
         if item["collection_state"] != "original_collection_candidate":
             continue
         actions.append({
@@ -83,6 +97,9 @@ def structured_operating_plan(document: dict, root: Path, *, holdings: Path | No
             "collection_state": next(
                 (item["collection_state"] for item in plan["artifacts"]
                  if item["kind"] == row["artifact_id"]), "not_required_by_corpus"),
+            "subsource_collectors": next(
+                (item["subsource_collectors"] for item in plan["artifacts"]
+                 if item["kind"] == row["artifact_id"]), []),
         } for row in matrix["artifact_workstreams"]],
         "eligible_original_collectors": len(actions),
         "selected_actions": actions,
@@ -107,8 +124,8 @@ def main(argv=None) -> int:
     parser.add_argument("--details", action="store_true")
     args = parser.parse_args(argv)
     if (not 1 <= args.max_http_requests <= 300
-            or not 1 <= args.max_tasks <= 13):
-        parser.error("HTTP request budget must be 1–300; task budget 1–13")
+            or not 1 <= args.max_tasks <= 15):
+        parser.error("HTTP request budget must be 1–300; task budget 1–15")
     if (args.acquire and args.run_dir is None
             or args.run_dir is not None and not args.acquire
             or args.resume and not args.acquire):
@@ -139,7 +156,8 @@ def main(argv=None) -> int:
             cvm_year=args.cvm_year, agent=agent, policy=policy)
         if args.acquire:
             context = sweep_context(
-                sorted(CAPABILITIES), policy.sha256,
+                sorted(action["id"] for action in plan["selected_actions"]),
+                policy.sha256,
                 sha256(canonical_bytes(document)).hexdigest())
             with Phase2SweepJournal(
                     args.run_dir, context=context,
@@ -171,18 +189,20 @@ def main(argv=None) -> int:
                                 "retry_at": max(x["retry_at"] for x in deferred),
                             }
                         return {"state": "ready"}
-                    def refresh(kind, *, full):
+                    def refresh(action_id, *, full):
                         if not full:
                             raise ValueError("structured_original_requires_full")
+                        kind, _, subsource = action_id.partition(":")
                         outcome = collect_structured_original(
                             kind, root=args.evidence_dir, client=client,
+                            subsource=subsource or None,
                             cvm_year=args.cvm_year,
                             holdings_dir=args.holdings_dir,
                             sec_user_agent=agent,
                             stan_max_requests=max(1, args.max_http_requests -
                                                   client._transport.requests_reserved))
                         return {"status": "success",
-                                "series_id": kind,
+                                "series_id": action_id,
                                 "received": 1,
                                 "versions_added": int(
                                     outcome["state"] == "retained_original")}

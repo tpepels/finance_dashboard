@@ -308,6 +308,7 @@ def research_corpus_report(
     artifact_evidence: dict[str, Any] | None = None,
     publisher_vintage_proof: dict[str, Any] | None = None,
     native_role_evidence: dict[str, Any] | None = None,
+    alfred_revision_proof: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Join runtime evidence; declarations and source counts cannot grant approval."""
     from .comparative_corpus import comparative_evidence_summary
@@ -328,6 +329,8 @@ def research_corpus_report(
     method_source_by_id = {item["id"]: item for item in document["original_sources"]}
     verified_publisher_releases = (
         (publisher_vintage_proof or {}).get("series") or {})
+    revision_originals = (
+        (alfred_revision_proof or {}).get("series") or {})
     analyses: list[dict[str, Any]] = []
     for row in document["analyses"]:
         links = []
@@ -354,6 +357,16 @@ def research_corpus_report(
                 # A populated ALFRED snapshot proves values known on its as-of
                 # date, not the earliest public release of each observation.
                 "first_publication_vintage_verified": False,
+                "official_revision_windows_verified": (
+                    revision_originals.get(
+                        original_fred_id, {}).get("verified_windows", 0)),
+                "official_revision_rows_verified": (
+                    revision_originals.get(original_fred_id, {}).get(
+                        "verified_observation_revision_rows", 0)),
+                "revision_original_archives_invalid_or_conflicting": (
+                    revision_originals.get(original_fred_id, {}).get(
+                        "invalid_or_conflicting_windows", 0)),
+                "observation_specific_first_publisher_release_verified": False,
                 "original_publisher_first_series_vintage": (
                     verified_publisher_releases.get(
                         original_fred_id, {}).get(
@@ -391,7 +404,8 @@ def research_corpus_report(
             observations_checked=observations is not None, source_proof=source_reconciliation,
             artifact_evidence=artifact_evidence,
             publisher_vintage_proof=publisher_vintage_proof,
-            native_role_evidence=native_role_evidence)
+            native_role_evidence=native_role_evidence,
+            alfred_revision_proof=alfred_revision_proof)
         external_coverage = {item["id"]: item for item in (observations or {}).get("items", []) if item.get("family") == "fx"}
         requirements = []
         for role in acceptance.pop("requirements"):
@@ -452,6 +466,15 @@ def research_corpus_report(
             publisher_vintage_proof.get("verified_series_vintage_sources", 0)
             if publisher_vintage_proof is not None else None),
         "observation_level_first_release_verified": False,
+        "alfred_original_revision_inventory_checked":
+            alfred_revision_proof is not None,
+        "alfred_verified_source_revision_windows": (
+            alfred_revision_proof.get("verified_windows", 0)
+            if alfred_revision_proof is not None else None),
+        "alfred_invalid_original_revision_windows": (
+            alfred_revision_proof.get(
+                "invalid_or_conflicting_windows", 0)
+            if alfred_revision_proof is not None else None),
         "structured_native_role_originals_checked":
             native_role_evidence is not None,
         "structured_native_roles_with_hash_verified_partial_originals": (

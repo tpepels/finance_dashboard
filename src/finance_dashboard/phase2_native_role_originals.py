@@ -14,6 +14,7 @@ from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import io
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -23,6 +24,7 @@ import tempfile
 from .source_capture import canonical_bytes
 from .source_evidence import record_acquisition_receipt, verified_receipted_bundles
 from .source_policy_registry import PolicyRegistry
+from .phase2_native_shape import typed_original_checks
 
 MAX_NATIVE_BYTES = 30_000_000
 MAX_NATIVE_ROWS = 100_000
@@ -80,7 +82,9 @@ def _audit(raw: bytes, *, fmt: str, fields: list[str],
                 raise ValueError("original_csv_columns_disagree_with_schema")
             rows = list(reader)
         else:
-            rows = json.loads(raw)
+            rows = json.loads(
+                raw, parse_constant=lambda _: (_ for _ in ()).throw(
+                    ValueError("original_native_nonfinite_json_constant")))
             if not isinstance(rows, list):
                 raise ValueError("original_json_must_be_array")
     except (UnicodeError, json.JSONDecodeError) as exc:
@@ -90,8 +94,11 @@ def _audit(raw: bytes, *, fmt: str, fields: list[str],
     seen, missing_numeric, dates, value_count = set(), 0, set(), 0
     for row in rows:
         if (not isinstance(row, dict) or set(row) != set(fields)
-                or any(value is not None and not isinstance(value, (str, int, float))
-                       for value in row.values())):
+                or any(
+                    value is not None and (
+                        type(value) not in (str, int, float) or
+                        type(value) is float and not math.isfinite(value))
+                    for value in row.values())):
             raise ValueError("original_native_row_fields_invalid")
         key = tuple(str(row[field]) if row[field] is not None else ""
                     for field in key_fields)
@@ -162,6 +169,7 @@ def register_native_role_original(document: dict, *, root: Path,
         "format": fmt, "origin": origin,
         "publisher_url": publisher_url, "publisher_policy": policy,
     }
+    native_shape = typed_original_checks(approved, schema, facts)
     identity = _identity(analysis_id, role)
     contract_sha = sha256(canonical_bytes(approved)).hexdigest()
     digest = sha256(canonical_bytes({
@@ -171,15 +179,20 @@ def register_native_role_original(document: dict, *, root: Path,
         "source_schema": schema,
     })).hexdigest()
     parent = _parent(root, analysis_id, role)
+    if any(part.is_symlink() for part in (
+            Path(root), parent.parent.parent, parent.parent, parent)):
+        raise ValueError("original_native_source_path_contains_symlink")
+    # Refuse a new source version until *all* prior receipts and bytes pass
+    # independent verification. A new version cannot hide a broken archive.
+    if parent.exists():
+        prior = read_native_role_original(
+            document, root=root, analysis_id=analysis_id, role=role)
+        if prior["status"] != "hash_verified_native_structured_original_partial":
+            raise ValueError("existing_original_native_source_invalid")
     parent.mkdir(parents=True, exist_ok=True)
     target = parent / digest
     staging = None
     try:
-        if target.exists():
-            # A retained immutable bundle cannot accept another receipt
-            # before every earlier version has passed read-only verification.
-            read_native_role_original(
-                document, root=root, analysis_id=analysis_id, role=role)
         if not target.exists():
             staging = Path(tempfile.mkdtemp(
                 dir=parent, prefix=".native-original-"))
@@ -193,6 +206,7 @@ def register_native_role_original(document: dict, *, root: Path,
                 "original_sha256": sha256(raw).hexdigest(),
                 "original_bytes": len(raw),
                 "source_schema": schema, "native_facts": facts,
+                "native_shape_checks": native_shape,
                 "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
                 "economic_scope_verified": False,
                 "first_publication_verified": False,
@@ -207,20 +221,68 @@ def register_native_role_original(document: dict, *, root: Path,
                                      analysis_id=analysis_id, role=role)
 
 
+def _fingerprints(raw: bytes, schema: dict) -> dict:
+    """Recompare exact original records by their declared native keys.
+
+    Hash keys and payloads to avoid emitting issuer/security names or private
+    portfolio identifiers in diagnostics. This does not claim that an economic
+    account has the same definition between source versions.
+    """
+    if schema["format"] == "csv":
+        rows = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
+    else:
+        rows = json.loads(raw)
+    keys = schema["key_fields"]
+    return {
+        sha256(canonical_bytes([row[field] for field in keys])).hexdigest():
+            sha256(canonical_bytes(row)).hexdigest()
+        for row in rows
+    }
+
+
+def _compare_original_versions(left: tuple, right: tuple) -> dict:
+    left_schema, left_raw = left
+    right_schema, right_raw = right
+    if (left_schema["fields"] != right_schema["fields"]
+            or left_schema["key_fields"] != right_schema["key_fields"]
+            or left_schema["format"] != right_schema["format"]):
+        return {
+            "state": "native_source_schema_changed",
+            "comparable_source_records": False,
+            "same_economic_method_verified": False,
+        }
+    lhs = _fingerprints(left_raw, left_schema)
+    rhs = _fingerprints(right_raw, right_schema)
+    return {
+        "state": "source_records_reconciled",
+        "comparable_source_records": True,
+        "unchanged_records": sum(lhs[k] == rhs[k]
+                                 for k in lhs.keys() & rhs.keys()),
+        "changed_records": sum(lhs[k] != rhs[k]
+                               for k in lhs.keys() & rhs.keys()),
+        "removed_records": len(lhs.keys() - rhs.keys()),
+        "added_records": len(rhs.keys() - lhs.keys()),
+        "same_economic_method_verified": False,
+    }
+
+
 def read_native_role_original(document: dict, *, root: Path,
                               analysis_id: str, role: str) -> dict:
     approved = _role(document, analysis_id, role)
     parent = _parent(root, analysis_id, role)
-    if not parent.exists():
+    if not parent.exists() and not parent.is_symlink():
         return {
             "status": "original_not_registered",
             "original_source_hash_verified": False,
             "original_economic_scope_verified": False,
             "first_publication_verified": False,
         }
+    if any(part.is_symlink() for part in (
+            Path(root), parent.parent.parent, parent.parent, parent)):
+        raise ValueError("original_native_source_path_contains_symlink")
     records = verified_receipted_bundles(
         parent, _identity(analysis_id, role))
-    versions = set()
+    versions = {}
     for entry in records:
         manifest = entry["manifest"]
         if (manifest["schema_version"] != 1
@@ -254,7 +316,25 @@ def read_native_role_original(document: dict, *, root: Path,
                           date_field=schema["date_field"]) != manifest[
                               "native_facts"]):
             raise ValueError("original_role_record_or_hash_mismatch")
-        versions.add(entry["bundle_digest"])
+        native_shape = typed_original_checks(
+            approved, schema, manifest["native_facts"])
+        if (manifest.get("native_shape_checks") is not None
+                and manifest["native_shape_checks"] != native_shape):
+            raise ValueError("original_native_shape_proof_invalid")
+        versions[entry["bundle_digest"]] = (schema, raw)
+    previous = None
+    chronology = []
+    for entry in records:
+        digest = entry["bundle_digest"]
+        if previous is not None and digest != previous:
+            reconciliation = _compare_original_versions(
+                versions[previous], versions[digest])
+            chronology.append({
+                "previous_source_sha256": previous,
+                "current_source_sha256": digest,
+                **reconciliation,
+            })
+        previous = digest
     last = records[-1]["manifest"]
     return {
         "status": "hash_verified_native_structured_original_partial",
@@ -262,6 +342,23 @@ def read_native_role_original(document: dict, *, root: Path,
         "original_versions": len(versions),
         "retrieval_receipts": len(records),
         "native_facts": last["native_facts"],
+        "native_shape_checks": typed_original_checks(
+            approved, last["source_schema"], last["native_facts"]),
+        "source_revisions": {
+            "adjacent_distinct_versions_compared": len(chronology),
+            "native_schema_changed": any(
+                row["state"] == "native_source_schema_changed"
+                for row in chronology),
+            "changed_original_records": sum(row.get(
+                "changed_records", 0) for row in chronology),
+            "added_original_records": sum(row.get(
+                "added_records", 0) for row in chronology),
+            "removed_original_records": sum(row.get(
+                "removed_records", 0) for row in chronology),
+            "comparisons": chronology[:8],
+            "original_versions_replaced": False,
+            "source_revisions_assumed_first_publication": False,
+        },
         "origin": last["source_schema"]["origin"],
         "publisher_policy": last["source_schema"]["publisher_policy"],
         "original_economic_scope_verified": False,

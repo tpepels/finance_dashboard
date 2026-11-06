@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from .source_original_gate import verified_original_rows
+from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
 
 PUBLISHER_METADATA_FIELDS = (
     "source_native_unit", "source_native_unit_label", "source_currency", "source_sheet",
@@ -49,7 +50,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                         observations_checked: bool, source_proof: dict | None = None,
                         artifact_evidence: dict | None = None,
                         publisher_vintage_proof: dict | None = None,
-                        native_role_evidence: dict | None = None) -> dict[str, Any]:
+                        native_role_evidence: dict | None = None,
+                        alfred_revision_proof: dict | None = None) -> dict[str, Any]:
     """Evaluate all original roles using the current, independently checked inputs.
 
     `panels` must come from comparative_evidence_summary, which reconstructs
@@ -129,14 +131,32 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             registry[sid].get("provider") == "FRED" and
             published.get(registry[sid]["source_key"], {}).get("status") ==
             "verified_original_publisher_vintage"]
+        revision_sources = (alfred_revision_proof or {}).get("series", {})
+        revisions = [{
+            "series_id": sid,
+            "alfred_source_key": registry[sid]["source_key"],
+            "hash_verified_original_windows": revision_sources[
+                registry[sid]["source_key"]]["verified_windows"],
+            "original_revision_rows": revision_sources[
+                registry[sid]["source_key"]][
+                    "verified_observation_revision_rows"],
+            "invalid_or_conflicting_original_windows": revision_sources[
+                registry[sid]["source_key"]][
+                    "invalid_or_conflicting_windows"],
+        } for sid in ids if sid in registry
+            and registry[sid].get("provider") == "FRED"
+            and registry[sid]["source_key"] in revision_sources]
         checks.append(_gate(
             "temporal_evidence", "incomplete",
             "observation_release_eligibility_unverified", ids,
             required_mode=role["temporal_requirement"],
             verified_official_series_vintages=release_originals,
             original_publisher_series_vintage_count=len(release_originals),
+            verified_original_revision_sources=revisions,
+            alfred_windows_with_complete_realtime_intervals=sum(
+                row["hash_verified_original_windows"] for row in revisions),
             observation_first_release_dates_verified=0,
-            scope="Official first ALFRED series vintage is not the first published date of each observation. Original release synchronization and eligibility remain separate. Receipt time and current-source observations cannot certify them."))
+            scope="ALFRED historical real-time windows identify revisions as recorded by ALFRED, not necessarily initial publication by the producing institution. Every observation's original release time, matched historical coverage and common publisher release remain independently required."))
         artifact = None
         if "icio" in role.get("artifact_ids", []) and matrix_available:
             artifact = {key: matrix.get(key) for key in (
@@ -157,7 +177,39 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                                missing_years=sorted(set(range(1995, 2023)) - set(years)))
             checks[3] = _gate("original_source_values", "passed", "original_artifact_hashes_verified",
                 scope="Original matrix bytes match the pinned replica ledger. Accounting validity is a separate failed check.")
+        # Some explicitly named original methods have a genuine typed native
+        # reader before any scalar catalog identity is scientifically bound.
+        # WIID survey rows, for example, retain welfare concept/scale/quality
+        # and cannot be collapsed to an assumed country-year Gini.
+        named_artifact = DOCUMENTED_NATIVE_DISCOVERY.get(
+            (analysis["id"], role["role"]))
+        named_evidence = (artifact_evidence or {}).get(
+            named_artifact, {}) if named_artifact else {}
+        if (not ids and named_evidence.get(
+                "original_source_hash_verified") is True):
+            checks[0] = _gate(
+                "source_binding", "incomplete",
+                "documented_native_original_without_scalar_identity",
+                scope="Retained original survey/structured source verified; no validated scalar variable, common units or period selection exists.")
+            checks[2] = _gate(
+                "stored_history", "incomplete",
+                "native_original_requires_matched_role_history")
+            checks[3] = _gate(
+                "original_source_values", "incomplete",
+                "source_original_available_without_exact_method_projection")
         partial = _partial_artifacts(role, artifact_evidence or {})
+        if named_artifact and named_evidence.get(
+                "original_source_hash_verified") is True:
+            partial.append({
+                "artifact_id": named_artifact,
+                "availability": "available_partial",
+                "original_source_hash_verified": True,
+                "original_role_satisfied": False,
+                "full_history_verified": False,
+                "first_publication_verified": False,
+                "scalar_binding_established": False,
+                "scope": "Native original rows require source-specific welfare measure, survey population, unit and release alignment before scalar derivation.",
+            })
         if not ids and partial:
             checks[0] = _gate("source_binding", "incomplete", "original_artifact_partial_scope",
                 scope="Verified structured originals are connected; complete original scope/history remains unverified.")

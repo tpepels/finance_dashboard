@@ -12,6 +12,7 @@ from datetime import date
 from pathlib import Path
 
 from .research_readiness import ARTIFACT_IDS
+from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
 from .research_artifacts import research_artifact_evidence
 from .source_policy_registry import PolicyRegistry
 from .source_policy_types import PolicyViolation
@@ -86,6 +87,7 @@ def original_artifact_matrix(document: dict, evidence: dict,
                       "reason": capabilities[kind].reason,
                       "required_operator_inputs": list(capabilities[kind].required),
                       "roles": [], "affected_analyses": set(),
+                      "unbound_scalar_native_references": [],
                       "original_proof_state": "missing_or_invalid",
                       "scientific_methods_certified": False}
                for kind in sorted(wanted)}
@@ -97,6 +99,15 @@ def original_artifact_matrix(document: dict, evidence: dict,
                 by_kind[kind]["affected_analyses"].add(analysis["id"])
         for role in analysis["comparison_contract"]["original_requirements"]:
             if role["input_type"] == "scalar_history":
+                native = DOCUMENTED_NATIVE_DISCOVERY.get(
+                    (analysis["id"], role["role"]))
+                if native in by_kind and not role["series_ids"]:
+                    by_kind[native]["affected_analyses"].add(analysis["id"])
+                    by_kind[native]["unbound_scalar_native_references"].append({
+                        "analysis_id": analysis["id"],
+                        "role": role["role"],
+                        "native_original_is_not_scalar_history": True,
+                    })
                 continue
             total += 1
             items = [k for k in role["artifact_ids"] if k in wanted]
@@ -132,6 +143,8 @@ def original_artifact_matrix(document: dict, evidence: dict,
             original.get("first_publication_verified") is True)
         group["affected_analyses"] = sorted(group["affected_analyses"])
         group["role_count"] = len(group["roles"])
+        group["unbound_scalar_native_reference_count"] = len(
+            group["unbound_scalar_native_references"])
         rows.append(group)
     return {
         "phase": "phase2", "operation": "original_structured_workplan",
@@ -148,6 +161,38 @@ def original_artifact_matrix(document: dict, evidence: dict,
         "historical_originals_rewritten": False,
         "research_certified": False,
     }
+
+
+def ucits_original_routes() -> dict[str, tuple[str, ...]]:
+    """Two source families, independently governed by publisher rights.
+
+    An unapproved iShares download must not prevent permitted acquisition
+    of original Vanguard data. Both feed the same original UCITS reader.
+    """
+    from .ucits_holdings import CSV_URL, ANNUALS, annual_url
+    from .vanguard_ucits_holdings import REPORTS
+    return {
+        "ishares": tuple([annual_url(y) for y in sorted(ANNUALS)] +
+                         [CSV_URL]),
+        "vanguard": tuple(
+            item["source_url"] for item in REPORTS.values()),
+    }
+
+
+def _classify_publisher_routes(
+        endpoints: tuple[str, ...], policies: PolicyRegistry) -> tuple[list[str], str | None]:
+    ids = set()
+    for endpoint in endpoints:
+        try:
+            policy = policies.for_url(endpoint)
+        except PolicyViolation:
+            return sorted(ids), "publisher_api_host_unclassified"
+        ids.add(policy.id)
+        if (not policy.restrictions["allow_automated_download"]
+                or policy.rights["internal_analysis"] !=
+                "allowed_with_attribution"):
+            return sorted(ids), "publisher_collection_not_cleared"
+    return sorted(ids), None
 
 
 def task_policy_hosts(kind: str, *, cvm_year: int | None = None) -> tuple[str, ...]:
@@ -173,11 +218,8 @@ def task_policy_hosts(kind: str, *, cvm_year: int | None = None) -> tuple[str, .
         from .sec_holdings_sync import SUBMISSIONS_URL, EDGAR_URL
         return SUBMISSIONS_URL, EDGAR_URL
     if kind == "ucits_holdings":
-        from .ucits_holdings import CSV_URL, ANNUALS, annual_url
-        from .vanguard_ucits_holdings import REPORTS
-        return tuple([annual_url(y) for y in sorted(ANNUALS)] +
-                     [CSV_URL] + [
-                         item["source_url"] for item in REPORTS.values()])
+        return tuple(url for group in ucits_original_routes().values()
+                     for url in group)
     return ()
 
 
@@ -196,6 +238,7 @@ def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
         endpoints = task_policy_hosts(kind, cvm_year=cvm_year)
         ids = set()
         blocker = None
+        subsources = []
         if capability.collection != "publisher_collector":
             blocker = "operator_original_required"
         elif not endpoints:
@@ -205,22 +248,37 @@ def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
         elif kind == "sec_holdings" and (
                 not sec_user_agent or "@" not in sec_user_agent):
             blocker = "original_sec_contact_user_agent_missing"
+        elif kind == "ucits_holdings":
+            for name, urls in ucits_original_routes().items():
+                route_ids, denied = _classify_publisher_routes(
+                    urls, policies)
+                ids.update(route_ids)
+                subsources.append({
+                    "subsource": name,
+                    "policy_ids": route_ids,
+                    "collection_state": denied or "original_collection_candidate",
+                    "original_source_urls_checked": len(urls),
+                })
+            permitted = sum(x["collection_state"] ==
+                            "original_collection_candidate"
+                            for x in subsources)
+            if not permitted:
+                blocker = "publisher_collection_not_cleared"
+            elif permitted != len(subsources):
+                blocker = "partially_authorized_original_collection"
         else:
-            try:
-                for endpoint in endpoints:
-                    policy = policies.for_url(endpoint)
-                    ids.add(policy.id)
-                    if (not policy.restrictions["allow_automated_download"]
-                            or policy.rights["internal_analysis"] !=
-                            "allowed_with_attribution"):
-                        blocker = "publisher_collection_not_cleared"
-            except PolicyViolation:
-                blocker = "publisher_api_host_unclassified"
+            route_ids, blocker = _classify_publisher_routes(
+                endpoints, policies)
+            ids.update(route_ids)
         result.append({
             "kind": kind,
             "collection_state": (
                 blocker if blocker else "original_collection_candidate"),
             "policy_ids": sorted(ids), "source_urls_classified": len(endpoints),
+            "subsource_collectors": subsources,
+            "authorized_subsources": [x["subsource"] for x in subsources
+                                     if x["collection_state"] ==
+                                     "original_collection_candidate"],
             "role_count": group["role_count"],
             "affected_analyses": group["affected_analyses"],
             "original_proof_state": group["original_proof_state"],
@@ -231,6 +289,8 @@ def collection_plan(matrix: dict, *, registry: PolicyRegistry | None = None,
         "operation": "original_structured_acquisition_plan",
         "artifacts": result,
         "eligible_collections": sum(
+            len(x["authorized_subsources"])
+            if x["subsource_collectors"] else
             x["collection_state"] == "original_collection_candidate"
             for x in result),
         "publisher_requests_made": 0,
@@ -243,7 +303,8 @@ def collect_structured_original(kind: str, *, root: Path, client,
                                 cvm_year: int | None = None,
                                 holdings_dir: Path | None = None,
                                 sec_user_agent: str | None = None,
-                                stan_max_requests: int = 4) -> dict:
+                                stan_max_requests: int = 4,
+                                subsource: str | None = None) -> dict:
     """Invoke only existing registered native acquisition and receipt logic."""
     from .source_policy import require_managed_client
     require_managed_client(client)
@@ -289,16 +350,20 @@ def collect_structured_original(kind: str, *, root: Path, client,
         return {"kind": kind, "state": report["state"],
                 "requests_reported": report["publisher_requests"]}
     if kind == "ucits_holdings":
-        from .ucits_holdings import collect_ucits_sources
-        from .vanguard_ucits_holdings import collect_vanguard_ucits_sources
-        first = collect_ucits_sources(root=holdings_dir, client=client)
-        if first["status"] != "complete":
-            raise ValueError("ucits_source_original_collection_partial")
-        second = collect_vanguard_ucits_sources(root=holdings_dir,
-                                                client=client)
-        if second["status"] != "complete":
-            raise ValueError("vanguard_source_original_collection_partial")
-        return {"kind": kind, "state": "retained_original"}
+        if subsource == "ishares":
+            from .ucits_holdings import collect_ucits_sources
+            report = collect_ucits_sources(root=holdings_dir, client=client)
+        elif subsource == "vanguard":
+            from .vanguard_ucits_holdings import collect_vanguard_ucits_sources
+            report = collect_vanguard_ucits_sources(
+                root=holdings_dir, client=client)
+        else:
+            raise ValueError("ucits_original_subsource_must_be_explicit")
+        if report["status"] != "complete":
+            raise ValueError("ucits_" + subsource +
+                             "_original_collection_partial_or_blocked")
+        return {"kind": kind, "subsource": subsource,
+                "state": "retained_original"}
     if kind == "sec_holdings":
         from .sec_holdings_sync import collect_configured
         result = collect_configured(root=holdings_dir,
