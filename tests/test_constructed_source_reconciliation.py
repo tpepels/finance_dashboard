@@ -26,7 +26,8 @@ MSCI = 'https://app2.msci.com/products/service/index/indexmaster/getLevelDataFor
 
 
 def archive(root, sid, responses):
-    definition = REGISTRY[sid]
+    from finance_dashboard.catalog import source_contract
+    definition = source_contract(REGISTRY[sid])
     identity = {key: definition[key] for key in ('provider', 'source_key')}
     identity['series_id'] = sid
     contract_hash = sha256(canonical_bytes(definition)).hexdigest()

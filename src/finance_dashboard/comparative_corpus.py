@@ -17,6 +17,7 @@ import tempfile
 from typing import Any
 from uuid import uuid4
 
+from .catalog import source_contract
 from .service import current_observations
 
 
@@ -41,16 +42,9 @@ def payload_digest(value: Any) -> str:
     return sha256(canonical_json_bytes(value)).hexdigest()
 
 
-# Cited reviews *about* a source (publisher dimensions, release dating) are
-# evidence, not the source contract; adding or revising them must not
-# invalidate the archived original proofs bound to the contract digest.
-SOURCE_REVIEW_FIELDS = frozenset({"publisher_dimensions", "release_dating"})
-
-
 def source_contract_digest(entry: dict) -> str:
-    """Bind the complete canonical declaration, not a mutable selected subset."""
-    return payload_digest({key: value for key, value in entry.items()
-                           if key not in SOURCE_REVIEW_FIELDS})
+    """Bind the complete canonical contract (review fields excluded)."""
+    return payload_digest(source_contract(entry))
 
 
 def _number(value: Any) -> str:

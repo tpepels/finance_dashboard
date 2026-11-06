@@ -13,11 +13,13 @@ import io
 import json
 import re
 
+from .catalog import source_contract
 from .source_capture import canonical_bytes
 
 
 def captured_source(root, definition, select_manifest, original_file):
     from .source_reconciliation import EvidenceError
+    definition = source_contract(definition)
     identity = {key: definition[key] for key in ("provider", "source_key")}
     identity["series_id"] = definition["id"]
     retrieved, manifest_hash, path, manifest, method = select_manifest(

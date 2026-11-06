@@ -14,6 +14,7 @@ import json
 import re
 from urllib.parse import parse_qs, unquote, urlsplit
 
+from .catalog import source_contract
 from .source_capture import canonical_bytes
 from .captured_sources import _FredOriginalTable, _add, _native_period, _pink_sheet, _world_bank
 
@@ -47,6 +48,7 @@ def _json(raw):
 
 def constructed_source(root, definition, select_manifest, original_file):
     from .source_reconciliation import EvidenceError
+    definition = source_contract(definition)
     identity = {key: definition[key] for key in ('provider', 'source_key')}
     identity['series_id'] = definition['id']
     retrieved, manifest_hash, path, manifest, method = select_manifest(root/'responses'/definition['id'], identity)

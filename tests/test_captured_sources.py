@@ -95,6 +95,31 @@ class CapturedSourcesTests(unittest.TestCase):
             self.assertFalse(stale["passed"])
             self.assertFalse(stale["series"][0]["source_values_match"])
 
+    def test_cited_reviews_added_after_capture_do_not_break_archived_contract_identity(self):
+        import copy, sqlite3
+        from finance_dashboard.catalog import load_documents
+        sid = "bond.us.nominal_10y"
+        body = {"count": 1, "offset": 0, "observations": [{"date": "2024-01-02", "value": "3.95"}]}
+        with TemporaryDirectory() as temp, patch.dict("os.environ", {"FRED_API_KEY": "secret"}):
+            root = Path(temp)
+            db = root / "history.db"
+            database(db)
+            with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=body))) as http:
+                SourceAcquisition(ProviderRouter(http), root).fetch(sid)
+            with sqlite3.connect(db) as connection:
+                connection.execute("INSERT INTO observation_versions(series_id,period,value,first_seen_at,ingestion_run_id) VALUES(?,?,?,?,?)",
+                    (sid, "2024-01-02", "3.95", "2026-11-04 10:00:00", "source-run"))
+            series, charts = load_documents()
+            reviewed = copy.deepcopy(series)
+            entry = next(item for item in reviewed["series"] if item["id"] == sid)
+            entry["release_dating"] = {"mode": "alfred_real_time", "evidence_url": "https://alfred.stlouisfed.org/",
+                                       "reviewed_on": "2026-11-06"}
+            entry["publisher_dimensions"] = {"population": "US Treasury", "currency": None, "price_basis": None,
+                "index_base": None, "evidence_url": "https://fred.stlouisfed.org/series/DGS10", "reviewed_on": "2026-11-06"}
+            with patch("finance_dashboard.source_reconciliation.load_documents", return_value=(reviewed, charts)):
+                report = reconcile("sqlite:///" + str(db), root, [sid])
+            self.assertTrue(report["passed"], report["series"][0].get("failure_code"))
+
     def test_original_world_bank_geography_and_missing_years_are_not_filled(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)

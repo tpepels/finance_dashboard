@@ -18,6 +18,7 @@ import tempfile
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .bis import ProviderError
+from .catalog import source_contract
 from .source_evidence import record_acquisition_receipt
 from .provider_registry import get_provider
 
@@ -104,7 +105,7 @@ class SourceAcquisition:
         sources = [{"file": f"response-{index}.bin", "url": url, "sha256": sha256(raw).hexdigest(),
                     "bytes": len(raw), "headers": headers}
                    for index, (raw, url, headers) in enumerate(responses)]
-        contract_hash = sha256(canonical_bytes(definition)).hexdigest()
+        contract_hash = sha256(canonical_bytes(source_contract(definition))).hexdigest()
         # Transport dates/headers and retrieval time are not content identity.
         content = {"source_identity": identity, "source_contract_sha256": contract_hash,
                    "requested_from": start.isoformat() if start else None,
@@ -130,7 +131,7 @@ class SourceAcquisition:
                 for item, (raw, _url, _headers) in zip(sources, responses, strict=True):
                     (staging / item["file"]).write_bytes(raw)
                 manifest = {"schema_version": 1, **identity,
-                    "source_contract": definition, "source_contract_sha256": contract_hash,
+                    "source_contract": source_contract(definition), "source_contract_sha256": contract_hash,
                     "scope": "requested_period_subset" if start else "full_source_snapshot",
                     "requested_from": start.isoformat() if start else None,
                     "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
@@ -157,7 +158,7 @@ class SourceAcquisition:
         """Keep invalid publisher bytes immutable and outside certified evidence."""
         identity = {"provider": definition["provider"], "series_id": series_id,
                     "source_key": definition["source_key"]}
-        contract = sha256(canonical_bytes(definition)).hexdigest()
+        contract = sha256(canonical_bytes(source_contract(definition))).hexdigest()
         sources = [{"file": f"response-{i}.bin", "url": url, "sha256": sha256(raw).hexdigest(),
                     "bytes": len(raw), "http_status": status, "headers": headers}
                    for i, (raw, url, headers, status) in enumerate(responses)]
@@ -188,7 +189,7 @@ class SourceAcquisition:
                     sources, responses, strict=True):
                 (staging / item["file"]).write_bytes(raw)
             manifest = {"schema_version": 1, **identity,
-                "source_contract": definition, "source_contract_sha256": contract,
+                "source_contract": source_contract(definition), "source_contract_sha256": contract,
                 "scope": "rejected_response_not_valid_evidence",
                 "requested_from": start.isoformat() if start else None,
                 "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),

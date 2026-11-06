@@ -35,6 +35,47 @@ named in the readiness reasons.
 * Limitations are carried on every role, analysis and readiness decision;
   they are never dropped to make a result look complete.
 
+### Evidenced end states — implementation progress and remaining work (2026-11-06)
+
+Implemented and CI-verified on `main` (no publisher-licence conditionals,
+no fabricated values):
+
+1. **Docker root resolution.** Fourteen commands resolved `definitions/`
+   relative to `site-packages` in the installed image and every Phase 2
+   research/sources/stan command failed there (`provider_failed`). All now use
+   `catalog.DEFAULT_ROOT` (`FINANCE_DASHBOARD_ROOT`).
+2. **Evidence selection.** The scheduled refresh archives overlap windows on
+   every start; certification selected the newest receipt, so overlaps masked
+   the newest full snapshot. The newest full snapshot is now the evidence
+   (overlaps preserved; revised stored values still fail). Verified original
+   histories on the local corpus: 114 → 167 without network traffic.
+3. **Exact-join coverage.** Daily panels could never be complete and trailing
+   publication lag counted as a gap. Coverage now passes when inputs start by
+   the requested start and are reconciled to verified full snapshots; publisher
+   absences are recorded and carried, never filled. Roles without a declared
+   variant get a derived common-native-history panel, labelled as such.
+4. **Release dating** has three cited modes: `alfred_real_time` (passes on
+   verified non-conflicting ALFRED windows), `not_published_by_publisher`
+   (passes with a carried limitation) and `publisher_vintage_archive` (stays
+   open until the archive is collected). Verified archives recorded: World Bank
+   WDI, IMF WEO, OECD CLI.
+
+Remaining for Phase 2 completion (the acceptance contract above is unchanged):
+
+* **Cited reviews.** `publisher_dimensions` for every bound series and
+  `release_dating` for BIS, WID, TiVA, FRED and all other publishers; only
+  verified claims may be recorded (BIS/WID/TiVA vintage availability was not
+  confirmable on 2026-11-06).
+* **Vintage collection** for publishers with archives (WDI archives, WEO
+  editions, OECD revisions) and ALFRED windows for FRED series
+  (`sources alfred-revisions --acquire`, requires `FRED_API_KEY`).
+* **OECD SDMX** requires the operator's direct-network attestation via
+  `FINANCE_SOURCE_POLICY_ACKNOWLEDGED=oecd-sdmx`.
+* **65 unbound roles** need an exact original source or a cited
+  `verified_unavailability` with an approved fallback that passes all gates.
+* Remaining original acquisition (publisher cooldowns: MSCI, Shiller, gold
+  correlation inputs; MSCI factsheet parsing `source_invalid`).
+
 ## Phase 2 MSCI ACWI original-document acquisition continuation (2026-11-06)
 
 The prior manual-URL-only native collector now has a real official default

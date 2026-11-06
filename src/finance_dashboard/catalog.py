@@ -9,6 +9,17 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+# Cited Phase 2 reviews *about* a source (publisher dimensions, release
+# dating) are evidence, not the source contract. Archived originals embed and
+# hash only the contract, so adding or revising a review never invalidates them.
+SOURCE_REVIEW_FIELDS = frozenset({"publisher_dimensions", "release_dating"})
+
+
+def source_contract(entry: dict) -> dict:
+    """The canonical source contract: the registry entry without review fields."""
+    return {key: value for key, value in entry.items() if key not in SOURCE_REVIEW_FIELDS}
+
+
 DEFAULT_ROOT = Path(os.environ.get("FINANCE_DASHBOARD_ROOT", str(Path(__file__).resolve().parents[2])))
 THEMES = {
     "valuation", "labour_capital", "monetary_policy", "growth_inflation",
