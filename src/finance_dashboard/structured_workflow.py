@@ -117,6 +117,8 @@ def main(argv=None) -> int:
     parser.add_argument("--artifact", action="append",
                         choices=sorted(CAPABILITIES), help="Repeat to select native workflows")
     parser.add_argument("--cvm-year", type=int)
+    parser.add_argument("--sec-max-filings", type=int, default=2, choices=range(1, 51), metavar="1-50",
+                        help="SEC N-PORT filings per fund (quarterly; Vanguard XML can exceed 20 MB each)")
     parser.add_argument(
         "--msci-factsheet-url", action="append",
         help="Repeat to acquire multiple original dated MSCI ACWI PDF endpoints. "
@@ -224,6 +226,7 @@ def main(argv=None) -> int:
                             sec_user_agent=agent,
                             msci_factsheet_url=actions_by_id[
                                 action_id].get("source_url"),
+                            sec_max_filings=args.sec_max_filings,
                             stan_max_requests=max(1, args.max_http_requests -
                                                   client._transport.requests_reserved))
                         return {"status": "success",

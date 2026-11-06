@@ -331,7 +331,8 @@ def collect_structured_original(kind: str, *, root: Path, client,
                                 sec_user_agent: str | None = None,
                                 stan_max_requests: int = 4,
                                 subsource: str | None = None,
-                                msci_factsheet_url: str | None = None) -> dict:
+                                msci_factsheet_url: str | None = None,
+                                sec_max_filings: int = 2) -> dict:
     """Invoke only existing registered native acquisition and receipt logic."""
     from .source_policy import require_managed_client
     require_managed_client(client)
@@ -408,7 +409,7 @@ def collect_structured_original(kind: str, *, root: Path, client,
         from .sec_holdings_sync import collect_configured
         result = collect_configured(root=holdings_dir,
                                     user_agent=sec_user_agent,
-                                    client=client, max_filings_per_fund=2)
+                                    client=client, max_filings_per_fund=sec_max_filings)
         if result["status"] != "complete":
             raise ValueError("sec_original_collection_partial_or_blocked")
         return {"kind": kind, "state": "retained_original"}
