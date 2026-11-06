@@ -21,6 +21,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from finance_dashboard.oecd_corporate import OECD_MEMBER_ISO3
 from finance_dashboard.source_policy import managed_client
+from finance_dashboard.source_policy_ledger import SourcePolicyGate
+from finance_dashboard.source_policy_registry import PolicyRegistry
 from finance_dashboard.stan_metadata import read_stan_structure
 from scripts.phase2_stan_sources import (
     discover_measure_codes, plan_surplus_probe, probe_surplus,
@@ -241,11 +243,28 @@ def main(argv=None) -> int:
         parser.error("invalid publisher history year")
     try:
         if args.acquire:
-            with managed_client(timeout=60, follow_redirects=False) as client:
-                result = stan_pipeline(
-                    client, args.evidence_dir, countries=countries,
-                    anchor=args.source_anchor, probe_year=args.probe_year,
-                    start_year=args.start_year, max_requests=args.max_requests)
+            # Advisory, read-only publisher preflight: a known policy denial
+            # or cooldown requires no request and must never be overridden.
+            # The managed client remains the sole atomic HTTP permit checker.
+            available = SourcePolicyGate(
+                registry=PolicyRegistry()).availability("oecd-sdmx")
+            if available["state"] != "ready":
+                result = {
+                    "operation": "stan_original_pipeline",
+                    "state": "publisher_policy_" + available["state"],
+                    "policy_id": available["policy_id"],
+                    "policy_reason": available["reason"],
+                    "next_request_eligible_at": available["retry_at"],
+                    "publisher_requests": 0,
+                    "max_requests": args.max_requests,
+                    "scientific_analysis_certified": False,
+                }
+            else:
+                with managed_client(timeout=60, follow_redirects=False) as client:
+                    result = stan_pipeline(
+                        client, args.evidence_dir, countries=countries,
+                        anchor=args.source_anchor, probe_year=args.probe_year,
+                        start_year=args.start_year, max_requests=args.max_requests)
         else:
             native = resolve_stan_country_selection(
                 args.evidence_dir, anchor_country=args.source_anchor,

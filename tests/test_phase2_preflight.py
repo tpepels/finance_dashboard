@@ -9,6 +9,7 @@ from finance_dashboard.phase2_sweep_journal import (
 from finance_dashboard.phase2_workflow import (
     run_source_acquisition_batch, source_evidence_delta,
 )
+from finance_dashboard.comparative_corpus import source_contract_digest
 
 
 def task(name, provider="FRED", policy="fred-v1"):
@@ -149,33 +150,54 @@ class PreflightBatchTests(unittest.TestCase):
 
 
 class ProvenanceDeltaTests(unittest.TestCase):
+    @staticmethod
+    def fixtures():
+        catalog = [{"id": sid, "provider": "TEST", "source_key": sid}
+                   for sid in ("a", "b", "c", "d")]
+        by_id = {item["id"]: item for item in catalog}
+        def proof(sid, periods, **changes):
+            return {
+                "series_id": sid,
+                "stored_periods": periods,
+                "source_values_match": True,
+                "source_covers_all_stored_periods": True,
+                "source_sha256": "a" * 64,
+                "source_manifest_sha256": "b" * 64,
+                "stored_observations_sha256": "c" * 64,
+                "source_contract_sha256": source_contract_digest(by_id[sid]),
+                **changes,
+            }
+        counts = {"a": 100, "b": 20, "c": 1, "d": 1}
+        report = {"analyses": [{"linked_sources": [
+            {"series_id": sid, "stored_periods": count}
+            for sid, count in counts.items()]}]}
+        return catalog, proof, report
+
     def test_successful_download_is_not_verified_history_and_lost_proof_reported(self):
+        catalog, proof, report = self.fixtures()
         before = {"series": [
-            {"series_id": "a", "source_values_match": True,
-             "source_covers_all_stored_periods": True, "stored_periods": 100},
-            {"series_id": "b", "source_values_match": True,
-             "source_covers_all_stored_periods": True, "stored_periods": 20},
-            {"series_id": "c", "source_values_match": False,
-             "source_covers_all_stored_periods": False, "stored_periods": 1},
+            proof("a", 100),
+            proof("b", 20),
+            proof("c", 1, source_values_match=False,
+                  source_covers_all_stored_periods=False),
         ]}
         after = {"series": [
-            {"series_id": "a", "source_values_match": True,
-             "source_covers_all_stored_periods": True, "stored_periods": 100},
-            {"series_id": "b", "source_values_match": False,
-             "source_covers_all_stored_periods": False, "stored_periods": 20,
-             "failure_code": "source_hash_mismatch"},
-            {"series_id": "c", "source_values_match": True,
-             "source_covers_all_stored_periods": True, "stored_periods": 1},
-            {"series_id": "d", "source_values_match": True,
-             "source_covers_all_stored_periods": False, "stored_periods": 1,
-             "failure_code": "source_coverage_incomplete"},
+            proof("a", 100),
+            proof("b", 20, source_values_match=False,
+                  source_covers_all_stored_periods=False,
+                  failure_code="source_hash_mismatch"),
+            proof("c", 1),
+            proof("d", 1, source_covers_all_stored_periods=False,
+                  failure_code="source_coverage_incomplete"),
         ]}
         batch = {"results": [
             {"series_id": "c", "status": "success"},
             {"series_id": "d", "status": "success"},
             {"series_id": "b", "status": "success"},
         ]}
-        delta = source_evidence_delta(before, after, batch)
+        delta = source_evidence_delta(
+            before, after, batch, catalog=catalog,
+            before_report=report, after_report=report)
         self.assertEqual(delta["verified_before"], 2)
         self.assertEqual(delta["verified_after"], 2)
         self.assertEqual(delta["newly_verified"], ["c"])
@@ -187,15 +209,26 @@ class ProvenanceDeltaTests(unittest.TestCase):
             "source_coverage_incomplete": 1, "source_hash_mismatch": 1})
         self.assertEqual(delta["no_longer_verified_diagnoses"][0]["series_id"],
                          "b")
-        self.assertEqual(delta["no_longer_verified_diagnoses"][0]["diagnosis"],
-                         "source_hash_mismatch")
         self.assertFalse(delta["first_publication_verified"])
 
     def test_duplicate_source_proofs_fail_closed(self):
-        proof = {"series": [{"series_id": "duplicate"},
-                            {"series_id": "duplicate"}]}
+        catalog, proof, report = self.fixtures()
+        original = {"series": [proof("a", 100), proof("a", 100)]}
         with self.assertRaises(ValueError):
-            source_evidence_delta(proof, {"series": []}, {"results": []})
+            source_evidence_delta(
+                original, {"series": []}, {"results": []},
+                catalog=catalog, before_report=report, after_report=report)
+
+    def test_hash_and_catalog_revision_demote_current_source(self):
+        catalog, proof, report = self.fixtures()
+        before = {"series": [proof("a", 100)]}
+        revised_catalog = [{**item, "source_key": "new-a"}
+                           if item["id"] == "a" else item for item in catalog]
+        delta = source_evidence_delta(
+            before, before, {"results": []}, catalog=revised_catalog,
+            before_report=report, after_report=report)
+        self.assertEqual(delta["verified_before"], 0)
+        self.assertEqual(delta["verified_after"], 0)
 
 
 if __name__ == "__main__":

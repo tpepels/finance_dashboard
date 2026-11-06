@@ -13,6 +13,7 @@ from collections import Counter
 def phase2_role_workplan(public_report: dict) -> dict:
     """Group every original role once; preserve all unresolved gates and scope."""
     by_artifact: dict[str, dict] = {}
+    publisher_candidates: dict[tuple[str, str], dict] = {}
     missing_scalar = []
     unassigned_structured = []
     dispositions = Counter()
@@ -30,15 +31,44 @@ def phase2_role_workplan(public_report: dict) -> dict:
                 if check["state"] != "passed"})
             if input_type == "scalar_history":
                 if not role.get("series_ids"):
+                    # Publisher candidates are METHOD hypotheses in the
+                    # approved corpus, not scalar dataset bindings or
+                    # permission to assign observed values to an original role.
+                    candidates = role.get("publisher_candidates", [])
                     missing_scalar.append({
                         "analysis_id": analysis["id"],
                         "role": role["role"],
                         "classification": disposition,
                         "unverified_gates": missing,
-                        "source_candidate_count": len(role.get(
-                            "source_candidates", [])),
+                        "publisher_candidate_count": len(candidates),
+                        "publisher_candidates": candidates,
                         "requires_original_source_discovery": True,
                     })
+                    for candidate in candidates:
+                        ident = (candidate["publisher"], candidate["dataset"])
+                        record = publisher_candidates.setdefault(ident, {
+                            "publisher": candidate["publisher"],
+                            "dataset": candidate["dataset"],
+                            "source_urls": set(),
+                            "roles": [],
+                            "analyses": set(),
+                            "original_checks": set(),
+                            "candidate_states": Counter(),
+                        })
+                        record["roles"].append({
+                            "analysis_id": analysis["id"],
+                            "role": role["role"],
+                            "potential_original_measure": candidate[
+                                "potential_original_measure"],
+                            "status": candidate["status"],
+                            "required_original_checks": candidate[
+                                "required_original_checks"],
+                        })
+                        record["analyses"].add(analysis["id"])
+                        record["source_urls"].add(candidate["source_url"])
+                        record["original_checks"].add(candidate[
+                            "required_original_checks"])
+                        record["candidate_states"][candidate["status"]] += 1
                 continue
             counted_structured += 1
             artifacts = sorted(set(role.get("artifact_ids", [])))
@@ -77,6 +107,20 @@ def phase2_role_workplan(public_report: dict) -> dict:
         })
     artifacts.sort(key=lambda row: (
         -len(row["affected_analyses"]), -row["role_count"], row["artifact_id"]))
+    groups = [{
+        "publisher": item["publisher"],
+        "dataset": item["dataset"],
+        "source_urls": sorted(item["source_urls"]),
+        "affected_analyses": sorted(item["analyses"]),
+        "unbound_roles": len(item["roles"]),
+        "candidate_states": dict(sorted(item["candidate_states"].items())),
+        "required_original_checks": sorted(item["original_checks"]),
+        "roles": item["roles"],
+        "candidate_is_not_verified_source": True,
+    } for item in publisher_candidates.values()]
+    groups.sort(key=lambda item: (-len(item["affected_analyses"]),
+                                  -item["unbound_roles"],
+                                  item["publisher"], item["dataset"]))
     return {
         "operation": "phase2_original_role_workplan",
         "total_original_roles": all_roles,
@@ -86,6 +130,12 @@ def phase2_role_workplan(public_report: dict) -> dict:
         "artifact_workstreams": artifacts,
         "unassigned_structured_roles": unassigned_structured,
         "unbound_scalar_role_discovery": missing_scalar,
+        "publisher_original_candidate_groups": groups,
+        "unbound_scalar_roles_with_publisher_candidates": sum(
+            bool(item["publisher_candidate_count"]) for item in missing_scalar),
+        "unbound_scalar_roles_without_publisher_candidates": sum(
+            not item["publisher_candidate_count"] for item in missing_scalar),
+        "publisher_candidates_require_original_source_validation": True,
         "structured_artifact_acquisition_automated": False,
         "complete_original_release_eligibility_verified": False,
         "scientific_certification": False,
@@ -107,5 +157,16 @@ def compact_role_workplan(plan: dict) -> dict:
         "unassigned_structured_roles": len(plan["unassigned_structured_roles"]),
         "unbound_scalar_roles_requiring_discovery": len(
             plan["unbound_scalar_role_discovery"]),
+        "unbound_scalar_roles_with_publisher_candidates":
+            plan["unbound_scalar_roles_with_publisher_candidates"],
+        "unbound_scalar_roles_without_publisher_candidates":
+            plan["unbound_scalar_roles_without_publisher_candidates"],
+        "publisher_original_candidate_groups": [{
+            "publisher": item["publisher"], "dataset": item["dataset"],
+            "affected_analyses": item["affected_analyses"],
+            "unbound_roles": item["unbound_roles"],
+            "candidate_states": item["candidate_states"],
+            "candidate_is_not_verified_source": True,
+        } for item in plan["publisher_original_candidate_groups"]],
         "scientific_certification": False,
     }

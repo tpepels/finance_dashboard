@@ -1,6 +1,99 @@
 # Development plan — authoritative five-phase roadmap
 
 
+## Phase 2 — canonical scientific source gate, audited selective sweeps and publisher hypotheses (2026-11-06)
+
+This batch closes an architectural mismatch between research acceptance and
+source acquisition: previously the planner's "verified original history"
+classification required only three booleans, whereas scientific original
+acceptance additionally required SHA-256 source, manifest, stored-observation
+and exact catalog-contract bindings, as well as agreement with **current**
+stored periods. The new `finance_dashboard.source_original_gate` owns
+one strict source proof predicate for all three operations: complete research
+acceptance, acquisition triage, and before/after independent evidence deltas.
+It rejects duplicate original identities and inconsistent period counts for
+the same source across the 35-analysis runtime report. Numeric-only historical
+proofs can still be diagnosed but cannot be silently skipped as scientifically
+verified histories. This can legitimately increase the reported acquisition
+backlog; it must not be suppressed by weakening the scientific gate.
+
+### Explicit re-acquisition instead of destructive journal resets
+
+The new `phase2_sweep_revisit` module verifies a **previous** immutable
+sweep's approved scientific graph and exact publisher policy SHA, checks every
+receipt, and selects only histories that are still acquisition candidates
+under the fresh strict source gate. Modes `failed`, `unverified_success`, and
+`both` explicitly distinguish previously failed network tasks from
+successful ingestions that did not ultimately reconcile. Sources whose
+originals are now independently verified are excluded. Any old attempt with
+a start but no result is held for **manual review** and cannot be retried by
+this workflow. An unattempted source is not accidentally included in a
+revisit. Previous journals are neither migrated, truncated nor overwritten.
+The new sweep uses the same `Phase2SweepJournal`, source permission gateway,
+policy budgets, and independently verified before/after backups as all other
+acquisitions. Its new directory must be distinct from the old journal,
+original-data archive and backup directory.
+
+Read-only preview of the exact current failed-source selection:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+  --evidence-dir /data/source-evidence --sweep \
+  --revisit-from /data/phase2-sweeps/full-20261105 \
+  --revisit-mode failed
+```
+
+Explicit bounded retry into a **new** journal, only after checking applicable
+publisher origin restrictions and the original failure causes:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_operating_batch.py \
+  --evidence-dir /data/source-evidence --sweep --acquire \
+  --revisit-from /data/phase2-sweeps/full-20261105 \
+  --revisit-mode failed \
+  --run-dir /data/phase2-sweeps/revisit-20261106 \
+  --backup-dir /data/phase2-backups --max-attempts 50
+```
+
+To explicitly include successful but scientifically still-unverified
+ingestions as well, select `--revisit-mode both`. A previous completed
+failed source may legitimately be denied again until its policy or actual
+technical problem has been resolved; the policy gateway's denial cannot be
+bypassed. The default full sweep and `--resume` semantics are unchanged.
+
+### Approved publisher-candidate inventory for unbound roles
+
+The previous role workplan incorrectly looked for
+`source_candidates`, while the Phase 1-approved corpus records original
+method/source hypotheses in `publisher_candidates`. This is corrected.
+Every unbound scalar original role now retains its approved dataset, source
+page, potential native measure, exact required accounting/release checks and
+unverified-candidate status. The workplan groups shared publisher datasets by
+the analyses and roles depending on them. This makes the OECD STAN and other
+publisher investigations explicit alongside the 44 structured original
+roles, without inventing a binding, assuming historic measure availability,
+or declaring an alternate fallback. The compact operating report contains
+the counts and prioritized dataset groups; `--details` preserves the
+unabridged original role requirements.
+
+### STAN readiness preflight
+
+The native STAN pipeline's explicit `--acquire` path checks the same
+durable `oecd-sdmx` policy ledger in **read-only** mode before constructing
+a managed HTTP client. If an actual denied publisher right, missing direct
+network acknowledgement, or durable publisher cooldown is already known,
+it reports a fixed category and eligibility time with **zero requests**.
+The managed transport still atomically authorizes every actual request;
+a ready preflight is never permission to bypass request-specific checks.
+No user-side archive has been altered by this development batch.
+
+The corpus still cannot be scientifically certified without exact original
+publisher population, native dimensional consistency, matched periods,
+common-release evidence and genuine first-publication eligibility. Every
+gate remains intact.
+
+
+
 ## Phase 2 — consolidated scientific transitions, source-stop provenance and native STAN pipeline (2026-11-06)
 
 This larger development batch integrates three previously separate

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 import httpx
 
@@ -157,6 +158,32 @@ class OriginalSTANPipelineTests(unittest.TestCase):
                              "blocked_invalid_publisher_metadata")
             self.assertEqual(report["publisher_requests"], 0)
             self.assertEqual(hits, [])
+
+    def test_live_entrypoint_blocks_before_metadata_request_when_policy_not_ready(self):
+        with TemporaryDirectory() as tmp:
+            for policy_state in ("blocked", "deferred"):
+                output = StringIO()
+                preflight = {
+                    "state": policy_state,
+                    "policy_id": "oecd-sdmx",
+                    "reason": "publisher_cooldown" if policy_state == "deferred"
+                              else "direct_network_origin_not_confirmed",
+                    "retry_at": 2000000000 if policy_state == "deferred"
+                                else None,
+                }
+                with patch("scripts.phase2_stan_pipeline.SourcePolicyGate") as gate:
+                    gate.return_value.availability.return_value = preflight
+                    with patch("scripts.phase2_stan_pipeline.managed_client") as client:
+                        with redirect_stdout(output):
+                            code = main([
+                                "--evidence-dir", tmp, "--countries", "PRT",
+                                "--acquire", "--max-requests", "4"])
+                        client.assert_not_called()
+                self.assertEqual(code, 1)
+                item = json.loads(output.getvalue())
+                self.assertEqual(item["state"], "publisher_policy_" + policy_state)
+                self.assertEqual(item["publisher_requests"], 0)
+                self.assertFalse(item["scientific_analysis_certified"])
 
     def test_read_only_pipeline_plan_does_not_require_network(self):
         with TemporaryDirectory() as tmp:

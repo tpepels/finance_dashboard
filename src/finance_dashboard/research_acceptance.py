@@ -8,9 +8,8 @@ first-release verifier exists yet; those gates remain explicitly incomplete.
 from __future__ import annotations
 
 from typing import Any
-import re
 
-from .comparative_corpus import source_contract_digest
+from .source_original_gate import verified_original_rows
 
 PUBLISHER_METADATA_FIELDS = (
     "source_native_unit", "source_native_unit_label", "source_currency", "source_sheet",
@@ -59,22 +58,9 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     prove their native source values, but cannot certify the original analysis.
     """
     requirements = []
-    originals = {}
-    if source_proof is not None:
-        for item in source_proof.get("series", []):
-            sid = item.get("series_id")
-            if sid in originals:
-                originals = {}
-                break
-            if sid not in registry:
-                continue
-            if (item.get("source_values_match") is True and item.get("source_covers_all_stored_periods") is True
-                    and all(isinstance(item.get(key), str) and re.fullmatch(r"[0-9a-f]{64}", item[key])
-                            for key in ("source_sha256", "source_manifest_sha256", "stored_observations_sha256", "source_contract_sha256"))
-                    and item["source_contract_sha256"] == source_contract_digest(registry[sid])
-                    and item.get("stored_periods") == counts.get(sid, {}).get("stored_periods")
-                    and (item.get("stored_periods") or 0) > 0):
-                originals[sid] = item
+    # One shared, contract/hash/history-bound proof gate for scientific
+    # acceptance, acquisition planning and full-corpus diagnostics.
+    originals = verified_original_rows(source_proof, registry, counts)
     matrix = (artifact_evidence or {}).get("icio", {}) if analysis["id"] == "G06" else {}
     matrix_available = (matrix.get("original_source_hash_verified") is True
                         and type(matrix.get("year")) is int and 1995 <= matrix["year"] <= 2022

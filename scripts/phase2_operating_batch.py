@@ -36,6 +36,9 @@ from finance_dashboard.phase2_research_transitions import (
 from finance_dashboard.phase2_sweep_journal import (
     Phase2SweepJournal, sweep_context,
 )
+from finance_dashboard.phase2_sweep_revisit import (
+    plan_sweep_revisit, REVISIT_MODES,
+)
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.research_corpus import (
     analysis_series_ids, load_research_corpus, validate_research_corpus,
@@ -218,6 +221,11 @@ def main(argv=None) -> int:
                         help="Optional bounded read-only budget preflight waiting in --sweep mode (0–14400 seconds)")
     parser.add_argument("--resume", action="store_true",
                         help="Resume and verify a previous --sweep --run-dir without repeating attempted tasks")
+    parser.add_argument("--revisit-from", type=Path,
+                        help="Explicitly select previous failed/unverified sources from an independently verified older sweep")
+    parser.add_argument("--revisit-mode", choices=sorted(REVISIT_MODES),
+                        default="failed",
+                        help="Select completed failures, still-unverified successes, or both (default: failed)")
     parser.add_argument("--after-source", help="Resume after this exact canonical source ID")
     parser.add_argument("--acquire", action="store_true",
                         help="Explicit original-source ingestion with verified before/after backups")
@@ -242,6 +250,12 @@ def main(argv=None) -> int:
         parser.error("--sweep --acquire requires --run-dir")
     if args.sweep and args.after_source:
         parser.error("--after-source is incompatible with journal-based --sweep")
+    if args.revisit_from and not args.sweep:
+        parser.error("--revisit-from requires --sweep")
+    if args.revisit_mode != "failed" and not args.revisit_from:
+        parser.error("--revisit-mode requires --revisit-from")
+    if args.revisit_from and args.resume:
+        parser.error("--revisit-from requires a new --run-dir, not --resume")
     if not 0 <= args.max_policy_wait_seconds <= 14_400:
         parser.error("--max-policy-wait-seconds must be 0–14400")
     if args.max_policy_wait_seconds and not (args.sweep and args.acquire):
@@ -252,6 +266,10 @@ def main(argv=None) -> int:
         parser.error("--backup-dir requires --acquire")
     if args.run_dir is not None:
         target = args.run_dir.absolute()
+        if args.revisit_from is not None:
+            prior = args.revisit_from.absolute()
+            if target == prior or target in prior.parents or prior in target.parents:
+                parser.error("--run-dir must be separate from the older journal")
         for protected in (args.evidence_dir, args.backup_dir):
             if protected is None:
                 continue
@@ -259,6 +277,15 @@ def main(argv=None) -> int:
             if (target == protected or protected in target.parents
                     or target in protected.parents):
                 parser.error("--run-dir must be distinct from source originals and backups")
+    if args.revisit_from is not None:
+        prior = args.revisit_from.absolute()
+        for protected in (args.evidence_dir, args.backup_dir):
+            if protected is None:
+                continue
+            protected = protected.absolute()
+            if (prior == protected or prior in protected.parents
+                    or protected in prior.parents):
+                parser.error("--revisit-from must be a separate old journal, outside original archives and backups")
     if args.output is not None:
         if args.output.exists():
             parser.error("--output must not overwrite existing report")
@@ -281,17 +308,34 @@ def main(argv=None) -> int:
             evidence_root=args.evidence_dir,
             max_attempts=400 if args.sweep else args.max_attempts,
             after_id=args.after_source)
+        context = None
+        revisit = None
+        if args.sweep:
+            all_source_ids = sorted({
+                sid for analysis in document["analyses"]
+                for sid in analysis_series_ids(analysis)
+            })
+            context = sweep_context(
+                all_source_ids, PolicyRegistry().sha256,
+                sha256(canonical_bytes(document)).hexdigest())
+            if args.revisit_from is not None:
+                revisit = plan_sweep_revisit(
+                    args.revisit_from, context=context,
+                    acquisition_candidates=report["source_coverage"][
+                        "selected_actions"],
+                    mode=args.revisit_mode, max_tasks=400)
+                report["source_coverage"]["selected_actions"] = revisit[
+                    "selected_actions"]
+                report["source_coverage"]["selection_mode"] = "explicit_revisit"
+                report["source_coverage"]["selected_revisit_sources"] = revisit[
+                    "selected_count"]
+                report["revisit_plan"] = {
+                    key: value for key, value in revisit.items()
+                    if key != "selected_actions"}
         if args.acquire:
             checked_acquisition_target(args.database_url, args.evidence_dir)
             journal_session = nullcontext(None)
             if args.sweep:
-                all_source_ids = sorted({
-                    sid for analysis in document["analyses"]
-                    for sid in analysis_series_ids(analysis)
-                })
-                context = sweep_context(
-                    all_source_ids, PolicyRegistry().sha256,
-                    sha256(canonical_bytes(document)).hexdigest())
                 journal_session = Phase2SweepJournal(
                     args.run_dir, context=context, create=not args.resume)
 
@@ -355,6 +399,10 @@ def main(argv=None) -> int:
             report["source_originals_modified"] = archive_changed
             report["publisher_requests_made"] = None
             report["acquisition"] = batch
+            if revisit is not None:
+                report["revisit_plan"] = {
+                    key: value for key, value in revisit.items()
+                    if key != "selected_actions"}
             report["source_evidence_delta"] = source_evidence_delta(
                 baseline.source_proof, refreshed.source_proof, batch)
             report["research_transitions"] = research_evidence_transitions(

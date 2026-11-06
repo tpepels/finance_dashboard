@@ -17,6 +17,9 @@ from .provider_registry import get_provider
 from .service import safe_source_failure_code
 from .source_policy_registry import PolicyRegistry
 from .source_policy_types import PolicyDeferred, PolicyViolation
+from .source_original_gate import (
+    verified_original_rows, runtime_source_counts,
+)
 
 
 def publisher_stop_reason(error: BaseException) -> str | None:
@@ -38,15 +41,6 @@ def publisher_stop_reason(error: BaseException) -> str | None:
               or int(m.group(1)) >= 500):
         return safe
     return None
-
-
-def independently_reconciled_original(proof: dict | None) -> bool:
-    """Exactly the same source-level gate for planning and run comparisons."""
-    return bool(
-        proof and proof.get("source_values_match") is True
-        and proof.get("source_covers_all_stored_periods") is True
-        and (proof.get("stored_periods") or 0) > 0
-    )
 
 
 def unverified_original_diagnosis(proof: dict | None) -> dict:
@@ -87,20 +81,26 @@ def unverified_original_diagnosis(proof: dict | None) -> dict:
     return result
 
 
-def source_evidence_delta(before: dict, after: dict, batch: dict) -> dict:
-    """Compare independently selected original proofs, not ingest statuses."""
+def source_evidence_delta(before: dict, after: dict, batch: dict, *,
+                          catalog: list[dict],
+                          before_report: dict,
+                          after_report: dict) -> dict:
+    """Compare the exact scientific source gate against both DB snapshots.
+
+    All three consumers (research acceptance, acquisition planning, and
+    source-delta reporting) use the same catalog/hash/history predicate.
+    """
+    declarations = {item["id"]: item for item in catalog}
+    if len(declarations) != len(catalog):
+        raise ValueError("duplicate_source_catalog_id")
     baseline = {row["series_id"]: row for row in before["series"]}
     latest = {row["series_id"]: row for row in after["series"]}
     if len(baseline) != len(before["series"]) or len(latest) != len(after["series"]):
         raise ValueError("duplicate_reconciled_source_id")
-    verified_before = {
-        sid for sid, row in baseline.items()
-        if independently_reconciled_original(row)
-    }
-    verified_after = {
-        sid for sid, row in latest.items()
-        if independently_reconciled_original(row)
-    }
+    verified_before = set(verified_original_rows(
+        before, declarations, runtime_source_counts(before_report)))
+    verified_after = set(verified_original_rows(
+        after, declarations, runtime_source_counts(after_report)))
     success = sorted({
         row["series_id"] for row in batch["results"]
         if row["status"] == "success"
@@ -172,6 +172,8 @@ def source_acquisition_plan(document: dict, registry: list[dict],
     proofs = {item["series_id"]: item for item in source_proof["series"]}
     if len(proofs) != len(source_proof["series"]):
         raise ValueError("duplicate_original_source_proof")
+    strict_verified = verified_original_rows(
+        source_proof, catalog, runtime_source_counts(runtime_report))
 
     by_id: dict[str, set[str]] = defaultdict(set)
     for analysis in document["analyses"]:
@@ -190,7 +192,7 @@ def source_acquisition_plan(document: dict, registry: list[dict],
         if not item:
             raise ValueError("unregistered_research_source")
         proof = proofs.get(sid)
-        confirmed = independently_reconciled_original(proof)
+        confirmed = sid in strict_verified
         provider = get_provider(item["provider"])
         policy_id = None
         policy_blocker = None

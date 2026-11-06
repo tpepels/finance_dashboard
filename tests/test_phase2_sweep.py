@@ -321,11 +321,24 @@ class ScientificWorkplanTests(unittest.TestCase):
         self.assertEqual(work["total_original_roles"], 168)
         self.assertEqual(work["structured_roles"], 44)
         self.assertEqual(work["unbound_scalar_roles"], 21)
+        self.assertGreater(work["unbound_scalar_roles_with_publisher_candidates"], 0)
+        self.assertEqual(
+            work["unbound_scalar_roles_with_publisher_candidates"] +
+            work["unbound_scalar_roles_without_publisher_candidates"], 21)
+        self.assertTrue(any(
+            x["dataset"] == "OECD_STAN_2025"
+            for x in work["publisher_original_candidate_groups"]))
+        self.assertTrue(all(x["candidate_is_not_verified_source"]
+                            for x in work["publisher_original_candidate_groups"]))
         self.assertFalse(work["scientific_certification"])
         self.assertFalse(work["structured_artifact_acquisition_automated"])
         compact = compact_role_workplan(work)
         self.assertEqual(compact["structured_roles"], 44)
         self.assertTrue(compact["artifact_workstreams"])
+        self.assertTrue(compact["publisher_original_candidate_groups"])
+        self.assertEqual(
+            compact["unbound_scalar_roles_with_publisher_candidates"],
+            work["unbound_scalar_roles_with_publisher_candidates"])
         self.assertLess(len(json.dumps(compact)), 8_000)
 
     def test_all_families_same_runtime_contract_no_new_acceptance_shortcuts(self):

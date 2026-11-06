@@ -10,6 +10,7 @@ from unittest.mock import Mock
 import httpx
 
 from finance_dashboard.catalog import load_documents
+from finance_dashboard.comparative_corpus import source_contract_digest
 from finance_dashboard.phase2_workflow import (
     publisher_stop_reason, run_source_acquisition_batch, source_acquisition_plan,
 )
@@ -66,25 +67,62 @@ class WorkflowTests(unittest.TestCase):
         original = source_acquisition_plan(
             self.document, self.registry, self.report, self.proof, limit=3)
         first = original["selected_actions"][0]["id"]
+        source = next(item for item in self.registry if item["id"] == first)
         proof = {"series": [{
             "series_id": first, "source_values_match": True,
             "source_covers_all_stored_periods": True, "stored_periods": 23,
+            "source_sha256": "a" * 64,
+            "source_manifest_sha256": "b" * 64,
+            "stored_observations_sha256": "c" * 64,
+            "source_contract_sha256": source_contract_digest(source),
         }]}
+        report = {
+            **self.report, "analyses": [{
+                **analysis,
+                "linked_sources": [{
+                    **row, "stored_periods": 23,
+                } if row["series_id"] == first else row
+                    for row in analysis["linked_sources"]],
+            } for analysis in self.report["analyses"]],
+        }
         revised = source_acquisition_plan(
-            self.document, self.registry, self.report, proof, limit=3)
+            self.document, self.registry, report, proof, limit=3)
         self.assertNotIn(first, {x["id"] for x in revised["selected_actions"]})
         self.assertEqual(revised["sources_with_verified_original_history"], 1)
         after = source_acquisition_plan(
-            self.document, self.registry, self.report, proof,
+            self.document, self.registry, report, proof,
             limit=3, after_id=first)
         self.assertEqual(after["selected_actions"], revised["selected_actions"])
         with self.assertRaisesRegex(ValueError, "invalid_phase2_acquisition_cursor"):
             source_acquisition_plan(
-                self.document, self.registry, self.report, proof,
+                self.document, self.registry, report, proof,
                 limit=2, after_id="unregistered.invalid.source")
         with self.assertRaisesRegex(ValueError, "invalid_phase2_source_attempt_limit"):
             source_acquisition_plan(
-                self.document, self.registry, self.report, proof, limit=0)
+                self.document, self.registry, report, proof, limit=0)
+
+    def test_numeric_only_proof_cannot_skip_required_scientific_original(self):
+        first = source_acquisition_plan(
+            self.document, self.registry, self.report, self.proof, limit=1
+        )["selected_actions"][0]["id"]
+        numeric_only = {"series": [{
+            "series_id": first,
+            "source_values_match": True,
+            "source_covers_all_stored_periods": True,
+            "stored_periods": 23,
+        }]}
+        report = {
+            **self.report, "analyses": [{
+                **analysis, "linked_sources": [{
+                    **row, "stored_periods": 23
+                } if row["series_id"] == first else row
+                    for row in analysis["linked_sources"]],
+            } for analysis in self.report["analyses"]],
+        }
+        planned = source_acquisition_plan(
+            self.document, self.registry, report, numeric_only, limit=2)
+        self.assertEqual(planned["sources_with_verified_original_history"], 0)
+        self.assertIn(first, {x["id"] for x in planned["selected_actions"]})
 
     def test_runtime_and_contract_membership_mismatch_fails_before_network(self):
         wrong = {**self.report, "analyses": self.report["analyses"][:-1]}
@@ -195,6 +233,23 @@ class WorkflowTests(unittest.TestCase):
             ["--database-url", "sqlite:////not-present", "--acquire"],
             ["--database-url", "sqlite:////not-present", "--max-attempts", "0"],
             ["--database-url", "sqlite:////not-present", "--backup-dir", "/tmp"],
+        ):
+            with self.subTest(argv=argv), self.assertRaises(SystemExit) as err:
+                with redirect_stdout(StringIO()):
+                    main(argv)
+            self.assertEqual(err.exception.code, 2)
+        for argv in (
+            ["--database-url", "sqlite:////absent", "--revisit-from", "/tmp/old"],
+            ["--database-url", "sqlite:////absent", "--sweep",
+             "--revisit-mode", "both"],
+            ["--database-url", "sqlite:////absent", "--sweep",
+             "--acquire", "--resume", "--run-dir", "/tmp/new",
+             "--backup-dir", "/tmp/backups",
+             "--revisit-from", "/tmp/old"],
+            ["--database-url", "sqlite:////absent", "--sweep",
+             "--acquire", "--run-dir", "/tmp/old",
+             "--backup-dir", "/tmp/backups",
+             "--revisit-from", "/tmp/old"],
         ):
             with self.subTest(argv=argv), self.assertRaises(SystemExit) as err:
                 with redirect_stdout(StringIO()):
