@@ -2822,118 +2822,183 @@
         "original_requirements": [
           {
             "role": "employee_compensation",
-            "description": "Original same-country/industry/year compensation of employees CE.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 Compensation of employees (D1), national currency.",
+            "series_ids": [
+              "profit.us.nfc_compensation",
+              "profit.de.nfc_compensation",
+              "profit.fr.nfc_compensation",
+              "profit.pt.nfc_compensation",
+              "profit.gb.nfc_compensation",
+              "profit.it.nfc_compensation",
+              "profit.es.nfc_compensation",
+              "profit.nl.nfc_compensation"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Matched national input-output industries",
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
               "concept": "Compensation of employees"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "D1 compensation of employees",
-                "status": "unverified_candidate",
-                "required_original_checks": "Verify D1 for each exact industry and same-country/year, original currency/scale, and employees-only rather than proprietors."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "net_operating_surplus",
-            "description": "Original same-scope net operating surplus NOS.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 published components for Net operating surplus = gross operating surplus (B2G) − consumption of fixed capital (P51C), SNA identity; the subtraction is a Phase 3 transformation, no value is altered.",
+            "series_ids": [
+              "profit.us.nfc_gross_operating_surplus",
+              "profit.de.nfc_gross_operating_surplus",
+              "profit.fr.nfc_gross_operating_surplus",
+              "profit.pt.nfc_gross_operating_surplus",
+              "profit.gb.nfc_gross_operating_surplus",
+              "profit.it.nfc_gross_operating_surplus",
+              "profit.es.nfc_gross_operating_surplus",
+              "profit.nl.nfc_gross_operating_surplus",
+              "profit.us.nfc_consumption_fixed_capital",
+              "profit.de.nfc_consumption_fixed_capital",
+              "profit.fr.nfc_consumption_fixed_capital",
+              "profit.pt.nfc_consumption_fixed_capital",
+              "profit.gb.nfc_consumption_fixed_capital",
+              "profit.it.nfc_consumption_fixed_capital",
+              "profit.es.nfc_consumption_fixed_capital",
+              "profit.nl.nfc_consumption_fixed_capital"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same matched industries",
-              "concept": "Net operating surplus"
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
+              "concept": "Net operating surplus = gross operating surplus (B2G) − consumption of fixed capital (P51C), SNA identity"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "B2N net operating surplus and mixed income",
-                "status": "unverified_candidate",
-                "required_original_checks": "Verify B2N separation of net operating surplus from net mixed income; mixed-income aggregates cannot be relabelled pure surplus value."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "consumption_fixed_capital",
-            "description": "Original same-scope consumption of fixed capital CFC.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 Consumption of fixed capital (P51C), national currency.",
+            "series_ids": [
+              "profit.us.nfc_consumption_fixed_capital",
+              "profit.de.nfc_consumption_fixed_capital",
+              "profit.fr.nfc_consumption_fixed_capital",
+              "profit.pt.nfc_consumption_fixed_capital",
+              "profit.gb.nfc_consumption_fixed_capital",
+              "profit.it.nfc_consumption_fixed_capital",
+              "profit.es.nfc_consumption_fixed_capital",
+              "profit.nl.nfc_consumption_fixed_capital"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same matched industries",
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
               "concept": "Consumption of fixed capital"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "P51C consumption of fixed capital",
-                "status": "unverified_candidate",
-                "required_original_checks": "Verify exact original P51C industry split, same market/price scope, same year and accounting release."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "net_production_taxes",
-            "description": "Original same-scope net taxes on production NTP.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 published components for Net other taxes on production = other taxes (D29) − other subsidies (D39); the subtraction is a Phase 3 transformation, no value is altered.",
+            "series_ids": [
+              "profit.us.nfc_other_production_taxes",
+              "profit.de.nfc_other_production_taxes",
+              "profit.fr.nfc_other_production_taxes",
+              "profit.pt.nfc_other_production_taxes",
+              "profit.gb.nfc_other_production_taxes",
+              "profit.it.nfc_other_production_taxes",
+              "profit.es.nfc_other_production_taxes",
+              "profit.nl.nfc_other_production_taxes",
+              "profit.de.nfc_other_production_subsidies",
+              "profit.fr.nfc_other_production_subsidies",
+              "profit.pt.nfc_other_production_subsidies",
+              "profit.gb.nfc_other_production_subsidies",
+              "profit.it.nfc_other_production_subsidies",
+              "profit.es.nfc_other_production_subsidies",
+              "profit.nl.nfc_other_production_subsidies"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same matched industries",
-              "concept": "Net taxes on production"
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
+              "concept": "Net other taxes on production = other taxes (D29) − other subsidies (D39)"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "D29 less D39 other production taxes/subsidies",
-                "status": "unverified_candidate",
-                "required_original_checks": "Confirm published industry net production-tax definition and sign; product taxes must not be substituted."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "gross_value_added",
-            "description": "Original same-scope GVA and source-defined accounting adjustments.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 Gross value added (B1G), national currency.",
+            "series_ids": [
+              "profit.us.nfc_gross_value_added",
+              "profit.de.nfc_gross_value_added",
+              "profit.fr.nfc_gross_value_added",
+              "profit.pt.nfc_gross_value_added",
+              "profit.gb.nfc_gross_value_added",
+              "profit.it.nfc_gross_value_added",
+              "profit.es.nfc_gross_value_added",
+              "profit.nl.nfc_gross_value_added"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same matched industries",
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
               "concept": "Gross value added"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "B1G gross value added",
-                "status": "unverified_candidate",
-                "required_original_checks": "Match the original industry, price valuation, currency, annual period and accounting adjustment scope of CE/NOS/CFC/taxes."
-              }
-            ]
+            "artifact_ids": []
           }
         ],
         "variants": []
@@ -2963,26 +3028,44 @@
         "original_requirements": [
           {
             "role": "net_operating_surplus",
-            "description": "Original industry/country/year net operating surplus, not gross surplus/GVA.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 published components for Net operating surplus = gross operating surplus (B2G) − consumption of fixed capital (P51C), SNA identity; the subtraction is a Phase 3 transformation, no value is altered.",
+            "series_ids": [
+              "profit.us.nfc_gross_operating_surplus",
+              "profit.de.nfc_gross_operating_surplus",
+              "profit.fr.nfc_gross_operating_surplus",
+              "profit.pt.nfc_gross_operating_surplus",
+              "profit.gb.nfc_gross_operating_surplus",
+              "profit.it.nfc_gross_operating_surplus",
+              "profit.es.nfc_gross_operating_surplus",
+              "profit.nl.nfc_gross_operating_surplus",
+              "profit.us.nfc_consumption_fixed_capital",
+              "profit.de.nfc_consumption_fixed_capital",
+              "profit.fr.nfc_consumption_fixed_capital",
+              "profit.pt.nfc_consumption_fixed_capital",
+              "profit.gb.nfc_consumption_fixed_capital",
+              "profit.it.nfc_consumption_fixed_capital",
+              "profit.es.nfc_consumption_fixed_capital",
+              "profit.nl.nfc_consumption_fixed_capital"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Matched national-account industry/sector",
-              "concept": "Net operating surplus flow"
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
+              "concept": "Net operating surplus = gross operating surplus (B2G) − consumption of fixed capital (P51C), SNA identity"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "B2N net operating surplus",
-                "status": "unverified_candidate",
-                "required_original_checks": "Separate pure NOS from mixed income and independently match the capital-stock sector/industry, valuation and source years."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "net_fixed_capital",
@@ -3009,81 +3092,102 @@
           },
           {
             "role": "employee_compensation",
-            "description": "Original same-scope annual employee compensation.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 Compensation of employees (D1), national currency.",
+            "series_ids": [
+              "profit.us.nfc_compensation",
+              "profit.de.nfc_compensation",
+              "profit.fr.nfc_compensation",
+              "profit.pt.nfc_compensation",
+              "profit.gb.nfc_compensation",
+              "profit.it.nfc_compensation",
+              "profit.es.nfc_compensation",
+              "profit.nl.nfc_compensation"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same matched industry/sector",
-              "concept": "Compensation of employees flow"
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
+              "concept": "Compensation of employees"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "D1 compensation of employees",
-                "status": "unverified_candidate",
-                "required_original_checks": "Prove same industry/sector/year, currency and price basis as NOS, net capital and CFC; exclude mixed income."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "consumption_fixed_capital",
-            "description": "Original same-scope consumption of fixed capital.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 Consumption of fixed capital (P51C), national currency.",
+            "series_ids": [
+              "profit.us.nfc_consumption_fixed_capital",
+              "profit.de.nfc_consumption_fixed_capital",
+              "profit.fr.nfc_consumption_fixed_capital",
+              "profit.pt.nfc_consumption_fixed_capital",
+              "profit.gb.nfc_consumption_fixed_capital",
+              "profit.it.nfc_consumption_fixed_capital",
+              "profit.es.nfc_consumption_fixed_capital",
+              "profit.nl.nfc_consumption_fixed_capital"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same matched industry/sector",
-              "concept": "Consumption of fixed capital flow"
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
+              "concept": "Consumption of fixed capital"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "P51C consumption of fixed capital",
-                "status": "unverified_candidate",
-                "required_original_checks": "Verify annual CFC as a flow on precisely the net capital asset perimeter; do not mix accumulated depreciation."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "gross_value_added",
-            "description": "Original same-scope gross value added.",
-            "series_ids": [],
+            "description": "OECD Table 14 S11 Gross value added (B1G), national currency.",
+            "series_ids": [
+              "profit.us.nfc_gross_value_added",
+              "profit.de.nfc_gross_value_added",
+              "profit.fr.nfc_gross_value_added",
+              "profit.pt.nfc_gross_value_added",
+              "profit.gb.nfc_gross_value_added",
+              "profit.it.nfc_gross_value_added",
+              "profit.es.nfc_gross_value_added",
+              "profit.nl.nfc_gross_value_added"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same matched industry/sector",
-              "concept": "Gross value-added flow"
+              "unit": "million_local_currency",
+              "geography": [
+                "USA",
+                "DEU",
+                "FRA",
+                "PRT",
+                "GBR",
+                "ITA",
+                "ESP",
+                "NLD"
+              ],
+              "population": "Non-financial corporations (S11), national accounts",
+              "concept": "Gross value added"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "source_candidates": [
-              {
-                "artifact_id": "corporate_accounts",
-                "measure": "gross_value_added",
-                "source_id": "profit.oecd38.corporate_gross_surplus_gdp",
-                "sector": "S11",
-                "condition": "Select and verify common NOS, net fixed capital, employee compensation and CFC perimeter, currency and years before binding sector GVA."
-              }
-            ],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "B1G gross value added",
-                "status": "unverified_candidate",
-                "required_original_checks": "Select only GVA that matches same industry/sector of NOS, capital stock, CE and CFC; retained corporate-account S11 alone is not proof."
-              }
-            ]
+            "artifact_ids": []
           }
         ],
         "variants": []

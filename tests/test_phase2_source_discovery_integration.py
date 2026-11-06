@@ -47,8 +47,8 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
         self.assertEqual(candidates["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
         d1 = next(
             row for row in candidates["role_candidates"]
-            if row["analysis_id"] == "L02" and
-            row["role"] == "employee_compensation")
+            if row["analysis_id"] == "L01" and
+            row["role"] == "oecd_matched_value_added")
         proof = d1["publisher_candidates"][0][
             "original_numeric_scope_evidence"]
         self.assertEqual(proof["observed_countries"], ["PRT"])
@@ -60,15 +60,6 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
         self.assertFalse(proof[
             "same_industry_year_alignment_to_other_inputs_verified"])
         self.assertFalse(d1["exact_scalar_series_bound"])
-        surplus = next(
-            row for row in candidates["role_candidates"]
-            if row["analysis_id"] == "L02" and
-            row["role"] == "net_operating_surplus")
-        mixed = surplus["publisher_candidates"][0]
-        self.assertTrue(mixed["mixed_income_separation_unverified"])
-        self.assertTrue(mixed["original_numeric_scope_evidence"][
-            "verified_numeric_measure_in_original_scopes"])
-        self.assertFalse(mixed["official_source_measure_verified_for_role"])
         self.assertFalse(candidates["scientific_analysis_certified"])
 
     def test_bound_survey_gini_leaves_no_native_discovery_and_nearby_inputs_are_not_bindings(self):

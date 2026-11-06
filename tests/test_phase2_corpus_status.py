@@ -43,9 +43,9 @@ class OfflineCorpusStatusTests(unittest.TestCase):
 
     def test_unverified_oecd_candidates_cover_fourteen_original_l01_l03_roles_without_binding(self):
         r = self.report
-        self.assertEqual(r["unverified_source_candidate_roles"], 14)
+        self.assertEqual(r["unverified_source_candidate_roles"], 5)
         self.assertEqual({item["id"] for item in r["analyses_with_unverified_candidates"]},
-                         {"L01", "L02", "L03"})
+                         {"L01", "L03"})
         for item in r["analyses_with_unverified_candidates"]:
             for role in item["roles"]:
                 self.assertIn(role["role"], next(

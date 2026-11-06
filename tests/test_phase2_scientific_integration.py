@@ -52,25 +52,14 @@ class CompleteResearchSourceMatrixTests(unittest.TestCase):
         self.assertEqual(len(summary["outstanding_roles"]), corpus_counts.UNBOUND_SCALAR_ROLES)
         self.assertFalse(summary["scientific_analysis_certified"])
 
-    def test_stan_surplus_candidate_is_never_mislabelled_pure_operating_surplus(self):
-        evidence = {"stan": {
-            "status": "verified_original_stan_partial",
-            "original_source_hash_verified": True,
-        }}
-        result = unbound_original_source_discovery(
-            self.document, self.catalog, evidence)
-        sources = [
-            candidate for row in result["role_candidates"]
-            if row["role"] == "net_operating_surplus"
-            for candidate in row["publisher_candidates"]
-            if candidate["dataset"] == "OECD_STAN_2025"]
-        self.assertTrue(sources)
-        self.assertTrue(all(
-            x["underlying_surplus_contains_mixed_income"] for x in sources))
-        self.assertTrue(all(
-            not x["official_source_measure_verified_for_role"] for x in sources))
-        self.assertTrue(all(not x["first_publication_verified"]
-                            for x in sources))
+    def test_net_operating_surplus_is_bound_to_published_components_not_mixed_income(self):
+        sources = {row["id"]: row for row in self.catalog}
+        for aid in ("L02", "L03"):
+            role = next(r for a in self.document["analyses"] if a["id"] == aid
+                        for r in a["comparison_contract"]["original_requirements"] if r["role"] == "net_operating_surplus")
+            codes = {sources[sid]["source_key"].split("/")[1] for sid in role["series_ids"]}
+            self.assertEqual(codes, {"B2G", "P51C"})
+            self.assertNotIn("B2A3G", codes)
 
     def test_all_35_analyses_and_168_roles_keep_exact_native_release_gates(self):
         plan = native_accounting_workplan(

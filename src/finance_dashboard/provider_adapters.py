@@ -376,13 +376,14 @@ def fetch_eurostat_hicp(self, series_id, start, item, key):
 
 
 OECD_TABLE14_ROOT = "https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/"
-# Non-financial corporations (S11), uses side, current prices, national currency.
-OECD_NFC_TRANSACTIONS = frozenset({"B1G", "D1", "B2N", "P51C", "D29X39"})
-OECD_NFC_COUNTRIES = frozenset({"USA", "DEU", "FRA", "JPN", "PRT", "GBR", "ITA", "ESP", "NLD", "CAN"})
+# Non-financial corporations (S11), current prices, national currency. Entry
+# D = uses, C = resources (other subsidies on production are a resource).
+OECD_NFC_TRANSACTIONS = {"B1G": "D", "D1": "D", "B2G": "D", "P51C": "D", "D29": "D", "D39": "C"}
+OECD_NFC_COUNTRIES = frozenset({"USA", "DEU", "FRA", "PRT", "GBR", "ITA", "ESP", "NLD"})
 
 
 def oecd_nfc_key(country: str, transaction: str) -> str:
-    return f"A.{country}.S11.S1.D.{transaction}._Z._Z.XDC.S.V.N.T0800"
+    return f"A.{country}.S11.S1.{OECD_NFC_TRANSACTIONS[transaction]}.{transaction}._Z._Z.XDC.S.V.N.T0800"
 
 
 def fetch_oecd_nfc_accounts(self, series_id, start, item, key):
@@ -398,7 +399,7 @@ def fetch_oecd_nfc_accounts(self, series_id, start, item, key):
     out = {}
     for row in rows:
         if (row.get("REF_AREA") != country or row.get("SECTOR") != "S11" or row.get("TRANSACTION") != transaction
-                or row.get("ACCOUNTING_ENTRY") != "D" or row.get("UNIT_MULT") != "6"):
+                or row.get("ACCOUNTING_ENTRY") != OECD_NFC_TRANSACTIONS[transaction] or row.get("UNIT_MULT") != "6"):
             raise ProviderError("OECD Table 14 returned a different series")
         if row.get("OBS_VALUE") not in (None, ""):
             out[date(int(row["TIME_PERIOD"]), 1, 1)] = Decimal(row["OBS_VALUE"])

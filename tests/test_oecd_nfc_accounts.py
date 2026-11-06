@@ -43,7 +43,7 @@ class OecdNfcAccountsTests(unittest.TestCase):
                 (BODY.replace(",USD\n", ",EUR\n"), URL, DEFINITION),
                 (BODY.replace(",6,USD", ",3,USD"), URL, DEFINITION),
                 (BODY, URL + "&startPeriod=2020", DEFINITION),
-                (BODY, URL, {**DEFINITION, "source_key": "USA/B9"})):
+                (BODY, URL, {**DEFINITION, "source_key": "USA/B2N"})):
             with self.subTest(url=url[-30:], key=definition["source_key"]), self.assertRaises(EvidenceError):
                 _oecd_nfc(body.encode(), url, definition)
         with self.assertRaises(EvidenceError):

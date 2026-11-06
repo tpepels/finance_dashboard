@@ -26,13 +26,13 @@ class PublisherCandidatesTests(unittest.TestCase):
                         self.assertEqual(candidate["status"], "unverified_candidate")
                         self.assertTrue(candidate["source_url"].startswith("https://"))
                         self.assertIn("required_original_checks", candidate)
-        self.assertEqual(len(roles), 14)
-        self.assertEqual({a for a, _ in roles}, {"L01", "L02", "L03"})
+        # L02/L03 flows are bound to OECD sector accounts; L01 matches and L03's capital stock remain leads.
+        self.assertEqual(len(roles), 5)
+        self.assertEqual({a for a, _ in roles}, {"L01", "L03"})
         l03 = next(a for a in self.document["analyses"] if a["id"] == "L03")
         gva = next(r for r in l03["comparison_contract"]["original_requirements"]
                    if r["role"] == "gross_value_added")
-        self.assertEqual(len(gva["source_candidates"]), 1)
-        self.assertEqual(gva["source_candidates"][0]["artifact_id"], "corporate_accounts")
+        self.assertTrue(all(sid.endswith(".nfc_gross_value_added") for sid in gva["series_ids"]))
         self.assertIn("stan", ARTIFACT_IDS)
 
     def test_schemas_reject_unverified_lead_claiming_verified_or_mapped_role(self):

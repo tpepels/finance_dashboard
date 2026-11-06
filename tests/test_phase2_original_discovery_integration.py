@@ -61,21 +61,18 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
         report = unbound_original_source_discovery(
             self.document, self.catalog, native,
             stan_readiness=readiness, stan_structure=metadata)
+        # L02's surplus is bound to OECD sector accounts; STAN remains a candidate for L01's industry match.
         source = next(
             x for row in report["role_candidates"]
-            if row["analysis_id"] == "L02" and
-            row["role"] == "net_operating_surplus"
+            if row["analysis_id"] == "L01" and
+            row["role"] == "oecd_matched_value_added"
             for x in row["publisher_candidates"])
-        self.assertEqual(
-            source["candidate_status"],
-            "original_observed_requires_economic_identity_and_same_release")
-        self.assertTrue(source["mixed_income_separation_unverified"])
         self.assertEqual(
             source["original_numeric_scope_evidence"]["observed_countries"],
             ["PRT"])
         self.assertEqual(
             source["original_numeric_scope_evidence"][
-                "max_numeric_rows_in_one_original_scope"], 5)
+                "max_numeric_rows_in_one_original_scope"], 15)
         self.assertFalse(source["official_source_measure_verified_for_role"])
 
         summary = concise_unbound_discovery(report)
@@ -87,9 +84,9 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
             self.document, series_registry=self.catalog,
             unbound_source_evidence=report)
         role = next(
-            r for a in evaluated["analyses"] if a["id"] == "L02"
+            r for a in evaluated["analyses"] if a["id"] == "L01"
             for r in a["requirements"]
-            if r["role"] == "net_operating_surplus")
+            if r["role"] == "oecd_matched_value_added")
         gates = {x["id"]: x for x in role["checks"]}
         self.assertEqual(gates["source_binding"]["state"], "incomplete")
         self.assertEqual(gates["native_dimensions"]["state"], "incomplete")

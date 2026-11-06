@@ -101,19 +101,9 @@ class ResearchReadinessTests(unittest.TestCase):
         self.assertFalse(proof["passed"])
         self.assertEqual(proof["series"][0]["failure_code"], "source_empty")
 
-    def test_retained_sector_gva_is_unconnected_candidate_not_missing_source_discovery(self):
-        registry = load_documents()[0]["series"]
-        original = {"original_source_hash_verified": True, "required_variable_coverage": {
-            "gross_value_added": {"source_coverage": {"profit.oecd38.corporate_gross_surplus_gdp": {
-                "S11": {"country_year_pairs": 943, "geographies_ever_reported": 33}}}}}}
-        def role(evidence):
-            report = research_corpus_report(load_research_corpus(), series_registry=registry,
-                                           artifact_evidence={"corporate_accounts": evidence})
-            return next(r for a in report["analyses"] if a["id"] == "L03" for r in a["requirements"] if r["role"] == "gross_value_added")
-        candidate = role(original)
-        self.assertEqual(candidate["resolution"]["category"], 1)
-        self.assertFalse(candidate["resolution"]["connected"])
-        self.assertFalse(candidate["resolution"]["exact_role_satisfied"])
-        self.assertEqual(candidate["series_ids"], [])
-        self.assertFalse(candidate["accepted"])
-        self.assertEqual(role({**original, "original_source_hash_verified": False})["resolution"]["category"], 5)
+    def test_sector_gva_is_bound_to_oecd_s11_series(self):
+        registry = {row["id"]: row for row in load_documents()[0]["series"]}
+        gva = next(r for a in load_research_corpus()["analyses"] if a["id"] == "L03"
+                   for r in a["comparison_contract"]["original_requirements"] if r["role"] == "gross_value_added")
+        self.assertEqual({registry[sid]["provider"] for sid in gva["series_ids"]}, {"OECD_NFC_ACCOUNTS"})
+        self.assertNotIn("profit.oecd38.corporate_gross_surplus_gdp", gva["series_ids"])

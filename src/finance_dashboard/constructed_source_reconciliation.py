@@ -299,13 +299,14 @@ def _eurostat(raw, url, sector, measure, *, dataset='nasa_10_nf_tr', unit='CP_ME
 
 def _oecd_nfc(raw, url, definition):
     country, _, transaction = definition['source_key'].partition('/')
-    if not re.fullmatch('[A-Z]{3}', country) or transaction not in {'B1G', 'D1', 'B2N', 'P51C', 'D29X39'}: _error()
-    key = f'A.{country}.S11.S1.D.{transaction}._Z._Z.XDC.S.V.N.T0800'
+    entries = {'B1G': 'D', 'D1': 'D', 'B2G': 'D', 'P51C': 'D', 'D29': 'D', 'D39': 'C'}
+    if not re.fullmatch('[A-Z]{3}', country) or transaction not in entries: _error()
+    key = f'A.{country}.S11.S1.{entries[transaction]}.{transaction}._Z._Z.XDC.S.V.N.T0800'
     query = parse_qs(urlsplit(url).query)
     if set(query) - {'format', 'startPeriod'} or query.get('format') != ['csvfile'] or 'startPeriod' in query: _error('source_snapshot_partial')
     _url(url, 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/'+key)
     fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE14(1.1)', 'FREQ': 'A', 'REF_AREA': country,
-             'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1', 'ACCOUNTING_ENTRY': 'D', 'TRANSACTION': transaction,
+             'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1', 'ACCOUNTING_ENTRY': entries[transaction], 'TRANSACTION': transaction,
              'INSTR_ASSET': '_Z', 'EXPENDITURE': '_Z', 'UNIT_MEASURE': 'XDC', 'VALUATION': 'S', 'PRICE_BASE': 'V',
              'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T0800', 'UNIT_MULT': '6'}
     reader = csv.DictReader(io.StringIO(raw.decode('utf-8-sig')))
@@ -315,8 +316,8 @@ def _oecd_nfc(raw, url, definition):
         if any(row.get(name) != value for name, value in fixed.items()): _error()
         if definition.get('currency') and row['CURRENCY'] != definition['currency']: _error()
         _add(values, seen, _native_period(row['TIME_PERIOD'], 'A'), row['OBS_VALUE'])
-    # Operating surplus and net production taxes can be negative; flows below cannot.
-    if transaction in {'B1G', 'D1', 'P51C'} and any(value < 0 for value in values.values()): _error('source_value_invalid')
+    # Gross operating surplus can be negative; the other flows cannot.
+    if transaction != 'B2G' and any(value < 0 for value in values.values()): _error('source_value_invalid')
     return values
 
 
