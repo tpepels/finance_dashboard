@@ -6,6 +6,9 @@ No event-hook throttling, parallel retry path or ungoverned redirects remain.
 """
 from __future__ import annotations
 
+import threading
+import time
+
 import httpx
 
 from .source_policy_types import Policy, PolicyViolation, PolicyDeferred
@@ -48,14 +51,31 @@ class PublisherTransport(httpx.BaseTransport):
     request still consumes its rolling-window slot; cooldowns remain durable.
     """
 
-    def __init__(self, gate: SourcePolicyGate, delegate: httpx.BaseTransport):
+    def __init__(self, gate: SourcePolicyGate, delegate: httpx.BaseTransport,
+                 request_budget: int | None = None):
+        if request_budget is not None and (
+                type(request_budget) is not int or not 1 <= request_budget <= 10000):
+            raise ValueError("invalid_shared_http_request_budget")
         self.gate = gate
         self.delegate = delegate
+        self.request_budget = request_budget
+        self.requests_reserved = 0
+        self._budget_lock = threading.Lock()
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         policy = self.gate.registry.for_url(request.url)
         self.gate.registry.check_request(request, policy)
-        lease = self.gate.reserve(policy)
+        # This is an optional global per-invocation cap, independent of
+        # publisher-specific durable budgets. Only a successful atomic
+        # publisher permit consumes it. It does not replace the policy gate.
+        with self._budget_lock:
+            if (self.request_budget is not None and
+                    self.requests_reserved >= self.request_budget):
+                raise PolicyDeferred("request-budget",
+                                     "invocation_request_budget_exhausted",
+                                     time.time())
+            lease = self.gate.reserve(policy)
+            self.requests_reserved += 1
         try:
             response = self.delegate.handle_request(request)
         except BaseException:
@@ -121,6 +141,7 @@ def managed_client(*, policy_gate: SourcePolicyGate | None = None, **kwargs) -> 
     if kwargs.get("trust_env", False) or kwargs.get("proxy") or kwargs.get("mounts"):
         raise PolicyViolation("transport", "unapproved_proxy_or_transport_mount")
     kwargs["trust_env"] = False
+    request_budget = kwargs.pop("request_budget", None)
     base = kwargs.pop("transport", None)
     # Production callers may not supply arbitrary transports (including a
     # proxy-configured HTTPTransport). Only bounded local mock handlers are
@@ -137,7 +158,8 @@ def managed_client(*, policy_gate: SourcePolicyGate | None = None, **kwargs) -> 
             trust_env=False,
         )
     kwargs["transport"] = PublisherTransport(
-        policy_gate if policy_gate is not None else SourcePolicyGate(), base)
+        policy_gate if policy_gate is not None else SourcePolicyGate(),
+        base, request_budget=request_budget)
     return httpx.Client(**kwargs)
 
 

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from .comparative_corpus import build_comparative_corpus
 from .research_artifacts import research_artifact_evidence
+from .phase2_publication_evidence import publisher_vintage_evidence
 from .research_corpus import analysis_series_ids, research_corpus_report
 from .source_coverage import coverage_from_session
 from .source_reconciliation import reconcile_session
@@ -24,6 +25,8 @@ class CorpusEvaluation:
     public_report: dict
     comparative: dict
     source_proof: dict
+    artifact_evidence: dict | None = None
+    publisher_vintage_proof: dict | None = None
 
 
 def required_series_ids(document: dict) -> list[str]:
@@ -58,10 +61,22 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
         comparative = build_comparative_corpus(session, series_registry, document,
                                                source_proof=proof)
         coverage = coverage_from_session(session, series_registry, market_registry or {})
+    structured = research_artifact_evidence(
+        root, holdings_root=Path(holdings_root) if holdings_root is not None
+        else None, kinds=artifacts)
+    first_vintage = (publisher_vintage_evidence(
+        Path(vintage_root),
+        {item["source_key"] for item in series_registry
+         if item.get("provider") == "FRED" and item["id"] in
+         required_series_ids(document)})
+        if vintage_root is not None else None)
     report = research_corpus_report(
         document, coverage,
-        vintages=available_snapshots(Path(vintage_root)) if vintage_root is not None else None,
+        vintages=available_snapshots(Path(vintage_root))
+        if vintage_root is not None else None,
         series_registry=series_registry, comparative_evidence=comparative,
-        source_reconciliation=proof, artifact_evidence=research_artifact_evidence(
-            root, holdings_root=Path(holdings_root) if holdings_root is not None else None, kinds=artifacts))
-    return CorpusEvaluation(public_report=report, comparative=comparative, source_proof=proof)
+        source_reconciliation=proof, artifact_evidence=structured,
+        publisher_vintage_proof=first_vintage)
+    return CorpusEvaluation(
+        public_report=report, comparative=comparative, source_proof=proof,
+        artifact_evidence=structured, publisher_vintage_proof=first_vintage)

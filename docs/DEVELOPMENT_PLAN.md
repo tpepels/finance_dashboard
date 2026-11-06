@@ -1,6 +1,148 @@
 # Development plan — authoritative five-phase roadmap
 
 
+## Phase 2 — structured original collectors, unbound-source review, original publisher vintages, native accounting and 35-analysis integration (2026-11-06)
+
+### 1. All typed original artifacts and collection capabilities
+
+`phase2_structured_acquisition` now enumerates **all 13 original artifact
+families** in the approved Phase 2 corpus, checks exactly which of the **44
+structured roles** each family can inform, and separates the **28 roles with
+no approved original artifact binding** from genuine original evidence.
+Existing verified collectors are reused for NBER chronology, Brazilian CVM
+annual archives, OECD analytical multinational sources (AMNE and MEIP),
+OECD TiVA, native STAN, SEC N-PORT and fixed-source UCITS issuer reports.
+Registered publisher requests use the same `managed_client`,
+`SourcePolicyGate`, original archive/parsers and immutable receipts as
+the existing application. No parallel HTTP adapter, uncontrolled redirect,
+implicit source substitution or guessed original is added. Original-file
+families (e.g. pinned ICIO, WIID, restricted MSCI and Taiwan) remain
+explicit original-import requirements, not unauthorized scraper tasks.
+
+The managed HTTP transport now accepts an **optional run-wide HTTP budget**:
+a successful source-policy reservation atomically consumes one slot; exceeding
+that cap refuses new outbound requests without editing publisher quotas.
+This protects variable-request original collectors such as NBER, SEC, UCITS
+and multinationals as well as the existing publisher-specific durable
+spacing/window/cooldown restrictions. `sec_holdings_sync.collect_configured`
+can accept this already managed client, eliminating its formerly separate
+transport lifecycle during the integrated acquisition run.
+
+`scripts/phase2_structured_batch.py` provides a read-only 44-role/native
+capability review by default. With explicit `--acquire --run-dir`, it uses
+one immutable source-attempt journal, a canonical managed request cap and
+the existing publisher policy preflight, then independently reruns native
+original evidence readers. Source ingestion success never implies the
+original research method has been accepted or first-publication proven.
+Sources with no authorized collector remain named blockers. The source
+archive and journal directories must be disjoint, and existing originals
+are not overwritten.
+
+Read-only:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_structured_batch.py \
+  --evidence-dir /data/source-evidence --holdings-dir /data/holdings
+```
+
+Explicit original collection, only where each real publisher's access rights,
+network origin and contact requirements are satisfied:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_structured_batch.py \
+  --evidence-dir /data/source-evidence --holdings-dir /data/holdings \
+  --cvm-year 2025 --acquire --run-dir /data/phase2-sweeps/structured-originals-20261106 \
+  --max-http-requests 30 --max-tasks 10
+```
+
+A source-specific `--artifact` may be repeated to constrain the permitted
+acquisitions; `--resume` verifies the same journal. Source rights may block
+some artifacts (notably automated iShares downloads) and must not be bypassed
+with spoofed browser headers.
+
+### 2. Complete original-source investigation of unbound scalars
+
+`phase2_unbound_sources` inspects all **21 originally unbound scalar roles**.
+It retains approved publisher candidates and their exact native-method checks,
+classifies cases where same-publisher STAN source evidence is genuinely
+retained, and lists roles with no reviewed original-source candidate. It
+explicitly distinguishes a B2N_B3_N combined surplus/mixed-income observation
+from a pure B2N operating-surplus definition. It never implicitly binds a
+different country, frequency, unit, population or profit-rate numerator.
+Publisher identity, original series definition, matched industry/year
+observations and public-release timing remain independent gates.
+
+### 3. Historical original publication provenance
+
+`phase2_publication_evidence` archives official earliest-series-vintage
+ALFRED JSON **bytes** in SHA-256 content-addressed bundles and append-only
+retrieval receipts, without retaining the FRED credential or query URL.
+Retrievals are idempotently reused and all historical response versions are
+rehashed/revalidated, including conflicts and corruption. The corresponding
+`phase2_publication_batch.py` has an explicit publisher-governed budget.
+The official earliest ALFRED *series vintage* is deliberately not promoted to
+any individual observation's earliest public-release instant. The
+`research_runtime`, `research_corpus_report` and `analysis_acceptance`
+now carry these independently verified publication provenance details into
+the 35 scientific contracts. Observation-level first-publication and common-
+release eligibility remain incomplete until independently published evidence
+establishes them.
+
+Read-only:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_publication_batch.py \
+  --vintage-dir /data/vintages
+```
+
+For a configured, authorized FRED API connection:
+
+```sh
+docker compose exec -T finance-dashboard python scripts/phase2_publication_batch.py \
+  --vintage-dir /data/vintages --acquire --max-requests 10
+```
+
+### 4. Same-original native dimensional and accounting checks
+
+`stan_research.audit_stan_scope` now uses one generic native linear-identity
+algorithm for printed-precision residuals, compatible unit/currency and
+source observation flag checks. It tests gross value-added against compensation
+plus gross or net surplus/mixed income and taxes/capital consumption, and
+tests **gross minus net surplus/mixed income against consumption of fixed
+capital**, always within the same retained publisher source, industry and
+year. It does not add hierarchical industries, combine separate retrievals,
+interpret unknown source flags or assign mixed income to a Marxian profit
+measure. Both this bridge and existing historical version/cross-scope
+reconciliation are projected into STAN readiness.
+
+`phase2_accounting_validation` projects existing ICIO matrix, TiVA
+serialization, original filings, fund accounting and STAN identities onto
+the exact 168 named scientific original roles. It records missing native
+dimensions, publication populations, period overlap, original value evidence,
+release eligibility and failed source accounting. It does not combine
+incompatible native economic observations or certify cross-release
+comparisons simply because individual receipts exist.
+
+### 5. Canonical integrated evidence-to-analysis execution
+
+The standard `scripts/phase2_operating_batch.py` now reads the fully
+integrated `CorpusEvaluation` evidence and reports the structured source
+workplan, the 21-source original-publisher investigation, native accounting
+coverage and all remaining scientifically unmatched original-input gates in
+the same 35-analysis workflow. Both the compact operating report and the
+detailed report preserve the existing acceptance engine's strict thresholds,
+the original-source archive and historic revisions. No evidence is inferred
+from HTTP success or manual declarations.
+
+**Remaining empirical limitations:** publisher rights and non-public source
+identities, 28 structured roles without an approved original artifact,
+unacquired files, incomplete STAN country-year coverage, first-publication
+date evidence for individual observations, and original economic accounting
+failures. These are not certified by this software increment. No live
+publisher requests were issued during the GitHub-only implementation.
+
+
+
 ## Phase 2 — canonical scientific source gate, audited selective sweeps and publisher hypotheses (2026-11-06)
 
 This batch closes an architectural mismatch between research acceptance and

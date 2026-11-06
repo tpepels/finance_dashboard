@@ -30,6 +30,15 @@ from finance_dashboard.phase2_workflow import (
 from finance_dashboard.phase2_role_workplan import (
     phase2_role_workplan, compact_role_workplan,
 )
+from finance_dashboard.phase2_structured_acquisition import (
+    original_artifact_matrix, collection_plan,
+)
+from finance_dashboard.phase2_unbound_sources import (
+    unbound_original_source_discovery, concise_unbound_discovery,
+)
+from finance_dashboard.phase2_accounting_validation import (
+    native_accounting_workplan, compact_accounting_workplan,
+)
 from finance_dashboard.phase2_research_transitions import (
     research_evidence_transitions, compact_research_transitions,
 )
@@ -91,6 +100,15 @@ def build_phase2_operating_report(evaluation, document, registry, *,
             measures=tuple(native["native_measures"]), max_requests=4)
     readiness = summarize_stan_readiness(
         evidence_root, countries=all_countries)
+    structured = original_artifact_matrix(
+        document, evaluation.artifact_evidence or {})
+    original_uses = collection_plan(
+        structured, registry=PolicyRegistry())
+    unbound = unbound_original_source_discovery(
+        document, registry, evaluation.artifact_evidence or {})
+    native_checks = native_accounting_workplan(
+        document, evaluation.public_report,
+        evaluation.artifact_evidence or {}, readiness)
     return {
         "phase": "phase2", "operation": "integrated_operating_review",
         "status": "scientific_evidence_incomplete",
@@ -99,6 +117,31 @@ def build_phase2_operating_report(evaluation, document, registry, *,
         "gate_failures": action["gate_failure_counts"],
         "role_resolution": evaluation.public_report["role_resolution_summary"],
         "non_scalar_work": compact_role_workplan(role_work),
+        "structured_original_work": {
+            "structured_roles": structured["structured_roles"],
+            "roles_without_native_original_artifact":
+                structured["roles_without_registered_artifacts"],
+            "native_artifacts_with_collectors":
+                structured["native_collectors_available"],
+            "artifact_states": [{
+                "id": item["kind"],
+                "roles": item["role_count"],
+                "collection_state": item["collection_state"],
+                "policies": item["policy_ids"],
+            } for item in original_uses["artifacts"]],
+            "publisher_requests_made": 0,
+            "scientific_certification": False,
+        },
+        "unbound_original_inputs": concise_unbound_discovery(unbound),
+        "native_accounting": compact_accounting_workplan(native_checks),
+        "scientific_input_bundle": {
+            "analysis_count": native_checks["analyses_checked"],
+            "original_roles_checked": native_checks["original_roles_checked"],
+            "source_method_and_release_checks_required": True,
+            "scientific_analysis_certified": False,
+        },
+        "unbound_original_details": unbound,
+        "native_accounting_details": native_checks,
         "role_workplan_details": role_work,
         "publisher_policy_preflight": {
             "registry_sha256": policy_summary["registry_sha256"],
@@ -159,6 +202,8 @@ def emit_operating_report(report: dict, *, details: bool = False) -> dict:
     if not details:
         public.pop("analysis_gaps", None)
         public.pop("role_workplan_details", None)
+        public.pop("unbound_original_details", None)
+        public.pop("native_accounting_details", None)
         if "source_coverage" in public:
             public["source_coverage"] = dict(public["source_coverage"])
             public["source_coverage"]["selected_actions"] = [

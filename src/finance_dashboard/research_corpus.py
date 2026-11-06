@@ -306,6 +306,7 @@ def research_corpus_report(
     comparative_evidence: dict[str, Any] | None = None,
     source_reconciliation: dict[str, Any] | None = None,
     artifact_evidence: dict[str, Any] | None = None,
+    publisher_vintage_proof: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Join runtime evidence; declarations and source counts cannot grant approval."""
     from .comparative_corpus import comparative_evidence_summary
@@ -324,6 +325,8 @@ def research_corpus_report(
         if isinstance(item, dict) and isinstance(item.get("series_id"), str)
     }
     method_source_by_id = {item["id"]: item for item in document["original_sources"]}
+    verified_publisher_releases = (
+        (publisher_vintage_proof or {}).get("series") or {})
     analyses: list[dict[str, Any]] = []
     for row in document["analyses"]:
         links = []
@@ -350,6 +353,16 @@ def research_corpus_report(
                 # A populated ALFRED snapshot proves values known on its as-of
                 # date, not the earliest public release of each observation.
                 "first_publication_vintage_verified": False,
+                "original_publisher_first_series_vintage": (
+                    verified_publisher_releases.get(
+                        original_fred_id, {}).get(
+                            "first_available_alfred_series_vintage")
+                    if verified_publisher_releases.get(
+                        original_fred_id, {}).get("status") ==
+                    "verified_original_publisher_vintage" else None),
+                "publisher_vintage_original_status": (
+                    verified_publisher_releases.get(
+                        original_fred_id, {}).get("status", "not_checked")),
                 "publication_semantics": (
                     "Stored ALFRED information available on selected as-of dates; "
                     "first populated as-of is not the first publication date."
@@ -375,7 +388,8 @@ def research_corpus_report(
         bounded_verified = any(panel["state"] == "bounded_current_vintage_verified" for panel in panel_evidence)
         acceptance = analysis_acceptance(row, original_by_local_id, counts, panel_evidence,
             observations_checked=observations is not None, source_proof=source_reconciliation,
-            artifact_evidence=artifact_evidence)
+            artifact_evidence=artifact_evidence,
+            publisher_vintage_proof=publisher_vintage_proof)
         external_coverage = {item["id"]: item for item in (observations or {}).get("items", []) if item.get("family") == "fx"}
         requirements = []
         for role in acceptance.pop("requirements"):
@@ -430,6 +444,12 @@ def research_corpus_report(
         "observation_evidence_asof": observations.get("asof")
             if observations is not None else None,
         "alfred_publication_vintages_checked": vintages is not None,
+        "publisher_original_first_series_vintages_checked":
+            publisher_vintage_proof is not None,
+        "verified_official_series_vintage_origins": (
+            publisher_vintage_proof.get("verified_series_vintage_sources", 0)
+            if publisher_vintage_proof is not None else None),
+        "observation_level_first_release_verified": False,
         "alfred_sources_with_populated_asof": sum(
             item.get("populated_vintage_count", 0) > 0
             for item in vintage_by_id.values()

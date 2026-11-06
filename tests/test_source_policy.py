@@ -64,6 +64,31 @@ class PolicyHarness(unittest.TestCase):
             return client.request(method, url, headers=headers)
 
 
+class SharedManagedRequestBudgetTests(PolicyHarness):
+    def test_one_global_request_cap_is_independent_of_publisher_quota(self):
+        transport = httpx.MockTransport(lambda request: httpx.Response(
+            200, json={"ok": True}))
+        with managed_client(policy_gate=self.gate(), transport=transport,
+                            request_budget=1) as client:
+            self.assertEqual(client.get(
+                "https://api.stlouisfed.org/fred/series/observations").status_code, 200)
+            with self.assertRaises(PolicyDeferred) as denied:
+                client.get("https://api.stlouisfed.org/fred/series/observations")
+            self.assertEqual(denied.exception.policy_id, "request-budget")
+            self.assertEqual(denied.exception.reason,
+                             "invocation_request_budget_exhausted")
+            self.assertEqual(client._transport.requests_reserved, 1)
+        self.assertEqual(self.gate().report()["requests_recorded"], 1)
+
+    def test_invalid_request_cap_is_not_permitted(self):
+        for value in (0, -1, True, 10001):
+            with self.assertRaises(ValueError):
+                managed_client(policy_gate=self.gate(),
+                               transport=httpx.MockTransport(
+                                   lambda r: httpx.Response(200)),
+                               request_budget=value)
+
+
 class PolicyPreflightTests(PolicyHarness):
     def test_uninitialized_preflight_never_creates_a_ledger(self):
         gate = self.gate()

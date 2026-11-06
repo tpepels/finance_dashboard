@@ -7,6 +7,7 @@ historical ETF ticker mapping is inferred from today's trading symbol.
 """
 from __future__ import annotations
 
+from contextlib import nullcontext
 from datetime import date, datetime, timedelta, timezone
 import json
 from html.parser import HTMLParser
@@ -430,7 +431,7 @@ def check_sec_sources(*, config: Path = CONFIG,
 
 
 def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
-                       user_agent: str|None=None,
+                       user_agent: str|None=None, client: httpx.Client | None=None,
                        max_filings_per_fund: int=12, progress=None, stopped=None) -> dict:
     mappings=read_verified_config(config)
     if not mappings:
@@ -441,13 +442,16 @@ def collect_configured(*, config: Path=CONFIG, root: Path|None=None,
         return {"status":"disabled_missing_SEC_USER_AGENT","funds":[]}
     folder = root or Path(os.environ.get("FINANCE_HOLDINGS_DIR","/data/holdings"))
     reports=[]
-    with managed_client(headers={"User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
-                      timeout=45,follow_redirects=False) as client:
+    context = (nullcontext(require_managed_client(client)) if client is not None
+               else managed_client(headers={
+                   "User-Agent":agent,"Accept-Encoding":"gzip, deflate"},
+                   timeout=45,follow_redirects=False))
+    with context as source:
         for index, mapping in enumerate(mappings, 1):
             if stopped is not None and stopped.is_set():
                 break
             try:
-                reports.append(import_fund(mapping,client=client,root=folder,
+                reports.append(import_fund(mapping,client=source,root=folder,
                                            max_filings=max_filings_per_fund))
             except httpx.HTTPStatusError as exc:
                 reports.append({"instrument_id":mapping["instrument_id"],

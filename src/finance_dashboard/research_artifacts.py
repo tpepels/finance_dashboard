@@ -121,6 +121,32 @@ def _taiwan_evidence(root):
             "full_history_verified": False, "first_publication_verified": False}
 
 
+def _stan_evidence(root):
+    """Return independently receipted country coverage as partial native data.
+
+    A verified source scope is never proof of the original profit/surplus
+    identity, original publication vintage, or complete country-year matrix.
+    """
+    from .oecd_corporate import OECD_MEMBER_ISO3
+    report = read_stan_evidence(root)
+    verified = [row["country"] for row in report["country_results"]
+                if row["status"] == "verified_original_stan_partial"]
+    invalid = [row["country"] for row in report["country_results"]
+               if row["status"] == "invalid_original_stan"]
+    return {
+        "status": report["status"],
+        "original_source_hash_verified": bool(verified) and not invalid,
+        "verified_original_country_scopes": sorted(verified),
+        "invalid_original_country_scopes": sorted(invalid),
+        "missing_country_count": len(OECD_MEMBER_ISO3) - len(verified),
+        "country_scopes_are_separate_publisher_responses": True,
+        "surplus_economic_identity_verified": False,
+        "native_price_currency_consistency_verified": False,
+        "full_history_verified": False,
+        "first_publication_verified": False,
+    }
+
+
 def _msci_evidence(root):
     values, evidence = read_msci_concentration_originals(root)
     return {**evidence, "status": "verified_sparse_original_index_snapshots",
@@ -241,7 +267,7 @@ def research_artifact_evidence(evidence_root: Path, *, holdings_root: Path | Non
     root = Path(evidence_root)
     readers = {"icio": (lambda: read_icio_evidence(root), "invalid_original_matrix_evidence"),
                "tiva": (lambda: read_tiva_evidence(root), "invalid_original_tiva_evidence"),
-               "stan": (lambda: read_stan_evidence(root), "invalid_original_stan_evidence"),
+               "stan": (lambda: _stan_evidence(root), "invalid_original_stan_evidence"),
                "cvm": (lambda: _cvm_evidence(root), "invalid_original_cvm_evidence"),
                "taiwan_profits": (lambda: _taiwan_evidence(root), "invalid_original_taiwan_profit_evidence"),
                "amne": (lambda: read_amne_evidence(root), "invalid_original_amne_evidence"),

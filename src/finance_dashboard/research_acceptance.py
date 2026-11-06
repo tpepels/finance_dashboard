@@ -47,7 +47,8 @@ def _partial_artifacts(role: dict, evidence: dict) -> list[dict]:
 
 def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: list[dict], *,
                         observations_checked: bool, source_proof: dict | None = None,
-                        artifact_evidence: dict | None = None) -> dict[str, Any]:
+                        artifact_evidence: dict | None = None,
+                        publisher_vintage_proof: dict | None = None) -> dict[str, Any]:
     """Evaluate all original roles using the current, independently checked inputs.
 
     `panels` must come from comparative_evidence_summary, which reconstructs
@@ -112,9 +113,29 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                 **{key: originals[sid][key] for key in PUBLISHER_METADATA_FIELDS if key in originals[sid]}}
                 for sid in ids if sid in originals],
             scope="Independently selected original metadata and author estimation notes are disclosed. Complete publisher population/base and common-release eligibility are not inferred from numeric fidelity."))
-        checks.append(_gate("temporal_evidence", "incomplete", "observation_release_eligibility_unverified", ids,
+        # Independently verified original publisher-vintage dates add
+        # provenance to the role, without inventing first-release dates for
+        # individual observations or assuming synchronized source versions.
+        published = (publisher_vintage_proof or {}).get("series", {})
+        release_originals = [{
+            "series_id": sid,
+            "publisher_series": registry[sid]["source_key"],
+            "official_first_series_vintage": published[
+                registry[sid]["source_key"]]["first_available_alfred_series_vintage"],
+            "publisher_original_receipts_verified": True,
+            "observation_first_publication_verified": False,
+        } for sid in ids if sid in registry and
+            registry[sid].get("provider") == "FRED" and
+            published.get(registry[sid]["source_key"], {}).get("status") ==
+            "verified_original_publisher_vintage"]
+        checks.append(_gate(
+            "temporal_evidence", "incomplete",
+            "observation_release_eligibility_unverified", ids,
             required_mode=role["temporal_requirement"],
-            scope="Retrieval timestamps and selected month-end ALFRED snapshots do not prove every observation's first release or synchronized eligibility."))
+            verified_official_series_vintages=release_originals,
+            original_publisher_series_vintage_count=len(release_originals),
+            observation_first_release_dates_verified=0,
+            scope="Official first ALFRED series vintage is not the first published date of each observation. Original release synchronization and eligibility remain separate. Receipt time and current-source observations cannot certify them."))
         artifact = None
         if "icio" in role.get("artifact_ids", []) and matrix_available:
             artifact = {key: matrix.get(key) for key in (

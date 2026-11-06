@@ -18,23 +18,21 @@ from .stan_originals import (
 )
 
 CORE = ("B1G", "D1", "P51C", "D29X39")
-INCOME_IDENTITIES = {
-    "net_surplus_and_mixed_income": (
-        ("B1G", "D1", "B2N_B3_N", "P51C", "D29X39"), "B2N_B3_N"),
-    "gross_surplus_and_mixed_income": (
-        ("B1G", "D1", "B2G_B3G", "D29X39"), "B2G_B3G"),
-}
 MISSING_VALUES = frozenset({"", ".", ":", "NA", "N/A"})
 
 
-def _income_identity(groups: dict, required: tuple[str, ...],
-                     surplus: str) -> dict:
-    checked = 0
-    incompatible = 0
-    exact_fail = 0
-    rounding_fail = 0
-    non_a = 0
-    max_examples = []
+def _native_linear_identity(groups: dict, *, target: str,
+                            components: tuple[str, ...],
+                            surplus_measure: str | None = None) -> dict:
+    """One dimensional and rounding gate for all native linear identities.
+
+    Never add a separate retrieval, currency or hierarchy level to an
+    industry-year group. Printed precision is a diagnostic bound, not an
+    economic or publisher reconciliation certificate.
+    """
+    required = (target, *components)
+    checked = incompatible = exact_fail = rounding_fail = non_a = 0
+    examples = []
     for (activity, year), observations in sorted(groups.items()):
         if not set(required).issubset(observations):
             continue
@@ -47,37 +45,32 @@ def _income_identity(groups: dict, required: tuple[str, ...],
         if any(observations[measure][3] != "A" for measure in required):
             non_a += 1
         numbers = {measure: observations[measure][0] for measure in required}
-        operands = ["D1", surplus, "D29X39"]
-        if surplus == "B2N_B3_N":
-            operands.append("P51C")
-        residual = numbers["B1G"] - sum(
-            (numbers[measure] for measure in operands), Decimal(0))
-        # Maximum error due exclusively to printed decimal-place rounding.
-        # This is a serialization diagnostic, not a publisher tolerance.
+        residual = numbers[target] - sum(
+            (numbers[measure] for measure in components), Decimal(0))
         precision_bound = sum(
             (Decimal("0.5").scaleb(number.as_tuple().exponent)
              for number in numbers.values()), Decimal(0))
-        if residual:
-            exact_fail += 1
-        if abs(residual) > precision_bound:
-            rounding_fail += 1
-        max_examples.append({
+        exact_fail += bool(residual)
+        rounding_fail += abs(residual) > precision_bound
+        examples.append({
             "activity": activity, "year": year,
             "residual_original_units": str(residual),
             "printed_precision_bound": str(precision_bound),
         })
-    max_examples.sort(key=lambda item: (
+    examples.sort(key=lambda item: (
         -abs(Decimal(item["residual_original_units"])),
         item["activity"], item["year"]))
     return {
         "required_native_measures": list(required),
-        "surplus_measure": surplus,
+        "surplus_measure": surplus_measure or target,
+        "target_measure": target,
+        "component_measures": list(components),
         "eligible_matched_industry_years": checked,
         "incompatible_or_unreported_unit_groups": incompatible,
         "groups_with_non_A_source_flags": non_a,
         "nonzero_exact_residuals": exact_fail,
         "outside_printed_precision_bounds": rounding_fail,
-        "largest_residual_examples": max_examples[:5],
+        "largest_residual_examples": examples[:5],
         "identity_status": ("not_testable_no_same_scope_overlap"
                             if checked == 0 else
                             "residuals_exceed_printed_precision"
@@ -121,8 +114,18 @@ def audit_stan_scope(raw: bytes, *, measures: tuple[str, ...]) -> dict:
             str(year): all_four_by_year[year] for year in sorted(all_four_by_year)},
         "pairwise_matched_industry_years": dict(sorted(pairwise.items())),
         "identity_checks": {
-            name: _income_identity(groups, required, surplus)
-            for name, (required, surplus) in INCOME_IDENTITIES.items()
+            "net_surplus_and_mixed_income": _native_linear_identity(
+                groups, target="B1G",
+                components=("D1", "B2N_B3_N", "D29X39", "P51C"),
+                surplus_measure="B2N_B3_N"),
+            "gross_surplus_and_mixed_income": _native_linear_identity(
+                groups, target="B1G",
+                components=("D1", "B2G_B3G", "D29X39"),
+                surplus_measure="B2G_B3G"),
+            "gross_minus_net_equals_consumption_of_fixed_capital":
+                _native_linear_identity(
+                    groups, target="B2G_B3G",
+                    components=("B2N_B3_N", "P51C")),
         },
         "industries_aggregated": False,
         "different_retrievals_joined": False,
@@ -396,15 +399,18 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
         scopes = item["scope_audits"]
         net = [s["identity_checks"]["net_surplus_and_mixed_income"] for s in scopes]
         gross = [s["identity_checks"]["gross_surplus_and_mixed_income"] for s in scopes]
+        bridge = [s["identity_checks"][
+            "gross_minus_net_equals_consumption_of_fixed_capital"]
+            for s in scopes]
         any_matched = any(
             check["eligible_matched_industry_years"] > 0
-            for check in (*net, *gross))
+            for check in (*net, *gross, *bridge))
         any_residual = any(
             check["outside_printed_precision_bounds"] > 0
-            for check in (*net, *gross))
+            for check in (*net, *gross, *bridge))
         any_flag = any(
             check["groups_with_non_A_source_flags"] > 0
-            for check in (*net, *gross))
+            for check in (*net, *gross, *bridge))
         per_measure_max = {
             measure: max(
                 s["numeric_measure_counts"].get(measure, 0) for s in scopes)
@@ -474,6 +480,10 @@ def summarize_stan_readiness(root: Path, *, countries: tuple[str, ...]) -> dict:
                 c["eligible_matched_industry_years"] for c in net),
             "gross_max_matched_in_single_scope": max(
                 c["eligible_matched_industry_years"] for c in gross),
+            "gross_net_bridge_max_matched_in_single_scope": max(
+                c["eligible_matched_industry_years"] for c in bridge),
+            "gross_net_bridge_residuals_outside_precision": any(
+                c["outside_printed_precision_bounds"] > 0 for c in bridge),
             "native_measure_sets": [
                 s["requested_native_measures"] for s in scopes],
             "retrieval_scope_disagreements": cross_conflicts,
