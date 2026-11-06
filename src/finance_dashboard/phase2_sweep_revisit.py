@@ -29,9 +29,10 @@ def plan_sweep_revisit(previous: Path, *, context: dict,
     if mode not in REVISIT_MODES or not 0 <= max_tasks <= 400:
         raise ValueError("invalid_phase2_revisit_mode_or_budget")
     all_candidates = {row["id"]: row for row in acquisition_candidates}
-    if (len(all_candidates) != len(acquisition_candidates)
-            or any(row.get("state") != "acquisition_candidate"
-                   for row in acquisition_candidates)):
+    if len(all_candidates) != len(acquisition_candidates):
+        raise ValueError("duplicate_phase2_revisit_candidate_id")
+    if any(row.get("state") != "acquisition_candidate"
+           for row in acquisition_candidates):
         raise ValueError("invalid_phase2_revisit_candidate_graph")
     with Phase2SweepJournal(Path(previous), context=context, create=False) as journal:
         previous_summary = journal.summary()
