@@ -8,6 +8,8 @@ class WaybackFactsheetUrlTests(unittest.TestCase):
     def test_raw_capture_of_official_factsheet_is_accepted(self):
         url = "https://web.archive.org/web/20240131120000id_/https://www.msci.com/documents/10199/255599/msci-acwi-net.pdf"
         self.assertRegex(_url_identity(url), r"^[0-9a-f]{16}$")
+        old = "https://web.archive.org/web/20141222190859id_/http://www.msci.com:80/resources/factsheets/index_fact_sheet/msci-acwi-net.pdf"
+        self.assertRegex(_url_identity(old), r"^[0-9a-f]{16}$")
 
     def test_other_wayback_targets_or_rewritten_captures_are_rejected(self):
         for url in (

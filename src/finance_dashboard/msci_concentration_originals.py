@@ -129,7 +129,8 @@ def parse_msci_factsheet_pdf(original: bytes) -> dict:
 # Internet Archive captures of the official factsheet URL, raw ("id_") form so
 # the archived bytes are MSCI's original PDF without Wayback rewriting.
 _WAYBACK_FACTSHEET=re.compile(
-    r"^/web/[0-9]{14}id_/https?://(?:www\.)?msci\.com/documents/10199/255599/msci-acwi-net\.pdf$")
+    r"^/web/[0-9]{14}id_/https?://(?:www\.)?msci\.com(?::80)?/"
+    r"(?:documents/10199/255599|resources/factsheets/index_fact_sheet)/msci-acwi-net\.pdf$")
 
 
 def _url_identity(source_url: str) -> str:
