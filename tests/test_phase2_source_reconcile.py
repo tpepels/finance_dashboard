@@ -2,7 +2,6 @@
 from contextlib import redirect_stdout
 from datetime import datetime, timezone
 from hashlib import sha256
-import importlib.util
 import io
 import json
 import os
@@ -13,15 +12,13 @@ import httpx
 from finance_dashboard.wid import WidClient
 from finance_dashboard.oecd_tiva import TivaClient
 from finance_dashboard.source_reconciliation import SOURCE_IDS
+from finance_dashboard import source_reconciliation
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
 from test_wid import fixtures as wid_fixtures
 from test_oecd_tiva import fixture as tiva_fixture, LEVEL_FLOW, SHARE_FLOW
-
-
-SCRIPT = Path(__file__).parents[1] / "scripts" / "phase2_source_reconcile.py"
 
 
 def raw_source(folder, filename, body):
@@ -76,11 +73,7 @@ def add(path, sid, year, value):
 
 class ReconcileTests(unittest.TestCase):
     def setUp(self):
-        if not SCRIPT.is_file():
-            self.fail("Independent persisted original-source reconciliation is not implemented")
-        spec = importlib.util.spec_from_file_location("phase2_source_reconcile", SCRIPT)
-        self.script = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(self.script)
+        self.script = source_reconciliation
 
     def test_latest_source_and_latest_append_only_version_are_compared(self):
         # Comparing the first archived file/DB version would hide genuine source revisions.
