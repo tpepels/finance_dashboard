@@ -21,7 +21,8 @@ from .captured_sources import _FredOriginalTable, _add, _native_period, _pink_sh
 
 CONSTRUCTED_PROVIDERS = frozenset({'MSCI_NETR', 'SIBLIS_WORLD_PE',
     'SIBLIS_WORLD_EARNINGS_YIELD', 'WORLD_LISTED_CAP_SHARE', 'BIS_WORLD_WEIGHTED',
-    'EUROSTAT_CORPORATE_GDP', 'EUROSTAT_NFC_PROFIT_GVA', 'OECD_CORPORATE_GDPWEIGHTED', 'GOLD_MSCI_CORR'})
+    'EUROSTAT_CORPORATE_GDP', 'EUROSTAT_NFC_PROFIT_GVA', 'OECD_CORPORATE_GDPWEIGHTED', 'GOLD_MSCI_CORR',
+    'EUROSTAT_HICP'})
 
 
 def _error(code='source_identity_mismatch'):
@@ -72,7 +73,7 @@ def constructed_source(root, definition, select_manifest, original_file):
         count = {'MSCI_NETR': 1, 'SIBLIS_WORLD_PE': 1, 'SIBLIS_WORLD_EARNINGS_YIELD': 1,
                  'WORLD_LISTED_CAP_SHARE': 2, 'BIS_WORLD_WEIGHTED': 2,
                  'EUROSTAT_CORPORATE_GDP': 3, 'EUROSTAT_NFC_PROFIT_GVA': 1,
-                 'OECD_CORPORATE_GDPWEIGHTED': 3, 'GOLD_MSCI_CORR': 2}[provider]
+                 'OECD_CORPORATE_GDPWEIGHTED': 3, 'GOLD_MSCI_CORR': 2, 'EUROSTAT_HICP': 1}[provider]
         if len(sources) != count:
             _error('source_response_ambiguous')
         # Verify *all* raw dependencies before parsing any of them.
@@ -98,6 +99,12 @@ def constructed_source(root, definition, select_manifest, original_file):
             values = _world_gap(raw, sources, definition)
             details = {'source_weight_lag_years': 1, 'source_coverage_floor_percent': 80,
                        'source_excluded_overlapping_geographies': ['XM']}
+        elif provider == 'EUROSTAT_HICP':
+            if definition['source_key'] != 'prc_hicp_minr/M.I25.TOTAL.EA' or definition['frequency'] != 'M' or definition['unit'] != 'index': _error()
+            values = _eurostat_hicp(raw[0], sources[0]['url'])
+            details = {'source_native_unit': 'index_2025_100', 'source_index_base': '2025=100',
+                       'source_classification': 'ECOICOP ver.2 TOTAL',
+                       'source_population': 'Euro area changing composition (EA21 from 2026)'}
         elif provider == 'EUROSTAT_NFC_PROFIT_GVA':
             if definition['source_key'] != 'nasa_10_ki/EU27_2020/S11/B2G_B3G_RAT_S11' or definition['frequency'] != 'A' or definition['unit'] != 'percent': _error()
             values = _eurostat(raw[0], sources[0]['url'], 'S11', 'B2G_B3G_RAT_S11',
@@ -281,6 +288,22 @@ def _eurostat(raw, url, sector, measure, *, dataset='nasa_10_nf_tr', unit='CP_ME
     values, seen = {}, set()
     for label, index in times.items(): _add(values, seen, _native_period(label, 'A'), payload['value'].get(str(index)))
     if any(value < 0 for value in values.values()): _error('source_value_invalid')
+    return values
+
+
+def _eurostat_hicp(raw, url):
+    expected = {'freq': 'M', 'unit': 'I25', 'coicop18': 'TOTAL', 'geo': 'EA'}
+    _url(url, 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_minr', expected)
+    payload = _json(raw)
+    names = ['freq', 'unit', 'coicop18', 'geo', 'time']
+    if payload['id'] != names or payload['class'] != 'dataset' or payload['source'] != 'ESTAT' or payload['size'][:-1] != [1, 1, 1, 1]: _error()
+    for name, value in expected.items():
+        if payload['dimension'][name]['category']['index'] != {value: 0}: _error()
+    times = payload['dimension']['time']['category']['index']
+    if len(times) != payload['size'][-1] or set(times.values()) != set(range(len(times))) or set(payload['value']) - {str(index) for index in times.values()}: _error('source_schema_invalid')
+    values, seen = {}, set()
+    for label, index in times.items(): _add(values, seen, _native_period(label, 'M'), payload['value'].get(str(index)))
+    if any(value <= 0 for value in values.values()): _error('source_value_invalid')
     return values
 
 

@@ -338,6 +338,43 @@ def fetch_eurostat_nfc_profit_gva(self, series_id, start, item, key):
     return FetchedSeries(series_id, str(response.request.url), None, values)
 
 
+EUROSTAT_HICP_URL = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_minr"
+EUROSTAT_HICP_SERIES = {"prc_hicp_minr/M.I25.TOTAL.EA": {"freq": "M", "unit": "I25", "coicop18": "TOTAL", "geo": "EA"}}
+
+
+def parse_eurostat_hicp(payload: dict, expected: dict) -> dict:
+    """One JSON-stat HICP series; every non-time dimension must be the requested singleton."""
+    names = ["freq", "unit", "coicop18", "geo", "time"]
+    if payload.get("id") != names or payload.get("size", [])[:-1] != [1, 1, 1, 1]:
+        raise ProviderError("Eurostat HICP response has unexpected dimensions")
+    for name, value in expected.items():
+        if payload["dimension"][name]["category"]["index"] != {value: 0}:
+            raise ProviderError("Eurostat HICP returned a different series")
+    times = payload["dimension"]["time"]["category"]["index"]
+    out = {}
+    for label, index in times.items():
+        raw = payload.get("value", {}).get(str(index))
+        if raw is None:
+            continue
+        year, month = label.split("-")
+        out[date(int(year), int(month), 1)] = Decimal(str(raw))
+    if not out:
+        raise ProviderError("Eurostat HICP response contains no usable observations")
+    return out
+
+
+def fetch_eurostat_hicp(self, series_id, start, item, key):
+    """Validate and fetch native Eurostat HICP (ECOICOP ver.2) monthly index."""
+    if key not in EUROSTAT_HICP_SERIES:
+        raise SourceUnavailable("Unapproved Eurostat HICP series")
+    params = dict(EUROSTAT_HICP_SERIES[key])
+    if start:
+        params["sinceTimePeriod"] = f"{start.year:04d}-{start.month:02d}"
+    response = self._get(EUROSTAT_HICP_URL, params=params)
+    values = parse_eurostat_hicp(response.json(), EUROSTAT_HICP_SERIES[key])
+    return FetchedSeries(series_id, str(response.request.url), None, values)
+
+
 def fetch_bis_world_weighted(self, series_id, start, item, key):
     """Validate and fetch native data for BIS_WORLD_WEIGHTED."""
     provider = item["provider"]

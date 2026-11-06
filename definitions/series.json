@@ -4673,6 +4673,22 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "Model-fitted curve on AAA-rated issuers only; not a traded bond yield or a euro area average government yield."
+    },
+    {
+      "id": "prices.ea.hicp_index_2025",
+      "name": "Euro area HICP, all items (2025=100)",
+      "theme": "growth_inflation",
+      "status": "mapped",
+      "provider": "EUROSTAT_HICP",
+      "source_key": "prc_hicp_minr/M.I25.TOTAL.EA",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_minr/default/table?lang=en",
+      "geography": "EA",
+      "frequency": "M",
+      "unit": "index",
+      "measurement": "Eurostat HICP, ECOICOP ver.2 all items (TOTAL), euro area changing composition, monthly index 2025=100",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Replaces ECB ICP U2 series discontinued after December 2025 (2026 rebasing and EA21 composition). Eurostat also publishes first-release values in prc_hicp_fpd."
     }
   ]
 }

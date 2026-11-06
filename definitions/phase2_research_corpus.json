@@ -5131,8 +5131,8 @@
           },
           {
             "role": "ea_hicp",
-            "description": "Euro area HICP for converting EUR nominal returns to real.",
-            "series_ids": ["prices.ea.hicp_index"],
+            "description": "Eurostat euro area HICP (ECOICOP ver.2, 2025=100) for converting EUR nominal returns to real.",
+            "series_ids": ["prices.ea.hicp_index_2025"],
             "expected": {
               "frequency": "M",
               "unit": "index",
@@ -5225,8 +5225,8 @@
           },
           {
             "role": "ea_hicp",
-            "description": "Euro area HICP for real EUR returns.",
-            "series_ids": ["prices.ea.hicp_index"],
+            "description": "Eurostat euro area HICP (ECOICOP ver.2, 2025=100) for real EUR returns.",
+            "series_ids": ["prices.ea.hicp_index_2025"],
             "expected": {
               "frequency": "M",
               "unit": "index",
