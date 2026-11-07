@@ -382,25 +382,36 @@ OECD_NFC_TRANSACTIONS = {"B1G": "D", "D1": "D", "B2G": "D", "P51C": "D", "D29": 
 OECD_NFC_COUNTRIES = frozenset({"USA", "DEU", "FRA", "PRT", "GBR", "ITA", "ESP", "NLD"})
 
 
+# Table 9B balance sheets for non-financial assets: the same S11 sector's
+# closing net stocks at current replacement cost (N11N = net fixed assets).
+OECD_TABLE9B_ROOT = "https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE9B,1.1/"
+OECD_NFC_STOCKS = frozenset({"N11N"})
+
+
 def oecd_nfc_key(country: str, transaction: str) -> str:
+    if transaction in OECD_NFC_STOCKS:
+        return f"A.{country}.S11.S1.A._Z.{transaction}._Z.XDC._Z.V.N.T2600"
     return f"A.{country}.S11.S1.{OECD_NFC_TRANSACTIONS[transaction]}.{transaction}._Z._Z.XDC.S.V.N.T0800"
 
 
 def fetch_oecd_nfc_accounts(self, series_id, start, item, key):
-    """Validate and fetch one OECD Table 14 non-financial corporate transaction."""
+    """Validate and fetch one OECD S11 transaction (Table 14) or net stock (Table 9B)."""
     country, _, transaction = key.partition("/")
-    if country not in OECD_NFC_COUNTRIES or transaction not in OECD_NFC_TRANSACTIONS:
+    stock = transaction in OECD_NFC_STOCKS
+    if country not in OECD_NFC_COUNTRIES or not (stock or transaction in OECD_NFC_TRANSACTIONS):
         raise SourceUnavailable("Unapproved OECD non-financial corporate account series")
     params = {"format": "csvfile"}
     if start:
         params["startPeriod"] = str(start.year)
-    response = self._get(OECD_TABLE14_ROOT + oecd_nfc_key(country, transaction), params=params)
+    root = OECD_TABLE9B_ROOT if stock else OECD_TABLE14_ROOT
+    response = self._get(root + oecd_nfc_key(country, transaction), params=params)
     rows = list(csv.DictReader(io.StringIO(response.text.lstrip("\ufeff"))))
     out = {}
+    entry, code_field = ("A", "INSTR_ASSET") if stock else (OECD_NFC_TRANSACTIONS[transaction], "TRANSACTION")
     for row in rows:
-        if (row.get("REF_AREA") != country or row.get("SECTOR") != "S11" or row.get("TRANSACTION") != transaction
-                or row.get("ACCOUNTING_ENTRY") != OECD_NFC_TRANSACTIONS[transaction] or row.get("UNIT_MULT") != "6"):
-            raise ProviderError("OECD Table 14 returned a different series")
+        if (row.get("REF_AREA") != country or row.get("SECTOR") != "S11" or row.get(code_field) != transaction
+                or row.get("ACCOUNTING_ENTRY") != entry or row.get("UNIT_MULT") != "6"):
+            raise ProviderError("OECD sector accounts returned a different series")
         if row.get("OBS_VALUE") not in (None, ""):
             out[date(int(row["TIME_PERIOD"]), 1, 1)] = Decimal(row["OBS_VALUE"])
     if not out:

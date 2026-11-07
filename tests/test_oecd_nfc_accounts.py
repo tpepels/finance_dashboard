@@ -50,5 +50,38 @@ class OecdNfcAccountsTests(unittest.TestCase):
             _oecd_nfc(BODY.replace("8566433", "-1").encode(), URL, DEFINITION)
 
 
+STOCK_HEADER = ("DATAFLOW,FREQ,REF_AREA,SECTOR,COUNTERPART_SECTOR,ACCOUNTING_ENTRY,TRANSACTION,INSTR_ASSET,EXPENDITURE,"
+                "UNIT_MEASURE,VALUATION,PRICE_BASE,TRANSFORMATION,TABLE_IDENTIFIER,TIME_PERIOD,OBS_VALUE,UNIT_MULT,CURRENCY\n")
+STOCK_ROW = "OECD.SDD.NAD:DSD_NASEC10@DF_TABLE9B(1.1),A,DEU,S11,S1,A,_Z,N11N,_Z,XDC,_Z,V,N,T2600,{year},{value},6,EUR\n"
+STOCK_BODY = STOCK_HEADER + STOCK_ROW.format(year=2022, value=4906473) + STOCK_ROW.format(year=2024, value=5346248)
+STOCK = {**DEFINITION, "id": "test.de.nfc_n11n", "source_key": "DEU/N11N", "currency": "EUR", "geography": "DEU"}
+STOCK_URL = ("https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE9B,1.1/"
+             "A.DEU.S11.S1.A._Z.N11N._Z.XDC._Z.V.N.T2600?format=csvfile")
+
+
+class OecdNfcBalanceSheetTests(unittest.TestCase):
+    def test_net_fixed_assets_come_from_table_9b_with_their_own_dimensions(self):
+        with TemporaryDirectory() as temp:
+            seen = []
+            def handler(request):
+                seen.append(str(request.url))
+                return httpx.Response(200, text=STOCK_BODY)
+            with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+                router = ProviderRouter(http)
+                router.definitions[STOCK["id"]] = STOCK
+                result = SourceAcquisition(router, Path(temp)).fetch(STOCK["id"])
+            self.assertEqual(seen, [STOCK_URL])
+            self.assertEqual(result.observations[date(2024, 1, 1)], Decimal("5346248"))
+        self.assertEqual(_oecd_nfc(STOCK_BODY.encode(), STOCK_URL, STOCK)[date(2022, 1, 1)], Decimal("4906473"))
+
+    def test_stock_reader_rejects_flows_other_assets_and_negative_stocks(self):
+        for body, url in ((STOCK_BODY.replace(",N11N,", ",N1N,"), STOCK_URL),
+                          (STOCK_BODY.replace(",A,_Z,N11N", ",D,_Z,N11N"), STOCK_URL),
+                          (STOCK_BODY, STOCK_URL.replace("DF_TABLE9B", "DF_TABLE14")),
+                          (STOCK_BODY.replace("4906473", "-1"), STOCK_URL)):
+            with self.subTest(body=body[-60:], url=url[-40:]), self.assertRaises(EvidenceError):
+                _oecd_nfc(body.encode(), url, STOCK)
+
+
 if __name__ == "__main__":
     unittest.main()

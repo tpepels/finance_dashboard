@@ -43,9 +43,9 @@ class OfflineCorpusStatusTests(unittest.TestCase):
 
     def test_unverified_oecd_candidates_cover_fourteen_original_l01_l03_roles_without_binding(self):
         r = self.report
-        self.assertEqual(r["unverified_source_candidate_roles"], 5)
+        self.assertEqual(r["unverified_source_candidate_roles"], 4)
         self.assertEqual({item["id"] for item in r["analyses_with_unverified_candidates"]},
-                         {"L01", "L03"})
+                         {"L01"})
         for item in r["analyses_with_unverified_candidates"]:
             for role in item["roles"]:
                 self.assertIn(role["role"], next(
@@ -56,7 +56,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
                     self.assertTrue(candidate["source_url"].startswith("https://"))
                     self.assertTrue(candidate["required_original_checks"])
         output = format_inventory(r, candidates=True)
-        self.assertIn("L03/net_fixed_capital", output)
+        self.assertNotIn("L03/net_fixed_capital", output)
         self.assertIn("L01/oecd_matched_hours", output)
         self.assertIn("not mapped, fetched or scientifically verified", output)
         self.assertEqual(r["scalar_bound_roles"], corpus_counts.BOUND_SCALAR_ROLES)

@@ -307,15 +307,25 @@ def _eurostat(raw, url, sector, measure, *, dataset='nasa_10_nf_tr', unit='CP_ME
 def _oecd_nfc(raw, url, definition):
     country, _, transaction = definition['source_key'].partition('/')
     entries = {'B1G': 'D', 'D1': 'D', 'B2G': 'D', 'P51C': 'D', 'D29': 'D', 'D39': 'C'}
-    if not re.fullmatch('[A-Z]{3}', country) or transaction not in entries: _error()
-    key = f'A.{country}.S11.S1.{entries[transaction]}.{transaction}._Z._Z.XDC.S.V.N.T0800'
+    stocks = {'N11N'}
+    if not re.fullmatch('[A-Z]{3}', country) or transaction not in set(entries) | stocks: _error()
     query = parse_qs(urlsplit(url).query)
     if set(query) - {'format', 'startPeriod'} or query.get('format') != ['csvfile'] or 'startPeriod' in query: _error('source_snapshot_partial')
-    _url(url, 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/'+key)
-    fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE14(1.1)', 'FREQ': 'A', 'REF_AREA': country,
-             'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1', 'ACCOUNTING_ENTRY': entries[transaction], 'TRANSACTION': transaction,
-             'INSTR_ASSET': '_Z', 'EXPENDITURE': '_Z', 'UNIT_MEASURE': 'XDC', 'VALUATION': 'S', 'PRICE_BASE': 'V',
-             'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T0800', 'UNIT_MULT': '6'}
+    if transaction in stocks:
+        # Table 9B closing balance sheet: asset (A) entry, net fixed assets.
+        key = f'A.{country}.S11.S1.A._Z.{transaction}._Z.XDC._Z.V.N.T2600'
+        _url(url, 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE9B,1.1/'+key)
+        fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE9B(1.1)', 'FREQ': 'A', 'REF_AREA': country,
+                 'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1', 'ACCOUNTING_ENTRY': 'A', 'TRANSACTION': '_Z',
+                 'INSTR_ASSET': transaction, 'EXPENDITURE': '_Z', 'UNIT_MEASURE': 'XDC', 'VALUATION': '_Z', 'PRICE_BASE': 'V',
+                 'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T2600', 'UNIT_MULT': '6'}
+    else:
+        key = f'A.{country}.S11.S1.{entries[transaction]}.{transaction}._Z._Z.XDC.S.V.N.T0800'
+        _url(url, 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/'+key)
+        fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE14(1.1)', 'FREQ': 'A', 'REF_AREA': country,
+                 'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1', 'ACCOUNTING_ENTRY': entries[transaction], 'TRANSACTION': transaction,
+                 'INSTR_ASSET': '_Z', 'EXPENDITURE': '_Z', 'UNIT_MEASURE': 'XDC', 'VALUATION': 'S', 'PRICE_BASE': 'V',
+                 'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T0800', 'UNIT_MULT': '6'}
     reader = csv.DictReader(io.StringIO(raw.decode('utf-8-sig')))
     if not reader.fieldnames or not (set(fixed) | {'CURRENCY', 'TIME_PERIOD', 'OBS_VALUE'}) <= set(reader.fieldnames): _error('source_schema_invalid')
     values, seen = {}, set()

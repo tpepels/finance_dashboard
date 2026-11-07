@@ -26,9 +26,10 @@ class PublisherCandidatesTests(unittest.TestCase):
                         self.assertEqual(candidate["status"], "unverified_candidate")
                         self.assertTrue(candidate["source_url"].startswith("https://"))
                         self.assertIn("required_original_checks", candidate)
-        # L02/L03 flows are bound to OECD sector accounts; L01 matches and L03's capital stock remain leads.
-        self.assertEqual(len(roles), 5)
-        self.assertEqual({a for a, _ in roles}, {"L01", "L03"})
+        # L02/L03 flows and L03's net capital stock are bound to OECD sector
+        # accounts (Tables 14 and 9B); only L01's industry matches remain leads.
+        self.assertEqual(len(roles), 4)
+        self.assertEqual({a for a, _ in roles}, {"L01"})
         l03 = next(a for a in self.document["analyses"] if a["id"] == "L03")
         gva = next(r for r in l03["comparison_contract"]["original_requirements"]
                    if r["role"] == "gross_value_added")

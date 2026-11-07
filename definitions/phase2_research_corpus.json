@@ -3069,26 +3069,27 @@
           },
           {
             "role": "net_fixed_capital",
-            "description": "Original same-scope current-cost net produced fixed-capital stock.",
-            "series_ids": [],
+            "description": "OECD Table 9B S11 fixed assets, net (N11N): closing stock at current replacement cost, national currency.",
+            "series_ids": [
+              "profit.us.nfc_net_fixed_assets",
+              "profit.de.nfc_net_fixed_assets",
+              "profit.fr.nfc_net_fixed_assets",
+              "profit.pt.nfc_net_fixed_assets",
+              "profit.gb.nfc_net_fixed_assets",
+              "profit.it.nfc_net_fixed_assets",
+              "profit.es.nfc_net_fixed_assets",
+              "profit.nl.nfc_net_fixed_assets"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same matched industry/sector",
+              "unit": "million_local_currency",
+              "geography": ["USA", "DEU", "FRA", "PRT", "GBR", "ITA", "ESP", "NLD"],
+              "population": "Non-financial corporations (S11), national accounts balance sheets",
               "concept": "Current-cost net produced fixed-capital stock"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "net produced fixed capital stock, current replacement valuation",
-                "status": "unverified_candidate",
-                "required_original_checks": "Check whether the original series is NET rather than gross/volume/capital services, current-cost vs historical and same produced-asset and sector perimeter."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "employee_compensation",
