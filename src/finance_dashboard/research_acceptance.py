@@ -21,6 +21,7 @@ from typing import Any
 
 from .source_original_gate import verified_original_rows
 from .holdings_acceptance import holdings_role_checks, load_holdings_sources, valid_holdings_contract
+from .chronology_acceptance import nber_announcement_checks
 from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
 
 PUBLISHER_METADATA_FIELDS = (
@@ -532,6 +533,11 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             holdings = holdings_role_checks(role["holdings_contract"], artifact_evidence or {},
                                             reviews, as_of=today)
             checks = holdings["checks"]
+        # The announcement-dates role is the dated NBER originals themselves.
+        chronology = None
+        if role.get("artifact_ids") == ["nber_chronology"] and not ids:
+            chronology = nber_announcement_checks((artifact_evidence or {}).get("nber_chronology", {}))
+            checks = chronology["checks"]
         state = _state(checks)
         result = {**role, "state": state, "accepted": state == "accepted",
             "sources_checked": observations_checked, "mapped_source_count": len(ids),
@@ -542,6 +548,9 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         if holdings is not None:
             result["holdings_evaluation"] = {"funds": holdings["funds"],
                                              "conditional": holdings["conditional"]}
+        if chronology is not None:
+            result["artifact_evaluation"] = {"artifact": "nber_chronology", "resolved": chronology["resolved"],
+                                             "conditional": chronology["conditional"]}
         if artifact is not None:
             result["original_artifact_evidence"] = {**artifact, "role_resolved": icio_resolved}
         if partial:
@@ -634,6 +643,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         source = role.get("fallback_evaluation") if role["state"] == "unavailable_with_fallback" else role
         return role["state"] in RESOLVED_ROLE_STATES and (
             "holdings_evaluation" in (source or {})
+            or ((source or {}).get("artifact_evaluation") or {}).get("resolved") is True
             or ((source or {}).get("original_artifact_evidence") or {}).get("role_resolved") is True)
     # A holdings role is one dated snapshot per fund, not a period panel; its
     # own gates are the original comparison for that input.
@@ -656,7 +666,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     descoped = analysis.get("descoped_roles", [])
     if state == "accepted" and (descoped or any(
             r["state"] == "unavailable_with_fallback"
-            or (r.get("holdings_evaluation") or {}).get("conditional") for r in requirements)):
+            or (r.get("holdings_evaluation") or {}).get("conditional")
+            or (r.get("artifact_evaluation") or {}).get("conditional") for r in requirements)):
         state = "conditional"
     if analysis.get("phase2_scope") == "deferred_extension":
         state = "deferred"
