@@ -40,10 +40,18 @@ def nber_announcement_checks(evidence: dict) -> dict:
                 covered.append(item)
             else:
                 missing.append(item)
-    inconsistent = evidence.get("page_date_inconsistencies") or []
+    # An announcement's date is its index link and its own dateline. A page
+    # header that disagrees with both is a publisher typo, recorded, not used.
+    inconsistent = [a["announcement_date"] for a in evidence.get("announcements", [])
+                    if a.get("dateline_matches_announcement_date") is not True]
+    typos = [{"announcement_date": a["announcement_date"], "page_displayed_date": a.get("page_displayed_date")}
+             for a in evidence.get("announcements", [])
+             if a.get("dateline_matches_announcement_date") is True and a.get("page_displayed_date_matches") is False]
     limitations = ([{"code": CONDITIONAL_CODE, "turning_points": len(earlier), "before": first,
                      "detail": "NBER publishes committee announcements from 1979; earlier turning points carry no public announcement date."}]
-                   if earlier else [])
+                   if earlier else []) + ([{"code": "publisher_page_header_date_typo", "pages": typos,
+                     "detail": "The page header disagrees with the announcement's own dateline and NBER's index; the dateline is used."}]
+                   if typos else [])
     checks = [
         _gate("source_binding", "passed", "nber_originals_verified",
               scope="Archived NBER chronology table and every committee announcement it lists."),

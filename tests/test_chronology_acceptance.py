@@ -8,6 +8,8 @@ def evidence(**changes):
     value = {"status": "verified_original_chronology_and_announcements_partial",
              "original_source_hash_verified": True, "first_announcement_date": "1979-07-27",
              "announcement_count": 19, "page_date_inconsistencies": [],
+             "announcements": [{"announcement_date": "2020-06-08", "dateline_matches_announcement_date": True,
+                                "page_displayed_date_matches": True}],
              "retrospective_cycles": [
                  {"peak_month": "1973-11", "trough_month": "1975-03",
                   "peak_announcement_date": None, "trough_announcement_date": None},
@@ -35,8 +37,16 @@ class ChronologyAcceptanceTests(unittest.TestCase):
         cycles[1]["trough_announcement_date"] = None
         self.assertEqual(states(nber_announcement_checks(evidence(retrospective_cycles=cycles)))["matched_periods"],
                          "incomplete")
-        self.assertEqual(states(nber_announcement_checks(evidence(page_date_inconsistencies=["2020-06-08"])))
+        undated = [{"announcement_date": "2020-06-08", "dateline_matches_announcement_date": False}]
+        self.assertEqual(states(nber_announcement_checks(evidence(announcements=undated)))
                          ["original_source_values"], "incomplete")
+        # A header typo against a matching dateline is recorded, not blocking.
+        typo = [{"announcement_date": "1982-01-06", "dateline_matches_announcement_date": True,
+                 "page_displayed_date_matches": False, "page_displayed_date": "December 19, 1982"}]
+        result = nber_announcement_checks(evidence(announcements=typo))
+        self.assertEqual(states(result)["original_source_values"], "passed")
+        codes = {item["code"] for check in result["checks"] for item in check.get("limitations", [])}
+        self.assertIn("publisher_page_header_date_typo", codes)
         missing = nber_announcement_checks({"status": "missing_original_nber_documents"})
         self.assertEqual(set(states(missing).values()), {"blocked"})
         self.assertFalse(missing["resolved"])
