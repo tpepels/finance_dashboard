@@ -220,6 +220,21 @@ class ComparativeCorpusTests(unittest.TestCase):
         self.assertEqual(panel["input_coverage"][sid]["publisher_absent_periods"], ["1990-07-01"])
         self.assertIn("common native history", panel["limitations"][0])
 
+    def test_irregular_survey_gap_at_window_start_is_publisher_absent_not_late(self):
+        """A survey history reaching back before the common window may pause at its start."""
+        gini = [f"inequality.{cc}.gini_survey_wdi" for cc in ("us", "fr", "pt", "cn", "in")]
+        role = lambda built: next(p for p in built["panels"] if p.get("derived_from_role") == "wiid_gini")
+        for sid in gini[:3]:
+            self.insert(sid, {"2003-01-01": "40", "2004-01-01": "40", "2005-01-01": "40"})
+        self.insert(gini[3], {"2002-01-01": "42", "2005-01-01": "43"})
+        self.insert(gini[4], {"2004-01-01": "35", "2005-01-01": "35"})
+        panel = role(self.build(self.proof(gini)))
+        cn = panel["input_coverage"][gini[3]]
+        self.assertFalse(cn["requested_leading_periods_uncovered"])
+        self.assertEqual(panel["matched_periods"], ["2005-01-01"])
+        self.assertEqual(cn["publisher_absent_periods"], ["2004-01-01"])
+        self.assertTrue(panel["requested_coverage_complete"])
+
     def test_dfa_partition_and_tiva_identity_check_real_matched_values(self):
         dfa = ["wealth.us.top1_share", "wealth.us.next9_share", "wealth.us.middle40_share", "wealth.us.bottom50_share"]
         for sid, value in zip(dfa, ["32", "38", "28", "2"]): self.insert(sid, {"2020-01-01": value})

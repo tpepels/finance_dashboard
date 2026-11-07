@@ -286,14 +286,22 @@ def _panel(analysis: dict, variant: dict, registry: dict, inputs: dict,
         available = sorted(window_rows[sid])
         first = date.fromisoformat(available[0]) if available else None
         last = date.fromisoformat(available[-1]) if available else None
-        grid = _regular_grid(first, last, frequency) if first and last else None
+        # A history that reaches back before the window and then pauses (an
+        # irregular survey, say) is not a late start: the gap at the window
+        # start is interior to the publisher's history. The grid is anchored
+        # on the series' own last earlier observation, so it stays aligned.
+        earlier = [date.fromisoformat(row["period"]) for row in all_rows[sid]
+                   if date.fromisoformat(row["period"]) < start]
+        anchor = max(earlier) if earlier and first else first
+        full_grid = _regular_grid(anchor, last, frequency) if first and last else None
+        grid = {day for day in full_grid if day >= start} if full_grid is not None else None
         missing = sorted(day.isoformat() for day in grid - {date.fromisoformat(p) for p in available}) if grid is not None else None
         coverage[sid] = {
             "observed_period_count": len(available), "first_observation": available[0] if available else None,
             "last_observation": available[-1] if available else None,
             "excluded_from_match": sorted(set(available) - set(common)),
             "missing_internal_periods": missing,
-            "requested_leading_periods_uncovered": first is None or first > start,
+            "requested_leading_periods_uncovered": first is None or (first > start and not earlier),
             "daily_gap_semantics": "Official market calendar not supplied; calendar-day gaps are not inferred." if frequency == "D" else None,
             "all_current_values_sha256": observation_values_digest({row["period"]: row["value"] for row in all_rows[sid]}),
             "all_current_versions_sha256": observation_versions_digest(all_rows[sid]),
