@@ -40,10 +40,14 @@ def nber_announcement_checks(evidence: dict) -> dict:
                 covered.append(item)
             else:
                 missing.append(item)
-    # An announcement's date is its index link and its own dateline. A page
-    # header that disagrees with both is a publisher typo, recorded, not used.
-    inconsistent = [a["announcement_date"] for a in evidence.get("announcements", [])
-                    if a.get("dateline_matches_announcement_date") is not True]
+    # An announcement's date is its index link, corroborated by the text's own
+    # dateline where the page has one (older releases) or else by the page
+    # header. A header that disagrees with a matching dateline is a publisher
+    # typo, recorded, not used.
+    def corroborated(a):
+        dateline = a.get("dateline_matches_announcement_date")
+        return dateline is True or (dateline is None and a.get("page_displayed_date_matches") is True)
+    inconsistent = [a["announcement_date"] for a in evidence.get("announcements", []) if not corroborated(a)]
     typos = [{"announcement_date": a["announcement_date"], "page_displayed_date": a.get("page_displayed_date")}
              for a in evidence.get("announcements", [])
              if a.get("dateline_matches_announcement_date") is True and a.get("page_displayed_date_matches") is False]

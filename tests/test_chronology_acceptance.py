@@ -40,6 +40,14 @@ class ChronologyAcceptanceTests(unittest.TestCase):
         undated = [{"announcement_date": "2020-06-08", "dateline_matches_announcement_date": False}]
         self.assertEqual(states(nber_announcement_checks(evidence(announcements=undated)))
                          ["original_source_values"], "incomplete")
+        # Modern pages carry no dateline; their header date corroborates instead.
+        modern = [{"announcement_date": "2020-06-08", "dateline_matches_announcement_date": None,
+                   "page_displayed_date_matches": True}]
+        self.assertEqual(states(nber_announcement_checks(evidence(announcements=modern)))
+                         ["original_source_values"], "passed")
+        modern[0]["page_displayed_date_matches"] = False
+        self.assertEqual(states(nber_announcement_checks(evidence(announcements=modern)))
+                         ["original_source_values"], "incomplete")
         # A header typo against a matching dateline is recorded, not blocking.
         typo = [{"announcement_date": "1982-01-06", "dateline_matches_announcement_date": True,
                  "page_displayed_date_matches": False, "page_displayed_date": "December 19, 1982"}]
