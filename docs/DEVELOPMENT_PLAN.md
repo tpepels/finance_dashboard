@@ -33,16 +33,15 @@ Implemented in `research_acceptance.py` and validated on every run of `python -m
 
 See the measured numbers in the latest `research operating` report; the summary below is updated at each milestone.
 
-Measured on 2026-11-07 after the L03 sweep: 336 of 349 catalogue sources have independently verified original histories.
+Measured on 2026-11-07 after the L01 sweep: 368 of 381 catalogue sources have independently verified original histories.
 
 | State | Analyses |
 |---|---|
-| Accepted (22) | C01, C03, C05, C06, F02, F03, F05, F06, G05, G06, L02, L03, L05, L07, M01, M02, P03, P06, P07, V01, V02, V05 |
+| Accepted (23) | C01, C03, C05, C06, F02, F03, F05, F06, G05, G06, L01, L02, L03, L05, L07, M01, M02, P03, P06, P07, V01, V02, V05 |
 | Conditional (11) | C02 (no NBER announcement dates before 1979), F01, F04 (Baa fallback), F07, G01 and G02 (iShares MSCI ACWI ETF N-PORT positions for the unpublished ACWI weights), M04, P01 (fields the holdings publishers do not report), P02, P04, P05 |
 | Deferred (3) | L04, G03, V03 (research extensions outside Phase 2 completion) |
-| Blocked (1) | L01 (industry-matched inputs; EU KLEMS 2025 identified) |
 
-33 of 34 active analyses are resolved; Phase 2 is **not** complete.
+34 of 34 active analyses are resolved; none is blocked. Phase 2 is **complete**.
 
 ## Done since the revision (2026-11-06)
 
@@ -70,12 +69,12 @@ Measured on 2026-11-07 after the L03 sweep: 336 of 349 catalogue sources have in
 * **C02:** USREC ALFRED windows back to 1854; NBER chronology and committee announcements collected and gated on each announcement's dateline or header.
 * **G02:** country weights from the same ACWI ETF N-PORT positions as G01.
 * **Holdings acceptance (G01, P01):** holdings roles declare a fund contract and are judged on each fund's latest original snapshot: accounting control, cited per-source field reviews ([holdings_sources.json](../definitions/holdings_sources.json)) and value-weighted coverage of required fields (95%). Publisher absences (sector in N-PORT and Vanguard reports; identifiers in the iShares CSV and Vanguard reports) are per-fund limitations.
+* **L01:** value added (VA_CP), its price index (VA_PI), hours of persons engaged (H_EMP) and labour compensation including self-employed (LAB) from the EU KLEMS & INTANProd 2025 total-economy workbooks for all eight countries, on one matched scope. The publisher's Dropbox shares are fetched from the fixed host `dl.dropboxusercontent.com`, so no wildcard policy was needed. All 32 series are verified against an independent reader and L01 is accepted.
 
 ## Next slices
 
-1. **L01 via EU KLEMS & INTANProd 2025:** value added (VA_CP), its price index (VA_PI), hours of persons engaged (H_EMP) and labour compensation including self-employed (LAB) on one matched scope, 1995-2021, all eight countries. Files are served through Dropbox content hosts that the exact-host policy registry cannot name yet.
-2. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
-3. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
+1. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
+2. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
 
 ## Working rules
 
