@@ -1299,7 +1299,12 @@
       "measurement": "NBER-dated official US recession months carried in FRED 0/1 observations",
       "revision_policy": "not_established",
       "rights": "review_required",
-      "notes": "Ex-post announcements can occur much later than the original recession month; no hindsight-safe contemporaneous signal."
+      "notes": "Ex-post announcements can occur much later than the original recession month; no hindsight-safe contemporaneous signal.",
+      "release_dating": {
+        "mode": "alfred_real_time",
+        "evidence_url": "https://alfred.stlouisfed.org/series?seid=USREC",
+        "reviewed_on": "2026-11-07"
+      }
     },
     {
       "id": "rates.us.nominal_2y",

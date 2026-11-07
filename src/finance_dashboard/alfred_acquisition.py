@@ -42,7 +42,7 @@ def planned_revision_windows(series_ids: list[str], start: date,
     if (not series_ids or len(series_ids) != len(set(series_ids))
             or set(series_ids) - set(SOURCES)
             or start > end or end > asof or asof > date.today()
-            or start.year < 1900):
+            or start.year < 1800):
         raise ValueError("invalid_original_revision_backfill_plan")
     work = []
     for sid in series_ids:

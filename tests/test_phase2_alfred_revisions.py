@@ -193,6 +193,14 @@ class OriginalRevisionWindowsTests(unittest.TestCase):
         self.assertEqual(result[5]["series_id"], "USREC")
         self.assertEqual(result[5]["end"], date(2020, 5, 3))
 
+    def test_nineteenth_century_recession_labels_are_plannable(self):
+        """USREC observations start in December 1854; windows must reach them."""
+        result = planned_revision_windows(["USREC"], date(1854, 12, 1), date(1855, 3, 1), ASOF)
+        self.assertEqual([(w["start"], w["end"]) for w in result],
+                         [(date(1854, 12, 1), date(1854, 12, 31)), (date(1855, 1, 1), date(1855, 3, 1))])
+        with self.assertRaises(ValueError):
+            planned_revision_windows(["USREC"], date(1799, 1, 1), date(1799, 12, 31), ASOF)
+
     def test_read_only_plan_and_publisher_preflight_are_network_free(self):
         with TemporaryDirectory() as tmp:
             plan = revision_batch(

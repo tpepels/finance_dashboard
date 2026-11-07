@@ -38,7 +38,7 @@ def _valid_dates(series_id: str, start: date, end: date, asof: date):
     if (series_id not in SOURCES or not isinstance(start, date)
             or not isinstance(end, date) or not isinstance(asof, date)
             or start > end or end > asof or asof > date.today()
-            or start.year < 1900 or (end - start).days > 366):
+            or start.year < 1800 or (end - start).days > 366):
         raise ValueError("invalid_alfred_original_revision_window")
 
 
