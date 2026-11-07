@@ -47,7 +47,7 @@ def _json(raw):
     return json.loads(raw.decode('utf-8-sig'), parse_float=Decimal)
 
 
-def constructed_source(root, definition, select_manifest, original_file):
+def constructed_source(root, definition, select_manifest, original_file, *, allow_subset=False):
     from .source_reconciliation import EvidenceError
     definition = source_contract(definition)
     identity = {key: definition[key] for key in ('provider', 'source_key')}
@@ -67,7 +67,13 @@ def constructed_source(root, definition, select_manifest, original_file):
                 or content.get('requested_from') != manifest.get('requested_from')
                 or content.get('responses') != [{key: source[key] for key in ('file', 'url', 'sha256', 'bytes')} for source in sources]):
             _error()
-        if manifest.get('scope') != 'full_source_snapshot' or manifest.get('requested_from') is not None:
+        scope = ('requested_period_subset', True) if allow_subset else ('full_source_snapshot', False)
+        if manifest.get('scope') != scope[0] or (manifest.get('requested_from') is not None) != scope[1]:
+            _error('source_snapshot_partial')
+        # Only adapters whose reader states its windowed request form accept a
+        # requested-period subset; every other reader keeps full snapshots.
+        start = date.fromisoformat(manifest['requested_from']) if allow_subset else None
+        if start is not None and definition['provider'] != 'MSCI_NETR':
             _error('source_snapshot_partial')
         provider = definition['provider']
         count = {'MSCI_NETR': 1, 'SIBLIS_WORLD_PE': 1, 'SIBLIS_WORLD_EARNINGS_YIELD': 1,
@@ -81,7 +87,7 @@ def constructed_source(root, definition, select_manifest, original_file):
                for index, source in enumerate(sources)]
         if provider == 'MSCI_NETR':
             if definition['source_key'] != '892400/NETR/USD' or definition['frequency'] != 'D' or definition['unit'] != 'index': _error()
-            values = _msci(raw[0], sources[0]['url'])
+            values = _msci(raw[0], sources[0]['url'], start)
             details = {'source_return_variant': 'NETR', 'source_currency': 'USD', 'source_index_code': '892400'}
         elif provider.startswith('SIBLIS_WORLD_'):
             if definition['source_key'] != 'GLOBAL/PT12M' or definition['frequency'] != 'M' or definition['unit'] != ('ratio' if provider == 'SIBLIS_WORLD_PE' else 'percent'): _error()
@@ -152,11 +158,12 @@ def constructed_source(root, definition, select_manifest, original_file):
         _error('source_schema_invalid')
 
 
-def _msci(raw, url):
+def _msci(raw, url, start=None):
     from .remaining_sources import MSCI_LEVELS_URL
     query = _url(url, MSCI_LEVELS_URL)
+    first = start or date(2000, 1, 1)
     expected = {'index_codes': ['892400'], 'currency_symbol': ['USD'], 'index_variant': ['NETR'],
-                'data_frequency': ['DAILY'], 'start_date': ['20000101']}
+                'data_frequency': ['DAILY'], 'start_date': [first.strftime('%Y%m%d')]}
     if set(query) != set(expected) | {'end_date'} or any(query.get(key) != value for key, value in expected.items()): _error()
     end = query['end_date']
     if len(end) != 1 or not re.fullmatch(r'[0-9]{8}', end[0]): _error()
@@ -170,7 +177,7 @@ def _msci(raw, url):
         label = str(row['calc_date'])
         if not re.fullmatch(r'[0-9]{8}', label): _error('source_period_invalid')
         day = _native_period(label[:4]+'-'+label[4:6]+'-'+label[6:], 'D')
-        if not date(2000, 1, 1) <= day <= cutoff: _error('source_period_invalid')
+        if not first <= day <= cutoff: _error('source_period_invalid')
         _add(values, seen, day, row['level_eod'])
     if any(value <= 0 for value in values.values()): _error('source_value_invalid')
     return values

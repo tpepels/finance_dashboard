@@ -17,7 +17,7 @@ from .catalog import source_contract
 from .source_capture import canonical_bytes
 
 
-def captured_source(root, definition, select_manifest, original_file):
+def captured_source(root, definition, select_manifest, original_file, *, allow_subset=False):
     from .source_reconciliation import EvidenceError
     definition = source_contract(definition)
     identity = {key: definition[key] for key in ("provider", "source_key")}
@@ -32,7 +32,8 @@ def captured_source(root, definition, select_manifest, original_file):
                 or path.parent.name != sha256(canonical_bytes(content)).hexdigest()
                 or content["source_identity"] != identity):
             raise EvidenceError("source_identity_mismatch")
-        if manifest.get("scope") != "full_source_snapshot" or manifest.get("requested_from") is not None:
+        scope = ("requested_period_subset", True) if allow_subset else ("full_source_snapshot", False)
+        if manifest.get("scope") != scope[0] or (manifest.get("requested_from") is not None) != scope[1]:
             raise EvidenceError("source_snapshot_partial")
         provider = definition["provider"]
         if len(manifest["sources"]) != (2 if provider == "SHILLER" else 1):
@@ -85,7 +86,7 @@ def captured_source(root, definition, select_manifest, original_file):
             raise EvidenceError("source_empty")
         return values, {"source_sha256": data_hash, "source_manifest_sha256": manifest_hash,
             "evidence_retrieved_at_utc": retrieved.isoformat(), "selection_method": method,
-            "source_snapshot_scope": "full_source_snapshot",**dimensions,
+            "source_snapshot_scope": manifest["scope"],**dimensions,
             **({'supporting_source_sha256':{'homepage':originals[0][1]}} if provider=='SHILLER' else {})}
     except EvidenceError:
         raise

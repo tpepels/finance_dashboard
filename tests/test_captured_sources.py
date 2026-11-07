@@ -95,6 +95,38 @@ class CapturedSourcesTests(unittest.TestCase):
             self.assertFalse(stale["passed"])
             self.assertFalse(stale["series"][0]["source_values_match"])
 
+    def test_later_scheduled_subsets_certify_appended_periods_only(self):
+        """Daily refresh windows extend a full snapshot; unarchived periods still fail."""
+        import sqlite3
+        sid = "bond.us.nominal_10y"
+        full = {"count": 2, "offset": 0, "observations": [
+            {"date": "2024-01-02", "value": "3.95"}, {"date": "2024-01-03", "value": "3.91"}]}
+        window = {"count": 2, "offset": 0, "observations": [
+            {"date": "2024-01-03", "value": "3.910"}, {"date": "2024-01-04", "value": "3.88"}]}
+        rows = [("2024-01-02", "3.95"), ("2024-01-03", "3.91"), ("2024-01-04", "3.88")]
+        with TemporaryDirectory() as temp, patch.dict("os.environ", {"FRED_API_KEY": "secret"}):
+            root = Path(temp)
+            db = root / "history.db"
+            database(db)
+            for body, start in ((full, None), (window, date(2024, 1, 3))):
+                with httpx.Client(transport=httpx.MockTransport(lambda request, body=body: httpx.Response(200, json=body))) as http:
+                    SourceAcquisition(ProviderRouter(http), root).fetch(sid, start)
+            with sqlite3.connect(db) as connection:
+                connection.executemany("INSERT INTO observation_versions(series_id,period,value,first_seen_at,ingestion_run_id) VALUES(?,?,?,?,?)",
+                    [(sid, day, value, "2026-11-04 10:00:00", "source-run") for day, value in rows])
+            proof = reconcile("sqlite:///" + str(db), root, [sid])["series"][0]
+            self.assertTrue(proof["source_covers_all_stored_periods"], proof)
+            self.assertEqual(proof["selection_method"], "acquisition_receipt_with_appended_subsets")
+            self.assertEqual(len(proof["subset_overlay_manifest_sha256s"]), 1)
+            self.assertEqual(proof["source_periods"], 3)
+            # A stored period that no archived original contains stays unverified.
+            with sqlite3.connect(db) as connection:
+                connection.execute("INSERT INTO observation_versions(series_id,period,value,first_seen_at,ingestion_run_id) VALUES(?,?,?,?,?)",
+                    (sid, "2024-01-05", "3.80", "2026-11-05 10:00:00", "refresh-run"))
+            extra = reconcile("sqlite:///" + str(db), root, [sid])["series"][0]
+            self.assertFalse(extra["source_covers_all_stored_periods"])
+            self.assertEqual(extra["extra_stored_periods"], ["2024-01-05"])
+
     def test_cited_reviews_added_after_capture_do_not_break_archived_contract_identity(self):
         import copy, sqlite3
         from finance_dashboard.catalog import load_documents

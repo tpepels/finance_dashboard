@@ -77,6 +77,34 @@ def _selected_manifest(parent, source_identity):
     receipts_dir = parent / "retrievals"
     if not receipts_dir.exists():
         return (*_latest_manifest(parent.glob("*/manifest.json")), "immutable_manifest_legacy")
+    candidates = _receipt_candidates(parent, source_identity)
+    # Every receipt above is integrity-checked. Scheduled refreshes archive
+    # requested_period_subset overlap windows, which can never certify a
+    # history; they must not displace the newest full snapshot as evidence.
+    # Whether that snapshot still covers all stored periods is checked later.
+    full = [item for item in candidates if _is_full(item[3])]
+    selected = max(full or candidates, key=lambda item: (item[0], item[4]))
+    return (*selected[:4], "acquisition_receipt")
+
+
+def _is_full(manifest):
+    return (isinstance(manifest, dict) and manifest.get("scope") == "full_source_snapshot"
+            and manifest.get("requested_from") is None)
+
+
+def _later_subset_manifests(parent, source_identity, after):
+    """Receipt-verified requested-period subsets observed after a full snapshot, oldest first."""
+    if not (parent / "retrievals").exists():
+        return []
+    later = [item for item in _receipt_candidates(parent, source_identity)
+             if item[0] > after and isinstance(item[3], dict)
+             and item[3].get("scope") == "requested_period_subset"
+             and item[3].get("requested_from") is not None]
+    return sorted(later, key=lambda item: (item[0], item[4]))
+
+
+def _receipt_candidates(parent, source_identity):
+    receipts_dir = parent / "retrievals"
     candidates = []
     try:
         if receipts_dir.is_symlink() or not receipts_dir.is_dir():
@@ -110,15 +138,7 @@ def _selected_manifest(parent, source_identity):
             raise ValueError("no published receipt")
     except (OSError, KeyError, TypeError, ValueError):
         raise EvidenceError("source_receipt_invalid") from None
-    # Every receipt above is integrity-checked. Scheduled refreshes archive
-    # requested_period_subset overlap windows, which can never certify a
-    # history; they must not displace the newest full snapshot as evidence.
-    # Whether that snapshot still covers all stored periods is checked later.
-    full = [item for item in candidates if isinstance(item[3], dict)
-            and item[3].get("scope") == "full_source_snapshot"
-            and item[3].get("requested_from") is None]
-    selected = max(full or candidates, key=lambda item: (item[0], item[4]))
-    return (*selected[:4], "acquisition_receipt")
+    return candidates
 
 
 def _original_file(folder, source, expected_name, *, binary=False):
@@ -281,6 +301,45 @@ def _tiva_source(root):
     return values, evidence
 
 
+def _overlay_later_subsets(reader, root, definition, values, evidence, selection):
+    """Extend the newest full snapshot with later appended periods only.
+
+    Scheduled refreshes archive immutable, receipt-verified requested-period
+    subsets. Applied oldest first, a subset may certify periods the full
+    snapshot does not contain, provided it agrees with every period already
+    certified. A subset that revises any value signals that the publisher may
+    also have revised periods outside its window, so the overlay stops and the
+    history needs a fresh full snapshot. A subset its reader cannot certify is
+    skipped: its periods stay unverified (fail closed).
+    """
+    chosen = selection.get("chosen")
+    if chosen is None or not _is_full(chosen[3]) or chosen[4] != "acquisition_receipt":
+        return values, evidence
+    layered = dict(values)
+    applied, skipped, revised = [], 0, False
+    for candidate in _later_subset_manifests(selection["parent"], selection["identity"], chosen[0]):
+        try:
+            subset, _ = reader(root, definition,
+                               lambda _parent, _identity, item=candidate: (*item[:4], "acquisition_receipt"),
+                               _original_file, allow_subset=True)
+        except EvidenceError:
+            skipped += 1
+            continue
+        if any(subset[period] != layered[period] for period in subset.keys() & layered.keys()):
+            revised = True
+            break
+        layered.update(subset)
+        applied.append(candidate[1])
+    if revised:
+        return values, {**evidence, "subset_revision_requires_full_snapshot": True}
+    if not applied and not skipped:
+        return values, evidence
+    return layered, {**evidence, "subset_overlay_manifest_sha256s": applied,
+                     "subset_overlays_skipped": skipped,
+                     "selection_method": "acquisition_receipt_with_appended_subsets" if applied
+                                         else evidence["selection_method"]}
+
+
 def _readonly_engine(database_url):
     target = make_url(database_url)
     if target.get_backend_name() != "sqlite":
@@ -394,7 +453,18 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             continue
         try:
             reader = constructed_source if definition['provider'] in CONSTRUCTED_PROVIDERS else captured_source
-            values, evidence = reader(root, definition, _selected_manifest, _original_file)
+            selection = {}
+            def select(parent, identity):
+                selection.update(parent=parent, identity=identity)
+                selection["chosen"] = _selected_manifest(parent, identity)
+                return selection["chosen"]
+            values, evidence = reader(root, definition, select, _original_file)
+            db_values = stored[sid]
+            if (db_values.keys() - values.keys()) or any(
+                    _storage_value(values[period], dialect) != db_values[period]
+                    for period in db_values.keys() & values.keys()):
+                values, evidence = _overlay_later_subsets(
+                    reader, root, definition, values, evidence, selection)
             originals[sid] = values
             proof[sid] = evidence
         except EvidenceError as exc:

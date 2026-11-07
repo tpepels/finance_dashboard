@@ -87,6 +87,15 @@ class ConstructedSourceTests(unittest.TestCase):
             later = audit(root, sid, {date(2024, 1, 2): Decimal('310.25')})
             self.assertTrue(later['source_values_match'], later)
             self.assertEqual(len(list(root.glob('responses/*/retrievals/*.json'))), 2)
+            # A windowed refresh that appends a day certifies it with its own
+            # start date; the reader keeps every other query field exact.
+            appended = json.loads(json.dumps(original))
+            appended['indexes']['INDEX_LEVELS'] = [{'calc_date': '20240103', 'level_eod': '311.5'}]
+            with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=appended))) as client:
+                SourceAcquisition(ProviderRouter(client), root).fetch(sid, date(2024, 1, 3))
+            both = audit(root, sid, {date(2024, 1, 2): Decimal('310.25'), date(2024, 1, 3): Decimal('311.5')})
+            self.assertTrue(both['source_covers_all_stored_periods'], both)
+            self.assertEqual(both['selection_method'], 'acquisition_receipt_with_appended_subsets')
 
     def test_siblis_sparse_snapshots_and_same_universe_inverse_are_independent(self):
         for sid, expected in [('valuation.world.global_trailing_pe', Decimal(20)),
