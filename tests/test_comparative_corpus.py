@@ -220,6 +220,25 @@ class ComparativeCorpusTests(unittest.TestCase):
         self.assertEqual(panel["input_coverage"][sid]["publisher_absent_periods"], ["1990-07-01"])
         self.assertIn("common native history", panel["limitations"][0])
 
+    def test_declared_fallback_gets_its_own_derived_common_history_panel(self):
+        """A verified-unavailable role's fallback is joined through the same exact gates."""
+        f04 = next(a for a in self.document["analyses"] if a["id"] == "F04")
+        role = next(r for r in f04["comparison_contract"]["original_requirements"]
+                    if r.get("verified_unavailability"))
+        fallback = role["verified_unavailability"]["fallback"]
+        variants = self.runtime().panel_variants(f04, self.registry)
+        derived = [v for v in variants if v["id"] == "role_" + role["role"] + "_fallback_common_history"]
+        self.assertEqual(len(derived), 1)
+        self.assertEqual(derived[0]["series_ids"], fallback["series_ids"])
+        self.assertEqual(derived[0]["frequency"], fallback["expected"]["frequency"])
+        self.assertIn("fallback", derived[0]["limitations"][0])
+        sid = fallback["series_ids"][0]
+        self.insert(sid, {"1990-01-02": "1.9", "1990-01-03": "2.0"})
+        built = self.build(self.proof([sid]))
+        panel = next(p for p in built["panels"] if p["variant_id"] == derived[0]["id"])
+        self.assertTrue(panel["requested_coverage_complete"])
+        self.assertEqual(panel["derived_from_role"], role["role"])
+
     def test_irregular_survey_gap_at_window_start_is_publisher_absent_not_late(self):
         """A survey history reaching back before the common window may pause at its start."""
         gini = [f"inequality.{cc}.gini_survey_wdi" for cc in ("us", "fr", "pt", "cn", "in")]

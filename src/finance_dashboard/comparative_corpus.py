@@ -230,6 +230,28 @@ def panel_variants(analysis: dict, registry) -> list[dict]:
             "limitations": ["No analysis-specific window is approved for this role; periods are matched over the inputs' common native history."],
             "satisfies_original_method": True, "derived_from_role": role["role"],
         })
+    # A verified-unavailable role is resolved only through its declared
+    # fallback, which must pass the same exact-join gates on its own inputs.
+    for role in analysis["comparison_contract"]["original_requirements"]:
+        unavailable = role.get("verified_unavailability")
+        fallback = unavailable.get("fallback") if isinstance(unavailable, dict) else None
+        ids = list(fallback.get("series_ids") or []) if isinstance(fallback, dict) else []
+        if not ids or any(set(ids) <= set(v["series_ids"]) for v in declared
+                          if v.get("satisfies_original_method") is True):
+            continue
+        frequency = (fallback.get("expected") or {}).get("frequency") or (registry.get(ids[0]) or {}).get("frequency")
+        derived.append({
+            "id": "role_" + role["role"] + "_fallback_common_history",
+            "label": "Derived exact join for the declared fallback of role " + role["role"],
+            "kind": "original_scope",
+            "scope": "Declared fallback inputs joined on exact native periods over their common native history.",
+            "series_ids": ids, "frequency": frequency,
+            "start": COMMON_NATIVE_HISTORY, "end": "latest_common",
+            "join": "exact_period_intersection", "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot", "checks": [],
+            "limitations": ["Declared fallback for an unavailable original source; no analysis-specific window is approved, so periods are matched over the inputs' common native history."],
+            "satisfies_original_method": True, "derived_from_role": role["role"],
+        })
     return declared + derived
 
 
