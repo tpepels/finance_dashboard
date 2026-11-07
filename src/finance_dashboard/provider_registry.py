@@ -13,6 +13,11 @@ class ProviderRegistration:
     acquisition: str  # response, native, local, derived, unsupported
     refresh_scope: str  # full or windowed
     complete_source_keys: frozenset[str] = frozenset()
+    # The adapter's fixed request origin when the catalogue's descriptive
+    # source URL is a human-facing page on another publisher host (for
+    # example OECD Data Explorer versus the SDMX API). Policy preflight must
+    # pace the host that actually receives the requests.
+    request_origin: str | None = None
 
     def requires_full_refresh(self, key: str) -> bool:
         return self.refresh_scope == "full" or key in self.complete_source_keys
@@ -35,7 +40,8 @@ _REGISTRATIONS = (
     ProviderRegistration("EUROSTAT_CORPORATE_GDP", "fetch_eurostat_corporate_gdp", "response", "windowed"),
     ProviderRegistration("EUROSTAT_NFC_PROFIT_GVA", "fetch_eurostat_nfc_profit_gva", "response", "windowed"),
     ProviderRegistration("EUROSTAT_HICP", "fetch_eurostat_hicp", "response", "windowed"),
-    ProviderRegistration("OECD_NFC_ACCOUNTS", "fetch_oecd_nfc_accounts", "response", "windowed"),
+    ProviderRegistration("OECD_NFC_ACCOUNTS", "fetch_oecd_nfc_accounts", "response", "windowed",
+                         request_origin="https://sdmx.oecd.org/public/rest/data"),
     ProviderRegistration("BIS_WORLD_WEIGHTED", "fetch_bis_world_weighted", "response", "windowed"),
     ProviderRegistration("ILO_LABOUR_PRODUCTIVITY_RATIO", "fetch_ilo_labour_productivity_ratio", "derived", "windowed"),
     ProviderRegistration("WISESHEETS_SNAPSHOT", "fetch_wisesheets_snapshot", "local", "windowed"),
@@ -50,7 +56,8 @@ _REGISTRATIONS = (
     ProviderRegistration("FED_G17_DIFFUSION", "fetch_fed_g17_diffusion", "response", "full"),
     ProviderRegistration("OFR_FSI", "fetch_ofr_fsi", "response", "full"),
     ProviderRegistration("BOJ_TSS", "fetch_boj_tss", "response", "full"),
-    ProviderRegistration("OECD_CLI", "fetch_oecd_cli", "response", "full"),
+    ProviderRegistration("OECD_CLI", "fetch_oecd_cli", "response", "full",
+                         request_origin="https://sdmx.oecd.org/public/rest/data"),
     ProviderRegistration("IMF_BOP_IIP", "fetch_imf_bop_iip", "response", "full"),
     ProviderRegistration("FDIC_BANKFIND", "fetch_fdic_bankfind", "response", "full"),
     ProviderRegistration("SIBLIS_FREE", "fetch_siblis_free", "response", "windowed"),

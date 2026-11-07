@@ -24,6 +24,24 @@ class ProviderRegistryTests(unittest.TestCase):
                           {"response", "native", "local", "derived", "unsupported"})
             self.assertIn(registration.refresh_scope, {"full", "windowed"})
 
+    def test_declared_request_origin_matches_adapter_and_paces_its_policy(self):
+        """Preflight paces the API host, not the descriptive catalogue page."""
+        from finance_dashboard.oecd_cli import OECD_CLI_ROOT
+        from finance_dashboard.source_policy_registry import PolicyRegistry
+        roots = {"OECD_CLI": OECD_CLI_ROOT,
+                 "OECD_NFC_ACCOUNTS": provider_adapters.OECD_TABLE14_ROOT}
+        policies = PolicyRegistry()
+        for code, root in roots.items():
+            origin = PROVIDER_REGISTRY[code].request_origin
+            self.assertTrue(root.startswith(origin), code)
+            self.assertEqual(policies.for_url(origin).id, "oecd-sdmx")
+        series = [row for row in load_documents()[0]["series"]
+                  if row["provider"] in roots]
+        # The descriptive pages are on another policy; this is why the origin
+        # must be declared.
+        self.assertTrue(any(policies.for_url(row["source_url"]).id != "oecd-sdmx"
+                            for row in series))
+
     def test_reenabled_sources_use_one_managed_publisher_budget(self):
         """Bounded HTTP requests reach real registered parsers, not stubs."""
         from datetime import datetime, timezone

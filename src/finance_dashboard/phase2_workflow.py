@@ -197,7 +197,9 @@ def source_acquisition_plan(document: dict, registry: list[dict],
         policy_id = None
         policy_blocker = None
         try:
-            source_policy = policy.for_url(item["source_url"])
+            source_policy = policy.for_url(
+                (provider.request_origin if provider is not None else None)
+                or item["source_url"])
             policy_id = source_policy.id
         except (KeyError, TypeError, PolicyViolation):
             policy_blocker = "publisher_reference_unclassified"
