@@ -33,17 +33,16 @@ Implemented in `research_acceptance.py` and validated on every run of `python -m
 
 See the measured numbers in the latest `research operating` report; the summary below is updated at each milestone.
 
-Measured after the 2026-11-07 morning sweep: 328 of 341 catalogue sources have independently verified original histories.
+Measured on 2026-11-07 after the L03 sweep: 336 of 349 catalogue sources have independently verified original histories.
 
 | State | Analyses |
 |---|---|
-| Accepted (20) | C01, C03, C05, C06, F02, F03, F05, F06, G05, L02, L05, L07, M01, M02, P03, P06, P07, V01, V02, V05 |
-| Conditional (9) | F01, F04 (Baa fallback for the ICE high-yield spread), F07, G01 (iShares MSCI ACWI ETF N-PORT positions for the unpublished ACWI weights), M04, P01 (fields the holdings publishers do not report), P02, P04, P05 (narrowed or descoped roles, stated in the catalogue) |
+| Accepted (22) | C01, C03, C05, C06, F02, F03, F05, F06, G05, G06, L02, L03, L05, L07, M01, M02, P03, P06, P07, V01, V02, V05 |
+| Conditional (11) | C02 (no NBER announcement dates before 1979), F01, F04 (Baa fallback), F07, G01 and G02 (iShares MSCI ACWI ETF N-PORT positions for the unpublished ACWI weights), M04, P01 (fields the holdings publishers do not report), P02, P04, P05 |
 | Deferred (3) | L04, G03, V03 (research extensions outside Phase 2 completion) |
-| Incomplete (1) | G02 (index country weights) |
-| Blocked (4) | C02 (NBER announcements), G06 (ICIO matrices), L01 (industry-matched OECD inputs), L03 (net fixed capital binding) |
+| Blocked (1) | L01 (industry-matched inputs; EU KLEMS 2025 identified) |
 
-29 of 34 active analyses are resolved; Phase 2 is **not** complete.
+33 of 34 active analyses are resolved; Phase 2 is **not** complete.
 
 ## Done since the revision (2026-11-06)
 
@@ -66,16 +65,17 @@ Measured after the 2026-11-07 morning sweep: 328 of 341 catalogue sources have i
   * Declared fallbacks are corpus inputs with their own exact-join panel (F04).
   * A survey gap at a window start is recorded as a publisher absence, not a late start (L07).
   * SEC N-PORT holdings: 12 quarterly filings each for VT, BND and the iShares MSCI ACWI ETF, discovered through each fund's EDGAR series feed.
+* **G06:** the owner downloaded OECD's 2025 regular ICIO archives (the automated route is a Cloudflare challenge); all 28 years 1995-2022 are pinned, audited and stored, 2016-2022 matching independent replicas byte for byte. Identities hold within 0.1% of each node's gross output in every year (worst 0.089%); residuals above rounding are retained, not rebalanced.
+* **L03:** net fixed assets of non-financial corporations (OECD Table 9B, N11N) for all eight countries.
+* **C02:** USREC ALFRED windows back to 1854; NBER chronology and committee announcements collected and gated on each announcement's dateline or header.
+* **G02:** country weights from the same ACWI ETF N-PORT positions as G01.
 * **Holdings acceptance (G01, P01):** holdings roles declare a fund contract and are judged on each fund's latest original snapshot: accounting control, cited per-source field reviews ([holdings_sources.json](../definitions/holdings_sources.json)) and value-weighted coverage of required fields (95%). Publisher absences (sector in N-PORT and Vanguard reports; identifiers in the iShares CSV and Vanguard reports) are per-fund limitations.
 
 ## Next slices
 
-1. **G02 index country weights:** the iShares MSCI ACWI ETF positions carry each issuer's country, so country weights can be aggregated from the same N-PORT snapshots that resolve G01.
-2. **L01 and L03:** industry-matched OECD inputs, and a net fixed capital binding for the OECD Table 14 countries.
-3. **C02 NBER announcements:** collect the announcement dates for the chronology.
-4. **G06 full ICIO matrices:** a large download.
-5. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
-6. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
+1. **L01 via EU KLEMS & INTANProd 2025:** value added (VA_CP), its price index (VA_PI), hours of persons engaged (H_EMP) and labour compensation including self-employed (LAB) on one matched scope, 1995-2021, all eight countries. Files are served through Dropbox content hosts that the exact-host policy registry cannot name yet.
+2. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
+3. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
 
 ## Working rules
 
