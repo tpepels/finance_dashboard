@@ -38,12 +38,12 @@ Measured after the 2026-11-07 morning sweep: 328 of 341 catalogue sources have i
 | State | Analyses |
 |---|---|
 | Accepted (20) | C01, C03, C05, C06, F02, F03, F05, F06, G05, L02, L05, L07, M01, M02, P03, P06, P07, V01, V02, V05 |
-| Conditional (7) | F01, F04 (Baa fallback for the ICE high-yield spread), F07, M04, P02, P04, P05 (narrowed or descoped roles, stated in the catalogue) |
+| Conditional (9) | F01, F04 (Baa fallback for the ICE high-yield spread), F07, G01 (iShares MSCI ACWI ETF N-PORT positions for the unpublished ACWI weights), M04, P01 (fields the holdings publishers do not report), P02, P04, P05 (narrowed or descoped roles, stated in the catalogue) |
 | Deferred (3) | L04, G03, V03 (research extensions outside Phase 2 completion) |
-| Incomplete (3) | G01, P01 (holdings collected; holdings-backed roles have no acceptance rule yet), G02 (index country weights) |
+| Incomplete (1) | G02 (index country weights) |
 | Blocked (4) | C02 (NBER announcements), G06 (ICIO matrices), L01 (industry-matched OECD inputs), L03 (net fixed capital binding) |
 
-27 of 34 active analyses are resolved; Phase 2 is **not** complete.
+29 of 34 active analyses are resolved; Phase 2 is **not** complete.
 
 ## Done since the revision (2026-11-06)
 
@@ -65,17 +65,17 @@ Measured after the 2026-11-07 morning sweep: 328 of 341 catalogue sources have i
   * Archived scheduled refreshes certify periods they append (ECB and MSCI windowed captures included); a refresh that revises stored values still needs a full snapshot.
   * Declared fallbacks are corpus inputs with their own exact-join panel (F04).
   * A survey gap at a window start is recorded as a publisher absence, not a late start (L07).
-  * SEC N-PORT holdings: 12 quarterly filings each for VT and BND.
+  * SEC N-PORT holdings: 12 quarterly filings each for VT, BND and the iShares MSCI ACWI ETF, discovered through each fund's EDGAR series feed.
+* **Holdings acceptance (G01, P01):** holdings roles declare a fund contract and are judged on each fund's latest original snapshot: accounting control, cited per-source field reviews ([holdings_sources.json](../definitions/holdings_sources.json)) and value-weighted coverage of required fields (95%). Publisher absences (sector in N-PORT and Vanguard reports; identifiers in the iShares CSV and Vanguard reports) are per-fund limitations.
 
 ## Next slices
 
-1. **Holdings-backed role acceptance (G01, P01):** define weight-based coverage rules for identifiers, country and sector over the collected holdings. The iShares holdings CSV has sector and location; Vanguard annual-report extracts and SEC N-PORT give country but no sector, so sector coverage needs a crosswalk or a stated per-fund limitation.
-2. **G02 index country weights:** bind a free country-weight source for the ACWI.
-3. **L01 and L03:** industry-matched OECD inputs, and a net fixed capital binding for the OECD Table 14 countries.
-4. **C02 NBER announcements:** collect the announcement dates for the chronology.
-5. **G06 full ICIO matrices:** a large download.
-6. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
-7. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
+1. **G02 index country weights:** the iShares MSCI ACWI ETF positions carry each issuer's country, so country weights can be aggregated from the same N-PORT snapshots that resolve G01.
+2. **L01 and L03:** industry-matched OECD inputs, and a net fixed capital binding for the OECD Table 14 countries.
+3. **C02 NBER announcements:** collect the announcement dates for the chronology.
+4. **G06 full ICIO matrices:** a large download.
+5. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
+6. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
 
 ## Working rules
 
