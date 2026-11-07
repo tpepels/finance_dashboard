@@ -46,8 +46,12 @@ PAGE = re.compile(r"^CIK[0-9]{10}-submissions-[0-9]+\.json$")
 # Official SEC N-PORT filing indexes confirm both fund and ETF-share identity.
 # All other fund mappings require their own SEC source verification.
 VERIFIED_DEFAULT_FUNDS = (
-    {"instrument_id": "vt", "cik": "857489", "series_id": "S000022482"},
-    {"instrument_id": "bnd", "cik": "794105", "series_id": "S000002564"},
+    # Each registrant files N-PORT for several series; the series feed lists
+    # only the mapped fund's filings, so cached filings cost no index scans.
+    {"instrument_id": "vt", "cik": "857489", "series_id": "S000022482",
+     "filing_discovery": "series_feed"},
+    {"instrument_id": "bnd", "cik": "794105", "series_id": "S000002564",
+     "filing_discovery": "series_feed"},
     # iShares Trust (CIK 1100663) series S000021461 per SEC company_tickers_mf.json.
     {"instrument_id": "acwi", "cik": "1100663", "series_id": "S000021461",
      "filing_discovery": "series_feed"},
