@@ -42,6 +42,41 @@ class ProviderRegistryTests(unittest.TestCase):
         self.assertTrue(any(policies.for_url(row["source_url"]).id != "oecd-sdmx"
                             for row in series))
 
+    def test_two_step_shiller_fetch_fits_its_publisher_policy(self):
+        """Homepage link discovery plus workbook download pass one real gate.
+
+        The ledger only sleeps short pacing waits inside one fetch, so a
+        policy spacing longer than that wait can never admit the second step.
+        """
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from finance_dashboard.source_policy import managed_client
+        from finance_dashboard.source_policy_registry import PolicyRegistry
+        from finance_dashboard.source_policy_ledger import SourcePolicyGate
+
+        def respond(request):
+            if request.url.host == "shillerdata.com":
+                return httpx.Response(200, text=(
+                    '<a href="https://img1.wsimg.com/official/ie_data.xls">Download</a>'))
+            return httpx.Response(200, content=bytes.fromhex("D0CF11E0A1B11AE1") + b"\x00" * 40)
+        now = [1_000_000.0]
+        slept = []
+        def sleep(seconds):
+            slept.append(seconds)
+            now[0] += seconds
+        rows = [["Date", "CAPE"]] + [[float(f"{year}.{month:02d}"), 20.0]
+                                     for year in range(1881, 2026) for month in range(1, 13)]
+        with TemporaryDirectory() as tmp:
+            gate = SourcePolicyGate(registry=PolicyRegistry(), state_path=Path(tmp) / "rates.sqlite",
+                                    clock=lambda: now[0], sleep=sleep)
+            with managed_client(policy_gate=gate, transport=httpx.MockTransport(respond)) as client:
+                with patch("python_calamine.CalamineWorkbook.from_filelike") as load:
+                    load.return_value.get_sheet_by_name.return_value.to_python.return_value = rows
+                    fetched = ProviderRouter(client).fetch("valuation.us.cape")
+            self.assertTrue(fetched.observations)
+            self.assertEqual(gate.report()["requests_recorded"], 2)
+        self.assertLessEqual(sum(slept), gate.max_wait_seconds)
+
     def test_reenabled_sources_use_one_managed_publisher_budget(self):
         """Bounded HTTP requests reach real registered parsers, not stubs."""
         from datetime import datetime, timezone

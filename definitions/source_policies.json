@@ -596,9 +596,9 @@
       "classification": "internal_conservative",
       "evidence_url": "https://shillerdata.com/",
       "rate": {
-        "limit": 6,
+        "limit": 20,
         "window_seconds": 3600,
-        "min_spacing_seconds": 600,
+        "min_spacing_seconds": 2,
         "max_concurrent": 1,
         "cooldown_429_seconds": 3600,
         "cooldown_503_seconds": 3600,
