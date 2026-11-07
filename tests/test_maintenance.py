@@ -457,7 +457,7 @@ class MaintenanceApiTests(unittest.TestCase):
             return 0
         def market(engine, *, full, instrument_ids, currencies, progress, stopped):
             self.assertFalse(full)
-            self.assertEqual(len(instrument_ids),24)
+            self.assertEqual(len(instrument_ids),25)
             self.assertEqual(currencies,{"USD","GBP","CHF"})
             progress(27,27,"FX:USD")
             tracked.append("market")
@@ -511,7 +511,7 @@ class MaintenanceApiTests(unittest.TestCase):
             return 0
         def market(engine, *, full, instrument_ids, currencies, progress, stopped):
             self.assertTrue(full)
-            self.assertEqual(len(instrument_ids),24)
+            self.assertEqual(len(instrument_ids),25)
             progress(27,27,"FX:USD")
             calls.append("markets")
             return 0

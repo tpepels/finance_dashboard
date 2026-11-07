@@ -263,6 +263,26 @@
       "notes": "US exchange listing. Yahoo adjusted close is vendor-provided and not a licensed benchmark total-return index."
     },
     {
+      "id": "acwi",
+      "name": "iShares MSCI ACWI ETF",
+      "kind": "etf",
+      "asset_class": "world_equity",
+      "source": "YAHOO_CHART",
+      "source_symbol": "ACWI",
+      "ticker": "ACWI",
+      "exchange_mic": "XNAS",
+      "trading_currency": "USD",
+      "fund_base_currency": "USD",
+      "quote_scale": "1",
+      "isin": null,
+      "isin_verified": false,
+      "domicile": "United States",
+      "distribution_policy": "distributing",
+      "benchmark": "MSCI ACWI (investable ETF proxy, not index TR)",
+      "reference_url": "https://finance.yahoo.com/quote/ACWI/",
+      "notes": "US exchange listing. SEC N-PORT holdings are the free full-position proxy for MSCI ACWI constituent weights (G01). Yahoo adjusted close is vendor-provided and not a licensed benchmark total-return index."
+    },
+    {
       "id": "bnd",
       "name": "Vanguard Total Bond Market ETF",
       "kind": "etf",

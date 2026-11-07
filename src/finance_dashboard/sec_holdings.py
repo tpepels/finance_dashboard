@@ -523,8 +523,9 @@ def store_source_bundle(xml: bytes, *, sec_metadata: dict, aggregate: dict,
               "positions.json":json.dumps(_position_facts(xml),sort_keys=True).encode()}
     response_urls=[]
     for index,response in enumerate(metadata_responses or []):
-        payloads[f"submissions-{index}.json"]=response["body"]
-        response_urls.append({"file":f"submissions-{index}.json","url":response["url"]})
+        name=f"submissions-{index}.{response.get('suffix','json')}"
+        payloads[name]=response["body"]
+        response_urls.append({"file":name,"url":response["url"]})
     hashes={name:sha256(body).hexdigest() for name,body in payloads.items()}
     digest=sha256(json.dumps(hashes,sort_keys=True).encode()).hexdigest()
     parent=root/aggregate["instrument_id"] / "sources" / aggregate["accession"]

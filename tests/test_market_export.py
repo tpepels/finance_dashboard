@@ -41,12 +41,12 @@ class FakeMacro:
 
 
 class MarketExportTests(unittest.TestCase):
-    def test_all_24_and_three_currency_feeds(self):
-        self.assertEqual(len(instruments()),24)
+    def test_all_25_and_three_currency_feeds(self):
+        self.assertEqual(len(instruments()),25)
         manifest,prices,fx=export_markets(market_factory=FakeYahoo,fx_factory=FakeEcb,max_workers=3)
-        self.assertEqual(manifest["instrument_count"],24)
+        self.assertEqual(manifest["instrument_count"],25)
         self.assertEqual(set(instruments()),set(prices) - {"proxy.gold_vt_36m_usd", "proxy.gold_vt_36m_eur"})
-        self.assertEqual(len(prices),26)
+        self.assertEqual(len(prices),27)
         self.assertEqual(set(fx),{"USD","GBP","CHF"})
         self.assertEqual(prices["vwce.de"]["trading_currency"],"EUR")
         self.assertEqual(prices["vwce.de"]["isin"],"IE00BK5BQT80")
@@ -73,8 +73,8 @@ class MarketExportTests(unittest.TestCase):
                 result=export_static(dest,series_ids=["bond.us.real_10y"],
                     provider_factory=FakeMacro,include_markets=True)
             self.assertEqual(result["series_count"],1)
-            self.assertEqual(result["market"]["instrument_count"],24)
-            self.assertEqual(len(list((dest/"markets").glob("*.json"))),27)
+            self.assertEqual(result["market"]["instrument_count"],25)
+            self.assertEqual(len(list((dest/"markets").glob("*.json"))),28)
             self.assertEqual(len(list((dest/"fx").glob("*.json"))),3)
             self.assertTrue((dest/"series"/"bond.us.real_10y.json").exists())
             index=json.loads((dest/"index.json").read_text())

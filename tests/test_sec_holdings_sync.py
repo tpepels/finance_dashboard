@@ -105,8 +105,9 @@ class SecSyncTests(unittest.TestCase):
         urls = []
         def handler(request):
             urls.append(str(request.url))
-            series = ("S000022482" if "857489" in str(request.url)
-                      else "S000002564")
+            url = str(request.url)
+            series = ("S000022482" if "857489" in url else
+                      "S000021461" if "1100663" in url else "S000002564")
             return httpx.Response(200, text=(
                 '<html><a href="primary_doc.html">HTML</a>'
                 '<a href="primary_doc.xml">XML</a>'
@@ -117,11 +118,59 @@ class SecSyncTests(unittest.TestCase):
                     config=Path(tmp)/"nonexistent.json",
                     user_agent="Research contact@example.org", client=client)
         self.assertEqual(result["status"],"ready")
-        self.assertEqual(result["requests"],2)
-        self.assertEqual(len(urls),2)
+        self.assertEqual(result["requests"],3)
+        self.assertEqual(len(urls),3)
         self.assertTrue(all(url.endswith("-index.htm") for url in urls))
         self.assertTrue(all(x["xml_filename"] == "primary_doc.xml"
                             for x in result["funds"]))
+
+    def test_large_trust_series_feed_lists_only_that_series_filings(self):
+        """iShares Trust files hundreds of series; the series feed replaces a capped trust-wide scan."""
+        mapping = {"instrument_id":"vt","cik":"1234567","series_id":"S000000001",
+                   "filing_discovery":"series_feed"}
+        def feed(cik):
+            return ('<?xml version="1.0" encoding="ISO-8859-1" ?><feed xmlns="http://www.w3.org/2005/Atom">'
+                    '<company-info><cik>' + cik + '</cik></company-info>'
+                    '<entry><content type="text/xml"><accession-number>' + ACC + '</accession-number>'
+                    '<filing-date>2026-05-21</filing-date><filing-type>NPORT-P</filing-type></content>'
+                    '<updated>2026-05-21T12:59:42-04:00</updated></entry></feed>').encode()
+        for cik, expected in (("0001234567", "complete"), ("0007654321", None)):
+            urls = []
+            def handler(request):
+                url = str(request.url)
+                urls.append(url)
+                if "browse-edgar" in url:
+                    self.assertIn("CIK=S000000001", url)
+                    self.assertIn("type=NPORT-P", url)
+                    return httpx.Response(200, content=feed(cik))
+                if url.endswith("-index.htm"):
+                    return httpx.Response(200,text=(
+                        '<html><a href="primary_doc.xml">XML</a><span>S000000001</span></html>'))
+                if url.endswith("primary_doc.xml"):
+                    return httpx.Response(200,content=XML)
+                return httpx.Response(404)
+            with TemporaryDirectory() as tmp, httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                if expected is None:
+                    with self.assertRaises(HoldingsError):
+                        import_fund(mapping, client=client, root=Path(tmp), max_filings=1)
+                    continue
+                result = import_fund(mapping, client=client, root=Path(tmp), max_filings=1)
+                self.assertEqual(result["status"], expected)
+                self.assertEqual(result["source_candidates_found"], 1)
+                self.assertFalse(any("data.sec.gov" in url for url in urls))
+                self.assertEqual(len(list_holdings(Path(tmp), "vt", asof=date(2026,5,24))["records"]), 1)
+
+    def test_filing_discovery_mode_is_validated(self):
+        with TemporaryDirectory() as tmp:
+            config = Path(tmp) / "sec_funds.json"
+            for mode, ok in (("series_feed", True), ("submissions", True), ("guess", False)):
+                config.write_text(json.dumps([{"instrument_id":"vt","cik":"1234567",
+                                               "series_id":"S000000001","filing_discovery":mode}]))
+                if ok:
+                    self.assertEqual(read_verified_config(config)[0]["filing_discovery"], mode)
+                else:
+                    with self.assertRaises(HoldingsError):
+                        read_verified_config(config)
 
     def test_html_primary_document_resolves_sec_index_xml_without_guessing(self):
         """Official SEC indexes commonly list HTML primary plus XML sibling."""
@@ -274,9 +323,9 @@ class SecSyncTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             mappings = read_verified_config(Path(tmp)/"not-configured.json")
         self.assertEqual({item["instrument_id"] for item in mappings},
-                         {"vt", "bnd"})
+                         {"vt", "bnd", "acwi"})
         self.assertEqual({item["series_id"] for item in mappings},
-                         {"S000022482", "S000002564"})
+                         {"S000022482", "S000002564", "S000021461"})
         self.assertTrue(all("www.sec.gov/Archives/" in url
                             for url in VERIFICATION_FILINGS.values()))
 

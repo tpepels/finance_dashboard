@@ -51,14 +51,14 @@ class SourceCoverageTests(unittest.TestCase):
         with patch.dict(os.environ, {"FINANCE_AUTO_REFRESH":"1", "FINANCE_INCLUDE_MARKETS":"0"}):
             report = build_coverage(self.engine, self.catalog, self.registry, asof=date(2026, 11, 3))
         self.assertEqual(report["summary"]["macro"]["total"], len(self.catalog))
-        self.assertEqual(report["summary"]["markets"]["total"], 24)
+        self.assertEqual(report["summary"]["markets"]["total"], 25)
         self.assertEqual(report["summary"]["fx"]["total"], 3)
         self.assertEqual(len(report["items"]),len(self.catalog)+len(self.registry)+3)
         self.assertEqual(len({(x["family"],x["id"]) for x in report["items"]}), len(self.catalog)+len(self.registry)+3)
         self.assertTrue(all(x["stored_periods"] == 0 for x in report["items"]))
         self.assertTrue(all(x["latest_source_date"] is None for x in report["items"]))
         self.assertEqual(report["summary"]["macro"]["not_ingested"], len(self.catalog))
-        self.assertEqual(report["summary"]["markets"]["collection_disabled"], 24)
+        self.assertEqual(report["summary"]["markets"]["collection_disabled"], 25)
         self.assertEqual(report["summary"]["fx"]["collection_disabled"], 3)
 
     def test_failed_macro_refresh_does_not_hide_retained_observations(self):

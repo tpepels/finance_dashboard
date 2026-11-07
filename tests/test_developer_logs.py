@@ -147,7 +147,7 @@ class DiagnosticJournalTests(unittest.TestCase):
                 self.assertIn(obj["configuration"]["fred_mode"],
                               ("authenticated_api","public_csv","public_table"))
                 self.assertIsInstance(obj["configuration"]["fred_key_present"],bool)
-                self.assertEqual(obj["coverage"]["registered"], len(load_documents()[0]["series"]) + 27)
+                self.assertEqual(obj["coverage"]["registered"], len(load_documents()[0]["series"]) + 28)
                 self.assertTrue(obj["issues"])
                 self.assertEqual(obj["events"][-1]["source_id"], "credit_gap.us.bis")
                 self.assertIsInstance(obj["jobs"], list)

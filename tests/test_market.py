@@ -44,7 +44,7 @@ def yahoo_fixture(symbol="VWCE.DE", currency="EUR", instrument_type="ETF"):
 class MarketAdapterTests(unittest.TestCase):
     def test_registry_eu_isin_and_currency_not_fund_base(self):
         registry=instruments()
-        self.assertEqual(len(registry),24)
+        self.assertEqual(len(registry),25)
         self.assertEqual(registry["vwce.de"]["isin"],"IE00BK5BQT80")
         self.assertEqual(registry["vwrl.as"]["isin"],"IE00B3RBWM25")
         self.assertEqual(registry["vwce.de"]["trading_currency"],"EUR")
@@ -199,7 +199,7 @@ class MarketPersistenceTests(unittest.TestCase):
         with TestClient(create_app(self.engine)) as client:
             registry=client.get("/api/markets")
             self.assertEqual(registry.status_code,200)
-            self.assertEqual(registry.json()["count"],24)
+            self.assertEqual(registry.json()["count"],25)
             self.assertEqual(client.get("/api/markets/vwce.de").json()["isin"],"IE00BK5BQT80")
             self.assertEqual(client.get("/api/markets/does-not-exist").status_code,404)
             query=client.post("/api/market/query",json={

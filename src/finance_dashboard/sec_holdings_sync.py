@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 import os
 from pathlib import Path
 import re
+import xml.etree.ElementTree as ET
 
 import httpx
 from .source_policy import managed_client, require_managed_client
@@ -26,6 +27,12 @@ from .sec_holdings import (parse_nport, store_snapshot, HoldingsError,
 
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/"
 EDGAR_URL = "https://www.sec.gov/Archives/edgar/data/"
+# EDGAR's company browse accepts a fund series ID and lists only that
+# series' filings, which a large multi-series trust needs (iShares Trust
+# files N-PORT for hundreds of series, beyond any bounded index scan).
+SERIES_FEED_URL = "https://www.sec.gov/cgi-bin/browse-edgar"
+ATOM = "{http://www.w3.org/2005/Atom}"
+FILING_DISCOVERY = ("submissions", "series_feed")
 CONFIG = Path(os.environ.get("FINANCE_SEC_FUND_MAPPING", "/data/holdings/sec_funds.json"))
 CIK = re.compile(r"^[0-9]{1,10}$")
 SERIES = re.compile(r"^S[0-9]{9}$")
@@ -41,10 +48,14 @@ PAGE = re.compile(r"^CIK[0-9]{10}-submissions-[0-9]+\.json$")
 VERIFIED_DEFAULT_FUNDS = (
     {"instrument_id": "vt", "cik": "857489", "series_id": "S000022482"},
     {"instrument_id": "bnd", "cik": "794105", "series_id": "S000002564"},
+    # iShares Trust (CIK 1100663) series S000021461 per SEC company_tickers_mf.json.
+    {"instrument_id": "acwi", "cik": "1100663", "series_id": "S000021461",
+     "filing_discovery": "series_feed"},
 )
 VERIFICATION_FILINGS = {
     "vt": "https://www.sec.gov/Archives/edgar/data/857489/000085748926000275/0000857489-26-000275-index.htm",
     "bnd": "https://www.sec.gov/Archives/edgar/data/794105/000079410525000080/0000794105-25-000080-index.htm",
+    "acwi": "https://www.sec.gov/Archives/edgar/data/1100663/000100472626008801/0001004726-26-008801-index.htm",
 }
 
 
@@ -66,9 +77,12 @@ def read_verified_config(path: Path = CONFIG) -> list[dict]:
             or not CIK.fullmatch(cik) or not isinstance(series,str)
             or not SERIES.fullmatch(series)):
             raise HoldingsError("Unverified or inconsistent SEC CIK/series mapping")
+        discovery = row.get("filing_discovery", "submissions")
+        if discovery not in FILING_DISCOVERY:
+            raise HoldingsError("Unknown SEC filing discovery mode")
         ids.add(fund)
         result.append({"instrument_id":fund,"cik":str(int(cik)),
-                       "series_id":series})
+                       "series_id":series,"filing_discovery":discovery})
     return result
 
 
@@ -81,6 +95,34 @@ def _get_json(client: httpx.Client, url: str, evidence: list | None=None) -> dic
     if evidence is not None:
         evidence.append({"url":url,"body":response.content})
     return data
+
+
+def _series_feed_rows(client: httpx.Client, cik: str, series_id: str,
+                      evidence: list) -> list[dict]:
+    """The official series-filtered N-PORT listing, bound to the registrant."""
+    url = (SERIES_FEED_URL + "?action=getcompany&CIK=" + series_id +
+           "&type=NPORT-P&dateb=&owner=include&count=40&output=atom")
+    response = client.get(url, timeout=25)
+    response.raise_for_status()
+    try:
+        feed = ET.fromstring(response.content)
+    except ET.ParseError as exc:
+        raise HoldingsError("Malformed official SEC series filing feed") from exc
+    registrant = (feed.findtext(ATOM + "company-info/" + ATOM + "cik") or "").strip()
+    if not registrant.isdigit() or str(int(registrant)) != str(int(cik)):
+        raise HoldingsError("SEC registrant identity mismatch")
+    rows = []
+    for entry in feed.findall(ATOM + "entry"):
+        content = entry.find(ATOM + "content")
+        if content is None:
+            raise HoldingsError("SEC series filing feed entry incomplete")
+        rows.append({"accession": (content.findtext(ATOM + "accession-number") or "").strip(),
+                     "form": (content.findtext(ATOM + "filing-type") or "").strip(),
+                     "date": (content.findtext(ATOM + "filing-date") or "").strip(),
+                     "document": "",
+                     "acceptance": (entry.findtext(ATOM + "updated") or "").strip()})
+    evidence.append({"url": url, "body": response.content, "suffix": "atom"})
+    return rows
 
 
 def _rows(metadata: dict) -> list[dict]:
@@ -196,19 +238,23 @@ def import_fund(mapping: dict, *, client: httpx.Client,
     cik = mapping["cik"]
     expected = mapping["series_id"]
     metadata_responses=[]
-    base=_get_json(client,SUBMISSIONS_URL+f"CIK{int(cik):010d}.json", metadata_responses)
-    if str(int(base.get("cik","0"))) != str(int(cik)):
-        raise HoldingsError("SEC registrant identity mismatch")
-    rows = _rows(base)
-    # SEC may offload historical submissions into separately named page JSON.
-    for page in base.get("filings",{}).get("files",[]):
-        name = page.get("name","")
-        if not PAGE.fullmatch(name):
-            continue
-        if page.get("filingTo","9999-12-31") < earliest.isoformat():
-            continue
-        payload=_get_json(client,SUBMISSIONS_URL+name, metadata_responses)
-        rows.extend(_rows(payload))
+    series_feed = mapping.get("filing_discovery") == "series_feed"
+    if series_feed:
+        rows = _series_feed_rows(client, cik, expected, metadata_responses)
+    else:
+        base=_get_json(client,SUBMISSIONS_URL+f"CIK{int(cik):010d}.json", metadata_responses)
+        if str(int(base.get("cik","0"))) != str(int(cik)):
+            raise HoldingsError("SEC registrant identity mismatch")
+        rows = _rows(base)
+        # SEC may offload historical submissions into separately named page JSON.
+        for page in base.get("filings",{}).get("files",[]):
+            name = page.get("name","")
+            if not PAGE.fullmatch(name):
+                continue
+            if page.get("filingTo","9999-12-31") < earliest.isoformat():
+                continue
+            payload=_get_json(client,SUBMISSIONS_URL+name, metadata_responses)
+            rows.extend(_rows(payload))
 
     candidates = []
     seen = set()
@@ -368,7 +414,7 @@ def import_fund(mapping: dict, *, client: httpx.Client,
         "first_error_reason": first_error_reason,
         "halted_reason": stopped_reason,
         "http_status": status_code if stopped_reason else None,
-        "filing_source": SUBMISSIONS_URL,
+        "filing_source": SERIES_FEED_URL if series_feed else SUBMISSIONS_URL,
         "lookback_from": earliest.isoformat(),
         "note": ("Matching source XML is checked against official fund series and "
                  "original SEC accession; filingDate+2 days is a conservative "
