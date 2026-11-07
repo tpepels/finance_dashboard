@@ -1,0 +1,75 @@
+{
+  "oecd_matched_value_added": {
+    "description": "Original OECD same-industry real/nominal gross value added for the international method.",
+    "expected": {
+      "frequency": "A",
+      "population": "Declared country-industry scope",
+      "concept": "Matched industry gross value added"
+    },
+    "publisher_candidates": [
+      {
+        "publisher": "OECD",
+        "dataset": "OECD_STAN_2025",
+        "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+        "potential_original_measure": "gross value added (published nominal and volume components)",
+        "status": "unverified_candidate",
+        "required_original_checks": "Establish original STAN GVA measurement, industry classification, current/volume price basis, currency, same years and original revision metadata."
+      }
+    ]
+  },
+  "oecd_matched_hours": {
+    "description": "Original OECD total hours worked for the identical country-industry scope.",
+    "expected": {
+      "frequency": "A",
+      "population": "Same country-industry including defined self-employment",
+      "concept": "Total hours worked"
+    },
+    "publisher_candidates": [
+      {
+        "publisher": "OECD",
+        "dataset": "OECD_STAN_2025",
+        "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+        "potential_original_measure": "annual hours worked (employees and self-employed where published)",
+        "status": "unverified_candidate",
+        "required_original_checks": "Establish matching industry scope, hours units, employee/proprietor perimeter and aligned periods before comparing output per hour."
+      }
+    ]
+  },
+  "oecd_matched_compensation": {
+    "description": "Original OECD employee-plus-imputed-self-employed compensation for the identical scope.",
+    "expected": {
+      "frequency": "A",
+      "population": "Same country-industry",
+      "concept": "Total labour compensation with documented imputation"
+    },
+    "publisher_candidates": [
+      {
+        "publisher": "OECD",
+        "dataset": "OECD_PRODUCTIVITY_2",
+        "source_url": "https://data-explorer.oecd.org/vis?df%5Bag%5D=OECD.SDD.TPS&df%5Bid%5D=DSD_PDB%40DF_PDB&df%5Bvs%5D=2.0",
+        "potential_original_measure": "labour compensation, including any imputed self-employed component",
+        "status": "unverified_candidate",
+        "required_original_checks": "Verify whether publisher reports/imputes self-employed labour compensation for the exact same industry, year and hours perimeter; employee-only pay is insufficient."
+      }
+    ]
+  },
+  "oecd_matched_output_deflator": {
+    "description": "Original OECD same-industry value-added deflator; a CPI measure is a distinct question.",
+    "expected": {
+      "frequency": "A",
+      "unit": "index",
+      "population": "Same country-industry",
+      "concept": "Industry value-added price deflator"
+    },
+    "publisher_candidates": [
+      {
+        "publisher": "OECD",
+        "dataset": "OECD_STAN_2025",
+        "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
+        "potential_original_measure": "same-industry value-added volume and current-price basis for deflator",
+        "status": "unverified_candidate",
+        "required_original_checks": "Verify explicit original implicit VA deflator or a documented same-release current/volume identity, chain-linking and common index reference; do not use CPI."
+      }
+    ]
+  }
+}

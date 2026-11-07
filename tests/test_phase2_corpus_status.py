@@ -34,7 +34,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         output = format_inventory(self.report)
         self.assertLess(len(output.splitlines()), 40)
         self.assertIn("NOT EVALUATED", output)
-        self.assertIn("L01: oecd_matched_value_added", output)
+        self.assertNotIn("L01: oecd_matched_value_added", output)
         self.assertIn("V03: regional_trailing_pe", output)
         self.assertNotIn('"decision": "blocked"', output)
         full = format_inventory(self.report, details=True)
@@ -42,7 +42,9 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertIn("P05: scalar", full)
 
     def test_unverified_oecd_candidates_cover_fourteen_original_l01_l03_roles_without_binding(self):
-        r = self.report
+        self.assertEqual(self.report["unverified_source_candidate_roles"], 0)
+        r = build_inventory(corpus_counts.with_unbound_l01_candidates(load_research_corpus()),
+                            load_documents()[0]["series"])
         self.assertEqual(r["unverified_source_candidate_roles"], 4)
         self.assertEqual({item["id"] for item in r["analyses_with_unverified_candidates"]},
                          {"L01"})
@@ -59,7 +61,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertNotIn("L03/net_fixed_capital", output)
         self.assertIn("L01/oecd_matched_hours", output)
         self.assertIn("not mapped, fetched or scientifically verified", output)
-        self.assertEqual(r["scalar_bound_roles"], corpus_counts.BOUND_SCALAR_ROLES)
+        self.assertEqual(r["scalar_bound_roles"], corpus_counts.SCALAR_ROLES - corpus_counts.UNBOUND_WITH_L01_LEADS)
         self.assertFalse(r["empirical_readiness_evaluated"])
 
     def test_machine_readable_mode_does_not_invent_data_evidence(self):

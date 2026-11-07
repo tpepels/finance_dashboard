@@ -394,6 +394,19 @@ def oecd_nfc_key(country: str, transaction: str) -> str:
     return f"A.{country}.S11.S1.{OECD_NFC_TRANSACTIONS[transaction]}.{transaction}._Z._Z.XDC.S.V.N.T0800"
 
 
+def fetch_euklems(self, series_id, start, item, key):
+    """One EU KLEMS 2025 total-economy variable from its publisher workbook."""
+    from .euklems import euklems_url, parse_euklems_workbook
+    try:
+        url = euklems_url(key)
+    except ValueError:
+        raise SourceUnavailable("Unapproved EU KLEMS series") from None
+    response = self._get(url)
+    # The full workbook is always fetched; a start bound only trims parsing.
+    return FetchedSeries(series_id, str(response.request.url), None,
+                         parse_euklems_workbook(response.content, key, start))
+
+
 def fetch_oecd_nfc_accounts(self, series_id, start, item, key):
     """Validate and fetch one OECD S11 transaction (Table 14) or net stock (Table 9B)."""
     country, _, transaction = key.partition("/")

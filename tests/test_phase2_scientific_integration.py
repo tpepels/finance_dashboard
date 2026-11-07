@@ -46,7 +46,9 @@ class CompleteResearchSourceMatrixTests(unittest.TestCase):
         self.assertTrue(all(not row["exact_scalar_series_bound"]
                             for row in all_rows))
         self.assertTrue(all(row["expected"] for row in all_rows))
-        self.assertTrue(any(row["publisher_candidates"] for row in all_rows))
+        leads = unbound_original_source_discovery(
+            corpus_counts.with_unbound_l01_candidates(self.document), self.catalog, {})["role_candidates"]
+        self.assertTrue(any(row["publisher_candidates"] for row in leads))
         self.assertTrue(any(not row["publisher_candidates"] for row in all_rows))
         summary = concise_unbound_discovery(result)
         self.assertEqual(len(summary["outstanding_roles"]), corpus_counts.UNBOUND_SCALAR_ROLES)

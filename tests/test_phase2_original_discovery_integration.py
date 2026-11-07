@@ -59,7 +59,7 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
             "historical_candidates_present": ["B2N_B3_N"],
         }
         report = unbound_original_source_discovery(
-            self.document, self.catalog, native,
+            corpus_counts.with_unbound_l01_candidates(self.document), self.catalog, native,
             stan_readiness=readiness, stan_structure=metadata)
         # L02's surplus is bound to OECD sector accounts; STAN remains a candidate for L01's industry match.
         source = next(
@@ -76,12 +76,12 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
         self.assertFalse(source["official_source_measure_verified_for_role"])
 
         summary = concise_unbound_discovery(report)
-        self.assertEqual(summary["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
+        self.assertEqual(summary["unbound_scalar_roles"], corpus_counts.UNBOUND_WITH_L01_LEADS)
         self.assertGreater(sum(r["original_native_observed_scope_count"]
                               for r in summary["outstanding_roles"]), 0)
 
         evaluated = research_corpus_report(
-            self.document, series_registry=self.catalog,
+            corpus_counts.with_unbound_l01_candidates(self.document), series_registry=self.catalog,
             unbound_source_evidence=report)
         role = next(
             r for a in evaluated["analyses"] if a["id"] == "L01"

@@ -65,6 +65,8 @@ _REGISTRATIONS = (
     ProviderRegistration("WORLD_BANK_PINK_SHEET", "fetch_world_bank_pink_sheet", "response", "full"),
     ProviderRegistration("UN_SDG", "fetch_un_sdg", "response", "windowed"),
     ProviderRegistration("SHILLER", "fetch_shiller", "response", "full"),
+    ProviderRegistration("EUKLEMS", "fetch_euklems", "response", "full",
+                         request_origin="https://dl.dropboxusercontent.com/"),
     ProviderRegistration("IMF_DATAMAPPER", "fetch_imf_datamapper", "response", "full"),
 )
 PROVIDER_REGISTRY = {entry.code: entry for entry in _REGISTRATIONS}

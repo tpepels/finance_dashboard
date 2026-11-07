@@ -17,7 +17,7 @@ class ProviderRegistryTests(unittest.TestCase):
         mapped = {row["provider"] for row in load_documents()[0]["series"]
                   if row["status"] == "mapped"}
         self.assertFalse(mapped - PROVIDER_CODES)
-        self.assertEqual(len(PROVIDER_CODES), 40)
+        self.assertEqual(len(PROVIDER_CODES), 41)
         for code, registration in PROVIDER_REGISTRY.items():
             self.assertTrue(callable(getattr(provider_adapters, registration.handler, None)))
             self.assertIn(registration.acquisition,
@@ -29,9 +29,11 @@ class ProviderRegistryTests(unittest.TestCase):
         from finance_dashboard.oecd_cli import OECD_CLI_ROOT
         from finance_dashboard.source_policy_registry import PolicyRegistry
         from finance_dashboard.remaining_sources import MSCI_LEVELS_URL
+        from finance_dashboard import euklems
         roots = {"OECD_CLI": (OECD_CLI_ROOT, "oecd-sdmx"),
                  "OECD_NFC_ACCOUNTS": (provider_adapters.OECD_TABLE14_ROOT, "oecd-sdmx"),
-                 "MSCI_NETR": (MSCI_LEVELS_URL, "msci-restricted-api")}
+                 "MSCI_NETR": (MSCI_LEVELS_URL, "msci-restricted-api"),
+                 "EUKLEMS": (euklems.EUKLEMS_ROOT, "euklems-dropbox")}
         policies = PolicyRegistry()
         declared = {code for code, entry in PROVIDER_REGISTRY.items() if entry.request_origin}
         self.assertEqual(declared, set(roots))

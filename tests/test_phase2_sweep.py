@@ -313,19 +313,23 @@ class ScientificWorkplanTests(unittest.TestCase):
             cls.document, series_registry=cls.registry)
 
     def test_all_structured_and_unbound_scalar_roles_are_reported_not_dropped(self):
-        work = phase2_role_workplan(self.report)
-        expected = self.report["role_resolution_summary"]
+        self.assertEqual(phase2_role_workplan(self.report)["unbound_scalar_roles_with_publisher_candidates"], 0)
+        # The candidate workstreams are exercised on L01's original OECD leads.
+        report = research_corpus_report(corpus_counts.with_unbound_l01_candidates(self.document),
+                                        series_registry=self.registry)
+        work = phase2_role_workplan(report)
+        expected = report["role_resolution_summary"]
         self.assertEqual(work["total_original_roles"], expected["role_count"])
         self.assertEqual(work["structured_roles"], expected["structured_roles"])
         self.assertEqual(work["unbound_scalar_roles"],
                          expected["unbound_scalar_roles"])
         self.assertEqual(work["total_original_roles"], corpus_counts.ROLES)
         self.assertEqual(work["structured_roles"], corpus_counts.STRUCTURED_ROLES)
-        self.assertEqual(work["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
+        self.assertEqual(work["unbound_scalar_roles"], corpus_counts.UNBOUND_WITH_L01_LEADS)
         self.assertGreater(work["unbound_scalar_roles_with_publisher_candidates"], 0)
         self.assertEqual(
             work["unbound_scalar_roles_with_publisher_candidates"] +
-            work["unbound_scalar_roles_without_publisher_candidates"], corpus_counts.UNBOUND_SCALAR_ROLES)
+            work["unbound_scalar_roles_without_publisher_candidates"], corpus_counts.UNBOUND_WITH_L01_LEADS)
         self.assertTrue(any(
             x["dataset"] == "OECD_STAN_2025"
             for x in work["publisher_original_candidate_groups"]))

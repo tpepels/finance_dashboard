@@ -47,7 +47,7 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
                    for index,source in enumerate(sources)]
         source=sources[-1]
         raw,data_hash=originals[-1]
-        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET'} else None
+        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS'} else None
         dimensions={}
         if provider == "FRED":
             values = _fred(body, definition, source["url"])
@@ -75,6 +75,8 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
             values,dimensions = _oecd_cli(body,definition,source['url'])
         elif provider == 'IMF_BOP_IIP':
             values,dimensions = _imf_bop_iip(raw,definition,source['url'])
+        elif provider == 'EUKLEMS':
+            values,dimensions = _euklems(raw,definition,source['url'])
         elif provider == 'FDIC_BANKFIND':
             values,dimensions = _fdic(json.loads(body,parse_float=Decimal),definition,source['url'])
         else:
@@ -109,6 +111,35 @@ def _native_period(label, frequency):
             or (frequency == "M" and day.day != 1) or day > date.today()):
         raise EvidenceError("source_period_invalid")
     return day
+
+
+def _euklems(raw, definition, url):
+    """Read one TOT row of the variable's own sheet, keyed by its header labels."""
+    from python_calamine import CalamineWorkbook
+    from .euklems import EUKLEMS_FILES, EUKLEMS_ROOT, EUKLEMS_VARIABLES
+    from .source_reconciliation import EvidenceError
+    geo, industry, variable = definition['source_key'].split('/')
+    if (geo not in EUKLEMS_FILES or industry != 'TOT' or variable not in EUKLEMS_VARIABLES
+            or url != EUKLEMS_ROOT + EUKLEMS_FILES[geo][EUKLEMS_VARIABLES[variable]]
+            or definition['frequency'] != 'A'):
+        raise EvidenceError('source_identity_mismatch')
+    try:
+        sheet = CalamineWorkbook.from_filelike(io.BytesIO(raw)).get_sheet_by_name(variable).to_python()
+    except Exception:  # calamine raises its own parse errors for damaged workbooks
+        raise EvidenceError('source_schema_invalid') from None
+    labels = [str(cell).strip() for cell in sheet[0]]
+    records = [dict(zip(labels, row)) for row in sheet[1:]]
+    selected = [row for row in records if str(row.get('nace_r2_code', '')).strip() == industry]
+    if (len(selected) != 1 or str(selected[0].get('geo_code', '')).strip() != geo
+            or str(selected[0].get('var', '')).strip() != variable):
+        raise EvidenceError('source_identity_mismatch')
+    values, seen = {}, set()
+    for label, cell in selected[0].items():
+        year = label[:-2] if label.endswith('.0') else label
+        if len(year) == 4 and year.isdigit():
+            _add(values, seen, date(int(year), 1, 1), None if cell in ('', None) else repr(cell) if isinstance(cell, float) else cell)
+    if variable != 'VA_PI' and any(value < 0 for value in values.values()): raise EvidenceError('source_value_invalid')
+    return values, {'source_native_variable': variable, 'source_industry': industry, 'source_geo_code': geo}
 
 
 def _add(values, seen, period, raw):

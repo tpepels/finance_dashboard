@@ -2662,96 +2662,99 @@
           },
           {
             "role": "oecd_matched_value_added",
-            "description": "Original OECD same-industry real/nominal gross value added for the international method.",
-            "series_ids": [],
+            "description": "EU KLEMS & INTANProd 2025 total-economy gross value added at current prices (VA_CP); its price index binds the deflator role.",
+            "series_ids": [
+              "labour.us.euklems_value_added",
+              "labour.de.euklems_value_added",
+              "labour.fr.euklems_value_added",
+              "labour.pt.euklems_value_added",
+              "labour.gb.euklems_value_added",
+              "labour.it.euklems_value_added",
+              "labour.es.euklems_value_added",
+              "labour.nl.euklems_value_added"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Declared country-industry scope",
+              "unit": "million_local_currency",
+              "geography": ["USA", "DEU", "FRA", "PRT", "GBR", "ITA", "ESP", "NLD"],
+              "population": "Total economy (EU KLEMS TOT), one matched scope across the four inputs",
               "concept": "Matched industry gross value added"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "gross value added (published nominal and volume components)",
-                "status": "unverified_candidate",
-                "required_original_checks": "Establish original STAN GVA measurement, industry classification, current/volume price basis, currency, same years and original revision metadata."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "oecd_matched_hours",
-            "description": "Original OECD total hours worked for the identical country-industry scope.",
-            "series_ids": [],
+            "description": "EU KLEMS & INTANProd 2025 total-economy hours worked by persons engaged, including the self-employed (H_EMP).",
+            "series_ids": [
+              "labour.us.euklems_hours_worked",
+              "labour.de.euklems_hours_worked",
+              "labour.fr.euklems_hours_worked",
+              "labour.pt.euklems_hours_worked",
+              "labour.gb.euklems_hours_worked",
+              "labour.it.euklems_hours_worked",
+              "labour.es.euklems_hours_worked",
+              "labour.nl.euklems_hours_worked"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same country-industry including defined self-employment",
+              "unit": "thousand_hours",
+              "geography": ["USA", "DEU", "FRA", "PRT", "GBR", "ITA", "ESP", "NLD"],
+              "population": "Total economy (EU KLEMS TOT), one matched scope across the four inputs",
               "concept": "Total hours worked"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "annual hours worked (employees and self-employed where published)",
-                "status": "unverified_candidate",
-                "required_original_checks": "Establish matching industry scope, hours units, employee/proprietor perimeter and aligned periods before comparing output per hour."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "oecd_matched_compensation",
-            "description": "Original OECD employee-plus-imputed-self-employed compensation for the identical scope.",
-            "series_ids": [],
+            "description": "EU KLEMS & INTANProd 2025 total-economy labour compensation including the imputed self-employed share (LAB, growth accounts).",
+            "series_ids": [
+              "labour.us.euklems_labour_compensation",
+              "labour.de.euklems_labour_compensation",
+              "labour.fr.euklems_labour_compensation",
+              "labour.pt.euklems_labour_compensation",
+              "labour.gb.euklems_labour_compensation",
+              "labour.it.euklems_labour_compensation",
+              "labour.es.euklems_labour_compensation",
+              "labour.nl.euklems_labour_compensation"
+            ],
             "expected": {
               "frequency": "A",
-              "population": "Same country-industry",
+              "unit": "million_local_currency",
+              "geography": ["USA", "DEU", "FRA", "PRT", "GBR", "ITA", "ESP", "NLD"],
+              "population": "Total economy (EU KLEMS TOT), one matched scope across the four inputs",
               "concept": "Total labour compensation with documented imputation"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_PRODUCTIVITY_2",
-                "source_url": "https://data-explorer.oecd.org/vis?df%5Bag%5D=OECD.SDD.TPS&df%5Bid%5D=DSD_PDB%40DF_PDB&df%5Bvs%5D=2.0",
-                "potential_original_measure": "labour compensation, including any imputed self-employed component",
-                "status": "unverified_candidate",
-                "required_original_checks": "Verify whether publisher reports/imputes self-employed labour compensation for the exact same industry, year and hours perimeter; employee-only pay is insufficient."
-              }
-            ]
+            "artifact_ids": []
           },
           {
             "role": "oecd_matched_output_deflator",
-            "description": "Original OECD same-industry value-added deflator; a CPI measure is a distinct question.",
-            "series_ids": [],
+            "description": "EU KLEMS & INTANProd 2025 total-economy value-added price index (VA_PI, 2015=100); a CPI measure is a distinct question.",
+            "series_ids": [
+              "labour.us.euklems_value_added_price_index",
+              "labour.de.euklems_value_added_price_index",
+              "labour.fr.euklems_value_added_price_index",
+              "labour.pt.euklems_value_added_price_index",
+              "labour.gb.euklems_value_added_price_index",
+              "labour.it.euklems_value_added_price_index",
+              "labour.es.euklems_value_added_price_index",
+              "labour.nl.euklems_value_added_price_index"
+            ],
             "expected": {
               "frequency": "A",
               "unit": "index",
-              "population": "Same country-industry",
+              "geography": ["USA", "DEU", "FRA", "PRT", "GBR", "ITA", "ESP", "NLD"],
+              "population": "Total economy (EU KLEMS TOT), one matched scope across the four inputs",
               "concept": "Industry value-added price deflator"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "publisher_candidates": [
-              {
-                "publisher": "OECD",
-                "dataset": "OECD_STAN_2025",
-                "source_url": "https://www.oecd.org/en/data/datasets/structural-analysis-database.html",
-                "potential_original_measure": "same-industry value-added volume and current-price basis for deflator",
-                "status": "unverified_candidate",
-                "required_original_checks": "Verify explicit original implicit VA deflator or a documented same-release current/volume identity, chain-linking and common index reference; do not use CPI."
-              }
-            ]
+            "artifact_ids": []
           }
         ],
         "variants": [

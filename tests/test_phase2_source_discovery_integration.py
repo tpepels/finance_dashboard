@@ -39,12 +39,12 @@ class NativeOriginalDiscoveryIntegrationTests(unittest.TestCase):
             }],
         }
         candidates = unbound_original_source_discovery(
-            self.document, self.catalog,
+            corpus_counts.with_unbound_l01_candidates(self.document), self.catalog,
             {"stan": {"original_source_hash_verified": True}},
             stan_readiness=readiness,
             stan_structure={"status": "verified_publisher_structure",
                             "historical_candidates_present": ["B2N_B3_N"]})
-        self.assertEqual(candidates["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
+        self.assertEqual(candidates["unbound_scalar_roles"], corpus_counts.UNBOUND_WITH_L01_LEADS)
         d1 = next(
             row for row in candidates["role_candidates"]
             if row["analysis_id"] == "L01" and

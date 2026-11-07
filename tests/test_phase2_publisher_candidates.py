@@ -2,6 +2,8 @@
 from copy import deepcopy
 import unittest
 
+import corpus_counts
+
 from finance_dashboard.catalog import load_documents
 from finance_dashboard.research_corpus import load_research_corpus, validate_research_corpus
 from finance_dashboard.research_readiness import ARTIFACT_IDS
@@ -10,7 +12,8 @@ from finance_dashboard.research_readiness import ARTIFACT_IDS
 class PublisherCandidatesTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.document = load_research_corpus()
+        # L01 before EU KLEMS bound it: the mechanism's real OECD leads.
+        cls.document = corpus_counts.with_unbound_l01_candidates(load_research_corpus())
         cls.registry = load_documents()[0]["series"]
 
     def test_fourteen_source_leads_are_unverified_and_original_roles_unbound(self):
@@ -26,8 +29,8 @@ class PublisherCandidatesTests(unittest.TestCase):
                         self.assertEqual(candidate["status"], "unverified_candidate")
                         self.assertTrue(candidate["source_url"].startswith("https://"))
                         self.assertIn("required_original_checks", candidate)
-        # L02/L03 flows and L03's net capital stock are bound to OECD sector
-        # accounts (Tables 14 and 9B); only L01's industry matches remain leads.
+        # L02/L03 are bound to OECD sector accounts (Tables 14 and 9B); these
+        # are L01's original OECD leads, since replaced by EU KLEMS bindings.
         self.assertEqual(len(roles), 4)
         self.assertEqual({a for a, _ in roles}, {"L01"})
         l03 = next(a for a in self.document["analyses"] if a["id"] == "L03")
