@@ -28,19 +28,22 @@ class ProviderRegistryTests(unittest.TestCase):
         """Preflight paces the API host, not the descriptive catalogue page."""
         from finance_dashboard.oecd_cli import OECD_CLI_ROOT
         from finance_dashboard.source_policy_registry import PolicyRegistry
-        roots = {"OECD_CLI": OECD_CLI_ROOT,
-                 "OECD_NFC_ACCOUNTS": provider_adapters.OECD_TABLE14_ROOT}
+        from finance_dashboard.remaining_sources import MSCI_LEVELS_URL
+        roots = {"OECD_CLI": (OECD_CLI_ROOT, "oecd-sdmx"),
+                 "OECD_NFC_ACCOUNTS": (provider_adapters.OECD_TABLE14_ROOT, "oecd-sdmx"),
+                 "MSCI_NETR": (MSCI_LEVELS_URL, "msci-restricted-api")}
         policies = PolicyRegistry()
-        for code, root in roots.items():
+        declared = {code for code, entry in PROVIDER_REGISTRY.items() if entry.request_origin}
+        self.assertEqual(declared, set(roots))
+        series = load_documents()[0]["series"]
+        for code, (root, policy_id) in roots.items():
             origin = PROVIDER_REGISTRY[code].request_origin
             self.assertTrue(root.startswith(origin), code)
-            self.assertEqual(policies.for_url(origin).id, "oecd-sdmx")
-        series = [row for row in load_documents()[0]["series"]
-                  if row["provider"] in roots]
-        # The descriptive pages are on another policy; this is why the origin
-        # must be declared.
-        self.assertTrue(any(policies.for_url(row["source_url"]).id != "oecd-sdmx"
-                            for row in series))
+            self.assertEqual(policies.for_url(origin).id, policy_id)
+            # The descriptive pages are on another policy; this is why the
+            # origin must be declared.
+            self.assertTrue(any(policies.for_url(row["source_url"]).id != policy_id
+                                for row in series if row["provider"] == code), code)
 
     def test_two_step_shiller_fetch_fits_its_publisher_policy(self):
         """Homepage link discovery plus workbook download pass one real gate.

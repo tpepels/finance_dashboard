@@ -13,7 +13,12 @@ from .source_policy_types import Policy, PolicyViolation, PolicyDeferred
 from .source_policy_registry import PolicyRegistry
 
 DEFAULT_LEDGER = Path("/data/source-policy/rate-ledger.sqlite3")
-DEFAULT_MAX_WAIT_SECONDS = 3.0
+# Short pacing waits are slept inside one request reservation. Twenty seconds
+# covers several minimum spacings of the 4-6 s publishers, so a sweep and the
+# in-process refresh loop contending for one slot both proceed in turn. Waiting
+# never exceeds a limit; multi-minute spacings, lease expiries and long
+# rolling windows still raise PolicyDeferred instead of blocking a thread.
+DEFAULT_MAX_WAIT_SECONDS = 20.0
 
 class SourcePolicyGate:
     """Atomic cross-process rolling-window reservations and publisher cooldowns.

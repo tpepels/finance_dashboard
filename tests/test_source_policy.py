@@ -293,6 +293,22 @@ class ShortWindowPacingTests(PolicyHarness):
         self.assertTrue(self.clock.sleeps)
         self.assertLess(sum(self.clock.sleeps), 3)
 
+    def test_contending_processes_take_turns_on_default_wait(self):
+        """A sweep and the refresh loop waking for one OECD slot both proceed."""
+        from finance_dashboard.source_policy_ledger import DEFAULT_MAX_WAIT_SECONDS
+        policy = self.registry.by_id["oecd-sdmx"]
+        sweep, refresh_loop = (SourcePolicyGate(
+            registry=self.registry, state_path=self.state, clock=self.clock,
+            sleep=self.clock.sleep) for _ in range(2))
+        self.assertEqual(sweep.max_wait_seconds, DEFAULT_MAX_WAIT_SECONDS)
+        refresh_loop.release(refresh_loop.reserve(policy), policy.id)
+        sweep.release(sweep.reserve(policy), policy.id)
+        self.assertEqual(self.clock.sleeps, [policy.rate["min_spacing_seconds"]])
+        long_spacing = self.registry.by_id["msci"]
+        sweep.release(sweep.reserve(long_spacing), long_spacing.id)
+        with self.assertRaises(PolicyDeferred):
+            refresh_loop.reserve(long_spacing)
+
     def test_long_rolling_window_still_raises(self):
         gate = self.gate(max_wait_seconds=3)
         policy = self.registry.by_id["fred-v1"]
