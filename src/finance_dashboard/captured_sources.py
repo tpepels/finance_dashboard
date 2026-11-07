@@ -64,7 +64,7 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
             values,dimensions = _shiller(raw,definition,originals[0][0].decode('utf-8-sig'),
                               sources[0]['url'],source['url'], return_metadata=True)
         elif provider == 'ECB':
-            values,dimensions = _ecb(body,definition,source['url'])
+            values,dimensions = _ecb(body,definition,source['url'],manifest.get('requested_from') if allow_subset else None)
         elif provider == 'FED_G17_DIFFUSION':
             values,dimensions = _g17_diffusion(body,definition,source['url'])
         elif provider == 'OFR_FSI':
@@ -282,7 +282,7 @@ _ECB_SERIES = {
 ECB_DATASETS = frozenset(item[0] for item in _ECB_SERIES.values())
 
 
-def _ecb(body,definition,url):
+def _ecb(body,definition,url,start=None):
     from .source_reconciliation import EvidenceError
     from urllib.parse import urlsplit,parse_qs
     parts=urlsplit(url)
@@ -292,7 +292,7 @@ def _ecb(body,definition,url):
     dataset,frequency,unit_name,dimensions,unit_codes,currency=_ECB_SERIES[key]
     if (parts.scheme!='https' or parts.netloc!='data-api.ecb.europa.eu'
             or parts.path!='/service/data/'+dataset+'/'+key[len(dataset)+1:]
-            or parse_qs(parts.query)!={'format':['csvdata']}
+            or parse_qs(parts.query)!={'format':['csvdata'],**({'startPeriod':[start]} if start else {})}
             or definition['frequency']!=frequency or definition['unit']!=unit_name):
         raise EvidenceError('source_identity_mismatch')
     rows=csv.DictReader(io.StringIO(body))

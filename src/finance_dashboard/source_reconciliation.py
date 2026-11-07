@@ -100,7 +100,12 @@ def _later_subset_manifests(parent, source_identity, after):
              if item[0] > after and isinstance(item[3], dict)
              and item[3].get("scope") == "requested_period_subset"
              and item[3].get("requested_from") is not None]
-    return sorted(later, key=lambda item: (item[0], item[4]))
+    # Repeated retrievals of identical content share one bundle; read it once,
+    # at its first observation.
+    unique = {}
+    for item in sorted(later, key=lambda item: (item[0], item[4])):
+        unique.setdefault(item[1], item)
+    return list(unique.values())
 
 
 def _receipt_candidates(parent, source_identity):

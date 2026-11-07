@@ -27,6 +27,16 @@ class EcbSeriesFamilyTests(unittest.TestCase):
         with self.assertRaises(EvidenceError):
             _ecb(body, {**definition, "source_key": "EXR.D.SEK.EUR.SP00.A"}, EXR_URL)
 
+    def test_windowed_capture_is_read_only_with_its_own_start(self):
+        definition = REG["fx.usd_per_eur.ecb"]
+        body = HEADER + "EXR.D.USD.EUR.SP00.A,D,USD,EUR,SP00,A,2026-11-06,1.0790,USD,US dollar/Euro\n"
+        windowed = EXR_URL + "&startPeriod=2026-11-01"
+        values, _ = _ecb(body, definition, windowed, "2026-11-01")
+        self.assertEqual(list(values.values()), [Decimal("1.0790")])
+        for url, start in ((windowed, None), (windowed, "2026-10-01"), (EXR_URL, "2026-11-01")):
+            with self.subTest(url=url, start=start), self.assertRaises(EvidenceError):
+                _ecb(body, definition, url, start)
+
     def test_new_series_are_registered_with_matching_units(self):
         for sid, unit, freq in (("fx.usd_per_eur.ecb", "currency_per_eur", "D"),
                                 ("prices.ea.hicp_index", "index", "M"),

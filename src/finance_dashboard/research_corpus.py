@@ -55,9 +55,18 @@ def load_research_corpus(root: Path = DEFAULT_ROOT) -> dict[str, Any]:
 
 
 def analysis_series_ids(analysis: dict) -> list[str]:
-    """Canonical input union, retaining explicitly separate contextual sources."""
+    """Canonical input union, retaining explicitly separate contextual sources.
+
+    A role's cited fallback is an input too: it must be acquired, reconciled
+    and gated like any other source before it can resolve the role.
+    """
     contract = analysis["comparison_contract"]
-    return sorted(set(analysis.get("context_series_ids", [])) | {
+    fallbacks = {
+        sid for role in contract["original_requirements"]
+        if isinstance(role.get("verified_unavailability"), dict)
+        and isinstance(role["verified_unavailability"].get("fallback"), dict)
+        for sid in role["verified_unavailability"]["fallback"].get("series_ids", [])}
+    return sorted(set(analysis.get("context_series_ids", [])) | fallbacks | {
         sid for binding in contract["original_requirements"] + contract["variants"]
         for sid in binding["series_ids"]})
 

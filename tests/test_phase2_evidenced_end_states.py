@@ -71,6 +71,19 @@ class EvidencedEndStateTests(unittest.TestCase):
         self.assertEqual(decision["decision"], "complete")
         self.assertEqual(decision["limitations"], result["limitations"])
 
+    def test_every_cited_fallback_is_an_acquired_and_reconciled_input(self):
+        from finance_dashboard.research_corpus import analysis_series_ids, load_research_corpus
+        cited = 0
+        for analysis in load_research_corpus()["analyses"]:
+            inputs = set(analysis_series_ids(analysis))
+            for role in analysis["comparison_contract"]["original_requirements"]:
+                unavailability = role.get("verified_unavailability")
+                if unavailability:
+                    cited += 1
+                    self.assertLessEqual(set(unavailability["fallback"]["series_ids"]), inputs,
+                                         (analysis["id"], role["role"]))
+        self.assertGreater(cited, 0)
+
     def test_missing_review_or_unverified_original_stays_incomplete(self):
         _, result = self.run_analysis([self.role(self.other)], [self.proof(self.other)], [self.panel(self.other)])
         gates = self.gates(result["requirements"][0])
