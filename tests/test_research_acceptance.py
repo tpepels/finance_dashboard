@@ -245,6 +245,36 @@ class ResearchAcceptanceTests(unittest.TestCase):
         self.assertEqual(earlier_role["original_artifact_evidence"]["available_years"], [2021])
         self.assertEqual(earlier_role["original_artifact_evidence"]["year"], 2021)
 
+    def test_full_publisher_history_resolves_matrix_roles_and_materiality_decides_failure(self):
+        g06 = next(row for row in self.document["analyses"] if row["id"] == "G06")
+        years = list(range(1995, 2023))
+        immaterial = {"material_accounting_passed": True, "bound_relative_to_node_gross_output": "0.001"}
+        matrix = {"status": "verified_full_history_original_matrices", "original_source_hash_verified": True,
+            "year": 2022, "accounting_passed": False, "materiality": immaterial,
+            "historical_matrices": [{"year": y, "original_source_hash_verified": True, "accounting_passed": False,
+                                     "publisher_direct_verified": True, "materiality": immaterial} for y in years],
+            "historical_coverage": {"verified_years": years, "missing_years": [], "full_history_verified": True,
+                                    "common_update_verified": True, "replica_only_years": []}}
+        result = analysis_acceptance(g06, self.by_id, {}, [], observations_checked=False,
+                                     artifact_evidence={"icio": matrix})
+        roles = {r["role"]: r for r in result["requirements"]}
+        for name in ("intermediate_transactions", "gross_output", "final_demand", "industry_value_added"):
+            self.assertEqual(roles[name]["state"], "accepted", name)
+            self.assertIn(name, result["comparison"]["covered_roles"])
+        self.assertEqual(result["scientific_failures"], [])
+        codes = {item["code"] for item in roles["gross_output"]["limitations"]}
+        self.assertIn("publisher_matrix_residuals_within_materiality", codes)
+        material = {"material_accounting_passed": False}
+        broken = {**matrix, "historical_matrices": [{**matrix["historical_matrices"][0], "materiality": material}]
+                  + matrix["historical_matrices"][1:]}
+        failed = analysis_acceptance(g06, self.by_id, {}, [], observations_checked=False,
+                                     artifact_evidence={"icio": broken})
+        self.assertEqual(failed["state"], "failed")
+        self.assertEqual(failed["scientific_failures"][0]["artifact"], "OECD_ICIO_2025_REGULAR_1995_PUBLISHER")
+        partial = analysis_acceptance(g06, self.by_id, {}, [], observations_checked=False, artifact_evidence={
+            "icio": {**matrix, "historical_coverage": {**matrix["historical_coverage"], "common_update_verified": False}}})
+        self.assertEqual({r["role"]: r for r in partial["requirements"]}["gross_output"]["state"], "incomplete")
+
     def test_original_tiva_discrepancies_are_visible_without_scalar_panel(self):
         g06 = next(row for row in self.document["analyses"] if row["id"] == "G06")
         diagnostic = {"beyond_existing_0_001pp_check": 9, "beyond_serialization_interval": 46,

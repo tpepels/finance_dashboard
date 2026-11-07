@@ -61,6 +61,46 @@ HISTORY_MATRICES = {
     2021: {"sha256": "9a5c161ff1625e841c5901218adcdba0a81b3ee5872c2180ba2cbbabfcba4694", "bytes": 88793390},
     2022: {"sha256": MATRIX_SHA256, "bytes": 90120552},
 }
+# Publisher-direct OECD 2025 regular archives (January 2026 update), downloaded
+# by the owner in a browser from the OECD ICIO page; the automated route is a
+# Cloudflare challenge. Archive and member bytes are pinned on receipt.
+PUBLISHER_ARCHIVES = {
+    "1995-2000_SML.zip": {"sha256": "3bfd5cb014bf3436e3435ad50c0e6b66039ad2f6c484e6e26fad0bc92ef4725b", "bytes": 110135258},
+    "2001-2005_SML.zip": {"sha256": "75015a66e7944e7377a5a08a02155a472517efe4e4a36b1116c7542f759f78f6", "bytes": 99391392},
+    "2006-2010_SML.zip": {"sha256": "e57685c00ad30b4353e1e7de24910ba70b181c5198c9dbb6d46eb349de76f35a", "bytes": 111587430},
+    "2011-2015_SML.zip": {"sha256": "d9025195bdb9a03278ba6403066cef2969cc30185a1b28117c9452994a203619", "bytes": 116134326},
+    "2016-2022_SML.zip": {"sha256": "46db55c45747e26dde5c1716d072b2aa74ace362a4424491ac646d2ab175befb", "bytes": 166241019},
+}
+PUBLISHER_MATRICES = {
+    1995: {"archive": "1995-2000_SML.zip", "member": "1995_SML.csv", "sha256": "aaf97e2b119b799be4a9a0fa510b77ac351f9810b1bee8f19468cf210603ae8d", "bytes": 76702208},
+    1996: {"archive": "1995-2000_SML.zip", "member": "1996_SML.csv", "sha256": "f6dc28604889f04e4399f9d66a483a6a9fb2db7d0aafb782fcaa579a2d65674a", "bytes": 78153862},
+    1997: {"archive": "1995-2000_SML.zip", "member": "1997_SML.csv", "sha256": "26d596ce232c69e2b6ae1f842d45e9305e35f8db152e02f0a93a948dc1191277", "bytes": 78606048},
+    1998: {"archive": "1995-2000_SML.zip", "member": "1998_SML.csv", "sha256": "2913a4080bfe0f3905beef5ee5e40896cad5bc6b82a79bf1b4a8b0a5358b13a6", "bytes": 78790602},
+    1999: {"archive": "1995-2000_SML.zip", "member": "1999_SML.csv", "sha256": "14a20790452855fcd82ae2a1f0a675106eea2392be7b0113487f7a234dc2328a", "bytes": 79033507},
+    2000: {"archive": "1995-2000_SML.zip", "member": "2000_SML.csv", "sha256": "1e0c554591ef867591ed37e8c93731d5d26eeea6f11926c6d52230f5674ddba7", "bytes": 79079811},
+    2001: {"archive": "2001-2005_SML.zip", "member": "2001_SML.csv", "sha256": "1ca99acbe8314df5356bb249dfebc5ed391d2230039075837202b5c6a0651c89", "bytes": 79654589},
+    2002: {"archive": "2001-2005_SML.zip", "member": "2002_SML.csv", "sha256": "00e15335c777406b9a0d78730eb5ee16b5c4e20e3b202cb049fcf295aa1e01a0", "bytes": 80353202},
+    2003: {"archive": "2001-2005_SML.zip", "member": "2003_SML.csv", "sha256": "9ab0494258eeb994f7b1997e40dd5235fd83157f9f7ec10bb697e6214b35063a", "bytes": 81134227},
+    2004: {"archive": "2001-2005_SML.zip", "member": "2004_SML.csv", "sha256": "5c00567fdc62bd1889271c41267090ca4b7ab7d4119eeeefac658491bc70e03b", "bytes": 82171405},
+    2005: {"archive": "2001-2005_SML.zip", "member": "2005_SML.csv", "sha256": "41faa9731e12bdd46aa3a498897e57678e430bdbac6038e4e7e3729aa9d38405", "bytes": 83228380},
+    2006: {"archive": "2006-2010_SML.zip", "member": "2006_SML.csv", "sha256": "4b43380a4d7491ae2a0562dc940f5310a5cffcaed85cc4509b1df061ff661c65", "bytes": 84242864},
+    2007: {"archive": "2006-2010_SML.zip", "member": "2007_SML.csv", "sha256": "e61f9c95a5b3fafef1f67718d6977c718bb09835474f13e345208998fdc3f648", "bytes": 85468143},
+    2008: {"archive": "2006-2010_SML.zip", "member": "2008_SML.csv", "sha256": "2dcc5459559cf7a540e38b367c4ab2d8640067ea9a1d3b1763d3ba152817d86e", "bytes": 86613819},
+    2009: {"archive": "2006-2010_SML.zip", "member": "2009_SML.csv", "sha256": "b8cdef5d7df937a9f2038e8a0127140406c7a8a911d026e1a243f86a95a217fe", "bytes": 85488193},
+    2010: {"archive": "2006-2010_SML.zip", "member": "2010_SML.csv", "sha256": "7c81520b2e419e8c0f5938668962a486ba7d7d67d617db24199c6eb1b1797ad9", "bytes": 86069015},
+    2011: {"archive": "2011-2015_SML.zip", "member": "2011_SML.csv", "sha256": "373da85dd3004ea937098189d3635628045403132a5c678d8eedab058c3d4624", "bytes": 87055769},
+    2012: {"archive": "2011-2015_SML.zip", "member": "2012_SML.csv", "sha256": "e88dfd5e9571dc61afefcb998fdf85703e6acb59f61d9f8c5e2545ffdea3d16e", "bytes": 86802969},
+    2013: {"archive": "2011-2015_SML.zip", "member": "2013_SML.csv", "sha256": "584e1f9b47b5812cda6fd7d09c3efa363397141089382dc034f991f733530cc7", "bytes": 87189902},
+    2014: {"archive": "2011-2015_SML.zip", "member": "2014_SML.csv", "sha256": "c2f922baa5e0b34fa8a974415bb10cdc7e5661cb2a61f645d343e7bea665da08", "bytes": 87379891},
+    2015: {"archive": "2011-2015_SML.zip", "member": "2015_SML.csv", "sha256": "7bb94ddc61bab5458017f1c6d1c3449f2d16e93d3d09a6d8acb5bce88d3734c3", "bytes": 86722828},
+    2016: {"archive": "2016-2022_SML.zip", "member": "2016_SML.csv", "sha256": "de91a560b3f4b1c75ab18846da13418d663844b465724691598a4e39bf5a09c2", "bytes": 86745061},
+    2017: {"archive": "2016-2022_SML.zip", "member": "2017_SML.csv", "sha256": "07a07dc53f1302a35c984f2801a98899ea3e73c9704e8350cbb36587200a4b19", "bytes": 87440646},
+    2018: {"archive": "2016-2022_SML.zip", "member": "2018_SML.csv", "sha256": "3d14b8d34c5cc036fd2eb91fc44edce97c904ea8657cc273a162de84153ae23b", "bytes": 87878366},
+    2019: {"archive": "2016-2022_SML.zip", "member": "2019_SML.csv", "sha256": "85bd13fd8c2385c41d239d2ddc973ced1caa87c59c2b90b7bed3ff97048043d8", "bytes": 88008102},
+    2020: {"archive": "2016-2022_SML.zip", "member": "2020_SML.csv", "sha256": "92955212d9c8942112b7cc9b9251e55dd841e5a607376580a20d37fc54eb20a9", "bytes": 87356600},
+    2021: {"archive": "2016-2022_SML.zip", "member": "2021_SML.csv", "sha256": "9a5c161ff1625e841c5901218adcdba0a81b3ee5872c2180ba2cbbabfcba4694", "bytes": 88793390},
+    2022: {"archive": "2016-2022_SML.zip", "member": "2022_SML.csv", "sha256": "fbab8fd2727bda9fd8c6cfee8227816db82d33bef6aa4b90194ca5dcbc5ad14b", "bytes": 90120552},
+}
 # Independently reproduced audit outputs for these exact original/ReadMe pairs.
 # A reader verifies original bytes, immutable receipts and this code-pinned
 # result; acquisition/explicit diagnostics still run the complete accounting.
@@ -78,6 +118,38 @@ PINNED_AUDITS = {
            2020: "ccacf1c0e9541cb930d62a4f2ca7e49e65cc4a6dd1784e8dcb265bc85c036e96",
            2021: "702fcaf719a95aafe5fa8ca1480c936d15b87d485d671f9b283eb2702f5ccf51",
            2022: "144a796c4938b77f408497b6e5f99e67b2df8e59ed75cc35c4d4cce640857bb9",
+       }.items()},
+    # Publisher-direct January 2026 members, each audited in full on receipt.
+    **{(PUBLISHER_MATRICES[year]["sha256"], README_SHA256, year, "regular-publisher-accounting-v1"): digest
+       for year, digest in {
+           1995: "c7fba6b18eac57084769a03fbd056aec8dde0f46d41b15930a36cb9854f4b346",
+           1996: "a7d098c345122da25da34badf9ce17a801f548e1249197ec5df6fe5f93c4f4dd",
+           1997: "9e35118487cd507b850038d23b624ae98ebe129d842c62ad63472f28dad260f8",
+           1998: "423b1bf404fac762316690c2002c628fcb5023e448d532c8271108201c268005",
+           1999: "c8394e9353f2bb86437d4699072f0912f18fbb92fc538311d6b519b520a3cccd",
+           2000: "039914b9187f865f64fbb09b5e3d0ac47db8d0e31a5ba4ccd4e8f85dd8455dfc",
+           2001: "f5170da7298a040554cc79b911ad16360933eca1918f8bac6540858aa7734f2f",
+           2002: "8b033d4eb83784ccfed4dcafa7de7fcc11f565a09714aa0fb5cc3ec7d1bbddea",
+           2003: "e25f583cc2d6edfccc1d14f6e1ee55b893f248ab1ed95621c1b38d187d01167e",
+           2004: "853b47c0179bcfea166f4aa18cc632b719f1a2487f9b7e66143ce9a9ecfb7aca",
+           2005: "b6c417cbbf88cdf800b84b6a392623f8da9073bc668479fbc56e48c0c029a2cd",
+           2006: "98ed4ee32dc14979b889a13de1b803cd04da1c9fedc7096f8f6859c489e49b79",
+           2007: "6208d20817dd3aae802b24d8469e936012aeb3d8ce05c18bab3e33ef6f071484",
+           2008: "40e0314fe681d2acaf2325cc5210ac425210a74b25befc5b24e25f8ccd61837a",
+           2009: "0adf49d0db253a5fe259ef225bf8e99197963ab3ed5f02fcf231a1981f189b5b",
+           2010: "3a29f53b4de6f63e4b9e2b3bd455a3af7d3a0330ee80303a4d2cc31b3e0e66d7",
+           2011: "53c49087912b294cdeb2634af5311a06e3d5cb1b12925168c5079f8a0cedc690",
+           2012: "7244ef1cfbfdbb54250d7596d5d0105d7cb2ab2f2e41c18034db24fa621c62b4",
+           2013: "d628da6bb9def8d5e6cbdf5f30854d47a42b716659cae5a4cf3b423438d9beb7",
+           2014: "e282396caf58c7ca91d5661c8789fbbfc66613631acab6eed55bb7b037c87ff6",
+           2015: "33aed7ce4dc417e7bb97f35adcca364d5dada8d29d324208344e1f5cd685d92b",
+           2016: "f85fe83b6d64814b902432f5b2bc53774cdd4fc37a74d020b4af1e59a7376944",
+           2017: "b351b08d58b329b79064267fa794d385c45615a287a50901e647f5878e59563b",
+           2018: "9e75bee594ace559c22d212eeee11cae700d47db68d7ddc1fff5d788e4a8a1f4",
+           2019: "20b3fc3134aacf59264e9450b4d0bddbdb97f98fc94341409fd4d3417197d999",
+           2020: "b2c4b24b457b9b2b890edd6abd5ab34f83b9c21e025066b9333cf5995a7f0afa",
+           2021: "494724ce00daf14e0ccd748583aa1e5e6994e099b26fe8bc6572cd08a6e9d5d3",
+           2022: "218cff0d38d31415fb1b31d4b5712bc85aefcb37f208987aed9c56e582f5ea34",
        }.items()},
 }
 
@@ -414,19 +486,148 @@ def _verify_historical_bundle(bundle, year):
     return audit
 
 
+PUBLISHER_AUDIT_METHOD = "regular-publisher-accounting-v1"
+PUBLISHER_PAGE = "https://www.oecd.org/en/data/datasets/inter-country-input-output-tables.html"
+# Publisher balancing tolerance: a residual above serialization rounding is
+# immaterial when it stays within this share of the node's own gross output.
+MATERIALITY_RELATIVE_TO_GROSS_OUTPUT = Decimal("0.001")
+
+
+def material_accounting(audit: dict) -> dict:
+    """Residuals relative to each failing node's own gross output; nothing is adjusted."""
+    details = audit.get("residual_diagnostics")
+    if audit.get("accounting_passed") is True:
+        return {"material_accounting_passed": True, "residuals_above_rounding": 0}
+    if not isinstance(details, dict) or audit.get("output_vector_mismatches"):
+        return {"material_accounting_passed": False, "reason": "residual_detail_unavailable_or_output_mismatch"}
+    def shares(items):
+        out = []
+        for item in items:
+            output, residual = Decimal(item["gross_output"]), abs(Decimal(item["residual"]))
+            out.append(residual / output if output > 0 else Decimal("Infinity"))
+        return out
+    rows, columns = shares(details["rows"]), shares(details["columns"])
+    worst = max(rows + columns, default=Decimal(0))
+    above = sum(share > MATERIALITY_RELATIVE_TO_GROSS_OUTPUT for share in rows + columns)
+    return {"material_accounting_passed": above == 0,
+            "bound_relative_to_node_gross_output": str(MATERIALITY_RELATIVE_TO_GROSS_OUTPUT),
+            "residuals_above_rounding": len(rows) + len(columns),
+            "residuals_above_materiality": above,
+            "maximum_residual_share_of_node_gross_output": f"{worst:.3E}" if worst.is_finite() else "Infinity"}
+
+
+def _publisher_identity(year):
+    descriptor = PUBLISHER_MATRICES[year]
+    return {"publisher": "OECD", "edition": "2025", "update": "January 2026", "table": "regular", "year": year,
+            "acquisition": "owner_browser_download", "archive": descriptor["archive"],
+            "archive_sha256": PUBLISHER_ARCHIVES[descriptor["archive"]]["sha256"]}
+
+
+def _publisher_sources(year):
+    archive = PUBLISHER_MATRICES[year]["archive"]
+    return {"archive": f"{PUBLISHER_PAGE}#{archive}", "member": PUBLISHER_MATRICES[year]["member"], "readme": README_URL}
+
+
+def _publisher_audit(matrix_path: str, readme_path: str, year: int) -> dict:
+    dimensions = readme_dimensions(Path(readme_path).read_bytes())
+    with Path(matrix_path).open(encoding="utf-8-sig", newline="") as stream:
+        audit = audit_matrix(stream, dimensions["industry_codes"], dimensions["final_demand_codes"],
+                             include_residuals=True)
+    descriptor = PUBLISHER_MATRICES[year]
+    replica = HISTORY_MATRICES.get(year, {}).get("sha256")
+    return {**audit, **_publisher_identity(year), "unit": dimensions["unit"],
+            "country_count": dimensions["country_count"], "industry_count": dimensions["industry_count"],
+            "matrix_sha256": descriptor["sha256"], "readme_sha256": README_SHA256,
+            "matrix_archive_member": descriptor["member"], "source_url": PUBLISHER_PAGE,
+            "publisher_direct_verified": True, "common_update_verified": True,
+            "replica_content_hash_verified": False,
+            "independent_replica_match_verified": replica == descriptor["sha256"],
+            "full_history_verified": False, "first_publication_verified": False,
+            "rights": "OECD ICIO CC BY 4.0",
+            "limitations": ["Publisher archive downloaded by the owner in a browser; the automated route is a Cloudflare challenge.",
+                "Archive and member bytes are pinned on receipt; 2016-2022 also match independent public replicas.",
+                "Accounting residuals above serialization rounding are retained without rebalancing.",
+                "The regular table cannot reproduce extended-table TiVA exactly; no Leontief or shock result is certified."]}
+
+
+def store_icio_publisher_archive(archive: Path, readme: Path, evidence_root: Path) -> list[Path]:
+    """Retain one owner-downloaded OECD archive and each of its year matrices."""
+    archive, readme = Path(archive), Path(readme)
+    expected = PUBLISHER_ARCHIVES.get(archive.name)
+    if (expected is None or archive.is_symlink() or readme.is_symlink()
+            or archive.stat().st_size != expected["bytes"] or _hash(archive) != expected["sha256"]
+            or _hash(readme) != README_SHA256):
+        raise ValueError("icio_pinned_original_identity_mismatch")
+    years = sorted(year for year, item in PUBLISHER_MATRICES.items() if item["archive"] == archive.name)
+    listing = {"archive": archive.name, "archive_sha256": expected["sha256"],
+               "members": {PUBLISHER_MATRICES[y]["member"]: PUBLISHER_MATRICES[y]["sha256"] for y in years},
+               "matrix_sha256": expected["sha256"]}
+    identity = {"publisher": "OECD", "edition": "2025", "update": "January 2026", "table": "regular",
+                "acquisition": "owner_browser_download", "archive": archive.name}
+    root = Path(evidence_root) / "icio"
+    stored = [_store_original_bundle(root / f"regular-2025-archive-{archive.stem}", {"archive.zip": archive},
+              listing, identity, {"archive": f"{PUBLISHER_PAGE}#{archive.name}"},
+              lambda bundle: _verified_manifest(bundle, identity, {"archive.zip", "audit.json"},
+                                                {"archive": f"{PUBLISHER_PAGE}#{archive.name}"}, expected["sha256"]))]
+    with zipfile.ZipFile(archive) as package, tempfile.TemporaryDirectory(dir=root) as scratch:
+        for year in years:
+            descriptor = PUBLISHER_MATRICES[year]
+            info = package.getinfo(descriptor["member"])
+            if info.file_size != descriptor["bytes"]:
+                raise ValueError("icio_archive_member_invalid")
+            matrix = Path(scratch) / descriptor["member"]
+            with package.open(info) as source, matrix.open("wb") as target:
+                shutil.copyfileobj(source, target, 1024 * 1024)
+            if _hash(matrix) != descriptor["sha256"]:
+                raise ValueError("icio_original_matrix_hash_mismatch")
+            audit = _publisher_audit(str(matrix), str(readme), year)
+            stored.append(_store_original_bundle(root / f"regular-2025-{year}-publisher",
+                {"matrix.csv": matrix, "readme.xlsx": readme}, audit, _publisher_identity(year),
+                _publisher_sources(year), lambda bundle, y=year: _verify_publisher_bundle(bundle, y)))
+            matrix.unlink()
+    return stored
+
+
+def _verify_publisher_bundle(bundle, year):
+    descriptor = PUBLISHER_MATRICES[year]
+    manifest = _verified_manifest(bundle, _publisher_identity(year), {"matrix.csv", "readme.xlsx", "audit.json"},
+                                  _publisher_sources(year), descriptor["sha256"])
+    if manifest["files"]["matrix.csv"] != descriptor["sha256"] or manifest["files"]["readme.xlsx"] != README_SHA256:
+        raise ValueError("icio_pinned_original_identity_mismatch")
+    audit = json.loads((bundle / "audit.json").read_bytes())
+    _verify_audit_pin(audit, descriptor["sha256"], year, PUBLISHER_AUDIT_METHOD)
+    return audit
+
+
 def read_icio_evidence(evidence_root: Path, *, include_residuals: bool = False) -> dict:
     from .source_reconciliation import _selected_manifest
+    publisher = {}
+    for year in sorted(PUBLISHER_MATRICES):
+        parent_dir = Path(evidence_root) / "icio" / f"regular-2025-{year}-publisher"
+        if parent_dir.exists():
+            observed, manifest_hash, path, _manifest, selection = _selected_manifest(parent_dir, _publisher_identity(year))
+            audit = _verify_publisher_bundle(path.parent, year)
+            publisher[year] = {**audit, "materiality": material_accounting(audit),
+                "original_source_hash_verified": True, "bundle_digest": path.parent.name,
+                "source_manifest_sha256": manifest_hash, "acquisition_observed_at_utc": observed.isoformat(),
+                "selection_method": selection}
     historical = []
     for year in sorted(HISTORY_MATRICES):
+        if year in publisher:
+            continue
         history_parent = Path(evidence_root) / "icio" / f"regular-2025-{year}-replica"
         if history_parent.exists():
             observed, manifest_hash, path, _manifest, selection = _selected_manifest(history_parent, _history_identity(year))
-            historical.append({**_verify_historical_bundle(path.parent, year),
+            replica = _verify_historical_bundle(path.parent, year)
+            historical.append({**replica, "materiality": material_accounting(replica),
                 "original_source_hash_verified": True, "bundle_digest": path.parent.name,
                 "source_manifest_sha256": manifest_hash, "acquisition_observed_at_utc": observed.isoformat(),
                 "selection_method": selection})
+    historical = sorted(historical + list(publisher.values()), key=lambda item: item["year"])
     parent = Path(evidence_root) / "icio" / "regular-2025-2022"
-    if parent.exists():
+    if 2022 in publisher:
+        primary = dict(publisher[2022])
+    elif parent.exists():
         observed, manifest_hash, path, _manifest, selection = _selected_manifest(parent, IDENTITY)
         audit = _verify_icio_bundle(path.parent)
         if include_residuals:
@@ -439,14 +640,27 @@ def read_icio_evidence(evidence_root: Path, *, include_residuals: bool = False) 
     else:
         primary = {"full_history_verified": False, "first_publication_verified": False,
                    "original_source_hash_verified": False}
+    if "materiality" not in primary and primary.get("original_source_hash_verified"):
+        primary["materiality"] = material_accounting(primary)
     verified_years = sorted({item["year"] for item in historical} | ({2022} if parent.exists() else set()))
+    full = verified_years == list(range(1995, 2023))
+    # One edition and update for every year only when each year is the
+    # publisher's own January 2026 archive member.
+    common = full and set(publisher) == set(range(1995, 2023))
     coverage = {"required_years": [1995, 2022], "verified_years": verified_years,
                 "missing_years": sorted(set(range(1995, 2023)) - set(verified_years)),
-                "replica_only_years": sorted(item["year"] for item in historical if not item["independent_replica_match_verified"]),
-                "full_history_verified": verified_years == list(range(1995, 2023)),
-                "first_publication_verified": False, "common_update_verified": False}
-    status = (f"verified_{primary['year']}_original_matrix" if primary.get("accounting_passed")
-              else "original_matrix_accounting_failed") if verified_years else "missing_original_matrix"
+                "publisher_direct_years": sorted(publisher),
+                "replica_only_years": sorted(item["year"] for item in historical
+                                             if not item.get("publisher_direct_verified")
+                                             and not item["independent_replica_match_verified"]),
+                "full_history_verified": full,
+                "first_publication_verified": False, "common_update_verified": common,
+                "material_accounting_passed_years": sorted(item["year"] for item in historical
+                    if item["materiality"]["material_accounting_passed"])}
+    material = full and all(item["materiality"]["material_accounting_passed"] for item in historical)
+    status = ("verified_full_history_original_matrices" if common and material else
+              (f"verified_{primary['year']}_original_matrix" if primary.get("accounting_passed")
+               else "original_matrix_accounting_failed")) if verified_years else "missing_original_matrix"
     from .icio_release_diagnostics import read_2022_release_comparison
     comparison = read_2022_release_comparison(evidence_root, verified_newer_sha256=(
         primary.get("matrix_sha256") if primary.get("original_source_hash_verified") else None))
@@ -460,11 +674,20 @@ def main():
     original = parser.add_mutually_exclusive_group(required=True)
     original.add_argument("--package", type=Path)
     original.add_argument("--matrix", type=Path, help="A registered, pinned original replica CSV")
+    original.add_argument("--publisher-archive", type=Path, action="append",
+                          help="A pinned OECD 2025 regular archive downloaded by the owner (repeatable)")
     parser.add_argument("--year", type=int, choices=sorted(HISTORY_MATRICES))
     parser.add_argument("--readme", type=Path, required=True)
     parser.add_argument("--diagnose", action="store_true", help="Read-only signed residual investigation; do not store or rewrite source evidence")
     parser.add_argument("--root", type=Path, default=Path(os.environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")))
     args = parser.parse_args()
+    if args.publisher_archive:
+        for archive in args.publisher_archive:
+            for bundle in store_icio_publisher_archive(archive, args.readme, args.root):
+                print(bundle.parent.name, bundle.name, flush=True)
+        coverage = read_icio_evidence(args.root)["historical_coverage"]
+        print(json.dumps(coverage, indent=2))
+        return
     if args.matrix:
         if args.year is None:
             parser.error("--matrix requires --year")

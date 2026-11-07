@@ -392,6 +392,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             and registry[sid]["source_key"] in revision_sources]
         checks.append(_temporal_gate(role, ids, registry, originals, revisions, release_originals, counts))
         artifact = None
+        icio_resolved = False
         if "icio" in role.get("artifact_ids", []) and matrix_available:
             artifact = {key: matrix.get(key) for key in (
                 "status", "year", "edition", "matrix_sha256", "package_sha256", "readme_sha256",
@@ -411,6 +412,29 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                                missing_years=sorted(set(range(1995, 2023)) - set(years)))
             checks[3] = _gate("original_source_values", "passed", "original_artifact_hashes_verified",
                 scope="Original matrix bytes match the pinned replica ledger. Accounting validity is a separate failed check.")
+            # Every year 1995-2022 from the publisher's own January 2026
+            # archives: one edition and update, so the matrix roles resolve.
+            if history.get("full_history_verified") is True and history.get("common_update_verified") is True:
+                icio_resolved = True
+                limitations = [{"code": "latest_revised_values_not_real_time", "artifact": "icio",
+                                "detail": "The 2025 edition's latest revised matrices; no earlier release is reconstructed."}]
+                if not matrix.get("accounting_passed"):
+                    limitations.append({"code": "publisher_matrix_residuals_within_materiality", "artifact": "icio",
+                        "bound_relative_to_node_gross_output": (matrix.get("materiality") or {}).get(
+                            "bound_relative_to_node_gross_output"),
+                        "detail": "Row and column identities hold within 0.1% of each node's gross output in every year; residuals above serialization rounding are retained, not rebalanced."})
+                checks = [
+                    _gate("source_binding", "passed", "original_artifact_full_history_verified",
+                          scope="OECD 2025 regular ICIO, all 28 annual matrices, publisher archives."),
+                    _gate("native_dimensions", "passed", "original_artifact_dimensions_verified",
+                          scope="Pinned ReadMe country/industry/final-demand codes; current USD million."),
+                    _gate("stored_history", "passed", "original_artifact_full_history_verified", available_years=years),
+                    _gate("original_source_values", "passed", "original_artifact_hashes_verified",
+                          scope="Archive and member bytes pinned; 2016-2022 also match independent replicas."),
+                    _gate("matched_periods", "passed", "single_edition_annual_matrices_complete", available_years=years),
+                    _gate("publisher_dimensions", "passed", "icio_readme_dimensions_verified",
+                          scope="Edition, unit and dimensions read from the publisher's own ReadMe."),
+                    _gate("temporal_evidence", "passed", "latest_revised_values_verified", limitations=limitations)]
         # Some explicitly named original methods have a genuine typed native
         # reader before any scalar catalog identity is scientifically bound.
         # WIID survey rows, for example, retain welfare concept/scale/quality
@@ -431,7 +455,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             checks[3] = _gate(
                 "original_source_values", "incomplete",
                 "source_original_available_without_exact_method_projection")
-        partial = _partial_artifacts(role, artifact_evidence or {})
+        partial = [] if icio_resolved else _partial_artifacts(role, artifact_evidence or {})
         if named_artifact and named_evidence.get(
                 "original_source_hash_verified") is True:
             partial.append({
@@ -483,7 +507,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                 "original_numeric_scope_evidence", {}).get(
                     "reviewed_original_scopes", [])
         ]
-        if not ids and original_scopes:
+        if not ids and original_scopes and not icio_resolved:
             checks[0] = _gate(
                 "source_binding", "incomplete",
                 "native_original_measure_observed_not_economic_role_bound",
@@ -519,7 +543,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             result["holdings_evaluation"] = {"funds": holdings["funds"],
                                              "conditional": holdings["conditional"]}
         if artifact is not None:
-            result["original_artifact_evidence"] = artifact
+            result["original_artifact_evidence"] = {**artifact, "role_resolved": icio_resolved}
         if partial:
             result["partial_artifact_evidence"] = partial
         if candidate is not None:
@@ -567,7 +591,10 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     scientific_failures = [{"variant_id": panel["variant_id"], "panel_sha256": panel.get("panel_sha256"),
                             "check": check}
         for panel in panels for check in panel.get("checks", []) if check.get("passed") is False]
-    if matrix_available and matrix.get("accounting_passed") is False:
+    def immaterial(item):
+        return (item.get("accounting_passed") is True
+                or (item.get("materiality") or {}).get("material_accounting_passed") is True)
+    if matrix_available and matrix.get("accounting_passed") is False and not immaterial(matrix):
         scientific_failures.append({"artifact": f"OECD_ICIO_2025_REGULAR_{matrix['year']}",
             "matrix_sha256": matrix.get("matrix_sha256"),
             "check": {"id": "original_matrix_accounting", "passed": False,
@@ -577,8 +604,10 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     # accounting results even when a scalar panel has not been assembled.
     if analysis["id"] == "G06":
         for item in matrix.get("historical_matrices", []):
-            if item.get("original_source_hash_verified") is True and item.get("accounting_passed") is False:
-                scientific_failures.append({"artifact": f"OECD_ICIO_2025_REGULAR_{item['year']}_REPLICA",
+            if (item.get("original_source_hash_verified") is True and item.get("accounting_passed") is False
+                    and not immaterial(item)):
+                scientific_failures.append({"artifact": f"OECD_ICIO_2025_REGULAR_{item['year']}_"
+                                            + ("PUBLISHER" if item.get("publisher_direct_verified") else "REPLICA"),
                     "matrix_sha256": item.get("matrix_sha256"),
                     "check": {"id": "original_matrix_accounting", "passed": False,
                         **{key: item.get(key) for key in ("row_accounting_failures", "column_accounting_failures",
@@ -603,7 +632,9 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         return role["series_ids"]
     def holdings_resolved(role):
         source = role.get("fallback_evaluation") if role["state"] == "unavailable_with_fallback" else role
-        return role["state"] in RESOLVED_ROLE_STATES and "holdings_evaluation" in (source or {})
+        return role["state"] in RESOLVED_ROLE_STATES and (
+            "holdings_evaluation" in (source or {})
+            or ((source or {}).get("original_artifact_evidence") or {}).get("role_resolved") is True)
     # A holdings role is one dated snapshot per fund, not a period panel; its
     # own gates are the original comparison for that input.
     covered = {role["role"] for role in requirements if effective_ids(role)

@@ -132,6 +132,57 @@ class IcioTests(unittest.TestCase):
             manifest = json.loads((bundle / "manifest.json").read_text())
             self.assertEqual(manifest["sources"]["matrix"], descriptor["source_url"])
 
+    def test_publisher_archive_keeps_archive_and_each_year_with_materiality(self):
+        import zipfile
+        body = b"V1,AAA_A01,AAA_INVNT,OUT\nAAA_A01,1000,2,1002.5\nTLS,0,0,0\nVA,2.5,0,0\nOUT,1002.5,0,0\n"
+        dimensions = {"industry_codes": ["AAA_A01"], "final_demand_codes": ["AAA_INVNT"],
+                      "unit": "current_USD_million", "country_count": 1, "industry_count": 1}
+        readme = Path(__file__).parent / "fixtures" / "icio" / "ReadMe_ICIO_small.xlsx"
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            archive = root / "1995-2000_SML.zip"
+            with zipfile.ZipFile(archive, "w") as package:
+                package.writestr("1995_SML.csv", body)
+            archives = {archive.name: {"sha256": icio._hash(archive), "bytes": archive.stat().st_size}}
+            matrices = {1995: {"archive": archive.name, "member": "1995_SML.csv",
+                               "sha256": sha256(body).hexdigest(), "bytes": len(body)}}
+            with patch.dict(icio.PUBLISHER_ARCHIVES, archives, clear=True), \
+                    patch.dict(icio.PUBLISHER_MATRICES, matrices, clear=True), \
+                    patch.object(icio, "readme_dimensions", return_value=dimensions):
+                matrix = root / "1995_SML.csv"
+                matrix.write_bytes(body)
+                audit = icio._publisher_audit(str(matrix), str(readme), 1995)
+                pin = (matrices[1995]["sha256"], icio.README_SHA256, 1995, icio.PUBLISHER_AUDIT_METHOD)
+                with patch.dict(icio.PINNED_AUDITS, {pin: sha256(icio.canonical_bytes(audit)).hexdigest()}):
+                    stored = icio.store_icio_publisher_archive(archive, readme, root / "evidence")
+                    result = read_icio_evidence(root / "evidence")
+                    self.assertEqual([path.parent.name for path in stored],
+                                     ["regular-2025-archive-1995-2000_SML", "regular-2025-1995-publisher"])
+                    self.assertEqual((stored[0] / "archive.zip").read_bytes(), archive.read_bytes())
+                    item = result["historical_matrices"][0]
+                    self.assertTrue(item["publisher_direct_verified"])
+                    # 0.5 off a 1002.5 output: above rounding, within 0.1% of the node's output.
+                    self.assertFalse(item["accounting_passed"])
+                    self.assertTrue(item["materiality"]["material_accounting_passed"])
+                    self.assertEqual(result["historical_coverage"]["publisher_direct_years"], [1995])
+                    self.assertFalse(result["historical_coverage"]["full_history_verified"])
+                    (stored[1] / "matrix.csv").write_bytes(body.replace(b"1000,2", b"1000,3"))
+                    with self.assertRaises(ValueError):
+                        read_icio_evidence(root / "evidence")
+                with self.assertRaisesRegex(ValueError, "icio_pinned_original_identity_mismatch"):
+                    archive.write_bytes(b"tampered")
+                    icio.store_icio_publisher_archive(archive, readme, root / "other")
+
+    def test_materiality_is_relative_to_each_node_and_needs_residual_detail(self):
+        base = {"accounting_passed": False, "output_vector_mismatches": []}
+        detail = lambda residual: {**base, "residual_diagnostics": {
+            "rows": [{"code": "A", "residual": residual, "gross_output": "1000"}], "columns": []}}
+        self.assertTrue(icio.material_accounting(detail("0.9"))["material_accounting_passed"])
+        self.assertFalse(icio.material_accounting(detail("1.5"))["material_accounting_passed"])
+        self.assertFalse(icio.material_accounting(base)["material_accounting_passed"])
+        zero = {**base, "residual_diagnostics": {"rows": [{"code": "A", "residual": "1", "gross_output": "0"}], "columns": []}}
+        self.assertFalse(icio.material_accounting(zero)["material_accounting_passed"])
+
     def test_unpinned_historical_original_is_rejected_before_archive(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
