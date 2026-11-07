@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "description": "Cited review of the fields each original holdings source format reports. A field marked false is the publisher's absence, carried as a per-fund limitation; an archived original that reports it contradicts the review and fails acceptance.",
+  "sources": {
+    "SEC_NPORT_PRIMARY_XML": {
+      "evidence_url": "https://www.sec.gov/files/formn-port.pdf",
+      "reviewed_on": "2026-11-07",
+      "reports": {"security_identifier": true, "issuer_identifier": true, "holding_name": true, "country": true, "sector": false},
+      "note": "Form N-PORT Part C: Item C.1 reports issuer name, LEI, title, CUSIP and other identifiers; C.4 the asset and issuer category; C.5 the country of investment or issuer. There is no industry sector item."
+    },
+    "ISHARES_UCITS_PRIMARY_CSV": {
+      "evidence_url": "https://www.ishares.com/uk/professionals/en/products/251882/ishares-core-msci-world-ucits-etf/latest-holdings.csv",
+      "reviewed_on": "2026-11-07",
+      "reports": {"security_identifier": false, "issuer_identifier": false, "holding_name": true, "country": true, "sector": true},
+      "note": "Archived columns: Ticker, Name, Sector, Asset Class, Market Value, Weight (%), Notional Value, Shares, Price, Location, Exchange, Market Currency. No ISIN, CUSIP or LEI, and no NAV statement."
+    },
+    "ISHARES_UCITS_ANNUAL_PRIMARY_PDF": {
+      "evidence_url": "https://www.ishares.com/gls-download/literature/annual-report/ishares-iii-plc-en-annual-report-2026.pdf",
+      "reviewed_on": "2026-11-07",
+      "reports": {"security_identifier": false, "issuer_identifier": false, "holding_name": true, "country": true, "sector": false},
+      "note": "Schedule of investments lists holding name, quantity, fair value and percentage of net assets, grouped by country; the statement of financial position gives NAV."
+    },
+    "VANGUARD_UCITS_ORIGINAL_REPORT_PDF": {
+      "evidence_url": "https://fund-docs.vanguard.com/etf-annual-report.pdf",
+      "reviewed_on": "2026-11-07",
+      "reports": {"security_identifier": false, "issuer_identifier": false, "holding_name": true, "country": true, "sector": false},
+      "note": "Portfolio statement lists holding name, shares, market value and percentage of total net assets, grouped by country; the balance sheet gives NAV."
+    }
+  }
+}

@@ -147,8 +147,15 @@ def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> 
             unavailability = requirement["verified_unavailability"]
             if not valid_unavailability(unavailability):
                 errors.append(f"{ident}: invalid verified_unavailability declaration")
-            elif any(sid not in registry for sid in unavailability["fallback"]["series_ids"]):
+            elif any(sid not in registry for sid in unavailability["fallback"].get("series_ids", [])):
                 errors.append(f"{ident}: verified_unavailability fallback references unknown series")
+        if "holdings_contract" in requirement:
+            from .holdings_acceptance import valid_holdings_contract
+            contract = requirement["holdings_contract"]
+            if (not valid_holdings_contract(contract) or requirement.get("series_ids")
+                    or any(item["artifact_id"] not in requirement.get("artifact_ids", [])
+                           for item in contract["funds"])):
+                errors.append(f"{ident}: invalid holdings contract")
         publisher_candidates = requirement.get("publisher_candidates", [])
         if (not isinstance(publisher_candidates, list)
                 or (publisher_candidates and

@@ -20,6 +20,7 @@ from .corporate_account_coverage import read_corporate_account_coverage
 from .nber_chronology import read_nber_chronology
 from .wiid_originals import read_wiid_originals
 from .research_readiness import ARTIFACT_IDS
+from .holdings_coverage import ucits_coverage
 
 READ_ERRORS = (OSError, ValueError, KeyError, TypeError, ET.ParseError)
 
@@ -179,7 +180,13 @@ def _sec_evidence(root):
                 "position_coverage": source["position_coverage"],
                 "fund_accounting_identity_checked": residual is not None,
                 "fund_accounting_identity_passed": Decimal(residual) == 0 if residual is not None else None,
-                "cash_disclosure_present": source["fund_accounting"]["cash_not_reported_in_parts_c_and_d_usd"] is not None})
+                "cash_disclosure_present": source["fund_accounting"]["cash_not_reported_in_parts_c_and_d_usd"] is not None,
+                "source": "SEC_NPORT_PRIMARY_XML", "fund": instrument_id,
+                "field_weight_coverage": source["field_weight_coverage"],
+                "accounting_control": {"kind": "fund_balance_sheet_identity", "reconciles_to_nav": True,
+                    "passed": residual is not None and Decimal(residual) == 0
+                    and source["portfolio_reconciliation"]["position_value_nav_weight_mismatches"] == 0
+                    and source["portfolio_reconciliation"]["positions_with_unverified_nav_weight"] == 0}})
             if "portfolio_reconciliation" in source:
                 sources[-1]["portfolio_reconciliation"] = source["portfolio_reconciliation"]
             if "reported_issuer_concentration" in source:
@@ -205,6 +212,18 @@ def _sec_evidence(root):
             "full_history_verified": False, "first_publication_verified": False}
 
 
+def _ishares_control(source, nav_residual):
+    """Annual reports reconcile to NAV; the current CSV publishes rounded weights only."""
+    if nav_residual is not None:
+        return {"kind": "nav_statement", "reconciles_to_nav": True,
+                "passed": Decimal(nav_residual) == 0 and source.get("equity_value_reconciled") is not False}
+    total = source.get("rounded_weights_sum_pct")
+    # Weights are published to 0.01 pp and include cash and FX rows; the CSV
+    # carries no NAV statement, so the sum is a coarse control only.
+    return {"kind": "rounded_weight_sum", "reconciles_to_nav": False, "rounded_weights_sum_pct": total,
+            "passed": total is not None and abs(Decimal(str(total)) - 100) <= 1}
+
+
 def _ucits_evidence(root):
     original = read_ucits_sources(root)
     sources = []
@@ -222,7 +241,10 @@ def _ucits_evidence(root):
             "nav_accounting_identity_passed": Decimal(nav_residual) == 0 if nav_residual is not None else None,
             "equity_value_reconciled": source.get("equity_value_reconciled"),
             "unparsed_derivative_schedule_lines": len(source.get("derivative_schedule_lines", [])),
-            "share_class_positions_verified": False})
+            "share_class_positions_verified": False,
+            "fund": source["share_class_reference_isin"],
+            "field_weight_coverage": ucits_coverage(source["positions"]),
+            "accounting_control": _ishares_control(source, nav_residual)})
     vanguard = read_vanguard_ucits_sources(root)
     for source in vanguard["records"]:
         controls = source["valuation_reconciliation"]
@@ -239,7 +261,13 @@ def _ucits_evidence(root):
             "nav_accounting_identity_passed": Decimal(controls["fund_balance_sheet_difference_usd"]) == 0,
             "equity_value_reconciled": source["complete_security_schedule"],
             "valuation_reconciliation": controls, "share_class_positions_verified": False,
-            "individual_derivative_lookthrough_verified": False})
+            "individual_derivative_lookthrough_verified": False,
+            "fund": source["share_class_reference_isin"],
+            "field_weight_coverage": ucits_coverage(source["positions"]),
+            "accounting_control": {"kind": "nav_statement", "reconciles_to_nav": True,
+                "passed": Decimal(controls["fund_balance_sheet_difference_usd"]) == 0
+                and source["complete_security_schedule"] is True
+                and controls.get("security_values_reconciled") is True}})
     return {"status": "verified_original_positions_partial" if sources else original["status"],
             "original_source_hash_verified": bool(sources), "source_count": len(sources), "sources": sources,
             "holdings_dates": sorted({source["holdings_date"] for source in sources}),

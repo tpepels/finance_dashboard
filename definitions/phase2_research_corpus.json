@@ -3743,7 +3743,29 @@
               "ucits_holdings",
               "msci_concentration"
             ],
-            "input_requirement": "Original dated complete MSCI ACWI free-float security weights and index universe."
+            "input_requirement": "Original dated complete MSCI ACWI free-float security weights and index universe.",
+            "verified_unavailability": {
+              "reviewed_on": "2026-11-07",
+              "reason": "MSCI publishes only the ten largest ACWI constituents freely, on its index factsheets and pages; complete dated constituent weights are distributed only through MSCI's subscription data products.",
+              "evidence_urls": [
+                "https://www.msci.com/www/product-documentation/msci-constituent-history/0163808536",
+                "https://developer.msci.com/apis/index-api"
+              ],
+              "fallback": {
+                "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+                "holdings_contract": {
+                  "funds": [{"fund": "acwi", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"}],
+                  "required_fields": ["security_identifier"],
+                  "minimum_weight_coverage": "0.95",
+                  "maximum_snapshot_age_days": 200
+                },
+                "expected": {
+                  "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
+                  "concept": "Fund security position weights tracking MSCI ACWI"
+                },
+                "population_difference": "Quarterly N-PORT positions of an ETF tracking MSCI ACWI, as fractions of fund NAV: the fund holds cash and securities-lending collateral and may sample the smallest constituents, so weights approximate but are not MSCI free-float index weights."
+              }
+            }
           },
           {
             "role": "issuer_crosswalk",
@@ -3756,7 +3778,30 @@
             "temporal_requirement": "latest_revised",
             "input_type": "entity_mapping",
             "artifact_ids": ["sec_holdings", "ucits_holdings"],
-            "input_requirement": "Original dated security-to-ultimate-issuer/share-class crosswalk."
+            "input_requirement": "Original dated security-to-ultimate-issuer/share-class crosswalk.",
+            "verified_unavailability": {
+              "reviewed_on": "2026-11-07",
+              "reason": "MSCI publishes only the ten largest ACWI constituents freely, on its index factsheets and pages; complete dated constituent weights are distributed only through MSCI's subscription data products.",
+              "evidence_urls": [
+                "https://www.msci.com/www/product-documentation/msci-constituent-history/0163808536",
+                "https://developer.msci.com/apis/index-api"
+              ],
+              "fallback": {
+                "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+                "holdings_contract": {
+                  "funds": [{"fund": "acwi", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"}],
+                  "required_fields": ["holding_name"],
+                  "minimum_weight_coverage": "0.95",
+                  "maximum_snapshot_age_days": 200,
+                  "issuer_grouping": true
+                },
+                "expected": {
+                  "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
+                  "concept": "Reported issuer aggregation of the same positions"
+                },
+                "population_difference": "Share classes are grouped by the fund's exact reported issuer name, cross-checked against reported LEIs; this is issuer-level, not ultimate-parent, aggregation."
+              }
+            }
           },
           {
             "role": "constituent_count",
@@ -4463,7 +4508,18 @@
             "temporal_requirement": "latest_revised",
             "input_type": "positions",
             "artifact_ids": ["sec_holdings", "ucits_holdings"],
-            "input_requirement": "Original actual named-fund reported security positions including cash, derivatives and residuals; UCITS and SEC funds remain separate."
+            "input_requirement": "Original actual named-fund reported security positions including cash, derivatives and residuals; UCITS and SEC funds remain separate.",
+            "holdings_contract": {
+              "funds": [
+                {"fund": "vt", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"},
+                {"fund": "bnd", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"},
+                {"fund": "IE00B4L5Y983", "artifact_id": "ucits_holdings", "source": "ISHARES_UCITS_PRIMARY_CSV"},
+                {"fund": "IE00B3RBWM25", "artifact_id": "ucits_holdings", "source": "VANGUARD_UCITS_ORIGINAL_REPORT_PDF"}
+              ],
+              "required_fields": ["holding_name"],
+              "minimum_weight_coverage": "0.95",
+              "maximum_snapshot_age_days": 550
+            }
           },
           {
             "role": "security_issuer_identity",
@@ -4476,7 +4532,18 @@
             "temporal_requirement": "latest_revised",
             "input_type": "entity_mapping",
             "artifact_ids": ["sec_holdings", "ucits_holdings"],
-            "input_requirement": "Original security ISIN/CUSIP/LEI and dated issuer mappings."
+            "input_requirement": "Original security ISIN/CUSIP/LEI and dated issuer mappings.",
+            "holdings_contract": {
+              "funds": [
+                {"fund": "vt", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"},
+                {"fund": "bnd", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"},
+                {"fund": "IE00B4L5Y983", "artifact_id": "ucits_holdings", "source": "ISHARES_UCITS_PRIMARY_CSV"},
+                {"fund": "IE00B3RBWM25", "artifact_id": "ucits_holdings", "source": "VANGUARD_UCITS_ORIGINAL_REPORT_PDF"}
+              ],
+              "required_fields": ["security_identifier", "holding_name"],
+              "minimum_weight_coverage": "0.95",
+              "maximum_snapshot_age_days": 550
+            }
           },
           {
             "role": "issuer_country_sector",
@@ -4489,7 +4556,18 @@
             "temporal_requirement": "latest_revised",
             "input_type": "entity_mapping",
             "artifact_ids": ["sec_holdings", "ucits_holdings"],
-            "input_requirement": "Dated original registered/assigned issuer country and sector classification."
+            "input_requirement": "Dated original registered/assigned issuer country and sector classification.",
+            "holdings_contract": {
+              "funds": [
+                {"fund": "vt", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"},
+                {"fund": "bnd", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"},
+                {"fund": "IE00B4L5Y983", "artifact_id": "ucits_holdings", "source": "ISHARES_UCITS_PRIMARY_CSV"},
+                {"fund": "IE00B3RBWM25", "artifact_id": "ucits_holdings", "source": "VANGUARD_UCITS_ORIGINAL_REPORT_PDF"}
+              ],
+              "required_fields": ["country", "sector"],
+              "minimum_weight_coverage": "0.95",
+              "maximum_snapshot_age_days": 550
+            }
           }
         ],
         "variants": []

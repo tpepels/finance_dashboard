@@ -73,6 +73,9 @@ class EvidencedEndStateTests(unittest.TestCase):
 
     def test_every_cited_fallback_is_an_acquired_and_reconciled_input(self):
         from finance_dashboard.research_corpus import analysis_series_ids, load_research_corpus
+        from finance_dashboard.sec_holdings_sync import VERIFIED_DEFAULT_FUNDS
+        collected = {"sec_holdings": {fund["instrument_id"] for fund in VERIFIED_DEFAULT_FUNDS},
+                     "ucits_holdings": {"IE00B4L5Y983", "IE00B3RBWM25"}}
         cited = 0
         for analysis in load_research_corpus()["analyses"]:
             inputs = set(analysis_series_ids(analysis))
@@ -80,8 +83,12 @@ class EvidencedEndStateTests(unittest.TestCase):
                 unavailability = role.get("verified_unavailability")
                 if unavailability:
                     cited += 1
-                    self.assertLessEqual(set(unavailability["fallback"]["series_ids"]), inputs,
+                    fallback = unavailability["fallback"]
+                    self.assertLessEqual(set(fallback.get("series_ids", [])), inputs,
                                          (analysis["id"], role["role"]))
+                    # A holdings fallback names funds the collectors acquire.
+                    for spec in fallback.get("holdings_contract", {}).get("funds", []):
+                        self.assertIn(spec["fund"], collected[spec["artifact_id"]], (analysis["id"], role["role"]))
         self.assertGreater(cited, 0)
 
     def test_missing_review_or_unverified_original_stays_incomplete(self):

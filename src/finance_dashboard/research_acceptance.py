@@ -20,6 +20,7 @@ from datetime import date, timedelta
 from typing import Any
 
 from .source_original_gate import verified_original_rows
+from .holdings_acceptance import holdings_role_checks, load_holdings_sources, valid_holdings_contract
 from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
 
 PUBLISHER_METADATA_FIELDS = (
@@ -73,8 +74,11 @@ def valid_unavailability(declaration) -> bool:
             and isinstance(declaration.get("evidence_urls"), list) and declaration["evidence_urls"]
             and all(isinstance(url, str) and url.startswith("https://") for url in declaration["evidence_urls"])
             and isinstance(fallback, dict) and fallback.get("reference") == FALLBACK_POLICY
-            and isinstance(fallback.get("series_ids"), list) and fallback["series_ids"]
-            and all(isinstance(sid, str) for sid in fallback["series_ids"])
+            and isinstance(fallback.get("series_ids", []), list)
+            and all(isinstance(sid, str) for sid in fallback.get("series_ids", []))
+            # A fallback is either scalar series or a holdings contract, never both.
+            and (bool(fallback.get("series_ids")) != ("holdings_contract" in fallback))
+            and ("holdings_contract" not in fallback or valid_holdings_contract(fallback["holdings_contract"]))
             and isinstance(fallback.get("expected"), dict)
             and isinstance(fallback.get("population_difference"), str)
             and fallback["population_difference"].strip() != "")
@@ -249,7 +253,9 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                         publisher_vintage_proof: dict | None = None,
                         native_role_evidence: dict | None = None,
                         alfred_revision_proof: dict | None = None,
-                        unbound_source_evidence: dict | None = None) -> dict[str, Any]:
+                        unbound_source_evidence: dict | None = None,
+                        holdings_sources: dict | None = None,
+                        as_of: date | None = None) -> dict[str, Any]:
     """Evaluate all original roles using the current, independently checked inputs.
 
     `panels` must come from comparative_evidence_summary, which reconstructs
@@ -276,6 +282,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                         and type(matrix.get("accounting_passed")) is bool)
     # Declared fallbacks are evaluated first, through the identical gates,
     # so each original role can be resolved against its finished result.
+    reviews = holdings_sources if holdings_sources is not None else load_holdings_sources()
+    today = as_of or date.today()
     originals_roles = list(analysis["comparison_contract"]["original_requirements"])
     roles = []
     fallback_results: dict[str, dict] = {}
@@ -284,9 +292,11 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         if unavailability is not None and valid_unavailability(unavailability):
             fallback = unavailability["fallback"]
             roles.append({"role": role["role"], "description": role["description"],
-                          "series_ids": list(fallback["series_ids"]), "expected": fallback["expected"],
+                          "series_ids": list(fallback.get("series_ids", [])), "expected": fallback["expected"],
                           "temporal_requirement": role["temporal_requirement"],
                           "input_type": role["input_type"], "artifact_ids": [],
+                          **({"holdings_contract": fallback["holdings_contract"]}
+                             if "holdings_contract" in fallback else {}),
                           "_fallback_for": role["role"]})
     roles.extend(originals_roles)
     for role in roles:
@@ -491,6 +501,13 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                     "native_dimensions", "incomplete",
                     "original_native_publisher_dimensions_not_yet_matched",
                     scope="Industry/year, currency/price, economic measure and publication vintage must all match the original method.")
+        # Holdings-backed roles have no scalar series: their gates are judged
+        # on each declared fund's latest original snapshot instead.
+        holdings = None
+        if role.get("holdings_contract") is not None and not ids:
+            holdings = holdings_role_checks(role["holdings_contract"], artifact_evidence or {},
+                                            reviews, as_of=today)
+            checks = holdings["checks"]
         state = _state(checks)
         result = {**role, "state": state, "accepted": state == "accepted",
             "sources_checked": observations_checked, "mapped_source_count": len(ids),
@@ -498,6 +515,9 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             "limitations": [item for check in checks for item in check.get("limitations", [])],
             "source_asof_verified": False, "checks": checks,
             "blocking_checks": [item["id"] for item in checks if item["state"] != "passed"]}
+        if holdings is not None:
+            result["holdings_evaluation"] = {"funds": holdings["funds"],
+                                             "conditional": holdings["conditional"]}
         if artifact is not None:
             result["original_artifact_evidence"] = artifact
         if partial:
@@ -540,6 +560,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                 result["limitations"] = result["limitations"] + fallback["limitations"] + [{
                     "code": "exact_source_unavailable_fallback_used",
                     "fallback_series_ids": fallback["series_ids"],
+                    **({"fallback_funds": [item["fund"] for item in fallback["holdings_evaluation"]["funds"]]}
+                       if "holdings_evaluation" in fallback else {}),
                     "population_difference": unavailability["fallback"]["population_difference"]}]
         requirements.append(result)
     scientific_failures = [{"variant_id": panel["variant_id"], "panel_sha256": panel.get("panel_sha256"),
@@ -579,8 +601,14 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         if role["state"] == "unavailable_with_fallback":
             return role["fallback_evaluation"]["series_ids"]
         return role["series_ids"]
+    def holdings_resolved(role):
+        source = role.get("fallback_evaluation") if role["state"] == "unavailable_with_fallback" else role
+        return role["state"] in RESOLVED_ROLE_STATES and "holdings_evaluation" in (source or {})
+    # A holdings role is one dated snapshot per fund, not a period panel; its
+    # own gates are the original comparison for that input.
     covered = {role["role"] for role in requirements if effective_ids(role)
-        and set(effective_ids(role)).issubset(panel_ids)}
+        and set(effective_ids(role)).issubset(panel_ids)} | {
+        role["role"] for role in requirements if holdings_resolved(role)}
     # Owner-supplied parameters are not publisher data and join no comparison bundle.
     uncovered = sorted(role["role"] for role in requirements
                        if role["role"] not in covered and role["state"] != "user_input")
@@ -596,7 +624,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     state = _state(checks)
     descoped = analysis.get("descoped_roles", [])
     if state == "accepted" and (descoped or any(
-            r["state"] == "unavailable_with_fallback" for r in requirements)):
+            r["state"] == "unavailable_with_fallback"
+            or (r.get("holdings_evaluation") or {}).get("conditional") for r in requirements)):
         state = "conditional"
     if analysis.get("phase2_scope") == "deferred_extension":
         state = "deferred"

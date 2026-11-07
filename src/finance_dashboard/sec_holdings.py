@@ -455,8 +455,10 @@ def _native_portfolio_evidence(xml: bytes, *, summary: bool = False) -> dict:
         "positions_with_reported_security_identifier","derivative_positions")}
     position_coverage.update(positions_with_reported_currency=sum(currencies.values()),currencies=dict(sorted(currencies.items())))
     reconciliation,concentration=_portfolio_accounting_evidence(positions,accounting)
+    from .holdings_coverage import sec_coverage
     return {**({"positions":positions} if not summary else {}),
             "fund_accounting":accounting,"identity_coverage":coverage,"position_coverage":position_coverage,
+            "field_weight_coverage":sec_coverage(positions),
             "portfolio_reconciliation":reconciliation,"reported_issuer_concentration":concentration,
             "native_evidence_schema_version":1,"native_evidence_xml_sha256":sha256(xml).hexdigest()}
 
