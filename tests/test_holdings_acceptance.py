@@ -137,6 +137,11 @@ class HoldingsAcceptanceTests(unittest.TestCase):
         for name in ("original_security_weights", "issuer_crosswalk"):
             self.assertEqual(roles[name]["state"], "unavailable_with_fallback", name)
             self.assertIn(name, g01["comparison"]["covered_roles"])
+        g02 = analysis_acceptance(analyses["G02"], by_id, {}, [], observations_checked=True,
+                                  artifact_evidence=evidence, as_of=AS_OF)
+        weights = next(r for r in g02["requirements"] if r["role"] == "index_country_weights")
+        self.assertEqual(weights["state"], "unavailable_with_fallback")
+        self.assertIn("index_country_weights", g02["comparison"]["covered_roles"])
         p01 = analysis_acceptance(analyses["P01"], by_id, {}, [], observations_checked=True,
                                   artifact_evidence=evidence, as_of=AS_OF)
         roles = {r["role"]: r for r in p01["requirements"]}

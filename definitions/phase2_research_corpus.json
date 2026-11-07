@@ -3865,7 +3865,29 @@
             "temporal_requirement": "latest_revised",
             "input_type": "allocation",
             "artifact_ids": ["msci_concentration"],
-            "input_requirement": "Original dated MSCI ACWI free-float index country weights and membership."
+            "input_requirement": "Original dated MSCI ACWI free-float index country weights and membership.",
+            "verified_unavailability": {
+              "reviewed_on": "2026-11-07",
+              "reason": "MSCI's free ACWI factsheet shows only the largest country weights and an 'Other' remainder; complete dated country weights and membership are distributed only through MSCI's subscription data products.",
+              "evidence_urls": [
+                "https://www.msci.com/www/product-documentation/msci-constituent-history/0163808536",
+                "https://developer.msci.com/apis/index-api"
+              ],
+              "fallback": {
+                "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
+                "holdings_contract": {
+                  "funds": [{"fund": "acwi", "artifact_id": "sec_holdings", "source": "SEC_NPORT_PRIMARY_XML"}],
+                  "required_fields": ["country"],
+                  "minimum_weight_coverage": "0.95",
+                  "maximum_snapshot_age_days": 200
+                },
+                "expected": {
+                  "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
+                  "concept": "Fund position country weights tracking MSCI ACWI"
+                },
+                "population_difference": "Country is the N-PORT investment country of each position (Item C.5), not MSCI's own country classification, and weights are fractions of fund NAV including cash and collateral, not index free-float weights."
+              }
+            }
           },
           {
             "role": "country_nominal_gdp",
