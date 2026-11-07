@@ -29,22 +29,21 @@ Implemented in `research_acceptance.py` and validated on every run of `python -m
 * **End states.** A role is `accepted`, `unavailable_with_fallback` (cited unavailability plus a fallback that passes every gate) or `user_input` (owner parameters such as weights, costs or the withdrawal plan). An analysis is `accepted`, `conditional` (descoped roles or fallbacks), `deferred` (a research extension outside Phase 2 completion) or still `blocked`/`incomplete`, with its open gates named.
 * **Phase 2 is complete** when every analysis is `accepted`, `conditional` or `deferred`.
 
-## Current state (local corpus, 2026-11-06)
+## Current state (local corpus, 2026-11-07)
 
 See the measured numbers in the latest `research operating` report; the summary below is updated at each milestone.
 
-Measured after the 2026-11-06 evening sweeps: about 280 of 341 catalogue sources have independently verified original histories (the count moves as daily refreshes add periods beyond the latest archived snapshot until the next sweep).
+Measured after the 2026-11-07 morning sweep: 328 of 341 catalogue sources have independently verified original histories.
 
 | State | Analyses |
 |---|---|
-| Accepted (13) | C01, C03, C05, C06, F02, F03, F05, F06, G05, L05, M01, P03, P07 |
-| Conditional (5) | F01, F07, M04, P02, P05 (narrowed or descoped roles, stated in the catalogue) |
+| Accepted (20) | C01, C03, C05, C06, F02, F03, F05, F06, G05, L02, L05, L07, M01, M02, P03, P06, P07, V01, V02, V05 |
+| Conditional (7) | F01, F04 (Baa fallback for the ICE high-yield spread), F07, M04, P02, P04, P05 (narrowed or descoped roles, stated in the catalogue) |
 | Deferred (3) | L04, G03, V03 (research extensions outside Phase 2 completion) |
-| Incomplete, awaiting collection (9) | F04 (Baa fallback ingest), G02, L07, M02/P04 (refresh timing), P06/V01/V05 (Shiller cooldown), V02 (BEA rows ingest) |
-| Blocked (6) | C02 (NBER announcements), G01 (N-PORT history), L01 (industry-matched OECD inputs), L02/L03 (47 OECD sector series, 20 requests/hour), P01 (UCITS holdings) |
-| Failed (1) | G06 (ICIO matrices not collected; TiVA rounding check fixed, not yet deployed) |
+| Incomplete (3) | G01, P01 (holdings collected; holdings-backed roles have no acceptance rule yet), G02 (index country weights) |
+| Blocked (4) | C02 (NBER announcements), G06 (ICIO matrices), L01 (industry-matched OECD inputs), L03 (net fixed capital binding) |
 
-18 of 34 active analyses are resolved; Phase 2 is **not** complete.
+27 of 34 active analyses are resolved; Phase 2 is **not** complete.
 
 ## Done since the revision (2026-11-06)
 
@@ -59,13 +58,21 @@ Measured after the 2026-11-06 evening sweeps: about 280 of 341 catalogue sources
   * A curated, sourced shock-event register serves C05/P03.
 * **Corrected strictness:** TiVA identity check uses a 0.01 pp materiality bound (G06).
 * **Infrastructure:** OECD Table 14 non-financial corporate accounts provider for L02/L03, awaiting the country coverage check.
+* **Acquisition and verification fixes (2026-11-07):**
+  * Providers whose descriptive URL differs from the request host declare a `request_origin`, so OECD and MSCI requests are paced by the right publisher policy.
+  * The two-request Shiller download fits its pacing, so it is no longer deferred in every sweep.
+  * Sweeps and the app's refresh loop take turns on short waits instead of recording a publisher stop.
+  * Archived scheduled refreshes certify periods they append (ECB and MSCI windowed captures included); a refresh that revises stored values still needs a full snapshot.
+  * Declared fallbacks are corpus inputs with their own exact-join panel (F04).
+  * A survey gap at a window start is recorded as a publisher absence, not a late start (L07).
+  * SEC N-PORT holdings: 12 quarterly filings each for VT and BND.
 
 ## Next slices
 
-1. **Ingest and verify** the new FRED, MSCI and Eurostat series; complete UCITS holdings (P01, slow publisher limits).
-2. **L01–L03:** register OECD Table 14 S11 series for countries with complete coverage and bind the roles.
-3. **G01 history and P01 US holdings:** SEC N-PORT. Needs the owner's contact email for the SEC User-Agent.
-4. **V02 Q components:** BEA fixed-asset tables. A free BEA API key makes this simpler.
+1. **Holdings-backed role acceptance (G01, P01):** define weight-based coverage rules for identifiers, country and sector over the collected holdings. The iShares holdings CSV has sector and location; Vanguard annual-report extracts and SEC N-PORT give country but no sector, so sector coverage needs a crosswalk or a stated per-fund limitation.
+2. **G02 index country weights:** bind a free country-weight source for the ACWI.
+3. **L01 and L03:** industry-matched OECD inputs, and a net fixed capital binding for the OECD Table 14 countries.
+4. **C02 NBER announcements:** collect the announcement dates for the chronology.
 5. **G06 full ICIO matrices:** a large download.
 6. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
 7. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
