@@ -22,6 +22,7 @@ from typing import Any
 from .source_original_gate import verified_original_rows
 from .holdings_acceptance import holdings_role_checks, load_holdings_sources, valid_holdings_contract
 from .chronology_acceptance import nber_announcement_checks
+from .marxian_acceptance import marxian_role_checks
 from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
 
 PUBLISHER_METADATA_FIELDS = (
@@ -536,8 +537,14 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         # The announcement-dates role is the dated NBER originals themselves.
         chronology = None
         if role.get("artifact_ids") == ["nber_chronology"] and not ids:
-            chronology = nber_announcement_checks((artifact_evidence or {}).get("nber_chronology", {}))
-            checks = chronology["checks"]
+            chronology = ("nber_chronology", nber_announcement_checks(
+                (artifact_evidence or {}).get("nber_chronology", {})))
+        # L04's framework roles are the replicated Rotta & Kumar originals.
+        if role.get("artifact_ids") == ["marxian_sectors"] and not ids:
+            chronology = ("marxian_sectors", marxian_role_checks(
+                role["role"], (artifact_evidence or {}).get("marxian_sectors", {})))
+        if chronology is not None:
+            checks = chronology[1]["checks"]
         state = _state(checks)
         result = {**role, "state": state, "accepted": state == "accepted",
             "sources_checked": observations_checked, "mapped_source_count": len(ids),
@@ -549,8 +556,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             result["holdings_evaluation"] = {"funds": holdings["funds"],
                                              "conditional": holdings["conditional"]}
         if chronology is not None:
-            result["artifact_evaluation"] = {"artifact": "nber_chronology", "resolved": chronology["resolved"],
-                                             "conditional": chronology["conditional"]}
+            result["artifact_evaluation"] = {"artifact": chronology[0], "resolved": chronology[1]["resolved"],
+                                             "conditional": chronology[1]["conditional"]}
         if artifact is not None:
             result["original_artifact_evidence"] = {**artifact, "role_resolved": icio_resolved}
         if partial:

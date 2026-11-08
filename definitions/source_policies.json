@@ -890,6 +890,72 @@
       }
     },
     {
+      "id": "zenodo",
+      "hosts": [
+        "zenodo.org"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://zenodo.org/robots.txt",
+      "rate": {
+        "limit": 20,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 10,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "mpra",
+      "hosts": [
+        "mpra.ub.uni-muenchen.de"
+      ],
+      "classification": "internal_conservative",
+      "evidence_url": "https://mpra.ub.uni-muenchen.de/robots.txt",
+      "rate": {
+        "limit": 10,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 10,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
       "id": "nber",
       "hosts": [
         "www.nber.org"

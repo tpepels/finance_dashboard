@@ -18,7 +18,12 @@ from finance_dashboard.research_corpus import (
 class NativeOriginalRoleTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.document = load_research_corpus()
+        # L04's roles now bind the Rotta-Kumar originals; the registration
+        # mechanism is exercised on one of them as it was before binding.
+        cls.document = deepcopy(load_research_corpus())
+        next(r for a in cls.document["analyses"] if a["id"] == "L04"
+             for r in a["comparison_contract"]["original_requirements"]
+             if r["role"] == "productive_labour_wages")["artifact_ids"] = []
         cls.catalog = load_documents()[0]["series"]
 
     @staticmethod
@@ -43,7 +48,7 @@ class NativeOriginalRoleTests(unittest.TestCase):
         with TemporaryDirectory() as temp:
             evidence = native_role_original_evidence(
                 self.document, Path(temp))
-            self.assertEqual(evidence["unbound_structured_roles"], corpus_counts.STRUCTURED_WITHOUT_ARTIFACTS)
+            self.assertEqual(evidence["unbound_structured_roles"], corpus_counts.STRUCTURED_WITHOUT_ARTIFACTS + 1)
             self.assertEqual(evidence["hash_verified_partial_roles"], 0)
             self.assertEqual(evidence["invalid_archived_roles"], [])
             self.assertFalse(evidence["scientific_analysis_certified"])
@@ -67,7 +72,7 @@ class NativeOriginalRoleTests(unittest.TestCase):
             evidence = native_role_original_evidence(
                 self.document, Path(temp) / "evidence")
             self.assertEqual(evidence["hash_verified_partial_roles"], 1)
-            self.assertEqual(evidence["unbound_structured_roles"], corpus_counts.STRUCTURED_WITHOUT_ARTIFACTS)
+            self.assertEqual(evidence["unbound_structured_roles"], corpus_counts.STRUCTURED_WITHOUT_ARTIFACTS + 1)
             self.assertEqual(evidence["invalid_archived_roles"], [])
 
     def test_registered_native_file_reaches_scientific_gate_without_false_acceptance(self):

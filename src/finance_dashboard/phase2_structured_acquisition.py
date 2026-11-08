@@ -73,6 +73,10 @@ CAPABILITIES = {
     "wiid": StructuredCapability(
         "wiid", "operator_original", "native_reader",
         "Original WIID main and companion tables must be registered explicitly"),
+    "marxian_sectors": StructuredCapability(
+        "marxian_sectors", "operator_original", "pinned_source",
+        "Pinned Rotta-Kumar Zenodo deposit and T&P paper with the owner's WIOD SEA copy (DataverseNL robots.txt disallows clients)",
+        ("wiod_sea_file",)),
 }
 if set(CAPABILITIES) != ARTIFACT_IDS:
     raise RuntimeError("structured_artifact_capability_registry_incomplete")

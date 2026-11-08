@@ -18,6 +18,7 @@ from .msci_concentration_originals import read_msci_concentration_originals
 from .vanguard_ucits_holdings import read_vanguard_ucits_sources
 from .corporate_account_coverage import read_corporate_account_coverage
 from .nber_chronology import read_nber_chronology
+from .marxian_sectors import read_marxian_evidence
 from .wiid_originals import read_wiid_originals
 from .research_readiness import ARTIFACT_IDS
 from .holdings_coverage import ucits_coverage
@@ -303,6 +304,7 @@ def research_artifact_evidence(evidence_root: Path, *, holdings_root: Path | Non
     readers["corporate_accounts"] = (lambda: read_corporate_account_coverage(root), "invalid_corporate_variable_coverage_evidence")
     readers["nber_chronology"] = (lambda: read_nber_chronology(root), "invalid_original_nber_evidence")
     readers["wiid"] = (lambda: read_wiid_originals(root), "invalid_original_wiid_evidence")
+    readers["marxian_sectors"] = (lambda: read_marxian_evidence(root), "invalid_original_marxian_evidence")
     readers["msci_concentration"] = (lambda: _msci_evidence(root), "missing_or_invalid_original_msci_documents")
     selected = ARTIFACT_IDS if kinds is None else kinds
     if selected - ARTIFACT_IDS:

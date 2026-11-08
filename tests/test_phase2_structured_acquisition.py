@@ -24,9 +24,9 @@ class StructuredCapabilitiesTests(unittest.TestCase):
         cls.document = load_research_corpus()
         cls.catalog = load_documents()[0]["series"]
 
-    def test_all_13_registered_artifacts_and_all_44_structured_roles(self):
+    def test_all_14_registered_artifacts_and_all_44_structured_roles(self):
         self.assertEqual(set(CAPABILITIES), ARTIFACT_IDS)
-        self.assertEqual(len(CAPABILITIES), 13)
+        self.assertEqual(len(CAPABILITIES), 14)
         matrix = original_artifact_matrix(self.document, {})
         self.assertEqual(matrix["structured_roles"], corpus_counts.STRUCTURED_ROLES)
         self.assertEqual(

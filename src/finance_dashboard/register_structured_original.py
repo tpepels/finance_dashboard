@@ -76,6 +76,23 @@ def register_structured(kind: str, *, root: Path, files: dict[str, Path],
             "original_source_hash_verified": True,
             "complete_historical_index_verified": False,
         }
+    if kind == "marxian_sectors":
+        from finance_dashboard.marxian_sectors import (
+            SOURCES, store_marxian_sectors, read_marxian_evidence,
+        )
+        if set(files) != set(SOURCES) or year is not None or source_url is not None:
+            raise ValueError("marxian_source_file_selection_invalid")
+        if any(path.is_symlink() or not path.is_file() or path.stat().st_size != SOURCES[name]["bytes"]
+               for name, path in files.items()):
+            raise ValueError("marxian_original_file_invalid")
+        archive = store_marxian_sectors({name: path.read_bytes() for name, path in files.items()}, root)
+        proof = read_marxian_evidence(root)
+        return {
+            "kind": kind, "archive": archive.name,
+            "status": proof["status"],
+            "original_source_hash_verified":
+                proof["original_source_hash_verified"],
+        }
     raise ValueError("structured_original_importer_not_registered")
 
 
@@ -83,7 +100,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-dir", type=Path, required=True)
     parser.add_argument("--artifact", choices=[
-        "icio", "wiid", "msci_concentration"], required=True)
+        "icio", "wiid", "msci_concentration", "marxian_sectors"], required=True)
     parser.add_argument("--file", action="append", required=True,
                         help="Repeat exact reviewed name=absolute-local-original-file")
     parser.add_argument("--year", type=int)

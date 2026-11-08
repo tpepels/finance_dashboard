@@ -3209,7 +3209,7 @@
       "id": "L04",
       "title": "How sensitive are Marxian surplus and profit estimates to theoretical assumptions?",
       "primary_method_sources": ["S33", "S31", "S32", "S34"],
-      "outstanding_evidence": "OECD accounts module exists; exact theoretical s/v and s/(c+v) methodology inputs not established",
+      "outstanding_evidence": "Rotta & Kumar framework replicated from the WIOD 2016 SEA; WIOD input-output tables not yet imported, so the input-origin ratio is the authors' published value; 1995-2021 EU KLEMS extension outstanding",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -3226,7 +3226,7 @@
             },
             "temporal_requirement": "latest_revised",
             "input_type": "accounting_panel",
-            "artifact_ids": [],
+            "artifact_ids": ["marxian_sectors"],
             "input_requirement": "Original industry-level wages and documented productive-labour classification under one selected published framework."
           },
           {
@@ -3240,7 +3240,7 @@
             },
             "temporal_requirement": "latest_revised",
             "input_type": "accounting_panel",
-            "artifact_ids": [],
+            "artifact_ids": ["marxian_sectors"],
             "input_requirement": "Original CE, mixed income, NOS and depreciation inputs for the selected productive-surplus estimate."
           },
           {
@@ -3254,7 +3254,7 @@
             },
             "temporal_requirement": "latest_revised",
             "input_type": "accounting_panel",
-            "artifact_ids": [],
+            "artifact_ids": ["marxian_sectors"],
             "input_requirement": "Original gross intermediate inputs, net fixed capital, turnover and stock/advance valuation inputs."
           },
           {
@@ -3267,7 +3267,7 @@
             },
             "temporal_requirement": "latest_revised",
             "input_type": "entity_mapping",
-            "artifact_ids": [],
+            "artifact_ids": ["marxian_sectors"],
             "input_requirement": "Original country-industry concordance and published productive/unproductive classification parameters."
           }
         ],
@@ -3279,9 +3279,8 @@
       ],
       "context_artifact_ids": ["corporate_accounts"],
       "evidence_tier": "descriptive",
-      "decision_informed": "Political-economy research; no direct portfolio decision (deferred extension).",
-      "phase2_scope": "deferred_extension",
-      "deferral_reason": "Marxian productive-sector estimates need theory-laden industry, capital and labour imputations without a free defensible source; lowest decision value. Kept as a research extension outside Phase 2 completion."
+      "decision_informed": "Political-economy research; no direct portfolio decision.",
+      "phase2_scope": "active"
     },
     {
       "id": "L05",
