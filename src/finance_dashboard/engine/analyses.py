@@ -10,8 +10,8 @@ from __future__ import annotations
 from datetime import date
 
 from .bundle import AnalysisDefinition, Computed
-from .transforms import (applied, complete_months, contiguous_tail, index_100, month_end, previous_month,
-                         return_summary)
+from .transforms import (applied, complete_months, contiguous_tail, index_100, month_end, own_history,
+                         percentile, previous_month, return_summary)
 
 
 def view_today(view: dict) -> date:
@@ -97,4 +97,129 @@ P07 = AnalysisDefinition("P07", {
     "ea_hicp": "prices.ea.hicp_index_2025",
 }, _p07)
 
-DEFINITIONS: dict[str, AnalysisDefinition] = {"P07": P07}
+
+
+def trailing_inflation(hicp: dict) -> dict | None:
+    if not hicp:
+        return None
+    key = max(hicp)
+    prior = (key[0] - 1, key[1])
+    if prior not in hicp:
+        return None
+    return {"month": f"{key[0]:04d}-{key[1]:02d}", "rate": hicp[key][1] / hicp[prior][1] - 1}
+
+
+def p06_expected_returns(cape: dict, real_tr: dict, global_ey: dict, latest: dict, hicp: dict,
+                         horizon_years: int = 10) -> dict:
+    """Building-block expected real/nominal returns with an empirical equity range.
+
+    Equity: earnings yield 1/CAPE as the long-run real return estimate. The range is
+    the 10th–90th percentile of (realised annualized real return over the next
+    `horizon_years` − earnings yield at the start) across all fully observed start
+    months, added to today's earnings yield. Windows overlap heavily, so the
+    effective number of independent observations is about months/(12·horizon).
+    """
+    months = horizon_years * 12
+    residuals = []
+    ordered = sorted(real_tr)
+    index = {key: i for i, key in enumerate(ordered)}
+    for key, (_, cape_value) in cape.items():
+        if key not in index:
+            continue
+        i = index[key]
+        if i + months >= len(ordered):
+            continue
+        end = ordered[i + months]
+        # Require the end month to be exactly horizon_years later (no gaps).
+        if (end[0] - key[0]) * 12 + end[1] - key[1] != months:
+            continue
+        realised = (real_tr[end][1] / real_tr[key][1]) ** (1 / horizon_years) - 1
+        residuals.append(realised - 1 / cape_value)
+    residuals.sort()
+    equity = None
+    if cape:
+        key = max(cape)
+        ey = 1 / cape[key][1]
+        equity = {"as_of": cape[key][0].isoformat(), "cape": cape[key][1], "earnings_yield": ey,
+                  "range_real": {"p10": ey + percentile(residuals, 0.1), "p50": ey + percentile(residuals, 0.5),
+                                 "p90": ey + percentile(residuals, 0.9)} if residuals else None,
+                  "calibration_windows": len(residuals),
+                  "effective_independent_windows": round(len(residuals) / months, 1)}
+    world = None
+    if global_ey:
+        key = max(global_ey)
+        world = {"as_of": global_ey[key][0].isoformat(), "earnings_yield": global_ey[key][1] / 100,
+                 "snapshots": len(global_ey)}
+    inflation = trailing_inflation(hicp)
+    bonds = {name: {"as_of": value[0].isoformat(), "yield": value[1] / 100} for name, value in latest.items() if value}
+    if "us_nominal_10y" in bonds and "us_real_10y" in bonds:
+        bonds["us_breakeven_10y"] = {"as_of": bonds["us_real_10y"]["as_of"],
+                                     "yield": bonds["us_nominal_10y"]["yield"] - bonds["us_real_10y"]["yield"]}
+    if "ea_aaa_10y" in bonds and inflation:
+        bonds["ea_aaa_10y_real_trailing"] = {
+            "as_of": bonds["ea_aaa_10y"]["as_of"],
+            "yield": (1 + bonds["ea_aaa_10y"]["yield"]) / (1 + inflation["rate"]) - 1,
+            "assumption": "Nominal AAA yield deflated by trailing 12-month HICP inflation, not a market inflation expectation."}
+    return {"horizon_years": horizon_years, "equity_us": equity, "equity_world_snapshot": world,
+            "bonds": bonds, "ea_inflation": inflation}
+
+
+def _p06(points: dict, view: dict) -> Computed:
+    ends = {role: month_end(values) for role, values in points.items()}
+    latest = {name: ends[name][max(ends[name])] if ends[name] else None
+              for name in ("us_nominal_10y", "us_real_10y", "ea_aaa_10y")}
+    result = p06_expected_returns(ends["us_cape"], ends["us_real_total_return"], ends["global_earnings_yield"],
+                                  latest, ends["ea_hicp"])
+    equity = result.pop("equity_us")
+    return Computed(values=result, estimates={"equity_us": equity},
+                    comparison=["equity_us", "equity_world_snapshot", "bonds"], transforms=[
+        applied("month_end", applied_to=list(points)),
+        applied("overlapping_window_percentiles", applied_to=["us_cape", "us_real_total_return"],
+                horizon_years=result["horizon_years"], percentiles=[0.1, 0.5, 0.9]),
+    ])
+
+
+P06 = AnalysisDefinition("P06", {
+    "us_cape": "valuation.us.cape",
+    "us_real_total_return": "returns.us.shiller_real_total_return",
+    "global_earnings_yield": "valuation.world.global_earnings_yield",
+    "us_nominal_10y": "bond.us.nominal_10y",
+    "us_real_10y": "bond.us.real_10y",
+    "ea_aaa_10y": "bond.ea.aaa_10y_spot",
+    "ea_hicp": "prices.ea.hicp_index_2025",
+}, _p06)
+
+CREDIT_GAPS = {"US": "credit_gap.us.bis", "EA": "credit_gap.ea.bis", "JP": "credit_gap.jp.bis",
+               "DE": "credit_gap.de.bis", "CN": "credit_gap.cn.bis", "PT": "credit_gap.pt.bis"}
+PRIVATE_DSR = {"US": "debt_service.us.private.bis", "JP": "debt_service.jp.private.bis",
+               "DE": "debt_service.de.private.bis", "CN": "debt_service.cn.private.bis",
+               "PT": "debt_service.pt.private.bis"}
+# BIS/Basel III countercyclical buffer guide: buffer starts above a 2 pp gap and
+# reaches its maximum at 10 pp (Drehmann & Juselius 2013; BIS credit-gap notes).
+GAP_GUIDE_LOW, GAP_GUIDE_HIGH = 2.0, 10.0
+
+
+def f03_credit(gaps: dict, dsr: dict) -> dict:
+    rows = []
+    for area in sorted(set(gaps) | set(dsr)):
+        gap = own_history(gaps.get(area, []))
+        debt = own_history(dsr.get(area, []))
+        band = None
+        if gap:
+            band = ("above_10pp" if gap["latest"] > GAP_GUIDE_HIGH else
+                    "between_2_and_10pp" if gap["latest"] > GAP_GUIDE_LOW else "below_2pp")
+        rows.append({"area": area, "credit_gap": gap, "gap_guide_band": band, "private_dsr": debt})
+    return {"rows": rows, "guide": {"low_pp": GAP_GUIDE_LOW, "high_pp": GAP_GUIDE_HIGH}}
+
+
+def _f03(points: dict, view: dict) -> Computed:
+    gaps = {key.split(":")[1]: values for key, values in points.items() if key.startswith("credit_gap:")}
+    dsr = {key.split(":")[1]: values for key, values in points.items() if key.startswith("private_dsr:")}
+    return Computed(values=f03_credit(gaps, dsr), estimates=None, comparison=["credit_gap", "private_dsr"],
+                    transforms=[applied("own_history", applied_to=list(points))])
+
+
+F03 = AnalysisDefinition("F03", {**{f"credit_gap:{area}": sid for area, sid in CREDIT_GAPS.items()},
+                                 **{f"private_dsr:{area}": sid for area, sid in PRIVATE_DSR.items()}}, _f03)
+
+DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03}
