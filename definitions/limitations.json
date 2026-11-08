@@ -1,0 +1,49 @@
+{
+  "phase2": {
+    "alfred_records_not_agency_first_release": "Real-time values come from ALFRED's records, which may differ from the producing agency's own first release.",
+    "alternative_classification_concordance_reviewed": "The alternative productive-sector classification is mapped to WIOD industries by a reviewed transcription, not by the authors.",
+    "archived_factsheet_months_missing": "Only months whose MSCI factsheet the Internet Archive captured are observed; the other months are absent, not filled.",
+    "capture_time_bounds_dissemination": "Each value is dated by the document's own as-of month; when MSCI actually published it is known only up to the archive capture time.",
+    "country_weights_top_n_only": "MSCI factsheets print only the largest countries plus 'Other'; full country weights are not freely published.",
+    "deferred_research_extension": "This analysis is a deferred research extension outside Phase 2; it has no accepted inputs yet.",
+    "dimensions_as_declared_in_catalogue": "Population, currency and price basis are as declared in the series catalogue, without a separate cited review.",
+    "exact_original_inputs_missing_or_partial": "Some required original inputs are missing or only partly available, so the analysis cannot be computed in full.",
+    "exact_source_unavailable_fallback_used": "The preferred source is unavailable, so a cited fallback source is used in its place.",
+    "history_starts_with_archive_captures": "History starts when archived captures begin (2012-2014) and is dense only from about 2017 for World, ACWI and EM and 2020 for regions.",
+    "holdings_field_not_reported_by_publisher": "Some holdings fields (for example sector or identifiers) are not reported by the fund's publisher, so those breakdowns are incomplete.",
+    "holdings_weights_only_accounting_control": "Holdings are checked only by their weights summing correctly; no market values are available to reconcile against.",
+    "io_input_origin_share_author_published": "The input-origin ratio is the authors' published value, not yet recomputed from the WIOD input-output tables.",
+    "latest_revised_values_not_real_time": "Values are the publisher's latest revised figures, not what was known at the time.",
+    "market_observation_assumed_unrevised": "Market observations are treated as unrevised once published; no vintage history exists to confirm it.",
+    "no_approved_analysis_window_common_native_history": "The inputs share no approved common history window, so they are shown separately rather than joined.",
+    "original_comparison_open": "Not every role is covered by a verified original comparison yet.",
+    "original_scientific_failure": "At least one input failed a scientific check against its original source.",
+    "printed_value_conflicts_blocked": "Where two documents print different values for the same index and month, that month is left out; neither value is used.",
+    "publisher_absent_periods_excluded_from_join": "Periods the publisher does not report (or that only some inputs report) are left out of the matched comparison; nothing is filled.",
+    "publisher_matrix_residuals_within_materiality": "The publisher's input-output tables do not balance exactly; residuals within the materiality bound are kept, not rebalanced.",
+    "publisher_page_header_date_typo": "A publisher page header shows a wrong date; the announcement's own dateline is used instead.",
+    "release_dates_not_published_by_publisher": "The publisher keeps no release vintages, so values cannot be dated to when they were first known.",
+    "role_descoped_by_phase1_revision": "One input of the original design was removed by the 2026-11-06 revision because no free source exists.",
+    "self_employed_labour_income_imputed_by_publisher": "Self-employed labour income is imputed by WIOD; mixed income is not published separately by industry.",
+    "supervisory_labour_not_separated": "Supervisory labour cannot be separated from other labour outside the United States.",
+    "surplus_includes_depreciation": "Surplus is gross of depreciation, because the WIOD Socio-Economic Accounts publish no consumption of fixed capital by industry.",
+    "turnover_and_circulating_capital_not_published": "Capital turnover and circulating capital are not published, so profit rates use fixed capital only."
+  },
+  "method": {
+    "P06": {
+      "planning_ranges_not_forecasts": "Expected-return estimates are model-based planning ranges, not forecasts or timing signals.",
+      "revised_shiller_overlapping_windows": "The equity range uses latest revised Shiller data and overlapping windows; V05 evaluates the relationship on real-time data.",
+      "yields_approximate_hold_to_maturity": "Bond yields approximate nominal returns only when held to maturity; euro AAA curve is model-fitted, not a traded bond."
+    },
+    "P07": {
+      "hedge_cost_cip_approximation": "Hedged returns approximate forward points by the ECB deposit-facility minus effective federal funds rate; actual hedge costs, basis and fund fees are not included.",
+      "month_end_reference_rates": "Month-end values are the last published observation in each month; ECB reference rates are not transaction rates.",
+      "index_not_investable_fund": "MSCI ACWI net total return in USD is an index, not an investable fund; ETF fees and tracking differences are excluded."
+    },
+    "F03": {
+      "credit_gap_early_warning_only": "The credit gap uses BIS's one-sided HP trend; it is an early-warning indicator with false positives, not a crisis forecast.",
+      "dsr_own_history_only": "Debt-service ratios are compared with each economy's own history; raw levels are not comparable across countries.",
+      "no_world_credit_gap": "A weighted average of national gaps is not a world credit gap; no aggregate is shown."
+    }
+  }
+}
