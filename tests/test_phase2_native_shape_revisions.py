@@ -59,6 +59,9 @@ class TypedNativeRoleTests(unittest.TestCase):
             self.assertFalse(found["original_role_accepted"])
 
     def test_role_specific_structural_requirements_allow_named_mappings(self):
+        # V03's composition role now binds the archived MSCI factsheets; the
+        # mapping shape is exercised on it as it was before binding.
+        self.document = corpus_counts.with_unbound_v03(self.document)
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             with self.assertRaisesRegex(ValueError, "related"):

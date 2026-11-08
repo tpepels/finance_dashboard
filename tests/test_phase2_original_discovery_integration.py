@@ -30,9 +30,14 @@ class IndependentNativeRoleDiscoveryTests(unittest.TestCase):
         # L07's survey Gini is bound (World Bank PIP), so it is no longer an unbound candidate.
         self.assertFalse(any(r["analysis_id"] == "L07" and r["role"] == "wiid_gini"
                              for r in report["role_candidates"]))
+        # Every scalar role is bound; the candidate review is exercised on
+        # V03 as it was before the archived MSCI factsheets bound it.
+        unbound = unbound_original_source_discovery(
+            corpus_counts.with_unbound_v03(self.document), self.catalog, {})
+        self.assertEqual(unbound["unbound_scalar_roles"], corpus_counts.UNBOUND_WITH_V03)
         self.assertTrue(any(
             r["related_existing_catalog_inputs_not_equivalent"]
-            for r in report["role_candidates"]))
+            for r in unbound["role_candidates"]))
         self.assertTrue(report["no_missing_observations_interpolated"])
 
     def test_one_retained_scope_is_source_data_not_scalar_method_certification(self):

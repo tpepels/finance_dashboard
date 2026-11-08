@@ -36,6 +36,7 @@ _REGISTRATIONS = (
     ProviderRegistration("SIBLIS_WORLD_PE", "fetch_siblis_world_pe", "response", "full"),
     ProviderRegistration("SIBLIS_WORLD_EARNINGS_YIELD", "fetch_siblis_world_pe", "response", "full"),
     ProviderRegistration("MSCI_PUBLISHED_TOP10", "fetch_msci_published_top10", "native", "windowed"),
+    ProviderRegistration("MSCI_REGIONAL_FACTSHEETS", "fetch_msci_regional_factsheets", "native", "full"),
     ProviderRegistration("OECD_CORPORATE_GDPWEIGHTED", "fetch_oecd_corporate_gdpweighted", "response", "windowed"),
     ProviderRegistration("EUROSTAT_CORPORATE_GDP", "fetch_eurostat_corporate_gdp", "response", "windowed"),
     ProviderRegistration("EUROSTAT_NFC_PROFIT_GVA", "fetch_eurostat_nfc_profit_gva", "response", "windowed"),

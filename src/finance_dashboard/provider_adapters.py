@@ -262,6 +262,24 @@ def fetch_msci_published_top10(self, series_id, start, item, key):
         None, values)
 
 
+def fetch_msci_regional_factsheets(self, series_id, start, item, key):
+    """Validate and fetch native data for MSCI_REGIONAL_FACTSHEETS."""
+    from .msci_regional_factsheets import (
+        SERIES_KEYS, MsciFactsheetError, read_msci_regional_evidence, series_values,
+    )
+    if key not in SERIES_KEYS:
+        raise SourceUnavailable("Unapproved MSCI regional index or fundamental")
+    try:
+        values = series_values(read_msci_regional_evidence(Path(os.environ.get(
+            "FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence"))), key)
+    except (MsciFactsheetError, OSError) as exc:
+        raise ProviderError("Archived MSCI factsheets are missing, invalid or conflicting") from exc
+    values = {day: value for day, value in values.items() if start is None or day >= start}
+    if not values:
+        raise ProviderError("Archived MSCI factsheets have no selected values in requested period")
+    return FetchedSeries(series_id, item["source_url"], None, values)
+
+
 def fetch_oecd_corporate_gdpweighted(self, series_id, start, item, key):
     """Validate and fetch native data for OECD_CORPORATE_GDPWEIGHTED."""
     provider = item["provider"]

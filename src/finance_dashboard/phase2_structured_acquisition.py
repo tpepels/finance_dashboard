@@ -73,6 +73,9 @@ CAPABILITIES = {
     "wiid": StructuredCapability(
         "wiid", "operator_original", "native_reader",
         "Original WIID main and companion tables must be registered explicitly"),
+    "msci_regional": StructuredCapability(
+        "msci_regional", "publisher_collector", "native_reader",
+        "MSCI's own regional factsheet PDFs from raw Internet Archive captures, CDX-digest checked"),
     "marxian_sectors": StructuredCapability(
         "marxian_sectors", "operator_original", "pinned_source",
         "Pinned Rotta-Kumar Zenodo deposit and T&P paper with the owner's WIOD SEA copy (DataverseNL robots.txt disallows clients)",
@@ -229,6 +232,9 @@ def task_policy_hosts(kind: str, *, cvm_year: int | None = None,
     if kind == "msci_concentration":
         return tuple(url for _, url in msci_publisher_factsheet_sources(
             msci_factsheet_urls))
+    if kind == "msci_regional":
+        from .msci_regional_factsheets import CDX_URL, METHODOLOGY
+        return CDX_URL, METHODOLOGY["capture_url"]
     return ()
 
 
@@ -394,6 +400,10 @@ def collect_structured_original(kind: str, *, root: Path, client,
             root=root, client=client, source_url=msci_factsheet_url)
         return {"kind": kind, "archive": archive.name,
                 "state": "retained_original"}
+    if kind == "msci_regional":
+        from .msci_regional_factsheets import collect
+        report = collect(root, client=client)
+        return {"kind": kind, "state": "retained_original", "collection": report}
     if kind == "ucits_holdings":
         if subsource == "ishares":
             from .ucits_holdings import collect_ucits_sources

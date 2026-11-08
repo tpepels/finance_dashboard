@@ -38,6 +38,24 @@ def with_unbound_l01_candidates(document):
     return result
 
 
+def with_unbound_v03(document):
+    """A copy of the corpus with V03 as it was before MSCI's archived factsheets
+    bound it: two unbound scalar ratio roles and an unbound composition role.
+    The unbound-role mechanisms are exercised on these."""
+    import copy
+    result = copy.deepcopy(document)
+    v03 = next(a for a in result["analyses"] if a["id"] == "V03")
+    for role in v03["comparison_contract"]["original_requirements"]:
+        role["series_ids"] = []
+        role["artifact_ids"] = []
+    return result
+
+
+UNBOUND_WITH_V03 = sum(not r["series_ids"] for a in with_unbound_v03(_DOC)["analyses"]
+                       for r in a["comparison_contract"]["original_requirements"]
+                       if r["input_type"] == "scalar_history")
+
+
 _LEADS = with_unbound_l01_candidates(_DOC)
 UNBOUND_WITH_L01_LEADS = sum(not r["series_ids"] for a in _LEADS["analyses"]
                              for r in a["comparison_contract"]["original_requirements"]

@@ -23,6 +23,7 @@ from .source_original_gate import verified_original_rows
 from .holdings_acceptance import holdings_role_checks, load_holdings_sources, valid_holdings_contract
 from .chronology_acceptance import nber_announcement_checks
 from .marxian_acceptance import marxian_role_checks
+from .regional_valuation_acceptance import regional_composition_checks
 from .phase2_unbound_sources import DOCUMENTED_NATIVE_DISCOVERY
 
 PUBLISHER_METADATA_FIELDS = (
@@ -543,6 +544,10 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         if role.get("artifact_ids") == ["marxian_sectors"] and not ids:
             chronology = ("marxian_sectors", marxian_role_checks(
                 role["role"], (artifact_evidence or {}).get("marxian_sectors", {})))
+        # V03's composition role is MSCI's archived factsheets themselves.
+        if role.get("artifact_ids") == ["msci_regional"] and not ids:
+            chronology = ("msci_regional", regional_composition_checks(
+                (artifact_evidence or {}).get("msci_regional", {})))
         if chronology is not None:
             checks = chronology[1]["checks"]
         state = _state(checks)

@@ -35,7 +35,11 @@ class OfflineCorpusStatusTests(unittest.TestCase):
         self.assertLess(len(output.splitlines()), 40)
         self.assertIn("NOT EVALUATED", output)
         self.assertNotIn("L01: oecd_matched_value_added", output)
-        self.assertIn("V03: regional_trailing_pe", output)
+        self.assertNotIn("V03: regional_trailing_pe", output)
+        # Unbound roles stay visible; exercised on V03 as it was before binding.
+        gaps = format_inventory(build_inventory(corpus_counts.with_unbound_v03(load_research_corpus()),
+                                                load_documents()[0]["series"]))
+        self.assertIn("V03: regional_trailing_pe", gaps)
         self.assertNotIn('"decision": "blocked"', output)
         full = format_inventory(self.report, details=True)
         self.assertIn("C01: scalar", full)

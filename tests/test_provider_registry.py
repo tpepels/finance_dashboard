@@ -17,7 +17,7 @@ class ProviderRegistryTests(unittest.TestCase):
         mapped = {row["provider"] for row in load_documents()[0]["series"]
                   if row["status"] == "mapped"}
         self.assertFalse(mapped - PROVIDER_CODES)
-        self.assertEqual(len(PROVIDER_CODES), 41)
+        self.assertEqual(len(PROVIDER_CODES), 42)
         for code, registration in PROVIDER_REGISTRY.items():
             self.assertTrue(callable(getattr(provider_adapters, registration.handler, None)))
             self.assertIn(registration.acquisition,

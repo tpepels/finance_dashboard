@@ -433,6 +433,7 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             proof.update(evidence)
         except EvidenceError as exc:
             failures.update({sid: exc.code for sid in ids})
+    regional = None
     for sid in stored.keys() - set(WID_SERIES) - set(TIVA_SERIES) - return_ids:
         definition = registry.get(sid)
         if definition and definition["provider"] == "MSCI_PUBLISHED_TOP10":
@@ -452,6 +453,37 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
                 failures[sid] = exc.code
             except (OSError, ValueError):
                 failures[sid] = "original_msci_documents_missing_or_invalid"
+            continue
+        if definition and definition["provider"] == "MSCI_REGIONAL_FACTSHEETS":
+            from .msci_regional_factsheets import (
+                MsciFactsheetError, read_msci_regional_evidence, series_conflicts, series_values,
+            )
+            try:
+                if regional is None:
+                    regional = read_msci_regional_evidence(root)
+                values = series_values(regional, definition["source_key"])
+                if not values:
+                    raise EvidenceError("source_empty")
+                index = definition["source_key"].split("/")[0]
+                months = {day.isoformat() for day in values}
+                documents = [item for item in regional["document_proofs"]
+                             if item["as_of"][:7] + "-01" in months]
+                originals[sid] = values
+                proof[sid] = {"source": regional["source"], "source_snapshot_scope": "partial_original_documents",
+                    "source_first_publication_at": None, "source_index": index,
+                    "original_covered_periods": sorted(months), "original_document_proofs": documents,
+                    "source_sha256": sha256(canonical_bytes(documents)).hexdigest(),
+                    "source_manifest_sha256": sha256(canonical_bytes(
+                        [item["manifest_sha256"] for item in documents])).hexdigest(),
+                    "source_periods": len(values), "source_first_observation": min(values).isoformat(),
+                    "source_last_observation": max(values).isoformat(),
+                    "methodology": regional["methodology"],
+                    "printed_value_conflicts_blocked": series_conflicts(regional, definition["source_key"]),
+                    "limitations": "Archived original factsheets only; months the archive did not capture are absent, never filled; capture time bounds dissemination."}
+            except EvidenceError as exc:
+                failures[sid] = exc.code
+            except (MsciFactsheetError, OSError, ValueError):
+                failures[sid] = "original_msci_regional_documents_missing_invalid_or_conflicting"
             continue
         if not definition or (registration := get_provider(definition["provider"])) is None or registration.acquisition != "response":
             failures[sid] = "source_reconciliation_unsupported"

@@ -13,8 +13,8 @@ Binding scientific scope: [Phase 1 charter](PHASE1_SCIENTIFIC_CHARTER.md) (inclu
 | Phase | Outcome | Status |
 |---|---|---|
 | 1 — Scientific charter and product design | Approved question catalogue, methods, visual contract | Closed 2026-11-03; revised by the owner 2026-11-06 |
-| 2 — Data, provenance and research corpus | Every active analysis reaches an evidenced end state | Active |
-| 3 — Comparative analytical engine | Transforms, alignment, estimates with uncertainty | Starts with the first slice (below) |
+| 2 — Data, provenance and research corpus | Every active analysis reaches an evidenced end state | Complete 2026-11-08 |
+| 3 — Comparative analytical engine | Transforms, alignment, estimates with uncertainty | Active |
 | 4 — Interaction and visualization | Per-chart configurable views, overview, research panels | Starts with the first slice |
 | 5 — Portfolio application and validation | Owner portfolio inputs, scenario and backtest validation | Later slices |
 
@@ -33,15 +33,15 @@ Implemented in `research_acceptance.py` and validated on every run of `python -m
 
 See the measured numbers in the latest `research operating` report; the summary below is updated at each milestone.
 
-Measured on 2026-11-08 after the L04 import: 368 of 381 catalogue sources have independently verified original histories.
+Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have independently verified original histories (the remaining one, the ICE high-yield spread, has the Baa fallback).
 
 | State | Analyses |
 |---|---|
 | Accepted (23) | C01, C03, C05, C06, F02, F03, F05, F06, G05, G06, L01, L02, L03, L05, L07, M01, M02, P03, P06, P07, V01, V02, V05 |
-| Conditional (12) | C02 (no NBER announcement dates before 1979), F01, F04 (Baa fallback), F07, G01 and G02 (iShares MSCI ACWI ETF N-PORT positions for the unpublished ACWI weights), L04 (framework limits below), M04, P01 (fields the holdings publishers do not report), P02, P04, P05 |
-| Deferred (2) | G03, V03 (free-source designs researched; being bound) |
+| Conditional (13) | C02 (no NBER announcement dates before 1979), F01, F04 (Baa fallback), F07, G01 and G02 (iShares MSCI ACWI ETF N-PORT positions for the unpublished ACWI weights), L04 (framework limits below), M04, P01 (fields the holdings publishers do not report), P02, P04, P05, V03 (archived factsheet coverage below) |
+| Deferred (1) | G03 (free-source design researched; being bound) |
 
-35 of 35 active analyses are resolved; none is blocked. Phase 2 is **complete**.
+36 of 36 active analyses are resolved; none is blocked. Phase 2 is **complete**.
 
 ## Done since the revision (2026-11-06)
 
@@ -72,6 +72,8 @@ Measured on 2026-11-08 after the L04 import: 368 of 381 catalogue sources have i
 * **L01:** value added (VA_CP), its price index (VA_PI), hours of persons engaged (H_EMP) and labour compensation including self-employed (LAB) from the EU KLEMS & INTANProd 2025 total-economy workbooks for all eight countries, on one matched scope. The publisher's Dropbox shares are fetched from the fixed host `dl.dropboxusercontent.com`, so no wildcard policy was needed. All 32 series are verified against an independent reader and L01 is accepted.
 
 * **L04:** Rotta & Kumar (2024) productive-sector framework. Their Zenodo deposit (Table A1 classification and 43-country 2000-2014 panel) and the Tsoulfidis & Paitaridis (2017) alternative classification are fetched and pinned; the WIOD 2016 Socio-Economic Accounts are an owner copy pinned to DataverseNL's SHA-1, since its robots.txt disallows automated clients. The authors' panel is recomputed from the SEA under Table A1 for all 645 country-years: 32,100 levels and 16,665 published ratios match exactly. L04 is conditional: no supervisory-labour split outside the US, no published turnover or circulating capital, surplus gross of depreciation, and the input-origin ratio is the authors' published value until the WIOD input-output tables are imported.
+
+* **V03:** trailing and forward P/E (MSCI Fundamental Data Methodology, I/B/E/S EPS12F) and composition for MSCI ACWI, World, EM, USA, Europe, Japan and EAFE, read from 588 raw Internet Archive captures of MSCI's own factsheets, each checked against the CDX SHA-1 and dated by the document's own as-of month. Values two factsheets print differently are a recorded conflict and stay absent. V03 is conditional: monthly coverage is sparse outside World, ACWI and EM, histories start 2012-2017, and only the top countries are printed.
 
 ## Next slices
 

@@ -10,7 +10,7 @@ INPUT_TYPES = frozenset({"scalar_history", "matrix", "positions", "entity_mappin
 
 # Approved typed artifact identifiers belong to the scientific input contract.
 # Keep registry-only reads independent of workbook/PDF parser implementations.
-ARTIFACT_IDS = frozenset({"icio", "tiva", "stan", "cvm", "taiwan_profits", "sec_holdings", "ucits_holdings", "amne", "meip", "msci_concentration", "corporate_accounts", "nber_chronology", "wiid", "marxian_sectors"})
+ARTIFACT_IDS = frozenset({"icio", "tiva", "stan", "cvm", "taiwan_profits", "sec_holdings", "ucits_holdings", "amne", "meip", "msci_concentration", "corporate_accounts", "nber_chronology", "wiid", "marxian_sectors", "msci_regional"})
 
 
 def role_resolution(role, counts, registry, *, external_coverage=None, artifact_evidence=None):

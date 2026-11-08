@@ -177,7 +177,7 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         state = "available"
     last_error = last["error"] if last is not None else None
     regular_cadence = provider not in (
-        "MSCI_PUBLISHED_TOP10", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
+        "MSCI_PUBLISHED_TOP10", "MSCI_REGIONAL_FACTSHEETS", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
         "SIBLIS_WORLD_EARNINGS_YIELD", "CORGANO_SPOT")
     return {
         "family": family, "id": id, "name": name, "provider": provider,

@@ -2419,7 +2419,7 @@
       "id": "V03",
       "title": "Can equity valuation levels be compared across global regions?",
       "primary_method_sources": ["S27", "S25", "S28"],
-      "outstanding_evidence": "Single Siblis worldwide ratio is not comparable regional index vendor valuation panel",
+      "outstanding_evidence": "MSCI's own archived factsheets bind all three roles; monthly coverage is sparse outside World, ACWI and EM, history starts 2012-2017, and only the top countries are printed",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -2428,28 +2428,30 @@
           {
             "role": "regional_trailing_pe",
             "description": "Original same-vendor/family regional trailing P/E histories with consistent earnings definition.",
-            "series_ids": [],
+            "series_ids": ["valuation.acwi.msci_trailing_pe", "valuation.world.msci_trailing_pe", "valuation.em.msci_trailing_pe", "valuation.usa.msci_trailing_pe", "valuation.europe.msci_trailing_pe", "valuation.japan.msci_trailing_pe", "valuation.eafe.msci_trailing_pe"],
             "expected": {
               "frequency": "M",
               "unit": "ratio",
-              "population": "Named comparable regional equity indexes",
+              "geography": ["MSCI_ACWI_INDEX", "MSCI_WORLD_INDEX", "MSCI_EM_INDEX", "MSCI_USA_INDEX", "MSCI_EUROPE_INDEX", "MSCI_JAPAN_INDEX", "MSCI_EAFE_INDEX"],
+              "population": "MSCI ACWI, World, Emerging Markets, USA, Europe, Japan and EAFE standard (large and mid cap) indexes",
               "concept": "Trailing twelve-month index price/earnings"
             },
-            "temporal_requirement": "latest_revised",
+            "temporal_requirement": "source_asof",
             "input_type": "scalar_history",
             "artifact_ids": []
           },
           {
             "role": "regional_forward_pe",
             "description": "Original same-vendor/family regional forward P/E histories with source EPS horizon.",
-            "series_ids": [],
+            "series_ids": ["valuation.acwi.msci_forward_pe", "valuation.world.msci_forward_pe", "valuation.em.msci_forward_pe", "valuation.usa.msci_forward_pe", "valuation.europe.msci_forward_pe", "valuation.japan.msci_forward_pe", "valuation.eafe.msci_forward_pe"],
             "expected": {
               "frequency": "M",
               "unit": "ratio",
-              "population": "Same named regional equity indexes",
+              "geography": ["MSCI_ACWI_INDEX", "MSCI_WORLD_INDEX", "MSCI_EM_INDEX", "MSCI_USA_INDEX", "MSCI_EUROPE_INDEX", "MSCI_JAPAN_INDEX", "MSCI_EAFE_INDEX"],
+              "population": "Same MSCI indexes; EPS12F rolling 12-month I/B/E/S consensus",
               "concept": "Forward consensus earnings valuation"
             },
-            "temporal_requirement": "latest_revised",
+            "temporal_requirement": "source_asof",
             "input_type": "scalar_history",
             "artifact_ids": []
           },
@@ -2463,7 +2465,7 @@
             },
             "temporal_requirement": "latest_revised",
             "input_type": "entity_mapping",
-            "artifact_ids": [],
+            "artifact_ids": ["msci_regional"],
             "input_requirement": "Original dated region index constituents, country/sector weights and vendor methodology versions."
           }
         ],
@@ -2475,9 +2477,8 @@
       ],
       "context_artifact_ids": [],
       "evidence_tier": "descriptive",
-      "decision_informed": "Regional valuation context for regional tilts (deferred: no free regional history).",
-      "phase2_scope": "deferred_extension",
-      "deferral_reason": "Comparable regional valuation histories (trailing/forward P/E by region) are not freely available; global and US valuation remain in V01 and P06."
+      "decision_informed": "Regional valuation context for regional tilts.",
+      "phase2_scope": "active"
     },
     {
       "id": "V05",
