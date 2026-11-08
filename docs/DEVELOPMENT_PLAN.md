@@ -45,7 +45,7 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 ## Done since the revision (2026-11-06)
 
-* **Slice A:** Decisions panel with P06 expected-return ranges and P07 hedged versus unhedged EUR returns (`/api/decision/{P06,P07}`).
+* **Slice A:** Decisions panel with P06 expected-return ranges and P07 hedged versus unhedged EUR returns (now served as engine bundles from `/api/analysis/{P06,P07}`).
 * **Slice B (first card):** F03 credit gaps against the BIS 2/10 pp guide and debt service against each economy's own history.
 * **Free alternative sources:**
   * Eurostat ECOICOP v2 HICP replaces the discontinued ECB index.
@@ -75,9 +75,11 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **V03:** trailing and forward P/E (MSCI Fundamental Data Methodology, I/B/E/S EPS12F) and composition for MSCI ACWI, World, EM, USA, Europe, Japan and EAFE, read from 588 raw Internet Archive captures of MSCI's own factsheets, each checked against the CDX SHA-1 and dated by the document's own as-of month. Values two factsheets print differently are a recorded conflict and stay absent. V03 is conditional: monthly coverage is sparse outside World, ACWI and EM, histories start 2012-2017, and only the top countries are printed.
 
+* **Phase 3 engine core (2026-11-08):** design in [superpowers/specs/2026-11-08-phase3-engine-design.md](superpowers/specs/2026-11-08-phase3-engine-design.md). One engine (`finance_dashboard/engine/`) computes each analysis into a result bundle: inputs with the analysis and role under which Phase 2 accepted them (borrowed inputs carry the accepting role's limitations), named transforms with formulas, values, estimates with ranges, Phase 2 and method limitations in plain language ([limitations.json](../definitions/limitations.json)), citations. P06, P07 and F03 run on it with numbers identical to the retired `/api/decision` endpoints; each Decisions card shows its limitations and an "Export for AI" text file. `/api/conditionals` and `research conditionals` list the 13 conditional analyses.
+
 ## Next slices
 
-1. **Slice B continued:** V01 valuation context, plus configurable comparison charts for F01–F06.
+1. **Phase 3, overview group by group:** move the remaining analyses onto the engine in the design's build order, starting with C03/C01/C06, and retire the pre-reset dashboard pieces each group replaces. V01 and F01–F06 arrive in their groups.
 2. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
 3. **L04 extensions:** recompute the input-origin ratio from the WIOD 2016 input-output tables (`WIOTS_in_EXCEL.zip`, owner download from DataverseNL); extend 1995-2021 with EU KLEMS industry workbooks (capital accounts K_GFCF) and OECD ICIO 2025, reconciling vintages over the 2000-2014 overlap.
 

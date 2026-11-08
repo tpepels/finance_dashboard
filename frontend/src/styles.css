@@ -827,5 +827,6 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .decision-range { display: flex; flex-direction: column; gap: 2px; font-size: 13px; margin: 8px 0; }
 .decision-range-values { font-weight: 600; }
 .decision-limits { font-size: 12px; color: var(--gcm-muted, #617b80); padding-left: 18px; margin: 8px 0 0; }
+.decision-export { display: inline-block; margin-top: 8px; font-size: 12px; }
 .research-app[data-theme="dark"] .decision-card { background: var(--gcm-surface); border-color: var(--gcm-rule); }
 @media (max-width: 640px) { .decision-container { padding: 20px 16px 6px; } }

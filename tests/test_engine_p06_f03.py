@@ -1,5 +1,7 @@
 """P06 and F03 on the engine: identical numbers to the decision endpoints they replace."""
 from datetime import date
+import json
+from pathlib import Path
 import unittest
 
 from sqlalchemy.orm import Session
@@ -7,6 +9,9 @@ from sqlalchemy.orm import Session
 from engine_fixtures import memory_engine, monthly, seed
 from finance_dashboard.engine.analyses import DEFINITIONS, F03, P06, f03_credit, p06_expected_returns
 from finance_dashboard.engine.runner import load_points
+
+
+GOLDEN = json.loads((Path(__file__).parent / "fixtures" / "engine_golden.json").read_text())
 
 
 def series(values, start=(2020, 1)):
@@ -68,28 +73,24 @@ class P06F03EngineTests(unittest.TestCase):
                          ["private_dsr:CN", "private_dsr:DE", "private_dsr:JP", "private_dsr:PT", "private_dsr:US"])
 
     def test_p06_identical_numbers_to_the_decision_endpoint(self):
-        from finance_dashboard.decision_analytics import load_p06
+        # Golden values captured from the retired /api/decision/P06 on this fixture.
+        old = GOLDEN["P06"]
         engine = memory_engine()
         seed(engine, p06_fixture())
         with Session(engine) as session:
-            old = load_p06(session)
             new = P06.compute(load_points(session, P06), {})
-        for key in ("inputs", "limitations"):
-            old.pop(key)
-        self.assertEqual({"analysis_id": "P06", **new.values, **new.estimates}, old)
+        self.assertEqual(json.loads(json.dumps({"analysis_id": "P06", **new.values, **new.estimates})), old)
         self.assertGreater(old["equity_us"]["calibration_windows"], 12)
         self.assertIn("ea_aaa_10y_real_trailing", old["bonds"])
 
     def test_f03_identical_numbers_to_the_decision_endpoint(self):
-        from finance_dashboard.decision_analytics import load_f03
+        # Golden values captured from the retired /api/decision/F03 on this fixture.
+        old = GOLDEN["F03"]
         engine = memory_engine()
         seed(engine, f03_fixture())
         with Session(engine) as session:
-            old = load_f03(session)
             new = F03.compute(load_points(session, F03), {})
-        for key in ("inputs", "limitations"):
-            old.pop(key)
-        self.assertEqual({"analysis_id": "F03", **new.values}, old)
+        self.assertEqual(json.loads(json.dumps({"analysis_id": "F03", **new.values})), old)
         self.assertIsNone(new.estimates)
         self.assertEqual(len(old["rows"]), 6)
 

@@ -20,7 +20,7 @@ class CommandConsolidationTests(unittest.TestCase):
         leftovers = [p for p in (ROOT / "scripts").rglob("*")
                      if p.is_file() and "__pycache__" not in p.parts]
         self.assertEqual(leftovers, [])
-        self.assertEqual(len(COMMANDS), 18)
+        self.assertEqual(len(COMMANDS), 19)
 
     def test_project_root_has_one_environment_aware_resolver(self):
         """Installed (non-editable) runtimes must find /app/definitions."""

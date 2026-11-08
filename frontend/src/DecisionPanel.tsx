@@ -5,22 +5,30 @@ import { createChart } from './viz';
 type Stats = { months: number; annualized_return?: number; annualized_volatility?: number | null;
   max_drawdown?: number; final_wealth?: number };
 type HedgeRow = { month: string; eur_unhedged: number; eur_hedged: number; eur_inflation: number | null };
-export type P07 = { rows: HedgeRow[]; nominal: Record<string, Stats>; real_eur: Record<string, Stats>;
-  real_period: { start: string; end: string } | null; limitations: string[] };
-export type P06 = {
+type Wealth = Record<'eur_unhedged' | 'eur_hedged', [string, number][]>;
+type Limitation = { code: string; text: string; detail?: string };
+
+/** An engine result bundle (`/api/analysis/{id}`); values are null when Phase 2 withholds them. */
+export type Bundle<V, E = null> = {
+  analysis_id: string; question: string; decision_informed: string;
+  phase2: { state: string; evaluated_at: string; limitations: Limitation[]; open_gates: string[] };
+  values: V | null; estimates: E | null; method_limitations: Limitation[];
+};
+export type P07Values = { rows: HedgeRow[]; nominal: Record<string, Stats>; real_eur: Record<string, Stats>;
+  real_period: { start: string; end: string } | null; wealth: { nominal: Wealth; real: Wealth } };
+export type P06Values = {
   horizon_years: number;
-  equity_us: null | { as_of: string; cape: number; earnings_yield: number;
-    range_real: null | { p10: number; p50: number; p90: number };
-    calibration_windows: number; effective_independent_windows: number };
   equity_world_snapshot: null | { as_of: string; earnings_yield: number; snapshots: number };
   bonds: Record<string, { as_of: string; yield: number; assumption?: string }>;
   ea_inflation: null | { month: string; rate: number };
-  limitations: string[];
 };
+export type P06Estimates = { equity_us: null | { as_of: string; cape: number; earnings_yield: number;
+  range_real: null | { p10: number; p50: number; p90: number };
+  calibration_windows: number; effective_independent_windows: number } };
 
 type History = { as_of: string; latest: number; own_percentile: number | null; deviation_from_own_mean: number; history_start: string } | null;
-export type F03 = { rows: { area: string; credit_gap: History; gap_guide_band: string | null; private_dsr: History }[];
-  guide: { low_pp: number; high_pp: number }; limitations: string[] };
+export type F03Values = { rows: { area: string; credit_gap: History; gap_guide_band: string | null; private_dsr: History }[];
+  guide: { low_pp: number; high_pp: number } };
 
 const BANDS: Record<string, string> = { above_10pp: 'Above 10 pp', between_2_and_10pp: '2–10 pp', below_2pp: 'Below 2 pp' };
 const AREAS: Record<string, string> = { US: 'United States', EA: 'Euro area', JP: 'Japan', DE: 'Germany', CN: 'China', PT: 'Portugal' };
@@ -35,23 +43,32 @@ const BOND_LABELS: Record<string, string> = {
 };
 
 async function load<T>(id: string): Promise<T> {
-  const response = await fetch(`/api/decision/${id}`, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`Decision analysis ${id} unavailable (${response.status})`);
+  const response = await fetch(`/api/analysis/${id}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Analysis ${id} unavailable (${response.status})`);
   return response.json() as Promise<T>;
 }
 
-/** Cumulative wealth from monthly returns; starts at 100 one month before the first return. */
-export function wealth(rows: HedgeRow[], key: 'eur_unhedged' | 'eur_hedged', real: boolean): [string, number][] {
-  const usable = real ? rows.filter(r => r.eur_inflation !== null) : rows;
-  let level = 100;
-  return usable.map(row => {
-    const r = real ? (1 + row[key]) / (1 + (row.eur_inflation as number)) - 1 : row[key];
-    level *= 1 + r;
-    return [row.month, level];
-  });
+/** Phase 2 data limitations, the method's own limits and the AI export, under every card. */
+function Limits({ bundle }: { bundle: Bundle<unknown, unknown> }) {
+  const texts = [...bundle.phase2.limitations, ...bundle.method_limitations].map(item => item.text);
+  return <>
+    <ul className="decision-limits">{[...new Set(texts)].map(text => <li key={text}>{text}</li>)}</ul>
+    <a className="decision-export" href={`/api/analysis/${bundle.analysis_id}/export`} download>Export for AI</a>
+  </>;
 }
 
-function HedgeChart({ data, theme }: { data: P07; theme: 'light' | 'dark' }) {
+/** When Phase 2 withholds values, say so and name the open gates instead of showing numbers. */
+function Withheld({ bundle, title }: { bundle: Bundle<unknown, unknown>; title: string }) {
+  return <div className="decision-card">
+    <div className="decision-card-head"><h3>{title}</h3></div>
+    <p className="decision-note" role="status">Not computed: Phase 2 state is {bundle.phase2.state}
+      {bundle.phase2.open_gates.length > 0 && <>; open gates: {bundle.phase2.open_gates.join(', ')}</>}.</p>
+    <Limits bundle={bundle}/>
+  </div>;
+}
+
+function HedgeChart({ bundle, theme }: { bundle: Bundle<P07Values>; theme: 'light' | 'dark' }) {
+  const data = bundle.values as P07Values;
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType | null>(null);
   const [real, setReal] = useState(false);
@@ -66,8 +83,8 @@ function HedgeChart({ data, theme }: { data: P07; theme: 'light' | 'dark' }) {
     yAxis: { type: 'log', name: real ? 'EUR real, start = 100' : 'EUR nominal, start = 100',
       nameTextStyle: { color: ink }, axisLabel: { color: ink } },
     series: [
-      { name: 'Unhedged', type: 'line', showSymbol: false, data: wealth(data.rows, 'eur_unhedged', real) },
-      { name: 'Hedged to EUR (approx.)', type: 'line', showSymbol: false, data: wealth(data.rows, 'eur_hedged', real) },
+      { name: 'Unhedged', type: 'line', showSymbol: false, data: (real ? data.wealth.real : data.wealth.nominal).eur_unhedged },
+      { name: 'Hedged to EUR (approx.)', type: 'line', showSymbol: false, data: (real ? data.wealth.real : data.wealth.nominal).eur_hedged },
     ],
   }), [data, real, ink]);
   useEffect(() => {
@@ -96,12 +113,13 @@ function HedgeChart({ data, theme }: { data: P07; theme: 'light' | 'dark' }) {
         <td>{pct(stats[key]?.max_drawdown)}</td><td>{stats[key]?.months ?? 0}</td></tr>)}</tbody>
     </table>
     {!realAvailable && <p className="decision-note">Real returns appear once euro-area HICP is collected.</p>}
-    <ul className="decision-limits">{data.limitations.map(item => <li key={item}>{item}</li>)}</ul>
+    <Limits bundle={bundle}/>
   </div>;
 }
 
-function ExpectedReturns({ data }: { data: P06 }) {
-  const equity = data.equity_us;
+function ExpectedReturns({ bundle }: { bundle: Bundle<P06Values, P06Estimates> }) {
+  const data = bundle.values as P06Values;
+  const equity = bundle.estimates?.equity_us ?? null;
   return <div className="decision-card">
     <div className="decision-card-head"><h3>P06 · What long-run returns do today's valuations imply?</h3></div>
     <p className="decision-question">Planning ranges for the next {data.horizon_years} years, not forecasts.</p>
@@ -122,11 +140,12 @@ function ExpectedReturns({ data }: { data: P06 }) {
         <th title={value.assumption}>{BOND_LABELS[key] ?? key}</th><td>{pct(value.yield, 2)}</td><td>{value.as_of}</td></tr>)}</tbody>
     </table>
     {data.ea_inflation && <p className="decision-note">Euro-area HICP inflation, 12 months to {data.ea_inflation.month}: {pct(data.ea_inflation.rate)}</p>}
-    <ul className="decision-limits">{data.limitations.map(item => <li key={item}>{item}</li>)}</ul>
+    <Limits bundle={bundle}/>
   </div>;
 }
 
-function CreditCard({ data }: { data: F03 }) {
+function CreditCard({ bundle }: { bundle: Bundle<F03Values> }) {
+  const data = bundle.values as F03Values;
   return <div className="decision-card">
     <div className="decision-card-head"><h3>F03 · Are credit vulnerabilities building?</h3></div>
     <p className="decision-question">Informs the credit versus government-bond mix; context, not a timing signal.</p>
@@ -140,19 +159,19 @@ function CreditCard({ data }: { data: F03 }) {
         <td>{row.private_dsr?.own_percentile != null ? `${Math.round(row.private_dsr.own_percentile * 100)}th` : '—'}</td>
       </tr>)}</tbody>
     </table>
-    <ul className="decision-limits">{data.limitations.map(item => <li key={item}>{item}</li>)}</ul>
+    <Limits bundle={bundle}/>
   </div>;
 }
 
 /** Decision layer for a euro-based ETF investor (Phase 1 revision 2026-11-06). */
 export default function DecisionPanel({ theme, dataVersion }: { theme: 'light' | 'dark'; dataVersion: number }) {
-  const [p06, setP06] = useState<P06 | null>(null);
-  const [p07, setP07] = useState<P07 | null>(null);
-  const [f03, setF03] = useState<F03 | null>(null);
+  const [p06, setP06] = useState<Bundle<P06Values, P06Estimates> | null>(null);
+  const [p07, setP07] = useState<Bundle<P07Values> | null>(null);
+  const [f03, setF03] = useState<Bundle<F03Values> | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     let cancelled = false;
-    Promise.all([load<P06>('P06'), load<P07>('P07'), load<F03>('F03')]).then(([six, seven, credit]) => {
+    Promise.all([load<Bundle<P06Values, P06Estimates>>('P06'), load<Bundle<P07Values>>('P07'), load<Bundle<F03Values>>('F03')]).then(([six, seven, credit]) => {
       if (!cancelled) { setP06(six); setP07(seven); setF03(credit); setError(''); }
     }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'Unavailable'); });
     return () => { cancelled = true; };
@@ -165,9 +184,9 @@ export default function DecisionPanel({ theme, dataVersion }: { theme: 'light' |
     </header>
     {error && <p className="decision-note" role="alert">{error}</p>}
     <div className="decision-grid">
-      {p06 && <ExpectedReturns data={p06}/>}
-      {p07 && <HedgeChart data={p07} theme={theme}/>}
-      {f03 && <CreditCard data={f03}/>}
+      {p06 && (p06.values ? <ExpectedReturns bundle={p06}/> : <Withheld bundle={p06} title="P06 · What long-run returns do today's valuations imply?"/>)}
+      {p07 && (p07.values ? <HedgeChart bundle={p07} theme={theme}/> : <Withheld bundle={p07} title="P07 · Should foreign equity be currency-hedged?"/>)}
+      {f03 && (f03.values ? <CreditCard bundle={f03}/> : <Withheld bundle={f03} title="F03 · Are credit vulnerabilities building?"/>)}
     </div>
   </section>;
 }

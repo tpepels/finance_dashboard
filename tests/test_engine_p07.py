@@ -1,5 +1,7 @@
 """P07 on the engine: identical numbers to the decision endpoint it replaces."""
 from datetime import date
+import json
+from pathlib import Path
 import unittest
 
 from sqlalchemy.orm import Session
@@ -7,6 +9,9 @@ from sqlalchemy.orm import Session
 from engine_fixtures import memory_engine, monthly, seed
 from finance_dashboard.engine.analyses import DEFINITIONS, P07, p07_hedging
 from finance_dashboard.engine.runner import load_points
+
+
+GOLDEN = json.loads((Path(__file__).parent / "fixtures" / "engine_golden.json").read_text())
 
 
 def series(values, start=(2020, 1)):
@@ -72,15 +77,13 @@ class P07EngineTests(unittest.TestCase):
         self.assertAlmostEqual(wealth["nominal"]["eur_unhedged"][1][1], 121.0)
 
     def test_identical_numbers_to_the_decision_endpoint(self):
-        from finance_dashboard.decision_analytics import load_p07
+        # Golden values captured from the retired /api/decision/P07 on this fixture.
+        old = GOLDEN["P07"]
         engine = memory_engine()
         seed(engine, p07_fixture())
         with Session(engine) as session:
-            old = load_p07(session, TODAY)
             new = P07.compute(load_points(session, P07), {"today": TODAY})
-        for key in ("inputs", "limitations"):
-            old.pop(key)
-        values = dict(new.values)
+        values = json.loads(json.dumps(new.values))
         values.pop("wealth")
         self.assertEqual({"analysis_id": "P07", **values}, old)
         self.assertGreater(len(old["rows"]), 12)

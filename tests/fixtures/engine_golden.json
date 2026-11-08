@@ -1,0 +1,375 @@
+{
+ "F03": {
+  "analysis_id": "F03",
+  "guide": {
+   "high_pp": 10.0,
+   "low_pp": 2.0
+  },
+  "rows": [
+   {
+    "area": "CN",
+    "credit_gap": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 5.85,
+     "history_start": "2000-01-01",
+     "latest": 7.7,
+     "observations": 40,
+     "own_mean": 1.85,
+     "own_percentile": 1.0
+    },
+    "gap_guide_band": "between_2_and_10pp",
+    "private_dsr": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 0.5850000000000009,
+     "history_start": "2000-01-01",
+     "latest": 12.77,
+     "observations": 40,
+     "own_mean": 12.184999999999999,
+     "own_percentile": 1.0
+    }
+   },
+   {
+    "area": "DE",
+    "credit_gap": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 5.85,
+     "history_start": "2000-01-01",
+     "latest": 7.7,
+     "observations": 40,
+     "own_mean": 1.85,
+     "own_percentile": 1.0
+    },
+    "gap_guide_band": "between_2_and_10pp",
+    "private_dsr": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 0.5850000000000009,
+     "history_start": "2000-01-01",
+     "latest": 12.77,
+     "observations": 40,
+     "own_mean": 12.184999999999999,
+     "own_percentile": 1.0
+    }
+   },
+   {
+    "area": "EA",
+    "credit_gap": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 5.85,
+     "history_start": "2000-01-01",
+     "latest": 7.7,
+     "observations": 40,
+     "own_mean": 1.85,
+     "own_percentile": 1.0
+    },
+    "gap_guide_band": "between_2_and_10pp",
+    "private_dsr": null
+   },
+   {
+    "area": "JP",
+    "credit_gap": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 5.85,
+     "history_start": "2000-01-01",
+     "latest": 7.7,
+     "observations": 40,
+     "own_mean": 1.85,
+     "own_percentile": 1.0
+    },
+    "gap_guide_band": "between_2_and_10pp",
+    "private_dsr": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 0.5850000000000009,
+     "history_start": "2000-01-01",
+     "latest": 12.77,
+     "observations": 40,
+     "own_mean": 12.184999999999999,
+     "own_percentile": 1.0
+    }
+   },
+   {
+    "area": "PT",
+    "credit_gap": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 5.85,
+     "history_start": "2000-01-01",
+     "latest": 7.7,
+     "observations": 40,
+     "own_mean": 1.85,
+     "own_percentile": 1.0
+    },
+    "gap_guide_band": "between_2_and_10pp",
+    "private_dsr": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 0.5850000000000009,
+     "history_start": "2000-01-01",
+     "latest": 12.77,
+     "observations": 40,
+     "own_mean": 12.184999999999999,
+     "own_percentile": 1.0
+    }
+   },
+   {
+    "area": "US",
+    "credit_gap": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 5.85,
+     "history_start": "2000-01-01",
+     "latest": 7.7,
+     "observations": 40,
+     "own_mean": 1.85,
+     "own_percentile": 1.0
+    },
+    "gap_guide_band": "between_2_and_10pp",
+    "private_dsr": {
+     "as_of": "2009-10-01",
+     "deviation_from_own_mean": 0.5850000000000009,
+     "history_start": "2000-01-01",
+     "latest": 12.77,
+     "observations": 40,
+     "own_mean": 12.184999999999999,
+     "own_percentile": 1.0
+    }
+   }
+  ]
+ },
+ "P06": {
+  "analysis_id": "P06",
+  "bonds": {
+   "ea_aaa_10y": {
+    "as_of": "2026-03-28",
+    "yield": 0.025
+   },
+   "ea_aaa_10y_real_trailing": {
+    "as_of": "2026-03-28",
+    "assumption": "Nominal AAA yield deflated by trailing 12-month HICP inflation, not a market inflation expectation.",
+    "yield": 0.0005467196819084474
+   },
+   "us_breakeven_10y": {
+    "as_of": "2026-03-28",
+    "yield": 0.023
+   },
+   "us_nominal_10y": {
+    "as_of": "2026-03-28",
+    "yield": 0.04
+   },
+   "us_real_10y": {
+    "as_of": "2026-03-28",
+    "yield": 0.017
+   }
+  },
+  "ea_inflation": {
+   "month": "2025-11",
+   "rate": 0.024439918533604832
+  },
+  "equity_us": {
+   "as_of": "2021-12-28",
+   "calibration_windows": 24,
+   "cape": 27.15,
+   "earnings_yield": 0.03683241252302026,
+   "effective_independent_windows": 0.2,
+   "range_real": {
+    "p10": 0.03361607053448352,
+    "p50": 0.03808153980063512,
+    "p90": 0.039358177038495305
+   }
+  },
+  "equity_world_snapshot": {
+   "as_of": "2026-09-30",
+   "earnings_yield": 0.048,
+   "snapshots": 2
+  },
+  "horizon_years": 10
+ },
+ "P07": {
+  "analysis_id": "P07",
+  "nominal": {
+   "eur_hedged": {
+    "annualized_return": 0.10704118660944095,
+    "annualized_volatility": 0.0003025320461591933,
+    "final_wealth": 1.1647847289957327,
+    "max_drawdown": 0.0,
+    "months": 18
+   },
+   "eur_unhedged": {
+    "annualized_return": 0.01854048428000965,
+    "annualized_volatility": 0.0012763893304102753,
+    "final_wealth": 1.0279392369178757,
+    "max_drawdown": 0.0,
+    "months": 18
+   },
+   "usd_return": {
+    "annualized_return": 0.12682503013171265,
+    "annualized_volatility": 1.0142997949046425e-12,
+    "final_wealth": 1.1961474756862556,
+    "max_drawdown": 0.0,
+    "months": 18
+   }
+  },
+  "real_eur": {
+   "eur_hedged": {
+    "annualized_return": 0.08157665254439683,
+    "annualized_volatility": 0.00022032348035733905,
+    "final_wealth": 1.117500811173664,
+    "max_drawdown": 0.0,
+    "months": 17
+   },
+   "eur_unhedged": {
+    "annualized_return": -0.005392645859978895,
+    "annualized_volatility": 0.00127684542020376,
+    "final_wealth": 0.9923690102086277,
+    "max_drawdown": -0.007818069679919937,
+    "months": 17
+   }
+  },
+  "real_period": {
+   "end": "2026-09",
+   "start": "2025-05"
+  },
+  "rows": [
+   {
+    "eur_hedged": 0.008653333333333402,
+    "eur_inflation": 0.001980198019801982,
+    "eur_unhedged": 0.0009009009009008917,
+    "hedge_carry": -0.001333333333333333,
+    "month": "2025-05",
+    "usd_return": 0.010000000000000009
+   },
+   {
+    "eur_hedged": 0.008636499999990832,
+    "eur_inflation": 0.0019762845849802257,
+    "eur_unhedged": 0.0009821428571337165,
+    "hedge_carry": -0.00135,
+    "month": "2025-06",
+    "usd_return": 0.009999999999990683
+   },
+   {
+    "eur_hedged": 0.008619666666601633,
+    "eur_inflation": 0.001972386587770991,
+    "eur_unhedged": 0.001061946902590316,
+    "hedge_carry": -0.0013666666666666669,
+    "month": "2025-07",
+    "usd_return": 0.009999999999934728
+   },
+   {
+    "eur_hedged": 0.00860283333307521,
+    "eur_inflation": 0.0019685039370078705,
+    "eur_unhedged": 0.0011403508769367576,
+    "hedge_carry": -0.001383333333333333,
+    "month": "2025-08",
+    "usd_return": 0.009999999999741549
+   },
+   {
+    "eur_hedged": 0.008586000000146088,
+    "eur_inflation": 0.0019646365422396617,
+    "eur_unhedged": 0.001217391304492832,
+    "hedge_carry": -0.0014000000000000004,
+    "month": "2025-09",
+    "usd_return": 0.010000000000146336
+   },
+   {
+    "eur_hedged": 0.008569166666567263,
+    "eur_inflation": 0.0019607843137254832,
+    "eur_unhedged": 0.0012931034481769021,
+    "hedge_carry": -0.0014166666666666668,
+    "month": "2025-10",
+    "usd_return": 0.00999999999990031
+   },
+   {
+    "eur_hedged": 0.008552333333646578,
+    "eur_inflation": 0.001956947162426559,
+    "eur_unhedged": 0.0013675213678323583,
+    "hedge_carry": -0.0014333333333333331,
+    "month": "2025-11",
+    "usd_return": 0.010000000000313758
+   },
+   {
+    "eur_hedged": 0.008535499999716478,
+    "eur_inflation": 0.001953124999999778,
+    "eur_unhedged": 0.0014406779658200364,
+    "hedge_carry": -0.00145,
+    "month": "2025-12",
+    "usd_return": 0.009999999999716014
+   },
+   {
+    "eur_hedged": 0.008518666667254537,
+    "eur_inflation": 0.0019493177387914784,
+    "eur_unhedged": 0.0015126050426004234,
+    "hedge_carry": -0.001466666666666667,
+    "month": "2026-01",
+    "usd_return": 0.010000000000588649
+   },
+   {
+    "eur_hedged": 0.008501833333003361,
+    "eur_inflation": 0.0019455252918287869,
+    "eur_unhedged": 0.0015833333330055321,
+    "hedge_carry": -0.0014833333333333335,
+    "month": "2026-02",
+    "usd_return": 0.009999999999669384
+   },
+   {
+    "eur_hedged": 0.008485000000258092,
+    "eur_inflation": 0.001941747572815622,
+    "eur_unhedged": 0.0016528925622398827,
+    "hedge_carry": -0.0014999999999999998,
+    "month": "2026-03",
+    "usd_return": 0.010000000000258469
+   },
+   {
+    "eur_hedged": 0.008468166666462329,
+    "eur_inflation": 0.0019379844961240345,
+    "eur_unhedged": 0.0017213114752068215,
+    "hedge_carry": -0.0015166666666666662,
+    "month": "2026-04",
+    "usd_return": 0.009999999999795284
+   },
+   {
+    "eur_hedged": 0.00845133333356074,
+    "eur_inflation": 0.0019342359767891004,
+    "eur_unhedged": 0.0017886178864048308,
+    "hedge_carry": -0.0015333333333333336,
+    "month": "2026-05",
+    "usd_return": 0.010000000000227827
+   },
+   {
+    "eur_hedged": 0.008434500000108258,
+    "eur_inflation": 0.0019305019305020377,
+    "eur_unhedged": 0.0018548387097852004,
+    "hedge_carry": -0.00155,
+    "month": "2026-06",
+    "usd_return": 0.010000000000108589
+   },
+   {
+    "eur_hedged": 0.008417666666302948,
+    "eur_inflation": 0.0019267822736031004,
+    "eur_unhedged": 0.0019199999996388772,
+    "hedge_carry": -0.001566666666666667,
+    "month": "2026-07",
+    "usd_return": 0.009999999999635856
+   },
+   {
+    "eur_hedged": 0.008400833332940394,
+    "eur_inflation": 0.0019230769230769162,
+    "eur_unhedged": 0.0019841269837366227,
+    "hedge_carry": -0.0015833333333333333,
+    "month": "2026-08",
+    "usd_return": 0.009999999999606546
+   },
+   {
+    "eur_hedged": 0.00838400000042916,
+    "eur_inflation": 0.0019193857965451588,
+    "eur_unhedged": 0.0020472440949146353,
+    "hedge_carry": -0.0016,
+    "month": "2026-09",
+    "usd_return": 0.010000000000429887
+   },
+   {
+    "eur_hedged": 0.008367166666257697,
+    "eur_inflation": null,
+    "eur_unhedged": 0.0021093749995935163,
+    "hedge_carry": -0.0016166666666666666,
+    "month": "2026-10",
+    "usd_return": 0.009999999999590337
+   }
+  ]
+ }
+}
