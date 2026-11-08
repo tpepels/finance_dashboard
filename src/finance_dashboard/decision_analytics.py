@@ -8,13 +8,12 @@ longest contiguous run ending at the latest common month, so no return is skippe
 from __future__ import annotations
 
 from datetime import date
-from math import sqrt
-from statistics import pstdev
-from typing import Iterable
 
 from sqlalchemy.orm import Session
 
 from .service import current_observations
+from .engine.transforms import (complete_months, contiguous_tail, month_end, month_key,  # noqa: F401
+                                own_history, previous_month, return_summary as summary)
 
 P07_INPUTS = {
     "usd_per_eur": "fx.usd_per_eur.ecb",
@@ -32,55 +31,6 @@ P06_INPUTS = {
     "ea_aaa_10y": "bond.ea.aaa_10y_spot",
     "ea_hicp": "prices.ea.hicp_index_2025",
 }
-
-
-def month_key(day: date) -> tuple[int, int]:
-    return day.year, day.month
-
-
-def previous_month(key: tuple[int, int]) -> tuple[int, int]:
-    year, month = key
-    return (year - 1, 12) if month == 1 else (year, month - 1)
-
-
-def month_end(points: Iterable[tuple[date, float]]) -> dict[tuple[int, int], tuple[date, float]]:
-    """Last observed value in each calendar month (observed date retained)."""
-    out: dict[tuple[int, int], tuple[date, float]] = {}
-    for day, value in sorted(points):
-        out[month_key(day)] = (day, value)
-    return out
-
-
-def contiguous_tail(months: Iterable[tuple[int, int]]) -> list[tuple[int, int]]:
-    """Longest run of consecutive months ending at the latest month."""
-    ordered = sorted(set(months))
-    if not ordered:
-        return []
-    run = [ordered[-1]]
-    for key in reversed(ordered[:-1]):
-        if key != previous_month(run[0]):
-            break
-        run.insert(0, key)
-    return run
-
-
-def summary(returns: list[float]) -> dict:
-    if not returns:
-        return {"months": 0}
-    wealth = []
-    level = 1.0
-    peak = 1.0
-    drawdown = 0.0
-    for r in returns:
-        level *= 1 + r
-        peak = max(peak, level)
-        drawdown = min(drawdown, level / peak - 1)
-        wealth.append(level)
-    years = len(returns) / 12
-    return {"months": len(returns),
-            "annualized_return": level ** (1 / years) - 1,
-            "annualized_volatility": pstdev(returns) * sqrt(12) if len(returns) > 1 else None,
-            "max_drawdown": drawdown, "final_wealth": wealth[-1]}
 
 
 def p07_hedging(fx: dict, equity: dict, eur_rate: dict, usd_rate: dict, hicp: dict) -> dict:
@@ -213,12 +163,6 @@ def _points(session: Session, series_id: str) -> list[tuple[date, float]]:
     return [(row.period, float(row.value)) for row in current_observations(session, series_id)]
 
 
-def complete_months(ends: dict, today: date | None = None) -> dict:
-    """Drop the current calendar month: its last value is not a month-end."""
-    current = month_key(today or date.today())
-    return {key: value for key, value in ends.items() if key < current}
-
-
 def load_p07(session: Session, today: date | None = None) -> dict:
     data = {name: complete_months(month_end(_points(session, sid)), today)
             for name, sid in P07_INPUTS.items()}
@@ -247,20 +191,6 @@ PRIVATE_DSR = {"US": "debt_service.us.private.bis", "JP": "debt_service.jp.priva
 # BIS/Basel III countercyclical buffer guide: buffer starts above a 2 pp gap and
 # reaches its maximum at 10 pp (Drehmann & Juselius 2013; BIS credit-gap notes).
 GAP_GUIDE_LOW, GAP_GUIDE_HIGH = 2.0, 10.0
-
-
-def own_history(points: list[tuple[date, float]]) -> dict | None:
-    """Latest value against the series' own history (no cross-country ranking)."""
-    if not points:
-        return None
-    points = sorted(points)
-    values = [v for _, v in points]
-    day, latest = points[-1]
-    mean = sum(values) / len(values)
-    below = sum(v < latest for v in values)
-    return {"as_of": day.isoformat(), "latest": latest, "history_start": points[0][0].isoformat(),
-            "observations": len(values), "own_mean": mean, "deviation_from_own_mean": latest - mean,
-            "own_percentile": below / (len(values) - 1) if len(values) > 1 else None}
 
 
 def f03_credit(gaps: dict, dsr: dict) -> dict:
