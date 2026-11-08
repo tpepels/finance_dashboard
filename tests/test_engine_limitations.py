@@ -19,6 +19,12 @@ class LimitationRegisterTests(unittest.TestCase):
         self.assertGreaterEqual(len(codes), 28)
         self.assertEqual(sorted(codes - set(load_register()["phase2"])), [])
 
+    def test_code_constants_in_acceptance_modules_have_text(self):
+        codes = {m for f in ACCEPTANCE_MODULES
+                 for m in re.findall(r'^[A-Z_]*CODE[A-Z_]*\s*=\s*"([a-z0-9_]+)"', (SRC / f).read_text(), re.M)}
+        self.assertIn("announcement_dates_not_published_before_committee", codes)
+        self.assertEqual(sorted(codes - set(load_register()["phase2"])), [])
+
     def test_constant_code_lists_have_text(self):
         from finance_dashboard.holdings_acceptance import CONDITIONAL_CODES
         self.assertEqual(sorted(set(CONDITIONAL_CODES) - set(load_register()["phase2"])), [])

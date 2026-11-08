@@ -34,7 +34,34 @@ class AcceptanceUnavailable(RuntimeError):
 
 
 def snapshot_from_report(public_report: dict, evaluated_at: datetime) -> AcceptanceSnapshot:
-    return AcceptanceSnapshot(evaluated_at, {row["id"]: row["acceptance"] for row in public_report["analyses"]})
+    """research_corpus_report moves each analysis's role results from its
+    acceptance onto the analysis row; both shapes are read."""
+    return AcceptanceSnapshot(evaluated_at, {
+        row["id"]: {**row["acceptance"],
+                    "requirements": row.get("requirements", row["acceptance"].get("requirements", []))}
+        for row in public_report["analyses"]})
+
+
+def grouped(items: list[dict]) -> list[dict]:
+    """One described limitation per (code, detail), naming every affected series.
+
+    The original items are kept under "items", so nothing the acceptance
+    engine recorded is lost; the text is shown once.
+    """
+    groups: dict[tuple, dict] = {}
+    for item in items:
+        key = (item.get("code"), item.get("detail"))
+        if key not in groups:
+            groups[key] = {**describe({"code": item.get("code")}),
+                           **({"detail": item["detail"]} if item.get("detail") else {}),
+                           "series_ids": set(), "occurrences": 0, "items": []}
+        group = groups[key]
+        group["series_ids"].update(item.get("series_ids") or [])
+        if item.get("series_id"):
+            group["series_ids"].add(item["series_id"])
+        group["occurrences"] += 1
+        group["items"].append(item)
+    return [{**group, "series_ids": sorted(group["series_ids"])} for group in groups.values()]
 
 
 def analysis_phase2(snapshot: AcceptanceSnapshot, analysis_id: str) -> dict:
@@ -43,7 +70,7 @@ def analysis_phase2(snapshot: AcceptanceSnapshot, analysis_id: str) -> dict:
         return {"state": "not_checked", "evaluated_at": snapshot.evaluated_at.isoformat(),
                 "limitations": [], "open_gates": []}
     return {"state": acceptance["state"], "evaluated_at": snapshot.evaluated_at.isoformat(),
-            "limitations": [describe(item) for item in acceptance.get("limitations", [])],
+            "limitations": grouped(acceptance.get("limitations", [])),
             "open_gates": list(acceptance.get("blocking_roles", []))}
 
 
@@ -68,7 +95,7 @@ def input_provenance(snapshot: AcceptanceSnapshot, analysis_id: str, series_id: 
         role = _accepting_role(acceptance, series_id) if acceptance else None
         if role is not None:
             return {"accepted_under": {"analysis_id": owner, "role": role["role"]},
-                    "limitations": [describe(item) for item in role.get("limitations", [])]}
+                    "limitations": grouped(role.get("limitations", []))}
     raise UnacceptedInput(series_id)
 
 

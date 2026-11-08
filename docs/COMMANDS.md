@@ -94,10 +94,13 @@ ordinary bounded refresh and Phase 2 acquisition paths.
 
 ```bash
 python -m finance_dashboard research operating --evidence-dir /data/source-evidence --vintage-dir /data/vintages
+python -m finance_dashboard research conditionals --evidence-dir /data/source-evidence --vintage-dir /data/vintages --holdings-dir /data/holdings
 python -m finance_dashboard research structured --evidence-dir /data/source-evidence --holdings-dir /data/holdings
 python -m finance_dashboard sources policies --brief
 python -m finance_dashboard sources audit --brief
 python -m unittest discover -s tests -p 'test_*.py' -q
 ```
+
+`research conditionals` lists every conditional analysis with its Phase 2 limitations in plain language (read-only); it exits 1 if a limitation code has no text in `definitions/limitations.json`.
 
 The default behavior of acquisition commands remains read-only unless an explicit acquisition/import option is supplied. Retained source originals and recovery backups must not be edited in place.

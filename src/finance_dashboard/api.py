@@ -8,6 +8,7 @@ from os import environ
 import re
 
 from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from sqlalchemy import select, text, func, distinct
 from sqlalchemy.orm import Session
@@ -33,6 +34,9 @@ from .source_coverage import build_coverage
 from .source_policy import policy_summary
 from .research_corpus import load_research_corpus, validate_research_corpus
 from .research_runtime import evaluate_corpus
+from .engine.acceptance import AcceptanceCache, AcceptanceUnavailable, snapshot_from_report
+from .engine.export import export_text
+from .engine.runner import analysis_bundle, conditionals, list_analyses
 from .icio import read_icio_evidence
 from .maintenance import MaintenanceManager, BusyMaintenance
 from .developer_logs import read_events, recent_jobs, record_event
@@ -336,6 +340,51 @@ def create_app(engine=None) -> FastAPI:
             evidence_root=root, market_registry=market_registry,
             vintage_root=Path(environ.get("FINANCE_VINTAGE_DIR", "/data/vintages")),
             holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))).public_report
+
+    def acceptance_snapshot():
+        return snapshot_from_report(current_corpus_report(), datetime.now(timezone.utc))
+
+    app.state.acceptance = AcceptanceCache(
+        acceptance_snapshot, ttl_seconds=float(environ.get("FINANCE_ACCEPTANCE_TTL_SECONDS", "3600")))
+
+    def acceptance_or_503():
+        try:
+            return app.state.acceptance.get()
+        except AcceptanceUnavailable:
+            raise HTTPException(503, "Phase 2 acceptance evaluation unavailable") from None
+
+    def engine_bundle(analysis_id: str, today: date | None):
+        snapshot = acceptance_or_503()
+        view = {"today": (today or date.today()).isoformat()}
+        with Session(db) as session:
+            bundle = analysis_bundle(session, analysis_id, snapshot=snapshot, corpus_document=research_sources,
+                                     catalog_series=by_id, view=view)
+        if bundle is None:
+            raise HTTPException(404, "Unknown analysis")
+        return bundle
+
+    @app.get("/api/analysis")
+    def analysis_list():
+        """Every corpus analysis with its Phase 2 state and whether the engine computes it."""
+        return list_analyses(acceptance_or_503(), research_sources)
+
+    @app.get("/api/analysis/{analysis_id}")
+    def analysis_result(analysis_id: str, today: date | None = None):
+        """One analysis as a self-describing result bundle."""
+        return engine_bundle(analysis_id, today)
+
+    @app.get("/api/analysis/{analysis_id}/export", response_class=PlainTextResponse)
+    def analysis_export(analysis_id: str, today: date | None = None):
+        """The bundle as one text file for discussing it with an AI."""
+        bundle = engine_bundle(analysis_id, today)
+        name = f"{analysis_id}-{bundle['computed_at'][:10]}.txt"
+        return PlainTextResponse(export_text(bundle),
+                                 headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.get("/api/conditionals")
+    def conditional_analyses():
+        """Every conditional analysis with its Phase 2 limitations."""
+        return conditionals(acceptance_or_503())
 
     @app.get("/api/decision/{analysis_id}")
     def decision_analysis(analysis_id: str):

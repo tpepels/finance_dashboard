@@ -68,6 +68,27 @@ class AcceptanceSnapshotTests(unittest.TestCase):
         self.assertEqual(analysis_phase2(self.snap, "X01")["open_gates"], ["thing"])
         self.assertEqual(analysis_phase2(self.snap, "NOPE")["state"], "not_checked")
 
+    def test_public_report_shape_with_roles_on_the_analysis_row(self):
+        # research_corpus_report pops acceptance["requirements"] onto the row.
+        row = {"id": "P07", "acceptance": {"state": "accepted", "limitations": [], "blocking_roles": []},
+               "requirements": [role("usd_per_eur", ["fx.usd_per_eur.ecb"], [REVISED])]}
+        snap = snapshot_from_report({"analyses": [row]}, AT)
+        result = input_provenance(snap, "P07", "fx.usd_per_eur.ecb")
+        self.assertEqual(result["accepted_under"], {"analysis_id": "P07", "role": "usd_per_eur"})
+
+    def test_repeated_limitations_are_grouped_with_every_affected_series(self):
+        row = {"id": "P07", "acceptance": {"state": "accepted", "blocking_roles": [], "limitations": [
+            {"code": "latest_revised_values_not_real_time", "series_id": "b"},
+            {"code": "latest_revised_values_not_real_time", "series_id": "a"},
+            {"code": "dimensions_as_declared_in_catalogue", "series_ids": ["c", "a"]}]}}
+        limitations = analysis_phase2(snapshot_from_report({"analyses": [row]}, AT), "P07")["limitations"]
+        self.assertEqual([item["code"] for item in limitations],
+                         ["latest_revised_values_not_real_time", "dimensions_as_declared_in_catalogue"])
+        self.assertEqual(limitations[0]["series_ids"], ["a", "b"])
+        self.assertEqual(limitations[0]["occurrences"], 2)
+        self.assertEqual(len(limitations[0]["items"]), 2)
+        self.assertEqual(limitations[1]["series_ids"], ["a", "c"])
+
     def test_cache_reuses_within_ttl_and_reloads_after(self):
         now = [0.0]
         calls = []

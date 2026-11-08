@@ -12,6 +12,7 @@ COMMANDS = {
     "research operating": ("finance_dashboard.research_operating", "main"),
     "research compare": ("finance_dashboard.comparative_workflow", "main"),
     "research corpus": ("finance_dashboard.research_corpus_cli", "main"),
+    "research conditionals": ("finance_dashboard.engine.conditionals_cli", "main"),
     "research structured": ("finance_dashboard.structured_workflow", "main"),
     "sources alfred-revisions": ("finance_dashboard.alfred_acquisition", "main"),
     "sources publication": ("finance_dashboard.publication_acquisition", "main"),
