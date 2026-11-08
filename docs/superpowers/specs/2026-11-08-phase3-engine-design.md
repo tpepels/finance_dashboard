@@ -43,7 +43,7 @@ The unit the engine produces, the chart draws from and the export contains. Cont
 
 1. **Identity:** analysis ID, question, decision informed (from the catalogue), evidence tier (descriptive or predictive), engine and method version, computation time.
 2. **Phase 2 state:** `accepted` or `conditional` and, for conditional analyses, **every** limitation from the acceptance engine (code, affected series or role, readable text), plus the acceptance evaluation time.
-3. **Inputs:** each series with its role, original publisher, source series ID and URL, geography, unit, frequency, observation dates, and the temporal evidence used (latest revised or real-time vintage).
+3. **Inputs:** each series with its role, the analysis and role under which Phase 2 accepted it (an input may be borrowed from another analysis's resolved role, carrying that role's limitations; a series accepted nowhere is refused), original publisher, source series ID and URL, geography, unit, frequency, observation dates, and the temporal evidence used (latest revised or real-time vintage).
 4. **Transforms:** the ordered, named transforms applied to each input, with formula and parameters. A reader can recompute every derived value from the inputs and this list.
 5. **Values:** the observed and derived series as plotted, each point with its native period. Gaps stay gaps.
 6. **Estimates:** each model-based figure (category C) with its range, the method that produced the range, the sample used and the effective number of independent observations. A point value without a range says so.
