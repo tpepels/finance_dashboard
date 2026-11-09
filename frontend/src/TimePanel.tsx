@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { EChartsType } from 'echarts';
 import { connectCharts, createChart } from './viz';
-import { PRESETS, presetWindow, type Preset } from './chartKit';
+import { PRESETS, namedLabelsFit, presetWindow, withNamedLabels, yearsBetween, type Preset } from './chartKit';
 
 /** One analysable chart: a title, zoom presets, the chart (wheel/pinch zoom, slider, crosshair) and a caption. */
-export default function TimePanel({ title, caption, option, height = 300, span, group, presets = true }: {
+export default function TimePanel({ title, caption, option, height = 300, span, group, presets = true, compact = false }: {
   title: string; caption?: string; option: object; height?: number;
-  span?: [string, string]; group?: string; presets?: boolean;
+  span?: [string, string]; group?: string; presets?: boolean; compact?: boolean;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType | null>(null);
@@ -21,6 +21,24 @@ export default function TimePanel({ title, caption, option, height = 300, span, 
     return () => { observer.disconnect(); instance.dispose(); chart.current = null; };
   }, [group]);
   useEffect(() => { chart.current?.setOption(option as never, true); }, [option]);
+  // Recession names appear once the zoomed window is short enough for them to stay apart.
+  useEffect(() => {
+    const instance = chart.current;
+    if (!instance || !span) return;
+    let shown: boolean | undefined;
+    const update = () => {
+      const zoom = (instance.getOption() as { dataZoom?: { startValue?: number; endValue?: number }[] }).dataZoom?.[0];
+      const years = zoom?.startValue !== undefined && zoom.endValue !== undefined
+        ? yearsBetween(zoom.startValue, zoom.endValue) : yearsBetween(span[0], span[1]);
+      const fits = namedLabelsFit(years, compact);
+      if (fits === shown) return;
+      shown = fits;
+      const series = (withNamedLabels(option, fits) as { series?: object[] }).series;
+      if (series?.[0]) instance.setOption({ series: [series[0]] } as never);
+    };
+    instance.on('datazoom', update);
+    return () => { instance.off('datazoom', update); };
+  }, [option, span, compact]);
   const choose = (preset: Preset) => {
     setActive(preset);
     if (span) chart.current?.dispatchAction({ type: 'dataZoom', ...presetWindow(preset, span[0], span[1]) });

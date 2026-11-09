@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ENTITY, palette, presetWindow, recessionAreas, recessionAt, timeChart, type Recession } from './chartKit';
+import { ENTITY, namedLabelsFit, palette, presetWindow, recessionAreas, recessionAt, timeChart, withNamedLabels,
+  type Recession } from './chartKit';
 
 const periods: Recession[] = [
   { start: '1973-12-01', end: '1975-03-31', name: 'US recession 1973–75', scope: 'US (NBER)' },
@@ -58,5 +59,19 @@ describe('chart kit', () => {
     }) as Record<string, any>;
     expect(option.legend.data).toEqual(['Unhedged', 'Hedged']);
     expect(option.series[0].endLabel.offset).not.toEqual(option.series[1].endLabel.offset);
+  });
+
+  it('names recessions only while the visible window leaves room for the names', () => {
+    expect(namedLabelsFit(25, false)).toBe(true);
+    expect(namedLabelsFit(145, false)).toBe(false);     // 1881 to today: three names would pile up
+    expect(namedLabelsFit(12, true)).toBe(true);
+    expect(namedLabelsFit(25, true)).toBe(false);       // small multiples name episodes only when zoomed close
+    const long = timeChart({ theme: 'light', recessions: periods, unit: '',
+      series: [{ name: 'CAPE', data: [['1881-01-01', 10], ['2026-01-01', 40]] }] }) as Record<string, any>;
+    const labelled = (option: Record<string, any>) => option.series[0].markArea.data
+      .filter((a: any) => a[0].label?.show).map((a: any) => a[0].name);
+    expect(labelled(long)).toEqual([]);
+    const zoomed = withNamedLabels(long, true) as Record<string, any>;
+    expect(labelled(zoomed)).toEqual(['Dot-com recession', 'Financial crisis', 'COVID-19 recession']);
   });
 });

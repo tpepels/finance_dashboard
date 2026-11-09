@@ -110,7 +110,7 @@ function ExpectedReturns({ bundle, theme, recessions }: { bundle: Bundle<P06Valu
     [theme, recessions, cape]);
   const cloudOption = useMemo(() => ({
     animation: false, backgroundColor: 'transparent', textStyle: { fontFamily: CHART_FONT },
-    grid: { left: 56, right: 28, top: 30, bottom: 48 },
+    grid: { left: 56, right: 28, top: 34, bottom: 86 },
     tooltip: { trigger: 'item', backgroundColor: c.surface, borderColor: c.axis, textStyle: { color: c.ink },
       formatter: (p: { value: [number, number, string] }) =>
         `<strong>Start ${p.value[2]}</strong><br/>Earnings yield ${pct(p.value[0])}<br/>Next 10 years: ${pct(p.value[1])} a year after inflation` },
@@ -120,14 +120,31 @@ function ExpectedReturns({ bundle, theme, recessions }: { bundle: Bundle<P06Valu
     yAxis: { type: 'value', scale: true, name: 'real return over the next 10 years, per year', nameTextStyle: { color: c.muted, align: 'left' },
       axisLabel: { color: c.muted, formatter: percentAxis }, splitLine: { lineStyle: { color: c.grid } } },
     dataZoom: [{ type: 'inside', xAxisIndex: 0, filterMode: 'none' }, { type: 'inside', yAxisIndex: 0, filterMode: 'none' }],
+    legend: { bottom: 0, left: 'center', textStyle: { color: c.secondary }, itemWidth: 14, itemHeight: 6,
+      data: ['Past starting months', 'Typical spread (10th–90th percentile)', "Today's range"] },
     series: [{
-      type: 'scatter', name: 'Past starting months', symbolSize: 6,
-      itemStyle: { color: c.series[0], opacity: 0.4 },
+      type: 'scatter', name: 'Past starting months', symbolSize: 4,
+      itemStyle: { color: c.muted, opacity: 0.45 },
       data: data.history.calibration.map(([month, ey, realised]) => [ey, realised, month]),
-      markLine: equity ? { silent: true, symbol: 'none', lineStyle: { color: c.series[1], width: 2, type: 'solid' },
-        label: { color: c.ink, position: 'insideStartTop', formatter: `today ${pct(equity.earnings_yield)}` },
-        data: [{ xAxis: equity.earnings_yield }] } : undefined,
-    }],
+    },
+    // The method: real return ≈ starting earnings yield + a residual whose 10th–90th percentile spread is drawn
+    // as two lines; where today's yield crosses them is the range on the ruler above.
+    ...(equity?.range_real ? (() => {
+      const xs = data.history.calibration.map(([, ey]) => ey);
+      const lo = Math.min(...xs, equity.earnings_yield), hi = Math.max(...xs, equity.earnings_yield);
+      const r10 = equity.range_real.p10 - equity.earnings_yield, r90 = equity.range_real.p90 - equity.earnings_yield;
+      const edge = (r: number, name: string) => ({ type: 'line', name, silent: true, showSymbol: false,
+        lineStyle: { color: c.series[0], width: 1.5 }, itemStyle: { color: c.series[0] },
+        data: [[lo, lo + r], [hi, hi + r]] });
+      return [edge(r10, 'Typical spread (10th–90th percentile)'), { ...edge(r90, 'Typical spread (10th–90th percentile)') },
+        { type: 'line', name: "Today's range", showSymbol: true, symbolSize: 9,
+          lineStyle: { color: c.series[1], width: 6, opacity: 0.85 }, itemStyle: { color: c.series[1] },
+          label: { show: true, position: 'right', color: c.ink, fontWeight: 700, backgroundColor: c.surface,
+            padding: [3, 6], borderRadius: 4,
+            formatter: (p: { dataIndex: number }) => p.dataIndex === 1 ? `today: ${pct(equity.range_real!.p10)} to ${pct(equity.range_real!.p90)}` : '' },
+          data: [[equity.earnings_yield, equity.range_real.p10], [equity.earnings_yield, equity.range_real.p90]] }];
+    })() : []),
+    ],
   }), [c, data, equity]);
   return <>
     <div className="decision-hero">
@@ -142,7 +159,7 @@ function ExpectedReturns({ bundle, theme, recessions }: { bundle: Bundle<P06Valu
       <TimePanel title="US valuation since 1881 (CAPE)" option={capeOption}
         span={[cape[0].data[0]?.[0] ?? '1881-01-01', cape[0].data.at(-1)?.[0] ?? '2026-01-01']}/>
       <TimePanel title="Where the range comes from" option={cloudOption} presets={false}
-        caption="Each dot is a past starting month: its earnings yield and the real return of the following 10 years. The line marks today's earnings yield."/>
+        caption="Each grey dot is a past starting month: its earnings yield and the real return of the following 10 years. The blue lines are the typical spread around 'return equals earnings yield'; the orange bar is where today's yield meets it, the same range as on the ruler."/>
     </div>
   </>;
 }
@@ -221,7 +238,7 @@ function Credit({ bundle, theme, recessions }: { bundle: Bundle<F03Values>; them
   [theme, recessions, data]);
   const span = (series: [string, number][]): [string, string] => [series[0]?.[0] ?? '1960-01-01', series.at(-1)?.[0] ?? '2026-01-01'];
   return <>
-    <div className="decision-hero decision-hero-split">
+    <div className="decision-hero decision-hero-stack">
       <Thermometers theme={theme} title="Credit gap" unit="pp" rows={gapRows} zones={zones}/>
       <Thermometers theme={theme} title="Debt service" unit="%" rows={dsrRows}/>
     </div>
@@ -230,12 +247,12 @@ function Credit({ bundle, theme, recessions }: { bundle: Bundle<F03Values>; them
       income, compared only with each economy's own history.</p>
     <h4 className="decision-subhead">Credit gap by economy</h4>
     <div className="decision-multiples">
-      {gapCharts.map(g => <TimePanel key={g.area} title={ENTITY_NAME[g.area]} option={g.option} height={210} group="f03-gap"
+      {gapCharts.map(g => <TimePanel key={g.area} title={ENTITY_NAME[g.area]} option={g.option} height={230} group="f03-gap" compact
         span={span(data.history[g.area].credit_gap)} presets={false}/>)}
     </div>
     <h4 className="decision-subhead">Debt service by economy</h4>
     <div className="decision-multiples">
-      {dsrCharts.map(g => <TimePanel key={g.area} title={ENTITY_NAME[g.area]} option={g.option} height={210} group="f03-dsr"
+      {dsrCharts.map(g => <TimePanel key={g.area} title={ENTITY_NAME[g.area]} option={g.option} height={230} group="f03-dsr" compact
         span={span(data.history[g.area].private_dsr)} presets={false}/>)}
     </div>
   </>;

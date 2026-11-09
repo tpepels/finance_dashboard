@@ -58,7 +58,7 @@ const SHORT: Record<string, string> = {
   'Dot-com recession': 'Dot-com', 'Financial crisis': '2008 crisis', 'COVID-19 recession': 'COVID',
 };
 
-type Area = [{ name: string; xAxis: string; label?: { show: boolean; formatter?: string; offset?: number[] };
+type Area = [{ name: string; xAxis: string; named: boolean; label?: { show: boolean; formatter?: string; offset?: number[] };
   itemStyle?: { color: string } }, { xAxis: string }];
 
 /** Recession bands inside [from, to]; the three named episodes carry a label on the chart. */
@@ -72,13 +72,32 @@ export function recessionAreas(periods: Recession[], from: string, to: string, t
       // Named episodes sit in staggered rows so close bands never print over each other.
       const offset = named ? (row++ % 3) * 13 : 0;
       return [{
-        name: p.name, xAxis: p.start,
+        name: p.name, xAxis: p.start, named,
         itemStyle: { color: named ? colours.recessionNamed : colours.recession },
         label: { show: named, formatter: nonUS ? `US · ${SHORT[p.name] ?? p.name}` : (SHORT[p.name] ?? p.name),
           offset: [0, offset] },
       }, { xAxis: p.end ?? to }];
     });
 }
+
+/** Recession names stay legible only while the visible window is short enough to keep them apart. */
+export function namedLabelsFit(visibleYears: number, compact: boolean): boolean {
+  return visibleYears <= (compact ? 15 : 60);
+}
+
+/** The option with the named recession labels shown or hidden (bands and hover names always stay). */
+export function withNamedLabels<T extends object>(option: T, show: boolean): T {
+  const series = (option as { series?: { markArea?: { data: unknown[] } }[] }).series;
+  if (!series?.[0]?.markArea) return option;
+  const data = series[0].markArea.data.map(item => {
+    const pair = item as [{ named?: boolean; label?: object }, object];
+    return pair[0].named ? [{ ...pair[0], label: { ...pair[0].label, show } }, pair[1]] : item;
+  });
+  return { ...option, series: [{ ...series[0], markArea: { ...series[0].markArea, data } }, ...series.slice(1)] } as T;
+}
+
+export const yearsBetween = (from: string | number, to: string | number) =>
+  (new Date(to).getTime() - new Date(from).getTime()) / (365.25 * 24 * 3600 * 1000);
 
 export function recessionAt(date: string, periods: Recession[]): Recession | undefined {
   return periods.find(p => p.start <= date && (p.end === null || date <= p.end));
@@ -135,9 +154,12 @@ export function timeChart(input: TimeChartInput): EChartsOption {
   const colours = palette(theme);
   const format = input.format ?? defaultFormat;
   const [from, to] = span(series);
-  const areas = recessionAreas(recessions, from, to, theme, input.nonUS ?? false);
-  const zoneTone = { calm: 'rgba(0,0,0,0)', watch: theme === 'dark' ? 'rgba(201,133,0,0.10)' : 'rgba(237,161,0,0.10)',
-    alert: theme === 'dark' ? 'rgba(230,103,103,0.13)' : 'rgba(227,73,72,0.10)' };
+  const fits = namedLabelsFit(yearsBetween(from, to), compact);
+  const areas = recessionAreas(recessions, from, to, theme, input.nonUS ?? false)
+    .map(([start, end]) => [{ ...start, label: { ...start.label!, show: start.named && fits } }, end] as Area);
+  // Zones sit quietly behind the line: they mark thresholds, the line is the subject.
+  const zoneTone = { calm: 'rgba(0,0,0,0)', watch: theme === 'dark' ? 'rgba(201,133,0,0.07)' : 'rgba(237,161,0,0.07)',
+    alert: theme === 'dark' ? 'rgba(230,103,103,0.09)' : 'rgba(227,73,72,0.07)' };
   return {
     animation: false,
     backgroundColor: 'transparent',
@@ -149,7 +171,7 @@ export function timeChart(input: TimeChartInput): EChartsOption {
     xAxis: {
       type: 'time',
       axisLine: { lineStyle: { color: colours.axis } },
-      axisLabel: { color: colours.muted, hideOverlap: true },
+      axisLabel: { color: colours.muted, hideOverlap: true, fontSize: 12 },
       splitLine: { show: false },
     },
     yAxis: {
@@ -157,7 +179,7 @@ export function timeChart(input: TimeChartInput): EChartsOption {
       scale: !input.log,
       min: input.min ?? (input.log ? 'dataMin' : undefined), max: input.max ?? (input.log ? 'dataMax' : undefined),
       name: unit, nameTextStyle: { color: colours.muted, align: 'left' },
-      axisLabel: { color: colours.muted, formatter: (v: number) => format(v) },
+      axisLabel: { color: colours.muted, fontSize: 12, formatter: (v: number) => format(v) },
       splitLine: { lineStyle: { color: colours.grid } },
     },
     tooltip: {
@@ -196,7 +218,7 @@ export function timeChart(input: TimeChartInput): EChartsOption {
         showSymbol: s.data.length < 30,
         symbolSize: 8,
         connectNulls: false,
-        lineStyle: { color: colour, width: s.width ?? 2 },
+        lineStyle: { color: colour, width: s.width ?? (compact ? 2.5 : 2) },
         itemStyle: { color: colour },
         areaStyle: s.area ? { color: colour, opacity: 0.12 } : undefined,
         emphasis: { focus: 'series' as const },

@@ -828,6 +828,8 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .decision-section-head p { font-size: 15px; line-height: 1.55; color: var(--dx-secondary); max-width: 72ch; margin: 0; }
 .decision-hero { margin: 26px 0 8px; padding: 22px 24px; background: var(--dx-surface); border-radius: 10px; }
 .decision-hero-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.decision-hero-stack { display: flex; flex-direction: column; gap: 22px; }
+.decision-hero-stack .hero-svg { max-width: 820px; }
 .decision-hero-side { display: flex; flex-direction: column; gap: 12px; }
 .hero-svg { display: block; width: 100%; height: auto; max-width: 940px; font-family: inherit; }
 .hero-svg-map { max-width: 600px; }

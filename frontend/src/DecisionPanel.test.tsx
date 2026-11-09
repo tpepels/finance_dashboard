@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('./viz', () => ({ createChart: vi.fn(() => ({ setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn(),
-  dispatchAction: vi.fn(), on: vi.fn(), group: '' })), connectCharts: vi.fn() }));
+  dispatchAction: vi.fn(), on: vi.fn(), off: vi.fn(), getOption: vi.fn(() => ({})), group: '' })),
+  connectCharts: vi.fn() }));
 import DecisionPanel from './DecisionPanel';
 
 const phase2 = (state = 'accepted') => ({ state, evaluated_at: '2026-11-08T00:00:00+00:00', open_gates: [], limitations: [] });
