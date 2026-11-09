@@ -6,7 +6,7 @@ import OwnerInputs from './OwnerInputs';
 
 const example = { allocation: { equity: 0.7, bonds: 0.25, gold: 0.05 }, equity_hedged_share: 0, equity_euro_share: 0.1, bonds_hedged: true,
   bond_duration_years: 7, rebalancing: { rule: 'threshold', months: 12, band_pp: 5 }, trading_cost_bps: 10, start_value_eur: 100000,
-  monthly_contribution_eur: 0, annual_withdrawal_pct: 0, is_example: true };
+  monthly_contribution_eur: 0, annual_withdrawal_pct: 0, tax: { mode: 'none', rate_pct: 0 }, is_example: true };
 
 describe('OwnerInputs', () => {
   afterEach(() => cleanup());
@@ -29,10 +29,14 @@ describe('OwnerInputs', () => {
     await user.clear(bonds); await user.type(bonds, '20');
     const gold = screen.getByLabelText('Gold (%)');
     await user.clear(gold); await user.type(gold, '0');
+    await user.selectOptions(screen.getByLabelText('Tax'), 'yearly_on_value');
+    const rate = screen.getByLabelText('Tax rate (%)');
+    await user.clear(rate); await user.type(rate, '2.2');
     await user.click(screen.getByRole('button', { name: 'Save my portfolio' }));
     await waitFor(() => expect(calls.some(c => c.method === 'PUT')).toBe(true));
     const sent = JSON.parse(calls.find(c => c.method === 'PUT')!.body!);
     expect(sent.allocation).toEqual({ equity: 0.8, bonds: 0.2, gold: 0 });
+    expect(sent.tax).toEqual({ mode: 'yearly_on_value', rate_pct: 2.2 });
     expect(await screen.findByText(/^saved\./i)).toBeTruthy();
     expect(refreshed).toHaveBeenCalled();
   });

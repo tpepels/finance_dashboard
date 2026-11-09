@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { entityName, timeChart, type Recession, type Theme, type TimeSeries } from './chartKit';
-import { Dumbbells, ExternalBars, PairBars, RankedBars, StackedShares, type ExternalRow } from './heroes';
+import { Dumbbells, ExternalBars, PairBars, RankedBars, StackedShares, Thermometers, type ExternalRow } from './heroes';
 import TimePanel from './TimePanel';
 import { Section, spanOf, useBundles, yearDate, type Bundle } from './analysisShell';
 
@@ -13,7 +13,34 @@ type G01Values = { latest: { date: string; accession: string; top10_pct: number 
 type G02Values = { date: string | null; countries: { area: string; index_weight: number | null; gdp_share: number | null; gdp_year: string | null }[];
   us_weight_history: Line };
 
+type G03Values = { alternatives: { key: string; name: string; unit: string; latest: number; min: number; max: number; own_mean: number;
+  as_of: string; history: Line }[]; oecd_coverage: Line; oecd_members: Line };
+
 const FALLBACK: [string, string] = ['1970-01-01', '2025-01-01'];
+
+const G03_WITHHELD = <p className="decision-caption">The question needs the consolidated net profit of listed companies worldwide,
+  with each company counted once under its parent, in one currency, against world GDP. No published or collected source covers that
+  universe yet. Two approved but non-equivalent national-accounts measures (EU27 non-financial corporate profit share and OECD
+  corporate surplus relative to GDP) are mapped; they will appear here, labelled as alternatives, once Phase 2 accepts them.</p>;
+
+function Profits({ bundle, theme, recessions }: { bundle: Bundle<G03Values>; theme: Theme; recessions: Recession[] }) {
+  const data = bundle.values as G03Values;
+  const option = useMemo(() => timeChart({ theme, recessions, unit: '%', format: v => v.toFixed(0),
+    series: data.alternatives.map((a, i) => ({ name: a.name, slot: i, dots: true, data: a.history })) }), [data, theme, recessions]);
+  return <>
+    <div className="decision-hero">
+      <Thermometers theme={theme} title="Corporate profit measures within their own history" unit="" rows={data.alternatives.map(a => ({
+        area: a.key, label: a.key === 'eu27_profit_share' ? 'EU27 profit share' : 'OECD surplus / GDP', min: a.min, max: a.max,
+        mean: a.own_mean, latest: a.latest, asOf: a.as_of.slice(0, 4), note: a.unit, format: v => `${v.toFixed(1)}%` }))}/>
+      <p className="decision-caption">Not the answer to the question: both are national-accounts alternatives covering listed and
+        unlisted companies, gross of depreciation, and neither covers the whole world.</p>
+    </div>
+    <div className="decision-charts">
+      <TimePanel title="Alternative corporate profit measures" option={option} presets={false}
+        span={spanOf(data.alternatives.map(a => a.history), ['1999-01-01', '2025-01-01'])}/>
+    </div>
+  </>;
+}
 
 function Concentration({ bundle, theme, recessions }: { bundle: Bundle<G01Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as G01Values;
@@ -111,7 +138,7 @@ function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>
 
 /** Global links: external balances and supply-chain exposure. */
 export default function GlobalPanel({ theme, dataVersion }: { theme: Theme; dataVersion: number }) {
-  const { bundles, recessions, error } = useBundles(['G01', 'G02', 'G05', 'G06'], dataVersion);
+  const { bundles, recessions, error } = useBundles(['G01', 'G02', 'G03', 'G05', 'G06'], dataVersion);
   const section = (id: string, body: (b: Bundle<any>) => ReactNode) => bundles[id] &&
     <Section key={id} bundle={bundles[id]}>{body(bundles[id] as Bundle<any>)}</Section>;
   return <div className="decision-container" id="global">
@@ -123,6 +150,8 @@ export default function GlobalPanel({ theme, dataVersion }: { theme: Theme; data
     {error && <p className="decision-note" role="status">{error}</p>}
     {section('G01', b => <Concentration bundle={b} theme={theme} recessions={recessions}/>)}
     {section('G02', b => <Weights bundle={b} theme={theme} recessions={recessions}/>)}
+    {bundles.G03 && <Section bundle={bundles.G03} withheld={G03_WITHHELD}>
+      {bundles.G03.values ? <Profits bundle={bundles.G03 as Bundle<G03Values>} theme={theme} recessions={recessions}/> : null}</Section>}
     {section('G05', b => <External bundle={b} theme={theme} recessions={recessions}/>)}
     {section('G06', b => <SupplyChains bundle={b} theme={theme} recessions={recessions}/>)}
   </div>;

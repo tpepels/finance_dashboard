@@ -69,6 +69,14 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
         from ..ucits_holdings import read_ucits_sources
         records = read_ucits_sources(Path(holdings_root))["records"]
         return ucits_summary(records[-1]) if records else None
+    if name == "shock_events":
+        import json
+        from ..catalog import DEFAULT_ROOT
+        register = DEFAULT_ROOT / "definitions" / "shock_events.json"
+        return json.loads(register.read_text())["events"]
+    if name == "nber_chronology":
+        from ..nber_chronology import read_nber_chronology
+        return read_nber_chronology(Path(evidence_root))
     if name == "owner_inputs":
         from ..owner_inputs import load_owner_inputs
         return load_owner_inputs()

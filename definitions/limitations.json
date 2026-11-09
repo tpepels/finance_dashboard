@@ -198,8 +198,23 @@
     },
     "P05": {
       "us_bonds_proxy": "Bonds are the US 10-year sovereign total return in euros (Swinkels), which ends in 2022; the simulation stops where every asset in your mix has data.",
-      "no_tax": "Tax on realised gains is not modelled yet; trading costs are, as a charge on turnover.",
-      "history_not_forecast": "A replay of one historical path; the order of returns (sequence risk) will differ in future."
+      "history_not_forecast": "A replay of one historical path; the order of returns (sequence risk) will differ in future.",
+      "simplified_tax": "Tax is your chosen simplification: a rate on gains realised when selling (no loss offsets or allowances), or a yearly rate on the whole value (no tax-free allowance). It is not tax advice."
+    },
+    "C02": {
+      "fixed_windows": "An inversion counts as a warning if it starts within 24 months before a recession; a Sahm trigger counts from 12 months before to 18 months after the start. Other windows would move some signals between warning and false alarm.",
+      "month_end_spread": "The daily yield spread is read at each month's last trading day.",
+      "few_recessions": "Only five US recessions fall inside the yield-spread history since 1982, too few to estimate how reliable either signal is.",
+      "revised_sahm": "The Sahm series is today's published history; what was known in each month may have differed."
+    },
+    "C05": {
+      "peak_window": "The pre-recession peak is the highest level in the 12 months before the recession starts; a different window can change depth and recovery times.",
+      "revised_levels": "Levels are today's revised figures, not what was published at the time.",
+      "shocks_as_context": "Shock events are listed for context when they fall near a recession; they are not used to define recessions."
+    },
+    "G03": {
+      "non_equivalent": "Both alternatives are national-accounts profit measures (listed and unlisted companies, gross of depreciation); neither is the consolidated net profit of the world's listed companies.",
+      "regional_coverage": "The EU27 measure covers EU non-financial companies only; the OECD measure covers 38 member countries and its coverage of GDP changes over time."
     }
   }
 }

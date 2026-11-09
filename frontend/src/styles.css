@@ -555,8 +555,10 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .owner-field input[type="number"], .owner-field select { width: 100%; box-sizing: border-box; padding: 5px 8px; font: inherit; color: var(--dx-ink);
   background: var(--dx-surface); border: 1px solid var(--dx-rule); border-radius: 6px; text-align: right; }
 .owner-field select { text-align: left; }
+.owner-field:has(select) { grid-template-columns: auto minmax(150px, 1fr); }
 .owner-field :focus-visible { outline: 2px solid var(--dx-focus); outline-offset: 1px; }
 .owner-check { grid-template-columns: auto 1fr; }
+.owner-hint { grid-column: 1 / -1; margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--dx-muted); }
 .owner-total { font-weight: 400; color: var(--dx-muted); margin-left: 6px; }
 .owner-total-off { color: #c0392b; font-weight: 700; }
 .owner-actions { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }

@@ -36,6 +36,27 @@ class OwnerEngineTests(unittest.TestCase):
         self.assertLess(withdraw["final"], never["final"])
         self.assertEqual(len(withdraw["path"]), 12)
 
+    def test_tax_on_realised_gains_is_charged_only_when_gains_are_sold(self):
+        months = [(2020, m) for m in range(1, 13)]
+        returns = {"equity": {k: 0.05 for k in months}, "bonds": {k: 0.0 for k in months}, "gold": {k: 0.0 for k in months}}
+        weights = {"equity": 0.5, "bonds": 0.5, "gold": 0.0}
+        common = dict(months_between=12, band_pp=5, cost_bps=0, start=100.0, monthly_contribution=0.0, annual_withdrawal_pct=0.0)
+        untaxed = simulate(returns, months, weights, rule="threshold", **common)
+        taxed = simulate(returns, months, weights, rule="threshold", tax_mode="realised_gains", tax_rate=0.25, **common)
+        self.assertGreater(taxed["taxes"], 0)
+        self.assertLess(taxed["final"], untaxed["final"])
+        held = simulate(returns, months, weights, rule="never", tax_mode="realised_gains", tax_rate=0.25, **common)
+        self.assertEqual(held["taxes"], 0)
+
+    def test_yearly_tax_on_value_is_charged_every_twelve_months(self):
+        months = [(2020, m) for m in range(1, 13)] + [(2021, m) for m in range(1, 13)]
+        returns = {a: {k: 0.0 for k in months} for a in ("equity", "bonds", "gold")}
+        result = simulate(returns, months, {"equity": 1.0, "bonds": 0.0, "gold": 0.0}, rule="never", months_between=12,
+                          band_pp=5, cost_bps=0, start=100.0, monthly_contribution=0.0, annual_withdrawal_pct=0.0,
+                          tax_mode="yearly_on_value", tax_rate=0.02)
+        self.assertAlmostEqual(result["taxes"], 2 + 1.96)
+        self.assertAlmostEqual(result["final"], 100 * 0.98 * 0.98)
+
     def test_p05_compares_three_rules_on_euro_returns(self):
         self.assertIs(DEFINITIONS["P05"], P05)
         n = 30

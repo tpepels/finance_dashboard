@@ -30,7 +30,14 @@ class OwnerInputTests(unittest.TestCase):
                 save_owner_inputs(path, {**EXAMPLE, "rebalancing": {"rule": "sometimes", "months": 12, "band_pp": 5}})
             with self.assertRaisesRegex(OwnerInputError, "between 0 and 1"):
                 save_owner_inputs(path, {**EXAMPLE, "equity_hedged_share": 1.5})
+            with self.assertRaisesRegex(OwnerInputError, "tax"):
+                save_owner_inputs(path, {**EXAMPLE, "tax": {"mode": "sometimes", "rate_pct": 10}})
+            with self.assertRaisesRegex(OwnerInputError, "tax"):
+                save_owner_inputs(path, {**EXAMPLE, "tax": {"mode": "realised_gains", "rate_pct": 120}})
             self.assertFalse(path.exists())
+
+    def test_tax_defaults_to_none(self):
+        self.assertEqual(EXAMPLE["tax"], {"mode": "none", "rate_pct": 0.0})
 
 
 if __name__ == "__main__":

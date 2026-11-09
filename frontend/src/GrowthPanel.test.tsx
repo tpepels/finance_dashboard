@@ -22,6 +22,16 @@ const c01 = bundle('C01', {
 const c03 = bundle('C03', { strip: [{ area: 'WORLD', latest: 2.9, year: '2025', range: { min: -2.9, max: 6.5, from: '2016-01-01', observations: 10 } }],
   history: { WORLD: [['2025-01-01', 2.9]], US: [], EU: [], CN: [], IN: [], JP: [] }, dispersion: [['2025', 2.5]],
   dispersion_cohort: ['CN', 'EU', 'IN', 'JP', 'US'] });
+const c02 = bundle('C02', { now: { spread: { month: '2026-10', value: 0.4 }, sahm: { month: '2026-10', value: 0.2 }, months_inverted_last_24: 5, threshold: 0.5 },
+  gauges: [{ key: 'spread', name: '10-year minus 3-month Treasury yield', unit: 'pp', as_of: '2026-10-01', latest: 0.4, min: -2.7, max: 4.4, own_mean: 1.6 }],
+  recessions: [{ start: '2020-03', curve_inverted: { month: '2019-05', offset: -10 }, sahm_triggered: { month: '2020-04', offset: 1 },
+    announced: { date: '2020-06-08', offset: 3 }, curve_observed: true, sahm_observed: true }],
+  false_alarms: { curve: [], sahm: [] }, windows: { curve_months_before: 24, sahm_months: [-12, 18] },
+  history: { spread: [['2026-10', 0.4]], sahm: [['2026-10', 0.2]] } });
+const c05 = bundle('C05', { labels: { industrial_production: 'Industrial production', payrolls: 'Payroll jobs', gdp: 'Real GDP' },
+  episodes: [{ start: '2020-03', end: '2020-04', shocks: [], measures: { industrial_production: null, gdp: null,
+    payrolls: { peak: '2020-02', trough: '2020-04', depth: -0.14, months_down: 2, months_to_recover: 28 } } }],
+  history: { industrial_production: [['2026-09', 103]], payrolls: [['2026-10', 160000]], gdp: [['2026-07', 24000]] } });
 const c06 = bundle('C06', { commodities: [{ key: 'brent', name: 'Brent crude oil', latest: 0.93, as_of: '2026-10', history: [['2026-10', 0.93]] }],
   map: { US: [['2024', 2.8, 3.0], ['2025', 2.3, 2.7]], JP: [], CN: [] },
   inflation: { US: [['2025-01-01', 2.7]], JP: [], CN: [] }, growth: { US: [['2025-01-01', 2.3]], JP: [], CN: [] } });
@@ -32,7 +42,7 @@ function stubFetch() {
   vi.stubGlobal('fetch', vi.fn((url: string) => {
     urls.push(url);
     const id = url.split('/').pop() as string;
-    const body = { C01: c01, C03: c03, C06: c06, recessions: { periods: [] } }[id];
+    const body = { C01: c01, C02: c02, C03: c03, C05: c05, C06: c06, recessions: { periods: [] } }[id];
     return Promise.resolve(new Response(JSON.stringify(body)));
   }));
   return urls;
@@ -48,9 +58,11 @@ describe('GrowthPanel', () => {
     expect(screen.getByRole('img', { name: /latest year within/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /inflation and growth by year/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /12-month price change/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /signals around each recession/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /months to regain/i })).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
-    expect(urls.filter(u => u.startsWith('/api/analysis/')).sort()).toEqual(['/api/analysis/C01', '/api/analysis/C03', '/api/analysis/C06']);
-    expect(screen.getAllByText('Export for AI')).toHaveLength(3);
+    expect(urls.filter(u => u.startsWith('/api/analysis/')).sort()).toEqual(['/api/analysis/C01', '/api/analysis/C02', '/api/analysis/C03', '/api/analysis/C05', '/api/analysis/C06']);
+    expect(screen.getAllByText('Export for AI')).toHaveLength(5);
   });
 
 });

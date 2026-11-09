@@ -965,12 +965,12 @@ export function ImpactBars({ theme, rows }: { theme: Theme; rows: Impact[] }) {
   </svg>;
 }
 
-export type RuleResult = { key: string; label: string; final: number; max_drawdown: number; costs: number; rebalances: number };
+export type RuleResult = { key: string; label: string; final: number; max_drawdown: number; costs: number; taxes?: number; rebalances: number };
 
 /** Rebalancing rules side by side: ending value as bars, deepest fall and costs beside each; the owner's rule marked. */
 export function RuleBars({ theme, rules, chosen }: { theme: Theme; rules: RuleResult[]; chosen: string }) {
   const c = palette(theme);
-  const W = 760, left = 250, right = 520, rowH = 46, top = 28;
+  const W = 760, left = 250, right = 500, rowH = 46, top = 28;
   const hi = Math.max(1, ...rules.map(r => r.final)) * 1.05;
   const x = scale(0, hi, left, right);
   const H = top + rules.length * rowH + 4;
@@ -978,8 +978,8 @@ export function RuleBars({ theme, rules, chosen }: { theme: Theme; rules: RuleRe
   return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Rebalancing rules: ${rules.map(r => `${r.label} ends at ${eur(r.final)}, deepest fall ${pct(r.max_drawdown, 0)}`).join('; ')}`}>
     <text x={left} y={16} fill={c.muted} fontSize="12">ending value</text>
-    <text x={560} y={16} fill={c.muted} fontSize="12">deepest fall</text>
-    <text x={660} y={16} fill={c.muted} fontSize="12">costs · trades</text>
+    <text x={540} y={16} fill={c.muted} fontSize="12">deepest fall</text>
+    <text x={640} y={16} fill={c.muted} fontSize="12">{rules.some(r => r.taxes) ? 'costs · tax · trades' : 'costs · trades'}</text>
     {rules.map((r, i) => {
       const y0 = top + i * rowH;
       const mine = r.key === chosen;
@@ -989,8 +989,112 @@ export function RuleBars({ theme, rules, chosen }: { theme: Theme; rules: RuleRe
         <rect data-part="final" x={left} y={y0 + 4} width={Math.max(2, x(r.final) - left)} height="18" rx="4"
           fill={c.series[0]} fillOpacity={mine ? 1 : 0.55}/>
         <text x={x(r.final) - 6} y={y0 + 17} textAnchor="end" fill={c.surface} fontSize="12" fontWeight="700">{eur(r.final)}</text>
-        <text x={560} y={y0 + 17} fill={c.negative} fontSize="13" fontWeight="700">{pct(r.max_drawdown, 0)}</text>
-        <text x={660} y={y0 + 17} fill={c.ink} fontSize="12">{`${eur(r.costs)} · ${r.rebalances}`}</text>
+        <text x={540} y={y0 + 17} fill={c.negative} fontSize="13" fontWeight="700">{pct(r.max_drawdown, 0)}</text>
+        <text x={640} y={y0 + 17} fill={c.ink} fontSize="12">{rules.some(q => q.taxes)
+          ? `${eur(r.costs)} · ${eur(r.taxes ?? 0)} · ${r.rebalances}` : `${eur(r.costs)} · ${r.rebalances}`}</text>
+      </g>;
+    })}
+  </svg>;
+}
+
+type Signal = { month: string; offset: number } | null;
+export type SignalEpisode = { start: string; curve_inverted: Signal; sahm_triggered: Signal; announced: { date: string; offset: number } | null;
+  curve_observed: boolean; sahm_observed: boolean };
+export type Alarm = { start: string; months: number; open: boolean };
+
+/** Every recession on one line, months relative to its start: when the curve inverted, when Sahm triggered, when NBER said so. */
+export function SignalTimeline({ theme, recessions, falseAlarms, window }: { theme: Theme; recessions: SignalEpisode[];
+  falseAlarms: { curve: Alarm[]; sahm: Alarm[] }; window: [number, number] }) {
+  const c = palette(theme);
+  const W = 760, left = 90, right = 730, rowH = 34, top = 48;
+  const x = scale(window[0], window[1], left, right);
+  const rows = [...recessions].reverse();
+  const alarmLines = [
+    ...falseAlarms.curve.map(a => ({ kind: 'curve' as const, text: `Yield curve inverted ${a.start}, ${a.months} months${a.open ? ' (window still open)' : ', no recession followed'}` })),
+    ...falseAlarms.sahm.map(a => ({ kind: 'sahm' as const, text: `Sahm rule triggered ${a.start}, ${a.months} months${a.open ? ' (window still open)' : ', no recession followed'}` }))];
+  const axisY = top + rows.length * rowH + 6;
+  const H = axisY + 40 + (alarmLines.length ? 26 + alarmLines.length * 20 : 0);
+  const colour = { curve: c.series[0], sahm: c.series[1], announced: c.secondary };
+  const mark = (kind: 'curve' | 'sahm' | 'announced', cx: number, cy: number, label: string, data = true) => {
+    const size = 7;
+    const shape = kind === 'curve' ? <path d={`M${cx} ${cy - size} L${cx + size} ${cy} L${cx} ${cy + size} L${cx - size} ${cy} Z`} fill={colour.curve}/>
+      : kind === 'sahm' ? <path d={`M${cx} ${cy - size} L${cx + size} ${cy + size - 1} L${cx - size} ${cy + size - 1} Z`} fill={colour.sahm}/>
+        : <rect x={cx - 5} y={cy - 5} width="10" height="10" rx="1" fill={c.surface} stroke={colour.announced} strokeWidth="2.5"/>;
+    return <g data-part={data ? kind : undefined}>{shape}<title>{label}</title></g>;
+  };
+  const legend = [['curve', 'yield curve first inverted'], ['sahm', 'Sahm rule reached 0.5'], ['announced', 'NBER announced the recession']] as const;
+  const at = legendOffsets(legend.map(l => l[1]), 6.8, 26);
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Signals around each recession: ${recessions.map(r => `${r.start.slice(0, 4)}: curve ${r.curve_inverted ? `${r.curve_inverted.offset} months` : 'none'}, Sahm ${r.sahm_triggered ? `${r.sahm_triggered.offset} months` : 'none'}`).join('; ')}`}>
+    {legend.map(([kind, text], i) => <g key={kind} transform={`translate(${left + at[i]}, 10)`}>
+      {mark(kind, 6, 7, text, false)}<text x={18} y={12} fill={c.ink} fontSize="12">{text}</text></g>)}
+    <rect x={x(0)} y={top - 6} width={right - x(0)} height={rows.length * rowH + 6} fill={c.grid} fillOpacity="0.5"/>
+    {ticks(window[0], window[1], 6).map(t => <g key={t}>
+      <line x1={x(t)} x2={x(t)} y1={top - 6} y2={axisY} stroke={t === 0 ? c.ink : c.grid} strokeWidth={t === 0 ? 1.5 : 1}/>
+      <text x={x(t)} y={axisY + 16} textAnchor="middle" fill={c.muted} fontSize="12">{t === 0 ? 'recession starts' : `${t > 0 ? '+' : ''}${t}`}</text></g>)}
+    <text x={left} y={axisY + 32} fill={c.muted} fontSize="11">months before</text>
+    <text x={right} y={axisY + 32} textAnchor="end" fill={c.muted} fontSize="11">months after</text>
+    {rows.map((r, i) => {
+      const cy = top + i * rowH + 12;
+      return <g key={r.start}>
+        <text x={0} y={cy + 5} fill={c.ink} fontSize="13" fontWeight="700">{r.start.slice(0, 4)}</text>
+        <line x1={left} x2={right} y1={cy} y2={cy} stroke={c.grid}/>
+        {r.curve_inverted && mark('curve', x(r.curve_inverted.offset), cy, `Curve first inverted ${r.curve_inverted.month} (${r.curve_inverted.offset} months)`)}
+        {r.sahm_triggered && mark('sahm', x(r.sahm_triggered.offset), cy, `Sahm rule reached 0.5 in ${r.sahm_triggered.month} (${r.sahm_triggered.offset > 0 ? '+' : ''}${r.sahm_triggered.offset} months)`)}
+        {r.announced && mark('announced', x(Math.min(window[1], r.announced.offset)), cy, `NBER announced on ${r.announced.date} (+${r.announced.offset} months)`)}
+        {!r.curve_observed && <text x={left + 4} y={cy - 6} fill={c.muted} fontSize="11">no curve data</text>}
+        {r.curve_observed && !r.curve_inverted && <text x={left + 4} y={cy - 6} fill={c.muted} fontSize="11">curve did not invert</text>}
+      </g>;
+    })}
+    {alarmLines.length > 0 && <g transform={`translate(0, ${axisY + 50})`}>
+      <text x={0} y={0} fill={c.ink} fontSize="13" fontWeight="700">Signals not followed by a recession</text>
+      {alarmLines.map((a, i) => <g key={a.text} transform={`translate(0, ${18 + i * 20})`}>
+        {mark(a.kind, 8, 0, a.text, false)}<text x={22} y={4} fill={c.ink} fontSize="12">{a.text}</text></g>)}
+    </g>}
+  </svg>;
+}
+
+type Recovery = { peak: string; trough: string; depth: number; months_down: number; months_to_recover: number | null } | null;
+export type RecoveryEpisode = { start: string; end: string | null; shocks: { date: string; label: string }[]; measures: Record<string, Recovery> };
+
+/** Per recession, one thin bar per measure: months from the pre-recession peak until it was regained; depth at the end. */
+export function RecoveryBars({ theme, episodes, labels }: { theme: Theme; episodes: RecoveryEpisode[]; labels: Record<string, string> }) {
+  const c = palette(theme);
+  const keys = Object.keys(labels);
+  const W = 760, left = 150, right = 640, bar = 9, top = 34;
+  const rowH = keys.length * (bar + 3) + 18;
+  const longest = Math.max(24, ...episodes.flatMap(e => keys.map(k => e.measures[k]?.months_to_recover ?? 0)));
+  const reach = Math.ceil(longest / 12) * 12;
+  const x = scale(0, reach, left, right);
+  const rows = [...episodes].reverse();
+  const H = top + rows.length * rowH + 26;
+  const at = legendOffsets(keys.map(k => labels[k]), 6.8, 26);
+  const fmt = (r: NonNullable<Recovery>) => `−${Math.abs(r.depth) < 0.01 ? (Math.abs(r.depth) * 100).toFixed(1) : Math.round(Math.abs(r.depth) * 100)}% · ${r.months_to_recover === null ? 'not yet' : `${r.months_to_recover} mo`}`;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Months to regain the pre-recession peak: ${episodes.map(e => `${e.start.slice(0, 4)} ${keys.filter(k => e.measures[k]).map(k => `${labels[k]} ${fmt(e.measures[k]!)}`).join(', ')}`).join('; ')}`}>
+    {keys.map((k, i) => <g key={k} transform={`translate(${left + at[i]}, 8)`}>
+      <rect width="12" height="12" rx="3" fill={c.series[i]}/><text x={18} y={11} fill={c.ink} fontSize="12">{labels[k]}</text></g>)}
+    {ticks(0, reach, 12).map(t => <g key={t}>
+      <line x1={x(t)} x2={x(t)} y1={top - 4} y2={H - 22} stroke={c.grid}/>
+      <text x={x(t)} y={H - 6} textAnchor="middle" fill={c.muted} fontSize="12">{t === 0 ? 'peak' : `${t / 12}y`}</text></g>)}
+    {rows.map((e, i) => {
+      const y0 = top + i * rowH;
+      return <g key={e.start}>
+        <text x={0} y={y0 + 14} fill={c.ink} fontSize="13" fontWeight="700">{e.start.slice(0, 4)}</text>
+        {e.shocks.map((s, j) => <text key={s.date} x={0} y={y0 + 28 + j * 12} fill={c.muted} fontSize="10">
+          {s.label.length > 24 ? `${s.label.slice(0, 23)}…` : s.label}<title>{`${s.date}: ${s.label}`}</title></text>)}
+        {keys.map((k, j) => {
+          const r = e.measures[k];
+          if (!r) return null;
+          const by = y0 + 4 + j * (bar + 3);
+          const open = r.months_to_recover === null;
+          const end = open ? right : x(r.months_to_recover!);
+          return <g key={k} data-part="recovery">
+            <rect x={left} y={by} width={Math.max(2, end - left)} height={bar} rx="2" fill={c.series[j]} fillOpacity={open ? 0.35 : 1}/>
+            <text x={end + 6} y={by + bar - 1} fill={c.ink} fontSize="11">{fmt(r)}</text>
+            <title>{`${labels[k]}: peak ${r.peak}, trough ${r.trough} (${fmt(r)})`}</title>
+          </g>;
+        })}
       </g>;
     })}
   </svg>;

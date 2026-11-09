@@ -22,6 +22,8 @@ EXAMPLE = {
     "start_value_eur": 100000.0,
     "monthly_contribution_eur": 0.0,
     "annual_withdrawal_pct": 0.0,
+    # none | realised_gains (rate on gains realised when selling) | yearly_on_value (rate of value each year, like Dutch box 3)
+    "tax": {"mode": "none", "rate_pct": 0.0},
 }
 
 
@@ -57,7 +59,13 @@ def validate(raw: dict) -> dict:
         raise OwnerInputError("bond duration must be 0 to 30 years and trading costs 0 to 500 basis points")
     if numbers["start_value_eur"] <= 0 or numbers["monthly_contribution_eur"] < 0:
         raise OwnerInputError("starting value must be positive and contributions zero or more")
-    return {"allocation": allocation,
+    tax = data["tax"]
+    if tax.get("mode") not in ("none", "realised_gains", "yearly_on_value"):
+        raise OwnerInputError("tax must be none, on realised gains, or yearly on value")
+    rate = float(tax.get("rate_pct", 0))
+    if not 0 <= rate <= 60:
+        raise OwnerInputError("tax rate must be between 0% and 60%")
+    return {"allocation": allocation, "tax": {"mode": tax["mode"], "rate_pct": rate},
             "equity_hedged_share": _fraction(data["equity_hedged_share"], "share of foreign equity hedged"),
             "equity_euro_share": _fraction(data["equity_euro_share"], "euro-area share of equities"),
             "bonds_hedged": bool(data["bonds_hedged"]),

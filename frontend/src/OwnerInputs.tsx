@@ -5,7 +5,7 @@ type Inputs = {
   equity_hedged_share: number; equity_euro_share: number; bonds_hedged: boolean; bond_duration_years: number;
   rebalancing: { rule: 'never' | 'calendar' | 'threshold'; months: number; band_pp: number };
   trading_cost_bps: number; start_value_eur: number; monthly_contribution_eur: number; annual_withdrawal_pct: number;
-  is_example?: boolean;
+  tax: { mode: 'none' | 'realised_gains' | 'yearly_on_value'; rate_pct: number }; is_example?: boolean;
 };
 
 const percent = (v: number) => String(Math.round(v * 1000) / 10);
@@ -25,6 +25,7 @@ export default function OwnerInputs() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [rule, setRule] = useState<Inputs['rebalancing']['rule']>('threshold');
   const [hedgedBonds, setHedgedBonds] = useState(true);
+  const [taxMode, setTaxMode] = useState<Inputs['tax']['mode']>('none');
   const [example, setExample] = useState<boolean | null>(null);
   const [status, setStatus] = useState<{ kind: 'saved' | 'error'; text: string } | null>(null);
 
@@ -32,7 +33,9 @@ export default function OwnerInputs() {
     setForm({ equity: percent(d.allocation.equity), bonds: percent(d.allocation.bonds), gold: percent(d.allocation.gold),
       hedged: percent(d.equity_hedged_share), euro: percent(d.equity_euro_share), duration: String(d.bond_duration_years),
       months: String(d.rebalancing.months), band: String(d.rebalancing.band_pp), cost: String(d.trading_cost_bps),
-      start: String(d.start_value_eur), contribution: String(d.monthly_contribution_eur), withdrawal: percent(d.annual_withdrawal_pct) });
+      start: String(d.start_value_eur), contribution: String(d.monthly_contribution_eur), withdrawal: percent(d.annual_withdrawal_pct),
+      taxRate: String(d.tax?.rate_pct ?? 0) });
+    setTaxMode(d.tax?.mode ?? 'none');
     setRule(d.rebalancing.rule);
     setHedgedBonds(d.bonds_hedged);
     setExample(Boolean(d.is_example));
@@ -53,7 +56,7 @@ export default function OwnerInputs() {
       equity_hedged_share: num('hedged') / 100, equity_euro_share: num('euro') / 100, bonds_hedged: hedgedBonds,
       bond_duration_years: num('duration'), rebalancing: { rule, months: num('months'), band_pp: num('band') },
       trading_cost_bps: num('cost'), start_value_eur: num('start'), monthly_contribution_eur: num('contribution'),
-      annual_withdrawal_pct: num('withdrawal') / 100 };
+      annual_withdrawal_pct: num('withdrawal') / 100, tax: { mode: taxMode, rate_pct: num('taxRate') } };
     const response = await fetch('/api/owner-inputs', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body) });
     const data = await response.json().catch(() => ({}));
@@ -109,6 +112,20 @@ export default function OwnerInputs() {
         <Field label="Starting value (€)" value={form.start ?? ''} onChange={set('start')} step={1000}/>
         <Field label="Monthly contribution (€)" value={form.contribution ?? ''} onChange={set('contribution')} step={50}/>
         <Field label="Yearly withdrawal (% of value)" value={form.withdrawal ?? ''} onChange={set('withdrawal')} step={0.5}/>
+      </fieldset>
+      <fieldset>
+        <legend>Tax</legend>
+        <div className="owner-field">
+          <label htmlFor="owner-tax">Tax</label>
+          <select id="owner-tax" value={taxMode} onChange={e => setTaxMode(e.target.value as Inputs['tax']['mode'])}>
+            <option value="none">Not modelled</option>
+            <option value="realised_gains">On realised gains</option>
+            <option value="yearly_on_value">Yearly on value</option>
+          </select>
+        </div>
+        <Field label="Tax rate (%)" value={form.taxRate ?? ''} onChange={set('taxRate')} step={0.1}/>
+        <p className="owner-hint">Yearly on value approximates a wealth-based tax such as Dutch box 3 (for example 36% of a deemed
+          return of about 6% ≈ 2.2% a year, ignoring the allowance).</p>
       </fieldset>
       <div className="owner-actions">
         <button type="submit">Save my portfolio</button>

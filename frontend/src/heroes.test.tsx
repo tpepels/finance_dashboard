@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, ImpactBars, RuleBars, RankedBars, VariantSpread, CorrelationGrid, EpisodeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
+import { SignalTimeline, RecoveryBars, ChangeBars, ImpactBars, RuleBars, RankedBars, VariantSpread, CorrelationGrid, EpisodeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -301,5 +301,32 @@ describe('hero graphics', () => {
       Number(g.getAttribute('transform')!.match(/translate\(([\d.]+)/)![1]));
     expect(xs[1] - xs[0]).toBeGreaterThan('weight in the ACWI ETF (2026-07-31)'.length * 6.5);
     expect(screen.getByText('62.7%')).toBeTruthy();
+  });
+
+  it('places each signal on a timeline around every recession start, with false alarms apart', () => {
+    render(<SignalTimeline theme="light" window={[-24, 18]} recessions={[
+      { start: '2008-01', curve_inverted: { month: '2006-02', offset: -23 }, sahm_triggered: { month: '2008-04', offset: 3 },
+        announced: { date: '2008-12-01', offset: 11 }, curve_observed: true, sahm_observed: true },
+      { start: '1970-01', curve_inverted: null, sahm_triggered: { month: '1970-05', offset: 4 }, announced: null,
+        curve_observed: false, sahm_observed: true }]}
+      falseAlarms={{ curve: [{ start: '2022-10', months: 26, open: false }], sahm: [] }}/>);
+    const chart = screen.getByRole('img', { name: /signals around each recession/i });
+    expect(chart.querySelectorAll('[data-part="curve"]')).toHaveLength(1);
+    expect(chart.querySelectorAll('[data-part="sahm"]')).toHaveLength(2);
+    expect(chart.querySelectorAll('[data-part="announced"]')).toHaveLength(1);
+    expect(screen.getByText('no curve data')).toBeTruthy();
+    expect(screen.getByText('Yield curve inverted 2022-10, 26 months, no recession followed', { selector: 'text' })).toBeTruthy();
+  });
+
+  it('shows how long each measure took to regain its pre-recession peak', () => {
+    render(<RecoveryBars theme="dark" labels={{ industrial_production: 'Industrial production', payrolls: 'Payroll jobs', gdp: 'Real GDP' }}
+      episodes={[{ start: '2020-03', end: '2020-04', shocks: [{ date: '2020-03-11', label: 'WHO pandemic' }], measures: {
+        industrial_production: { peak: '2018-12', trough: '2020-04', depth: -0.178, months_down: 16, months_to_recover: null },
+        payrolls: { peak: '2020-02', trough: '2020-04', depth: -0.144, months_down: 2, months_to_recover: 28 }, gdp: null } }]}/>);
+    const chart = screen.getByRole('img', { name: /months to regain/i });
+    expect(chart.querySelectorAll('[data-part="recovery"]')).toHaveLength(2);
+    expect(screen.getByText('−14% · 28 mo')).toBeTruthy();
+    expect(screen.getByText('−18% · not yet')).toBeTruthy();
+    expect(screen.getByText('WHO pandemic')).toBeTruthy();
   });
 });

@@ -78,7 +78,7 @@ function Limits({ bundle }: { bundle: Bundle<unknown, unknown> }) {
   </footer>;
 }
 
-export function Section({ bundle, children }: { bundle: Bundle<unknown, unknown>; children: ReactNode }) {
+export function Section({ bundle, children, withheld }: { bundle: Bundle<unknown, unknown>; children: ReactNode; withheld?: ReactNode }) {
   return <section className="decision-section" aria-labelledby={`q-${bundle.analysis_id}`}>
     <header className="decision-section-head">
       <h3 id={`q-${bundle.analysis_id}`}>{bundle.question}</h3>
@@ -86,6 +86,7 @@ export function Section({ bundle, children }: { bundle: Bundle<unknown, unknown>
     </header>
     {bundle.values ? children : <p className="decision-note" role="status">Not computed: Phase 2 state is {bundle.phase2.state}
       {bundle.phase2.open_gates.length > 0 && <>; open gates: {bundle.phase2.open_gates.join(', ')}</>}.</p>}
+    {!bundle.values && withheld}
     <Limits bundle={bundle}/>
   </section>;
 }

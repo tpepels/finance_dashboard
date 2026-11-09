@@ -117,3 +117,13 @@ class ArtifactRunnerTests(unittest.TestCase):
             bundle = analysis_bundle(session, "P01", snapshot=snap, corpus_document=document, catalog_series={},
                                      view={}, artifact_loader=broken)
         self.assertEqual(bundle["values"], {"funds": []})
+
+
+class EventArtifactTests(unittest.TestCase):
+    def test_shock_events_come_from_the_curated_register(self):
+        from pathlib import Path
+        from finance_dashboard.engine.artifacts import load_artifact
+        events = load_artifact("shock_events", evidence_root=Path("/nonexistent"), holdings_root=Path("/nonexistent"))
+        covid = next(e for e in events if e["id"] == "covid_pandemic_2020")
+        self.assertEqual(covid["date"], "2020-03-11")
+        self.assertTrue(covid["source_url"].startswith("https://"))

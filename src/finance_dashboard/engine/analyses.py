@@ -11,6 +11,7 @@ from datetime import date, timedelta
 import math
 from statistics import pstdev
 
+from .recessions import recession_periods
 from .bundle import AnalysisDefinition, Computed
 from .transforms import (applied, complete_months, contiguous_tail, index_100, month_end, own_history,
                          percentile, previous_month, return_summary)
@@ -1337,20 +1338,54 @@ P04 = AnalysisDefinition("P04", {"nominal_10y": "bond.us.nominal_10y", "usd_per_
 
 
 def simulate(returns: dict, months: list, weights: dict, *, rule: str, months_between: int, band_pp: float, cost_bps: float,
-             start: float, monthly_contribution: float, annual_withdrawal_pct: float) -> dict:
+             start: float, monthly_contribution: float, annual_withdrawal_pct: float, tax_mode: str = "none",
+             tax_rate: float = 0.0) -> dict:
+    """Monthly replay. Cost basis is tracked per asset so tax on realised gains is charged only on what selling realises
+    (withdrawals and rebalancing sales); a yearly tax on value is charged every 12 months. Losses carry no credit."""
     assets = [a for a, w in weights.items() if w > 0]
     holdings = {a: start * weights[a] for a in assets}
-    peak, worst, costs, rebalances, path = start, 0.0, 0.0, 0, []
+    basis = dict(holdings)
+    peak, worst, costs, taxes, rebalances, path = start, 0.0, 0.0, 0.0, 0, []
+
+    def sell(asset: str, amount: float) -> float:
+        """Reduce a holding by amount; return the gain realised on it (never negative)."""
+        if holdings[asset] <= 0 or amount <= 0:
+            return 0.0
+        share = min(1.0, amount / holdings[asset])
+        gain = amount - basis[asset] * share
+        basis[asset] -= basis[asset] * share
+        holdings[asset] -= amount
+        return max(0.0, gain)
+
+    def charge(amount: float) -> None:
+        """Pay an amount out of the portfolio pro rata, realising (and taxing) gains if that tax applies."""
+        nonlocal taxes
+        total = sum(holdings.values())
+        if amount <= 0 or total <= 0:
+            return
+        realised = sum(sell(a, amount * holdings[a] / total) for a in list(assets))
+        if tax_mode == "realised_gains" and realised > 0:
+            due = realised * tax_rate
+            taxes += due
+            total = sum(holdings.values())
+            for a in assets:
+                part = due * holdings[a] / total if total else 0
+                holdings[a] -= part
+                basis[a] -= min(basis[a], part)
+
     for i, key in enumerate(months):
         for a in assets:
             holdings[a] *= 1 + returns[a][key]
         for a in assets:
             holdings[a] += monthly_contribution * weights[a]
-        total = sum(holdings.values())
-        withdrawal = total * annual_withdrawal_pct / 12
-        if withdrawal and total:
+            basis[a] += monthly_contribution * weights[a]
+        charge(sum(holdings.values()) * annual_withdrawal_pct / 12)
+        if tax_mode == "yearly_on_value" and (i + 1) % 12 == 0:
+            due = sum(holdings.values()) * tax_rate
+            taxes += due
+            total = sum(holdings.values())
             for a in assets:
-                holdings[a] -= withdrawal * holdings[a] / total
+                holdings[a] -= due * holdings[a] / total if total else 0
         total = sum(holdings.values())
         due = (rule == "calendar" and (i + 1) % months_between == 0) or (
             rule == "threshold" and total > 0 and any(abs(holdings[a] / total - weights[a]) * 100 > band_pp for a in assets))
@@ -1358,14 +1393,30 @@ def simulate(returns: dict, months: list, weights: dict, *, rule: str, months_be
             turnover = sum(abs(total * weights[a] - holdings[a]) for a in assets) / 2
             cost = turnover * cost_bps / 10000
             costs += cost
-            total -= cost
-            holdings = {a: total * weights[a] for a in assets}
+            realised = 0.0
+            for a in assets:
+                excess = holdings[a] - total * weights[a]
+                if excess > 0:
+                    realised += sell(a, excess)
+            for a in assets:
+                gap = total * weights[a] - holdings[a]
+                if gap > 0:
+                    holdings[a] += gap
+                    basis[a] += gap
+            tax = realised * tax_rate if tax_mode == "realised_gains" else 0.0
+            taxes += tax
+            total = sum(holdings.values())
+            for a in assets:
+                part = (cost + tax) * weights[a]
+                holdings[a] -= part
+                basis[a] -= min(basis[a], part)
             rebalances += 1
         total = sum(holdings.values())
         peak = max(peak, total)
         worst = min(worst, total / peak - 1 if peak else 0)
         path.append([_month_label(key), total])
-    return {"path": path, "final": path[-1][1] if path else start, "max_drawdown": worst, "costs": costs, "rebalances": rebalances}
+    return {"path": path, "final": path[-1][1] if path else start, "max_drawdown": worst, "costs": costs, "taxes": taxes,
+            "rebalances": rebalances}
 
 
 def _p05(daily: dict, view: dict, artifacts: dict) -> Computed:
@@ -1386,12 +1437,15 @@ def _p05(daily: dict, view: dict, artifacts: dict) -> Computed:
                                                           band_pp=reb["band_pp"], cost_bps=owner["trading_cost_bps"],
                                                           start=owner["start_value_eur"],
                                                           monthly_contribution=owner["monthly_contribution_eur"],
-                                                          annual_withdrawal_pct=owner["annual_withdrawal_pct"])}
+                                                          annual_withdrawal_pct=owner["annual_withdrawal_pct"],
+                                                          tax_mode=owner.get("tax", {}).get("mode", "none"),
+                                                          tax_rate=owner.get("tax", {}).get("rate_pct", 0.0) / 100)}
              for key in ("never", "calendar", "threshold")]
     values = {"rules": rules, "chosen": reb["rule"], "is_example": owner.get("is_example", True),
               "period": {"from": _month_label(run[0]) if run else None, "to": _month_label(run[-1]) if run else None, "months": len(run)},
-              "inputs": {k: owner[k] for k in ("allocation", "rebalancing", "trading_cost_bps", "start_value_eur",
-                                               "monthly_contribution_eur", "annual_withdrawal_pct")}}
+              "inputs": {**{k: owner[k] for k in ("allocation", "rebalancing", "trading_cost_bps", "start_value_eur",
+                                                  "monthly_contribution_eur", "annual_withdrawal_pct")},
+                         "tax": owner.get("tax", {"mode": "none", "rate_pct": 0.0})}}
     return Computed(values=values, estimates=None, comparison=["rules"], transforms=[
         applied("complete_months", applied_to=list(daily), today=view_today(view).isoformat()),
         applied("fx_translation", applied_to=["equity", "gold", "bonds"], produces=["EUR returns"]),
@@ -1403,10 +1457,187 @@ P05 = AnalysisDefinition("P05", {"equity": "equity.world.msci_acwi_netr_usd", "g
                                  "bonds": "returns.swinkels.us.sovereign_10y_original_1962_usd",
                                  "usd_per_eur": "fx.usd_per_eur.ecb"}, _p05, artifacts=("owner_inputs",))
 
+def _mi(key: tuple[int, int]) -> int:
+    return key[0] * 12 + key[1] - 1
+
+
+def _mk(index: int) -> tuple[int, int]:
+    return (index // 12, index % 12 + 1)
+
+
+def _recession_starts(points: list[tuple[date, float]]) -> list[tuple[tuple[int, int], tuple[int, int] | None]]:
+    """(first recession month, last recession month or None while ongoing) from the NBER indicator."""
+    out = []
+    for period in recession_periods(points):
+        start = date.fromisoformat(period["start"])
+        end = date.fromisoformat(period["end"]) if period.get("end") else None
+        out.append(((start.year, start.month), (end.year, end.month) if end else None))
+    return out
+
+
+def _runs(months: dict[tuple[int, int], float], test) -> list[tuple[tuple[int, int], int]]:
+    """Consecutive observed months where test(value) holds: (first month, length)."""
+    runs, first, length, last = [], None, 0, None
+    for key in sorted(months):
+        if test(months[key]) and first is not None and last is not None and _mi(key) == _mi(last) + 1:
+            length += 1
+        elif test(months[key]):
+            if first is not None:
+                runs.append((first, length))
+            first, length = key, 1
+        else:
+            if first is not None:
+                runs.append((first, length))
+            first, length = None, 0
+        last = key
+    if first is not None:
+        runs.append((first, length))
+    return runs
+
+
+SAHM_THRESHOLD = 0.5
+CURVE_WINDOW = 24     # months before a recession start in which an inversion counts as a warning
+SAHM_WINDOW = (-12, 18)
+
+
+def _c02(daily: dict, view: dict, artifacts: dict) -> Computed:
+    points = _completed(daily, view)
+    spread = {k: v for k, (_, v) in month_end(points.get("spread", [])).items()}
+    sahm = {k: v for k, (_, v) in month_end(points.get("sahm", [])).items()}
+    starts = _recession_starts(points.get("nber", []))
+    chronology = artifacts.get("nber_chronology") or {}
+    announced = {a["event_month"]: a["announcement_date"] for a in chronology.get("announcements", [])
+                 if a.get("classification") == "determination" and a.get("turning_point") == "peak"}
+    first_data = min([min(spread, default=(9999, 12)), min(sahm, default=(9999, 12))])
+    recessions = []
+    for start, end in starts:
+        if _mi(start) - CURVE_WINDOW < _mi(first_data):
+            continue
+        window = [_mk(i) for i in range(_mi(start) - CURVE_WINDOW, _mi(start))]
+        curve_months = [k for k in window if k in spread]
+        inverted = next((k for k in curve_months if spread[k] < 0), None)
+        sahm_window = [_mk(i) for i in range(_mi(start) + SAHM_WINDOW[0], _mi(start) + SAHM_WINDOW[1] + 1)]
+        triggered = next((k for k in sahm_window if sahm.get(k, -1) >= SAHM_THRESHOLD), None)
+        peak = _month_label(_mk(_mi(start) - 1))
+        day = announced.get(peak)
+        recessions.append({
+            "start": _month_label(start), "end": _month_label(end) if end else None, "peak": peak,
+            "curve_observed": bool(curve_months), "sahm_observed": any(k in sahm for k in sahm_window),
+            "curve_inverted": {"month": _month_label(inverted), "offset": _mi(inverted) - _mi(start)} if inverted else None,
+            "sahm_triggered": {"month": _month_label(triggered), "offset": _mi(triggered) - _mi(start)} if triggered else None,
+            "announced": {"date": day, "offset": _mi((int(day[:4]), int(day[5:7]))) - _mi(start)} if day else None})
+    last = max([_mi(k) for k in list(spread) + list(sahm)], default=0)
+    start_index = [_mi(s) for s, _ in starts]
+
+    def alarms(runs, before, after):
+        out = []
+        for first, length in runs:
+            i = _mi(first)
+            if any(i - before <= s <= i + after for s in start_index):
+                continue
+            out.append({"start": _month_label(first), "months": length, "open": last < i + after})
+        return out
+    false_curve = alarms(_runs(spread, lambda v: v < 0), 0, CURVE_WINDOW)
+    false_sahm = alarms(_runs(sahm, lambda v: v >= SAHM_THRESHOLD), SAHM_WINDOW[1], -SAHM_WINDOW[0])
+    now_spread = max(spread) if spread else None
+    now_sahm = max(sahm) if sahm else None
+    recent = [_mk(i) for i in range(last - 23, last + 1)]
+    values = {
+        "now": {"spread": {"month": _month_label(now_spread), "value": spread[now_spread]} if now_spread else None,
+                "sahm": {"month": _month_label(now_sahm), "value": sahm[now_sahm]} if now_sahm else None,
+                "months_inverted_last_24": sum(1 for k in recent if spread.get(k, 0) < 0), "threshold": SAHM_THRESHOLD},
+        "gauges": [g for g in (_gauge("spread", "10-year minus 3-month Treasury yield", [(date(*k, 1), v) for k, v in sorted(spread.items())], "pp"),
+                               _gauge("sahm", "Sahm rule indicator", [(date(*k, 1), v) for k, v in sorted(sahm.items())], "pp")) if g],
+        "recessions": recessions, "false_alarms": {"curve": false_curve, "sahm": false_sahm},
+        "windows": {"curve_months_before": CURVE_WINDOW, "sahm_months": list(SAHM_WINDOW)},
+        "history": {"spread": [[_month_label(k), v] for k, v in sorted(spread.items())],
+                    "sahm": [[_month_label(k), v] for k, v in sorted(sahm.items())]}}
+    return Computed(values=values, estimates=None, comparison=["curve_inverted", "sahm_triggered"], transforms=[
+        applied("complete_months", applied_to=list(daily), today=view_today(view).isoformat()),
+        applied("month_end", applied_to=["spread", "sahm"]),
+        applied("signal_timing", applied_to=["spread", "sahm", "nber"], curve_months_before=CURVE_WINDOW,
+                sahm_window=list(SAHM_WINDOW), sahm_threshold=SAHM_THRESHOLD)])
+
+
+C02 = AnalysisDefinition("C02", {"spread": "rates.us.treasury_10y_3m_spread", "sahm": "recession.us.sahm",
+                                 "nber": "recession.us.nber_indicator"}, _c02, artifacts=("nber_chronology",))
+
+
+def recovery(levels: dict[tuple[int, int], float], start: tuple[int, int], end: tuple[int, int] | None) -> dict | None:
+    """Pre-recession peak (highest level in the 12 months before the start), trough up to 12 months after the end,
+    and months from the peak month until the level is regained (None if not yet)."""
+    before = [_mk(i) for i in range(_mi(start) - 12, _mi(start)) if _mk(i) in levels]
+    if not before:
+        return None
+    peak_key = max(before, key=lambda k: (levels[k], _mi(k)))
+    peak = levels[peak_key]
+    stop = _mi(end) + 12 if end else max(_mi(k) for k in levels)
+    during = [k for k in levels if _mi(start) <= _mi(k) <= stop]
+    if not during:
+        return None
+    trough_key = min(during, key=lambda k: (levels[k], _mi(k)))
+    regained = next((k for k in sorted(levels) if _mi(k) > _mi(trough_key) and levels[k] >= peak), None)
+    return {"peak": _month_label(peak_key), "trough": _month_label(trough_key), "depth": levels[trough_key] / peak - 1,
+            "months_down": _mi(trough_key) - _mi(peak_key),
+            "months_to_recover": _mi(regained) - _mi(peak_key) if regained else None}
+
+
+C05_MEASURES = {"industrial_production": "Industrial production", "payrolls": "Payroll jobs", "gdp": "Real GDP"}
+
+
+def _c05(daily: dict, view: dict, artifacts: dict) -> Computed:
+    points = _completed(daily, view)
+    levels = {m: {k: v for k, (_, v) in month_end(points.get(m, [])).items()} for m in C05_MEASURES}
+    events = artifacts.get("shock_events") or []
+    episodes = []
+    for start, end in _recession_starts(points.get("nber", [])):
+        measures = {m: recovery(levels[m], start, end) for m in C05_MEASURES}
+        if not any(measures.values()):
+            continue
+        lo, hi = _mi(start) - 6, _mi(end or start) + 1
+        shocks = [{"date": e["date"], "label": e["label"]} for e in events
+                  if lo <= _mi((int(e["date"][:4]), int(e["date"][5:7]))) <= hi]
+        episodes.append({"start": _month_label(start), "end": _month_label(end) if end else None,
+                         "measures": measures, "shocks": shocks})
+    values = {"episodes": episodes, "labels": C05_MEASURES,
+              "history": {m: [[_month_label(k), v] for k, v in sorted(levels[m].items())] for m in C05_MEASURES}}
+    return Computed(values=values, estimates=None, comparison=list(C05_MEASURES), transforms=[
+        applied("complete_months", applied_to=list(daily), today=view_today(view).isoformat()),
+        applied("month_end", applied_to=list(C05_MEASURES)),
+        applied("recovery_to_peak", applied_to=list(C05_MEASURES), peak_window_months=12, trough_window_after_end_months=12)])
+
+
+C05 = AnalysisDefinition("C05", {"industrial_production": "activity.us.industrial_production",
+                                 "payrolls": "activity.us.nonfarm_payrolls", "gdp": "activity.us.real_gdp_level",
+                                 "nber": "recession.us.nber_indicator"}, _c05, artifacts=("shock_events",))
+
+G03_ALTERNATIVES = {
+    "eu27_profit_share": ("EU27 non-financial corporations: gross profit share of value added", "% of value added"),
+    "oecd_surplus_gdp": ("OECD38 corporations: gross operating surplus relative to GDP", "% of GDP")}
+
+
+def _g03(points: dict, view: dict) -> Computed:
+    alternatives = []
+    for key, (name, unit) in G03_ALTERNATIVES.items():
+        series = points.get(key, [])
+        if series:
+            alternatives.append({"key": key, "name": name, "unit": unit, "non_equivalent": True,
+                                 **(_with_range(series) or {}), "history": _series(series)})
+    coverage = points.get("oecd_coverage", [])
+    members = points.get("oecd_members", [])
+    values = {"alternatives": alternatives, "oecd_coverage": _series(coverage), "oecd_members": _series(members)}
+    return Computed(values=values, estimates=None, comparison=list(G03_ALTERNATIVES), transforms=[])
+
+
+G03 = AnalysisDefinition("G03", {"eu27_profit_share": "profit.eu27.nonfinancial_gross_surplus_value_added",
+                                 "oecd_surplus_gdp": "profit.oecd38.corporate_gross_surplus_gdp",
+                                 "oecd_coverage": "profit.oecd38.corporate_gross_surplus_gdp_coverage",
+                                 "oecd_members": "profit.oecd38.corporate_gross_surplus_member_count"}, _g03)
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
                                               "F05": F05, "F06": F06, "F07": F07, "V01": V01, "V02": V02, "V03": V03,
                                               "V05": V05, "G05": G05, "G06": G06, "L01": L01, "L02": L02,
                                               "L03": L03, "L05": L05, "L07": L07, "P02": P02, "P03": P03,
                                               "G01": G01, "G02": G02, "L04": L04, "P01": P01,
-                                              "P04": P04, "P05": P05}
+                                              "P04": P04, "P05": P05, "C02": C02, "C05": C05, "G03": G03}

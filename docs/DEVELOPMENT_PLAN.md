@@ -95,9 +95,11 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **Cleanup (2026-11-09):** `/api/research`, `/api/research/{id}`, `/api/risk` and `/api/risk/{scope}` and their modules (`research.py`, `risk_diagnostics.py`) are removed, with the stylesheet rules only the old dashboard used. `insights.py` stays for the source explorer's chart readouts.
 
+* **Last corpus questions (2026-11-09):** every corpus analysis now has an engine definition. C02 places the first yield-curve inversion, the Sahm trigger and the NBER announcement on one timeline around each recession since 1970, with signals not followed by a recession listed apart (no agreement score). C05 shows, per recession, how deep industrial production, payrolls and real GDP fell and how many months each took to regain its pre-recession peak, with curated shock events as context. G03 is defined but stays withheld while Phase 2 defers it; its section explains what is missing, and its two non-equivalent alternatives appear once Phase 2 accepts them. P05 models tax on realised gains (cost basis per asset) or a yearly tax on value.
+
 ## Next slices
 
-1. **Remaining analyses:** C02, C05 and G03, the last corpus questions without an engine definition; tax on realised gains in P05.
+1. **G03 alternatives:** take the EU27 and OECD corporate profit series through Phase 2 acceptance so G03 can show them, labelled as non-equivalent.
 2. **L04 extensions:** recompute the input-origin ratio from the WIOD 2016 input-output tables (`WIOTS_in_EXCEL.zip`, owner download from DataverseNL); extend 1995-2021 with EU KLEMS industry workbooks (capital accounts K_GFCF) and OECD ICIO 2025, reconciling vintages over the 2000-2014 overlap.
 
 ## Working rules

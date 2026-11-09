@@ -59,11 +59,19 @@ TRANSFORMS: dict[str, str] = {
                            "least 24 months (12 for the stock-fall subset)",
     "drawdown_episodes": "peak-to-trough-to-recovery episodes of month-end levels whose depth exceeds the threshold; "
                          "depth = trough / peak - 1",
+    "signal_timing": "for each NBER recession start: the first month the yield spread was below zero in the preceding "
+                     "window, the first month the Sahm indicator reached its threshold around the start, and the NBER "
+                     "peak announcement, each in months relative to the start; signals outside every window are "
+                     "listed as false alarms (open while the window has not yet passed)",
+    "recovery_to_peak": "pre-recession peak = highest level in the 12 months before the recession start; trough = lowest "
+                        "level from the start to 12 months after the end; depth = trough / peak - 1; months to recover = "
+                        "months from the peak month to the first later month at or above the peak level",
     "first_order_shock": "impact on portfolio value = - weight x sensitivity x shock (duration for yields, unhedged "
                          "foreign share for the dollar); first-order, ignores convexity and correlations",
     "rebalancing_simulation": "monthly: grow each holding by its EUR return, add contributions at target weights, withdraw "
                               "pro rata, rebalance to target by rule (never, every n months, when a weight drifts beyond "
-                              "the band), charge trading cost on turnover",
+                              "the band), charge trading cost on turnover; with cost basis per asset, tax either the gains realised by "
+                              "selling (no loss credit) or a yearly share of value",
     "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
