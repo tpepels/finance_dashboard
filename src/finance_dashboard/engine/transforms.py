@@ -36,6 +36,10 @@ TRANSFORMS: dict[str, str] = {
                 "of wealth started at 100",
     "calibration_points": "for each start month with a full horizon: (1 / CAPE at the start, realised annualized "
                           "real total return over the next horizon years)",
+    "cycle_position": "OECD business-cycle clock: position = CLI - 100 (amplitude-adjusted, long-term average 100) and "
+                      "direction = CLI[t] - CLI[t-1]; phase: expansion (>= 100, rising), slowdown (>= 100, falling), "
+                      "contraction (< 100, falling), recovery (< 100, rising); trail = last 12 consecutive months",
+    "log_change": "100 * ln(x[t] / x[t-k]) with both ends observed; k given as months",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
 }

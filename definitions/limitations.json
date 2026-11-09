@@ -45,6 +45,11 @@
       "credit_gap_early_warning_only": "The credit gap uses BIS's one-sided HP trend; it is an early-warning indicator with false positives, not a crisis forecast.",
       "dsr_own_history_only": "Debt-service ratios are compared with each economy's own history; raw levels are not comparable across countries.",
       "no_world_credit_gap": "A weighted average of national gaps is not a world credit gap; no aggregate is shown."
+    },
+    "C01": {
+      "cli_direction_not_probability": "Leading indicators show the direction of the growth cycle against trend; they are not a recession probability or a timing signal.",
+      "clock_month_to_month": "The clock uses one-month direction, which can reverse from month to month; the trail shows how settled a move is.",
+      "us_only_activity": "The activity panels and the grey recession bands are US-only."
     }
   }
 }

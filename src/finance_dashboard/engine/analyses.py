@@ -8,6 +8,7 @@ series cover the longest contiguous run ending at the latest common month.
 from __future__ import annotations
 
 from datetime import date
+import math
 
 from .bundle import AnalysisDefinition, Computed
 from .transforms import (applied, complete_months, contiguous_tail, index_100, month_end, own_history,
@@ -283,4 +284,83 @@ def _f03(points: dict, view: dict) -> Computed:
 F03 = AnalysisDefinition("F03", {**{f"credit_gap:{area}": sid for area, sid in CREDIT_GAPS.items()},
                                  **{f"private_dsr:{area}": sid for area, sid in PRIVATE_DSR.items()}}, _f03)
 
-DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03}
+
+def _month_label(key: tuple[int, int]) -> str:
+    return f"{key[0]:04d}-{key[1]:02d}"
+
+
+def cycle_positions(points: list[tuple[date, float]]) -> dict | None:
+    """Clock position of an amplitude-adjusted CLI: (month, level - 100, 1-month change), last 12 consecutive months."""
+    ends = month_end(points)
+    positions = [(key, ends[key][1] - 100, ends[key][1] - ends[previous_month(key)][1])
+                 for key in sorted(ends) if previous_month(key) in ends]
+    if not positions:
+        return None
+    tail = set(contiguous_tail(key for key, *_ in positions)[-12:])
+    trail = [[_month_label(key), level, change] for key, level, change in positions if key in tail]
+    _, level, change = trail[-1]
+    phase = ("expansion" if change >= 0 else "slowdown") if level >= 0 else ("recovery" if change >= 0 else "contraction")
+    return {"as_of": trail[-1][0], "phase": phase, "trail": trail}
+
+
+def log_change(points: list[tuple[date, float]], months: int) -> list[list]:
+    """[month, 100 * ln(x[t] / x[t - months])] where both ends are observed."""
+    ends = month_end(points)
+    out = []
+    for key in sorted(ends):
+        back = key
+        for _ in range(months):
+            back = previous_month(back)
+        if back in ends and ends[back][1] > 0 and ends[key][1] > 0:
+            out.append([_month_label(key), 100 * math.log(ends[key][1] / ends[back][1])])
+    return out
+
+
+CLI_AREAS = {"US": "activity.us.oecd_cli", "JP": "activity.jp.oecd_cli", "DE": "activity.de.oecd_cli",
+             "FR": "activity.fr.oecd_cli", "GB": "activity.gb.oecd_cli", "CN": "activity.cn.oecd_cli",
+             "IN": "activity.in.oecd_cli", "G7": "activity.g7.oecd_cli", "G20": "activity.g20.oecd_cli"}
+
+
+def _series(points: list[tuple[date, float]]) -> list[list]:
+    return [[day.isoformat(), value] for day, value in sorted(points)]
+
+
+def _c01(points: dict, view: dict) -> Computed:
+    clock, history = [], {}
+    for area in CLI_AREAS:
+        values = points.get(f"cli:{area}", [])
+        history[area] = _series(values)
+        position = cycle_positions(values)
+        if position:
+            clock.append({"area": area, **position})
+    values = {
+        "clock": clock,
+        "history": history,
+        "trend_restored": {area: _series(points.get(f"cli_trend_restored:{area}", [])) for area in ("US", "JP")},
+        "us_activity": {"industrial_production_yoy": log_change(points.get("ip", []), 12),
+                        "gdp_qoq": log_change(points.get("gdp", []), 3),
+                        "unemployment": _series(points.get("unemployment", []))},
+        "diffusion": {span: _series(points.get(f"diffusion:{span}", [])) for span in ("1m", "3m", "6m")},
+    }
+    clis = [f"cli:{area}" for area in CLI_AREAS]
+    return Computed(values=values, estimates=None, comparison=["clock", "us_activity", "diffusion"], transforms=[
+        applied("month_end", applied_to=clis + ["ip", "gdp"]),
+        applied("cycle_position", applied_to=clis, produces=["clock"]),
+        applied("log_change", applied_to=["ip"], months=12, produces=["us_activity.industrial_production_yoy"]),
+        applied("log_change", applied_to=["gdp"], months=3, produces=["us_activity.gdp_qoq"]),
+    ])
+
+
+C01 = AnalysisDefinition("C01", {
+    **{f"cli:{area}": sid for area, sid in CLI_AREAS.items()},
+    "cli_trend_restored:US": "activity.us.oecd_cli_trend_restored",
+    "cli_trend_restored:JP": "activity.jp.oecd_cli_trend_restored",
+    "ip": "activity.us.industrial_production",
+    "gdp": "activity.us.real_gdp_level",
+    "unemployment": "activity.us.unemployment_rate",
+    "diffusion:1m": "activity.us.industrial_production_diffusion_1m",
+    "diffusion:3m": "activity.us.industrial_production_diffusion_3m",
+    "diffusion:6m": "activity.us.industrial_production_diffusion_6m",
+}, _c01)
+
+DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01}
