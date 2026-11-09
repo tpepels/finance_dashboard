@@ -347,8 +347,11 @@ def create_app(engine=None) -> FastAPI:
     app.state.acceptance = AcceptanceCache(
         acceptance_snapshot, ttl_seconds=float(environ.get("FINANCE_ACCEPTANCE_TTL_SECONDS", "3600")))
     # The live evaluation takes minutes: start it with the application's other
-    # background work, so the first visitor rarely waits.
-    if environ.get("FINANCE_AUTO_REFRESH", "1").lower() in ("1", "yes", "true", "on"):
+    # background work, so the first visitor rarely waits. Only a persistent
+    # database is evaluated concurrently; an in-memory one is a test fixture
+    # whose single shared connection cannot serve a second thread.
+    persistent = db.url.get_backend_name() != "sqlite" or db.url.database not in (None, "", ":memory:")
+    if persistent and environ.get("FINANCE_AUTO_REFRESH", "1").lower() in ("1", "yes", "true", "on"):
         app.state.acceptance.warm()
 
     def acceptance_or_503():

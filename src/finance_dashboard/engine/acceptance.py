@@ -138,6 +138,11 @@ class AcceptanceCache:
             else:
                 self._error = error or "no snapshot"
 
+    @property
+    def loading(self) -> bool:
+        with self._lock:
+            return self._loading
+
     def warm(self) -> None:
         with self._lock:
             if self._loading:

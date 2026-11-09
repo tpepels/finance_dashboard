@@ -115,6 +115,17 @@ class EngineApiTests(unittest.TestCase):
         self.assertTrue(rows[0]["limitations"][0]["text"])
 
 
+class WarmUpTests(unittest.TestCase):
+    def test_in_memory_database_is_never_evaluated_in_the_background(self):
+        # A shared in-memory connection cannot serve a concurrent multi-minute evaluation.
+        engine = memory_engine()
+        with patch.dict(os.environ, {"FINANCE_AUTO_REFRESH": "1", "FINANCE_INCLUDE_MARKETS": "0",
+                                     "FINANCE_AUTO_BACKUP": "0"}):
+            app = create_app(engine)
+        self.assertFalse(app.state.acceptance.loading)
+        engine.dispose()
+
+
 class ConditionalsCommandTests(unittest.TestCase):
     def run_command(self, public_report):
         out = io.StringIO()
