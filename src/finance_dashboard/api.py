@@ -37,6 +37,7 @@ from .research_runtime import evaluate_corpus
 from .engine.acceptance import AcceptanceCache, AcceptanceLoading, AcceptanceUnavailable, snapshot_from_report
 from .engine.export import export_text
 from .engine.runner import analysis_bundle, conditionals, list_analyses
+from .engine.recessions import SERIES_ID as RECESSION_SERIES, recession_periods
 from .icio import read_icio_evidence
 from .maintenance import MaintenanceManager, BusyMaintenance
 from .developer_logs import read_events, recent_jobs, record_event
@@ -392,6 +393,15 @@ def create_app(engine=None) -> FastAPI:
         name = f"{analysis_id}-{bundle['computed_at'][:10]}.txt"
         return PlainTextResponse(export_text(bundle),
                                  headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.get("/api/recessions")
+    def recessions():
+        """NBER US recession periods for shading every time chart."""
+        with Session(db) as session:
+            points = [(row.period, float(row.value))
+                      for row in current_observations(session, RECESSION_SERIES)]
+        return {"series_id": RECESSION_SERIES, "periods": recession_periods(points),
+                "note": "NBER-dated US recessions; not world or regional recession dates."}
 
     @app.get("/api/conditionals")
     def conditional_analyses():
