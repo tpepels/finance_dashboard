@@ -25,7 +25,7 @@ from .service import current_observations
 # Every indicator is source-keyed, and its relationship is explicitly defined.
 # 'raw' is for like-for-like measurements only; contextual single series do not
 # imply any statistical relationship to an adjacent tile.
-# Growth indicators moved to the Phase 3 engine (C01, C03, C06) and the Growth & inflation panel.
+# Growth (C01, C03, C06) and monetary (M01, M02, M04) indicators moved to the Phase 3 engine panels.
 SPECS: tuple[dict[str, Any], ...] = (
     # WORLD and OECD contain only corresponding geographic aggregates.
     dict(id="global_labour_share", region="world", theme="Labour and distribution",
@@ -84,16 +84,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          reading="IMF aggregate world public gross debt relative to GDP.",
          caveat="A gross debt stock is not annual debt-service costs or an imminent sovereign default signal."),
     # United States: the broad macro environment comes before the distribution detail.
-    dict(id="us_policy", region="us", theme="Financial conditions",
-         title="US harmonized monetary policy rate", sources=["policy_rate.us.bis"], kind="raw",
-         question="How has the US monetary policy rate changed?",
-         reading="BIS daily harmonized nominal US policy rate.",
-         caveat="Nominal policy rates do not account for inflation expectations or household borrowing rates."),
-    dict(id="us_real_yield", region="us", theme="Financial conditions",
-         title="US 10-year real Treasury yield", sources=["bond.us.real_10y"], kind="raw",
-         question="What real return does the inflation-indexed US Treasury curve imply?",
-         reading="Daily FRED 10-year constant-maturity TIPS real yield.",
-         caveat="A market real yield is distinct from the overnight policy rate and is not a direct equity discount rate."),
     dict(id="us_tobins_q", region="us", theme="Capital and equity valuation",
          title="US nonfinancial corporate market-to-produced-asset replacement ratio",
          sources=["valuation.us.tobins_q"], kind="raw",
@@ -154,10 +144,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          reading="World Bank listed domestic-company capitalization relative to US output.",
          caveat="Compare against Japan only on the dedicated like-for-like comparison page."),
     # Euro area and EU27: distinct statistical populations.
-    dict(id="ea_policy", region="europe", theme="Financial conditions",
-         title="Euro-area harmonized policy rate", sources=["policy_rate.ea.bis"], kind="raw",
-         question="How restrictive is euro-area nominal monetary policy?",
-         reading="BIS euro-area harmonized central bank policy rate.", caveat="Nominal rates alone do not measure real interest rates."),
     dict(id="ea_credit", region="europe", theme="Debt and leverage",
          title="Euro-area private credit gap", sources=["credit_gap.ea.bis"], kind="raw",
          question="Is euro-area private credit above its historical trend?",
@@ -196,10 +182,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          question="How much of Japanese GDP is recorded as labour income?",
          reading="The PWT Japan labour-income share and its arithmetic complement, both derived from the same annual national-account denominator.",
          caveat="100 − labour income share is NOT corporate profit or Marxian surplus value: depreciation, taxes and other income components remain."),
-    dict(id="jp_policy", region="japan", theme="Financial conditions",
-         title="Japan harmonized policy rate", sources=["policy_rate.jp.bis"], kind="raw",
-         question="How has Japan's policy stance changed?",
-         reading="BIS Japan central bank harmonized policy-rate series.", caveat="BIS instrument definitions may shift through time."),
     dict(id="jp_credit", region="japan", theme="Debt and leverage",
          title="Japan private credit gap", sources=["credit_gap.jp.bis"], kind="raw",
          question="Where is Japanese private credit relative to trend?",
@@ -220,18 +202,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          question="How do whole-economy labour income shares differ across major countries?",
          reading="One consistent Penn World Table 11.0 annual GDP labour-compensation definition across five countries, converted from fractions to percentages. Common-date differences are computed only where all five countries report.",
          caveat="Country labour share is not inequality among workers, productive-labour surplus value or an EU aggregate; data are latest-revised histories through 2023."),
-    dict(id="compare_policy", region="compare", theme="Financial conditions",
-         title="Comparable policy rates: US / euro area / Japan",
-         sources=["policy_rate.us.bis", "policy_rate.ea.bis", "policy_rate.jp.bis"],
-         kind="raw", question="How different are major monetary policy stances?",
-         reading="BIS harmonized daily policy rates on the same numeric scale.",
-         caveat="Nominal rates; country-specific price inflation and corridor regimes differ."),
-    dict(id="compare_policy_differential", region="compare", theme="Financial conditions",
-         title="US minus euro-area harmonized policy-rate spread",
-         sources=["policy_rate.us.bis", "policy_rate.ea.bis"], kind="pair_differential",
-         question="How wide is the US–euro-area nominal policy stance differential?",
-         reading="Daily US minus euro-area BIS harmonized policy rates on exact common source dates, percentage points.",
-         caveat="Nominal-rate differential does not establish exchange-rate forecasts, covered interest parity or real monetary restrictiveness."),
     dict(id="compare_credit", region="compare", theme="Debt and leverage",
          title="Comparable credit-to-GDP trend gaps", sources=[
              "credit_gap.us.bis", "credit_gap.ea.bis", "credit_gap.jp.bis"],

@@ -353,3 +353,144 @@ export function ChangeBars({ theme, items }: { theme: Theme; items: ChangeItem[]
     })}
   </svg>;
 }
+
+const pp = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)} pp`;
+const BANK_ENTITY: Record<string, string> = { fed: 'US', ecb: 'EA', boj: 'JP' };
+
+export type BankRow = { bank: string; name: string; latest: number | null; year_ago: number | null; change: number | null; as_of: string | null };
+
+/** Policy rates on one scale: today (dot) against a year ago (hollow ring), plus the euro's rate gaps as bars around zero. */
+export function RateLadder({ theme, banks, target, gaps }: {
+  theme: Theme; banks: BankRow[]; target?: { lower: number | null; upper: number | null }; gaps: { label: string; value: number | null }[];
+}) {
+  const c = palette(theme);
+  const W = 760, left = 250, right = 720, rowH = 44, top = 30;
+  const values = banks.flatMap(b => [b.latest, b.year_ago]).filter((v): v is number => v !== null);
+  const hi = Math.ceil(Math.max(1, ...values, target?.upper ?? 0)) + 0.5;
+  const x = scale(0, hi, left, right);
+  const gapTop = top + banks.length * rowH + 46;
+  const reach = Math.max(0.5, ...gaps.map(g => Math.abs(g.value ?? 0))) * 1.2;
+  const gx = scale(-reach, reach, left, right);
+  const H = gapTop + gaps.length * 36 + 14;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Policy rates now and a year ago: ${banks.map(b => `${b.name} ${b.latest ?? 'n/a'}% (a year ago ${b.year_ago ?? 'n/a'}%)`).join('; ')}`}>
+    <text x={left} y={14} fill={c.muted} fontSize="11">ring: a year ago · dot: latest</text>
+    {ticks(0, hi, hi > 6 ? 2 : 1).map(t => <g key={t}>
+      <line x1={x(t)} x2={x(t)} y1={top - 8} y2={top + banks.length * rowH - 12} stroke={c.grid}/>
+      <text x={x(t)} y={top + banks.length * rowH + 4} textAnchor="middle" fill={c.muted} fontSize="12">{`${t}%`}</text>
+    </g>)}
+    {banks.map((b, i) => {
+      const cy = top + i * rowH + 8;
+      const colour = entityColour(BANK_ENTITY[b.bank] ?? b.bank, theme);
+      return <g key={b.bank}>
+        <rect x={0} y={cy - 7} width="10" height="14" rx="3" fill={colour}/>
+        <text x={16} y={cy + 5} fill={c.ink} fontSize="13">{b.name}</text>
+        {b.bank === 'fed' && target?.lower != null && target.upper != null && <rect data-part="target-range" x={x(target.lower)} y={cy - 10}
+          width={Math.max(2, x(target.upper) - x(target.lower))} height="20" rx="4" fill={colour} fillOpacity="0.12">
+          <title>{`Fed target range ${target.lower}–${target.upper}%`}</title></rect>}
+        {b.year_ago !== null && <circle data-part="year-ago" cx={x(b.year_ago)} cy={cy} r="7" fill="none" stroke={colour} strokeWidth="2">
+          <title>{`${b.name} a year ago: ${b.year_ago}%`}</title></circle>}
+        {b.year_ago !== null && b.latest !== null && Math.abs(x(b.latest) - x(b.year_ago)) > 14 && <line
+          x1={x(b.year_ago) + Math.sign(b.latest - b.year_ago) * 9} x2={x(b.latest) - Math.sign(b.latest - b.year_ago) * 10}
+          y1={cy} y2={cy} stroke={colour} strokeWidth="2"/>}
+        {b.latest !== null && <circle cx={x(b.latest)} cy={cy} r="8" fill={colour} stroke={c.surface} strokeWidth="2">
+          <title>{`${b.name} ${b.latest}% on ${b.as_of}`}</title></circle>}
+        {b.latest !== null && <text x={x(b.latest)} y={cy - 13} textAnchor="middle" fill={c.ink} fontSize="12" fontWeight="700"
+          stroke={c.surface} strokeWidth="4" paintOrder="stroke">{`${b.latest.toFixed(2)}%`}</text>}
+      </g>;
+    })}
+    <text x={left} y={gapTop - 12} fill={c.muted} fontSize="11">the euro's rate gap: ECB minus the other central bank</text>
+    <line x1={gx(0)} x2={gx(0)} y1={gapTop - 4} y2={H - 8} stroke={c.zero} strokeWidth="1.5"/>
+    {gaps.map((g, i) => {
+      const cy = gapTop + i * 36 + 10;
+      return <g key={g.label}>
+        <text x={16} y={cy + 5} fill={c.ink} fontSize="13">{g.label}</text>
+        {g.value === null ? <text x={gx(0) + 8} y={cy + 5} fill={c.muted} fontSize="12">no data</text> : <>
+          <rect x={Math.min(gx(0), gx(g.value))} y={cy - 8} width={Math.max(2, Math.abs(gx(g.value) - gx(0)))} height="16" rx="4"
+            fill={g.value >= 0 ? c.positive : c.negative}/>
+          <text x={g.value >= 0 ? gx(g.value) + 8 : gx(g.value) - 8} y={cy + 5} textAnchor={g.value >= 0 ? 'start' : 'end'}
+            fill={c.ink} fontSize="13" fontWeight="700">{pp(g.value)}</text>
+        </>}
+      </g>;
+    })}
+  </svg>;
+}
+
+export type YieldParts = { date: string; nominal: number; real: number; breakeven: number };
+
+/** The 10-year yield as real yield plus breakeven inflation, a year ago and now: which part moved. */
+export function YieldSplit({ theme, now, yearAgo }: { theme: Theme; now: YieldParts | null; yearAgo: YieldParts | null }) {
+  const c = palette(theme);
+  const W = 520, H = 340, base = 290, top = 40;
+  const bars = [yearAgo && { label: 'A year ago', parts: yearAgo }, now && { label: 'Now', parts: now }]
+    .filter(Boolean) as { label: string; parts: YieldParts }[];
+  const all = bars.flatMap(b => [b.parts.nominal, b.parts.real, 0]);
+  const lo = Math.min(0, ...all), hi = Math.max(...all) * 1.15;
+  const y = scale(lo, hi, base, top);
+  const realColour = c.series[0], beColour = c.series[1];
+  return <svg className="hero-svg hero-svg-map" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`US 10-year yield split: ${bars.map(b => `${b.label} ${b.parts.nominal.toFixed(2)}% = real ${b.parts.real.toFixed(2)}% + breakeven ${b.parts.breakeven.toFixed(2)}%`).join('; ')}`}>
+    <line x1={40} x2={W - 160} y1={y(0)} y2={y(0)} stroke={c.zero} strokeWidth="1.5"/>
+    {bars.map((b, i) => {
+      const bx = 70 + i * 150, bw = 90;
+      const seg = (from: number, to: number, colour: string, part: string, label: string) => <g data-part={part}>
+        <rect x={bx} y={Math.min(y(from), y(to))} width={bw} height={Math.max(1, Math.abs(y(to) - y(from)))} fill={colour}
+          stroke={c.surface} strokeWidth="2"><title>{label}</title></rect>
+        {Math.abs(y(to) - y(from)) > 18 && <text x={bx + bw / 2} y={(y(from) + y(to)) / 2 + 4} textAnchor="middle" fill="#fff"
+          fontSize="12" fontWeight="700">{`${(to - from).toFixed(2)}%`}</text>}
+      </g>;
+      return <g key={b.label}>
+        {seg(0, b.parts.real, realColour, 'real', `Real yield ${b.parts.real.toFixed(2)}%`)}
+        {seg(b.parts.real, b.parts.nominal, beColour, 'breakeven', `Breakeven inflation ${b.parts.breakeven.toFixed(2)}%`)}
+        <text x={bx + bw / 2} y={y(b.parts.nominal) - 8} textAnchor="middle" fill={c.ink} fontSize="14" fontWeight="700">{`${b.parts.nominal.toFixed(2)}%`}</text>
+        <text x={bx + bw / 2} y={base + 22} textAnchor="middle" fill={c.ink} fontSize="13">{b.label}</text>
+        <text x={bx + bw / 2} y={base + 38} textAnchor="middle" fill={c.muted} fontSize="11">{b.parts.date}</text>
+      </g>;
+    })}
+    <g transform={`translate(${W - 145}, ${top + 10})`}>
+      <rect width="12" height="12" rx="3" fill={beColour}/><text x={18} y={11} fill={c.ink} fontSize="12">breakeven inflation</text>
+      <rect y={22} width="12" height="12" rx="3" fill={realColour}/><text x={18} y={33} fill={c.ink} fontSize="12">real yield</text>
+      {now && yearAgo && <>
+        <text y={70} fill={c.muted} fontSize="11">change over the year</text>
+        <text y={90} fill={c.ink} fontSize="13" fontWeight="700">{`real ${pp(now.real - yearAgo.real)}`}</text>
+        <text y={110} fill={c.ink} fontSize="13" fontWeight="700">{`breakeven ${pp(now.breakeven - yearAgo.breakeven)}`}</text>
+      </>}
+    </g>
+  </svg>;
+}
+
+export type CurrencyRow = { currency: string; move_12m: number | null; move_as_of: string | null; gap: number | null; gap_as_of: string | null };
+const CURRENCY_NAME: Record<string, string> = { USD: 'dollar', JPY: 'yen' };
+
+/** For each currency: how the euro moved over 12 months (left) beside the rate gap (right). */
+export function CurrencyRows({ theme, rows }: { theme: Theme; rows: CurrencyRow[] }) {
+  const c = palette(theme);
+  const W = 760, rowH = 50, top = 40, mid = 470;
+  const mr = Math.max(2, ...rows.map(r => Math.abs(r.move_12m ?? 0))) * 1.25;
+  const gr = Math.max(0.5, ...rows.map(r => Math.abs(r.gap ?? 0))) * 1.25;
+  const mx = scale(-mr, mr, 160, mid - 40), gx = scale(-gr, gr, mid + 40, W - 90);
+  const H = top + rows.length * rowH + 10;
+  const bar = (v: number | null, x: (v: number) => number, cy: number, part: string, text: string) => v === null
+    ? <text x={x(0) + 8} y={cy + 5} fill={c.muted} fontSize="12">no data</text>
+    : <g data-part={part}>
+      <rect x={Math.min(x(0), x(v))} y={cy - 9} width={Math.max(2, Math.abs(x(v) - x(0)))} height="18" rx="4"
+        fill={v >= 0 ? c.positive : c.negative}/>
+      <text x={v >= 0 ? x(v) + 8 : x(v) - 8} y={cy + 5} textAnchor={v >= 0 ? 'start' : 'end'} fill={c.ink} fontSize="13"
+        fontWeight="700" stroke={c.surface} strokeWidth="4" paintOrder="stroke">{text}</text>
+    </g>;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`The euro against other currencies: ${rows.map(r => `${r.currency}: euro ${r.move_12m === null ? 'no data' : `${r.move_12m.toFixed(1)}%`} over 12 months, rate gap ${r.gap ?? 'n/a'} pp`).join('; ')}`}>
+    <text x={mx(0)} y={16} textAnchor="middle" fill={c.muted} fontSize="11">euro's move over 12 months (stronger →)</text>
+    <text x={gx(0)} y={16} textAnchor="middle" fill={c.muted} fontSize="11">rate gap: ECB minus the other bank</text>
+    <line x1={mx(0)} x2={mx(0)} y1={top - 14} y2={H - 6} stroke={c.zero} strokeWidth="1.5"/>
+    <line x1={gx(0)} x2={gx(0)} y1={top - 14} y2={H - 6} stroke={c.zero} strokeWidth="1.5"/>
+    {rows.map((r, i) => {
+      const cy = top + i * rowH + 8;
+      return <g key={r.currency}>
+        <text x={0} y={cy + 5} fill={c.ink} fontSize="13">{`Euro vs ${CURRENCY_NAME[r.currency] ?? r.currency}`}</text>
+        {bar(r.move_12m, mx, cy, 'move', r.move_12m === null ? '' : `${r.move_12m >= 0 ? '+' : '−'}${Math.abs(r.move_12m).toFixed(1)}%`)}
+        {bar(r.gap, gx, cy, 'gap', r.gap === null ? '' : pp(r.gap))}
+      </g>;
+    })}
+  </svg>;
+}

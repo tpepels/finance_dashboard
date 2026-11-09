@@ -29,7 +29,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         catalog, _ = load_documents()
         known = {s["id"]: s for s in catalog["series"]}
         self.assertEqual(len(SPECS), len(BY_ID))
-        self.assertEqual(len(SPECS), 40)   # six growth tiles moved to the engine (C01, C03, C06)
+        self.assertEqual(len(SPECS), 34)   # growth and monetary tiles moved to the engine (C01-C06, M01-M04)
         self.assertGreaterEqual(len(load_documents()[0]["series"]), 93)
         self.assertEqual(len({s["id"] for s in SPECS}), len(SPECS))
         self.assertEqual(set(s["region"] for s in SPECS), {r["id"] for r in REGIONS})
@@ -95,7 +95,9 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertIn("NOT corporate profit", output["caveat"])
 
     def test_pair_differential_uses_only_common_period(self):
-        spec = BY_ID["compare_policy_differential"]
+        # No remaining tile is a pair differential; the compiler keeps the behaviour, exercised on a synthetic spec.
+        credit = BY_ID["compare_credit"]
+        spec = {**credit, "id": "synthetic_pair_differential", "kind": "pair_differential", "sources": credit["sources"][:2]}
         a,b = spec["sources"]
         output = compile_indicator(spec,
             {a: [(date(2023,1,1), D("2.7")), (date(2024,1,1), D("2.9"))],
@@ -172,7 +174,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertEqual(data["series"][0]["points"], [])
 
     def test_exact_source_dates_kept_in_cross_country_comparisons(self):
-        spec = BY_ID["compare_policy"]
+        spec = BY_ID["compare_credit"]
         metadata = {sid: meta(sid, unit="percent", frequency="D") for sid in spec["sources"]}
         observations = {
             spec["sources"][0]: [(date(2026,1,2), D("4.25"))],
@@ -220,7 +222,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertIsNone(short["series"][0]["historical_context"])
 
     def test_country_comparison_is_ranked_only_at_full_common_source_date(self):
-        spec = BY_ID["compare_policy"]
+        spec = BY_ID["compare_credit"]
         sources = spec["sources"]
         metadata = {sid: meta(sid, unit="percent", frequency="A") for sid in sources}
         values = {sid: [(date(2024, 1, 1), D(index)),

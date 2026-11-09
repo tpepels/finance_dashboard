@@ -43,6 +43,7 @@ export default function TimePanel({ title, caption, option, height = 300, span, 
       if (series?.[0]) instance.setOption({ series: [series[0]] } as never);
     };
     instance.on('datazoom', update);
+    update();   // an opening zoom (initial preset) also decides whether names fit
     return () => { instance.off('datazoom', update); };
   }, [option, span, compact]);
   const choose = (preset: Preset) => {

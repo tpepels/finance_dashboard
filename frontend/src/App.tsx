@@ -3,6 +3,7 @@ import ResearchDashboard from './ResearchDashboard';
 import Phase4Panel from './Phase4Panel';
 import DecisionPanel from './DecisionPanel';
 import GrowthPanel from './GrowthPanel';
+import MonetaryPanel from './MonetaryPanel';
 import SourceExplorer from './SourceExplorer';
 import { invalidateSourceCaches } from './data';
 
@@ -46,6 +47,7 @@ export default function App() {
       <nav className="research-utility-actions" aria-label="Additional analyses">
         <a href="#decisions">Decisions</a>
         <a href="#growth">Growth &amp; inflation</a>
+        <a href="#monetary">Rates &amp; currencies</a>
         <a href="#phase4">Risk &amp; portfolios</a>
         <a href="#research-sources">Source data</a>
         <button type="button" className="research-data-link"
@@ -64,6 +66,7 @@ export default function App() {
     <div className="research-content">
       <DecisionPanel theme={theme} dataVersion={dataVersion}/>
       <GrowthPanel theme={theme} dataVersion={dataVersion}/>
+      <MonetaryPanel theme={theme} dataVersion={dataVersion}/>
       <ResearchDashboard theme={theme}/>
       <Phase4Panel theme={theme} dataVersion={dataVersion}/>
     <div className="research-source-shell" id="research-sources">

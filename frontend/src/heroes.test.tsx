@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, CycleClock, GrowthStrip, ReturnRuler, RiskReturnMap, StagflationMap, Thermometers, nudge, scale } from './heroes';
+import { ChangeBars, CurrencyRows, CycleClock, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, RiskReturnMap, StagflationMap, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -87,6 +87,42 @@ describe('hero graphics', () => {
     expect(bars.querySelectorAll('[data-part="bar"]')).toHaveLength(2);
     expect(screen.getByText('+93%')).toBeTruthy();
     expect(screen.getByText('−7.5%')).toBeTruthy();
+    expect(screen.getByText('no data')).toBeTruthy();
+  });
+
+  it('places each central bank on one rate scale, now against a year ago, with the euro gaps', () => {
+    render(<RateLadder theme="light" target={{ lower: 3.75, upper: 4.0 }}
+      banks={[{ bank: 'fed', name: 'Federal Reserve', latest: 3.88, year_ago: 3.87, change: 0.01, as_of: '2026-11-05' },
+        { bank: 'ecb', name: 'ECB', latest: 2.5, year_ago: 2.0, change: 0.5, as_of: '2026-11-08' },
+        { bank: 'boj', name: 'Bank of Japan', latest: 1.23, year_ago: 0.48, change: 0.75, as_of: '2026-11-04' }]}
+      gaps={[{ label: 'Euro minus dollar', value: -1.38 }, { label: 'Euro minus yen', value: 1.27 }]}/>);
+    const ladder = screen.getByRole('img', { name: /policy rates/i });
+    expect(ladder.querySelectorAll('[data-part="year-ago"]')).toHaveLength(3);
+    expect(ladder.querySelector('[data-part="target-range"]')).toBeTruthy();
+    expect(screen.getByText('3.88%')).toBeTruthy();
+    expect(screen.getByText('−1.38 pp')).toBeTruthy();
+    expect(screen.getByText('+1.27 pp')).toBeTruthy();
+  });
+
+  it('splits the 10-year yield into real yield and breakeven, now and a year ago', () => {
+    render(<YieldSplit theme="dark" now={{ date: '2026-11-05', nominal: 4.84, real: 2.6, breakeven: 2.24 }}
+      yearAgo={{ date: '2025-11-05', nominal: 4.17, real: 1.87, breakeven: 2.3 }}/>);
+    const split = screen.getByRole('img', { name: /10-year yield/i });
+    expect(split.querySelectorAll('[data-part="real"]')).toHaveLength(2);
+    expect(split.querySelectorAll('[data-part="breakeven"]')).toHaveLength(2);
+    expect(screen.getByText('4.84%')).toBeTruthy();
+    expect(screen.getByText('real +0.73 pp')).toBeTruthy();
+    expect(screen.getByText('breakeven −0.06 pp')).toBeTruthy();
+  });
+
+  it('shows the euro move next to the rate gap for each currency', () => {
+    render(<CurrencyRows theme="light" rows={[
+      { currency: 'USD', move_12m: -3.53, move_as_of: '2026-10', gap: -1.38, gap_as_of: '2026-10' },
+      { currency: 'JPY', move_12m: null, move_as_of: null, gap: 1.27, gap_as_of: '2026-10' }]}/>);
+    const rows = screen.getByRole('img', { name: /euro against/i });
+    expect(rows.querySelectorAll('[data-part="move"]')).toHaveLength(1);
+    expect(rows.querySelectorAll('[data-part="gap"]')).toHaveLength(2);
+    expect(screen.getByText('−3.5%')).toBeTruthy();
     expect(screen.getByText('no data')).toBeTruthy();
   });
 });
