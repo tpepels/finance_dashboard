@@ -72,6 +72,14 @@ class P06F03EngineTests(unittest.TestCase):
         self.assertEqual(sorted(k for k in F03.inputs if k.startswith("private_dsr:")),
                          ["private_dsr:CN", "private_dsr:DE", "private_dsr:JP", "private_dsr:PT", "private_dsr:US"])
 
+    def test_every_derived_value_has_a_named_transform(self):
+        # A reader must be able to recompute each derived value from the inputs and this list.
+        p06 = {t["name"] for t in P06.compute({role: [] for role in P06.inputs}, {}).transforms}
+        self.assertTrue({"month_end", "percent_to_fraction", "earnings_yield", "valuation_residual_range",
+                         "year_on_year_change", "yield_difference", "real_deflation"} <= p06)
+        f03 = {t["name"] for t in F03.compute({role: [] for role in F03.inputs}, {}).transforms}
+        self.assertEqual(f03, {"own_history", "threshold_band"})
+
     def test_p06_identical_numbers_to_the_decision_endpoint(self):
         # Golden values captured from the retired /api/decision/P06 on this fixture.
         old = GOLDEN["P06"]

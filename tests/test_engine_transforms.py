@@ -36,7 +36,10 @@ class EngineTransformTests(unittest.TestCase):
     def test_every_transform_has_a_formula_and_unknown_names_fail(self):
         self.assertEqual(set(TRANSFORMS), {"month_end", "complete_months", "contiguous_tail", "monthly_return",
                                            "return_summary", "own_history", "index_100",
-                                           "overlapping_window_percentiles"})
+                                           "overlapping_window_percentiles", "fx_translation", "hedge_carry",
+                                           "real_deflation", "earnings_yield", "valuation_residual_range",
+                                           "year_on_year_change", "yield_difference", "percent_to_fraction",
+                                           "threshold_band"})
         self.assertTrue(all(TRANSFORMS[name].strip() for name in TRANSFORMS))
         self.assertEqual(applied("month_end")["formula"], TRANSFORMS["month_end"])
         with self.assertRaises(KeyError):

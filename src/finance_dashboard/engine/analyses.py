@@ -82,10 +82,16 @@ def _p07(points: dict, view: dict) -> Computed:
     return Computed(values=values, estimates=None, comparison=["eur_unhedged", "eur_hedged"], transforms=[
         applied("month_end", applied_to=roles),
         applied("complete_months", applied_to=roles, today=today.isoformat()),
-        applied("monthly_return", applied_to=["equity_netr_usd", "usd_per_eur", "ea_hicp"]),
-        applied("contiguous_tail", applied_to=["rows"]),
-        applied("return_summary", applied_to=["usd_return", "eur_unhedged", "eur_hedged"]),
-        applied("index_100", applied_to=["eur_unhedged", "eur_hedged"]),
+        applied("monthly_return", applied_to=["equity_netr_usd", "ea_hicp"], produces=["usd_return", "eur_inflation"]),
+        applied("fx_translation", applied_to=["usd_return", "usd_per_eur"], produces=["eur_unhedged"]),
+        applied("hedge_carry", applied_to=["eur_short_rate", "usd_short_rate", "usd_return"],
+                produces=["hedge_carry", "eur_hedged"]),
+        applied("real_deflation", applied_to=["eur_unhedged", "eur_hedged", "eur_inflation"],
+                produces=["real_eur", "wealth.real"]),
+        applied("contiguous_tail", applied_to=["rows", "real_eur"]),
+        applied("return_summary", applied_to=["usd_return", "eur_unhedged", "eur_hedged"],
+                produces=["nominal", "real_eur"]),
+        applied("index_100", applied_to=["eur_unhedged", "eur_hedged"], produces=["wealth"]),
     ])
 
 
@@ -174,8 +180,17 @@ def _p06(points: dict, view: dict) -> Computed:
     return Computed(values=result, estimates={"equity_us": equity},
                     comparison=["equity_us", "equity_world_snapshot", "bonds"], transforms=[
         applied("month_end", applied_to=list(points)),
-        applied("overlapping_window_percentiles", applied_to=["us_cape", "us_real_total_return"],
-                horizon_years=result["horizon_years"], percentiles=[0.1, 0.5, 0.9]),
+        applied("percent_to_fraction", applied_to=["us_nominal_10y", "us_real_10y", "ea_aaa_10y",
+                                                   "global_earnings_yield"]),
+        applied("earnings_yield", applied_to=["us_cape"], produces=["equity_us.earnings_yield"]),
+        applied("valuation_residual_range", applied_to=["us_cape", "us_real_total_return"],
+                produces=["equity_us.range_real"], horizon_years=result["horizon_years"]),
+        applied("overlapping_window_percentiles", applied_to=["equity_us.range_real"],
+                percentiles=[0.1, 0.5, 0.9], horizon_years=result["horizon_years"]),
+        applied("year_on_year_change", applied_to=["ea_hicp"], produces=["ea_inflation"]),
+        applied("yield_difference", applied_to=["us_nominal_10y", "us_real_10y"], produces=["bonds.us_breakeven_10y"]),
+        applied("real_deflation", applied_to=["ea_aaa_10y", "ea_inflation"],
+                produces=["bonds.ea_aaa_10y_real_trailing"]),
     ])
 
 
@@ -216,7 +231,10 @@ def _f03(points: dict, view: dict) -> Computed:
     gaps = {key.split(":")[1]: values for key, values in points.items() if key.startswith("credit_gap:")}
     dsr = {key.split(":")[1]: values for key, values in points.items() if key.startswith("private_dsr:")}
     return Computed(values=f03_credit(gaps, dsr), estimates=None, comparison=["credit_gap", "private_dsr"],
-                    transforms=[applied("own_history", applied_to=list(points))])
+                    transforms=[applied("own_history", applied_to=list(points)),
+                                applied("threshold_band", applied_to=[k for k in points if k.startswith("credit_gap:")],
+                                        produces=["gap_guide_band"], low_pp=GAP_GUIDE_LOW, high_pp=GAP_GUIDE_HIGH,
+                                        source="BIS/Basel III countercyclical buffer guide")])
 
 
 F03 = AnalysisDefinition("F03", {**{f"credit_gap:{area}": sid for area, sid in CREDIT_GAPS.items()},

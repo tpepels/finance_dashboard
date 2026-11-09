@@ -59,6 +59,11 @@ class P07EngineTests(unittest.TestCase):
                                       "usd_short_rate": "policy_rate.us.fed_effective",
                                       "ea_hicp": "prices.ea.hicp_index_2025"})
 
+    def test_every_derived_value_has_a_named_transform(self):
+        names = [t["name"] for t in P07.compute({role: [] for role in P07.inputs}, {"today": TODAY}).transforms]
+        self.assertEqual(names, ["month_end", "complete_months", "monthly_return", "fx_translation", "hedge_carry",
+                                 "real_deflation", "contiguous_tail", "return_summary", "index_100"])
+
     def test_incomplete_current_month_is_excluded(self):
         engine = memory_engine()
         data = p07_fixture()

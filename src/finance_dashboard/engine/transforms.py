@@ -21,6 +21,17 @@ TRANSFORMS: dict[str, str] = {
     "own_history": "latest value against the series' own full history: mean, deviation from the mean, and "
                    "percentile = (number of observations below the latest) / (n - 1)",
     "index_100": "W[t] = 100 * prod over s <= t of (1 + r[s]); starts one month before the first return",
+    "fx_translation": "EUR return of a USD asset: (1 + r_usd[t]) * fx[t-1] / fx[t] - 1, with fx in USD per EUR",
+    "hedge_carry": "monthly carry of a EUR hedge, covered-interest-parity approximation: (i_eur[t-1] - i_usd[t-1]) / 1200 "
+                   "with rates in percent a year; hedged return = (1 + r_usd[t]) * (1 + carry) - 1",
+    "real_deflation": "real return or yield = (1 + nominal) / (1 + inflation) - 1",
+    "earnings_yield": "earnings yield = 1 / CAPE (cyclically adjusted price/earnings)",
+    "valuation_residual_range": "for each start month with a full horizon: residual = realised annualized real return over "
+                                "the horizon - 1 / CAPE at the start; range = today's 1 / CAPE + percentiles of the residuals",
+    "year_on_year_change": "x[t] / x[t-12 months] - 1",
+    "yield_difference": "difference of two yields in the same unit, e.g. breakeven = nominal - real",
+    "percent_to_fraction": "value / 100 (percent to fraction)",
+    "threshold_band": "classify the latest value against published thresholds; the thresholds are given as params",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
 }
