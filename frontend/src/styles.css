@@ -828,6 +828,10 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .decision-section-head p { font-size: 15px; line-height: 1.55; color: var(--dx-secondary); max-width: 72ch; margin: 0; }
 .decision-hero { margin: 26px 0 8px; padding: 22px 24px; background: var(--dx-surface); border-radius: 10px; }
 .decision-hero-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.decision-hero-pair { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 28px; align-items: start; }
+.decision-hero-wide { display: flex; flex-direction: column; gap: 14px; }
+.decision-hero-head { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; }
+.decision-hero-head .decision-caption { margin: 0; }
 .decision-hero-stack { display: flex; flex-direction: column; gap: 22px; }
 .decision-hero-stack .hero-svg { max-width: 820px; }
 .decision-hero-side { display: flex; flex-direction: column; gap: 12px; }
@@ -861,7 +865,7 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .decision-limits li { margin-bottom: 6px; }
 .decision-limit-detail, .decision-limit-scope { color: var(--dx-muted); }
 .decision-export { font-size: 13px; color: var(--dx-secondary); }
-@media (max-width: 900px) { .decision-hero-split { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .decision-hero-split, .decision-hero-pair { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .decision-container { padding: 24px 16px 8px; }
   /* Hero graphics keep a legible size on a phone and scroll sideways inside their own panel. */
   .decision-hero { padding: 14px 12px; overflow-x: auto; } .hero-svg { min-width: 600px; } .hero-svg-map { min-width: 460px; }

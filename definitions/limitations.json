@@ -125,6 +125,16 @@
       "overlapping_windows": "Windows overlap heavily; the effective number of independent observations is about windows divided by 12 times the horizon.",
       "revised_data": "Shiller data are latest revised values; earnings revisions mean this is not a real-time test.",
       "rank_correlation_only": "A rank correlation shows whether cheaper starts ranked better outcomes, not the size of the effect or a forecast."
+    },
+    "G05": {
+      "annual_imf": "Current accounts and investment positions are annual IMF figures; the latest year can lag.",
+      "position_over_gdp": "The net investment position is divided by nominal GDP in US dollars for the same year; currency swings move both.",
+      "context_for_currency": "Large external deficits or debtor positions are context for currency risk, not a forecast of a currency's direction."
+    },
+    "G06": {
+      "tiva_ends_2022": "OECD TiVA shares are annual and currently end in 2022.",
+      "share_of_value_added": "The share is the part of a country's own value added that ends up in foreign final demand, not its export-to-GDP ratio.",
+      "exposure_not_risk": "Higher dependence on foreign demand means more exposure to foreign cycles and trade shocks, not necessarily more risk to investors."
     }
   }
 }

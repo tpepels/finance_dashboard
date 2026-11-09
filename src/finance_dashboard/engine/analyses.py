@@ -87,6 +87,17 @@ def p07_drawdown(wealth: dict) -> dict:
     return out
 
 
+def p07_hedging_effect(stats: dict) -> dict:
+    """What hedging changed, in percentage points: hedged minus unhedged return, volatility and deepest fall."""
+    u, h = stats.get("eur_unhedged", {}), stats.get("eur_hedged", {})
+
+    def diff(key):
+        a, b = h.get(key), u.get(key)
+        return round(100 * (a - b), 6) if a is not None and b is not None else None
+    return {"return_pp": diff("annualized_return"), "volatility_pp": diff("annualized_volatility"),
+            "max_drawdown_pp": diff("max_drawdown"), "months": u.get("months", 0)}
+
+
 def _p07(points: dict, view: dict) -> Computed:
     today = view_today(view)
     ends = {role: complete_months(month_end(values), today) for role, values in points.items()}
@@ -94,6 +105,7 @@ def _p07(points: dict, view: dict) -> Computed:
                          ends["usd_short_rate"], ends["ea_hicp"])
     values["wealth"] = p07_wealth(values["rows"])
     values["drawdown"] = {kind: p07_drawdown(paths) for kind, paths in values["wealth"].items()}
+    values["hedging_effect"] = {"nominal": p07_hedging_effect(values["nominal"]), "real": p07_hedging_effect(values["real_eur"])}
     roles = list(points)
     return Computed(values=values, estimates=None, comparison=["eur_unhedged", "eur_hedged"], transforms=[
         applied("month_end", applied_to=roles),
@@ -109,6 +121,8 @@ def _p07(points: dict, view: dict) -> Computed:
                 produces=["nominal", "real_eur"]),
         applied("index_100", applied_to=["eur_unhedged", "eur_hedged"], produces=["wealth"]),
         applied("drawdown", applied_to=["wealth"], produces=["drawdown"]),
+        applied("yield_difference", applied_to=["eur_hedged", "eur_unhedged"], produces=["hedging_effect"],
+                on="annualized return, volatility and maximum drawdown, in percentage points"),
     ])
 
 
@@ -892,7 +906,51 @@ def _v05(points: dict, view: dict) -> Computed:
 V05 = AnalysisDefinition("V05", {"cape": "valuation.us.cape", "real_tr": "returns.us.shiller_real_total_return",
                                  "real_10y": "bond.us.real_10y", "cpi": "prices.us.shiller_cpi"}, _v05)
 
+G05_AREAS = ("US", "JP", "DE", "CN", "PT")
+
+
+def _g05(points: dict, view: dict) -> Computed:
+    economies, history = [], {}
+    for area in G05_AREAS:
+        ca = sorted(points.get(f"ca_gdp:{area}", []))
+        position = [[str(date.fromisoformat(d).year), v] for d, v in
+                    matched_ratio(points.get(f"niip:{area}", []), points.get(f"gdp:{area}", []), 100)]
+        history[area] = {"current_account_gdp": _series(ca), "net_position_gdp": position}
+        if not ca and not position:
+            continue
+        economies.append({"area": area,
+                          "current_account_gdp": ca[-1][1] if ca else None, "current_account_year": str(ca[-1][0].year) if ca else None,
+                          "net_position_gdp": position[-1][1] if position else None,
+                          "net_position_year": position[-1][0] if position else None})
+    return Computed(values={"economies": economies, "history": history}, estimates=None,
+                    comparison=["current_account_gdp", "net_position_gdp"], transforms=[
+        applied("matched_ratio", applied_to=["niip", "gdp"], scale_by=100, produces=["net_position_gdp"])])
+
+
+G05 = AnalysisDefinition("G05", {
+    **{f"ca_gdp:{a}": f"external.{a.lower()}.current_account_gdp" for a in ("US", "JP", "DE", "CN")},
+    **{f"niip:{a}": f"external.{a.lower()}.imf_iip_net_position_usd" for a in G05_AREAS},
+    **{f"gdp:{a}": f"gdp.nominal_usd.{a.lower()}" for a in G05_AREAS},
+}, _g05)
+
+G06_AREAS = ("US", "DE", "FR", "PT", "JP", "CN", "IN")
+
+
+def _g06(points: dict, view: dict) -> Computed:
+    economies, history = [], {}
+    for area in G06_AREAS:
+        share = sorted(points.get(f"share:{area}", []))
+        history[area] = _series(share)
+        if share:
+            economies.append({"area": area, "first": share[0][1], "first_year": str(share[0][0].year),
+                              "latest": share[-1][1], "latest_year": str(share[-1][0].year)})
+    return Computed(values={"economies": economies, "history": history}, estimates=None, comparison=["economies"],
+                    transforms=[])
+
+
+G06 = AnalysisDefinition("G06", {f"share:{a}": f"supply_chain.{a.lower()}.foreign_final_demand_share" for a in G06_AREAS}, _g06)
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
                                               "F05": F05, "F06": F06, "F07": F07, "V01": V01, "V02": V02, "V03": V03,
-                                              "V05": V05}
+                                              "V05": V05, "G05": G05, "G06": G06}

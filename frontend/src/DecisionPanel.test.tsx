@@ -25,7 +25,8 @@ const p07 = bundle('P07', { rows: [{ month: '2026-09', eur_unhedged: 0.02, eur_h
     eur_hedged: { months: 300, annualized_return: 0.055, annualized_volatility: 0.16, max_drawdown: -0.55 } },
   real_eur: { eur_unhedged: { months: 0 }, eur_hedged: { months: 0 } }, real_period: null,
   wealth: { nominal: { eur_unhedged: [['2026-09', 102]], eur_hedged: [['2026-09', 101]] }, real: { eur_unhedged: [], eur_hedged: [] } },
-  drawdown: { nominal: { eur_unhedged: [['2026-09', 0]], eur_hedged: [['2026-09', 0]] }, real: { eur_unhedged: [], eur_hedged: [] } } },
+  drawdown: { nominal: { eur_unhedged: [['2026-09', 0]], eur_hedged: [['2026-09', 0]] }, real: { eur_unhedged: [], eur_hedged: [] } },
+  hedging_effect: { nominal: { return_pp: -0.2, volatility_pp: 1.4, max_drawdown_pp: -5.9, months: 300 }, real: { return_pp: null, volatility_pp: null, max_drawdown_pp: null, months: 0 } } },
   null, ['Approximate hedge.']);
 const history = { credit_gap: [['2025-01-01', 3], ['2026-01-01', 5.7]], credit_gap_range: { min: -12, max: 12 },
   private_dsr: [['2026-01-01', 14.5]], private_dsr_range: { min: 12, max: 18 } };
@@ -54,7 +55,7 @@ describe('DecisionPanel', () => {
     const urls = stubFetch();
     const { container } = render(<DecisionPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByRole('img', { name: /real return per year/i })).toBeTruthy());
-    expect(screen.getByRole('img', { name: /return against volatility/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /what hedging changed/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /Credit gap/ })).toBeTruthy();
     expect(screen.getByRole('img', { name: /Debt service/ })).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();

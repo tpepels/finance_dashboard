@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { entityName, timeChart, type Recession, type Theme, type TimeSeries } from './chartKit';
-import { ChangeBars, CycleClock, GrowthStrip, StagflationMap, type ChangeItem, type ClockRow, type StripRow } from './heroes';
+import { ChangeBars, GrowthInflationBars, GrowthStrip, PhaseBoard, type ChangeItem, type ClockRow, type StripRow } from './heroes';
 import TimePanel from './TimePanel';
 import { Section, monthDate, percentAxis, spanOf, useBundles, type Bundle } from './analysisShell';
 
@@ -12,12 +12,10 @@ type C03Values = { strip: StripRow[]; history: Record<string, Line>; dispersion:
 type C06Values = { commodities: (ChangeItem & { history: Line })[]; map: Record<string, [string, number, number][]>;
   inflation: Record<string, Line>; growth: Record<string, Line> };
 
-const pctLabel = (v: number) => `${v.toFixed(Math.abs(v) < 10 ? 1 : 0)}%`;
 const months = (line: Line): Line => line.map(([m, v]) => [monthDate(m), v]);
 
 function Cycle({ bundle, theme, recessions }: { bundle: Bundle<C01Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as C01Values;
-  const [selected, setSelected] = useState(data.clock.find(r => r.area === 'US') ? 'US' : data.clock[0]?.area);
   const asOf = data.clock.map(r => r.as_of).sort().at(-1);
   const cliCharts = useMemo(() => data.clock.map(r => ({ area: r.area, option: timeChart({
     theme, recessions, compact: true, nonUS: r.area !== 'US', unit: 'index, trend = 100', format: v => v.toFixed(0),
@@ -37,17 +35,11 @@ function Cycle({ bundle, theme, recessions }: { bundle: Bundle<C01Values>; theme
     refLines: p.refLines, series: p.series as TimeSeries[] }), span: spanOf(p.series.map(s => s.data), ['1950-01-01', '2026-01-01']) })),
   [us, data, theme, recessions]);
   return <>
-    <div className="decision-hero decision-hero-split">
-      <CycleClock theme={theme} rows={data.clock} selected={selected}/>
-      <div className="decision-hero-side">
-        <div className="chip-row" role="group" aria-label="Follow an economy on the clock">
-          {data.clock.map(r => <button key={r.area} type="button" aria-pressed={selected === r.area}
-            onClick={() => setSelected(r.area)}>{entityName(r.area)}</button>)}
-        </div>
-        <p className="decision-caption">Up and down: how far each economy's OECD leading indicator is above or below its
-          long-term trend. Left and right: whether it rose or fell in the last month. The line traces the chosen economy over
-          the last 12 months. Hollow dots are country groups. Latest month: {asOf}. The OECD index is centred on 100 = trend.</p>
-      </div>
+    <div className="decision-hero">
+      <PhaseBoard theme={theme} rows={data.clock}/>
+      <p className="decision-caption">Each economy's OECD leading indicator against its long-term trend (100): above or below trend, and
+        whether it rose or fell in the last month, place it in one of the four phases, which follow each other left to right. The
+        number is the distance from trend; the small line is the last 12 months. Latest month: {asOf}.</p>
     </div>
     <h4 className="decision-subhead">Leading indicators by economy</h4>
     <div className="decision-multiples">
@@ -92,33 +84,29 @@ function Convergence({ bundle, theme, recessions }: { bundle: Bundle<C03Values>;
 
 function Shocks({ bundle, theme, recessions }: { bundle: Bundle<C06Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as C06Values;
-  const byCountry = (source: Record<string, Line>): TimeSeries[] => Object.entries(source).filter(([, l]) => l.length)
-    .map(([area, line]) => ({ name: entityName(area), entity: area, data: line }));
-  const inflation = useMemo(() => byCountry(data.inflation), [data]);
-  const growth = useMemo(() => byCountry(data.growth), [data]);
+  const countries = Object.keys(data.inflation).filter(a => data.inflation[a].length || data.growth[a].length);
+  const countryCharts = useMemo(() => countries.map(area => ({ area, option: timeChart({ theme, recessions, compact: true,
+    nonUS: area !== 'US', unit: '% a year', format: v => v.toFixed(0), refLines: [{ value: 0, label: '' }],
+    series: [{ name: 'Inflation', slot: 7, data: data.inflation[area] }, { name: 'Real growth', slot: 0, data: data.growth[area] }] }) })),
+  [data, theme, recessions]); // eslint-disable-line react-hooks/exhaustive-deps
   const commodityCharts = useMemo(() => data.commodities.map((c, i) => ({ key: c.key, name: c.name, data: months(c.history),
     option: timeChart({ theme, recessions, compact: true, unit: 'change over 12 months, USD', format: percentAxis,
       refLines: [{ value: 0, label: '' }], series: [{ name: c.name, slot: [3, 7, 5][i] ?? i, data: months(c.history) }] }) })),
   [theme, recessions, data]);
-  const panels = [
-    { title: 'Consumer price inflation', series: inflation, unit: '% a year', format: pctLabel, refLines: [{ value: 2, label: '2% target' }] },
-    { title: 'Real GDP growth', series: growth, unit: '% a year', format: pctLabel, refLines: [{ value: 0, label: '' }] },
-  ];
-  const options = useMemo(() => panels.map(p => timeChart({ theme, recessions, unit: p.unit, format: p.format, refLines: p.refLines,
-    series: p.series })), [theme, recessions, inflation, growth]); // eslint-disable-line react-hooks/exhaustive-deps
   return <>
-    <div className="decision-hero decision-hero-split">
-      <StagflationMap theme={theme} series={data.map}/>
-      <div className="decision-hero-side">
+    <div className="decision-hero decision-hero-stack">
+      <GrowthInflationBars theme={theme} series={data.map}/>
+      <div className="decision-hero-split">
         <ChangeBars theme={theme} items={data.commodities}/>
-        <p className="decision-caption">Left: each country's real growth and inflation in recent years, the large dot being the latest.
-          Right: how much oil, gas and maize prices changed over the last 12 months (World Bank, USD). IMF figures are historical
-          estimates; forecast years are left out.</p>
+        <p className="decision-caption">Left: each country's inflation (red) beside its real growth (blue) for the last eight years.
+          Red above blue and above the 2% line means prices outran output. Bars: how much oil, gas and maize prices changed over the
+          last 12 months (World Bank, USD). IMF figures are historical estimates; forecast years are left out.</p>
       </div>
     </div>
-    <div className="decision-charts">
-      {panels.map((p, i) => <TimePanel key={p.title} title={p.title} option={options[i]}
-        span={spanOf(p.series.map(s => s.data as Line), ['1980-01-01', '2026-01-01'])}/>)}
+    <h4 className="decision-subhead">Inflation (red) and real growth (blue) by country</h4>
+    <div className="decision-multiples">
+      {countryCharts.map(g => <TimePanel key={g.area} title={entityName(g.area)} option={g.option} height={220} group="c06-countries"
+        compact presets={false} span={spanOf([data.inflation[g.area], data.growth[g.area]], ['1980-01-01', '2026-01-01'])}/>)}
     </div>
     <h4 className="decision-subhead">Commodity prices, change over 12 months</h4>
     <div className="decision-multiples">

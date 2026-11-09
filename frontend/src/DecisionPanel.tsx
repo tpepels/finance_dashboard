@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CHART_FONT, ENTITY, ENTITY_NAME, palette, timeChart, type Recession, type Theme, type TimeSeries } from './chartKit';
-import { ReturnRuler, RiskReturnMap, Thermometers, pct, type RulerMarker } from './heroes';
+import { EffectDials, ReturnRuler, Thermometers, pct, type HedgeEffect, type RulerMarker } from './heroes';
 import TimePanel from './TimePanel';
 import { Section, monthDate, percentAxis, useBundles, type Bundle } from './analysisShell';
 
@@ -10,7 +10,8 @@ type HedgeRow = { month: string; eur_unhedged: number; eur_hedged: number; eur_i
 type Paths = Record<'eur_unhedged' | 'eur_hedged', [string, number][]>;
 export type P07Values = { rows: HedgeRow[]; nominal: Record<string, Stats>; real_eur: Record<string, Stats>;
   real_period: { start: string; end: string } | null;
-  wealth: { nominal: Paths; real: Paths }; drawdown: { nominal: Paths; real: Paths } };
+  wealth: { nominal: Paths; real: Paths }; drawdown: { nominal: Paths; real: Paths };
+  hedging_effect: { nominal: HedgeEffect; real: HedgeEffect } };
 export type P06Values = {
   horizon_years: number;
   equity_world_snapshot: null | { as_of: string; earnings_yield: number; snapshots: number };
@@ -85,19 +86,21 @@ function ExpectedReturns({ bundle, theme, recessions }: { bundle: Bundle<P06Valu
     ],
   }), [c, data, equity]);
   return <>
-    <div className="decision-hero">
-      <ReturnRuler theme={theme} markers={markers}
-        equity={equity?.range_real ? { ...equity.range_real, label: 'US equities after inflation, next 10 years' } : null}/>
-      {equity && <p className="decision-caption">
-        The band is the 10th to 90th percentile of what past 10-year periods delivered from a similar starting point:
-        {' '}{equity.calibration_windows} overlapping windows since 1881, about {equity.effective_independent_windows} independent decades.
-        US CAPE {equity.cape.toFixed(1)} on {equity.as_of}.</p>}
+    <div className="decision-hero decision-hero-pair">
+      <div>
+        <ReturnRuler theme={theme} markers={markers}
+          equity={equity?.range_real ? { ...equity.range_real, label: 'US equities after inflation, next 10 years' } : null}/>
+        {equity && <p className="decision-caption">
+          The band is the 10th to 90th percentile of what past 10-year periods delivered from a similar starting point:
+          {' '}{equity.calibration_windows} overlapping windows since 1881, about {equity.effective_independent_windows} independent decades.
+          US CAPE {equity.cape.toFixed(1)} on {equity.as_of}.</p>}
+      </div>
+      <TimePanel title="Where the range comes from" option={cloudOption} presets={false} height={360}
+        caption="Each grey dot is a past starting month: its earnings yield and the real return of the following 10 years. The blue lines are the typical spread around 'return equals earnings yield'; the orange bar is where today's yield meets it, the same range as on the ruler."/>
     </div>
     <div className="decision-charts">
       <TimePanel title="US valuation since 1881 (CAPE)" option={capeOption}
         span={[cape[0].data[0]?.[0] ?? '1881-01-01', cape[0].data.at(-1)?.[0] ?? '2026-01-01']}/>
-      <TimePanel title="Where the range comes from" option={cloudOption} presets={false}
-        caption="Each grey dot is a past starting month: its earnings yield and the real return of the following 10 years. The blue lines are the typical spread around 'return equals earnings yield'; the orange bar is where today's yield meets it, the same range as on the ruler."/>
     </div>
   </>;
 }
@@ -127,22 +130,19 @@ function Hedging({ bundle, theme, recessions }: { bundle: Bundle<P07Values>; the
         itemStyle: { color: r.hedge_carry >= 0 ? c.positive : c.negative } })) };
     return option;
   }, [theme, recessions, data, c]);
-  const points = (['eur_unhedged', 'eur_hedged'] as const).filter(k => stats[k]?.annualized_volatility != null)
-    .map(k => ({ key: k, label: names[k], ret: stats[k].annualized_return ?? 0, volatility: stats[k].annualized_volatility ?? 0 }));
   return <>
-    <div className="decision-hero decision-hero-split">
-      <RiskReturnMap theme={theme} points={points}/>
-      <div className="decision-hero-side">
+    <div className="decision-hero decision-hero-wide">
+      <div className="decision-hero-head">
         <label className="decision-toggle"><input type="checkbox" checked={real} disabled={!realAvailable}
           onChange={e => setReal(e.target.checked)}/> After euro-area inflation</label>
-        <p className="decision-caption">MSCI ACWI net total return held by a euro investor, {span[0].slice(0, 7)} to {span[1].slice(0, 7)}
-          {' '}({stats.eur_unhedged?.months ?? 0} months). Deepest fall: unhedged {pct(stats.eur_unhedged?.max_drawdown ?? 0)},
-          {' '}hedged {pct(stats.eur_hedged?.max_drawdown ?? 0)}.</p>
-        {!realAvailable && <p className="decision-note">The view after inflation appears once euro-area HICP is collected.</p>}
+        <span className="decision-caption">MSCI ACWI net total return held by a euro investor, {span[0].slice(0, 7)} to {span[1].slice(0, 7)}
+          {' '}({stats.eur_unhedged?.months ?? 0} months).</span>
       </div>
+      <TimePanel title="100 euros invested, unhedged and hedged to euros" option={wealthOption} span={span} height={360}/>
+      <EffectDials theme={theme} effect={data.hedging_effect[kind]}/>
+      {!realAvailable && <p className="decision-note">The view after inflation appears once euro-area HICP is collected.</p>}
     </div>
     <div className="decision-charts">
-      <TimePanel title="100 euros invested, both ways" option={wealthOption} span={span}/>
       <TimePanel title="How far below the previous peak" option={drawdownOption} span={span}/>
       <TimePanel title="What hedging earned (blue) or cost (red)" option={carryOption} span={span}
         caption="ECB deposit rate minus the US federal funds rate, as an annual rate: an approximation of the forward points a hedge pays or earns."/>

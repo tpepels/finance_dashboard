@@ -62,7 +62,18 @@ class P07EngineTests(unittest.TestCase):
     def test_every_derived_value_has_a_named_transform(self):
         names = [t["name"] for t in P07.compute({role: [] for role in P07.inputs}, {"today": TODAY}).transforms]
         self.assertEqual(names, ["month_end", "complete_months", "monthly_return", "fx_translation", "hedge_carry",
-                                 "real_deflation", "contiguous_tail", "return_summary", "index_100", "drawdown"])
+                                 "real_deflation", "contiguous_tail", "return_summary", "index_100", "drawdown",
+                                 "yield_difference"])
+
+    def test_hedging_effect_is_hedged_minus_unhedged(self):
+        from finance_dashboard.engine.analyses import p07_hedging_effect
+        stats = {"eur_unhedged": {"annualized_return": 0.066, "annualized_volatility": 0.14, "max_drawdown": -0.486, "months": 310},
+                 "eur_hedged": {"annualized_return": 0.064, "annualized_volatility": 0.154, "max_drawdown": -0.545, "months": 310}}
+        effect = p07_hedging_effect(stats)
+        self.assertAlmostEqual(effect["return_pp"], -0.2)
+        self.assertAlmostEqual(effect["volatility_pp"], 1.4)
+        self.assertAlmostEqual(effect["max_drawdown_pp"], -5.9)
+        self.assertIsNone(p07_hedging_effect({"eur_unhedged": {"months": 0}, "eur_hedged": {"months": 0}})["return_pp"])
 
     def test_drawdown_is_distance_below_the_running_peak(self):
         from finance_dashboard.engine.analyses import p07_drawdown
@@ -101,6 +112,7 @@ class P07EngineTests(unittest.TestCase):
         values = json.loads(json.dumps(new.values))
         values.pop("wealth")
         values.pop("drawdown")
+        values.pop("hedging_effect")
         self.assertEqual({"analysis_id": "P07", **values}, old)
         self.assertGreater(len(old["rows"]), 12)
 

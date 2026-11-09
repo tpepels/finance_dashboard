@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('./viz', () => ({ createChart: vi.fn(() => ({ setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn(),
   dispatchAction: vi.fn(), on: vi.fn(), off: vi.fn(), getOption: vi.fn(() => ({})), group: '' })),
@@ -44,21 +44,13 @@ describe('GrowthPanel', () => {
   it('answers growth and inflation questions with graphics, never a table', async () => {
     const urls = stubFetch();
     const { container } = render(<GrowthPanel theme="light" dataVersion={0}/>);
-    await waitFor(() => expect(screen.getByRole('img', { name: /business cycle clock/i })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('img', { name: /cycle phase by economy/i })).toBeTruthy());
     expect(screen.getByRole('img', { name: /latest year within/i })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /growth against inflation/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /inflation and growth by year/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /12-month price change/i })).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
     expect(urls.filter(u => u.startsWith('/api/analysis/')).sort()).toEqual(['/api/analysis/C01', '/api/analysis/C03', '/api/analysis/C06']);
     expect(screen.getAllByText('Export for AI')).toHaveLength(3);
   });
 
-  it('lets the reader pick which economy the clock follows', async () => {
-    stubFetch();
-    render(<GrowthPanel theme="light" dataVersion={0}/>);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'China' })).toBeTruthy());
-    expect(screen.getByRole('button', { name: 'United States' }).getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'China' }));
-    expect(screen.getByRole('button', { name: 'China' }).getAttribute('aria-pressed')).toBe('true');
-  });
 });

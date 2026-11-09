@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import ResearchDashboard from './ResearchDashboard';
-import Phase4Panel from './Phase4Panel';
 import DecisionPanel from './DecisionPanel';
 import GrowthPanel from './GrowthPanel';
 import MonetaryPanel from './MonetaryPanel';
 import CreditPanel from './CreditPanel';
 import ValuationPanel from './ValuationPanel';
+import GlobalPanel from './GlobalPanel';
 import SourceExplorer from './SourceExplorer';
+import SourceCoveragePanel from './SourceCoveragePanel';
+import OperationsStatus from './OperationsStatus';
 import { invalidateSourceCaches } from './data';
 
 type Theme = 'light' | 'dark';
@@ -52,7 +53,7 @@ export default function App() {
         <a href="#monetary">Rates &amp; currencies</a>
         <a href="#credit">Credit &amp; stress</a>
         <a href="#valuation">Valuation</a>
-        <a href="#phase4">Risk &amp; portfolios</a>
+        <a href="#global">World</a>
         <a href="#research-sources">Source data</a>
         <button type="button" className="research-data-link"
           onClick={() => window.dispatchEvent(new Event('gcm-open-data-manager'))}>
@@ -73,9 +74,10 @@ export default function App() {
       <MonetaryPanel theme={theme} dataVersion={dataVersion}/>
       <CreditPanel theme={theme} dataVersion={dataVersion}/>
       <ValuationPanel theme={theme} dataVersion={dataVersion}/>
-      <ResearchDashboard theme={theme}/>
-      <Phase4Panel theme={theme} dataVersion={dataVersion}/>
+      <GlobalPanel theme={theme} dataVersion={dataVersion}/>
     <div className="research-source-shell" id="research-sources">
+      <SourceCoveragePanel/>
+      <OperationsStatus key={dataVersion}/>
       <details onToggle={event => setShowSources(event.currentTarget.open)}>
         <summary className="research-explorer-toggle">
           <span>Source data & chart explorer</span>

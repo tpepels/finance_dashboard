@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, CycleClock, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, RiskReturnMap, StagflationMap, Thermometers, nudge, scale } from './heroes';
+import { ChangeBars, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -25,16 +25,6 @@ describe('hero graphics', () => {
     expect(screen.getByText('8.3%')).toBeTruthy();
   });
 
-  it('shows hedged and unhedged as two points with the move between them', () => {
-    render(<RiskReturnMap theme="dark" points={[
-      { key: 'eur_unhedged', label: 'Unhedged', volatility: 0.15, ret: 0.06 },
-      { key: 'eur_hedged', label: 'Hedged to EUR', volatility: 0.14, ret: 0.055 }]}/>);
-    const map = screen.getByRole('img', { name: /return against volatility/i });
-    expect(map.querySelectorAll('[data-part="point"]')).toHaveLength(2);
-    expect(map.querySelector('[data-part="move"]')).toBeTruthy();
-    expect(screen.getByText('Hedged to EUR')).toBeTruthy();
-  });
-
   it('places each economy within its own history, with BIS zones on the credit gap', () => {
     render(<Thermometers theme="light" title="Credit gap" unit="pp" zones={[{ from: 2, to: 10 }, { from: 10, to: null }]}
       rows={[{ area: 'US', min: -12, max: 12, mean: 0.5, latest: 5.7, asOf: '2026-01-01' },
@@ -50,18 +40,6 @@ describe('hero graphics', () => {
     expect(nudge([100, 104, 200], 14)).toEqual([100, 114, 200]);
   });
 
-  it('puts every economy on the cycle clock with the four phases named, and a trail for the selected one', () => {
-    const trail: [string, number, number][] = [['2026-08', 0.8, 0.1], ['2026-09', 1.0, 0.2]];
-    render(<CycleClock theme="light" selected="US" rows={[
-      { area: 'US', phase: 'expansion', as_of: '2026-09', trail },
-      { area: 'CN', phase: 'contraction', as_of: '2026-09', trail: [['2026-09', -2.6, -0.1]] }]}/>);
-    const clock = screen.getByRole('img', { name: /business cycle clock/i });
-    for (const phase of ['Expansion', 'Slowdown', 'Contraction', 'Recovery']) expect(screen.getByText(phase)).toBeTruthy();
-    expect(clock.querySelectorAll('[data-part="dot"]')).toHaveLength(2);
-    expect(clock.querySelector('[data-part="trail"]')).toBeTruthy();
-    expect(screen.getByText('CN')).toBeTruthy();
-  });
-
   it('compares growth across regions on one scale with each decade range', () => {
     render(<GrowthStrip theme="dark" rows={[
       { area: 'IN', latest: 7.6, year: '2025', range: { min: -5.8, max: 9.7, from: '2016-01-01', observations: 10 } },
@@ -70,14 +48,6 @@ describe('hero graphics', () => {
     expect(strip.querySelectorAll('[data-part="range"]')).toHaveLength(2);
     expect(screen.getByText('India')).toBeTruthy();
     expect(screen.getByText('7.6%')).toBeTruthy();
-  });
-
-  it('maps growth against inflation with reference lines and a trail per country', () => {
-    render(<StagflationMap theme="light" series={{ US: [['2024', 2.8, 3.0], ['2025', 2.3, 2.7]], JP: [], CN: [['2025', 5.0, 0.0]] }}/>);
-    const map = screen.getByRole('img', { name: /growth against inflation/i });
-    expect(map.querySelectorAll('[data-part="trail"]')).toHaveLength(1);   // a single year has no trail
-    expect(screen.getByText(/inflation above 2%/i)).toBeTruthy();
-    expect(screen.getByText('United States 2025')).toBeTruthy();
   });
 
   it('draws commodity price changes around zero and says when one is missing', () => {
@@ -186,5 +156,54 @@ describe('hero graphics', () => {
     expect(screen.getByText('0.41')).toBeTruthy();
     expect(screen.getByText('≈ 12.8 independent')).toBeTruthy();
     expect(screen.getByText('too few')).toBeTruthy();
+    const fills = new Set([...grid.querySelectorAll('[data-part="cell"] rect')].map(r => r.getAttribute('fill')));
+    expect(fills.size).toBeGreaterThanOrEqual(3);                 // more than one hue family
+    expect([...fills]).toContain('#21918c');
+  });
+
+  it('sorts economies into the four cycle phases, each row readable on its own', () => {
+    const trail = (lvl: number, d: number): [string, number, number][] => [['2026-08', lvl - d, d], ['2026-09', lvl, d]];
+    render(<PhaseBoard theme="light" rows={[
+      { area: 'US', phase: 'expansion', as_of: '2026-09', trail: trail(1.0, 0.1) },
+      { area: 'DE', phase: 'expansion', as_of: '2026-09', trail: trail(1.01, 0.05) },
+      { area: 'CN', phase: 'contraction', as_of: '2026-09', trail: trail(-2.6, -0.1) }]}/>);
+    const board = screen.getByRole('img', { name: /cycle phase by economy/i });
+    expect(board.querySelectorAll('[data-part="economy"]')).toHaveLength(3);
+    for (const phase of ['Recovery', 'Expansion', 'Slowdown', 'Contraction']) expect(screen.getByText(phase)).toBeTruthy();
+    expect(screen.getByText('+1.00')).toBeTruthy();
+    expect(screen.getByText('−2.60')).toBeTruthy();
+  });
+
+  it('shows what hedging changed as dials around zero', () => {
+    render(<EffectDials theme="dark" effect={{ return_pp: -0.2, volatility_pp: 1.4, max_drawdown_pp: -5.9, months: 310 }}/>);
+    const dials = screen.getByRole('img', { name: /what hedging changed/i });
+    expect(dials.querySelectorAll('[data-part="needle"]')).toHaveLength(3);
+    expect(screen.getByText('−0.2 pp')).toBeTruthy();
+    expect(screen.getByText('+1.4 pp')).toBeTruthy();
+  });
+
+  it('draws inflation and growth side by side per year for each country', () => {
+    render(<GrowthInflationBars theme="light" series={{ US: [['2024', 2.8, 3.0], ['2025', 2.3, 2.7]], JP: [], CN: [['2025', 5.0, 0.0]] }}/>);
+    const chart = screen.getByRole('img', { name: /inflation and growth by year/i });
+    expect(chart.querySelectorAll('[data-part="inflation"]')).toHaveLength(3);
+    expect(chart.querySelectorAll('[data-part="growth"]')).toHaveLength(3);
+    expect(screen.getByText('United States')).toBeTruthy();
+    expect(screen.queryByText('Japan')).toBeNull();
+  });
+
+  it('shows each economy as creditor or debtor: current account and net position around zero', () => {
+    render(<ExternalBars theme="light" rows={[
+      { area: 'US', current_account_gdp: -4.0, current_account_year: '2025', net_position_gdp: -86.7, net_position_year: '2025' },
+      { area: 'PT', current_account_gdp: null, current_account_year: null, net_position_gdp: -60.1, net_position_year: '2025' }]}/>);
+    const bars = screen.getByRole('img', { name: /external position/i });
+    expect(bars.querySelectorAll('[data-part="current-account"]')).toHaveLength(1);
+    expect(bars.querySelectorAll('[data-part="net-position"]')).toHaveLength(2);
+    expect(screen.getByText('−86.7%')).toBeTruthy();
+  });
+
+  it('dumbbells can carry their own legend', () => {
+    render(<Dumbbells theme="light" unit="% of value added" legend="ring: 1995 · dot: 2022"
+      rows={[{ key: 'DE', label: 'Germany', entity: 'DE', back: 25, latest: 30 }]}/>);
+    expect(screen.getByText('ring: 1995 · dot: 2022')).toBeTruthy();
   });
 });
