@@ -43,7 +43,8 @@ class EngineTransformTests(unittest.TestCase):
                                            "cycle_position", "log_change", "own_range_window",
                                            "cross_section_sd", "matched_pairs",
                                            "now_and_year_ago", "matched_day",
-                                           "now_and_years_ago", "additive_parts", "matched_ratio"})
+                                           "now_and_years_ago", "additive_parts", "matched_ratio",
+                                           "rank_correlation"})
         self.assertTrue(all(TRANSFORMS[name].strip() for name in TRANSFORMS))
         self.assertEqual(applied("month_end")["formula"], TRANSFORMS["month_end"])
         with self.assertRaises(KeyError):

@@ -49,6 +49,9 @@ TRANSFORMS: dict[str, str] = {
                           "(365.25 n days) earlier; change = latest - then",
     "additive_parts": "published components on one date where every component is observed; they sum to the published total",
     "matched_ratio": "a[t] / b[t] on periods both series report (times 100 for shares)",
+    "rank_correlation": "Spearman rank correlation (average ranks for ties) between starting earnings yield and the "
+                        "realised annualized real return over the horizon, per era of start months; reported only when "
+                        "the era holds at least two independent horizons of windows",
     "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",

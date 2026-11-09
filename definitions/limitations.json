@@ -105,6 +105,26 @@
       "us_sector_aggregates": "These are US Financial Accounts sector totals, not individual firms or funds.",
       "leverage_book_values": "Leverage is total assets over equity capital at book values.",
       "context_not_signal": "High leverage and repo dependence describe fragility, not timing."
+    },
+    "V01": {
+      "valuation_not_timing": "High valuations have meant lower long-run returns on average, but they say little about the next year.",
+      "us_only_long_history": "The long history is US (Shiller, S&P Composite); world valuation history is short.",
+      "excess_yield_definition": "Excess CAPE yield = 1/CAPE minus the 10-year TIPS real yield, from 2003 when TIPS data start."
+    },
+    "V02": {
+      "annual_bea_measures": "BEA Q ratios are annual and end with the latest published year, later than CAPE.",
+      "different_denominators": "The three Q measures use different denominators (produced assets, adding bonds, net liquid assets); none is identical to another valuation ratio.",
+      "agreement_not_proof": "Measures agreeing does not prove mispricing; they share the same market prices."
+    },
+    "V03": {
+      "msci_factsheet_months": "Regional P/E comes from archived MSCI factsheets; only captured months exist, so lines are dots, not continuous series.",
+      "regions_differ_in_sectors": "Regional P/E differences partly reflect different sector mixes, not only cheapness.",
+      "forward_is_consensus": "Forward P/E uses analysts' consensus earnings for the next 12 months, which tend to be optimistic."
+    },
+    "V05": {
+      "overlapping_windows": "Windows overlap heavily; the effective number of independent observations is about windows divided by 12 times the horizon.",
+      "revised_data": "Shiller data are latest revised values; earnings revisions mean this is not a real-time test.",
+      "rank_correlation_only": "A rank correlation shows whether cheaper starts ranked better outcomes, not the size of the effect or a forecast."
     }
   }
 }

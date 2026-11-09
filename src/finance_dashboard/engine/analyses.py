@@ -774,6 +774,125 @@ F07 = AnalysisDefinition("F07", {
     "mmf_assets": "funding.us.money_market_assets", "finance_assets": "funding.us.finance_company_total_assets",
 }, _f07)
 
+def _monthly_points(ends: dict) -> list[tuple[date, float]]:
+    return [(date(k[0], k[1], 1), v) for k, (_, v) in sorted(ends.items())]
+
+
+def _gauge(key: str, name: str, points: list[tuple[date, float]], unit: str) -> dict | None:
+    own = _with_range(points)
+    return {"key": key, "name": name, "unit": unit, **own} if own else None
+
+
+def _v01(points: dict, view: dict) -> Computed:
+    ends = {role: month_end(values) for role, values in points.items()}
+    cape, price, earnings, dividend, real = (ends.get(k, {}) for k in ("cape", "price", "earnings", "dividend", "real_10y"))
+    pe = {k: (None, price[k][1] / earnings[k][1]) for k in sorted(set(price) & set(earnings)) if earnings[k][1]}
+    dy = {k: (None, 100 * dividend[k][1] / price[k][1]) for k in sorted(set(price) & set(dividend)) if price[k][1]}
+    excess = {k: (None, 100 / cape[k][1] - real[k][1]) for k in sorted(set(cape) & set(real)) if cape[k][1]}
+    series = {"cape": _monthly_points(cape), "pe": _monthly_points(pe), "dividend_yield": _monthly_points(dy),
+              "excess_cape_yield": _monthly_points(excess)}
+    names = {"cape": ("CAPE: price over 10-year average real earnings", "×"), "pe": ("Price over trailing 12-month earnings", "×"),
+             "dividend_yield": ("Dividend yield", "%"), "excess_cape_yield": ("Excess CAPE yield over the real 10-year yield", "pp")}
+    gauges = [g for key, (name, unit) in names.items() if (g := _gauge(key, name, series[key], unit))]
+    return Computed(values={"gauges": gauges, "history": {k: _series(v) for k, v in series.items()}}, estimates=None,
+                    comparison=["cape", "pe", "dividend_yield", "excess_cape_yield"], transforms=[
+        applied("month_end", applied_to=list(points)),
+        applied("matched_ratio", applied_to=["price", "earnings"], produces=["pe"]),
+        applied("matched_ratio", applied_to=["dividend", "price"], scale_by=100, produces=["dividend_yield"]),
+        applied("earnings_yield", applied_to=["cape"], produces=["excess_cape_yield"]),
+        applied("yield_difference", applied_to=["1/cape", "real_10y"], produces=["excess_cape_yield"]),
+        applied("own_history", applied_to=list(names), produces=["gauges"])])
+
+
+V01 = AnalysisDefinition("V01", {"cape": "valuation.us.cape", "price": "valuation.us.shiller_price",
+                                 "earnings": "valuation.us.shiller_earnings", "dividend": "valuation.us.shiller_dividend",
+                                 "cpi": "prices.us.shiller_cpi", "real_10y": "bond.us.real_10y"}, _v01)
+
+
+def _v02(points: dict, view: dict) -> Computed:
+    names = {"q1": "BEA Q1: equity value over produced assets", "q2": "BEA Q2: adds bonds at book value",
+             "q3": "BEA Q3: market bonds and net liquid assets", "cape": "CAPE (monthly)"}
+    gauges = [g for key, name in names.items() if (g := _gauge(key, name, points.get(key, []), "×"))]
+    return Computed(values={"gauges": gauges, "history": {k: _series(points.get(k, [])) for k in names}}, estimates=None,
+                    comparison=list(names), transforms=[applied("own_history", applied_to=list(names), produces=["gauges"])])
+
+
+V02 = AnalysisDefinition("V02", {"q1": "valuation.us.tobins_q", "q2": "valuation.us.tobins_q2", "q3": "valuation.us.tobins_q3",
+                                 "cape": "valuation.us.cape"}, _v02)
+
+MSCI_REGIONS = ("ACWI", "WORLD", "USA", "EUROPE", "JAPAN", "EM", "EAFE")
+
+
+def _v03(points: dict, view: dict) -> Computed:
+    regions, history = [], {}
+    for region in MSCI_REGIONS:
+        trailing, forward = sorted(points.get(f"trailing:{region}", [])), sorted(points.get(f"forward:{region}", []))
+        history[region] = {"trailing": _series(trailing), "forward": _series(forward)}
+        if not trailing:
+            continue
+        day, latest = trailing[-1]
+        values = [v for _, v in trailing]
+        regions.append({"region": region, "as_of": day.isoformat(), "trailing": latest, "forward": dict(forward).get(day),
+                        "trailing_min": min(values), "trailing_max": max(values), "months": len(values)})
+    return Computed(values={"regions": regions, "history": history}, estimates=None, comparison=["trailing", "forward"],
+                    transforms=[applied("own_range_window", applied_to=[f"trailing:{r}" for r in MSCI_REGIONS], n="all")])
+
+
+V03 = AnalysisDefinition("V03", {
+    **{f"trailing:{r}": f"valuation.{r.lower()}.msci_trailing_pe" for r in MSCI_REGIONS},
+    **{f"forward:{r}": f"valuation.{r.lower()}.msci_forward_pe" for r in MSCI_REGIONS},
+}, _v03)
+
+
+def _ranks(values: list[float]) -> list[float]:
+    order = sorted(range(len(values)), key=lambda i: values[i])
+    ranks = [0.0] * len(values)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and values[order[j + 1]] == values[order[i]]:
+            j += 1
+        for k in range(i, j + 1):
+            ranks[order[k]] = (i + j) / 2 + 1
+        i = j + 1
+    return ranks
+
+
+def spearman(x: list[float], y: list[float]) -> float | None:
+    """Spearman rank correlation with average ranks for ties; None when undefined."""
+    if len(x) < 3 or len(x) != len(y):
+        return None
+    rx, ry = _ranks(list(x)), _ranks(list(y))
+    mx, my = sum(rx) / len(rx), sum(ry) / len(ry)
+    cov = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+    vx, vy = sum((a - mx) ** 2 for a in rx), sum((b - my) ** 2 for b in ry)
+    return cov / math.sqrt(vx * vy) if vx and vy else None
+
+
+V05_ERAS = (("1881–1944", 1881, 1944), ("1945–1979", 1945, 1979), ("1980 onward", 1980, 9999), ("All years", 0, 9999))
+
+
+def _v05(points: dict, view: dict) -> Computed:
+    cape, real_tr = month_end(points.get("cape", [])), month_end(points.get("real_tr", []))
+    cells = []
+    for horizon in (5, 10, 15):
+        windows = calibration_points(cape, real_tr, horizon)
+        for era, start, end in V05_ERAS:
+            chosen = [w for w in windows if start <= int(w[0][:4]) <= end]
+            effective = round(len(chosen) / (12 * horizon), 1)
+            rho = spearman([w[1] for w in chosen], [w[2] for w in chosen]) if effective >= 2 else None
+            cells.append({"horizon_years": horizon, "era": era, "windows": len(chosen), "effective_windows": effective,
+                          "rho": rho, "first_start": chosen[0][0] if chosen else None, "last_start": chosen[-1][0] if chosen else None})
+    return Computed(values={"cells": cells, "eras": [e for e, *_ in V05_ERAS], "horizons": [5, 10, 15]}, estimates=None,
+                    comparison=["cells"], transforms=[
+        applied("calibration_points", applied_to=["cape", "real_tr"], horizons=[5, 10, 15]),
+        applied("rank_correlation", applied_to=["calibration_points"], produces=["cells"], eras=[e for e, *_ in V05_ERAS])])
+
+
+V05 = AnalysisDefinition("V05", {"cape": "valuation.us.cape", "real_tr": "returns.us.shiller_real_total_return",
+                                 "real_10y": "bond.us.real_10y", "cpi": "prices.us.shiller_cpi"}, _v05)
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
-                                              "F05": F05, "F06": F06, "F07": F07}
+                                              "F05": F05, "F06": F06, "F07": F07, "V01": V01, "V02": V02, "V03": V03,
+                                              "V05": V05}

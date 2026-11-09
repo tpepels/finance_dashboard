@@ -80,7 +80,7 @@ class EngineApiTests(unittest.TestCase):
     def test_listing_marks_which_analyses_the_engine_computes(self):
         rows = {row["analysis_id"]: row for row in self.client.get("/api/analysis").json()}
         self.assertTrue(rows["P07"]["has_engine"])
-        self.assertFalse(rows["V01"]["has_engine"])
+        self.assertFalse(rows["L01"]["has_engine"])
         self.assertEqual(rows["G03"]["state"], "deferred")
         self.assertTrue(rows["P07"]["question"])
 
