@@ -52,16 +52,16 @@ describe('chart kit', () => {
     expect(option.series[0].markArea.data.map((a: any) => a[0].name))
       .toEqual(['Dot-com recession', 'Financial crisis']);
     expect(option.series[0].lineStyle.color).toBe(palette('dark').series[ENTITY.US]);
-    expect(option.series[0].endLabel.show).toBe(true);    // direct label: identity never colour alone
-    expect(option.legend).toBeUndefined();                // one series: the title names it
+    expect(option.series[0].endLabel.show).toBe(false);   // one series: the panel title names it
+    expect(option.legend).toBeUndefined();
   });
 
-  it('gives two or more series a legend and end labels that do not overprint', () => {
+  it('names two or more series in a legend, never in overprinting end labels', () => {
     const option = timeChart({ theme: 'light', recessions: [], unit: '',
       series: [{ name: 'Unhedged', slot: 0, data: [['2000-01-01', 1]] }, { name: 'Hedged', slot: 1, data: [['2000-01-01', 1]] }],
     }) as Record<string, any>;
     expect(option.legend.data).toEqual(['Unhedged', 'Hedged']);
-    expect(option.series[0].endLabel.offset).not.toEqual(option.series[1].endLabel.offset);
+    expect(option.series.every((s: any) => s.endLabel.show === false)).toBe(true);  // lines converge at the end; labels would overprint
   });
 
   it('names recessions only while the visible window leaves room for the names', () => {
@@ -76,5 +76,11 @@ describe('chart kit', () => {
     expect(labelled(long)).toEqual([]);
     const zoomed = withNamedLabels(long, true) as Record<string, any>;
     expect(labelled(zoomed)).toEqual(['Dot-com recession', 'Financial crisis', 'COVID-19 recession']);
+  });
+
+  it('puts reference-line labels at the start of the line, away from the latest data', () => {
+    const option = timeChart({ theme: 'light', recessions: [], unit: '', refLines: [{ value: 2, label: '2% target' }],
+      series: [{ name: 'x', data: [['2000-01-01', 1]] }] }) as Record<string, any>;
+    expect(option.series[0].markLine.label.position).toBe('insideStartTop');
   });
 });

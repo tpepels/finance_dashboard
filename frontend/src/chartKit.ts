@@ -173,9 +173,9 @@ export function timeChart(input: TimeChartInput): EChartsOption {
     animation: false,
     backgroundColor: 'transparent',
     textStyle: { fontFamily: CHART_FONT },
-    grid: { left: compact ? 44 : 56, right: compact ? 64 : 104, top: compact ? 22 : (series.length > 1 ? 44 : 30),
+    grid: { left: compact ? 44 : 56, right: compact ? 20 : 28, top: compact ? 22 : (series.length > 1 ? 44 : 30),
       bottom: compact ? 52 : 64 },
-    legend: series.length > 1 ? { data: series.map(s => s.name), top: 0, left: 'center', icon: 'roundRect',
+    legend: series.length > 1 && !compact ? { data: series.map(s => s.name), top: 0, left: 'center', icon: 'roundRect',
       itemWidth: 14, itemHeight: 6, textStyle: { color: colours.secondary } } : undefined,
     xAxis: {
       type: 'time',
@@ -211,8 +211,8 @@ export function timeChart(input: TimeChartInput): EChartsOption {
       },
     },
     dataZoom: [
-      { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
-      { type: 'slider', xAxisIndex: 0, filterMode: 'none', height: 18, bottom: compact ? 8 : 14,
+      { type: 'inside', xAxisIndex: 0, filterMode: 'weakFilter' },
+      { type: 'slider', xAxisIndex: 0, filterMode: 'weakFilter', height: 18, bottom: compact ? 8 : 14,
         borderColor: colours.axis, backgroundColor: 'transparent', fillerColor: colours.recession,
         dataBackground: { lineStyle: { color: colours.axis }, areaStyle: { color: colours.grid } },
         textStyle: { color: colours.muted }, labelFormatter: (value: number) => new Date(value).getFullYear().toString() },
@@ -231,9 +231,9 @@ export function timeChart(input: TimeChartInput): EChartsOption {
         itemStyle: { color: colour },
         areaStyle: s.area ? { color: colour, opacity: 0.12 } : undefined,
         emphasis: { focus: 'series' as const },
-        // Two end labels at the same height are pulled apart: upper series up, lower series down.
-        endLabel: { show: !compact, color: colours.secondary, formatter: () => s.name, distance: 6,
-          offset: series.length > 1 ? [0, (index % 2 === 0 ? -1 : 1) * 8] : [0, 0] },
+        // One line: the panel title names it. Several: the legend names them and colours follow the entity;
+        // end labels converge at the latest date and overprint, so they are not drawn.
+        endLabel: { show: false },
         markArea: index === 0 ? {
           silent: true,
           label: { position: 'insideTop', color: colours.muted, fontSize: 11 },
@@ -248,7 +248,7 @@ export function timeChart(input: TimeChartInput): EChartsOption {
         markLine: index === 0 && input.refLines?.length ? {
           silent: true, symbol: 'none',
           lineStyle: { color: colours.secondary, type: 'solid', width: 1 },
-          label: { color: colours.secondary, formatter: '{b}', position: 'insideEndTop' },
+          label: { color: colours.secondary, formatter: '{b}', position: 'insideStartTop' },
           data: input.refLines.map(r => ({ name: r.label, yAxis: r.value })),
         } : undefined,
       };

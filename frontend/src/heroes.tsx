@@ -203,7 +203,7 @@ export function CycleClock({ theme, rows, selected }: { theme: Theme; rows: Cloc
   const reachY = Math.max(0.5, ...points.map(p => Math.abs(p[1]))) * 1.2;
   const x = scale(-reachX, reachX, pad, S - pad), y = scale(-reachY, reachY, S - pad, pad);
   const latest = rows.map(r => ({ row: r, px: x(r.trail.at(-1)![2]), py: y(r.trail.at(-1)![1]) }));
-  const labelY = nudge(latest.map(l => l.py), 15);
+  const labelY = nudge(latest.map(l => l.py), 17);
   const quadrant = (label: string, tx: number, ty: number, anchor: 'start' | 'end') =>
     <text x={tx} y={ty} textAnchor={anchor} fill={c.muted} fontSize="15" fontWeight="700">{label}</text>;
   return <svg className="hero-svg hero-svg-clock" viewBox={`0 0 ${S} ${S}`} role="img"
@@ -236,7 +236,8 @@ export function CycleClock({ theme, rows, selected }: { theme: Theme; rows: Cloc
           stroke={hollow ? colour : c.surface} strokeWidth="2">
           <title>{`${entityName(row.area)}: ${row.phase}, ${row.as_of}`}</title>
         </circle>
-        <text x={px + 12} y={labelY[i] + 4} fill={highlighted ? c.ink : c.secondary} fontSize="13"
+        {Math.abs(labelY[i] - py) > 4 && <line x1={px + 7} y1={py} x2={px + 22} y2={labelY[i]} stroke={c.axis}/>}
+        <text x={px + (Math.abs(labelY[i] - py) > 4 ? 25 : 12)} y={labelY[i] + 4} fill={highlighted ? c.ink : c.secondary} fontSize="13"
           fontWeight={highlighted ? 700 : 400} stroke={c.surface} strokeWidth="4" paintOrder="stroke">{SHORT_NAME[row.area] ?? row.area}</text>
       </g>;
     })}
@@ -255,7 +256,7 @@ export function GrowthStrip({ theme, rows }: { theme: Theme; rows: StripRow[] })
   const x = scale(lo, hi, left, right);
   const H = top + rows.length * rowH + 30;
   return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
-    aria-label={`Annual real growth by region: ${rows.map(r => `${entityName(r.area)} ${r.latest.toFixed(1)}% in ${r.year}`).join('; ')}`}>
+    aria-label={`Real growth, latest year within each region's decade: ${rows.map(r => `${entityName(r.area)} ${r.latest.toFixed(1)}% in ${r.year}`).join('; ')}`}>
     {ticks(lo, hi, hi - lo > 12 ? 4 : 2).map(t => <g key={t}>
       <line x1={x(t)} x2={x(t)} y1={top - 10} y2={H - 26} stroke={t === 0 ? c.zero : c.grid} strokeWidth={t === 0 ? 1.5 : 1}/>
       <text x={x(t)} y={H - 8} textAnchor="middle" fill={t === 0 ? c.ink : c.muted} fontSize="12">{`${t}%`}</text>
@@ -304,7 +305,8 @@ export function StagflationMap({ theme, series }: { theme: Theme; series: Record
     {ticks(ylo, yhi, step(yhi - ylo)).map(t => <g key={`y${t}`}>
       <line x1={left} x2={right} y1={y(t)} y2={y(t)} stroke={t === 2 ? c.zero : c.grid} strokeWidth={t === 2 ? 1.5 : 1}/>
       <text x={left - 8} y={y(t) + 4} textAnchor="end" fill={c.muted} fontSize="11">{`${t}%`}</text></g>)}
-    <text x={right} y={y(2) - 6} textAnchor="end" fill={c.muted} fontSize="11">2% inflation target (Fed, BoJ)</text>
+    <text x={x(0) + 6} y={y(2) + 14} fill={c.muted} fontSize="11" stroke={c.surface} strokeWidth="4"
+      paintOrder="stroke">2% inflation target (Fed, BoJ)</text>
     <text x={right} y={H - 6} textAnchor="end" fill={c.muted} fontSize="11">real growth →</text>
     <text x={left} y={top - 8} fill={c.muted} fontSize="11">↑ inflation</text>
     {Object.entries(series).filter(([, pts]) => pts.length).map(([area, pts]) => {

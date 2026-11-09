@@ -29,7 +29,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         catalog, _ = load_documents()
         known = {s["id"]: s for s in catalog["series"]}
         self.assertEqual(len(SPECS), len(BY_ID))
-        self.assertEqual(len(SPECS), 46)
+        self.assertEqual(len(SPECS), 40)   # six growth tiles moved to the engine (C01, C03, C06)
         self.assertGreaterEqual(len(load_documents()[0]["series"]), 93)
         self.assertEqual(len({s["id"] for s in SPECS}), len(SPECS))
         self.assertEqual(set(s["region"] for s in SPECS), {r["id"] for r in REGIONS})
@@ -94,8 +94,8 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertEqual(output["headline"]["value"], "57.00")
         self.assertIn("NOT corporate profit", output["caveat"])
 
-    def test_real_gdp_growth_differential_uses_only_common_year(self):
-        spec = BY_ID["compare_growth_differential"]
+    def test_pair_differential_uses_only_common_period(self):
+        spec = BY_ID["compare_policy_differential"]
         a,b = spec["sources"]
         output = compile_indicator(spec,
             {a: [(date(2023,1,1), D("2.7")), (date(2024,1,1), D("2.9"))],
@@ -203,7 +203,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertEqual(D(data["headline"]["value"]), D(25))
 
     def test_historical_midrank_is_sample_bounded_and_reproducible(self):
-        spec = BY_ID["global_growth"]
+        spec = BY_ID["global_productivity"]
         sid = spec["sources"][0]
         observed = [(date(year, 1, 1), D(year - 2010)) for year in range(2010, 2024)]
         result = compile_indicator(spec, {sid: observed},
@@ -220,7 +220,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertIsNone(short["series"][0]["historical_context"])
 
     def test_country_comparison_is_ranked_only_at_full_common_source_date(self):
-        spec = BY_ID["compare_growth"]
+        spec = BY_ID["compare_policy"]
         sources = spec["sources"]
         metadata = {sid: meta(sid, unit="percent", frequency="A") for sid in sources}
         values = {sid: [(date(2024, 1, 1), D(index)),
@@ -231,7 +231,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         comparison = result["comparison"]
         self.assertEqual(comparison["date"], "2024-01-01")
         self.assertEqual(comparison["common_date_count"], 1)
-        self.assertEqual(comparison["ranked"][0]["value"], "4")
+        self.assertEqual(comparison["ranked"][0]["value"], str(len(sources) - 1))
         values[sources[-1]] = []
         partial = compile_indicator(spec, values, metadata)
         self.assertIsNone(partial["comparison"])

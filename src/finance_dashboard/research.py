@@ -25,13 +25,9 @@ from .service import current_observations
 # Every indicator is source-keyed, and its relationship is explicitly defined.
 # 'raw' is for like-for-like measurements only; contextual single series do not
 # imply any statistical relationship to an adjacent tile.
+# Growth indicators moved to the Phase 3 engine (C01, C03, C06) and the Growth & inflation panel.
 SPECS: tuple[dict[str, Any], ...] = (
     # WORLD and OECD contain only corresponding geographic aggregates.
-    dict(id="global_growth", region="world", theme="Growth and demand",
-         title="World real output growth", sources=["gdp.real_growth.world"],
-         kind="raw", question="How fast is the world economy expanding?",
-         reading="Annual constant-price GDP growth in the World Bank's world aggregate.",
-         caveat="GDP-weighted world growth is not the median country's growth."),
     dict(id="global_labour_share", region="world", theme="Labour and distribution",
          title="Labour's share of world income", sources=["labour.world.income_share"],
          kind="labour_percent_residual", question="What share of global GDP accrues to labour versus other value added?",
@@ -88,11 +84,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          reading="IMF aggregate world public gross debt relative to GDP.",
          caveat="A gross debt stock is not annual debt-service costs or an imminent sovereign default signal."),
     # United States: the broad macro environment comes before the distribution detail.
-    dict(id="us_growth", region="us", theme="Growth and demand",
-         title="US real GDP growth", sources=["gdp.real_growth.us"], kind="raw",
-         question="How quickly is real US output expanding?",
-         reading="World Bank annual constant-price growth of US GDP.",
-         caveat="GDP growth is economy-wide, unlike quarterly BLS nonfarm business productivity."),
     dict(id="us_policy", region="us", theme="Financial conditions",
          title="US harmonized monetary policy rate", sources=["policy_rate.us.bis"], kind="raw",
          question="How has the US monetary policy rate changed?",
@@ -163,10 +154,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          reading="World Bank listed domestic-company capitalization relative to US output.",
          caveat="Compare against Japan only on the dedicated like-for-like comparison page."),
     # Euro area and EU27: distinct statistical populations.
-    dict(id="ea_growth", region="europe", theme="Growth and demand",
-         title="Euro-area real GDP growth", sources=["gdp.real_growth.eu"], kind="raw",
-         question="Is euro-area economic activity accelerating?",
-         reading="World Bank EMU real annual GDP growth.", caveat="Euro area (EMU), not EU27 or all geographical Europe."),
     dict(id="ea_policy", region="europe", theme="Financial conditions",
          title="Euro-area harmonized policy rate", sources=["policy_rate.ea.bis"], kind="raw",
          question="How restrictive is euro-area nominal monetary policy?",
@@ -209,10 +196,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          question="How much of Japanese GDP is recorded as labour income?",
          reading="The PWT Japan labour-income share and its arithmetic complement, both derived from the same annual national-account denominator.",
          caveat="100 − labour income share is NOT corporate profit or Marxian surplus value: depreciation, taxes and other income components remain."),
-    dict(id="jp_growth", region="japan", theme="Growth and demand",
-         title="Japan real GDP growth", sources=["gdp.real_growth.jp"], kind="raw",
-         question="What is Japan's annual real output growth?",
-         reading="World Bank Japanese real GDP growth.", caveat="Annual calendar frequency, revised historically."),
     dict(id="jp_policy", region="japan", theme="Financial conditions",
          title="Japan harmonized policy rate", sources=["policy_rate.jp.bis"], kind="raw",
          question="How has Japan's policy stance changed?",
@@ -237,19 +220,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          question="How do whole-economy labour income shares differ across major countries?",
          reading="One consistent Penn World Table 11.0 annual GDP labour-compensation definition across five countries, converted from fractions to percentages. Common-date differences are computed only where all five countries report.",
          caveat="Country labour share is not inequality among workers, productive-labour surplus value or an EU aggregate; data are latest-revised histories through 2023."),
-    dict(id="compare_growth", region="compare", theme="Growth and demand",
-         title="Real growth: US / euro area / Japan / China / India",
-         sources=["gdp.real_growth.us", "gdp.real_growth.eu",
-                  "gdp.real_growth.jp", "gdp.real_growth.cn", "gdp.real_growth.in"],
-         kind="raw", question="Which large economies are expanding fastest?",
-         reading="Five World Bank annual real GDP growth rates, displayed on native source years.",
-         caveat="World aggregate deliberately excluded; countries have very different economic size and population."),
-    dict(id="compare_growth_differential", region="compare", theme="Growth and demand",
-         title="US minus euro-area real GDP growth",
-         sources=["gdp.real_growth.us", "gdp.real_growth.eu"], kind="pair_differential",
-         question="How much faster or slower is real US output growth than the euro area's?",
-         reading="Year-by-year difference in matched annual World Bank constant-price GDP growth, in percentage points, US minus euro area.",
-         caveat="A growth-rate difference is not the difference in country GDP level, living standards or the size of output."),
     dict(id="compare_policy", region="compare", theme="Financial conditions",
          title="Comparable policy rates: US / euro area / Japan",
          sources=["policy_rate.us.bis", "policy_rate.ea.bis", "policy_rate.jp.bis"],

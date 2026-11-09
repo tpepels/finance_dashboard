@@ -835,6 +835,12 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .hero-svg-map { max-width: 600px; }
 .decision-caption { font-size: 14px; line-height: 1.55; color: var(--dx-secondary); max-width: 78ch; margin: 12px 0 0; }
 .decision-note { font-size: 14px; color: var(--dx-secondary); margin: 12px 0; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-row button { font-size: 13px; padding: 5px 11px; border: 1px solid var(--dx-rule); border-radius: 999px; background: transparent;
+  color: var(--dx-secondary); cursor: pointer; }
+.chip-row button[aria-pressed="true"] { background: var(--dx-ink); color: var(--dx-surface); border-color: var(--dx-ink); }
+.chip-row button:focus-visible { outline: 2px solid var(--dx-focus); outline-offset: 2px; }
+.hero-svg-clock { max-width: 560px; }
 .decision-toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; color: var(--dx-ink); }
 .decision-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 28px 32px; margin-top: 26px; }
 .decision-subhead { font-size: 17px; font-weight: 700; margin: 30px 0 10px; }

@@ -66,7 +66,7 @@ describe('hero graphics', () => {
     render(<GrowthStrip theme="dark" rows={[
       { area: 'IN', latest: 7.6, year: '2025', range: { min: -5.8, max: 9.7, from: '2016-01-01', observations: 10 } },
       { area: 'WORLD', latest: 2.9, year: '2025', range: { min: -2.9, max: 6.5, from: '2016-01-01', observations: 10 } }]}/>);
-    const strip = screen.getByRole('img', { name: /real growth/i });
+    const strip = screen.getByRole('img', { name: /latest year within/i });
     expect(strip.querySelectorAll('[data-part="range"]')).toHaveLength(2);
     expect(screen.getByText('India')).toBeTruthy();
     expect(screen.getByText('7.6%')).toBeTruthy();

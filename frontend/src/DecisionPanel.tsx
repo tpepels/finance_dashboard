@@ -1,23 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { CHART_FONT, ENTITY, ENTITY_NAME, palette, timeChart, type Recession, type Theme, type TimeSeries } from './chartKit';
 import { ReturnRuler, RiskReturnMap, Thermometers, pct, type RulerMarker } from './heroes';
 import TimePanel from './TimePanel';
+import { Section, monthDate, percentAxis, useBundles, type Bundle } from './analysisShell';
 
 type Stats = { months: number; annualized_return?: number; annualized_volatility?: number | null;
   max_drawdown?: number; final_wealth?: number };
 type HedgeRow = { month: string; eur_unhedged: number; eur_hedged: number; eur_inflation: number | null; hedge_carry: number };
 type Paths = Record<'eur_unhedged' | 'eur_hedged', [string, number][]>;
-type Limitation = { code: string; text: string; detail?: string };
-/** One entry of the bundle's shared limitation list (the export prints the same list). */
-type Shown = Limitation & { source: 'phase2' | 'input' | 'method'; series_ids: string[]; roles: string[];
-  accepted_under: { analysis_id: string; role: string }[] };
-
-/** An engine result bundle (`/api/analysis/{id}`); values are null when Phase 2 withholds them. */
-export type Bundle<V, E = null> = {
-  analysis_id: string; question: string; decision_informed: string;
-  phase2: { state: string; evaluated_at: string; limitations: Limitation[]; open_gates: string[] };
-  values: V | null; estimates: E | null; method_limitations: Limitation[]; limitations: Shown[];
-};
 export type P07Values = { rows: HedgeRow[]; nominal: Record<string, Stats>; real_eur: Record<string, Stats>;
   real_period: { start: string; end: string } | null;
   wealth: { nominal: Paths; real: Paths }; drawdown: { nominal: Paths; real: Paths } };
@@ -37,58 +27,6 @@ type AreaHistory = { credit_gap: [string, number][]; credit_gap_range: { min: nu
   private_dsr: [string, number][]; private_dsr_range: { min: number; max: number } | null };
 export type F03Values = { rows: { area: string; credit_gap: History; gap_guide_band: string | null; private_dsr: History }[];
   guide: { low_pp: number; high_pp: number }; history: Record<string, AreaHistory> };
-
-/** The server is still evaluating Phase 2 acceptance; retry after the stated delay. */
-class Pending extends Error {
-  constructor(message: string, readonly retryAfterSeconds: number) { super(message); }
-}
-
-function retryAfter(header: string | null): number {
-  const seconds = Number(header);
-  return header !== null && Number.isFinite(seconds) && seconds >= 0 ? seconds : 30;
-}
-
-async function load<T>(path: string): Promise<T> {
-  const response = await fetch(path, { cache: 'no-store' });
-  if (response.status === 503 && response.headers.has('Retry-After')) {
-    const body = await response.json().catch(() => ({})) as { detail?: string };
-    throw new Pending(body.detail ?? 'Phase 2 acceptance evaluation in progress', retryAfter(response.headers.get('Retry-After')));
-  }
-  if (!response.ok) throw new Error(`${path} unavailable (${response.status})`);
-  return response.json() as Promise<T>;
-}
-
-/** Limitations (data, borrowed inputs, method) folded away, with the AI export beside them. */
-function Limits({ bundle }: { bundle: Bundle<unknown, unknown> }) {
-  return <footer className="decision-foot">
-    <details className="decision-limits-fold">
-      <summary>What limits this ({bundle.limitations.length})</summary>
-      <ul className="decision-limits">{bundle.limitations.map(item => <li key={`${item.code}|${item.detail ?? ''}`}>
-        {item.text}
-        {item.detail && <span className="decision-limit-detail"> {item.detail}</span>}
-        {(item.series_ids.length > 0 || item.accepted_under.length > 0) && <span className="decision-limit-scope">
-          {' '}({[item.series_ids.join(', '),
-            ...item.accepted_under.map(a => `accepted under ${a.analysis_id}`)].filter(Boolean).join('; ')})</span>}
-      </li>)}</ul>
-    </details>
-    <a className="decision-export" href={`/api/analysis/${bundle.analysis_id}/export`} download>Export for AI</a>
-  </footer>;
-}
-
-function Section({ bundle, children }: { bundle: Bundle<unknown, unknown>; children: ReactNode }) {
-  return <section className="decision-section" aria-labelledby={`q-${bundle.analysis_id}`}>
-    <header className="decision-section-head">
-      <h3 id={`q-${bundle.analysis_id}`}>{bundle.question}</h3>
-      <p>{bundle.decision_informed}</p>
-    </header>
-    {bundle.values ? children : <p className="decision-note" role="status">Not computed: Phase 2 state is {bundle.phase2.state}
-      {bundle.phase2.open_gates.length > 0 && <>; open gates: {bundle.phase2.open_gates.join(', ')}</>}.</p>}
-    <Limits bundle={bundle}/>
-  </section>;
-}
-
-const monthDate = (month: string) => month.length === 7 ? `${month}-01` : month;
-const percentAxis = (v: number) => `${(v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0)}%`;
 
 function ExpectedReturns({ bundle, theme, recessions }: { bundle: Bundle<P06Values, P06Estimates>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as P06Values;
@@ -260,30 +198,10 @@ function Credit({ bundle, theme, recessions }: { bundle: Bundle<F03Values>; them
 
 /** Decision layer for a euro-based ETF investor: each question answered by a graphic, history underneath. */
 export default function DecisionPanel({ theme, dataVersion }: { theme: Theme; dataVersion: number }) {
-  const [p06, setP06] = useState<Bundle<P06Values, P06Estimates> | null>(null);
-  const [p07, setP07] = useState<Bundle<P07Values> | null>(null);
-  const [f03, setF03] = useState<Bundle<F03Values> | null>(null);
-  const [recessions, setRecessions] = useState<Recession[]>([]);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    load<{ periods: Recession[] }>('/api/recessions').then(r => { if (!cancelled) setRecessions(r.periods); }).catch(() => undefined);
-    const attempt = () => {
-      Promise.all([load<Bundle<P06Values, P06Estimates>>('/api/analysis/P06'), load<Bundle<P07Values>>('/api/analysis/P07'),
-        load<Bundle<F03Values>>('/api/analysis/F03')]).then(([six, seven, credit]) => {
-        if (!cancelled) { setP06(six); setP07(seven); setF03(credit); setError(''); }
-      }).catch(err => {
-        if (cancelled) return;
-        if (err instanceof Pending) {
-          setError(`${err.message}; this page retries automatically.`);
-          timer = setTimeout(attempt, err.retryAfterSeconds * 1000);
-        } else setError(err instanceof Error ? err.message : 'Unavailable');
-      });
-    };
-    attempt();
-    return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [dataVersion]);
+  const { bundles, recessions, error } = useBundles(['P06', 'P07', 'F03'], dataVersion);
+  const p06 = bundles.P06 as Bundle<P06Values, P06Estimates> | undefined;
+  const p07 = bundles.P07 as Bundle<P07Values> | undefined;
+  const f03 = bundles.F03 as Bundle<F03Values> | undefined;
   return <div className="decision-container" id="decisions">
     <header className="decision-intro">
       <h2>Decisions for a euro investor</h2>

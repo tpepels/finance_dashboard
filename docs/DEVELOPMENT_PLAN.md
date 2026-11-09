@@ -79,9 +79,11 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **Visual language (2026-11-09):** [design](superpowers/specs/2026-11-09-phase3-visual-language.md). The Decisions panel answers each question with a graphic instead of tables: a real-return ruler (P06), a risk–return map (P07) and own-history thermometers (F03), with zoomable history charts underneath. Every time chart shades all NBER US recessions since 1854 from the stored indicator (`/api/recessions`), naming the dot-com, 2008 and COVID episodes; charts zoom by wheel, pinch, slider or 5Y/10Y/20Y/All presets, read every series under a crosshair, and link across small multiples. One validated eight-colour palette per theme; the bundled Atkinson Hyperlegible Next typeface.
 
+* **Phase 3 group 1, growth and inflation (2026-11-09):** C01, C03 and C06 run on the engine and appear in a Growth & inflation panel: an OECD business-cycle clock with a selectable 12-month trail, a growth strip placing each region's latest year within its last decade, and a growth-against-inflation map beside 12-month commodity price changes, each with zoomable histories and small multiples underneath. The six pre-reset growth tiles are retired. IMF WEO series carry historical estimates only (forecast years are excluded at ingestion), so no forecasts are drawn.
+
 ## Next slices
 
-1. **Phase 3, overview group by group:** move the remaining analyses onto the engine in the design's build order, starting with C03/C01/C06, and retire the pre-reset dashboard pieces each group replaces. V01 and F01–F06 arrive in their groups.
+1. **Phase 3, overview group by group:** next is group 2 (M01, M02, M04: policy rates, real yields and inflation compensation, currencies), then F01–F07, V01–V05/G01, L-series and P-series, each retiring the pre-reset pieces it replaces.
 2. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
 3. **L04 extensions:** recompute the input-origin ratio from the WIOD 2016 input-output tables (`WIOTS_in_EXCEL.zip`, owner download from DataverseNL); extend 1995-2021 with EU KLEMS industry workbooks (capital accounts K_GFCF) and OECD ICIO 2025, reconciling vintages over the 2000-2014 overlap.
 
