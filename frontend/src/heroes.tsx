@@ -814,7 +814,8 @@ export function CorrelationGrid({ theme, cells, pairs, periods, labels }: {
   const ink = (rho: number) => Math.abs(rho) >= 0.3 ? '#ffffff' : (theme === 'dark' && Math.abs(rho) < 0.1 ? c.ink : '#14232b');
   return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`How often assets moved together: ${cells.map(x => `${labels[x.pair] ?? x.pair}, ${x.period}: ${x.rho === null ? 'too few months' : x.rho.toFixed(2)}`).join('; ')}`}>
-    {periods.map((p, i) => <text key={p} x={left + i * cw + cw / 2} y={top - 14} textAnchor="middle" fill={c.ink} fontSize="12" fontWeight="700">{p}</text>)}
+    {periods.map((p, i) => <text key={p} x={left + i * cw + cw / 2} y={top - 14} textAnchor="middle" fill={c.ink} fontSize="12" fontWeight="700">
+      {p.startsWith('Months stocks fell') ? 'Stock falls >5%' : p}</text>)}
     {pairs.map((p, j) => <text key={p} x={left - 12} y={top + j * ch + ch / 2 + 4} textAnchor="end" fill={c.ink} fontSize="13">{labels[p] ?? p}</text>)}
     {cells.map(cell => {
       const i = periods.indexOf(cell.period), j = pairs.indexOf(cell.pair);
