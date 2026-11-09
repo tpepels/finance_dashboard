@@ -19,7 +19,7 @@ TRANSFORMS: dict[str, str] = {
     "return_summary": "annualized return = (prod(1 + r))^(12/n) - 1; annualized volatility = population sd(r) * sqrt(12); "
                       "max drawdown = min over t of W[t] / max(W[..t]) - 1",
     "own_history": "latest value against the series' own full history: mean, deviation from the mean, and "
-                   "percentile = (number of observations below the latest) / (n - 1)",
+                   "percentile = (number of observations below the latest) / (n - 1); range = own minimum and maximum",
     "index_100": "W[t] = 100 * prod over s <= t of (1 + r[s]); starts one month before the first return",
     "fx_translation": "EUR return of a USD asset: (1 + r_usd[t]) * fx[t-1] / fx[t] - 1, with fx in USD per EUR",
     "hedge_carry": "monthly carry of a EUR hedge, covered-interest-parity approximation: (i_eur[t-1] - i_usd[t-1]) / 1200 "
@@ -32,6 +32,10 @@ TRANSFORMS: dict[str, str] = {
     "yield_difference": "difference of two yields in the same unit, e.g. breakeven = nominal - real",
     "percent_to_fraction": "value / 100 (percent to fraction)",
     "threshold_band": "classify the latest value against published thresholds; the thresholds are given as params",
+    "drawdown": "D[t] = W[t] / max(100, max over s <= t of W[s]) - 1, the fall below the running peak "
+                "of wealth started at 100",
+    "calibration_points": "for each start month with a full horizon: (1 / CAPE at the start, realised annualized "
+                          "real total return over the next horizon years)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
 }

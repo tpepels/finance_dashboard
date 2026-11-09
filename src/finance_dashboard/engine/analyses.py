@@ -72,12 +72,26 @@ def p07_wealth(rows: list[dict]) -> dict:
     return out
 
 
+def p07_drawdown(wealth: dict) -> dict:
+    """Fall below the running peak of each wealth path (peak starts at 100)."""
+    out = {}
+    for key, path in wealth.items():
+        peak = 100.0
+        series = []
+        for month, level in path:
+            peak = max(peak, level)
+            series.append([month, level / peak - 1])
+        out[key] = series
+    return out
+
+
 def _p07(points: dict, view: dict) -> Computed:
     today = view_today(view)
     ends = {role: complete_months(month_end(values), today) for role, values in points.items()}
     values = p07_hedging(ends["usd_per_eur"], ends["equity_netr_usd"], ends["eur_short_rate"],
                          ends["usd_short_rate"], ends["ea_hicp"])
     values["wealth"] = p07_wealth(values["rows"])
+    values["drawdown"] = {kind: p07_drawdown(paths) for kind, paths in values["wealth"].items()}
     roles = list(points)
     return Computed(values=values, estimates=None, comparison=["eur_unhedged", "eur_hedged"], transforms=[
         applied("month_end", applied_to=roles),
@@ -92,6 +106,7 @@ def _p07(points: dict, view: dict) -> Computed:
         applied("return_summary", applied_to=["usd_return", "eur_unhedged", "eur_hedged"],
                 produces=["nominal", "real_eur"]),
         applied("index_100", applied_to=["eur_unhedged", "eur_hedged"], produces=["wealth"]),
+        applied("drawdown", applied_to=["wealth"], produces=["drawdown"]),
     ])
 
 
@@ -115,20 +130,12 @@ def trailing_inflation(hicp: dict) -> dict | None:
     return {"month": f"{key[0]:04d}-{key[1]:02d}", "rate": hicp[key][1] / hicp[prior][1] - 1}
 
 
-def p06_expected_returns(cape: dict, real_tr: dict, global_ey: dict, latest: dict, hicp: dict,
-                         horizon_years: int = 10) -> dict:
-    """Building-block expected real/nominal returns with an empirical equity range.
-
-    Equity: earnings yield 1/CAPE as the long-run real return estimate. The range is
-    the 10th–90th percentile of (realised annualized real return over the next
-    `horizon_years` − earnings yield at the start) across all fully observed start
-    months, added to today's earnings yield. Windows overlap heavily, so the
-    effective number of independent observations is about months/(12·horizon).
-    """
+def calibration_points(cape: dict, real_tr: dict, horizon_years: int) -> list[list]:
+    """[start month, 1/CAPE at the start, realised annualized real return over the horizon] per full window."""
     months = horizon_years * 12
-    residuals = []
     ordered = sorted(real_tr)
     index = {key: i for i, key in enumerate(ordered)}
+    out = []
     for key, (_, cape_value) in cape.items():
         if key not in index:
             continue
@@ -140,8 +147,23 @@ def p06_expected_returns(cape: dict, real_tr: dict, global_ey: dict, latest: dic
         if (end[0] - key[0]) * 12 + end[1] - key[1] != months:
             continue
         realised = (real_tr[end][1] / real_tr[key][1]) ** (1 / horizon_years) - 1
-        residuals.append(realised - 1 / cape_value)
-    residuals.sort()
+        out.append([f"{key[0]:04d}-{key[1]:02d}", 1 / cape_value, realised])
+    return out
+
+
+def p06_expected_returns(cape: dict, real_tr: dict, global_ey: dict, latest: dict, hicp: dict,
+                         horizon_years: int = 10) -> dict:
+    """Building-block expected real/nominal returns with an empirical equity range.
+
+    Equity: earnings yield 1/CAPE as the long-run real return estimate. The range is
+    the 10th–90th percentile of (realised annualized real return over the next
+    `horizon_years` − earnings yield at the start) across all fully observed start
+    months, added to today's earnings yield. Windows overlap heavily, so the
+    effective number of independent observations is about months/(12·horizon).
+    """
+    months = horizon_years * 12
+    residuals = sorted(realised - earnings_yield
+                       for _, earnings_yield, realised in calibration_points(cape, real_tr, horizon_years))
     equity = None
     if cape:
         key = max(cape)
@@ -177,6 +199,10 @@ def _p06(points: dict, view: dict) -> Computed:
     result = p06_expected_returns(ends["us_cape"], ends["us_real_total_return"], ends["global_earnings_yield"],
                                   latest, ends["ea_hicp"])
     equity = result.pop("equity_us")
+    result["history"] = {
+        "cape": [[f"{k[0]:04d}-{k[1]:02d}", v] for k, (_, v) in sorted(ends["us_cape"].items())],
+        "calibration": calibration_points(ends["us_cape"], ends["us_real_total_return"], result["horizon_years"]),
+    }
     return Computed(values=result, estimates={"equity_us": equity},
                     comparison=["equity_us", "equity_world_snapshot", "bonds"], transforms=[
         applied("month_end", applied_to=list(points)),
@@ -185,6 +211,8 @@ def _p06(points: dict, view: dict) -> Computed:
         applied("earnings_yield", applied_to=["us_cape"], produces=["equity_us.earnings_yield"]),
         applied("valuation_residual_range", applied_to=["us_cape", "us_real_total_return"],
                 produces=["equity_us.range_real"], horizon_years=result["horizon_years"]),
+        applied("calibration_points", applied_to=["us_cape", "us_real_total_return"],
+                produces=["history.calibration"], horizon_years=result["horizon_years"]),
         applied("overlapping_window_percentiles", applied_to=["equity_us.range_real"],
                 percentiles=[0.1, 0.5, 0.9], horizon_years=result["horizon_years"]),
         applied("year_on_year_change", applied_to=["ea_hicp"], produces=["ea_inflation"]),
@@ -227,10 +255,25 @@ def f03_credit(gaps: dict, dsr: dict) -> dict:
     return {"rows": rows, "guide": {"low_pp": GAP_GUIDE_LOW, "high_pp": GAP_GUIDE_HIGH}}
 
 
+def f03_history(gaps: dict, dsr: dict) -> dict:
+    """Each economy's full credit-gap and debt-service history with its own range."""
+    def series(points):
+        return [[day.isoformat(), value] for day, value in sorted(points)]
+
+    def own_range(points):
+        values = [value for _, value in points]
+        return {"min": min(values), "max": max(values)} if values else None
+    return {area: {"credit_gap": series(gaps.get(area, [])), "credit_gap_range": own_range(gaps.get(area, [])),
+                   "private_dsr": series(dsr.get(area, [])), "private_dsr_range": own_range(dsr.get(area, []))}
+            for area in sorted(set(gaps) | set(dsr))}
+
+
 def _f03(points: dict, view: dict) -> Computed:
     gaps = {key.split(":")[1]: values for key, values in points.items() if key.startswith("credit_gap:")}
     dsr = {key.split(":")[1]: values for key, values in points.items() if key.startswith("private_dsr:")}
-    return Computed(values=f03_credit(gaps, dsr), estimates=None, comparison=["credit_gap", "private_dsr"],
+    values = f03_credit(gaps, dsr)
+    values["history"] = f03_history(gaps, dsr)
+    return Computed(values=values, estimates=None, comparison=["credit_gap", "private_dsr"],
                     transforms=[applied("own_history", applied_to=list(points)),
                                 applied("threshold_band", applied_to=[k for k in points if k.startswith("credit_gap:")],
                                         produces=["gap_guide_band"], low_pp=GAP_GUIDE_LOW, high_pp=GAP_GUIDE_HIGH,

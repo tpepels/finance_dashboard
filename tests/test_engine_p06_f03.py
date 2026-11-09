@@ -79,6 +79,19 @@ class P06F03EngineTests(unittest.TestCase):
                          "year_on_year_change", "yield_difference", "real_deflation"} <= p06)
         f03 = {t["name"] for t in F03.compute({role: [] for role in F03.inputs}, {}).transforms}
         self.assertEqual(f03, {"own_history", "threshold_band"})
+        self.assertIn("calibration_points", p06)
+
+    def test_calibration_points_pair_starting_yield_with_realised_return(self):
+        months = 12 * 10 + 1
+        cape = series([20.0] * months)
+        real_tr = series([1.06 ** (i / 12) for i in range(months)])
+        from finance_dashboard.engine.analyses import calibration_points
+        points = calibration_points(cape, real_tr, 10)
+        self.assertEqual(len(points), 1)
+        start, earnings_yield, realised = points[0]
+        self.assertEqual(start, "2020-01")
+        self.assertAlmostEqual(earnings_yield, 0.05)
+        self.assertAlmostEqual(realised, 0.06, places=6)
 
     def test_p06_identical_numbers_to_the_decision_endpoint(self):
         # Golden values captured from the retired /api/decision/P06 on this fixture.
@@ -87,7 +100,11 @@ class P06F03EngineTests(unittest.TestCase):
         seed(engine, p06_fixture())
         with Session(engine) as session:
             new = P06.compute(load_points(session, P06), {})
-        self.assertEqual(json.loads(json.dumps({"analysis_id": "P06", **new.values, **new.estimates})), old)
+        values = dict(new.values)
+        history = values.pop("history")
+        self.assertEqual(json.loads(json.dumps({"analysis_id": "P06", **values, **new.estimates})), old)
+        self.assertEqual(len(history["calibration"]), old["equity_us"]["calibration_windows"])
+        self.assertEqual(history["cape"][-1][1], old["equity_us"]["cape"])
         self.assertGreater(old["equity_us"]["calibration_windows"], 12)
         self.assertIn("ea_aaa_10y_real_trailing", old["bonds"])
 
@@ -98,7 +115,13 @@ class P06F03EngineTests(unittest.TestCase):
         seed(engine, f03_fixture())
         with Session(engine) as session:
             new = F03.compute(load_points(session, F03), {})
-        self.assertEqual(json.loads(json.dumps({"analysis_id": "F03", **new.values})), old)
+        values = dict(new.values)
+        history = values.pop("history")
+        self.assertEqual(json.loads(json.dumps({"analysis_id": "F03", **values})), old)
+        us = history["US"]
+        self.assertEqual(len(us["credit_gap"]), 40)
+        self.assertEqual(us["credit_gap_range"]["min"], min(v for _, v in us["credit_gap"]))
+        self.assertEqual(us["private_dsr_range"]["max"], max(v for _, v in us["private_dsr"]))
         self.assertIsNone(new.estimates)
         self.assertEqual(len(old["rows"]), 6)
 

@@ -62,7 +62,17 @@ class P07EngineTests(unittest.TestCase):
     def test_every_derived_value_has_a_named_transform(self):
         names = [t["name"] for t in P07.compute({role: [] for role in P07.inputs}, {"today": TODAY}).transforms]
         self.assertEqual(names, ["month_end", "complete_months", "monthly_return", "fx_translation", "hedge_carry",
-                                 "real_deflation", "contiguous_tail", "return_summary", "index_100"])
+                                 "real_deflation", "contiguous_tail", "return_summary", "index_100", "drawdown"])
+
+    def test_drawdown_is_distance_below_the_running_peak(self):
+        from finance_dashboard.engine.analyses import p07_drawdown
+        wealth = {"eur_unhedged": [["2026-01", 110.0], ["2026-02", 55.0], ["2026-03", 121.0]],
+                  "eur_hedged": [["2026-01", 100.0]]}
+        drawdown = p07_drawdown(wealth)
+        self.assertEqual([m for m, _ in drawdown["eur_unhedged"]], ["2026-01", "2026-02", "2026-03"])
+        self.assertAlmostEqual(drawdown["eur_unhedged"][1][1], -0.5)
+        self.assertAlmostEqual(drawdown["eur_unhedged"][2][1], 0.0)
+        self.assertEqual(drawdown["eur_hedged"], [["2026-01", 0.0]])
 
     def test_incomplete_current_month_is_excluded(self):
         engine = memory_engine()
@@ -90,6 +100,7 @@ class P07EngineTests(unittest.TestCase):
             new = P07.compute(load_points(session, P07), {"today": TODAY})
         values = json.loads(json.dumps(new.values))
         values.pop("wealth")
+        values.pop("drawdown")
         self.assertEqual({"analysis_id": "P07", **values}, old)
         self.assertGreater(len(old["rows"]), 12)
 
