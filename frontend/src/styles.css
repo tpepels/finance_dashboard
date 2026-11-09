@@ -567,3 +567,6 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .owner-actions button:focus-visible { outline: 2px solid var(--dx-focus); outline-offset: 2px; }
 .owner-status { margin: 0; font-size: 13px; color: var(--dx-secondary); }
 .owner-status-error { color: #c0392b; }
+
+.decision-basis { margin: 0 0 14px; padding: 10px 14px; border-left: 4px solid #eda100; background: rgba(237, 161, 0, 0.10);
+  font-size: 14px; line-height: 1.5; color: var(--dx-ink); max-width: 78ch; border-radius: 0 6px 6px 0; }

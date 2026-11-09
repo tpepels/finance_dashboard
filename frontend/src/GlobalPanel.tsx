@@ -20,8 +20,7 @@ const FALLBACK: [string, string] = ['1970-01-01', '2025-01-01'];
 
 const G03_WITHHELD = <p className="decision-caption">The question needs the consolidated net profit of listed companies worldwide,
   with each company counted once under its parent, in one currency, against world GDP. No published or collected source covers that
-  universe yet. Two approved but non-equivalent national-accounts measures (EU27 non-financial corporate profit share and OECD
-  corporate surplus relative to GDP) are mapped; they will appear here, labelled as alternatives, once Phase 2 accepts them.</p>;
+  universe yet, and its national-accounts alternatives are not available either.</p>;
 
 function Profits({ bundle, theme, recessions }: { bundle: Bundle<G03Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as G03Values;
@@ -33,7 +32,9 @@ function Profits({ bundle, theme, recessions }: { bundle: Bundle<G03Values>; the
         area: a.key, label: a.key === 'eu27_profit_share' ? 'EU27 profit share' : 'OECD surplus / GDP', min: a.min, max: a.max,
         mean: a.own_mean, latest: a.latest, asOf: a.as_of.slice(0, 4), note: a.unit, format: v => `${v.toFixed(1)}%` }))}/>
       <p className="decision-caption">Not the answer to the question: both are national-accounts alternatives covering listed and
-        unlisted companies, gross of depreciation, and neither covers the whole world.</p>
+        unlisted companies, gross of depreciation, and neither covers the whole world.
+        {data.oecd_members.length > 0 && <> The latest OECD figure ({data.oecd_members.at(-1)![0].slice(0, 4)}) covers
+          {' '}{data.oecd_members.at(-1)![1]} of 38 members, {data.oecd_coverage.at(-1)?.[1].toFixed(0)}% of their GDP.</>}</p>
     </div>
     <div className="decision-charts">
       <TimePanel title="Alternative corporate profit measures" option={option} presets={false}

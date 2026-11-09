@@ -85,6 +85,14 @@ class G03Tests(unittest.TestCase):
         self.assertTrue(all(a["non_equivalent"] for a in values["alternatives"]))
         self.assertNotIn("listed_profit_ratio", values)
 
+    def test_alternatives_name_the_corpus_variants_that_supply_them(self):
+        from finance_dashboard.research_corpus import load_research_corpus
+        corpus = next(a for a in load_research_corpus()["analyses"] if a["id"] == "G03")
+        variants = {v["id"]: set(v["series_ids"]) for v in corpus["comparison_contract"]["variants"]}
+        self.assertEqual(set(G03.alternatives), set(variants))
+        for variant, roles in G03.alternatives.items():
+            self.assertEqual({G03.inputs[r] for r in roles}, variants[variant])
+
 
 if __name__ == "__main__":
     unittest.main()

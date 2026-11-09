@@ -7,7 +7,7 @@ method's own limits and its citations. Only analyses Phase 2 resolved
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Callable
 
@@ -33,6 +33,9 @@ class AnalysisDefinition:
     compute: Callable[..., Computed]
     # Named archives (holdings filings, framework originals) the compute also reads: compute(points, view, artifacts).
     artifacts: tuple[str, ...] = ()
+    # Phase 2 variant id -> roles it supplies. Used only when the analysis itself is unresolved and Phase 2 lists the
+    # variant among its verified native alternatives; the bundle then says so in "basis".
+    alternatives: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 def _input_record(role: str, series_id: str, points: list, catalog_series: dict, provenance: dict | None) -> dict:
@@ -89,19 +92,33 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
                  snapshot: AcceptanceSnapshot, corpus_analysis: dict, catalog_series: dict[str, dict],
                  view: dict, computed_at: datetime, artifacts: dict | None = None) -> dict:
     phase2 = analysis_phase2(snapshot, definition.analysis_id)
+    resolved = phase2["state"] in RESOLVED_ANALYSIS_STATES
+    verified = [] if resolved else [v for v in definition.alternatives if v in phase2.get("verified_alternatives", [])]
+    alternative_role = {role: variant for variant in verified for role in definition.alternatives[variant]}
     inputs = []
     unaccepted = []
     for role, series_id in definition.inputs.items():
-        try:
-            provenance = input_provenance(snapshot, definition.analysis_id, series_id)
-        except UnacceptedInput:
-            provenance = None
-            unaccepted.append(series_id)
+        if role in alternative_role:
+            provenance = {"accepted_under": {"analysis_id": definition.analysis_id, "role": f"variant:{alternative_role[role]}"},
+                          "limitations": []}
+        else:
+            try:
+                provenance = input_provenance(snapshot, definition.analysis_id, series_id)
+            except UnacceptedInput:
+                provenance = None
+                if resolved:
+                    unaccepted.append(series_id)
         inputs.append(_input_record(role, series_id, points.get(role, []), catalog_series, provenance))
     phase2["open_gates"] = phase2["open_gates"] + [f"input_not_accepted:{sid}" for sid in unaccepted]
     computed = None
-    if phase2["state"] in RESOLVED_ANALYSIS_STATES and not unaccepted:
-        role_points = {role: points.get(role, []) for role in definition.inputs}
+    basis = None
+    if resolved and not unaccepted:
+        basis = {"kind": "original", "variants": []}
+    elif verified:
+        basis = {"kind": "verified_alternatives", "variants": verified}
+    if basis:
+        usable = definition.inputs if basis["kind"] == "original" else alternative_role
+        role_points = {role: points.get(role, []) if role in usable else [] for role in definition.inputs}
         computed = (definition.compute(role_points, view, artifacts or {}) if definition.artifacts
                     else definition.compute(role_points, view))
     method = method_limitations(definition.analysis_id)
@@ -123,4 +140,5 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
         "citations": [{key: source.get(key) for key in ("id", "label", "url")}
                       for source in corpus_analysis.get("method_sources", [])],
         "view": view,
+        "basis": basis,
     }

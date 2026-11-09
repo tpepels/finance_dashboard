@@ -12,6 +12,7 @@ export type Bundle<V, E = null> = {
   analysis_id: string; question: string; decision_informed: string;
   phase2: { state: string; evaluated_at: string; limitations: Limitation[]; open_gates: string[] };
   values: V | null; estimates: E | null; method_limitations: Limitation[]; limitations: Shown[];
+  basis?: { kind: 'original' | 'verified_alternatives'; variants: string[] } | null;
 };
 
 /** The server is still evaluating Phase 2 acceptance; retry after the stated delay. */
@@ -84,6 +85,10 @@ export function Section({ bundle, children, withheld }: { bundle: Bundle<unknown
       <h3 id={`q-${bundle.analysis_id}`}>{bundle.question}</h3>
       <p>{bundle.decision_informed}</p>
     </header>
+    {bundle.basis?.kind === 'verified_alternatives' && <p className="decision-basis" role="note"
+      aria-label="Shown from alternatives, not the original method">
+      The original method cannot be computed yet ({bundle.phase2.open_gates.length} inputs missing). What is shown comes from
+      alternative sources that Phase 2 verified for this question. They measure something related, not the same thing.</p>}
     {bundle.values ? children : <p className="decision-note" role="status">Not computed: Phase 2 state is {bundle.phase2.state}
       {bundle.phase2.open_gates.length > 0 && <>; open gates: {bundle.phase2.open_gates.join(', ')}</>}.</p>}
     {!bundle.values && withheld}

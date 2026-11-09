@@ -9,7 +9,7 @@ from finance_dashboard.engine.transforms import applied
 
 KEYS = {"analysis_id", "question", "decision_informed", "evidence_tier", "engine_version", "computed_at",
         "phase2", "inputs", "transforms", "values", "estimates", "comparison", "method_limitations",
-        "citations", "view", "limitations"}
+        "citations", "view", "limitations", "basis"}
 
 
 def role(name, series_ids, limitations=()):
@@ -112,6 +112,47 @@ class BundleTests(unittest.TestCase):
         text = json.dumps(self.bundle())
         self.assertNotIn("/home", text)
         self.assertNotIn("api_key", text.lower())
+
+
+DEFERRED_WITH_ALTERNATIVE = snapshot_from_report({"analyses": [
+    {"id": "G03", "acceptance": {"state": "deferred", "blocking_roles": ["listed_parent_net_income"], "limitations": [],
+        "source_resolution": {"verified_native_alternative_variants": ["eu_variant"]}, "requirements": []}}]}, AT)
+
+
+def alternatives_seen(points, view):
+    return Computed(values={"roles": sorted(k for k, v in points.items() if v)}, estimates=None, transforms=[], comparison=[])
+
+
+class AlternativeBasisTests(unittest.TestCase):
+    def build(self, snapshot, alternatives):
+        definition = AnalysisDefinition("G03", {"eu": "eu.series", "listed": "listed.series"}, alternatives_seen,
+                                        alternatives=alternatives)
+        points = {"eu": [(date(2024, 1, 1), 40.0)], "listed": [(date(2024, 1, 1), 1.0)]}
+        return build_bundle(definition, points=points, snapshot=snapshot, corpus_analysis={"title": "G03"},
+                            catalog_series={}, view={}, computed_at=AT)
+
+    def test_a_deferred_analysis_computes_only_from_alternatives_phase2_verified(self):
+        bundle = self.build(DEFERRED_WITH_ALTERNATIVE, {"eu_variant": ("eu",)})
+        self.assertEqual(bundle["basis"], {"kind": "verified_alternatives", "variants": ["eu_variant"]})
+        self.assertEqual(bundle["values"], {"roles": ["eu"]})
+        eu = next(i for i in bundle["inputs"] if i["role"] == "eu")
+        self.assertEqual(eu["accepted_under"], {"analysis_id": "G03", "role": "variant:eu_variant"})
+
+    def test_an_unverified_alternative_keeps_values_withheld(self):
+        bundle = self.build(DEFERRED_WITH_ALTERNATIVE, {"other_variant": ("eu",)})
+        self.assertIsNone(bundle["values"])
+        self.assertIsNone(bundle["basis"])
+
+    def test_export_says_the_values_are_alternatives_not_the_original_method(self):
+        from finance_dashboard.engine.export import export_text
+        text = export_text(self.build(DEFERRED_WITH_ALTERNATIVE, {"eu_variant": ("eu",)}))
+        self.assertIn("Basis: verified native alternatives (eu_variant), not the original method", text)
+        self.assertIn("Open gates of the original method", text)
+        self.assertNotIn("no values are shown", text)
+
+    def test_resolved_analyses_have_the_original_basis(self):
+        bundle = BundleTests().bundle()
+        self.assertEqual(bundle["basis"], {"kind": "original", "variants": []})
 
 
 if __name__ == "__main__":

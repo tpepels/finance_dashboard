@@ -32,7 +32,12 @@ def export_text(bundle: dict) -> str:
         "This file contains evidence only; it draws no conclusions.",
         "",
     ]
-    if phase2["open_gates"]:
+    basis = bundle.get("basis")
+    if basis and basis["kind"] == "verified_alternatives":
+        header.insert(4, f"Basis: verified native alternatives ({', '.join(basis['variants'])}), not the original method")
+        if phase2["open_gates"]:
+            header += _lines("Open gates of the original method", phase2["open_gates"])
+    elif phase2["open_gates"]:
         header += _lines("Open gates (no values are shown)", phase2["open_gates"])
     header += _lines("Limitations (data, inputs and method)", [_limitation(item) for item in bundle["limitations"]])
     header += _lines("Inputs", [

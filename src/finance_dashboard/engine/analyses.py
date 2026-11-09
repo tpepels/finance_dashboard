@@ -1632,7 +1632,9 @@ def _g03(points: dict, view: dict) -> Computed:
 G03 = AnalysisDefinition("G03", {"eu27_profit_share": "profit.eu27.nonfinancial_gross_surplus_value_added",
                                  "oecd_surplus_gdp": "profit.oecd38.corporate_gross_surplus_gdp",
                                  "oecd_coverage": "profit.oecd38.corporate_gross_surplus_gdp_coverage",
-                                 "oecd_members": "profit.oecd38.corporate_gross_surplus_member_count"}, _g03)
+                                 "oecd_members": "profit.oecd38.corporate_gross_surplus_member_count"}, _g03,
+                         alternatives={"eurostat_nfc_gross_profit_share": ("eu27_profit_share",),
+                                       "oecd_corporate_gross_surplus_context": ("oecd_surplus_gdp", "oecd_coverage", "oecd_members")})
 
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,

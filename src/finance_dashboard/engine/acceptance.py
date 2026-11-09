@@ -68,10 +68,12 @@ def analysis_phase2(snapshot: AcceptanceSnapshot, analysis_id: str) -> dict:
     acceptance = snapshot.analyses.get(analysis_id)
     if acceptance is None:
         return {"state": "not_checked", "evaluated_at": snapshot.evaluated_at.isoformat(),
-                "limitations": [], "open_gates": []}
+                "limitations": [], "open_gates": [], "verified_alternatives": []}
     return {"state": acceptance["state"], "evaluated_at": snapshot.evaluated_at.isoformat(),
             "limitations": grouped(acceptance.get("limitations", [])),
-            "open_gates": list(acceptance.get("blocking_roles", []))}
+            "open_gates": list(acceptance.get("blocking_roles", [])),
+            "verified_alternatives": list((acceptance.get("source_resolution") or {}).get(
+                "verified_native_alternative_variants", []))}
 
 
 def _effective_series(role: dict) -> list[str]:
