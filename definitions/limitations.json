@@ -60,6 +60,21 @@
       "weo_history_only": "IMF inflation and growth are historical estimates; current-year and forecast years are excluded, and past years may have been revised.",
       "commodity_usd_quotes": "Commodity prices are World Bank monthly USD quotes (Brent, US natural gas, maize), not euro prices paid by consumers.",
       "map_is_annual": "The stagflation map pairs growth and inflation only in years both are reported; it shows co-movement, not cause."
+    },
+    "M01": {
+      "different_instruments": "The Fed line is the effective overnight rate, the ECB line its deposit facility rate and the BoJ line the uncollateralised overnight call rate: comparable short rates, not identical instruments.",
+      "monthly_history": "History shows the last observation in each month; the ladder uses the latest daily value.",
+      "gap_not_hedge_cost": "The euro's rate gap approximates the carry of a currency hedge; actual forward points, basis and fees differ."
+    },
+    "M02": {
+      "identity_by_construction": "Breakeven here is the nominal minus the real 10-year yield on the same market date, so the split adds up by construction; the published breakeven is shown for comparison.",
+      "breakeven_not_forecast": "Breakeven inflation includes risk and liquidity premiums; it is not a pure inflation forecast.",
+      "us_only": "These are US Treasury yields; euro-area inflation-linked yields are not in the free corpus."
+    },
+    "M04": {
+      "coincidence_not_cause": "Currency moves and rate gaps are shown side by side; their co-movement is not a causal estimate or a forecast.",
+      "ecb_reference_rates": "Exchange rates are ECB daily reference rates (last of each month), not transaction rates.",
+      "log_change": "The euro's move is the 12-month change in the log of the exchange rate, in percent; positive means the euro strengthened."
     }
   }
 }

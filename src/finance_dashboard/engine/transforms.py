@@ -43,6 +43,9 @@ TRANSFORMS: dict[str, str] = {
     "own_range_window": "minimum and maximum of a series over its last n observations (n given as params)",
     "cross_section_sd": "population standard deviation across a fixed cohort, only for periods where every member is observed",
     "matched_pairs": "pairs of two series on exactly the same period; unmatched periods are dropped",
+    "now_and_year_ago": "latest observation and the last observation on or before the same day a year (365 days) "
+                        "earlier; change = latest - year ago",
+    "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
 }

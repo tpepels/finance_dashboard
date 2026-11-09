@@ -7,7 +7,7 @@ series cover the longest contiguous run ending at the latest common month.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 import math
 from statistics import pstdev
 
@@ -452,4 +452,125 @@ C06 = AnalysisDefinition("C06", {
     **{f"commodity:{key}": sid for key, (_, sid) in COMMODITIES.items()},
 }, _c06)
 
-DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06}
+
+def now_and_year_ago(points: list[tuple[date, float]]) -> dict:
+    """Latest value and the last value on or before the same day a year earlier."""
+    ordered = sorted(points)
+    if not ordered:
+        return {"latest": None, "as_of": None, "year_ago": None, "year_ago_as_of": None, "change": None}
+    day, latest = ordered[-1]
+    target = day - timedelta(days=365)
+    earlier = [p for p in ordered if p[0] <= target]
+    then = earlier[-1] if earlier else None
+    return {"latest": latest, "as_of": day.isoformat(),
+            "year_ago": then[1] if then else None, "year_ago_as_of": then[0].isoformat() if then else None,
+            "change": latest - then[1] if then else None}
+
+
+def monthly_difference(a: list[tuple[date, float]], b: list[tuple[date, float]]) -> list[list]:
+    """[month, a - b] on month-ends both series report."""
+    ea, eb = month_end(a), month_end(b)
+    return [[_month_label(key), ea[key][1] - eb[key][1]] for key in sorted(set(ea) & set(eb))]
+
+
+def _month_series(points: list[tuple[date, float]]) -> list[list]:
+    return [[_month_label(key), value] for key, (_, value) in sorted(month_end(points).items())]
+
+
+def matched_day(a: list[tuple[date, float]], b: list[tuple[date, float]], before: date | None = None) -> date | None:
+    days = {d for d, _ in a} & {d for d, _ in b}
+    if before is not None:
+        days = {d for d in days if d <= before}
+    return max(days) if days else None
+
+
+def _completed(points: dict, view: dict) -> dict:
+    """Inputs without the current calendar month, whose last value is not yet a month-end."""
+    today = view_today(view)
+    return {role: [(d, v) for d, v in values if (d.year, d.month) < (today.year, today.month)]
+            for role, values in points.items()}
+
+
+POLICY_BANKS = {"fed": "Federal Reserve (effective funds rate)", "ecb": "ECB (deposit facility)",
+                "boj": "Bank of Japan (overnight call rate)"}
+
+
+def _m01(daily: dict, view: dict) -> Computed:
+    ladder = [{"bank": bank, "name": name, **now_and_year_ago(daily.get(bank, []))} for bank, name in POLICY_BANKS.items()]
+    points = _completed(daily, view)
+    lower, upper = month_end(points.get("fed_lower", [])), month_end(points.get("fed_upper", []))
+    values = {
+        "ladder": ladder,
+        "fed_target": {"lower": now_and_year_ago(daily.get("fed_lower", []))["latest"],
+                       "upper": now_and_year_ago(daily.get("fed_upper", []))["latest"]},
+        "gaps": {"eur_minus_usd": monthly_difference(points.get("ecb", []), points.get("fed", [])),
+                 "eur_minus_jpy": monthly_difference(points.get("ecb", []), points.get("boj", []))},
+        "history": {**{bank: _month_series(points.get(bank, [])) for bank in POLICY_BANKS},
+                    "fed_range": [[_month_label(k), lower[k][1], upper[k][1]] for k in sorted(set(lower) & set(upper))]},
+    }
+    return Computed(values=values, estimates=None, comparison=["ladder", "gaps"], transforms=[
+        applied("now_and_year_ago", applied_to=list(POLICY_BANKS), produces=["ladder"]),
+        applied("complete_months", applied_to=list(points), today=view_today(view).isoformat()),
+        applied("month_end", applied_to=list(points), produces=["history"]),
+        applied("yield_difference", applied_to=["ecb", "fed", "boj"], produces=["gaps"], on="matched month-ends"),
+    ])
+
+
+M01 = AnalysisDefinition("M01", {"fed": "policy_rate.us.fed_effective", "ecb": "policy_rate.ea.ecb_dfr",
+                                 "boj": "policy_rate.jp.boj_call_daily", "fed_lower": "policy_rate.us.fed_lower",
+                                 "fed_upper": "policy_rate.us.fed_upper"}, _m01)
+
+
+def _m02(points: dict, view: dict) -> Computed:
+    nominal, real = points.get("nominal", []), points.get("real", [])
+    n, r, published = dict(nominal), dict(real), dict(points.get("breakeven", []))
+
+    def split(day):
+        return None if day is None else {"date": day.isoformat(), "nominal": n[day], "real": r[day],
+                                         "breakeven": n[day] - r[day]}
+    day = matched_day(nominal, real)
+    then = matched_day(nominal, real, before=day - timedelta(days=365)) if day else None
+    values = {"split": {"now": split(day), "year_ago": split(then),
+                        "published_breakeven": published.get(day) if day else None},
+              "history": {key: _month_series(points.get(key, [])) for key in ("nominal", "real", "breakeven")}}
+    return Computed(values=values, estimates=None, comparison=["nominal", "real", "breakeven"], transforms=[
+        applied("matched_day", applied_to=["nominal", "real"], produces=["split"]),
+        applied("yield_difference", applied_to=["nominal", "real"], produces=["split.breakeven"]),
+        applied("month_end", applied_to=["nominal", "real", "breakeven"], produces=["history"]),
+    ])
+
+
+M02 = AnalysisDefinition("M02", {"nominal": "bond.us.nominal_10y", "real": "bond.us.real_10y",
+                                 "breakeven": "bond.us.breakeven_10y"}, _m02)
+
+CURRENCIES = {"USD": ("usd_per_eur", "fed"), "JPY": ("jpy_per_eur", "boj")}
+
+
+def _m04(daily: dict, view: dict) -> Computed:
+    points = _completed(daily, view)
+    currencies = []
+    for currency, (fx_role, rate_role) in CURRENCIES.items():
+        moves = log_change(points.get(fx_role, []), 12)
+        gaps = monthly_difference(points.get("ecb", []), points.get(rate_role, []))
+        gap_by_month = dict(gaps)
+        currencies.append({
+            "currency": currency, "move_12m": moves[-1][1] if moves else None, "move_as_of": moves[-1][0] if moves else None,
+            "gap": gaps[-1][1] if gaps else None, "gap_as_of": gaps[-1][0] if gaps else None,
+            "fx": _month_series(points.get(fx_role, [])), "moves": moves, "gaps": gaps,
+            "scatter": [[month, gap_by_month[month], move] for month, move in moves if month in gap_by_month],
+        })
+    return Computed(values={"currencies": currencies}, estimates=None, comparison=["moves", "gaps"], transforms=[
+        applied("complete_months", applied_to=list(points), today=view_today(view).isoformat()),
+        applied("month_end", applied_to=list(points)),
+        applied("log_change", applied_to=["usd_per_eur", "jpy_per_eur"], months=12, produces=["moves"]),
+        applied("yield_difference", applied_to=["ecb", "fed", "boj"], produces=["gaps"], on="matched month-ends"),
+        applied("matched_pairs", applied_to=["moves", "gaps"], produces=["scatter"]),
+    ])
+
+
+M04 = AnalysisDefinition("M04", {"fed": "policy_rate.us.fed_effective", "ecb": "policy_rate.ea.ecb_dfr",
+                                 "boj": "policy_rate.jp.boj_call_daily", "usd_per_eur": "fx.usd_per_eur.ecb",
+                                 "jpy_per_eur": "fx.jpy_per_eur.ecb"}, _m04)
+
+DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
+                                              "M01": M01, "M02": M02, "M04": M04}
