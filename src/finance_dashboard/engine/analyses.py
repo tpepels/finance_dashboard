@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 import math
+from statistics import pstdev
 
 from .bundle import AnalysisDefinition, Computed
 from .transforms import (applied, complete_months, contiguous_tail, index_100, month_end, own_history,
@@ -363,4 +364,92 @@ C01 = AnalysisDefinition("C01", {
     "diffusion:6m": "activity.us.industrial_production_diffusion_6m",
 }, _c01)
 
-DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01}
+
+def window_range(points: list[tuple[date, float]], n: int) -> dict | None:
+    """Minimum and maximum over the last n observations."""
+    last = sorted(points)[-n:]
+    if not last:
+        return None
+    values = [value for _, value in last]
+    return {"min": min(values), "max": max(values), "from": last[0][0].isoformat(), "observations": len(last)}
+
+
+def cross_section_sd(cohort: dict[str, list[tuple[date, float]]]) -> list[list]:
+    """[year, population SD across the cohort] for years where every member is observed."""
+    by_member = {member: {day.year: value for day, value in points} for member, points in cohort.items()}
+    years = set.intersection(*(set(values) for values in by_member.values())) if by_member else set()
+    return [[str(year), pstdev([values[year] for values in by_member.values()])] for year in sorted(years)]
+
+
+def year_on_year(points: list[tuple[date, float]]) -> list[list]:
+    """[month, x[t] / x[t-12] - 1] where both months are observed."""
+    ends = month_end(points)
+    return [[_month_label(key), ends[key][1] / ends[(key[0] - 1, key[1])][1] - 1]
+            for key in sorted(ends) if (key[0] - 1, key[1]) in ends and ends[(key[0] - 1, key[1])][1]]
+
+
+def stagflation_points(growth: list[tuple[date, float]], inflation: list[tuple[date, float]], n: int) -> list[list]:
+    """[year, growth, inflation] on years both are reported; the last n of them."""
+    g = {day.year: value for day, value in growth}
+    i = {day.year: value for day, value in inflation}
+    return [[str(year), g[year], i[year]] for year in sorted(set(g) & set(i))][-n:]
+
+
+GROWTH_AREAS = {"WORLD": "gdp.real_growth.world", "US": "gdp.real_growth.us", "EU": "gdp.real_growth.eu",
+                "CN": "gdp.real_growth.cn", "IN": "gdp.real_growth.in", "JP": "gdp.real_growth.jp"}
+
+
+def _c03(points: dict, view: dict) -> Computed:
+    strip = []
+    for area in GROWTH_AREAS:
+        values = sorted(points.get(f"growth:{area}", []))
+        if values:
+            strip.append({"area": area, "latest": values[-1][1], "year": str(values[-1][0].year),
+                          "range": window_range(values, 10)})
+    cohort = {area: points.get(f"growth:{area}", []) for area in GROWTH_AREAS if area != "WORLD"}
+    values = {"strip": strip,
+              "history": {area: _series(points.get(f"growth:{area}", [])) for area in GROWTH_AREAS},
+              "dispersion": cross_section_sd(cohort), "dispersion_cohort": sorted(cohort)}
+    roles = [f"growth:{area}" for area in GROWTH_AREAS]
+    return Computed(values=values, estimates=None, comparison=["strip", "dispersion"], transforms=[
+        applied("own_range_window", applied_to=roles, n=10, produces=["strip.range"]),
+        applied("cross_section_sd", applied_to=[f"growth:{a}" for a in cohort], produces=["dispersion"]),
+    ])
+
+
+C03 = AnalysisDefinition("C03", {f"growth:{area}": sid for area, sid in GROWTH_AREAS.items()}, _c03)
+
+C06_COUNTRIES = ("US", "JP", "CN")
+COMMODITIES = {"brent": ("Brent crude oil", "prices.commodity.brent_usd"),
+               "gas": ("US natural gas", "prices.commodity.natural_gas_us_usd"),
+               "maize": ("Maize", "prices.commodity.maize_usd")}
+
+
+def _c06(points: dict, view: dict) -> Computed:
+    commodities = []
+    for key, (name, _) in COMMODITIES.items():
+        changes = year_on_year(points.get(f"commodity:{key}", []))
+        commodities.append({"key": key, "name": name, "latest": changes[-1][1] if changes else None,
+                            "as_of": changes[-1][0] if changes else None, "history": changes})
+    values = {
+        "commodities": commodities,
+        "map": {c: stagflation_points(points.get(f"growth:{c}", []), points.get(f"inflation:{c}", []), 8)
+                for c in C06_COUNTRIES},
+        "inflation": {c: _series(points.get(f"inflation:{c}", [])) for c in C06_COUNTRIES},
+        "growth": {c: _series(points.get(f"growth:{c}", [])) for c in C06_COUNTRIES},
+    }
+    return Computed(values=values, estimates=None, comparison=["map", "commodities"], transforms=[
+        applied("month_end", applied_to=[f"commodity:{k}" for k in COMMODITIES]),
+        applied("year_on_year_change", applied_to=[f"commodity:{k}" for k in COMMODITIES], produces=["commodities"]),
+        applied("matched_pairs", applied_to=[f"growth:{c}" for c in C06_COUNTRIES] + [f"inflation:{c}" for c in C06_COUNTRIES],
+                produces=["map"], last_years=8),
+    ])
+
+
+C06 = AnalysisDefinition("C06", {
+    **{f"growth:{c}": f"gdp.real_growth.weo.{c.lower()}" for c in C06_COUNTRIES},
+    **{f"inflation:{c}": f"prices.{c.lower()}.imf_cpi_inflation" for c in C06_COUNTRIES},
+    **{f"commodity:{key}": sid for key, (_, sid) in COMMODITIES.items()},
+}, _c06)
+
+DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06}

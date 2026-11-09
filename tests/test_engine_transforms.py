@@ -40,7 +40,8 @@ class EngineTransformTests(unittest.TestCase):
                                            "real_deflation", "earnings_yield", "valuation_residual_range",
                                            "year_on_year_change", "yield_difference", "percent_to_fraction",
                                            "threshold_band", "drawdown", "calibration_points",
-                                           "cycle_position", "log_change"})
+                                           "cycle_position", "log_change", "own_range_window",
+                                           "cross_section_sd", "matched_pairs"})
         self.assertTrue(all(TRANSFORMS[name].strip() for name in TRANSFORMS))
         self.assertEqual(applied("month_end")["formula"], TRANSFORMS["month_end"])
         with self.assertRaises(KeyError):

@@ -40,6 +40,9 @@ TRANSFORMS: dict[str, str] = {
                       "direction = CLI[t] - CLI[t-1]; phase: expansion (>= 100, rising), slowdown (>= 100, falling), "
                       "contraction (< 100, falling), recovery (< 100, rising); trail = last 12 consecutive months",
     "log_change": "100 * ln(x[t] / x[t-k]) with both ends observed; k given as months",
+    "own_range_window": "minimum and maximum of a series over its last n observations (n given as params)",
+    "cross_section_sd": "population standard deviation across a fixed cohort, only for periods where every member is observed",
+    "matched_pairs": "pairs of two series on exactly the same period; unmatched periods are dropped",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
 }

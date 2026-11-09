@@ -50,6 +50,16 @@
       "cli_direction_not_probability": "Leading indicators show the direction of the growth cycle against trend; they are not a recession probability or a timing signal.",
       "clock_month_to_month": "The clock uses one-month direction, which can reverse from month to month; the trail shows how settled a move is.",
       "us_only_activity": "The activity panels and the grey recession bands are US-only."
+    },
+    "C03": {
+      "different_sources_per_view": "Annual growth comes from the World Bank; the world aggregate is the publisher's own, not an average of the regions shown.",
+      "dispersion_fixed_cohort": "Dispersion is the unweighted spread across the United States, European Union, China, India and Japan, only in years where all five are reported.",
+      "growth_not_returns": "Faster economic growth has not reliably meant higher equity returns; this is context for regional weights, not a signal to tilt."
+    },
+    "C06": {
+      "weo_history_only": "IMF inflation and growth are historical estimates; current-year and forecast years are excluded, and past years may have been revised.",
+      "commodity_usd_quotes": "Commodity prices are World Bank monthly USD quotes (Brent, US natural gas, maize), not euro prices paid by consumers.",
+      "map_is_annual": "The stagflation map pairs growth and inflation only in years both are reported; it shows co-movement, not cause."
     }
   }
 }
