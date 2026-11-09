@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
+import { ChangeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -205,5 +205,24 @@ describe('hero graphics', () => {
     render(<Dumbbells theme="light" unit="% of value added" legend="ring: 1995 · dot: 2022"
       rows={[{ key: 'DE', label: 'Germany', entity: 'DE', back: 25, latest: 30 }]}/>);
     expect(screen.getByText('ring: 1995 · dot: 2022')).toBeTruthy();
+  });
+
+  it('pairs two measures per row on one scale, with a legend and values', () => {
+    render(<PairBars theme="light" title="Growth since the base year" unit="%" legend={['real productivity', 'real pay']}
+      rows={[{ key: 'DE', label: 'Germany (1995–2021)', entity: 'DE', a: 18.2, b: 11.4 }]}/>);
+    const chart = screen.getByRole('img', { name: /growth since the base year/i });
+    expect(chart.querySelectorAll('[data-part="a"]')).toHaveLength(1);
+    expect(chart.querySelectorAll('[data-part="b"]')).toHaveLength(1);
+    expect(screen.getByText('+18.2%')).toBeTruthy();
+    expect(screen.getByText('real pay')).toBeTruthy();
+  });
+
+  it('stacks shares of a whole to 100% per row and names every part', () => {
+    render(<StackedShares theme="dark" title="Value added split" labels={{ compensation: 'Wages', net_operating_surplus: 'Net profit' }}
+      rows={[{ key: 'FR', label: 'France 2024', parts: [{ key: 'compensation', share: 60 }, { key: 'net_operating_surplus', share: 40 }] }]}/>);
+    const chart = screen.getByRole('img', { name: /value added split/i });
+    expect(chart.querySelectorAll('[data-part="share"]')).toHaveLength(2);
+    expect(screen.getByText('60%')).toBeTruthy();
+    expect(screen.getByText('Wages')).toBeTruthy();
   });
 });

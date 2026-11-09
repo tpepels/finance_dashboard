@@ -950,7 +950,151 @@ def _g06(points: dict, view: dict) -> Computed:
 
 G06 = AnalysisDefinition("G06", {f"share:{a}": f"supply_chain.{a.lower()}.foreign_final_demand_share" for a in G06_AREAS}, _g06)
 
+KLEMS_AREAS = ("US", "DE", "FR", "PT", "GB", "IT", "ES", "NL")
+NFC_AREAS = ("US", "DE", "FR", "PT", "GB", "IT", "ES", "NL")
+
+
+def _by_period(points: list[tuple[date, float]]) -> dict:
+    return {day: value for day, value in points}
+
+
+def _real_per_hour(nominal: dict, price: dict, hours: dict) -> dict:
+    return {d: (nominal[d] / price[d]) / hours[d] for d in set(nominal) & set(price) & set(hours) if price[d] and hours[d]}
+
+
+def _l01(points: dict, view: dict) -> Computed:
+    economies, history = [], {}
+    for area in KLEMS_AREAS:
+        price, hours = _by_period(points.get(f"va_price:{area}", [])), _by_period(points.get(f"hours:{area}", []))
+        prod = _real_per_hour(_by_period(points.get(f"va:{area}", [])), price, hours)
+        pay = _real_per_hour(_by_period(points.get(f"pay:{area}", [])), price, hours)
+        common = sorted(set(prod) & set(pay))
+        if not common:
+            history[area] = {"productivity": [], "pay": []}
+            continue
+        base = common[0]
+        p_idx = {d: 100 * prod[d] / prod[base] for d in common}
+        w_idx = {d: 100 * pay[d] / pay[base] for d in common}
+        history[area] = {"productivity": [[d.isoformat(), p_idx[d]] for d in common], "pay": [[d.isoformat(), w_idx[d]] for d in common]}
+        economies.append({"area": area, "base_year": str(base.year), "latest_year": str(common[-1].year),
+                          "productivity": p_idx[common[-1]], "pay": w_idx[common[-1]]})
+    prod, comp, defl = (_by_period(points.get(k, [])) for k in ("bls_productivity", "bls_hourly_comp", "bls_deflator"))
+    common = sorted(d for d in set(prod) & set(comp) & set(defl) if d >= date(1995, 1, 1))
+    if common:
+        base = common[0]
+        real = {d: comp[d] / defl[d] for d in common}
+        p_idx = {d: 100 * prod[d] / prod[base] for d in common}
+        w_idx = {d: 100 * real[d] / real[base] for d in common}
+        history["US_BLS"] = {"productivity": [[d.isoformat(), p_idx[d]] for d in common], "pay": [[d.isoformat(), w_idx[d]] for d in common]}
+        economies.append({"area": "US_BLS", "base_year": base.isoformat()[:7], "latest_year": common[-1].isoformat()[:7],
+                          "productivity": p_idx[common[-1]], "pay": w_idx[common[-1]]})
+    return Computed(values={"economies": economies, "history": history}, estimates=None, comparison=["productivity", "pay"],
+                    transforms=[applied("real_per_hour_index", applied_to=["va", "pay", "va_price", "hours"]),
+                                applied("index_100", applied_to=["bls_productivity", "bls_hourly_comp/bls_deflator"], base="1995Q1")])
+
+
+L01 = AnalysisDefinition("L01", {
+    **{f"{k}:{a}": f"labour.{a.lower()}.euklems_{s}" for a in KLEMS_AREAS
+       for k, s in (("va", "value_added"), ("va_price", "value_added_price_index"), ("hours", "hours_worked"), ("pay", "labour_compensation"))},
+    "bls_productivity": "labour.us.nonfarm_productivity", "bls_hourly_comp": "labour.us.nonfarm_hourly_comp",
+    "bls_deflator": "prices.us.nonfarm_output_deflator",
+}, _l01)
+
+
+def _l02(points: dict, view: dict) -> Computed:
+    economies, history = [], {}
+    for area in NFC_AREAS:
+        get = lambda k: _by_period(points.get(f"{k}:{area}", []))  # noqa: E731
+        gva, comp, gos, cfc, taxes, subs = (get(k) for k in ("gva", "comp", "gos", "cfc", "taxes", "subsidies"))
+        history[area] = {"labour_share": [[d.isoformat(), 100 * comp[d] / gva[d]] for d in sorted(set(gva) & set(comp)) if gva[d]]}
+        days = sorted(set(gva) & set(comp) & set(gos) & set(cfc) & set(taxes))
+        if not days:
+            continue
+        d = days[-1]
+        net_taxes = taxes[d] - subs.get(d, 0.0)
+        parts = {"compensation": comp[d], "net_operating_surplus": gos[d] - cfc[d], "depreciation": cfc[d],
+                 "net_production_taxes": net_taxes}
+        remainder = gva[d] - sum(parts.values())
+        shares = [{"key": k, "share": 100 * v / gva[d]} for k, v in parts.items()]
+        if abs(remainder) / gva[d] > 0.001:
+            shares.append({"key": "remainder", "share": 100 * remainder / gva[d]})
+        economies.append({"area": area, "year": str(d.year), "parts": shares, "subsidies_reported": d in subs})
+    return Computed(values={"economies": economies, "history": history}, estimates=None, comparison=["parts"],
+                    transforms=[applied("share_of_total", applied_to=["comp", "gos", "cfc", "taxes", "subsidies"], total="gva")])
+
+
+L02 = AnalysisDefinition("L02", {
+    **{f"{k}:{a}": f"profit.{a.lower()}.nfc_{s}" for a in NFC_AREAS
+       for k, s in (("gva", "gross_value_added"), ("comp", "compensation"), ("gos", "gross_operating_surplus"),
+                    ("cfc", "consumption_fixed_capital"), ("taxes", "other_production_taxes"))},
+    **{f"subsidies:{a}": f"profit.{a.lower()}.nfc_other_production_subsidies" for a in NFC_AREAS if a != "US"},
+}, _l02)
+
+
+def _l03(points: dict, view: dict) -> Computed:
+    economies, history = [], {}
+    for area in NFC_AREAS:
+        gos, cfc, capital = (_by_period(points.get(f"{k}:{area}", [])) for k in ("gos", "cfc", "capital"))
+        rate = [[d.isoformat(), 100 * (gos[d] - cfc[d]) / capital[d]] for d in sorted(set(gos) & set(cfc) & set(capital)) if capital[d]]
+        history[area] = rate
+        if rate:
+            economies.append({"area": area, "first": rate[0][1], "first_year": rate[0][0][:4],
+                              "latest": rate[-1][1], "latest_year": rate[-1][0][:4]})
+    return Computed(values={"economies": economies, "history": history}, estimates=None, comparison=["economies"],
+                    transforms=[applied("matched_ratio", applied_to=["gos - cfc", "capital"], scale_by=100)])
+
+
+L03 = AnalysisDefinition("L03", {
+    **{f"{k}:{a}": f"profit.{a.lower()}.nfc_{s}" for a in NFC_AREAS
+       for k, s in (("gos", "gross_operating_surplus"), ("cfc", "consumption_fixed_capital"), ("capital", "net_fixed_assets"))},
+}, _l03)
+
+WEALTH_GROUPS = {"top_point1": "Top 0.1%", "next_point9": "Next 0.9%", "next9": "Next 9%", "middle40": "Middle 40%", "bottom50": "Bottom 50%"}
+
+
+def _l05(points: dict, view: dict) -> Computed:
+    series = {k: sorted(points.get(k, [])) for k in WEALTH_GROUPS}
+    days = sorted(set.intersection(*(set(d for d, _ in v) for v in series.values()))) if all(series.values()) else []
+    by = {k: dict(v) for k, v in series.items()}
+    groups = [{"key": k, "label": label, "first": by[k][days[0]] if days else None, "latest": by[k][days[-1]] if days else None}
+              for k, label in WEALTH_GROUPS.items()]
+    values = {"groups": groups, "first_date": days[0].isoformat() if days else None, "latest_date": days[-1].isoformat() if days else None,
+              "history": {k: _series(v) for k, v in series.items()}}
+    return Computed(values=values, estimates=None, comparison=["groups"], transforms=[
+        applied("matched_day", applied_to=list(WEALTH_GROUPS), produces=["first_date", "latest_date"])])
+
+
+L05 = AnalysisDefinition("L05", {
+    "top_point1": "wealth.us.top_point1_share", "next_point9": "wealth.us.next_point9_share", "next9": "wealth.us.next9_share",
+    "middle40": "wealth.us.middle40_share", "bottom50": "wealth.us.bottom50_share"}, _l05)
+
+INEQUALITY_AREAS = ("US", "FR", "PT", "CN", "IN", "WORLD")
+
+
+def _l07(points: dict, view: dict) -> Computed:
+    economies, history = [], {}
+    for area in INEQUALITY_AREAS:
+        top, bottom = _by_period(points.get(f"top1:{area}", [])), _by_period(points.get(f"bottom50:{area}", []))
+        history[area] = {"top1": [[d.isoformat(), 100 * v] for d, v in sorted(top.items())],
+                         "bottom50": [[d.isoformat(), 100 * v] for d, v in sorted(bottom.items())]}
+        days = sorted(set(top) & set(bottom))
+        if not days:
+            continue
+        then = next((d for d in days if d.year >= 1980), days[0])
+        economies.append({"area": area, "then_year": str(then.year), "latest_year": str(days[-1].year),
+                          "top1_then": 100 * top[then], "top1_latest": 100 * top[days[-1]],
+                          "bottom50_then": 100 * bottom[then], "bottom50_latest": 100 * bottom[days[-1]]})
+    return Computed(values={"economies": economies, "history": history}, estimates=None, comparison=["top1", "bottom50"],
+                    transforms=[applied("percent_to_fraction", applied_to=["top1", "bottom50"], direction="fraction to percent")])
+
+
+L07 = AnalysisDefinition("L07", {
+    **{f"top1:{a}": f"inequality.{a.lower()}.pretax_income.top1" for a in INEQUALITY_AREAS},
+    **{f"bottom50:{a}": f"inequality.{a.lower()}.pretax_income.bottom50" for a in INEQUALITY_AREAS},
+}, _l07)
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
                                               "F05": F05, "F06": F06, "F07": F07, "V01": V01, "V02": V02, "V03": V03,
-                                              "V05": V05, "G05": G05, "G06": G06}
+                                              "V05": V05, "G05": G05, "G06": G06, "L01": L01, "L02": L02,
+                                              "L03": L03, "L05": L05, "L07": L07}

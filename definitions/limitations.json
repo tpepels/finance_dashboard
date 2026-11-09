@@ -135,6 +135,31 @@
       "tiva_ends_2022": "OECD TiVA shares are annual and currently end in 2022.",
       "share_of_value_added": "The share is the part of a country's own value added that ends up in foreign final demand, not its export-to-GDP ratio.",
       "exposure_not_risk": "Higher dependence on foreign demand means more exposure to foreign cycles and trade shocks, not necessarily more risk to investors."
+    },
+    "L01": {
+      "same_deflator": "Pay and productivity are both deflated by the value-added price index of the same economy, so the gap reflects the labour share, not consumer prices.",
+      "average_not_median": "Compensation per hour is an average including high earners; median pay grows more slowly where inequality rises.",
+      "euklems_scope": "EU KLEMS covers the total economy including the self-employed (imputed); BLS covers the US nonfarm business sector."
+    },
+    "L02": {
+      "nonfinancial_corporations": "Shares refer to non-financial corporations' gross value added, not the whole economy.",
+      "net_surplus_after_depreciation": "Net operating surplus is gross surplus minus consumption of fixed capital.",
+      "remainder_shown": "Where published parts do not add up to value added, the difference is shown as a remainder rather than hidden."
+    },
+    "L03": {
+      "book_capital": "The profit rate divides net operating surplus by the net stock of fixed assets at current replacement cost; it is not a return on equity.",
+      "different_coverage": "Capital stock series start later for some economies, so first years differ.",
+      "not_marxian_rate": "This is a national-accounts profit rate; Marxian rates (L04) use different labour and capital definitions."
+    },
+    "L05": {
+      "us_only": "Wealth distribution is the Federal Reserve's US Distributional Financial Accounts; no comparable free series exists for the euro area.",
+      "household_net_worth": "Shares are of household net worth, including housing and pensions, not of financial assets only.",
+      "quarterly_estimates": "Quarterly DFA estimates are revised as source surveys update."
+    },
+    "L07": {
+      "pretax_national_income": "Shares are of pre-tax national income (World Inequality Database), before taxes and transfers.",
+      "harmonised_estimates": "WID series combine tax data, surveys and national accounts; earlier years carry more uncertainty.",
+      "world_is_global_distribution": "The world row is the global distribution across all individuals, not an average of countries."
     }
   }
 }

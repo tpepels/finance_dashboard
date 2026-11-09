@@ -52,6 +52,9 @@ TRANSFORMS: dict[str, str] = {
     "rank_correlation": "Spearman rank correlation (average ranks for ties) between starting earnings yield and the "
                         "realised annualized real return over the horizon, per era of start months; reported only when "
                         "the era holds at least two independent horizons of windows",
+    "real_per_hour_index": "real value per hour = (nominal / value-added price index) / hours, indexed to 100 in the first "
+                           "year where every input is observed; pay and productivity use the same price index",
+    "share_of_total": "part / total * 100 on the same period; parts that do not add up leave an explicit remainder",
     "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",

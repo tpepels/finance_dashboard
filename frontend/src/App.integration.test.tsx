@@ -35,7 +35,7 @@ describe('dashboard shell', () => {
   it('shows every analysis panel, and none of the retired dashboards', async () => {
     render(<App/>);
     for (const heading of ['Decisions for a euro investor', 'Growth, inflation and commodities', 'Interest rates, yields and the euro',
-      'Credit, debt and market stress', 'Valuation', 'The world economy and your foreign holdings']) {
+      'Credit, debt and market stress', 'Valuation', 'The world economy and your foreign holdings', 'Labour, profits and inequality']) {
       expect(await screen.findByRole('heading', { name: heading })).toBeTruthy();
     }
     const requested = fetchMock.mock.calls.map(([url]) => String(url));

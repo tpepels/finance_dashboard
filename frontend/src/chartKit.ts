@@ -33,10 +33,11 @@ const SERIES = {
 /** Every economy keeps its colour on every chart. Eight hues at most: the EU shares the euro area's colour,
  * and aggregates (World, G7, G20) and further economies are drawn in neutral ink as context. */
 export const ENTITY = { US: 0, EA: 1, JP: 2, DE: 3, CN: 4, PT: 5, IN: 6, GB: 7 } as const;
-const ALIAS: Record<string, keyof typeof ENTITY> = { EU: 'EA' };
+const ALIAS: Record<string, keyof typeof ENTITY> = { EU: 'EA', US_BLS: 'US' };
 export const ENTITY_NAME: Record<string, string> = {
   US: 'United States', EA: 'Euro area', JP: 'Japan', DE: 'Germany', CN: 'China', PT: 'Portugal', IN: 'India',
   GB: 'United Kingdom', EU: 'European Union', FR: 'France', G7: 'G7', G20: 'G20', WORLD: 'World',
+  IT: 'Italy', ES: 'Spain', NL: 'Netherlands', US_BLS: 'United States (BLS nonfarm business)',
 };
 export const entityName = (entity: string) => ENTITY_NAME[entity] ?? entity;
 

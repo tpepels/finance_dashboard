@@ -666,7 +666,7 @@ export function GrowthInflationBars({ theme, series }: { theme: Theme; series: R
       <line x1={36} x2={W - 4} y1={y(t)} y2={y(t)} stroke={t === 0 ? c.zero : c.grid}/>
       <text x={30} y={y(t) + 4} textAnchor="end" fill={c.muted} fontSize="13">{`${t}%`}</text></g>)}
     <line x1={36} x2={W - 4} y1={y(2)} y2={y(2)} stroke={c.negative} strokeOpacity="0.6" strokeWidth="1.5"/>
-    <text x={W - 6} y={y(2) - 6} textAnchor="end" fill={c.muted} fontSize="12" stroke={c.surface} strokeWidth="4" paintOrder="stroke">2% inflation target</text>
+    <text x={40} y={y(2) - 6} fill={c.muted} fontSize="12" stroke={c.surface} strokeWidth="4" paintOrder="stroke">2% inflation target</text>
     {entries.map(([area, pts], i) => {
       const x0 = 50 + i * panelW, slot = (panelW - 30) / Math.max(1, pts.length);
       return <g key={area}>
@@ -724,6 +724,77 @@ export function ExternalBars({ theme, rows }: { theme: Theme; rows: ExternalRow[
         <text x={16} y={cy + 5} fill={c.ink} fontSize="13">{entityName(r.area)}</text>
         {bar(r.current_account_gdp, cx, cy, 'current-account', r.current_account_year)}
         {bar(r.net_position_gdp, nx, cy, 'net-position', r.net_position_year)}
+      </g>;
+    })}
+  </svg>;
+}
+
+export type PairRow = { key: string; label: string; entity?: string; a: number | null; b: number | null };
+
+/** Two measures per row on one shared scale (bar a above bar b), each labelled with its value. */
+export function PairBars({ theme, title, unit, legend, rows }: { theme: Theme; title: string; unit: string; legend: [string, string]; rows: PairRow[] }) {
+  const c = palette(theme);
+  const W = 760, left = 250, right = 690, rowH = 50, top = 40;
+  const values = rows.flatMap(r => [r.a ?? 0, r.b ?? 0, 0]);
+  const lo = Math.min(...values), hi = Math.max(...values);
+  const pad = (hi - lo) * 0.12 || 1;
+  const x = scale(lo < 0 ? lo - pad : 0, hi + pad, left, right);
+  const H = top + rows.length * rowH + 10;
+  const colours = [c.series[0], c.series[1]];
+  const fmt = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}${unit}`;
+  const bar = (v: number | null, y0: number, part: 'a' | 'b', colour: string) => v === null ? null : <g data-part={part}>
+    <rect x={Math.min(x(0), x(v))} y={y0} width={Math.max(2, Math.abs(x(v) - x(0)))} height="14" rx="3" fill={colour}/>
+    <text x={v >= 0 ? x(v) + 6 : x(v) - 6} y={y0 + 11} textAnchor={v >= 0 ? 'start' : 'end'} fill={c.ink} fontSize="12" fontWeight="700"
+      stroke={c.surface} strokeWidth="4" paintOrder="stroke">{fmt(v)}</text>
+  </g>;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`${title}: ${rows.map(r => `${r.label} ${legend[0]} ${r.a ?? 'n/a'}, ${legend[1]} ${r.b ?? 'n/a'}`).join('; ')}`}>
+    {legend.map((name, i) => <g key={name} transform={`translate(${left + i * 180}, 12)`}>
+      <rect width="12" height="12" rx="3" fill={colours[i]}/><text x={18} y={11} fill={c.ink} fontSize="13">{name}</text></g>)}
+    <line x1={x(0)} x2={x(0)} y1={top - 6} y2={H - 6} stroke={c.zero} strokeWidth="1.5"/>
+    {rows.map((r, i) => {
+      const y0 = top + i * rowH;
+      return <g key={r.key}>
+        {r.entity && <rect x={0} y={y0 + 9} width="10" height="14" rx="3" fill={entityColour(r.entity, theme)}/>}
+        <text x={16} y={y0 + 21} fill={c.ink} fontSize="13">{r.label}</text>
+        {bar(r.a, y0 + 2, 'a', colours[0])}
+        {bar(r.b, y0 + 18, 'b', colours[1])}
+      </g>;
+    })}
+  </svg>;
+}
+
+export type ShareRow = { key: string; label: string; parts: { key: string; share: number }[] };
+
+/** Shares of one whole per row, stacked to 100%: each part keeps its colour across rows. */
+export function StackedShares({ theme, title, rows, labels }: { theme: Theme; title: string; rows: ShareRow[]; labels: Record<string, string> }) {
+  const c = palette(theme);
+  const W = 760, left = 190, right = 740, rowH = 40, top = 54;
+  const keys = [...new Set(rows.flatMap(r => r.parts.map(p => p.key)))];
+  const slots = [0, 1, 6, 3, 2, 4, 5, 7];
+  const colour = (k: string) => k === 'remainder' ? c.muted : c.series[slots[keys.indexOf(k) % slots.length]];
+  const H = top + rows.length * rowH + 10;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`${title}: ${rows.map(r => `${r.label} ${r.parts.map(p => `${labels[p.key] ?? p.key} ${p.share.toFixed(0)}%`).join(', ')}`).join('; ')}`}>
+    {keys.map((k, i) => <g key={k} transform={`translate(${left + (i % 4) * 140}, ${8 + Math.floor(i / 4) * 18})`}>
+      <rect width="12" height="12" rx="3" fill={colour(k)}/><text x={18} y={11} fill={c.ink} fontSize="12">{labels[k] ?? k}</text></g>)}
+    {rows.map((r, i) => {
+      const y0 = top + i * rowH;
+      const positive = r.parts.filter(p => p.share > 0);
+      const total = positive.reduce((a, p) => a + p.share, 0) || 1;
+      const x = scale(0, Math.max(100, total), left, right);
+      let at = 0;
+      return <g key={r.key}>
+        <text x={0} y={y0 + 18} fill={c.ink} fontSize="13">{r.label}</text>
+        {positive.map(p => {
+          const from = at; at += p.share;
+          const wide = x(at) - x(from) > 34;
+          return <g key={p.key} data-part="share">
+            <rect x={x(from)} y={y0 + 4} width={Math.max(1, x(at) - x(from))} height="22" fill={colour(p.key)} stroke={c.surface} strokeWidth="2">
+              <title>{`${r.label}: ${labels[p.key] ?? p.key} ${p.share.toFixed(1)}%`}</title></rect>
+            {wide && <text x={(x(from) + x(at)) / 2} y={y0 + 19} textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="700">{`${p.share.toFixed(0)}%`}</text>}
+          </g>;
+        })}
       </g>;
     })}
   </svg>;

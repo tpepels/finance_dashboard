@@ -5,6 +5,7 @@ import MonetaryPanel from './MonetaryPanel';
 import CreditPanel from './CreditPanel';
 import ValuationPanel from './ValuationPanel';
 import GlobalPanel from './GlobalPanel';
+import LabourPanel from './LabourPanel';
 import SourceExplorer from './SourceExplorer';
 import SourceCoveragePanel from './SourceCoveragePanel';
 import OperationsStatus from './OperationsStatus';
@@ -54,6 +55,7 @@ export default function App() {
         <a href="#credit">Credit &amp; stress</a>
         <a href="#valuation">Valuation</a>
         <a href="#global">World</a>
+        <a href="#labour">Labour &amp; inequality</a>
         <a href="#research-sources">Source data</a>
         <button type="button" className="research-data-link"
           onClick={() => window.dispatchEvent(new Event('gcm-open-data-manager'))}>
@@ -75,6 +77,7 @@ export default function App() {
       <CreditPanel theme={theme} dataVersion={dataVersion}/>
       <ValuationPanel theme={theme} dataVersion={dataVersion}/>
       <GlobalPanel theme={theme} dataVersion={dataVersion}/>
+      <LabourPanel theme={theme} dataVersion={dataVersion}/>
     <div className="research-source-shell" id="research-sources">
       <SourceCoveragePanel/>
       <OperationsStatus key={dataVersion}/>
