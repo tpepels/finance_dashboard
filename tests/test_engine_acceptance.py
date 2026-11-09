@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 import unittest
 
-from finance_dashboard.engine.acceptance import (AcceptanceCache, AcceptanceUnavailable, UnacceptedInput,
+from finance_dashboard.engine.acceptance import (AcceptanceCache, AcceptanceLoading, AcceptanceUnavailable, UnacceptedInput,
                                                  analysis_phase2, input_provenance, snapshot_from_report)
 
 REVISED = {"code": "latest_revised_values_not_real_time", "series_id": "returns.us.shiller_real_total_return"}
@@ -96,22 +96,49 @@ class AcceptanceSnapshotTests(unittest.TestCase):
         def loader():
             calls.append(1)
             return self.snap
-        cache = AcceptanceCache(loader, ttl_seconds=60, clock=lambda: now[0])
+        cache = AcceptanceCache(loader, ttl_seconds=60, clock=lambda: now[0], spawn=lambda work: work())
         cache.get(); cache.get()
         self.assertEqual(len(calls), 1)
         now[0] = 61.0
         cache.get()
         self.assertEqual(len(calls), 2)
 
-    def test_failed_evaluation_is_unavailable_and_retried(self):
+    def test_first_request_does_not_wait_for_the_evaluation(self):
+        pending = []
+        cache = AcceptanceCache(lambda: self.snap, ttl_seconds=60, clock=lambda: 0.0, spawn=pending.append)
+        with self.assertRaises(AcceptanceLoading):
+            cache.get()
+        with self.assertRaises(AcceptanceLoading):
+            cache.get()
+        self.assertEqual(len(pending), 1)          # one evaluation, not one per request
+        pending.pop()()
+        self.assertIs(cache.get(), self.snap)
+
+    def test_stale_snapshot_is_served_while_one_refresh_runs(self):
+        now = [0.0]
+        pending = []
+        newer = snapshot_from_report(REPORT, datetime(2026, 11, 9, tzinfo=timezone.utc))
+        snaps = iter([self.snap, newer])
+        cache = AcceptanceCache(lambda: next(snaps), ttl_seconds=60, clock=lambda: now[0], spawn=pending.append)
+        cache.warm()
+        pending.pop()()
+        now[0] = 120.0
+        self.assertIs(cache.get(), self.snap)      # stale, served at once
+        self.assertIs(cache.get(), self.snap)
+        self.assertEqual(len(pending), 1)          # a single background refresh
+        pending.pop()()
+        self.assertIs(cache.get(), newer)
+
+    def test_failed_evaluation_is_unavailable_then_retried(self):
         attempts = []
 
         def loader():
             attempts.append(1)
             raise OSError("evidence directory missing")
-        cache = AcceptanceCache(loader, ttl_seconds=60, clock=lambda: 0.0)
-        with self.assertRaises(AcceptanceUnavailable):
+        cache = AcceptanceCache(loader, ttl_seconds=60, clock=lambda: 0.0, spawn=lambda work: work())
+        with self.assertRaises(AcceptanceUnavailable) as raised:
             cache.get()
+        self.assertIn("OSError", str(raised.exception))
         with self.assertRaises(AcceptanceUnavailable):
             cache.get()
         self.assertEqual(len(attempts), 2)

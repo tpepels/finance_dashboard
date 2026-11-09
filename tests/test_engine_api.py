@@ -36,7 +36,8 @@ def report(extra_limitation=None):
 
 
 def cache_of(public_report):
-    return AcceptanceCache(lambda: snapshot_from_report(public_report, AT), ttl_seconds=3600)
+    return AcceptanceCache(lambda: snapshot_from_report(public_report, AT), ttl_seconds=3600,
+                           spawn=lambda work: work())
 
 
 class EngineApiTests(unittest.TestCase):
@@ -86,10 +87,17 @@ class EngineApiTests(unittest.TestCase):
     def test_unavailable_acceptance_is_503(self):
         def failing():
             raise OSError("evidence missing")
-        self.app.state.acceptance = AcceptanceCache(failing, ttl_seconds=3600)
+        self.app.state.acceptance = AcceptanceCache(failing, ttl_seconds=3600, spawn=lambda work: work())
         response = self.client.get("/api/analysis/P07")
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["detail"], "Phase 2 acceptance evaluation unavailable")
+
+    def test_evaluation_in_progress_is_503_with_retry_after(self):
+        self.app.state.acceptance = AcceptanceCache(lambda: None, ttl_seconds=3600, spawn=lambda work: None)
+        response = self.client.get("/api/analysis/P07")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"], "Phase 2 acceptance evaluation in progress")
+        self.assertEqual(response.headers["retry-after"], "30")
 
     def test_export_is_a_text_attachment_with_every_limitation(self):
         response = self.client.get("/api/analysis/P07/export", params={"today": "2026-11-06"})

@@ -34,7 +34,7 @@ from .source_coverage import build_coverage
 from .source_policy import policy_summary
 from .research_corpus import load_research_corpus, validate_research_corpus
 from .research_runtime import evaluate_corpus
-from .engine.acceptance import AcceptanceCache, AcceptanceUnavailable, snapshot_from_report
+from .engine.acceptance import AcceptanceCache, AcceptanceLoading, AcceptanceUnavailable, snapshot_from_report
 from .engine.export import export_text
 from .engine.runner import analysis_bundle, conditionals, list_analyses
 from .icio import read_icio_evidence
@@ -346,11 +346,20 @@ def create_app(engine=None) -> FastAPI:
 
     app.state.acceptance = AcceptanceCache(
         acceptance_snapshot, ttl_seconds=float(environ.get("FINANCE_ACCEPTANCE_TTL_SECONDS", "3600")))
+    # The live evaluation takes minutes: start it with the application's other
+    # background work, so the first visitor rarely waits.
+    if environ.get("FINANCE_AUTO_REFRESH", "1").lower() in ("1", "yes", "true", "on"):
+        app.state.acceptance.warm()
 
     def acceptance_or_503():
         try:
             return app.state.acceptance.get()
-        except AcceptanceUnavailable:
+        except AcceptanceLoading:
+            raise HTTPException(503, "Phase 2 acceptance evaluation in progress",
+                                headers={"Retry-After": "30"}) from None
+        except AcceptanceUnavailable as error:
+            record_event("system", "collector_failed", level="error", stage="phase2_acceptance",
+                         reason=str(error))
             raise HTTPException(503, "Phase 2 acceptance evaluation unavailable") from None
 
     def engine_bundle(analysis_id: str, today: date | None):

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('./viz', () => ({ createChart: vi.fn(() => ({ setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn() })) }));
 import DecisionPanel from './DecisionPanel';
@@ -37,6 +37,7 @@ function stubFetch(overrides: Record<string, unknown> = {}) {
 }
 
 describe('DecisionPanel', () => {
+  afterEach(() => cleanup());
   it('renders ranges, data and method limitations, and an AI export per card', async () => {
     const urls = stubFetch();
     render(<DecisionPanel theme="light" dataVersion={0}/>);
@@ -59,5 +60,19 @@ describe('DecisionPanel', () => {
     render(<DecisionPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByText(/not computed/i)).toBeTruthy());
     expect(screen.getByText(/private_dsr/)).toBeTruthy();
+  });
+
+  it('says the evaluation is running and retries instead of going blank', async () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    let first = true;
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (first) { first = false; return Promise.resolve(new Response(JSON.stringify({ detail: 'Phase 2 acceptance evaluation in progress' }),
+        { status: 503, headers: { 'Retry-After': '0' } })); }
+      const id = url.split('/').pop() as string;
+      return Promise.resolve(new Response(JSON.stringify({ P06: p06, P07: p07, F03: f03 }[id])));
+    }));
+    render(<DecisionPanel theme="light" dataVersion={0}/>);
+    await waitFor(() => expect(screen.getByText(/evaluation in progress/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Historical range/)).toBeTruthy());
   });
 });

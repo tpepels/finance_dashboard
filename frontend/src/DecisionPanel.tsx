@@ -42,8 +42,23 @@ const BOND_LABELS: Record<string, string> = {
   ea_aaa_10y_real_trailing: 'Euro AAA 10y minus trailing HICP',
 };
 
+/** The server is still evaluating Phase 2 acceptance; retry after the stated delay. */
+class Pending extends Error {
+  constructor(message: string, readonly retryAfterSeconds: number) { super(message); }
+}
+
+function retryAfter(header: string | null): number {
+  const seconds = Number(header);
+  return header !== null && Number.isFinite(seconds) && seconds >= 0 ? seconds : 30;
+}
+
 async function load<T>(id: string): Promise<T> {
   const response = await fetch(`/api/analysis/${id}`, { cache: 'no-store' });
+  if (response.status === 503 && response.headers.has('Retry-After')) {
+    const body = await response.json().catch(() => ({})) as { detail?: string };
+    throw new Pending(body.detail ?? 'Phase 2 acceptance evaluation in progress',
+      retryAfter(response.headers.get('Retry-After')));
+  }
   if (!response.ok) throw new Error(`Analysis ${id} unavailable (${response.status})`);
   return response.json() as Promise<T>;
 }
@@ -171,10 +186,20 @@ export default function DecisionPanel({ theme, dataVersion }: { theme: 'light' |
   const [error, setError] = useState('');
   useEffect(() => {
     let cancelled = false;
-    Promise.all([load<Bundle<P06Values, P06Estimates>>('P06'), load<Bundle<P07Values>>('P07'), load<Bundle<F03Values>>('F03')]).then(([six, seven, credit]) => {
-      if (!cancelled) { setP06(six); setP07(seven); setF03(credit); setError(''); }
-    }).catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'Unavailable'); });
-    return () => { cancelled = true; };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const attempt = () => {
+      Promise.all([load<Bundle<P06Values, P06Estimates>>('P06'), load<Bundle<P07Values>>('P07'), load<Bundle<F03Values>>('F03')]).then(([six, seven, credit]) => {
+        if (!cancelled) { setP06(six); setP07(seven); setF03(credit); setError(''); }
+      }).catch(err => {
+        if (cancelled) return;
+        if (err instanceof Pending) {
+          setError(`${err.message}; this page retries automatically.`);
+          timer = setTimeout(attempt, err.retryAfterSeconds * 1000);
+        } else setError(err instanceof Error ? err.message : 'Unavailable');
+      });
+    };
+    attempt();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [dataVersion]);
   return <section className="decision-container" id="decisions">
     <header>

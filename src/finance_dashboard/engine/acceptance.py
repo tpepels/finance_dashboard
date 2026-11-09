@@ -99,22 +99,68 @@ def input_provenance(snapshot: AcceptanceSnapshot, analysis_id: str, series_id: 
     raise UnacceptedInput(series_id)
 
 
+class AcceptanceLoading(RuntimeError):
+    """No snapshot yet; the first evaluation is running in the background."""
+
+
+def _thread(work: Callable[[], None]) -> None:
+    threading.Thread(target=work, name="phase2-acceptance", daemon=True).start()
+
+
 class AcceptanceCache:
-    """Evaluate acceptance lazily and reuse it for ttl_seconds; failures are not kept."""
+    """The Phase 2 snapshot, evaluated in the background.
+
+    The live evaluation takes minutes, so requests never wait for it: a stale
+    snapshot is served while one refresh runs (each bundle states when its
+    snapshot was evaluated), and before the first snapshot exists callers get
+    AcceptanceLoading. A failed evaluation is reported once, then retried.
+    """
 
     def __init__(self, loader: Callable[[], AcceptanceSnapshot], ttl_seconds: float,
-                 clock: Callable[[], float] = time.monotonic):
-        self._loader, self._ttl, self._clock = loader, ttl_seconds, clock
+                 clock: Callable[[], float] = time.monotonic,
+                 spawn: Callable[[Callable[[], None]], None] = _thread):
+        self._loader, self._ttl, self._clock, self._spawn = loader, ttl_seconds, clock, spawn
         self._value: AcceptanceSnapshot | None = None
         self._loaded_at = 0.0
+        self._loading = False
+        self._error: str | None = None
         self._lock = threading.Lock()
+
+    def _run(self) -> None:
+        try:
+            value, error = self._loader(), None
+        except Exception as exc:  # any evaluation failure is reported, never cached as a value
+            value, error = None, type(exc).__name__
+        with self._lock:
+            self._loading = False
+            if value is not None:
+                self._value, self._loaded_at, self._error = value, self._clock(), None
+            else:
+                self._error = error or "no snapshot"
+
+    def warm(self) -> None:
+        with self._lock:
+            if self._loading:
+                return
+            self._loading = True
+        self._spawn(self._run)  # outside the lock: a synchronous spawn re-enters it
 
     def get(self) -> AcceptanceSnapshot:
         with self._lock:
-            if self._value is None or self._clock() - self._loaded_at > self._ttl:
-                try:
-                    value = self._loader()
-                except Exception as error:  # any evaluation failure is reported as unavailable
-                    raise AcceptanceUnavailable(type(error).__name__) from error
-                self._value, self._loaded_at = value, self._clock()
-            return self._value
+            if self._value is None and self._error is not None and not self._loading:
+                error, self._error = self._error, None
+                raise AcceptanceUnavailable(error)
+            stale = self._value is None or self._clock() - self._loaded_at > self._ttl
+            start = stale and not self._loading
+            if start:
+                self._loading = True
+        if start:
+            self._spawn(self._run)  # outside the lock: a synchronous spawn re-enters it
+        # A synchronous spawn (tests) may have finished the evaluation already.
+        with self._lock:
+            if self._value is not None:
+                return self._value
+            if self._error is not None and not self._loading:
+                error, self._error = self._error, None
+                raise AcceptanceUnavailable(error)
+            raise AcceptanceLoading()
