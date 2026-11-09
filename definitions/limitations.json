@@ -170,6 +170,26 @@
       "index_not_fund": "Drawdowns are of the MSCI ACWI net total return index in US dollars, not a fund in euros; fees and currency are excluded.",
       "month_end_resolution": "Month-end values understate intra-month lows.",
       "threshold_choice": "Only falls deeper than 15% are listed; smaller corrections are visible in the underwater chart."
+    },
+    "G01": {
+      "etf_holdings_not_index": "Concentration is read from the iShares MSCI ACWI ETF's SEC N-PORT filings, which track the index closely but are not MSCI's own constituent file.",
+      "issuer_grouping": "Issuers are grouped by their exact reported name; share classes are summed, but parent companies are not merged.",
+      "quarterly_filings": "Filings are quarterly, so concentration between filing dates is not observed."
+    },
+    "G02": {
+      "country_of_issuer": "Country weights follow the issuer's reported country, not where companies earn their revenue; many Chinese companies are registered in the Cayman Islands or Hong Kong, so China's index weight here understates Chinese exposure.",
+      "gdp_in_dollars": "GDP shares use nominal US-dollar GDP from the World Bank, which moves with exchange rates.",
+      "weights_not_a_target": "Market-cap weights differing from GDP weights is how index investing works; it is context, not a signal to reweight."
+    },
+    "L04": {
+      "theory_laden": "Marxian rates depend on which industries count as productive and how labour income is measured; the spread across variants is the point of this view.",
+      "wiod_2000_2014": "The framework data (WIOD 2016 Socio-Economic Accounts) cover 2000-2014 only.",
+      "no_input_output_correction": "Rates here use SEA value added; the authors' input-origin correction is not recomputed."
+    },
+    "P01": {
+      "published_holdings_only": "Exposures are read from each fund's own published holdings (SEC N-PORT for VT and BND, the iShares file for the UCITS ETF).",
+      "issuer_country": "Country is the issuer's reported location, not where revenue is earned.",
+      "no_portfolio_weights_yet": "Each fund is shown on its own; combining them needs your portfolio weights (owner inputs)."
     }
   }
 }

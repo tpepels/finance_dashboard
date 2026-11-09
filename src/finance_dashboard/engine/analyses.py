@@ -1208,8 +1208,111 @@ def _p03(daily: dict, view: dict) -> Computed:
 
 P03 = AnalysisDefinition("P03", {"equity": "equity.world.msci_acwi_netr_usd", "recession": "recession.us.nber_indicator"}, _p03)
 
+def _g01(points: dict, view: dict, artifacts: dict) -> Computed:
+    filings = sorted(artifacts.get("acwi_nport") or [], key=lambda f: f["date"])
+    latest = filings[-1] if filings else None
+    values = {"latest": {"date": latest["date"], "accession": latest["accession"], "issuers": latest["issuers"],
+                         "top10_pct": latest.get("top10_pct")} if latest else None,
+              "top_share_history": [[f["date"], f.get("top10_pct") or sum(i["pct"] for i in f["issuers"][:10])] for f in filings],
+              "published_top10": _series(points.get("published_top10", [])),
+              "constituent_count": _series(points.get("constituents", []))}
+    return Computed(values=values, estimates=None, comparison=["top_share_history", "published_top10"], transforms=[
+        applied("share_of_total", applied_to=["acwi_nport issuer groups"], total="fund net assets")])
+
+
+G01 = AnalysisDefinition("G01", {"published_top10": "concentration.global.msci_acwi_published_top10",
+                                 "constituents": "concentration.global.msci_acwi_constituent_count"},
+                         _g01, artifacts=("acwi_nport",))
+
+G02_COUNTRIES = ("US", "JP", "CN", "IN", "DE", "FR", "PT")
+
+
+def _g02(points: dict, view: dict, artifacts: dict) -> Computed:
+    filings = sorted(artifacts.get("acwi_nport") or [], key=lambda f: f["date"])
+    latest = filings[-1] if filings else None
+    world = _by_period(points.get("gdp_world", []))
+    countries = []
+    for area in G02_COUNTRIES:
+        gdp = _by_period(points.get(f"gdp:{area}", []))
+        year = max(set(gdp) & set(world), default=None)
+        countries.append({"area": area, "index_weight": latest["countries"].get(area) if latest else None,
+                          "gdp_share": 100 * gdp[year] / world[year] if year else None,
+                          "gdp_year": str(year.year) if year else None})
+    values = {"date": latest["date"] if latest else None, "countries": countries,
+              "us_weight_history": [[f["date"], f["countries"].get("US")] for f in filings]}
+    return Computed(values=values, estimates=None, comparison=["index_weight", "gdp_share"], transforms=[
+        applied("share_of_total", applied_to=[f"gdp:{a}" for a in G02_COUNTRIES], total="gdp_world")])
+
+
+G02 = AnalysisDefinition("G02", {**{f"gdp:{a}": f"gdp.nominal_usd.{a.lower()}" for a in G02_COUNTRIES},
+                                 "gdp_world": "gdp.nominal_usd.world"}, _g02, artifacts=("acwi_nport",))
+
+L04_COUNTRIES = ("USA", "DEU", "FRA", "GBR", "ITA", "ESP", "PRT", "JPN", "CHN")
+L04_WAGES = {"comp": "employee compensation", "lab": "labour income incl. self-employed", "comp_pe": "compensation per person engaged"}
+
+
+def _l04(points: dict, view: dict, artifacts: dict) -> Computed:
+    rates = artifacts.get("marxian_rates") or {}
+    classes = rates.get("classifications", {})
+    countries, history = [], {}
+    for country in L04_COUNTRIES:
+        years = sorted(set().union(*(set(c.get(country, {})) for c in classes.values()))) if classes else []
+        if not years:
+            continue
+        year = years[-1]
+        variants = {"surplus_value": [], "profit_rate": []}
+        for cls, data in classes.items():
+            row = data.get(country, {}).get(year, {})
+            for wage in L04_WAGES:
+                if f"surplus_value_{wage}" in row:
+                    variants["surplus_value"].append({"classification": cls, "wage": wage, "value": row[f"surplus_value_{wage}"]})
+                if f"profit_rate_{wage}" in row:
+                    variants["profit_rate"].append({"classification": cls, "wage": wage, "value": row[f"profit_rate_{wage}"]})
+        entry = {"country": country, "year": year}
+        for measure, items in variants.items():
+            vals = [v["value"] for v in items]
+            entry[measure] = {"min": min(vals), "max": max(vals), "variants": items} if vals else None
+        countries.append(entry)
+        history[country] = {f"{cls}:{wage}": [[f"{y}-01-01", data[country][y][f"surplus_value_{wage}"]]
+                                              for y in sorted(data.get(country, {})) if f"surplus_value_{wage}" in data[country][y]]
+                            for cls, data in classes.items() for wage in ("comp", "lab")}
+    return Computed(values={"countries": countries, "history": history, "wages": L04_WAGES,
+                            "classifications": list(classes)}, estimates=None, comparison=["surplus_value", "profit_rate"],
+                    transforms=[applied("share_of_total", applied_to=["marxian_rates"],
+                                        note="rate of surplus value = (VA - wages) / wages; net profit rate = (VA - wages) / K, productive sector")])
+
+
+L04 = AnalysisDefinition("L04", {}, _l04, artifacts=("marxian_rates",))
+
+
+def _top_shares(weights: dict[str, float], n: int = 8) -> list[dict]:
+    ordered = sorted(weights.items(), key=lambda item: item[1], reverse=True)
+    top = [{"key": k, "share": v} for k, v in ordered[:n]]
+    rest = sum(v for _, v in ordered[n:])
+    return top + ([{"key": "Other", "share": rest}] if rest > 0.05 else [])
+
+
+def _p01(points: dict, view: dict, artifacts: dict) -> Computed:
+    funds = []
+    ucits = artifacts.get("ucits_world")
+    if ucits:
+        funds.append({"key": "ucits_world", "name": "iShares Core MSCI World UCITS ETF", "date": ucits["date"],
+                      "countries": _top_shares(ucits["countries"]), "sectors": _top_shares(ucits["sectors"], 11), "top": ucits["top"]})
+    for key, name in (("vt", "Vanguard Total World Stock ETF (VT)"), ("bnd", "Vanguard Total Bond Market ETF (BND)")):
+        filings = sorted(artifacts.get(f"{key}_nport") or [], key=lambda f: f["date"])
+        if filings:
+            f = filings[-1]
+            funds.append({"key": key, "name": name, "date": f["date"], "countries": _top_shares(f["countries"]),
+                          "sectors": None, "top": f["issuers"][:10]})
+    return Computed(values={"funds": funds}, estimates=None, comparison=["funds"], transforms=[
+        applied("share_of_total", applied_to=["fund positions"], total="fund net assets", grouping="country, sector, issuer")])
+
+
+P01 = AnalysisDefinition("P01", {}, _p01, artifacts=("ucits_world", "vt_nport", "bnd_nport"))
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
                                               "F05": F05, "F06": F06, "F07": F07, "V01": V01, "V02": V02, "V03": V03,
                                               "V05": V05, "G05": G05, "G06": G06, "L01": L01, "L02": L02,
-                                              "L03": L03, "L05": L05, "L07": L07, "P02": P02, "P03": P03}
+                                              "L03": L03, "L05": L05, "L07": L07, "P02": P02, "P03": P03,
+                                              "G01": G01, "G02": G02, "L04": L04, "P01": P01}

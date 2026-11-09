@@ -30,7 +30,9 @@ class Computed:
 class AnalysisDefinition:
     analysis_id: str
     inputs: dict[str, str]
-    compute: Callable[[dict[str, list[tuple[date, float]]], dict], Computed]
+    compute: Callable[..., Computed]
+    # Named archives (holdings filings, framework originals) the compute also reads: compute(points, view, artifacts).
+    artifacts: tuple[str, ...] = ()
 
 
 def _input_record(role: str, series_id: str, points: list, catalog_series: dict, provenance: dict | None) -> dict:
@@ -85,7 +87,7 @@ def shown_limitations(analysis_id: str, phase2: dict, inputs: list[dict], method
 
 def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple[date, float]]],
                  snapshot: AcceptanceSnapshot, corpus_analysis: dict, catalog_series: dict[str, dict],
-                 view: dict, computed_at: datetime) -> dict:
+                 view: dict, computed_at: datetime, artifacts: dict | None = None) -> dict:
     phase2 = analysis_phase2(snapshot, definition.analysis_id)
     inputs = []
     unaccepted = []
@@ -99,7 +101,9 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
     phase2["open_gates"] = phase2["open_gates"] + [f"input_not_accepted:{sid}" for sid in unaccepted]
     computed = None
     if phase2["state"] in RESOLVED_ANALYSIS_STATES and not unaccepted:
-        computed = definition.compute({role: points.get(role, []) for role in definition.inputs}, view)
+        role_points = {role: points.get(role, []) for role in definition.inputs}
+        computed = (definition.compute(role_points, view, artifacts or {}) if definition.artifacts
+                    else definition.compute(role_points, view))
     method = method_limitations(definition.analysis_id)
     return {
         "analysis_id": definition.analysis_id,

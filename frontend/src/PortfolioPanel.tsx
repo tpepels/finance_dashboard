@@ -1,12 +1,38 @@
 import { useMemo, type ReactNode } from 'react';
 import { timeChart, type Recession, type Theme, type TimeSeries } from './chartKit';
-import { CorrelationGrid, EpisodeBars, type CorrelationCell, type Episode } from './heroes';
+import { CorrelationGrid, EpisodeBars, RankedBars, StackedShares, type CorrelationCell, type Episode } from './heroes';
 import TimePanel from './TimePanel';
 import { Section, monthDate, percentAxis, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
 type P02Values = { pairs: string[]; periods: string[]; cells: CorrelationCell[]; rolling: Record<string, Line> };
 type P03Values = { episodes: Episode[]; underwater: Line };
+
+type Fund = { key: string; name: string; date: string; countries: { key: string; share: number }[];
+  sectors: { key: string; share: number }[] | null; top: { name: string; pct: number }[] };
+type P01Values = { funds: Fund[] };
+
+const COUNTRY_CODE: Record<string, string> = { US: 'United States', JP: 'Japan', GB: 'United Kingdom', CA: 'Canada', FR: 'France',
+  DE: 'Germany', CH: 'Switzerland', TW: 'Taiwan', CN: 'China', IN: 'India', AU: 'Australia', KR: 'South Korea', NL: 'Netherlands',
+  KY: 'Cayman Islands', HK: 'Hong Kong', XS: 'Supranational', LU: 'Luxembourg', IE: 'Ireland', MX: 'Mexico', ES: 'Spain', IT: 'Italy', SE: 'Sweden' };
+
+function Holdings({ bundle, theme }: { bundle: Bundle<P01Values>; theme: Theme }) {
+  const data = bundle.values as P01Values;
+  const name = (k: string) => COUNTRY_CODE[k] ?? k;
+  const countryLabels = Object.fromEntries(data.funds.flatMap(f => f.countries.map(c => [c.key, name(c.key)])));
+  const sectorFunds = data.funds.filter(f => f.sectors);
+  const sectorLabels = Object.fromEntries(sectorFunds.flatMap(f => (f.sectors ?? []).map(s => [s.key, s.key])));
+  return <div className="decision-hero decision-hero-stack">
+    <StackedShares theme={theme} title="Where your funds invest, by country" labels={countryLabels}
+      rows={data.funds.map(f => ({ key: f.key, label: `${f.name.replace(/ \(.*\)$/, '')} ${f.date.slice(0, 7)}`.slice(0, 28), parts: f.countries }))}/>
+    {sectorFunds.map(f => <StackedShares key={f.key} theme={theme} title={`${f.name}, by sector`} labels={sectorLabels}
+      rows={[{ key: f.key, label: 'by sector', parts: f.sectors ?? [] }]}/>)}
+    {data.funds.filter(f => f.key !== 'bnd').map(f => <RankedBars key={`top-${f.key}`} theme={theme} title={`Largest holdings: ${f.name}`} rows={f.top}/>)}
+    <p className="decision-caption">Read from each fund's own published holdings: the iShares file for the UCITS ETF, SEC N-PORT filings for
+      VT and BND. Countries are the issuer's reported location. Combining them into your portfolio needs your weights, which you can
+      enter under Your portfolio.</p>
+  </div>;
+}
 
 const PAIR_LABEL: Record<string, string> = { stocks_bonds: 'Stocks and bonds', stocks_gold: 'Stocks and gold', bonds_gold: 'Bonds and gold' };
 
@@ -47,7 +73,7 @@ function Crises({ bundle, theme, recessions }: { bundle: Bundle<P03Values>; them
 
 /** Portfolio resilience: whether diversification held, and how deep and long past crises were. */
 export default function PortfolioPanel({ theme, dataVersion }: { theme: Theme; dataVersion: number }) {
-  const { bundles, recessions, error } = useBundles(['P02', 'P03'], dataVersion);
+  const { bundles, recessions, error } = useBundles(['P01', 'P02', 'P03'], dataVersion);
   const section = (id: string, body: (b: Bundle<any>) => ReactNode) => bundles[id] &&
     <Section key={id} bundle={bundles[id]}>{body(bundles[id] as Bundle<any>)}</Section>;
   return <div className="decision-container" id="portfolio">
@@ -57,6 +83,7 @@ export default function PortfolioPanel({ theme, dataVersion }: { theme: Theme; d
         Context for the asset mix, the cash reserve and the rebalancing rule.</p>
     </header>
     {error && <p className="decision-note" role="status">{error}</p>}
+    {section('P01', b => <Holdings bundle={b} theme={theme}/>)}
     {section('P02', b => <Diversification bundle={b} theme={theme} recessions={recessions}/>)}
     {section('P03', b => <Crises bundle={b} theme={theme} recessions={recessions}/>)}
   </div>;

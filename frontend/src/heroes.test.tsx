@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, CorrelationGrid, EpisodeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
+import { ChangeBars, RankedBars, VariantSpread, CorrelationGrid, EpisodeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -246,5 +246,23 @@ describe('hero graphics', () => {
     expect(bars.querySelectorAll('[data-part="depth"]')).toHaveLength(2);
     expect(screen.getByText('−55%')).toBeTruthy();
     expect(screen.getByText('not yet recovered')).toBeTruthy();
+  });
+
+  it('shows each country as the spread of its estimate across theoretical variants', () => {
+    render(<VariantSpread theme="light" title="Rate of surplus value, 2014" format={v => `${Math.round(v * 100)}%`}
+      wageLabels={{ comp: 'employee compensation', lab: 'labour income' }}
+      rows={[{ key: 'PRT', label: 'Portugal', min: 0.38, max: 0.76, variants: [
+        { classification: 'rotta_kumar_2024', wage: 'comp', value: 0.76 }, { classification: 'tsoulfidis_paitaridis_2017', wage: 'lab', value: 0.51 }] }]}/>);
+    const chart = screen.getByRole('img', { name: /rate of surplus value, 2014/i });
+    expect(chart.querySelectorAll('[data-part="variant"]')).toHaveLength(2);
+    expect(screen.getByText('38%–76%')).toBeTruthy();
+    expect(screen.getByText('employee compensation')).toBeTruthy();
+  });
+
+  it('ranks the largest holdings as bars with their share', () => {
+    render(<RankedBars theme="dark" title="Largest holdings" rows={[{ name: 'NVIDIA CORPORATION', pct: 4.6 }, { name: 'APPLE INC.', pct: 4.5 }]}/>);
+    const chart = screen.getByRole('img', { name: /largest holdings/i });
+    expect(chart.querySelectorAll('[data-part="bar"]')).toHaveLength(2);
+    expect(screen.getByText('4.6%')).toBeTruthy();
   });
 });

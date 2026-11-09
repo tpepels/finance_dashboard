@@ -11,6 +11,10 @@ const bundle = (id: string, values: unknown) => ({ analysis_id: id, question: `$
   phase2: { state: 'accepted', evaluated_at: '2026-11-08', open_gates: [], limitations: [] }, values, estimates: null,
   method_limitations: [], inputs: [], transforms: [], limitations: [] });
 const bundles: Record<string, unknown> = {
+  G01: bundle('G01', { latest: { date: '2026-07-31', accession: 'a', top10_pct: 25, issuers: [{ name: 'NVIDIA CORPORATION', pct: 4.6 }, { name: 'APPLE INC.', pct: 4.5 }] },
+    top_share_history: [['2026-07-31', 25]], published_top10: [['2026-10-01', 24.3]], constituent_count: [] }),
+  G02: bundle('G02', { date: '2026-07-31', countries: [{ area: 'US', index_weight: 62.7, gdp_share: 26, gdp_year: '2025' }],
+    us_weight_history: [['2026-07-31', 62.7]] }),
   G05: bundle('G05', { economies: [{ area: 'US', current_account_gdp: -4, current_account_year: '2025', net_position_gdp: -86.7, net_position_year: '2025' }],
     history: { US: { current_account_gdp: [['2025-01-01', -4]], net_position_gdp: [['2025', -86.7]] } } }),
   G06: bundle('G06', { economies: [{ area: 'DE', first: 25, first_year: '1995', latest: 30, latest_year: '2022' }], history: { DE: [['2022-01-01', 30]] } }),
@@ -28,6 +32,8 @@ describe('GlobalPanel', () => {
     const { container } = render(<GlobalPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByRole('img', { name: /external position/i })).toBeTruthy());
     expect(screen.getByRole('img', { name: /1995 and 2022/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /^largest issuers/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /index weight against share of world gdp/i })).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
   });
 });

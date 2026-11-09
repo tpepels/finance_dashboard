@@ -352,6 +352,54 @@ def replicate_panel(panel_raw: bytes, sums: dict, countries: set[str]) -> dict:
             "passed": seen == expected and levels[0] == levels[1] and derived[0] == derived[1] and levels[0] > 0}
 
 
+RATE_MEASURES = {
+    "surplus_value_comp": "SEA.Rate.of.Surplus.Value.PA",
+    "surplus_value_lab": "SEA.Rate.of.Surplus.Value.PA.LAB",
+    "surplus_value_comp_pe": "SEA.Rate.of.Surplus.Value.PA.COMP_PE",
+    "profit_rate_comp": "SEA.Net.Profit.Rate.PA.COMP",
+    "profit_rate_lab": "SEA.Net.Profit.Rate.PA.LAB",
+}
+
+
+def rates_from_sums(sums: dict) -> dict:
+    """{country: {year: {measure: value}}} for the SEA-only Table A3 rates (no input-origin correction)."""
+    by_cy: dict = defaultdict(dict)
+    for (country, year, variable, group), value in sums.items():
+        by_cy[(country, year)][(variable, group)] = value
+    out: dict = defaultdict(dict)
+    for (country, year), a in by_cy.items():
+        derived = _derived(a, None)
+        out[country][year] = {key: derived[name] for key, name in RATE_MEASURES.items() if name in derived}
+    return {country: dict(years) for country, years in out.items()}
+
+
+_RATES_CACHE: dict = {}
+
+
+def marxian_rates(evidence_root: Path) -> dict:
+    """Rates under both productive-sector classifications from the verified pinned originals (cached per bundle)."""
+    from .source_reconciliation import _selected_manifest
+    parent = Path(evidence_root) / FOLDER
+    if not parent.exists():
+        return {"status": "missing_original_framework_files"}
+    _, _, path, manifest, _ = _selected_manifest(parent, IDENTITY)
+    folder = path.parent
+    if folder.name in _RATES_CACHE:
+        return _RATES_CACHE[folder.name]
+    raw = {}
+    for name, record in manifest["files"].items():
+        raw[name] = (folder / name).read_bytes()
+        if _hashes(raw[name])["sha256"] != record["sha256"]:
+            raise ValueError("marxian_source_hash_mismatch")
+    baseline = parse_classification(raw["rk-tables.xlsx"])
+    alternative = tp_classification(raw["tp-2017.pdf"], baseline)
+    result = {"status": "ready", "bundle_digest": folder.name, "years": list(YEARS), "classifications": {
+        "rotta_kumar_2024": rates_from_sums(sea_aggregates(raw["wiod-sea.xlsx"], baseline)[0]),
+        "tsoulfidis_paitaridis_2017": rates_from_sums(sea_aggregates(raw["wiod-sea.xlsx"], alternative)[0])}}
+    _RATES_CACHE[folder.name] = result
+    return result
+
+
 def read_marxian_evidence(evidence_root: Path) -> dict:
     """Verify the pinned originals and the replication; return no raw rows."""
     from .source_reconciliation import _selected_manifest

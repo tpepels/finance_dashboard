@@ -12,6 +12,10 @@ const bundle = (id: string, values: unknown) => ({ analysis_id: id, question: `$
   method_limitations: [], inputs: [], transforms: [], limitations: [] });
 const line = [['2020-01-01', 1]];
 const bundles: Record<string, unknown> = {
+  L04: bundle('L04', { classifications: ['rotta_kumar_2024'], wages: { comp: 'employee compensation' },
+    countries: [{ country: 'PRT', year: 2014, surplus_value: { min: 0.38, max: 0.76, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.76 }] },
+      profit_rate: { min: 0.12, max: 0.16, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.15 }] } }],
+    history: { PRT: { 'rotta_kumar_2024:comp': [['2014-01-01', 0.76]], 'rotta_kumar_2024:lab': [] } } }),
   L01: bundle('L01', { economies: [{ area: 'DE', base_year: '1995', latest_year: '2021', productivity: 118.2, pay: 111.4 }],
     history: { DE: { productivity: line, pay: line } } }),
   L02: bundle('L02', { economies: [{ area: 'FR', year: '2024', parts: [{ key: 'compensation', share: 60 }, { key: 'net_operating_surplus', share: 40 }], subsidies_reported: true }],
@@ -35,9 +39,10 @@ describe('LabourPanel', () => {
     const { container } = render(<LabourPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByRole('img', { name: /productivity and pay since/i })).toBeTruthy());
     expect(screen.getByRole('img', { name: /how company value added is split/i })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /profit rate/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /net profit rate, first year/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /household wealth/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /top 1% income share/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /rate of surplus value/i })).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
   });
 });

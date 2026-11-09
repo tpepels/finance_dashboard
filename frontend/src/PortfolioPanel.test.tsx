@@ -11,6 +11,9 @@ const bundle = (id: string, values: unknown) => ({ analysis_id: id, question: `$
   phase2: { state: 'accepted', evaluated_at: '2026-11-08', open_gates: [], limitations: [] }, values, estimates: null,
   method_limitations: [], inputs: [], transforms: [], limitations: [] });
 const bundles: Record<string, unknown> = {
+  P01: bundle('P01', { funds: [{ key: 'ucits_world', name: 'iShares Core MSCI World UCITS ETF', date: '2026-11-05',
+    countries: [{ key: 'United States', share: 72 }, { key: 'Other', share: 28 }], sectors: [{ key: 'Information Technology', share: 27 }],
+    top: [{ name: 'APPLE', pct: 5.7 }] }] }),
   P02: bundle('P02', { pairs: ['stocks_bonds'], periods: ['All years'], cells: [{ pair: 'stocks_bonds', period: 'All years', rho: -0.1, months: 264 }],
     rolling: { stocks_bonds: [['2020-01', -0.1]], stocks_gold: [], bonds_gold: [] } }),
   P03: bundle('P03', { episodes: [{ peak: '2007-10', trough: '2009-02', recovery: '2013-09', depth: -0.55, months_down: 16, months_to_recover: 55, us_recession: true }],
@@ -29,6 +32,7 @@ describe('PortfolioPanel', () => {
     const { container } = render(<PortfolioPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByRole('img', { name: /moved together/i })).toBeTruthy());
     expect(screen.getByRole('img', { name: /falls deeper than 15%/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /where your funds invest/i })).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
   });
 });

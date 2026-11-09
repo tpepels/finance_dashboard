@@ -864,3 +864,66 @@ export function EpisodeBars({ theme, episodes }: { theme: Theme; episodes: Episo
     <line x1={x(0)} x2={x(0)} y1={top - 4} y2={H - 6} stroke={c.zero} strokeWidth="1.5"/>
   </svg>;
 }
+
+export type Variant = { classification: string; wage: string; value: number };
+export type SpreadRow = { key: string; label: string; min: number; max: number; variants: Variant[] };
+
+/** Each row: the range of one estimate across theoretical variants. Colour = wage definition, ring vs dot = classification. */
+export function VariantSpread({ theme, title, rows, format, wageLabels }: {
+  theme: Theme; title: string; rows: SpreadRow[]; format: (v: number) => string; wageLabels: Record<string, string>;
+}) {
+  const c = palette(theme);
+  const W = 760, left = 150, right = 620, rowH = 38, top = 56;
+  const all = rows.flatMap(r => [r.min, r.max]);
+  const lo = Math.max(0, Math.floor(Math.min(...all) * 10) / 10 - 0.1), hi = Math.ceil(Math.max(...all) * 10) / 10 + 0.1;
+  const x = scale(lo, hi, left, right);
+  const wages = Object.keys(wageLabels);
+  const classes = [...new Set(rows.flatMap(r => r.variants.map(v => v.classification)))];
+  const H = top + rows.length * rowH + 30;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`${title}: ${rows.map(r => `${r.label} ${format(r.min)} to ${format(r.max)}`).join('; ')}`}>
+    {wages.map((w, i) => <g key={w} transform={`translate(${left + i * 200}, 10)`}>
+      <circle cx="6" cy="6" r="6" fill={c.series[i]}/><text x={18} y={11} fill={c.ink} fontSize="12">{wageLabels[w]}</text></g>)}
+    <g transform={`translate(${left}, 30)`}>
+      <circle cx="6" cy="6" r="6" fill={c.secondary}/><text x={18} y={11} fill={c.muted} fontSize="11">dot: Rotta & Kumar sectors</text>
+      <circle cx="226" cy="6" r="5" fill={c.surface} stroke={c.secondary} strokeWidth="2"/><text x={238} y={11} fill={c.muted} fontSize="11">ring: Tsoulfidis & Paitaridis sectors</text>
+    </g>
+    {ticks(lo, hi, 0.2).map(t => <g key={t}>
+      <line x1={x(t)} x2={x(t)} y1={top - 6} y2={H - 26} stroke={c.grid}/>
+      <text x={x(t)} y={H - 8} textAnchor="middle" fill={c.muted} fontSize="12">{format(t)}</text></g>)}
+    {rows.map((r, i) => {
+      const cy = top + i * rowH + 12;
+      return <g key={r.key}>
+        <text x={0} y={cy + 5} fill={c.ink} fontSize="13">{r.label}</text>
+        <rect x={x(r.min)} y={cy - 5} width={Math.max(2, x(r.max) - x(r.min))} height="10" rx="5" fill={c.grid}/>
+        {r.variants.map((v, j) => {
+          const colour = c.series[Math.max(0, wages.indexOf(v.wage))];
+          const ring = classes.indexOf(v.classification) === 1;
+          return <circle key={j} data-part="variant" cx={x(v.value)} cy={cy} r={ring ? 5 : 6} fill={ring ? c.surface : colour}
+            stroke={colour} strokeWidth="2"><title>{`${r.label}: ${format(v.value)} (${wageLabels[v.wage] ?? v.wage}, ${v.classification})`}</title></circle>;
+        })}
+        <text x={right + 16} y={cy + 5} fill={c.ink} fontSize="13" fontWeight="700">{`${format(r.min)}–${format(r.max)}`}</text>
+      </g>;
+    })}
+  </svg>;
+}
+
+/** The largest holdings as ranked bars with their share of the fund. */
+export function RankedBars({ theme, title, rows }: { theme: Theme; title: string; rows: { name: string; pct: number }[] }) {
+  const c = palette(theme);
+  const W = 760, left = 300, right = 690, rowH = 26, top = 10;
+  const hi = Math.max(1, ...rows.map(r => r.pct)) * 1.1;
+  const x = scale(0, hi, left, right);
+  const H = top + rows.length * rowH + 6;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`${title}: ${rows.map(r => `${r.name} ${r.pct.toFixed(1)}%`).join('; ')}`}>
+    {rows.map((r, i) => {
+      const y0 = top + i * rowH;
+      return <g key={r.name} data-part="bar">
+        <text x={left - 10} y={y0 + 14} textAnchor="end" fill={c.ink} fontSize="12">{r.name.length > 40 ? `${r.name.slice(0, 38)}…` : r.name}</text>
+        <rect x={left} y={y0 + 3} width={Math.max(2, x(r.pct) - left)} height="15" rx="3" fill={c.series[0]}/>
+        <text x={x(r.pct) + 6} y={y0 + 15} fill={c.ink} fontSize="12" fontWeight="700">{`${r.pct.toFixed(1)}%`}</text>
+      </g>;
+    })}
+  </svg>;
+}

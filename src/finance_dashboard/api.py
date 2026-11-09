@@ -36,6 +36,7 @@ from .research_corpus import load_research_corpus, validate_research_corpus
 from .research_runtime import evaluate_corpus
 from .engine.acceptance import AcceptanceCache, AcceptanceLoading, AcceptanceUnavailable, snapshot_from_report
 from .engine.export import export_text
+from .engine.artifacts import load_artifact
 from .engine.runner import analysis_bundle, conditionals, list_analyses
 from .engine.recessions import SERIES_ID as RECESSION_SERIES, recession_periods
 from .icio import read_icio_evidence
@@ -371,7 +372,9 @@ def create_app(engine=None) -> FastAPI:
         view = {"today": (today or date.today()).isoformat()}
         with Session(db) as session:
             bundle = analysis_bundle(session, analysis_id, snapshot=snapshot, corpus_document=research_sources,
-                                     catalog_series=by_id, view=view)
+                                     catalog_series=by_id, view=view, artifact_loader=lambda name: load_artifact(
+                                         name, evidence_root=Path(environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")),
+                                         holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))))
         if bundle is None:
             raise HTTPException(404, "Unknown analysis")
         return bundle

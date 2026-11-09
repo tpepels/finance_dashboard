@@ -31,8 +31,19 @@ def _not_computed(points: dict, view: dict) -> Computed:
     return Computed(values=None, estimates=None, transforms=[], comparison=None)
 
 
+def _load_artifacts(names: tuple[str, ...], loader) -> dict:
+    """Each named archive, or None where it cannot be read (the analysis shows what is available)."""
+    out = {}
+    for name in names:
+        try:
+            out[name] = loader(name) if loader else None
+        except Exception:  # a missing or unreadable archive must not break the page
+            out[name] = None
+    return out
+
+
 def analysis_bundle(session: Session, analysis_id: str, *, snapshot: AcceptanceSnapshot, corpus_document: dict,
-                    catalog_series: dict[str, dict], view: dict) -> dict | None:
+                    catalog_series: dict[str, dict], view: dict, artifact_loader=None) -> dict | None:
     """The bundle for one corpus analysis; None if the corpus has no such analysis."""
     row = corpus_analysis(corpus_document, analysis_id)
     if row is None:
@@ -40,7 +51,8 @@ def analysis_bundle(session: Session, analysis_id: str, *, snapshot: AcceptanceS
     definition = DEFINITIONS.get(analysis_id) or AnalysisDefinition(analysis_id, {}, _not_computed)
     return build_bundle(definition, points=load_points(session, definition), snapshot=snapshot,
                         corpus_analysis=row, catalog_series=catalog_series, view=view,
-                        computed_at=datetime.now(timezone.utc))
+                        computed_at=datetime.now(timezone.utc),
+                        artifacts=_load_artifacts(definition.artifacts, artifact_loader))
 
 
 def list_analyses(snapshot: AcceptanceSnapshot, corpus_document: dict) -> list[dict]:
