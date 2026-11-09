@@ -36,6 +36,18 @@ class LimitationRegisterTests(unittest.TestCase):
         self.assertEqual(described["role"], "x")
         self.assertTrue(described["text"])
 
+    def test_codes_whose_reason_varies_do_not_assert_one(self):
+        # The corpus gives each descoped role and deferral its own reason (replaced by an
+        # explicit ECB role, denominator already embedded, no free source ...); the
+        # register text must defer to that detail instead of claiming one.
+        texts = load_register()["phase2"]
+        for code in ("role_descoped_by_phase1_revision", "deferred_research_extension",
+                     "history_starts_with_archive_captures"):
+            self.assertNotIn("because", texts[code])
+            self.assertNotIn("no free source", texts[code])
+            self.assertNotIn("no accepted inputs", texts[code])
+            self.assertIn("given with it", texts[code])
+
     def test_unmapped_code_raises(self):
         with self.assertRaises(UnmappedLimitation):
             describe({"code": "not_a_code"})
