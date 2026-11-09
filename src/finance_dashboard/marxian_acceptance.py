@@ -20,6 +20,10 @@ _DEPRECIATION = {"code": "surplus_includes_depreciation",
 _IO_RATIO = {"code": "io_input_origin_share_author_published",
              "detail": "The input-origin ratio WIOT.VA.PA / WIOT.TV.PA is the authors' published value; recomputing it "
                        "needs the WIOD input-output tables, which DataverseNL serves only to an owner download."}
+_IO_TAXES = {"code": "io_total_value_adds_product_taxes",
+             "detail": "The input-origin ratio is recomputed from the WIOD 2016 input-output tables and reproduces all 645 "
+                       "published country-years. The authors' total value is basic-price output plus the product-taxes row, "
+                       "which basic-price output already contains; the published rule is kept, so the ratio is theirs."}
 _TURNOVER = {"code": "turnover_and_circulating_capital_not_published",
              "detail": "No source publishes turnover times or advanced circulating capital; C is the SEA nominal fixed "
                        "capital stock with no turnover adjustment, as in Rotta & Kumar."}
@@ -53,7 +57,9 @@ def marxian_role_checks(role: str, evidence: dict) -> dict:
         code = "marxian_role_not_registered" if role not in ROLE_LIMITATIONS else "marxian_framework_originals_missing"
         return {"checks": [_gate(name, "blocked", code) for name in names], "conditional": False, "resolved": False}
     replication = evidence["replication"]
-    replicated = replication["passed"] is True
+    io = evidence.get("input_output_replication")
+    replicated = replication["passed"] is True and (io is None or io.get("passed") is True)
+    limits = [_IO_TAXES if (item is _IO_RATIO and io is not None) else item for item in ROLE_LIMITATIONS[role]]
     complete = replication["complete_country_years"] is True
     checks = [
         _gate("source_binding", "passed", "rotta_kumar_framework_originals_verified",
@@ -67,14 +73,15 @@ def marxian_role_checks(role: str, evidence: dict) -> dict:
               "published_panel_recomputed_from_publisher_sea" if replicated else "framework_replication_mismatch",
               level_matches=replication["level_matches"], level_checks=replication["level_checks"],
               derived_matches=replication["derived_matches"], derived_checks=replication["derived_checks"],
-              mismatches=replication["mismatches"]),
+              mismatches=replication["mismatches"] + (io or {}).get("mismatches", []),
+              input_output=({k: io[k] for k in ("checks", "matches")} if io else None)),
         _gate("matched_periods", "passed" if complete else "incomplete",
               "sea_and_panel_same_country_years" if complete else "framework_panel_country_years_missing"),
         _gate("publisher_dimensions", "passed", "sea_notes_and_table_a3_definitions",
               units=evidence["sea_units"],
               scope="Units from the SEA Notes sheet; variable formulas from the authors' Table A3."),
         _gate("temporal_evidence", "passed", "latest_revised_release_values",
-              limitations=[_REVISED, *ROLE_LIMITATIONS[role]]),
+              limitations=[_REVISED, *limits]),
     ]
     resolved = all(check["state"] == "passed" for check in checks)
     return {"checks": checks, "conditional": True, "resolved": resolved}

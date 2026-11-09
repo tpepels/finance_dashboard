@@ -570,3 +570,9 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 
 .decision-basis { margin: 0 0 14px; padding: 10px 14px; border-left: 4px solid #eda100; background: rgba(237, 161, 0, 0.10);
   font-size: 14px; line-height: 1.5; color: var(--dx-ink); max-width: 78ch; border-radius: 0 6px 6px 0; }
+
+.method-switch { display: inline-flex; gap: 4px; padding: 3px; margin: 0 0 14px; border: 1px solid var(--dx-rule); border-radius: 8px; flex-wrap: wrap; }
+.method-option { font: inherit; font-size: 13px; padding: 6px 12px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--dx-secondary); cursor: pointer; }
+.method-option-on { background: var(--dx-ink); color: var(--dx-surface); font-weight: 700; }
+.method-option:focus-visible { outline: 2px solid var(--dx-focus); outline-offset: 1px; }

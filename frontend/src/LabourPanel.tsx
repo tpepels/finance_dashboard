@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { breakGaps, entityName, timeChart, type Point, type Recession, type Theme, type TimeSeries } from './chartKit';
 import { Dumbbells, PairBars, StackedShares, VariantSpread, type Variant } from './heroes';
 import TimePanel from './TimePanel';
@@ -16,8 +16,12 @@ type L07Values = { economies: { area: string; then_year: string; latest_year: st
   bottom50_then: number; bottom50_latest: number }[]; history: Record<string, { top1: Line; bottom50: Line }> };
 
 type Spread = { min: number; max: number; variants: Variant[] } | null;
-type L04Values = { countries: { country: string; year: number; surplus_value: Spread; profit_rate: Spread }[];
-  history: Record<string, Record<string, Line>>; wages: Record<string, string>; classifications: string[] };
+type Method = 'io' | 'sea';
+type L04Values = { countries: { country: string; year: number; methods: Partial<Record<Method, { surplus_value: Spread; profit_rate: Spread }>> }[];
+  history: Partial<Record<Method, Record<string, Record<string, Line>>>>; wages: Record<string, string>; classifications: string[];
+  methods: Method[]; method_labels: Record<string, string> };
+
+const METHOD_SHORT: Record<Method, string> = { io: "Authors' full method (input-output corrected)", sea: 'Value added only' };
 
 const ISO3: Record<string, string> = { USA: 'US', DEU: 'DE', FRA: 'FR', GBR: 'GB', ITA: 'IT', ESP: 'ES', PRT: 'PT', JPN: 'JP', CHN: 'CN' };
 const FALLBACK: [string, string] = ['1970-01-01', '2025-01-01'];
@@ -134,26 +138,34 @@ function Inequality({ bundle, theme, recessions }: { bundle: Bundle<L07Values>; 
 
 function Marxian({ bundle, theme, recessions }: { bundle: Bundle<L04Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as L04Values;
+  const [method, setMethod] = useState<Method>(data.methods[0] ?? 'sea');
   const pctFmt = (v: number) => `${Math.round(v * 100)}%`;
-  const rows = (measure: 'surplus_value' | 'profit_rate') => data.countries.filter(c => c[measure]).map(c => ({ key: c.country,
-    label: entityName(ISO3[c.country] ?? c.country), ...(c[measure] as NonNullable<Spread>) }));
+  const rows = (measure: 'surplus_value' | 'profit_rate') => data.countries.filter(c => c.methods[method]?.[measure]).map(c => ({
+    key: c.country, label: entityName(ISO3[c.country] ?? c.country), ...(c.methods[method]![measure] as NonNullable<Spread>) }));
   const year = data.countries[0]?.year ?? 2014;
+  const history = data.history[method] ?? {};
   const panels = useMemo(() => multiples(data.countries.map(c => ({ key: c.country, title: entityName(ISO3[c.country] ?? c.country),
     entity: ISO3[c.country], unit: 'rate of surplus value',
-    lines: [{ name: 'employee compensation', slot: 0, data: data.history[c.country]?.['rotta_kumar_2024:comp'] ?? [] },
-      { name: 'labour income incl. self-employed', slot: 1, data: data.history[c.country]?.['rotta_kumar_2024:lab'] ?? [] }] })),
-  theme, recessions, 'l04', v => `${Math.round(v * 100)}%`), [data, theme, recessions]);
+    lines: [{ name: 'employee compensation', slot: 0, data: history[c.country]?.['rotta_kumar_2024:comp'] ?? [] },
+      { name: 'labour income incl. self-employed', slot: 1, data: history[c.country]?.['rotta_kumar_2024:lab'] ?? [] }] })),
+  theme, recessions, `l04-${method}`, v => `${Math.round(v * 100)}%`), [data, theme, recessions, method]); // eslint-disable-line react-hooks/exhaustive-deps
   return <>
+    {data.methods.length > 1 && <div className="method-switch" role="radiogroup" aria-label="How productive value added is measured">
+      {data.methods.map(m => <button key={m} type="button" role="radio" aria-checked={m === method}
+        className={m === method ? 'method-option method-option-on' : 'method-option'} onClick={() => setMethod(m)}>{METHOD_SHORT[m]}</button>)}
+    </div>}
     <div className="decision-hero decision-hero-stack">
       <h4 className="decision-subhead">Rate of surplus value, {year}: unpaid share of the working day relative to wages</h4>
       <VariantSpread theme={theme} title={`Rate of surplus value, ${year}`} rows={rows('surplus_value')} format={pctFmt} wageLabels={data.wages}/>
       <h4 className="decision-subhead">Net profit rate of the productive sector, {year}: surplus relative to capital stock</h4>
       <VariantSpread theme={theme} title={`Net profit rate of the productive sector, ${year}`} rows={rows('profit_rate')} format={pctFmt} wageLabels={data.wages}/>
-      <p className="decision-caption">Rotta & Kumar's framework applied to the WIOD Socio-Economic Accounts, under two published choices of
-        which industries are productive (dot and ring) and three measures of labour income (colours). The width of each bar is how
-        much the answer depends on those theoretical choices: here mostly on how labour income is measured.</p>
+      <p className="decision-caption">Rotta & Kumar's framework on the WIOD 2016 data, under two published choices of which industries
+        are productive (dot and ring) and three measures of labour income (colours). The width of each bar is how much the answer
+        depends on those choices. {method === 'io'
+          ? 'Value added here is their full method: productive output less only the inputs bought from productive industries, from the world input-output tables (recomputed and matched to all 645 published country-years).'
+          : 'Value added here comes from the Socio-Economic Accounts alone, without the input-output correction; switch above to compare.'}</p>
     </div>
-    <h4 className="decision-subhead">Rate of surplus value over time, Rotta & Kumar sectors: two wage measures</h4>
+    <h4 className="decision-subhead">Rate of surplus value over time, Rotta & Kumar sectors, {method === 'io' ? 'full method' : 'value added only'}: two wage measures</h4>
     <Grid panels={panels}/>
   </>;
 }

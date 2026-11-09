@@ -1252,35 +1252,46 @@ L04_COUNTRIES = ("USA", "DEU", "FRA", "GBR", "ITA", "ESP", "PRT", "JPN", "CHN")
 L04_WAGES = {"comp": "employee compensation", "lab": "labour income incl. self-employed", "comp_pe": "compensation per person engaged"}
 
 
+L04_METHODS = {"io": ("io_", "Input-output corrected value added (the authors' full method)"),
+               "sea": ("", "Value added from the Socio-Economic Accounts only")}
+
+
 def _l04(points: dict, view: dict, artifacts: dict) -> Computed:
     rates = artifacts.get("marxian_rates") or {}
     classes = rates.get("classifications", {})
-    countries, history = [], {}
+    methods = [m for m in L04_METHODS if m == "sea" or rates.get("input_output")]
+    countries, history = [], {m: {} for m in methods}
     for country in L04_COUNTRIES:
         years = sorted(set().union(*(set(c.get(country, {})) for c in classes.values()))) if classes else []
         if not years:
             continue
         year = years[-1]
-        variants = {"surplus_value": [], "profit_rate": []}
-        for cls, data in classes.items():
-            row = data.get(country, {}).get(year, {})
-            for wage in L04_WAGES:
-                if f"surplus_value_{wage}" in row:
-                    variants["surplus_value"].append({"classification": cls, "wage": wage, "value": row[f"surplus_value_{wage}"]})
-                if f"profit_rate_{wage}" in row:
-                    variants["profit_rate"].append({"classification": cls, "wage": wage, "value": row[f"profit_rate_{wage}"]})
-        entry = {"country": country, "year": year}
-        for measure, items in variants.items():
-            vals = [v["value"] for v in items]
-            entry[measure] = {"min": min(vals), "max": max(vals), "variants": items} if vals else None
+        entry = {"country": country, "year": year, "methods": {}}
+        for method in methods:
+            prefix = L04_METHODS[method][0]
+            variants = {"surplus_value": [], "profit_rate": []}
+            for cls, data in classes.items():
+                row = data.get(country, {}).get(year, {})
+                for wage in L04_WAGES:
+                    for measure in variants:
+                        key = f"{prefix}{measure}_{wage}"
+                        if key in row:
+                            variants[measure].append({"classification": cls, "wage": wage, "value": row[key]})
+            entry["methods"][method] = {measure: ({"min": min(v["value"] for v in items), "max": max(v["value"] for v in items),
+                                                   "variants": items} if items else None)
+                                        for measure, items in variants.items()}
+            history[method][country] = {
+                f"{cls}:{wage}": [[f"{y}-01-01", data[country][y][f"{prefix}surplus_value_{wage}"]]
+                                  for y in sorted(data.get(country, {})) if f"{prefix}surplus_value_{wage}" in data[country][y]]
+                for cls, data in classes.items() for wage in ("comp", "lab")}
         countries.append(entry)
-        history[country] = {f"{cls}:{wage}": [[f"{y}-01-01", data[country][y][f"surplus_value_{wage}"]]
-                                              for y in sorted(data.get(country, {})) if f"surplus_value_{wage}" in data[country][y]]
-                            for cls, data in classes.items() for wage in ("comp", "lab")}
-    return Computed(values={"countries": countries, "history": history, "wages": L04_WAGES,
+    return Computed(values={"countries": countries, "history": history, "wages": L04_WAGES, "methods": methods,
+                            "method_labels": {m: L04_METHODS[m][1] for m in methods},
                             "classifications": list(classes)}, estimates=None, comparison=["surplus_value", "profit_rate"],
                     transforms=[applied("share_of_total", applied_to=["marxian_rates"],
-                                        note="rate of surplus value = (VA - wages) / wages; net profit rate = (VA - wages) / K, productive sector")])
+                                        note="rate of surplus value = (VA - wages) / wages; net profit rate = (VA - wages) / K "
+                                             "of the productive sector; the input-output method replaces VA by "
+                                             "(WIOT.VA.PA / WIOT.TV.PA) x GO.PA (Rotta & Kumar Table A3)")])
 
 
 L04 = AnalysisDefinition("L04", {}, _l04, artifacts=("marxian_rates",))

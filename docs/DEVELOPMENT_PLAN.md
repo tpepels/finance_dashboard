@@ -97,10 +97,18 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **Last corpus questions (2026-11-09):** every corpus analysis now has an engine definition. C02 places the first yield-curve inversion, the Sahm trigger and the NBER announcement on one timeline around each recession since 1970, with signals not followed by a recession listed apart (no agreement score). C05 shows, per recession, how deep industrial production, payrolls and real GDP fell and how many months each took to regain its pre-recession peak, with curated shock events as context. G03 is defined but stays withheld while Phase 2 defers it; its section explains what is missing, and its two non-equivalent alternatives appear once Phase 2 accepts them. P05 models tax on realised gains (cost basis per asset) or a yearly tax on value.
 
+* **G03 and L04 (2026-11-09):** the engine computes from alternatives Phase 2 itself verified when the original method is unresolved, and labels the result (`basis: verified_alternatives`); G03 shows the EU27 and OECD corporate profit measures that way. The WIOD 2016 world input-output tables are archived (`python -m finance_dashboard.wiod_io`, pinned to DataverseNL's SHA-1) and the authors' input-origin ratio is recomputed: all 2,580 published WIOT values (645 country-years) match. Their total value is basic-price output plus the product-taxes row, which counts those taxes twice; it is reproduced as published and recorded. L04 shows the full method and value added only side by side.
+
 ## Next slices
 
-1. **G03 alternatives:** take the EU27 and OECD corporate profit series through Phase 2 acceptance so G03 can show them, labelled as non-equivalent.
-2. **L04 extensions:** recompute the input-origin ratio from the WIOD 2016 input-output tables (`WIOTS_in_EXCEL.zip`, owner download from DataverseNL); extend 1995-2021 with EU KLEMS industry workbooks (capital accounts K_GFCF) and OECD ICIO 2025, reconciling vintages over the 2000-2014 overlap.
+1. **L04 extension 1995-2021:** EU KLEMS & INTANProd Release 2025 (capital, labour and value added by industry, 1995-2021) with OECD ICIO 2025 (1995-2022) for the input-origin ratio, reconciled with WIOD over 2000-2014.
+2. **Sources found for the known gaps** (each to be pinned, read and taken through Phase 2):
+   * Euro bond leg for P02, P04, P05: Bundesbank Svensson 10-year Bund yield, monthly from 1972-09 (`BBSIS.M.I.ZST.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A`), turned into a total return with Swinkels' own yield-to-return method; replaces the US series that ends in 2022.
+   * C02 real-time Sahm rule: Philadelphia Fed Real-Time Data Set, unemployment-rate vintages (`rucqvmd.xlsx`), to compute what the rule showed with the data known at each date.
+   * C05 and P03 independent shock dates: Jordà-Schularick-Taylor Macrohistory R6 (crisis dates, 18 economies, 1870-2020); Laeven & Valencia systemic banking crises (IMF WP 2026/094, 1970-2025) to be checked for a data file.
+   * F04 high-yield spread: FRED now serves only three years of ICE BofA BAMLH0A0HYM2. Internet Archive captures of FRED's own text file hold the full daily history (1996-12-31 to 2021-03-16), and later captures bridge to the current three years.
+   * G03 listed-company profits: archived MSCI ACWI factsheets print index market cap and P/E (571 of 593 documents print the market cap). MSCI defines the index P/E as total cap over total earnings, so cap / P/E is the aggregate net earnings of the listed constituents, the spec's "MSCI aggregate index earnings" alternative.
+   * P05 and P04 owner roles: Phase 2 still lists target weights, rebalancing rule, costs, tax and withdrawal plan as open; the owner-input store now supplies them and should be registered as their source.
 
 ## Working rules
 

@@ -352,6 +352,29 @@ def replicate_panel(panel_raw: bytes, sums: dict, countries: set[str]) -> dict:
             "passed": seen == expected and levels[0] == levels[1] and derived[0] == derived[1] and levels[0] > 0}
 
 
+IO_VARIABLES = ("TV.PA", "VA.PA", "GI.UA", "NI.UA")
+
+
+def replicate_input_output(panel_rows: list[list], tables: dict) -> dict:
+    """Compare recomputed WIOT totals with the four published WIOT.* columns, country-year by country-year."""
+    column = {str(name): index for index, name in enumerate(panel_rows[0])}
+    checks, matches, mismatches = 0, 0, []
+    for row in panel_rows[1:]:
+        key = (str(row[0]), int(float(row[1])))
+        for variable in IO_VARIABLES:
+            published = _number(row[column["WIOT." + variable]])
+            if published is None:
+                continue
+            checks += 1
+            value = (tables.get(key) or {}).get(variable)
+            if value is not None and _close(value, published, (1e-6, 1e-3)):
+                matches += 1
+            elif len(mismatches) < 20:
+                mismatches.append({"country": key[0], "year": key[1], "variable": "WIOT." + variable,
+                                   "published": published, "recomputed": value})
+    return {"checks": checks, "matches": matches, "mismatches": mismatches, "passed": checks > 0 and checks == matches}
+
+
 RATE_MEASURES = {
     "surplus_value_comp": "SEA.Rate.of.Surplus.Value.PA",
     "surplus_value_lab": "SEA.Rate.of.Surplus.Value.PA.LAB",
@@ -359,17 +382,28 @@ RATE_MEASURES = {
     "profit_rate_comp": "SEA.Net.Profit.Rate.PA.COMP",
     "profit_rate_lab": "SEA.Net.Profit.Rate.PA.LAB",
 }
+# With the input-origin ratio WIOT.VA.PA / WIOT.TV.PA (the authors' full method, Table A3).
+IO_RATE_MEASURES = {
+    "io_surplus_value_comp": "WIOT.SEA.Rate.of.Surplus.Value.PA",
+    "io_surplus_value_lab": "WIOT.SEA.Rate.of.Surplus.Value.PA.LAB",
+    "io_surplus_value_comp_pe": "WIOT.SEA.Rate.of.Surplus.Value.PA.COMP_PE",
+    "io_profit_rate_comp": "WIOT.SEA.Rate.of.Profit.over.Kpa",
+    "io_profit_rate_lab": "WIOT.SEA.Rate.of.Profit.over.Kpa.LAB",
+}
 
 
-def rates_from_sums(sums: dict) -> dict:
-    """{country: {year: {measure: value}}} for the SEA-only Table A3 rates (no input-origin correction)."""
+def rates_from_sums(sums: dict, ratios: dict | None = None) -> dict:
+    """{country: {year: {measure: value}}}: the SEA-only Table A3 rates, plus the input-output corrected
+    rates where a country-year input-origin ratio is given."""
     by_cy: dict = defaultdict(dict)
     for (country, year, variable, group), value in sums.items():
         by_cy[(country, year)][(variable, group)] = value
     out: dict = defaultdict(dict)
     for (country, year), a in by_cy.items():
-        derived = _derived(a, None)
-        out[country][year] = {key: derived[name] for key, name in RATE_MEASURES.items() if name in derived}
+        ratio = (ratios or {}).get((country, year))
+        derived = _derived(a, ratio)
+        measures = {**RATE_MEASURES, **(IO_RATE_MEASURES if ratio is not None else {})}
+        out[country][year] = {key: derived[name] for key, name in measures.items() if name in derived}
     return {country: dict(years) for country, years in out.items()}
 
 
@@ -393,9 +427,17 @@ def marxian_rates(evidence_root: Path) -> dict:
             raise ValueError("marxian_source_hash_mismatch")
     baseline = parse_classification(raw["rk-tables.xlsx"])
     alternative = tp_classification(raw["tp-2017.pdf"], baseline)
-    result = {"status": "ready", "bundle_digest": folder.name, "years": list(YEARS), "classifications": {
-        "rotta_kumar_2024": rates_from_sums(sea_aggregates(raw["wiod-sea.xlsx"], baseline)[0]),
-        "tsoulfidis_paitaridis_2017": rates_from_sums(sea_aggregates(raw["wiod-sea.xlsx"], alternative)[0])}}
+    from .wiod_io import wiot_aggregates
+
+    def ratios(classification):
+        tables = wiot_aggregates(evidence_root, classification)
+        return None if tables is None else {key: v["VA.PA"] / v["TV.PA"] for key, v in tables.items() if v["TV.PA"]}
+    io = {"rotta_kumar_2024": ratios(baseline), "tsoulfidis_paitaridis_2017": ratios(alternative)}
+    result = {"status": "ready", "bundle_digest": folder.name, "years": list(YEARS),
+              "input_output": io["rotta_kumar_2024"] is not None, "classifications": {
+        "rotta_kumar_2024": rates_from_sums(sea_aggregates(raw["wiod-sea.xlsx"], baseline)[0], io["rotta_kumar_2024"]),
+        "tsoulfidis_paitaridis_2017": rates_from_sums(sea_aggregates(raw["wiod-sea.xlsx"], alternative)[0],
+                                                      io["tsoulfidis_paitaridis_2017"])}}
     _RATES_CACHE[folder.name] = result
     return result
 
@@ -431,6 +473,9 @@ def read_marxian_evidence(evidence_root: Path) -> dict:
     if len(countries) != COUNTRY_COUNT or {key[0] for key in sums} != countries:
         raise ValueError("marxian_country_set_mismatch")
     replication = replicate_panel(raw["rk-panel.xlsx"], sums, countries)
+    from .wiod_io import wiot_aggregates
+    tables = wiot_aggregates(evidence_root, baseline)
+    io_replication = replicate_input_output(_sheet(raw["rk-panel.xlsx"], "Panel Data"), tables) if tables else None
     def counts(classification):
         result = defaultdict(int)
         for group in classification.values():
@@ -452,7 +497,8 @@ def read_marxian_evidence(evidence_root: Path) -> dict:
                     "concordance": "reviewed NAICS sector -> WIOD industry transcription"},
                 "all_industries": {"groups": {"all_except_excluded": sum(g != "EX" for g in baseline.values())},
                                    "source": "specification method alternative; no productive split"}},
-            "input_output_correction_recomputed": False,
+            "input_output_correction_recomputed": io_replication is not None,
+            "input_output_replication": io_replication,
             "scope": "Rotta & Kumar (2024) framework, 43 WIOD countries, 56 industries, 2000-2014, latest revised values.",
             "bounded_data_verified": replication["passed"], "full_history_verified": replication["passed"],
             "first_publication_verified": False}

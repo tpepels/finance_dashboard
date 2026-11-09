@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('./viz', () => ({ createChart: vi.fn(() => ({ setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn(),
   dispatchAction: vi.fn(), on: vi.fn(), off: vi.fn(), getOption: vi.fn(() => ({})), group: '' })),
@@ -12,10 +12,15 @@ const bundle = (id: string, values: unknown) => ({ analysis_id: id, question: `$
   method_limitations: [], inputs: [], transforms: [], limitations: [] });
 const line = [['2020-01-01', 1]];
 const bundles: Record<string, unknown> = {
-  L04: bundle('L04', { classifications: ['rotta_kumar_2024'], wages: { comp: 'employee compensation' },
-    countries: [{ country: 'PRT', year: 2014, surplus_value: { min: 0.38, max: 0.76, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.76 }] },
-      profit_rate: { min: 0.12, max: 0.16, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.15 }] } }],
-    history: { PRT: { 'rotta_kumar_2024:comp': [['2014-01-01', 0.76]], 'rotta_kumar_2024:lab': [] } } }),
+  L04: bundle('L04', { classifications: ['rotta_kumar_2024'], wages: { comp: 'employee compensation' }, methods: ['io', 'sea'],
+    method_labels: { io: 'Input-output corrected value added', sea: 'Value added from the Socio-Economic Accounts only' },
+    countries: [{ country: 'PRT', year: 2014, methods: {
+      io: { surplus_value: { min: 1.0, max: 1.5, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 1.5 }] },
+        profit_rate: { min: 0.3, max: 0.4, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.4 }] } },
+      sea: { surplus_value: { min: 0.38, max: 0.76, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.76 }] },
+        profit_rate: { min: 0.12, max: 0.16, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.15 }] } } } }],
+    history: { io: { PRT: { 'rotta_kumar_2024:comp': [['2014-01-01', 1.5]], 'rotta_kumar_2024:lab': [] } },
+      sea: { PRT: { 'rotta_kumar_2024:comp': [['2014-01-01', 0.76]], 'rotta_kumar_2024:lab': [] } } } }),
   L01: bundle('L01', { economies: [{ area: 'DE', base_year: '1995', latest_year: '2021', productivity: 118.2, pay: 111.4 }],
     history: { DE: { productivity: line, pay: line } } }),
   L02: bundle('L02', { economies: [{ area: 'FR', year: '2024', parts: [{ key: 'compensation', share: 60 }, { key: 'net_operating_surplus', share: 40 }], subsidies_reported: true }],
@@ -42,7 +47,9 @@ describe('LabourPanel', () => {
     expect(screen.getByRole('img', { name: /net profit rate, first year/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /household wealth/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /top 1% income share/i })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /rate of surplus value/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /rate of surplus value.*portugal 100% to 150%/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: /value added only/i }));
+    expect(screen.getByRole('img', { name: /rate of surplus value.*portugal 38% to 76%/i })).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
   });
 });

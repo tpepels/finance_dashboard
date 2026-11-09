@@ -60,19 +60,30 @@ class ArchiveEngineTests(unittest.TestCase):
         self.assertAlmostEqual(us["gdp_share"], 30 / 110 * 100)
         self.assertEqual(us["gdp_year"], "2025")
 
-    def test_l04_assumption_spread_per_country(self):
+    def test_l04_assumption_spread_per_country_and_method(self):
         self.assertIs(DEFINITIONS["L04"], L04)
-        rates = {"status": "ready", "years": [2013, 2014], "classifications": {
-            "rotta_kumar_2024": {"PRT": {2014: {"surplus_value_comp": 0.76, "surplus_value_lab": 0.51, "surplus_value_comp_pe": 0.38,
-                                                "profit_rate_comp": 0.15, "profit_rate_lab": 0.12}}},
-            "tsoulfidis_paitaridis_2017": {"PRT": {2014: {"surplus_value_comp": 0.75, "surplus_value_lab": 0.51, "surplus_value_comp_pe": 0.38,
-                                                         "profit_rate_comp": 0.16, "profit_rate_lab": 0.12}}}}}
+        row = {"surplus_value_comp": 0.76, "surplus_value_lab": 0.51, "surplus_value_comp_pe": 0.38,
+               "profit_rate_comp": 0.15, "profit_rate_lab": 0.12, "io_surplus_value_comp": 1.4, "io_surplus_value_lab": 1.1,
+               "io_surplus_value_comp_pe": 1.0, "io_profit_rate_comp": 0.4, "io_profit_rate_lab": 0.35}
+        rates = {"status": "ready", "years": [2014], "input_output": True, "classifications": {
+            "rotta_kumar_2024": {"PRT": {2014: row}},
+            "tsoulfidis_paitaridis_2017": {"PRT": {2014: {**row, "surplus_value_comp": 0.75, "io_surplus_value_comp": 1.5}}}}}
         values = L04.compute({}, {}, {"marxian_rates": rates}).values
+        self.assertEqual(values["methods"], ["io", "sea"])
         prt = next(r for r in values["countries"] if r["country"] == "PRT")
         self.assertEqual(prt["year"], 2014)
-        self.assertAlmostEqual(prt["surplus_value"]["min"], 0.38)
-        self.assertAlmostEqual(prt["surplus_value"]["max"], 0.76)
-        self.assertEqual(len(prt["surplus_value"]["variants"]), 6)
+        sea, io = prt["methods"]["sea"], prt["methods"]["io"]
+        self.assertAlmostEqual(sea["surplus_value"]["min"], 0.38)
+        self.assertAlmostEqual(sea["surplus_value"]["max"], 0.76)
+        self.assertEqual(len(sea["surplus_value"]["variants"]), 6)
+        self.assertAlmostEqual(io["surplus_value"]["max"], 1.5)
+        self.assertEqual(values["history"]["io"]["PRT"]["rotta_kumar_2024:comp"], [["2014-01-01", 1.4]])
+
+    def test_l04_without_the_tables_offers_only_value_added(self):
+        rates = {"status": "ready", "years": [2014], "input_output": False, "classifications": {
+            "rotta_kumar_2024": {"PRT": {2014: {"surplus_value_comp": 0.76, "surplus_value_lab": 0.5}}}}}
+        values = L04.compute({}, {}, {"marxian_rates": rates}).values
+        self.assertEqual(values["methods"], ["sea"])
 
     def test_p01_fund_exposures(self):
         self.assertIs(DEFINITIONS["P01"], P01)

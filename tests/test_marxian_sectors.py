@@ -246,3 +246,34 @@ def ms_roles():
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InputOutputReplicationTests(unittest.TestCase):
+    HEADER = ["Country", "Year", "WIOT.TV.PA", "WIOT.VA.PA", "WIOT.GI.UA", "WIOT.NI.UA"]
+
+    def test_recomputed_tables_are_checked_against_every_published_country_year(self):
+        rows = [self.HEADER, ["AAA", 2000.0, 100.0, 60.0, 50.0, 40.0], ["BBB", 2000.0, 10.0, 6.0, 5.0, 4.0]]
+        tables = {("AAA", 2000): {"TV.PA": 100.0, "VA.PA": 60.0, "GI.UA": 50.0, "NI.UA": 40.0},
+                  ("BBB", 2000): {"TV.PA": 10.0, "VA.PA": 6.0, "GI.UA": 5.0, "NI.UA": 4.0}}
+        result = ms.replicate_input_output(rows, tables)
+        self.assertEqual((result["checks"], result["matches"], result["passed"]), (8, 8, True))
+        tables[("BBB", 2000)]["VA.PA"] = 6.5
+        failed = ms.replicate_input_output(rows, tables)
+        self.assertFalse(failed["passed"])
+        self.assertEqual(failed["mismatches"][0]["variable"], "WIOT.VA.PA")
+
+    def test_a_verified_recomputation_replaces_the_author_published_ratio_limitation(self):
+        files = originals()
+        with TemporaryDirectory() as temp, Fixture(files):
+            ms.store_marxian_sectors(files, Path(temp))
+            evidence = ms.read_marxian_evidence(Path(temp))
+        evidence = {**evidence, "input_output_correction_recomputed": True,
+                    "input_output_replication": {"checks": 8, "matches": 8, "passed": True, "mismatches": []}}
+        result = marxian_role_checks("productive_surplus_inputs", evidence)
+        codes = {item["code"] for item in result["checks"][-1]["limitations"]}
+        self.assertIn("io_total_value_adds_product_taxes", codes)
+        self.assertNotIn("io_input_origin_share_author_published", codes)
+        self.assertTrue(result["resolved"])
+        broken = {**evidence, "input_output_replication": {"checks": 8, "matches": 7, "passed": False, "mismatches": [{}]}}
+        gates = {c["id"]: c["state"] for c in marxian_role_checks("productive_surplus_inputs", broken)["checks"]}
+        self.assertEqual(gates["original_source_values"], "failed")
