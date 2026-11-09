@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENTITY, namedLabelsFit, palette, presetWindow, recessionAreas, recessionAt, timeChart, withNamedLabels,
+import { ENTITY, entityColour, namedLabelsFit, palette, presetWindow, recessionAreas, recessionAt, timeChart, withNamedLabels,
   type Recession } from './chartKit';
 
 const periods: Recession[] = [
@@ -15,6 +15,9 @@ describe('chart kit', () => {
     expect(palette('dark').series[0]).not.toEqual(palette('light').series[0]);
     expect(ENTITY.US).toBe(0);
     expect(new Set(Object.values(ENTITY)).size).toBe(Object.keys(ENTITY).length);
+    expect(entityColour('EU', 'light')).toBe(entityColour('EA', 'light'));      // the EU shares the euro area's colour
+    expect(entityColour('G7', 'light')).toBe(palette('light').secondary);       // aggregates are neutral context
+    expect(entityColour('IN', 'dark')).toBe(palette('dark').series[ENTITY.IN]);
   });
 
   it('shades only recessions inside the plotted span and names the three episodes on the chart', () => {

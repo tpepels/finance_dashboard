@@ -14,7 +14,7 @@ export type Point = [string, number | null];
 export type TimeSeries = {
   name: string;
   data: Point[];
-  entity?: keyof typeof ENTITY;
+  entity?: string;
   slot?: number;
   area?: boolean;
   step?: boolean;
@@ -28,11 +28,20 @@ const SERIES = {
   dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
 };
 
-/** Every economy keeps its colour on every chart. */
-export const ENTITY = { US: 0, EA: 1, JP: 2, DE: 3, CN: 4, PT: 5 } as const;
-export const ENTITY_NAME: Record<keyof typeof ENTITY, string> = {
-  US: 'United States', EA: 'Euro area', JP: 'Japan', DE: 'Germany', CN: 'China', PT: 'Portugal',
+/** Every economy keeps its colour on every chart. Eight hues at most: the EU shares the euro area's colour,
+ * and aggregates (World, G7, G20) and further economies are drawn in neutral ink as context. */
+export const ENTITY = { US: 0, EA: 1, JP: 2, DE: 3, CN: 4, PT: 5, IN: 6, GB: 7 } as const;
+const ALIAS: Record<string, keyof typeof ENTITY> = { EU: 'EA' };
+export const ENTITY_NAME: Record<string, string> = {
+  US: 'United States', EA: 'Euro area', JP: 'Japan', DE: 'Germany', CN: 'China', PT: 'Portugal', IN: 'India',
+  GB: 'United Kingdom', EU: 'European Union', FR: 'France', G7: 'G7', G20: 'G20', WORLD: 'World',
 };
+export const entityName = (entity: string) => ENTITY_NAME[entity] ?? entity;
+
+export function entityColour(entity: string, theme: Theme): string {
+  const key = (entity in ENTITY ? entity : ALIAS[entity]) as keyof typeof ENTITY | undefined;
+  return key === undefined ? palette(theme).secondary : palette(theme).series[ENTITY[key]];
+}
 
 export function palette(theme: Theme) {
   const dark = theme === 'dark';
@@ -144,8 +153,8 @@ const defaultFormat = (value: number) => Math.abs(value) >= 1000
 export function seriesColour(s: TimeSeries, theme: Theme) {
   const colours = palette(theme);
   if (s.muted) return colours.muted;
-  const slot = s.entity !== undefined ? ENTITY[s.entity] : (s.slot ?? 0);
-  return colours.series[slot % colours.series.length];
+  if (s.entity !== undefined) return entityColour(s.entity, theme);
+  return colours.series[(s.slot ?? 0) % colours.series.length];
 }
 
 /** One-axis time chart: recession bands, zoom, crosshair, end labels; zones and reference lines optional. */
