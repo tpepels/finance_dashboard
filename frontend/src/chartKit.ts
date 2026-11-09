@@ -20,6 +20,8 @@ export type TimeSeries = {
   step?: boolean;
   width?: number;
   muted?: boolean;
+  /** Sparse observations: always draw each point as a dot. */
+  dots?: boolean;
 };
 
 /** Dataviz reference categorical palette; validated against this dashboard's surfaces (light #fcfdfd, dark #16232a). */
@@ -107,6 +109,20 @@ export function withNamedLabels<T extends object>(option: T, show: boolean): T {
 
 export const yearsBetween = (from: string | number, to: string | number) =>
   (new Date(to).getTime() - new Date(from).getTime()) / (365.25 * 24 * 3600 * 1000);
+
+/** Insert a null one day after any observation followed by a gap longer than `maxDays`, so lines never bridge missing periods. */
+export function breakGaps(points: Point[], maxDays: number): Point[] {
+  const out: Point[] = [];
+  points.forEach((p, i) => {
+    out.push(p);
+    const next = points[i + 1];
+    if (next && (new Date(next[0]).getTime() - new Date(p[0]).getTime()) / 86400000 > maxDays) {
+      const gap = new Date(new Date(p[0]).getTime() + 86400000).toISOString().slice(0, 10);
+      out.push([gap, null]);
+    }
+  });
+  return out;
+}
 
 export function recessionAt(date: string, periods: Recession[]): Recession | undefined {
   return periods.find(p => p.start <= date && (p.end === null || date <= p.end));
@@ -224,7 +240,7 @@ export function timeChart(input: TimeChartInput): EChartsOption {
         name: s.name,
         data: s.data,
         step: s.step ? 'end' as const : undefined,
-        showSymbol: s.data.length < 30,
+        showSymbol: s.dots || s.data.length < 30,
         symbolSize: 8,
         connectNulls: false,
         lineStyle: { color: colour, width: s.width ?? (compact ? 2.5 : 2) },

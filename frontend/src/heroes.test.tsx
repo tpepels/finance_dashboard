@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, CycleClock, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, RiskReturnMap, StagflationMap, Thermometers, nudge, scale } from './heroes';
+import { ChangeBars, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, CycleClock, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, RiskReturnMap, StagflationMap, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -164,5 +164,27 @@ describe('hero graphics', () => {
     const stack = screen.getByRole('img', { name: /debt by sector/i });
     expect(stack.querySelectorAll('[data-part="segment"]')).toHaveLength(5);
     expect(screen.getByText(/no free government series/i)).toBeTruthy();
+  });
+
+  it('places trailing and forward P/E per region on one scale', () => {
+    render(<PeDots theme="light" rows={[{ region: 'USA', as_of: '2026-09-01', trailing: 25.4, forward: 19.4, trailing_min: 17, trailing_max: 27, months: 52 },
+      { region: 'EM', as_of: '2026-09-01', trailing: 14.9, forward: null, trailing_min: 10, trailing_max: 16, months: 120 }]}/>);
+    const plot = screen.getByRole('img', { name: /price to earnings by region/i });
+    expect(plot.querySelectorAll('[data-part="trailing"]')).toHaveLength(2);
+    expect(plot.querySelectorAll('[data-part="forward"]')).toHaveLength(1);
+    expect(screen.getByText('MSCI USA')).toBeTruthy();
+  });
+
+  it('shows predictive strength per horizon and era, with the effective sample in each cell', () => {
+    render(<StrengthGrid theme="dark" eras={['1881–1944', 'All years']} horizons={[5, 10]} cells={[
+      { horizon_years: 5, era: '1881–1944', windows: 768, effective_windows: 12.8, rho: 0.41 },
+      { horizon_years: 10, era: '1881–1944', windows: 768, effective_windows: 6.4, rho: 0.42 },
+      { horizon_years: 5, era: 'All years', windows: 1690, effective_windows: 28.2, rho: 0.31 },
+      { horizon_years: 10, era: 'All years', windows: 0, effective_windows: 0, rho: null }]}/>);
+    const grid = screen.getByRole('img', { name: /how well valuation ranked/i });
+    expect(grid.querySelectorAll('[data-part="cell"]')).toHaveLength(4);
+    expect(screen.getByText('0.41')).toBeTruthy();
+    expect(screen.getByText('≈ 12.8 independent')).toBeTruthy();
+    expect(screen.getByText('too few')).toBeTruthy();
   });
 });

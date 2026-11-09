@@ -637,3 +637,69 @@ export function SectorStack({ theme, rows }: { theme: Theme; rows: SectorRow[] }
     })}
   </svg>;
 }
+
+export type PeRow = { region: string; as_of: string; trailing: number; forward: number | null; trailing_min: number; trailing_max: number; months: number };
+const REGION_LABEL: Record<string, string> = { ACWI: 'MSCI ACWI (world, all countries)', WORLD: 'MSCI World (developed)', USA: 'MSCI USA',
+  EUROPE: 'MSCI Europe', JAPAN: 'MSCI Japan', EM: 'MSCI Emerging Markets', EAFE: 'MSCI EAFE (developed ex North America)' };
+const REGION_ENTITY: Record<string, string> = { ACWI: 'WORLD', WORLD: 'G7', USA: 'US', EUROPE: 'EA', JAPAN: 'JP', EM: 'IN', EAFE: 'GB' };
+
+/** Trailing (solid) and forward (hollow) P/E per region on one scale, with each region's archived range as a bar. */
+export function PeDots({ theme, rows }: { theme: Theme; rows: PeRow[] }) {
+  const c = palette(theme);
+  const W = 760, left = 300, right = 700, rowH = 40, top = 36;
+  const hi = Math.ceil(Math.max(...rows.flatMap(r => [r.trailing_max, r.trailing, r.forward ?? 0])) / 5) * 5 + 5;
+  const x = scale(0, hi, left, right);
+  const H = top + rows.length * rowH + 26;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Price to earnings by region: ${rows.map(r => `${REGION_LABEL[r.region] ?? r.region} trailing ${r.trailing}, forward ${r.forward ?? 'n/a'}`).join('; ')}`}>
+    <text x={left} y={14} fill={c.muted} fontSize="11">dot: trailing P/E · ring: forward P/E · bar: range in archived factsheets</text>
+    {ticks(0, hi, 5).map(t => <g key={t}>
+      <line x1={x(t)} x2={x(t)} y1={top - 8} y2={H - 24} stroke={c.grid}/>
+      <text x={x(t)} y={H - 8} textAnchor="middle" fill={c.muted} fontSize="12">{t}</text></g>)}
+    {rows.map((r, i) => {
+      const cy = top + i * rowH + 8, colour = entityColour(REGION_ENTITY[r.region] ?? r.region, theme);
+      return <g key={r.region}>
+        <text x={0} y={cy + 5} fill={c.ink} fontSize="13">{REGION_LABEL[r.region] ?? r.region}</text>
+        <rect x={x(r.trailing_min)} y={cy - 5} width={Math.max(2, x(r.trailing_max) - x(r.trailing_min))} height="10" rx="5"
+          fill={colour} fillOpacity="0.18"><title>{`Trailing P/E range over ${r.months} archived months: ${r.trailing_min}–${r.trailing_max}`}</title></rect>
+        {r.forward !== null && <circle data-part="forward" cx={x(r.forward)} cy={cy} r="7" fill={c.surface} stroke={colour} strokeWidth="2">
+          <title>{`Forward P/E ${r.forward} (${r.as_of})`}</title></circle>}
+        <circle data-part="trailing" cx={x(r.trailing)} cy={cy} r="8" fill={colour} stroke={c.surface} strokeWidth="2">
+          <title>{`Trailing P/E ${r.trailing} (${r.as_of})`}</title></circle>
+        <text x={x(r.trailing)} y={cy - 12} textAnchor="middle" fill={c.ink} fontSize="12" fontWeight="700" stroke={c.surface}
+          strokeWidth="4" paintOrder="stroke">{r.trailing.toFixed(1)}</text>
+      </g>;
+    })}
+  </svg>;
+}
+
+export type StrengthCell = { horizon_years: number; era: string; windows: number; effective_windows: number; rho: number | null };
+
+/** Rank correlation between starting earnings yield and later real returns: one hue, darker = stronger. */
+export function StrengthGrid({ theme, cells, eras, horizons }: { theme: Theme; cells: StrengthCell[]; eras: string[]; horizons: number[] }) {
+  const c = palette(theme);
+  const left = 130, top = 40, cw = 150, ch = 74;
+  const W = left + eras.length * cw + 10, H = top + horizons.length * ch + 30;
+  const ramp = theme === 'dark' ? ['#104281', '#1c5cab', '#2a78d6', '#5598e7', '#86b6ef'] : ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#1c5cab'];
+  const fill = (rho: number) => ramp[Math.max(0, Math.min(ramp.length - 1, Math.floor(Math.max(0, rho) * ramp.length)))];
+  const ink = (rho: number) => (theme === 'dark' ? rho < 0.6 : rho >= 0.6) ? '#ffffff' : c.ink;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`How well valuation ranked later returns: ${cells.map(x => `${x.horizon_years} years, ${x.era}: ${x.rho === null ? 'too few windows' : x.rho.toFixed(2)}`).join('; ')}`}>
+    {eras.map((era, i) => <text key={era} x={left + i * cw + cw / 2} y={top - 12} textAnchor="middle" fill={c.ink} fontSize="13" fontWeight="700">{era}</text>)}
+    {horizons.map((h, j) => <text key={h} x={left - 12} y={top + j * ch + ch / 2 + 4} textAnchor="end" fill={c.ink} fontSize="13">{`next ${h} years`}</text>)}
+    {cells.map(cell => {
+      const i = eras.indexOf(cell.era), j = horizons.indexOf(cell.horizon_years);
+      if (i < 0 || j < 0) return null;
+      const x0 = left + i * cw, y0 = top + j * ch;
+      return <g key={`${cell.era}-${cell.horizon_years}`} data-part="cell">
+        <rect x={x0 + 2} y={y0 + 2} width={cw - 4} height={ch - 4} rx="6" fill={cell.rho === null ? c.grid : fill(cell.rho)}>
+          <title>{`${cell.era}, next ${cell.horizon_years} years: ${cell.windows} start months, about ${cell.effective_windows} independent`}</title></rect>
+        {cell.rho === null
+          ? <text x={x0 + cw / 2} y={y0 + ch / 2 + 4} textAnchor="middle" fill={c.muted} fontSize="13">too few</text>
+          : <><text x={x0 + cw / 2} y={y0 + ch / 2} textAnchor="middle" fill={ink(cell.rho)} fontSize="20" fontWeight="700">{cell.rho.toFixed(2)}</text>
+            <text x={x0 + cw / 2} y={y0 + ch / 2 + 18} textAnchor="middle" fill={ink(cell.rho)} fontSize="11">{`≈ ${cell.effective_windows} independent`}</text></>}
+      </g>;
+    })}
+    <text x={left} y={H - 6} fill={c.muted} fontSize="11">0 = no ranking power · 1 = cheaper starts always ranked better returns</text>
+  </svg>;
+}

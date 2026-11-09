@@ -85,9 +85,11 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **Phase 3 group 3, credit and stress (2026-11-09):** F01, F02, F04, F05, F06 and F07 run on the engine in a Credit & stress panel: credit to GDP against its BIS trend, debt service five years ago against now, stress gauges within their own history with the OFR index split into its published parts, debt by sector stacked as % of GDP with US bank equity, real house and commercial property prices within their own history, and US nonbank leverage and repo funding. Seven more pre-reset tiles retired (27 remain).
 
+* **Phase 3 group 4, valuation (2026-11-09):** V01, V02, V03 and V05 run on the engine in a Valuation panel: US valuation gauges within their own history (CAPE, P/E, dividend yield, excess CAPE yield), BEA Q ratios beside CAPE, trailing and forward P/E per MSCI region from archived factsheets (sparse months drawn as dots, never bridged), and a grid of how well starting valuation ranked later 5, 10 and 15-year real returns per era with effective independent samples. Three more pre-reset tiles retired (24 remain).
+
 ## Next slices
 
-1. **Phase 3, overview group by group:** next is valuation and concentration (V01, V02, V03, V05, G01, G02), then V01–V05/G01, L-series and P-series, each retiring the pre-reset pieces it replaces.
+1. **Phase 3, overview group by group:** next is concentration and global (G01, G02, G05, G06; holdings and factsheet artifacts), then V01–V05/G01, L-series and P-series, each retiring the pre-reset pieces it replaces.
 2. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
 3. **L04 extensions:** recompute the input-origin ratio from the WIOD 2016 input-output tables (`WIOTS_in_EXCEL.zip`, owner download from DataverseNL); extend 1995-2021 with EU KLEMS industry workbooks (capital accounts K_GFCF) and OECD ICIO 2025, reconciling vintages over the 2000-2014 overlap.
 

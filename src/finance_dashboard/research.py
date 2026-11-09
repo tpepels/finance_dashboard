@@ -25,7 +25,7 @@ from .service import current_observations
 # Every indicator is source-keyed, and its relationship is explicitly defined.
 # 'raw' is for like-for-like measurements only; contextual single series do not
 # imply any statistical relationship to an adjacent tile.
-# Growth (C01-C06), monetary (M01-M04) and credit (F01-F07) indicators moved to the Phase 3 engine panels.
+# Growth (C01-C06), monetary (M01-M04), credit (F01-F07) and valuation (V01-V05) indicators moved to the Phase 3 engine panels.
 SPECS: tuple[dict[str, Any], ...] = (
     # WORLD and OECD contain only corresponding geographic aggregates.
     dict(id="global_labour_share", region="world", theme="Labour and distribution",
@@ -58,11 +58,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          kind="raw", question="How large are public equity valuations compared with output?",
          reading="World Bank WFE-listed domestic-company capitalization divided by world GDP in matched years.",
          caveat="A market-cap/GDP ratio does not identify overvaluation; it excludes private enterprise and is sensitive to listing residence."),
-    dict(id="global_pe", region="world", theme="Capital and equity valuation",
-         title="Global equity-index trailing P/E", sources=["valuation.world.global_trailing_pe"],
-         kind="raw", question="How many units of index price per unit of reported earnings?",
-         reading="Published Siblis global equity-index trailing price-to-earnings snapshots.",
-         caveat="Index universe is capitalization-weighted and US-heavy; observations are sparse, not a continuous monthly global company-profit series."),
     dict(id="global_concentration", region="world", theme="Ownership and concentration",
          title="Largest ten firms' ACWI index weight", sources=["concentration.global.msci_acwi_published_top10"],
          kind="raw", question="How concentrated is the global equity benchmark?",
@@ -74,12 +69,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          reading="Trailing 36-month return correlation of monthly World Bank gold with MSCI ACWI net total returns.",
          caveat="MSCI ACWI is US-weighted, correlation changes by sample and cannot forecast returns."),
     # United States: the broad macro environment comes before the distribution detail.
-    dict(id="us_tobins_q", region="us", theme="Capital and equity valuation",
-         title="US nonfinancial corporate market-to-produced-asset replacement ratio",
-         sources=["valuation.us.tobins_q"], kind="raw",
-         question="What does the market price of US corporate equities imply relative to produced-asset replacement cost?",
-         reading="Documented BEA replacement-cost variant of Tobin's Q1; a market-value/produced-assets comparison.",
-         caveat="Covers US nonfinancial corporations and produced assets under BEA Q1 definitions; not total global corporate valuation."),
     # United States: exact-sector productivity/pay and distinct GDP-wide labour share.
     dict(id="us_productivity_pay", region="us", theme="Labour and distribution",
          title="Productivity versus output-price-adjusted pay", sources=[
@@ -118,11 +107,6 @@ SPECS: tuple[dict[str, Any], ...] = (
          kind="raw", question="Is the labour market showing recession-like deterioration?",
          reading="FRED real-time Sahm unemployment threshold statistic, a documented recession-onset signal.",
          caveat="Not a leading crash forecast; employment and financial-market turning points can diverge."),
-    dict(id="us_cape", region="us", theme="Capital and equity valuation",
-         title="US Shiller cyclically adjusted price/earnings", sources=["valuation.us.cape"],
-         kind="raw", question="How demanding is the US equity valuation relative to a cycle of earnings?",
-         reading="Shiller CAPE based on inflation-adjusted ten-year average earnings.",
-         caveat="A valuation multiple does not time near-term market corrections."),
     dict(id="us_cap_gdp", region="us", theme="Capital and equity valuation",
          title="US domestic listed market cap / GDP", sources=["valuation.domestic_cap_gdp.us"],
          kind="raw", question="How large is the US listed equity sector compared with domestic GDP?",

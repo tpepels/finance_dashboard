@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENTITY, entityColour, namedLabelsFit, palette, presetWindow, recessionAreas, recessionAt, timeChart, withNamedLabels,
+import { ENTITY, breakGaps, entityColour, namedLabelsFit, palette, presetWindow, recessionAreas, recessionAt, timeChart, withNamedLabels,
   type Recession } from './chartKit';
 
 const periods: Recession[] = [
@@ -82,5 +82,12 @@ describe('chart kit', () => {
     const option = timeChart({ theme: 'light', recessions: [], unit: '', refLines: [{ value: 2, label: '2% target' }],
       series: [{ name: 'x', data: [['2000-01-01', 1]] }] }) as Record<string, any>;
     expect(option.series[0].markLine.label.position).toBe('insideStartTop');
+  });
+
+  it('breaks a sparse line wherever observations are further apart than one step, without inventing values', () => {
+    expect(breakGaps([['2024-01-01', 1], ['2024-02-01', 2], ['2024-06-01', 3]], 45))
+      .toEqual([['2024-01-01', 1], ['2024-02-01', 2], ['2024-02-02', null], ['2024-06-01', 3]]);
+    const option = timeChart({ theme: 'light', recessions: [], unit: '', series: [{ name: 'PE', dots: true, data: [['2024-01-01', 1]] }] }) as Record<string, any>;
+    expect(option.series[0].showSymbol).toBe(true);
   });
 });

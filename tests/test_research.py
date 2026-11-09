@@ -36,7 +36,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         catalog, _ = load_documents()
         known = {s["id"]: s for s in catalog["series"]}
         self.assertEqual(len(SPECS), len(BY_ID))
-        self.assertEqual(len(SPECS), 27)   # growth, monetary and credit tiles moved to the engine
+        self.assertEqual(len(SPECS), 24)   # growth, monetary, credit and valuation tiles moved to the engine
         self.assertGreaterEqual(len(load_documents()[0]["series"]), 93)
         self.assertEqual(len({s["id"] for s in SPECS}), len(SPECS))
         self.assertEqual(set(s["region"] for s in SPECS), {r["id"] for r in REGIONS})
