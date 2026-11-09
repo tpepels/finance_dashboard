@@ -75,6 +75,21 @@
       "coincidence_not_cause": "Currency moves and rate gaps are shown side by side; their co-movement is not a causal estimate or a forecast.",
       "ecb_reference_rates": "Exchange rates are ECB daily reference rates (last of each month), not transaction rates.",
       "log_change": "The euro's move is the 12-month change in the log of the exchange rate, in percent; positive means the euro strengthened."
+    },
+    "F01": {
+      "one_sided_trend": "The trend is BIS's one-sided HP filter; it adapts slowly, so long credit booms can pull the trend up behind them.",
+      "credit_to_gdp_not_quality": "Credit-to-GDP measures quantity, not the quality of lending or who holds the risk.",
+      "no_world_aggregate": "Economies are compared side by side; no world credit gap is formed."
+    },
+    "F02": {
+      "own_history_only": "Debt-service ratios are compared with each economy's own history; levels are not comparable across countries.",
+      "bis_estimates": "BIS debt-service ratios are model estimates from credit, rates and maturities, not survey measures.",
+      "five_year_window": "The change compares the latest quarter with the same quarter five years earlier."
+    },
+    "F04": {
+      "stress_now_not_forecast": "Stress indexes describe conditions now; they are not forecasts of crashes and not exit signals.",
+      "index_zero_average": "The NFCI and OFR index are centred on their long-run averages: above zero is tighter or more stressed than usual.",
+      "baa_fallback": "The Baa corporate spread stands in for the high-yield spread, whose free history is too short."
     }
   }
 }

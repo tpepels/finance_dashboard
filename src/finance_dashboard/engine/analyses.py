@@ -453,6 +453,18 @@ C06 = AnalysisDefinition("C06", {
 }, _c06)
 
 
+def now_and_years_ago(points: list[tuple[date, float]], years: int) -> dict:
+    """Latest value and the last value on or before the same day `years` earlier."""
+    ordered = sorted(points)
+    if not ordered:
+        return {"latest": None, "as_of": None, "back": None, "back_as_of": None, "change": None}
+    day, latest = ordered[-1]
+    earlier = [p for p in ordered if p[0] <= day - timedelta(days=round(365.25 * years))]
+    then = earlier[-1] if earlier else None
+    return {"latest": latest, "as_of": day.isoformat(), "back": then[1] if then else None,
+            "back_as_of": then[0].isoformat() if then else None, "change": latest - then[1] if then else None}
+
+
 def now_and_year_ago(points: list[tuple[date, float]]) -> dict:
     """Latest value and the last value on or before the same day a year earlier."""
     ordered = sorted(points)
@@ -572,5 +584,103 @@ M04 = AnalysisDefinition("M04", {"fed": "policy_rate.us.fed_effective", "ecb": "
                                  "boj": "policy_rate.jp.boj_call_daily", "usd_per_eur": "fx.usd_per_eur.ecb",
                                  "jpy_per_eur": "fx.jpy_per_eur.ecb"}, _m04)
 
+CREDIT_AREAS = ("US", "JP", "DE", "CN", "PT")
+
+
+def _with_range(points: list[tuple[date, float]]) -> dict | None:
+    history = own_history(points)
+    if history is None:
+        return None
+    values = [v for _, v in points]
+    return {**history, "min": min(values), "max": max(values)}
+
+
+def _f01(points: dict, view: dict) -> Computed:
+    economies, history = [], {}
+    for area in CREDIT_AREAS:
+        ratio, trend, gap = (points.get(f"{kind}:{area}", []) for kind in ("ratio", "trend", "gap"))
+        history[area] = {"ratio": _series(ratio), "trend": _series(trend), "gap": _series(gap)}
+        if not ratio or not trend:
+            continue
+        r, t = dict(ratio), dict(trend)
+        day = max(set(r) & set(t), default=None)
+        if day is None:
+            continue
+        five = now_and_years_ago(ratio, 5)
+        economies.append({"area": area, "as_of": day.isoformat(), "ratio": r[day], "trend": t[day],
+                          "gap": dict(gap).get(day), "ratio_change_5y": five["change"], "ratio_5y_ago_as_of": five["back_as_of"]})
+    history["EA"] = {"ratio": [], "trend": [], "gap": _series(points.get("gap:EA", []))}
+    return Computed(values={"economies": economies, "history": history}, estimates=None, comparison=["ratio", "trend", "gap"],
+                    transforms=[applied("matched_day", applied_to=["ratio", "trend", "gap"], produces=["economies"]),
+                                applied("now_and_years_ago", applied_to=["ratio"], years=5, produces=["economies.ratio_change_5y"])])
+
+
+F01 = AnalysisDefinition("F01", {
+    **{f"ratio:{a}": f"credit.{a.lower()}.private_nonfinancial_gdp_bis" for a in CREDIT_AREAS},
+    **{f"trend:{a}": f"credit_gap.{a.lower()}.bis_trend" for a in CREDIT_AREAS},
+    **{f"gap:{a}": f"credit_gap.{a.lower()}.bis" for a in CREDIT_AREAS + ("EA",)},
+}, _f01)
+
+DSR_SERIES = {("private", a): f"debt_service.{a.lower()}.private.bis" for a in CREDIT_AREAS}
+DSR_SERIES.update({("households", "US"): "debt_service.us.households.bis", ("households", "PT"): "debt_service.pt.households.bis",
+                   ("corporations", "US"): "debt_service.us.corporations.bis"})
+
+
+def _f02(points: dict, view: dict) -> Computed:
+    rows, history = [], {}
+    for (series, area) in DSR_SERIES:
+        values = points.get(f"{series}:{area}", [])
+        history[f"{series}:{area}"] = _series(values)
+        if not values:
+            continue
+        five, own = now_and_years_ago(values, 5), _with_range(values)
+        rows.append({"series": series, "area": area, **five, "own_mean": own["own_mean"], "min": own["min"], "max": own["max"]})
+    return Computed(values={"rows": rows, "history": history}, estimates=None, comparison=["rows"], transforms=[
+        applied("now_and_years_ago", applied_to=list(points), years=5, produces=["rows"]),
+        applied("own_history", applied_to=list(points), produces=["rows.own_mean"])])
+
+
+F02 = AnalysisDefinition("F02", {f"{series}:{area}": sid for (series, area), sid in DSR_SERIES.items()}, _f02)
+
+STRESS_GAUGES = {"nfci": ("Chicago Fed financial conditions (NFCI)", "stress.us.nfci"),
+                 "adjusted_nfci": ("NFCI adjusted for the economy", "stress.us.adjusted_nfci"),
+                 "ofr_fsi": ("OFR financial stress index (global)", "stress.global.ofr_fsi"),
+                 "baa": ("Baa corporate bond spread over 10-year Treasuries", "credit.us.baa_10y_spread")}
+FSI_CATEGORIES = ("credit", "equity_valuation", "safe_assets", "funding", "volatility")
+FSI_REGIONS = ("region_united_states", "region_other_advanced", "region_emerging_markets")
+
+
+def _parts(points: dict, names: tuple[str, ...]) -> dict | None:
+    series = [dict(points.get(f"fsi_part:{n}", [])) for n in names]
+    days = set.intersection(*(set(s) for s in series)) if all(series) else set()
+    if not days:
+        return None
+    day = max(days)
+    return {"date": day.isoformat(), "parts": [{"key": n, "value": s[day]} for n, s in zip(names, series)]}
+
+
+def _f04(points: dict, view: dict) -> Computed:
+    gauges = []
+    for key, (name, _) in STRESS_GAUGES.items():
+        own = _with_range(points.get(key, []))
+        if own:
+            gauges.append({"key": key, "name": name, **own})
+    categories, regions = _parts(points, FSI_CATEGORIES), _parts(points, FSI_REGIONS)
+    values = {"gauges": gauges,
+              "fsi_parts": {"date": categories["date"], "categories": categories["parts"],
+                            "regions": regions["parts"] if regions and regions["date"] == categories["date"] else []}
+              if categories else None,
+              "history": {key: _month_series(points.get(key, [])) for key in STRESS_GAUGES}}
+    return Computed(values=values, estimates=None, comparison=["gauges", "fsi_parts"], transforms=[
+        applied("own_history", applied_to=list(STRESS_GAUGES), produces=["gauges"]),
+        applied("additive_parts", applied_to=[f"fsi_part:{n}" for n in FSI_CATEGORIES + FSI_REGIONS], produces=["fsi_parts"]),
+        applied("month_end", applied_to=list(STRESS_GAUGES), produces=["history"])])
+
+
+F04 = AnalysisDefinition("F04", {
+    **{key: sid for key, (_, sid) in STRESS_GAUGES.items()},
+    **{f"fsi_part:{n}": f"stress.global.ofr_fsi.{n}" for n in FSI_CATEGORIES + FSI_REGIONS},
+}, _f04)
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
-                                              "M01": M01, "M02": M02, "M04": M04}
+                                              "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04}

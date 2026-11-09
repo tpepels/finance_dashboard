@@ -45,6 +45,9 @@ TRANSFORMS: dict[str, str] = {
     "matched_pairs": "pairs of two series on exactly the same period; unmatched periods are dropped",
     "now_and_year_ago": "latest observation and the last observation on or before the same day a year (365 days) "
                         "earlier; change = latest - year ago",
+    "now_and_years_ago": "latest observation and the last observation on or before the same day n years "
+                          "(365.25 n days) earlier; change = latest - then",
+    "additive_parts": "published components on one date where every component is observed; they sum to the published total",
     "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
