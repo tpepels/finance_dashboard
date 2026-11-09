@@ -812,21 +812,49 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .research-app[data-theme="dark"] .developer-log-panel > small { color: #b4cdd7; }
 
 /* Decision layer (P06/P07) */
-.decision-container { max-width: 1420px; margin: 0 auto 30px; padding: 28px 36px 10px; }
-.decision-container > header h2 { font-size: 25px; letter-spacing: -.03em; margin: 7px 0 10px; color: var(--gcm-ink, #23454c); }
-.decision-container > header p { font-size: 13px; line-height: 1.6; color: var(--gcm-muted, #617b80); max-width: 900px; }
-.decision-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 18px; margin-top: 16px; }
-.decision-card { border: 1px solid var(--gcm-rule, #d6e1e0); border-radius: 6px; padding: 16px 18px; background: var(--gcm-surface, #fff); color: var(--gcm-ink, #23454c); }
-.decision-card-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
-.decision-card h3 { font-size: 16px; margin: 0; }
-.decision-question, .decision-note { font-size: 13px; color: var(--gcm-muted, #617b80); margin: 6px 0 10px; }
-.decision-chart { height: 300px; width: 100%; }
-.decision-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; font-variant-numeric: tabular-nums; }
-.decision-table th, .decision-table td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--gcm-rule, #e3eaea); }
-.decision-table th:first-child { text-align: left; font-weight: 500; }
-.decision-range { display: flex; flex-direction: column; gap: 2px; font-size: 13px; margin: 8px 0; }
-.decision-range-values { font-weight: 600; }
-.decision-limits { font-size: 12px; color: var(--gcm-muted, #617b80); padding-left: 18px; margin: 8px 0 0; }
-.decision-export { display: inline-block; margin-top: 8px; font-size: 12px; }
-.research-app[data-theme="dark"] .decision-card { background: var(--gcm-surface); border-color: var(--gcm-rule); }
-@media (max-width: 640px) { .decision-container { padding: 20px 16px 6px; } }
+/* Decisions: the phase 3 visual language (docs/superpowers/specs/2026-11-09-phase3-visual-language.md).
+   Sections, not cards: a rule separates questions; the hero graphic carries the answer. */
+.research-app { font-family: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --dx-page: #eef2f3; --dx-surface: #fcfdfd; --dx-ink: #14232b; --dx-secondary: #4a5d66; --dx-muted: #6f8188;
+  --dx-rule: #d3dde0; --dx-focus: #2a78d6; }
+.research-app[data-theme="dark"] {
+  --dx-page: #0f171b; --dx-surface: #16232a; --dx-ink: #e6eef0; --dx-secondary: #a9bcc3; --dx-muted: #7d929a;
+  --dx-rule: #2a3a42; --dx-focus: #3987e5; }
+.decision-container { max-width: 1320px; margin: 0 auto 40px; padding: 36px 40px 12px; color: var(--dx-ink); }
+.decision-intro h2 { font-size: 34px; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 10px; }
+.decision-intro p { font-size: 16px; line-height: 1.55; color: var(--dx-secondary); max-width: 68ch; margin: 0; }
+.decision-section { margin-top: 48px; padding-top: 30px; border-top: 1px solid var(--dx-rule); }
+.decision-section-head h3 { font-size: 26px; line-height: 1.2; font-weight: 700; margin: 0 0 8px; max-width: 34ch; }
+.decision-section-head p { font-size: 15px; line-height: 1.55; color: var(--dx-secondary); max-width: 72ch; margin: 0; }
+.decision-hero { margin: 26px 0 8px; padding: 22px 24px; background: var(--dx-surface); border-radius: 10px; }
+.decision-hero-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.decision-hero-side { display: flex; flex-direction: column; gap: 12px; }
+.hero-svg { display: block; width: 100%; height: auto; max-width: 940px; font-family: inherit; }
+.hero-svg-map { max-width: 600px; }
+.decision-caption { font-size: 14px; line-height: 1.55; color: var(--dx-secondary); max-width: 78ch; margin: 12px 0 0; }
+.decision-note { font-size: 14px; color: var(--dx-secondary); margin: 12px 0; }
+.decision-toggle { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; color: var(--dx-ink); }
+.decision-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 28px 32px; margin-top: 26px; }
+.decision-subhead { font-size: 17px; font-weight: 700; margin: 30px 0 10px; }
+.decision-multiples { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px 22px; }
+.time-panel { margin: 0; min-width: 0; }
+.time-panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.time-panel-title { font-size: 15px; font-weight: 700; color: var(--dx-ink); }
+.time-panel-presets { display: inline-flex; gap: 2px; }
+.time-panel-presets button { font-size: 12px; padding: 3px 9px; border: 1px solid var(--dx-rule); background: transparent;
+  color: var(--dx-secondary); border-radius: 5px; cursor: pointer; }
+.time-panel-presets button[aria-pressed="true"] { background: var(--dx-ink); color: var(--dx-surface); border-color: var(--dx-ink); }
+.time-panel-presets button:focus-visible, .decision-foot :focus-visible { outline: 2px solid var(--dx-focus); outline-offset: 2px; }
+.time-panel-chart { width: 100%; }
+.time-panel-caption { font-size: 13px; line-height: 1.5; color: var(--dx-secondary); margin: 6px 0 0; max-width: 78ch; }
+.decision-foot { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-top: 26px; flex-wrap: wrap; }
+.decision-limits-fold summary { font-size: 14px; color: var(--dx-secondary); cursor: pointer; }
+.decision-limits { font-size: 13px; line-height: 1.55; color: var(--dx-secondary); padding-left: 18px; margin: 10px 0 0; max-width: 90ch; }
+.decision-limits li { margin-bottom: 6px; }
+.decision-limit-detail, .decision-limit-scope { color: var(--dx-muted); }
+.decision-export { font-size: 13px; color: var(--dx-secondary); }
+@media (max-width: 900px) { .decision-hero-split { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .decision-container { padding: 24px 16px 8px; }
+  /* Hero graphics keep a legible size on a phone and scroll sideways inside their own panel. */
+  .decision-hero { padding: 14px 12px; overflow-x: auto; } .hero-svg { min-width: 600px; } .hero-svg-map { min-width: 460px; }
+  .decision-intro h2 { font-size: 27px; } .decision-section-head h3 { font-size: 22px; } }
