@@ -682,5 +682,98 @@ F04 = AnalysisDefinition("F04", {
     **{f"fsi_part:{n}": f"stress.global.ofr_fsi.{n}" for n in FSI_CATEGORIES + FSI_REGIONS},
 }, _f04)
 
+def matched_ratio(a: list[tuple[date, float]], b: list[tuple[date, float]], scale_by: float = 1.0) -> list[list]:
+    """[period, scale_by * a / b] on periods both series report."""
+    da, db = dict(a), dict(b)
+    return [[day.isoformat(), scale_by * da[day] / db[day]] for day in sorted(set(da) & set(db)) if db[day]]
+
+
+def _f05(points: dict, view: dict) -> Computed:
+    economies, history = [], {}
+    for area in CREDIT_AREAS:
+        h, c = dict(points.get(f"household:{area}", [])), dict(points.get(f"corporate:{area}", []))
+        history[area] = {"household": _series(points.get(f"household:{area}", [])),
+                         "corporate": _series(points.get(f"corporate:{area}", []))}
+        day = max(set(h) & set(c), default=None)
+        if day is None:
+            continue
+        government = sorted(points.get(f"government:{area}", []))
+        economies.append({"area": area, "as_of": day.isoformat(), "household": h[day], "corporate": c[day],
+                          "government": government[-1][1] if government else None,
+                          "government_year": str(government[-1][0].year) if government else None})
+    leverage = matched_ratio(points.get("bank_equity", []), points.get("bank_assets", []), 100)
+    values = {"economies": economies, "history": history,
+              "bank": {"equity_to_assets": leverage[-1][1] if leverage else None, "as_of": leverage[-1][0] if leverage else None,
+                       "history": leverage}}
+    return Computed(values=values, estimates=None, comparison=["economies", "bank"], transforms=[
+        applied("matched_day", applied_to=["household", "corporate"], produces=["economies"]),
+        applied("matched_ratio", applied_to=["bank_equity", "bank_assets"], scale_by=100, produces=["bank"])])
+
+
+F05 = AnalysisDefinition("F05", {
+    **{f"household:{a}": f"credit.{a.lower()}.household_gdp_bis" for a in CREDIT_AREAS},
+    **{f"corporate:{a}": f"credit.{a.lower()}.corporate_gdp_bis" for a in CREDIT_AREAS},
+    **{f"government:{a}": f"fiscal.{a.lower()}.public_debt" for a in ("US", "JP", "CN")},
+    "bank_assets": "bank.us.fdic_total_assets", "bank_equity": "bank.us.fdic_total_equity",
+}, _f05)
+
+PROPERTY_AREAS = ("US", "DE", "JP", "PT", "EA", "WORLD")
+
+
+def _position(points: list[tuple[date, float]]) -> dict | None:
+    own = _with_range(points)
+    if own is None:
+        return None
+    five = now_and_years_ago(points, 5)
+    return {**own, "change_5y_pct": 100 * (five["latest"] / five["back"] - 1) if five["back"] else None,
+            "back_as_of": five["back_as_of"]}
+
+
+def _f06(points: dict, view: dict) -> Computed:
+    residential = [{"area": a, **p} for a in PROPERTY_AREAS if (p := _position(points.get(f"residential:{a}", [])))]
+    commercial = [{"area": a, **p} for a in ("US", "PT") if (p := _position(points.get(f"commercial:{a}", [])))]
+    values = {"residential": residential, "commercial": commercial,
+              "history": {**{f"residential:{a}": _series(points.get(f"residential:{a}", [])) for a in PROPERTY_AREAS},
+                          **{f"commercial:{a}": _series(points.get(f"commercial:{a}", [])) for a in ("US", "PT")}}}
+    return Computed(values=values, estimates=None, comparison=["residential", "commercial"], transforms=[
+        applied("own_history", applied_to=list(points), produces=["residential", "commercial"]),
+        applied("now_and_years_ago", applied_to=list(points), years=5, produces=["change_5y_pct"])])
+
+
+F06 = AnalysisDefinition("F06", {
+    **{f"residential:{a}": f"property.{a.lower()}.real_residential.bis" for a in PROPERTY_AREAS},
+    "commercial:US": "property.us.commercial_all.bis", "commercial:PT": "property.pt.commercial_all.bis",
+}, _f06)
+
+
+def _f07(points: dict, view: dict) -> Computed:
+    leverage = matched_ratio(points.get("broker_assets", []), points.get("broker_equity", []))
+    repo = matched_ratio(points.get("broker_repo", []), points.get("broker_liabilities", []), 100)
+    mmf = now_and_years_ago(points.get("mmf_assets", []), 5)
+    values = {"latest": {"broker_leverage": leverage[-1][1] if leverage else None,
+                         "repo_share": repo[-1][1] if repo else None, "as_of": leverage[-1][0] if leverage else None,
+                         "mmf_assets": mmf["latest"], "mmf_assets_5y_ago": mmf["back"], "mmf_as_of": mmf["as_of"]},
+              "history": {"broker_leverage": leverage, "repo_share": repo, "mmf_assets": _series(points.get("mmf_assets", [])),
+                          "finance_company_assets": _series(points.get("finance_assets", []))}}
+    as_points = lambda line: [(date.fromisoformat(d), v) for d, v in line]  # noqa: E731
+    positions = [("broker_leverage", "Broker-dealer assets per unit of equity", "×", as_points(leverage)),
+                 ("repo_share", "Broker-dealer liabilities funded by repo", "%", as_points(repo)),
+                 ("mmf_assets", "Money-market fund assets", "USD million", points.get("mmf_assets", []))]
+    values["positions"] = [{"key": key, "name": name, "unit": unit, **own}
+                           for key, name, unit, line in positions if (own := _with_range(line))]
+    return Computed(values=values, estimates=None, comparison=["broker_leverage", "repo_share", "mmf_assets"], transforms=[
+        applied("matched_ratio", applied_to=["broker_assets", "broker_equity"], produces=["broker_leverage"]),
+        applied("matched_ratio", applied_to=["broker_repo", "broker_liabilities"], scale_by=100, produces=["repo_share"]),
+        applied("now_and_years_ago", applied_to=["mmf_assets"], years=5),
+        applied("own_history", applied_to=["broker_leverage", "repo_share", "mmf_assets"], produces=["positions"])])
+
+
+F07 = AnalysisDefinition("F07", {
+    "broker_assets": "funding.us.broker_assets", "broker_equity": "funding.us.broker_equity_capital",
+    "broker_liabilities": "funding.us.broker_liabilities", "broker_repo": "funding.us.broker_repo_liabilities",
+    "mmf_assets": "funding.us.money_market_assets", "finance_assets": "funding.us.finance_company_total_assets",
+}, _f07)
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
-                                              "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04}
+                                              "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
+                                              "F05": F05, "F06": F06, "F07": F07}

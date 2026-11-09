@@ -90,6 +90,21 @@
       "stress_now_not_forecast": "Stress indexes describe conditions now; they are not forecasts of crashes and not exit signals.",
       "index_zero_average": "The NFCI and OFR index are centred on their long-run averages: above zero is tighter or more stressed than usual.",
       "baa_fallback": "The Baa corporate spread stands in for the high-yield spread, whose free history is too short."
+    },
+    "F05": {
+      "different_dates": "Household and corporate debt are quarterly BIS figures; government debt is the IMF's annual figure, so its year can lag.",
+      "gross_debt": "All three are gross debt relative to GDP; assets held against the debt are not netted.",
+      "us_banks_only": "Bank equity to assets covers US FDIC-insured institutions only."
+    },
+    "F06": {
+      "real_index_levels": "Real house prices are BIS indexes deflated by consumer prices; levels are compared with each market's own history, not across countries.",
+      "no_valuation_model": "Prices against their own history are not a valuation model (rents, incomes and rates are not used here).",
+      "portugal_commercial_annual": "Portuguese commercial property is annual and starts in 2009."
+    },
+    "F07": {
+      "us_sector_aggregates": "These are US Financial Accounts sector totals, not individual firms or funds.",
+      "leverage_book_values": "Leverage is total assets over equity capital at book values.",
+      "context_not_signal": "High leverage and repo dependence describe fragility, not timing."
     }
   }
 }

@@ -48,6 +48,7 @@ TRANSFORMS: dict[str, str] = {
     "now_and_years_ago": "latest observation and the last observation on or before the same day n years "
                           "(365.25 n days) earlier; change = latest - then",
     "additive_parts": "published components on one date where every component is observed; they sum to the published total",
+    "matched_ratio": "a[t] / b[t] on periods both series report (times 100 for shares)",
     "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
