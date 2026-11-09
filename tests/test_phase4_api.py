@@ -41,18 +41,10 @@ class Phase4ApiTests(unittest.TestCase):
         self.env.stop()
         self.engine.dispose()
 
-    def test_risk_catalog_and_empty_regional_diagnostics(self):
-        catalog = self.client.get("/api/risk")
-        self.assertEqual(catalog.status_code, 200)
-        self.assertTrue(catalog.json()["indicators"])
-        self.assertIn("no composite", catalog.json()["method"].lower())
-        us = self.client.get("/api/risk/us")
-        self.assertEqual(us.status_code, 200)
-        self.assertEqual(us.json()["scope"], "us")
-        self.assertTrue(all(x["status"] == "no_data" for x in us.json()["indicators"]))
-        self.assertEqual(self.client.get("/api/risk/antarctica").status_code, 404)
-        self.assertEqual(self.client.get(
-            "/api/risk/us?start=2026-12-01&end=2026-01-01").status_code, 422)
+    def test_pre_engine_research_and_risk_endpoints_are_retired(self):
+        for path in ("/api/research", "/api/research/labour_share", "/api/risk", "/api/risk/us"):
+            self.assertEqual(self.client.get(path).status_code, 404, path)
+        self.assertEqual(self.client.get("/api/research-corpus").status_code, 200)
 
     def test_actual_instrument_registry_and_missing_market_data_are_explained(self):
         listed = self.client.get("/api/markets")

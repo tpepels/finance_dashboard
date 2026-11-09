@@ -190,6 +190,16 @@
       "published_holdings_only": "Exposures are read from each fund's own published holdings (SEC N-PORT for VT and BND, the iShares file for the UCITS ETF).",
       "issuer_country": "Country is the issuer's reported location, not where revenue is earned.",
       "no_portfolio_weights_yet": "Each fund is shown on its own; combining them needs your portfolio weights (owner inputs)."
+    },
+    "P04": {
+      "first_order": "Shocks are first-order estimates: they ignore convexity, correlations between shocks and how prices respond together.",
+      "owner_parameters": "Weights, duration, hedging and the euro share of equities are your own inputs; until saved, an example portfolio is used.",
+      "single_shocks": "Each shock is applied alone; real episodes usually combine several."
+    },
+    "P05": {
+      "us_bonds_proxy": "Bonds are the US 10-year sovereign total return in euros (Swinkels), which ends in 2022; the simulation stops where every asset in your mix has data.",
+      "no_tax": "Tax on realised gains is not modelled yet; trading costs are, as a charge on turnover.",
+      "history_not_forecast": "A replay of one historical path; the order of returns (sequence risk) will differ in future."
     }
   }
 }

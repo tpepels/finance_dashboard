@@ -145,7 +145,9 @@ function Marxian({ bundle, theme, recessions }: { bundle: Bundle<L04Values>; the
   theme, recessions, 'l04', v => `${Math.round(v * 100)}%`), [data, theme, recessions]);
   return <>
     <div className="decision-hero decision-hero-stack">
+      <h4 className="decision-subhead">Rate of surplus value, {year}: unpaid share of the working day relative to wages</h4>
       <VariantSpread theme={theme} title={`Rate of surplus value, ${year}`} rows={rows('surplus_value')} format={pctFmt} wageLabels={data.wages}/>
+      <h4 className="decision-subhead">Net profit rate of the productive sector, {year}: surplus relative to capital stock</h4>
       <VariantSpread theme={theme} title={`Net profit rate of the productive sector, ${year}`} rows={rows('profit_rate')} format={pctFmt} wageLabels={data.wages}/>
       <p className="decision-caption">Rotta & Kumar's framework applied to the WIOD Socio-Economic Accounts, under two published choices of
         which industries are productive (dot and ring) and three measures of labour income (colours). The width of each bar is how

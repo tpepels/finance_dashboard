@@ -59,6 +59,11 @@ TRANSFORMS: dict[str, str] = {
                            "least 24 months (12 for the stock-fall subset)",
     "drawdown_episodes": "peak-to-trough-to-recovery episodes of month-end levels whose depth exceeds the threshold; "
                          "depth = trough / peak - 1",
+    "first_order_shock": "impact on portfolio value = - weight x sensitivity x shock (duration for yields, unhedged "
+                         "foreign share for the dollar); first-order, ignores convexity and correlations",
+    "rebalancing_simulation": "monthly: grow each holding by its EUR return, add contributions at target weights, withdraw "
+                              "pro rata, rebalance to target by rule (never, every n months, when a weight drifts beyond "
+                              "the band), charge trading cost on turnover",
     "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",

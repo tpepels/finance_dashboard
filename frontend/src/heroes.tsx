@@ -17,6 +17,13 @@ function ticks(lo: number, hi: number, step: number) {
   return out;
 }
 
+/** Left offsets for legend items laid out in one line, wide enough for each label (about 7px per character at 13px). */
+export function legendOffsets(labels: string[], perChar = 7, gap = 30): number[] {
+  const out: number[] = [];
+  labels.reduce((at, label) => { out.push(at); return at + 18 + label.length * perChar + gap; }, 0);
+  return out;
+}
+
 export type RulerMarker = { label: string; value: number; kind?: 'bond' | 'inflation'; slot?: number; note?: string };
 
 /** Greedy label rows: each label takes the first row where it does not touch the previous one. */
@@ -732,7 +739,8 @@ export function ExternalBars({ theme, rows }: { theme: Theme; rows: ExternalRow[
 export type PairRow = { key: string; label: string; entity?: string; a: number | null; b: number | null };
 
 /** Two measures per row on one shared scale (bar a above bar b), each labelled with its value. */
-export function PairBars({ theme, title, unit, legend, rows }: { theme: Theme; title: string; unit: string; legend: [string, string]; rows: PairRow[] }) {
+export function PairBars({ theme, title, unit, legend, rows, signed = true }: { theme: Theme; title: string; unit: string;
+  legend: [string, string]; rows: PairRow[]; signed?: boolean }) {
   const c = palette(theme);
   const W = 760, left = 250, right = 690, rowH = 50, top = 40;
   const values = rows.flatMap(r => [r.a ?? 0, r.b ?? 0, 0]);
@@ -741,7 +749,8 @@ export function PairBars({ theme, title, unit, legend, rows }: { theme: Theme; t
   const x = scale(lo < 0 ? lo - pad : 0, hi + pad, left, right);
   const H = top + rows.length * rowH + 10;
   const colours = [c.series[0], c.series[1]];
-  const fmt = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}${unit}`;
+  const fmt = (v: number) => `${v < 0 ? '−' : signed ? '+' : ''}${Math.abs(v).toFixed(1)}${unit}`;
+  const legendAt = legendOffsets(legend);
   const bar = (v: number | null, y0: number, part: 'a' | 'b', colour: string) => v === null ? null : <g data-part={part}>
     <rect x={Math.min(x(0), x(v))} y={y0} width={Math.max(2, Math.abs(x(v) - x(0)))} height="14" rx="3" fill={colour}/>
     <text x={v >= 0 ? x(v) + 6 : x(v) - 6} y={y0 + 11} textAnchor={v >= 0 ? 'start' : 'end'} fill={c.ink} fontSize="12" fontWeight="700"
@@ -749,7 +758,7 @@ export function PairBars({ theme, title, unit, legend, rows }: { theme: Theme; t
   </g>;
   return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}: ${rows.map(r => `${r.label} ${legend[0]} ${r.a ?? 'n/a'}, ${legend[1]} ${r.b ?? 'n/a'}`).join('; ')}`}>
-    {legend.map((name, i) => <g key={name} transform={`translate(${left + i * 180}, 12)`}>
+    {legend.map((name, i) => <g key={name} transform={`translate(${left + legendAt[i]}, 12)`}>
       <rect width="12" height="12" rx="3" fill={colours[i]}/><text x={18} y={11} fill={c.ink} fontSize="13">{name}</text></g>)}
     <line x1={x(0)} x2={x(0)} y1={top - 6} y2={H - 6} stroke={c.zero} strokeWidth="1.5"/>
     {rows.map((r, i) => {
@@ -769,8 +778,8 @@ export type ShareRow = { key: string; label: string; parts: { key: string; share
 /** Shares of one whole per row, stacked to 100%: each part keeps its colour across rows. */
 export function StackedShares({ theme, title, rows, labels }: { theme: Theme; title: string; rows: ShareRow[]; labels: Record<string, string> }) {
   const c = palette(theme);
-  const W = 760, left = 190, right = 740, rowH = 40, top = 54;
   const keys = [...new Set(rows.flatMap(r => r.parts.map(p => p.key)))];
+  const W = 760, left = 190, right = 740, rowH = 40, top = 22 + Math.ceil(keys.length / 4) * 18;
   const slots = [0, 1, 6, 3, 2, 4, 5, 7];
   const colour = (k: string) => k === 'remainder' ? c.muted : c.series[slots[keys.indexOf(k) % slots.length]];
   const H = top + rows.length * rowH + 10;
@@ -877,14 +886,15 @@ export function VariantSpread({ theme, title, rows, format, wageLabels }: {
   const all = rows.flatMap(r => [r.min, r.max]);
   const lo = Math.max(0, Math.floor(Math.min(...all) * 10) / 10 - 0.1), hi = Math.ceil(Math.max(...all) * 10) / 10 + 0.1;
   const x = scale(lo, hi, left, right);
-  const wages = Object.keys(wageLabels);
+  const present = new Set(rows.flatMap(r => r.variants.map(v => v.wage)));
+  const wages = Object.keys(wageLabels).filter(w => present.has(w));
   const classes = [...new Set(rows.flatMap(r => r.variants.map(v => v.classification)))];
   const H = top + rows.length * rowH + 30;
   return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}: ${rows.map(r => `${r.label} ${format(r.min)} to ${format(r.max)}`).join('; ')}`}>
-    {wages.map((w, i) => <g key={w} transform={`translate(${left + i * 200}, 10)`}>
+    {wages.map((w, i) => <g key={w} transform={`translate(${legendOffsets(wages.map(k => wageLabels[k]), 6.6, 22)[i]}, 10)`}>
       <circle cx="6" cy="6" r="6" fill={c.series[i]}/><text x={18} y={11} fill={c.ink} fontSize="12">{wageLabels[w]}</text></g>)}
-    <g transform={`translate(${left}, 30)`}>
+    <g transform="translate(0, 30)">
       <circle cx="6" cy="6" r="6" fill={c.secondary}/><text x={18} y={11} fill={c.muted} fontSize="11">dot: Rotta & Kumar sectors</text>
       <circle cx="226" cy="6" r="5" fill={c.surface} stroke={c.secondary} strokeWidth="2"/><text x={238} y={11} fill={c.muted} fontSize="11">ring: Tsoulfidis & Paitaridis sectors</text>
     </g>
@@ -923,6 +933,64 @@ export function RankedBars({ theme, title, rows }: { theme: Theme; title: string
         <text x={left - 10} y={y0 + 14} textAnchor="end" fill={c.ink} fontSize="12">{r.name.length > 40 ? `${r.name.slice(0, 38)}…` : r.name}</text>
         <rect x={left} y={y0 + 3} width={Math.max(2, x(r.pct) - left)} height="15" rx="3" fill={c.series[0]}/>
         <text x={x(r.pct) + 6} y={y0 + 15} fill={c.ink} fontSize="12" fontWeight="700">{`${r.pct.toFixed(1)}%`}</text>
+      </g>;
+    })}
+  </svg>;
+}
+
+export type Impact = { key: string; label: string; impact_pct: number };
+
+/** What each single shock would do to the portfolio's value: bars from zero, losses left in red. */
+export function ImpactBars({ theme, rows }: { theme: Theme; rows: Impact[] }) {
+  const c = palette(theme);
+  const W = 760, left = 300, right = 680, rowH = 40, top = 10;
+  const reach = Math.max(5, ...rows.map(r => Math.abs(r.impact_pct))) * 1.15;
+  const x = scale(-reach, reach * 0.3, left, right);
+  const H = top + rows.length * rowH + 24;
+  const fmt = (v: number) => `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(1)}%`;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Effect on your portfolio: ${rows.map(r => `${r.label} ${fmt(r.impact_pct)}`).join('; ')}`}>
+    <line x1={x(0)} x2={x(0)} y1={top} y2={H - 20} stroke={c.secondary}/>
+    <text x={x(0)} y={H - 4} textAnchor="middle" fill={c.muted} fontSize="12">no change</text>
+    {rows.map((r, i) => {
+      const y0 = top + i * rowH;
+      const a = x(Math.min(0, r.impact_pct)), b = x(Math.max(0, r.impact_pct));
+      return <g key={r.key} data-part="impact">
+        <text x={left - 12} y={y0 + 20} textAnchor="end" fill={c.ink} fontSize="13">{r.label}</text>
+        <rect x={a} y={y0 + 8} width={Math.max(2, b - a)} height="18" rx="4" fill={r.impact_pct < 0 ? c.negative : c.positive}/>
+        <text x={r.impact_pct < 0 ? x(0) + 8 : b + 6} y={y0 + 22} textAnchor="start" fill={c.ink}
+          fontSize="13" fontWeight="700">{fmt(r.impact_pct)}</text>
+      </g>;
+    })}
+  </svg>;
+}
+
+export type RuleResult = { key: string; label: string; final: number; max_drawdown: number; costs: number; rebalances: number };
+
+/** Rebalancing rules side by side: ending value as bars, deepest fall and costs beside each; the owner's rule marked. */
+export function RuleBars({ theme, rules, chosen }: { theme: Theme; rules: RuleResult[]; chosen: string }) {
+  const c = palette(theme);
+  const W = 760, left = 250, right = 520, rowH = 46, top = 28;
+  const hi = Math.max(1, ...rules.map(r => r.final)) * 1.05;
+  const x = scale(0, hi, left, right);
+  const H = top + rules.length * rowH + 4;
+  const eur = (v: number) => `€${Math.round(v).toLocaleString('en-US')}`;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Rebalancing rules: ${rules.map(r => `${r.label} ends at ${eur(r.final)}, deepest fall ${pct(r.max_drawdown, 0)}`).join('; ')}`}>
+    <text x={left} y={16} fill={c.muted} fontSize="12">ending value</text>
+    <text x={560} y={16} fill={c.muted} fontSize="12">deepest fall</text>
+    <text x={660} y={16} fill={c.muted} fontSize="12">costs · trades</text>
+    {rules.map((r, i) => {
+      const y0 = top + i * rowH;
+      const mine = r.key === chosen;
+      return <g key={r.key}>
+        <text x={left - 12} y={y0 + 17} textAnchor="end" fill={c.ink} fontSize="13" fontWeight={mine ? 700 : 400}>{r.label}</text>
+        {mine && <text x={left - 12} y={y0 + 33} textAnchor="end" fill={c.secondary} fontSize="11">your rule</text>}
+        <rect data-part="final" x={left} y={y0 + 4} width={Math.max(2, x(r.final) - left)} height="18" rx="4"
+          fill={c.series[0]} fillOpacity={mine ? 1 : 0.55}/>
+        <text x={x(r.final) - 6} y={y0 + 17} textAnchor="end" fill={c.surface} fontSize="12" fontWeight="700">{eur(r.final)}</text>
+        <text x={560} y={y0 + 17} fill={c.negative} fontSize="13" fontWeight="700">{pct(r.max_drawdown, 0)}</text>
+        <text x={660} y={y0 + 17} fill={c.ink} fontSize="12">{`${eur(r.costs)} · ${r.rebalances}`}</text>
       </g>;
     })}
   </svg>;

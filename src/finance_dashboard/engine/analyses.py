@@ -1310,9 +1310,103 @@ def _p01(points: dict, view: dict, artifacts: dict) -> Computed:
 
 P01 = AnalysisDefinition("P01", {}, _p01, artifacts=("ucits_world", "vt_nport", "bnd_nport"))
 
+def _owner(artifacts: dict) -> dict:
+    from ..owner_inputs import EXAMPLE
+    return artifacts.get("owner_inputs") or {**EXAMPLE, "is_example": True}
+
+
+def _p04(points: dict, view: dict, artifacts: dict) -> Computed:
+    owner = _owner(artifacts)
+    w = owner["allocation"]
+    unhedged_foreign_equity = w["equity"] * (1 - owner["equity_euro_share"]) * (1 - owner["equity_hedged_share"])
+    shocks = [
+        {"key": "rates_up", "label": "Bond yields rise by 1 percentage point", "impact_pct": -w["bonds"] * owner["bond_duration_years"]},
+        {"key": "dollar_down", "label": "The dollar falls 10% against the euro",
+         "impact_pct": -(unhedged_foreign_equity * 10 + w["gold"] * 10 + (0 if owner["bonds_hedged"] else w["bonds"] * 10))},
+        {"key": "equities_down", "label": "World equities fall 20%", "impact_pct": -w["equity"] * 20},
+    ]
+    values = {"shocks": shocks, "is_example": owner.get("is_example", True),
+              "inputs": {k: owner[k] for k in ("allocation", "bond_duration_years", "equity_hedged_share", "equity_euro_share", "bonds_hedged")},
+              "history": {"us_10y": _month_series(points.get("nominal_10y", [])), "usd_per_eur": _month_series(points.get("usd_per_eur", []))}}
+    return Computed(values=values, estimates=None, comparison=["shocks"], transforms=[
+        applied("first_order_shock", applied_to=["owner_inputs"], shocks={"yields_pp": 1, "dollar_pct": -10, "equities_pct": -20})])
+
+
+P04 = AnalysisDefinition("P04", {"nominal_10y": "bond.us.nominal_10y", "usd_per_eur": "fx.usd_per_eur.ecb"},
+                         _p04, artifacts=("owner_inputs",))
+
+
+def simulate(returns: dict, months: list, weights: dict, *, rule: str, months_between: int, band_pp: float, cost_bps: float,
+             start: float, monthly_contribution: float, annual_withdrawal_pct: float) -> dict:
+    assets = [a for a, w in weights.items() if w > 0]
+    holdings = {a: start * weights[a] for a in assets}
+    peak, worst, costs, rebalances, path = start, 0.0, 0.0, 0, []
+    for i, key in enumerate(months):
+        for a in assets:
+            holdings[a] *= 1 + returns[a][key]
+        for a in assets:
+            holdings[a] += monthly_contribution * weights[a]
+        total = sum(holdings.values())
+        withdrawal = total * annual_withdrawal_pct / 12
+        if withdrawal and total:
+            for a in assets:
+                holdings[a] -= withdrawal * holdings[a] / total
+        total = sum(holdings.values())
+        due = (rule == "calendar" and (i + 1) % months_between == 0) or (
+            rule == "threshold" and total > 0 and any(abs(holdings[a] / total - weights[a]) * 100 > band_pp for a in assets))
+        if due and total > 0:
+            turnover = sum(abs(total * weights[a] - holdings[a]) for a in assets) / 2
+            cost = turnover * cost_bps / 10000
+            costs += cost
+            total -= cost
+            holdings = {a: total * weights[a] for a in assets}
+            rebalances += 1
+        total = sum(holdings.values())
+        peak = max(peak, total)
+        worst = min(worst, total / peak - 1 if peak else 0)
+        path.append([_month_label(key), total])
+    return {"path": path, "final": path[-1][1] if path else start, "max_drawdown": worst, "costs": costs, "rebalances": rebalances}
+
+
+def _p05(daily: dict, view: dict, artifacts: dict) -> Computed:
+    owner = _owner(artifacts)
+    points = _completed(daily, view)
+    fx = month_end(points.get("usd_per_eur", []))
+    returns = {"equity": _eur_returns(month_end(points.get("equity", [])), None, fx),
+               "gold": _eur_returns(month_end(points.get("gold", [])), None, fx),
+               "bonds": _eur_returns(None, {k: v for k, (_, v) in month_end(points.get("bonds", [])).items()}, fx)}
+    weights = owner["allocation"]
+    used = [a for a, w in weights.items() if w > 0]
+    months = sorted(set.intersection(*(set(returns[a]) for a in used))) if used else []
+    run = contiguous_tail(months)
+    reb = owner["rebalancing"]
+    labels = {"never": "Never rebalance", "calendar": f"Every {reb['months']} months",
+              "threshold": f"When {reb['band_pp']:g} points off"}
+    rules = [{"key": key, "label": labels[key], **simulate(returns, run, weights, rule=key, months_between=reb["months"],
+                                                          band_pp=reb["band_pp"], cost_bps=owner["trading_cost_bps"],
+                                                          start=owner["start_value_eur"],
+                                                          monthly_contribution=owner["monthly_contribution_eur"],
+                                                          annual_withdrawal_pct=owner["annual_withdrawal_pct"])}
+             for key in ("never", "calendar", "threshold")]
+    values = {"rules": rules, "chosen": reb["rule"], "is_example": owner.get("is_example", True),
+              "period": {"from": _month_label(run[0]) if run else None, "to": _month_label(run[-1]) if run else None, "months": len(run)},
+              "inputs": {k: owner[k] for k in ("allocation", "rebalancing", "trading_cost_bps", "start_value_eur",
+                                               "monthly_contribution_eur", "annual_withdrawal_pct")}}
+    return Computed(values=values, estimates=None, comparison=["rules"], transforms=[
+        applied("complete_months", applied_to=list(daily), today=view_today(view).isoformat()),
+        applied("fx_translation", applied_to=["equity", "gold", "bonds"], produces=["EUR returns"]),
+        applied("contiguous_tail", applied_to=["matched months"]),
+        applied("rebalancing_simulation", applied_to=["owner_inputs"], rules=["never", "calendar", "threshold"])])
+
+
+P05 = AnalysisDefinition("P05", {"equity": "equity.world.msci_acwi_netr_usd", "gold": "gold.usd.monthly_average",
+                                 "bonds": "returns.swinkels.us.sovereign_10y_original_1962_usd",
+                                 "usd_per_eur": "fx.usd_per_eur.ecb"}, _p05, artifacts=("owner_inputs",))
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
                                               "F05": F05, "F06": F06, "F07": F07, "V01": V01, "V02": V02, "V03": V03,
                                               "V05": V05, "G05": G05, "G06": G06, "L01": L01, "L02": L02,
                                               "L03": L03, "L05": L05, "L07": L07, "P02": P02, "P03": P03,
-                                              "G01": G01, "G02": G02, "L04": L04, "P01": P01}
+                                              "G01": G01, "G02": G02, "L04": L04, "P01": P01,
+                                              "P04": P04, "P05": P05}

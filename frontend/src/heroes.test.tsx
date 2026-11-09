@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, RankedBars, VariantSpread, CorrelationGrid, EpisodeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
+import { ChangeBars, ImpactBars, RuleBars, RankedBars, VariantSpread, CorrelationGrid, EpisodeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -264,5 +264,42 @@ describe('hero graphics', () => {
     const chart = screen.getByRole('img', { name: /largest holdings/i });
     expect(chart.querySelectorAll('[data-part="bar"]')).toHaveLength(2);
     expect(screen.getByText('4.6%')).toBeTruthy();
+  });
+
+  it('shows what each shock would do to the portfolio, losses in red', () => {
+    render(<ImpactBars theme="light" rows={[{ key: 'rates_up', label: 'Bond yields rise 1 point', impact_pct: -2.1 },
+      { key: 'equities_down', label: 'Equities fall 20%', impact_pct: -12 }]}/>);
+    const bars = screen.getByRole('img', { name: /effect on your portfolio/i });
+    expect(bars.querySelectorAll('[data-part="impact"]')).toHaveLength(2);
+    expect(screen.getByText('−12.0%')).toBeTruthy();
+  });
+
+  it('compares rebalancing rules by final wealth, deepest fall and costs, marking the chosen one', () => {
+    render(<RuleBars theme="dark" chosen="threshold" rules={[
+      { key: 'never', label: 'Never rebalance', final: 250000, max_drawdown: -0.4, costs: 0, rebalances: 0 },
+      { key: 'threshold', label: 'Rebalance at 5 points', final: 260000, max_drawdown: -0.35, costs: 300, rebalances: 9 }]}/>);
+    const chart = screen.getByRole('img', { name: /rebalancing rules/i });
+    expect(chart.querySelectorAll('[data-part="final"]')).toHaveLength(2);
+    expect(screen.getByText('€260,000')).toBeTruthy();
+    expect(screen.getByText(/your rule/i)).toBeTruthy();
+  });
+
+  it('keeps a long legend clear of the bars', () => {
+    const parts = Array.from({ length: 13 }, (_, i) => ({ key: `k${i}`, share: 7 }));
+    const { container } = render(<StackedShares theme="light" title="Long legend" labels={{}} rows={[{ key: 'a', label: 'A', parts }]}/>);
+    const legendBottom = Math.max(...[...container.querySelectorAll('g[transform] > rect')].map(r =>
+      Number((r.parentElement!.getAttribute('transform') ?? '').match(/, ([\d.]+)\)/)![1]) + 12));
+    const barTop = Math.min(...[...container.querySelectorAll('[data-part="share"] rect')].map(r => Number(r.getAttribute('y'))));
+    expect(barTop).toBeGreaterThan(legendBottom);
+  });
+
+  it('spaces long legend names apart and can show shares without signs', () => {
+    const { container } = render(<PairBars theme="light" title="Weights" unit="%" signed={false}
+      legend={['weight in the ACWI ETF (2026-07-31)', 'share of world GDP (2025)']}
+      rows={[{ key: 'US', label: 'United States', a: 62.7, b: 26 }]}/>);
+    const xs = [...container.querySelectorAll('svg > g[transform]')].slice(0, 2).map(g =>
+      Number(g.getAttribute('transform')!.match(/translate\(([\d.]+)/)![1]));
+    expect(xs[1] - xs[0]).toBeGreaterThan('weight in the ACWI ETF (2026-07-31)'.length * 6.5);
+    expect(screen.getByText('62.7%')).toBeTruthy();
   });
 });

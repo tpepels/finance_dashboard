@@ -21,7 +21,6 @@ from .market import instruments
 from .market_service import MarketIngestionService
 from .market_analytics import rolling_gold_vs_global_etf
 from .insights import same_measure, summarize
-from .risk_diagnostics import diagnostic_catalog, read_diagnostics, SCOPES as RISK_SCOPES
 from .portfolio_risk import compare_market_histories
 from .vintage import SOURCES as VINTAGE_SOURCES, read_snapshot as read_alfred_snapshot, available_snapshots, latest_asof_reading
 from .vintage_backtest import walk_forward
@@ -29,7 +28,6 @@ from .sec_holdings import list_holdings, read_position_source, HoldingsError
 from .ucits_holdings import read_ucits_sources, UcitsHoldingsError
 from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCENARIOS as MARX_SCENARIOS, AccountingError
 
-from .research import BY_ID as RESEARCH_INDICATORS, list_research, load_indicator
 from .source_coverage import build_coverage
 from .source_policy import policy_summary
 from .research_corpus import load_research_corpus, validate_research_corpus
@@ -37,6 +35,7 @@ from .research_runtime import evaluate_corpus
 from .engine.acceptance import AcceptanceCache, AcceptanceLoading, AcceptanceUnavailable, snapshot_from_report
 from .engine.export import export_text
 from .engine.artifacts import load_artifact
+from .owner_inputs import OwnerInputError, load_owner_inputs, save_owner_inputs
 from .engine.runner import analysis_bundle, conditionals, list_analyses
 from .engine.recessions import SERIES_ID as RECESSION_SERIES, recession_periods
 from .icio import read_icio_evidence
@@ -397,6 +396,21 @@ def create_app(engine=None) -> FastAPI:
         return PlainTextResponse(export_text(bundle),
                                  headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
+    @app.get("/api/owner-inputs")
+    def owner_inputs():
+        """The owner's portfolio parameters, or the labelled example until they are saved."""
+        return load_owner_inputs()
+
+    @app.put("/api/owner-inputs")
+    def save_owner(body: dict):
+        """Validate and store the owner's portfolio parameters locally."""
+        try:
+            return save_owner_inputs(None, body)
+        except (OwnerInputError, ValueError, TypeError, KeyError) as error:
+            raise HTTPException(422, str(error) or "Invalid portfolio inputs") from None
+        except OSError:
+            raise HTTPException(500, "Your portfolio inputs could not be stored; check that the data folder is writable") from None
+
     @app.get("/api/recessions")
     def recessions():
         """NBER US recession periods for shading every time chart."""
@@ -418,24 +432,6 @@ def create_app(engine=None) -> FastAPI:
         if match is None:
             raise HTTPException(404, "Unknown approved scientific question")
         return current_corpus_report([match])["analyses"][0]
-
-    @app.get("/api/research")
-    def research_catalog():
-        """Documented economic questions, actual source contracts and scoped regions."""
-        return list_research()
-
-    @app.get("/api/research/{indicator_id}")
-    def research_indicator(indicator_id: str, start: date | None = None,
-                           end: date | None = None):
-        """Measured source series and validated same-period economic transformations."""
-        if indicator_id not in RESEARCH_INDICATORS:
-            raise HTTPException(404, "Unknown research indicator")
-        if start and end and start > end:
-            raise HTTPException(422, "Invalid analysis date range")
-        try:
-            return load_indicator(db, indicator_id, start=start, end=end)
-        except ValueError:
-            raise HTTPException(422, "Research source combination invalid") from None
 
     @app.get("/api/series")
     def list_series():
@@ -543,19 +539,6 @@ def create_app(engine=None) -> FastAPI:
                                         adjust_selfemployment=adjust_selfemployment)
         except AccountingError:
             raise HTTPException(422,"OECD source components incomplete or inconsistent") from None
-
-    @app.get("/api/risk")
-    def risk_catalog():
-        """Source-defined diagnostic criteria; no composite scores."""
-        return diagnostic_catalog()
-
-    @app.get("/api/risk/{scope}")
-    def risk_view(scope: str, start: date | None = None, end: date | None = None):
-        if scope not in RISK_SCOPES:
-            raise HTTPException(404, "Unknown risk scope")
-        if start and end and start > end:
-            raise HTTPException(422, "Invalid period")
-        return read_diagnostics(db, scope, start=start, end=end)
 
     @app.get("/api/markets")
     def markets():

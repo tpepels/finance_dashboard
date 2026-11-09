@@ -69,6 +69,9 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
         from ..ucits_holdings import read_ucits_sources
         records = read_ucits_sources(Path(holdings_root))["records"]
         return ucits_summary(records[-1]) if records else None
+    if name == "owner_inputs":
+        from ..owner_inputs import load_owner_inputs
+        return load_owner_inputs()
     if name == "marxian_rates":
         from ..marxian_sectors import marxian_rates
         return marxian_rates(Path(evidence_root))

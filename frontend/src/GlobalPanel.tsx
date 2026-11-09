@@ -22,8 +22,8 @@ function Concentration({ bundle, theme, recessions }: { bundle: Bundle<G01Values
   const top5 = issuers.slice(0, 5), next5 = issuers.slice(5, 10);
   const next5Share = next5.reduce((a, i) => a + i.pct, 0);
   const parts = [...top5.map(i => ({ key: i.name, share: i.pct })), { key: 'Next five', share: next5Share },
-    { key: 'All other holdings', share: Math.max(0, 100 - top5.reduce((a, i) => a + i.pct, 0) - next5Share) }];
-  const labels = Object.fromEntries(parts.map(p => [p.key, p.key.replace(/,? (INC\.|CORPORATION|CORP\.?)$/i, '')]));
+    { key: 'remainder', share: Math.max(0, 100 - top5.reduce((a, i) => a + i.pct, 0) - next5Share) }];
+  const labels = Object.fromEntries(parts.map(p => [p.key, p.key === 'remainder' ? 'All other holdings' : p.key.replace(/,? (INC\.|CORPORATION|CORP\.?)$/i, '')]));
   const lines: TimeSeries[] = useMemo(() => [
     { name: 'Ten largest issuers in the ACWI ETF', slot: 0, dots: true, data: data.top_share_history },
     { name: 'MSCI ACWI published top 10', slot: 1, dots: true, data: data.published_top10 }], [data]);
@@ -46,12 +46,12 @@ function Concentration({ bundle, theme, recessions }: { bundle: Bundle<G01Values
 
 function Weights({ bundle, theme, recessions }: { bundle: Bundle<G02Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as G02Values;
-  const option = useMemo(() => timeChart({ theme, recessions, unit: '% of the fund', format: v => v.toFixed(0),
+  const option = useMemo(() => timeChart({ theme, recessions, unit: '% of the fund', format: v => v.toFixed(1),
     series: [{ name: 'United States weight', entity: 'US', dots: true, data: data.us_weight_history }] }), [theme, recessions, data]);
   const year = data.countries.find(c => c.gdp_year)?.gdp_year ?? '';
   return <>
     <div className="decision-hero">
-      <PairBars theme={theme} title="Index weight against share of world GDP" unit="%" legend={[`weight in the ACWI ETF (${data.date ?? ''})`, `share of world GDP (${year})`]}
+      <PairBars theme={theme} title="Index weight against share of world GDP" unit="%" signed={false} legend={[`weight in the ACWI ETF (${data.date ?? ''})`, `share of world GDP (${year})`]}
         rows={data.countries.map(c => ({ key: c.area, label: entityName(c.area), entity: c.area, a: c.index_weight, b: c.gdp_share }))}/>
       <p className="decision-caption">A market-cap world fund weights countries by the value of their listed companies, not by the size of
         their economies. Countries follow the issuer's reported location: China looks small partly because many Chinese companies are

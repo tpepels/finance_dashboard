@@ -87,11 +87,18 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **Phase 3 group 4, valuation (2026-11-09):** V01, V02, V03 and V05 run on the engine in a Valuation panel: US valuation gauges within their own history (CAPE, P/E, dividend yield, excess CAPE yield), BEA Q ratios beside CAPE, trailing and forward P/E per MSCI region from archived factsheets (sparse months drawn as dots, never bridged), and a grid of how well starting valuation ranked later 5, 10 and 15-year real returns per era with effective independent samples. Three more pre-reset tiles retired (24 remain).
 
+* **Phase 3 groups 5–7, world, labour and portfolio (2026-11-09):** G05 and G06 (World), L01, L02, L03, L05 and L07 (Labour & inequality), P02 and P03 (Portfolio) run on the engine; all pre-reset tiles are retired.
+
+* **Archive-based analyses (2026-11-09):** the engine also reads named archives besides stored series (`engine/artifacts.py`): SEC N-PORT filings, the iShares UCITS holdings file and the Rotta & Kumar framework originals. A missing archive gives an empty result, never a broken page. G01 (the ten largest issuers in the ACWI ETF beside MSCI's published top 10), G02 (index weight against share of world GDP), L04 (the spread of surplus-value and profit rates across two sector classifications and three wage measures) and P01 (where the owned funds invest, and their largest holdings).
+
+* **Owner inputs (2026-11-09):** a Your portfolio form (mix, euro share and hedging, bond duration, rebalancing rule, trading costs, contributions and withdrawals) stored locally in `FINANCE_OWNER_INPUTS` (default `/data/owner-inputs.json`) through `/api/owner-inputs`; invalid inputs are refused with a reason. Until saved, a labelled example portfolio is used and every result says so. P04 shows first-order shock effects on the mix; P05 replays the mix in euros under never, calendar and threshold rebalancing with trading costs.
+
+* **Cleanup (2026-11-09):** `/api/research`, `/api/research/{id}`, `/api/risk` and `/api/risk/{scope}` and their modules (`research.py`, `risk_diagnostics.py`) are removed, with the stylesheet rules only the old dashboard used. `insights.py` stays for the source explorer's chart readouts.
+
 ## Next slices
 
-1. **Phase 3, overview group by group:** next is concentration and global (G01, G02, G05, G06; holdings and factsheet artifacts), then V01–V05/G01, L-series and P-series, each retiring the pre-reset pieces it replaces.
-2. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
-3. **L04 extensions:** recompute the input-origin ratio from the WIOD 2016 input-output tables (`WIOTS_in_EXCEL.zip`, owner download from DataverseNL); extend 1995-2021 with EU KLEMS industry workbooks (capital accounts K_GFCF) and OECD ICIO 2025, reconciling vintages over the 2000-2014 overlap.
+1. **Remaining analyses:** C02, C05 and G03, the last corpus questions without an engine definition; tax on realised gains in P05.
+2. **L04 extensions:** recompute the input-origin ratio from the WIOD 2016 input-output tables (`WIOTS_in_EXCEL.zip`, owner download from DataverseNL); extend 1995-2021 with EU KLEMS industry workbooks (capital accounts K_GFCF) and OECD ICIO 2025, reconciling vintages over the 2000-2014 overlap.
 
 ## Working rules
 

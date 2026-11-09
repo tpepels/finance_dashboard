@@ -57,7 +57,7 @@ class LimitationRegisterTests(unittest.TestCase):
             items = method_limitations(analysis_id)
             self.assertEqual(len(items), 3)
             self.assertTrue(all(item["code"] and item["text"] for item in items))
-        self.assertEqual(method_limitations("P04"), [])
+        self.assertEqual(method_limitations("G03"), [])
 
 
 if __name__ == "__main__":
