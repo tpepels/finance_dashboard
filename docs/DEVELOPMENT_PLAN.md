@@ -83,9 +83,11 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **Phase 3 group 2, rates and currencies (2026-11-09):** M01, M02 and M04 run on the engine in a Rates & currencies panel: a rate ladder (each central bank now against a year ago, the Fed target range, the euro's rate gaps), the US 10-year yield split into real yield and breakeven now and a year ago, and the euro's 12-month moves beside its rate gaps, with step-line rate histories, yield histories and per-currency small multiples. Six more pre-reset tiles retired (34 remain).
 
+* **Phase 3 group 3, credit and stress (2026-11-09):** F01, F02, F04, F05, F06 and F07 run on the engine in a Credit & stress panel: credit to GDP against its BIS trend, debt service five years ago against now, stress gauges within their own history with the OFR index split into its published parts, debt by sector stacked as % of GDP with US bank equity, real house and commercial property prices within their own history, and US nonbank leverage and repo funding. Seven more pre-reset tiles retired (27 remain).
+
 ## Next slices
 
-1. **Phase 3, overview group by group:** next is the credit group (F01, F02, F04–F07 beside F03), then V01–V05/G01, L-series and P-series, each retiring the pre-reset pieces it replaces.
+1. **Phase 3, overview group by group:** next is valuation and concentration (V01, V02, V03, V05, G01, G02), then V01–V05/G01, L-series and P-series, each retiring the pre-reset pieces it replaces.
 2. **Owner inputs:** portfolio weights, rebalancing rule, costs, tax and withdrawal plan, entered through the application, not fetched.
 3. **L04 extensions:** recompute the input-origin ratio from the WIOD 2016 input-output tables (`WIOTS_in_EXCEL.zip`, owner download from DataverseNL); extend 1995-2021 with EU KLEMS industry workbooks (capital accounts K_GFCF) and OECD ICIO 2025, reconciling vintages over the 2000-2014 overlap.
 

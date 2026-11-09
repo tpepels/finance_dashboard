@@ -4,7 +4,7 @@
  *  - RiskReturnMap: hedged and unhedged as two points on return against volatility, with the move between them.
  *  - Thermometers: each economy on a track spanning its own history, with zones and its own mean.
  */
-import { ENTITY, ENTITY_NAME, entityColour, entityName, palette, type Theme } from './chartKit';
+import { entityColour, entityName, palette, type Theme } from './chartKit';
 
 export const scale = (d0: number, d1: number, r0: number, r1: number) =>
   (value: number) => r0 + (value - d0) / (d1 - d0) * (r1 - r0);
@@ -135,7 +135,8 @@ export function RiskReturnMap({ theme, points }: { theme: Theme; points: RiskPoi
   </svg>;
 }
 
-export type ThermoRow = { area: keyof typeof ENTITY; min: number; max: number; mean: number; latest: number; asOf: string };
+export type ThermoRow = { area: string; label?: string; min: number; max: number; mean: number; latest: number; asOf: string;
+  note?: string; format?: (v: number) => string };
 export type ThermoZone = { from: number; to: number | null };
 
 /** Each economy on a track spanning its own history: where is it today relative to its own past? */
@@ -143,22 +144,25 @@ export function Thermometers({ theme, title, unit, rows, zones = [] }: {
   theme: Theme; title: string; unit: string; rows: ThermoRow[]; zones?: ThermoZone[];
 }) {
   const c = palette(theme);
-  const W = 700, nameW = 128, left = 150, right = 540, rowH = 40;
+  const longest = Math.max(0, ...rows.map(r => (r.label ?? entityName(r.area)).length));
+  const W = 760, nameW = 128, left = longest > 16 ? Math.min(330, 30 + longest * 7.2) : 150, right = 560, rowH = 40;
+  const name = (r: ThermoRow) => r.label ?? entityName(r.area);
+  const show = (r: ThermoRow, v: number) => r.format ? r.format(v) : `${v.toFixed(1)} ${unit}`.trim();
   const H = rows.length * rowH + 30;
   const zoneFill = (i: number) => i === 0 ? (theme === 'dark' ? 'rgba(201,133,0,0.22)' : 'rgba(237,161,0,0.20)')
     : (theme === 'dark' ? 'rgba(230,103,103,0.26)' : 'rgba(227,73,72,0.20)');
   return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}, each economy within its own history: ${rows.map(r =>
-      `${ENTITY_NAME[r.area]} ${r.latest.toFixed(1)} ${unit} (own range ${r.min.toFixed(1)} to ${r.max.toFixed(1)})`).join('; ')}`}>
+      `${name(r)} ${show(r, r.latest)} (own range ${show(r, r.min)} to ${show(r, r.max)})`).join('; ')}`}>
     <text x={left} y={14} fill={c.muted} fontSize="11">lowest in its history</text>
     <text x={right} y={14} textAnchor="end" fill={c.muted} fontSize="11">highest</text>
     {rows.map((r, i) => {
       const cy = 34 + i * rowH;
       const x = scale(r.min, r.max === r.min ? r.min + 1 : r.max, left, right);
-      const colour = c.series[ENTITY[r.area]];
+      const colour = entityColour(r.area, theme);
       return <g key={r.area}>
         <rect x={0} y={cy - 7} width="10" height="14" rx="3" fill={colour}/>
-        <text x={16} y={cy + 5} fill={c.ink} fontSize="13">{ENTITY_NAME[r.area]}</text>
+        <text x={16} y={cy + 5} fill={c.ink} fontSize="13">{name(r)}</text>
         <rect x={left} y={cy - 6} width={right - left} height="12" rx="6" fill={c.grid}/>
         {zones.map((z, zi) => {
           const from = Math.max(z.from, r.min), to = Math.min(z.to ?? r.max, r.max);
@@ -169,10 +173,10 @@ export function Thermometers({ theme, title, unit, rows, zones = [] }: {
           <title>{`Own long-run mean ${r.mean.toFixed(1)} ${unit}`}</title>
         </line>
         <circle data-part="latest" cx={x(r.latest)} cy={cy} r="8" fill={colour} stroke={c.surface} strokeWidth="2">
-          <title>{`${ENTITY_NAME[r.area]} ${r.latest.toFixed(1)} ${unit} on ${r.asOf}`}</title>
+          <title>{`${name(r)} ${show(r, r.latest)} on ${r.asOf}`}</title>
         </circle>
-        <text x={right + 14} y={cy + 5} fill={c.ink} fontSize="13" fontWeight="600">{`${r.latest.toFixed(1)} ${unit}`}</text>
-        <text x={W} y={cy + 5} textAnchor="end" fill={c.muted} fontSize="11">{r.asOf.slice(0, 7)}</text>
+        <text x={right + 14} y={cy + 1} fill={c.ink} fontSize="13" fontWeight="600">{show(r, r.latest)}</text>
+        <text x={right + 14} y={cy + 19} fill={c.muted} fontSize="11">{r.note ?? r.asOf.slice(0, 7)}</text>
       </g>;
     })}
     <text x={nameW - 120} y={H - 4} fill={c.muted} fontSize="11">{`${title}. Tick: own long-run mean. Dot: latest.`}</text>
@@ -490,6 +494,145 @@ export function CurrencyRows({ theme, rows }: { theme: Theme; rows: CurrencyRow[
         <text x={0} y={cy + 5} fill={c.ink} fontSize="13">{`Euro vs ${CURRENCY_NAME[r.currency] ?? r.currency}`}</text>
         {bar(r.move_12m, mx, cy, 'move', r.move_12m === null ? '' : `${r.move_12m >= 0 ? '+' : '−'}${Math.abs(r.move_12m).toFixed(1)}%`)}
         {bar(r.gap, gx, cy, 'gap', r.gap === null ? '' : pp(r.gap))}
+      </g>;
+    })}
+  </svg>;
+}
+
+const ppText = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} pp`;
+
+export type TrendRow = { area: string; as_of: string; ratio: number; trend: number; gap: number | null; ratio_change_5y: number | null };
+
+/** Private credit to GDP against its BIS trend, one shared scale: the gap is the distance from tick to dot. */
+export function CreditVsTrend({ theme, rows }: { theme: Theme; rows: TrendRow[] }) {
+  const c = palette(theme);
+  const W = 760, left = 150, right = 520, rowH = 46, top = 34;
+  const hi = Math.ceil(Math.max(100, ...rows.flatMap(r => [r.ratio, r.trend])) / 50) * 50;
+  const x = scale(0, hi, left, right);
+  const H = top + rows.length * rowH + 26;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Private credit to GDP against its trend: ${rows.map(r => `${entityName(r.area)} ${r.ratio.toFixed(0)}% against a trend of ${r.trend.toFixed(0)}%`).join('; ')}`}>
+    <text x={left} y={14} fill={c.muted} fontSize="11">tick: BIS long-term trend · dot: credit to GDP now (% of GDP)</text>
+    {ticks(0, hi, 50).map(t => <g key={t}>
+      <line x1={x(t)} x2={x(t)} y1={top - 8} y2={H - 24} stroke={c.grid}/>
+      <text x={x(t)} y={H - 8} textAnchor="middle" fill={c.muted} fontSize="12">{`${t}%`}</text></g>)}
+    {rows.map((r, i) => {
+      const cy = top + i * rowH + 10, colour = entityColour(r.area, theme);
+      const above = r.ratio >= r.trend;
+      return <g key={r.area}>
+        <rect x={0} y={cy - 7} width="10" height="14" rx="3" fill={colour}/>
+        <text x={16} y={cy + 5} fill={c.ink} fontSize="13">{entityName(r.area)}</text>
+        <rect x={Math.min(x(r.ratio), x(r.trend))} y={cy - 4} width={Math.abs(x(r.ratio) - x(r.trend))} height="8"
+          fill={above ? c.negative : c.positive} fillOpacity="0.35"/>
+        <line data-part="trend" x1={x(r.trend)} x2={x(r.trend)} y1={cy - 12} y2={cy + 12} stroke={c.secondary} strokeWidth="2">
+          <title>{`BIS trend ${r.trend.toFixed(1)}% of GDP`}</title></line>
+        <circle cx={x(r.ratio)} cy={cy} r="8" fill={colour} stroke={c.surface} strokeWidth="2">
+          <title>{`${entityName(r.area)} ${r.ratio.toFixed(1)}% of GDP on ${r.as_of}`}</title></circle>
+        <text x={right + 14} y={cy} fill={c.ink} fontSize="13" fontWeight="700">{`${r.gap === null ? '' : ppText(r.gap)} vs trend`}</text>
+        {r.ratio_change_5y !== null && <text x={right + 14} y={cy + 15} fill={c.secondary} fontSize="12">{`${ppText(r.ratio_change_5y)} in 5 years`}</text>}
+      </g>;
+    })}
+  </svg>;
+}
+
+export type DumbbellRow = { key: string; label: string; entity: string; back: number | null; latest: number; mean?: number };
+
+/** Each series five years ago (ring) and now (dot) on one scale; the label gives the change. */
+export function Dumbbells({ theme, rows, unit }: { theme: Theme; rows: DumbbellRow[]; unit: string }) {
+  const c = palette(theme);
+  const W = 760, left = 250, right = 650, rowH = 38, top = 34;
+  const hi = Math.ceil(Math.max(...rows.flatMap(r => [r.latest, r.back ?? r.latest, r.mean ?? 0])) / 5) * 5 + 5;
+  const x = scale(0, hi, left, right);
+  const H = top + rows.length * rowH + 26;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Five years ago and now (${unit}): ${rows.map(r => `${r.label} ${r.back ?? 'n/a'} to ${r.latest}`).join('; ')}`}>
+    <text x={left} y={14} fill={c.muted} fontSize="11">{`ring: five years ago · dot: now · tick: own long-run mean (${unit})`}</text>
+    {ticks(0, hi, hi > 30 ? 10 : 5).map(t => <g key={t}>
+      <line x1={x(t)} x2={x(t)} y1={top - 8} y2={H - 24} stroke={c.grid}/>
+      <text x={x(t)} y={H - 8} textAnchor="middle" fill={c.muted} fontSize="12">{t}</text></g>)}
+    {rows.map((r, i) => {
+      const cy = top + i * rowH + 8, colour = entityColour(r.entity, theme);
+      const change = r.back === null ? null : r.latest - r.back;
+      return <g key={r.key}>
+        <text x={0} y={cy + 5} fill={c.ink} fontSize="13">{r.label}</text>
+        {r.mean !== undefined && <line x1={x(r.mean)} x2={x(r.mean)} y1={cy - 10} y2={cy + 10} stroke={c.secondary} strokeWidth="1.5"/>}
+        {r.back !== null && <>
+          <line x1={x(r.back)} x2={x(r.latest)} y1={cy} y2={cy} stroke={colour} strokeWidth="3" strokeOpacity="0.5"/>
+          <circle data-part="then" cx={x(r.back)} cy={cy} r="6" fill={c.surface} stroke={colour} strokeWidth="2">
+            <title>{`${r.label} five years ago: ${r.back.toFixed(1)}`}</title></circle></>}
+        <circle cx={x(r.latest)} cy={cy} r="8" fill={colour} stroke={c.surface} strokeWidth="2">
+          <title>{`${r.label} now: ${r.latest.toFixed(1)}`}</title></circle>
+        {change !== null && <text x={right + 16} y={cy + 5} fill={c.ink} fontSize="13" fontWeight="700">
+          {`${change >= 0 ? '+' : '−'}${Math.abs(change).toFixed(1)}`}</text>}
+      </g>;
+    })}
+  </svg>;
+}
+
+export type Part = { key: string; label: string; value: number };
+
+/** A published total split into its published parts: positive parts push right, negative left, from zero. */
+export function PartsBar({ theme, title, parts, total }: { theme: Theme; title: string; parts: Part[]; total: number }) {
+  const c = palette(theme);
+  const W = 760, left = 40, right = 720, barY = 50, barH = 30;
+  const pos = parts.filter(p => p.value >= 0), neg = parts.filter(p => p.value < 0);
+  const reach = Math.max(0.5, pos.reduce((a, p) => a + p.value, 0), -neg.reduce((a, p) => a + p.value, 0)) * 1.1;
+  const x = scale(-reach, reach, left, right);
+  const slots = [6, 3, 4, 2, 5, 0, 7, 1];
+  let up = 0, down = 0;
+  const placed = parts.map((p, i) => {
+    const from = p.value >= 0 ? up : down + p.value;
+    if (p.value >= 0) up += p.value; else down += p.value;
+    return { ...p, from, to: from + Math.abs(p.value), colour: c.series[slots[i % slots.length]] };
+  });
+  const labelX = nudge(placed.map(p => (x(p.from) + x(p.to)) / 2), 110);
+  return <svg className="hero-svg" viewBox={`0 0 ${W} 150`} role="img"
+    aria-label={`${title}: ${parts.map(p => `${p.label} ${p.value.toFixed(2)}`).join('; ')}; total ${total.toFixed(2)}`}>
+    <text x={left} y={18} fill={c.ink} fontSize="13" fontWeight="700">{title}</text>
+    <text x={right} y={18} textAnchor="end" fill={c.ink} fontSize="13" fontWeight="700">{`total ${total < 0 ? '−' : '+'}${Math.abs(total).toFixed(2)}`}</text>
+    <text x={x(0) - 6} y={barY - 6} textAnchor="end" fill={c.muted} fontSize="11">← less stress</text>
+    <text x={x(0) + 6} y={barY - 6} fill={c.muted} fontSize="11">more stress →</text>
+    {placed.map(p => <rect key={p.key} data-part="part" x={x(p.from)} y={barY} width={Math.max(1, x(p.to) - x(p.from))} height={barH}
+      fill={p.colour} stroke={c.surface} strokeWidth="2"><title>{`${p.label}: ${p.value.toFixed(3)}`}</title></rect>)}
+    <line x1={x(0)} x2={x(0)} y1={barY - 4} y2={barY + barH + 4} stroke={c.ink} strokeWidth="2"/>
+    {placed.map((p, i) => <g key={`l-${p.key}`}>
+      <line x1={(x(p.from) + x(p.to)) / 2} x2={labelX[i]} y1={barY + barH} y2={barY + barH + 22} stroke={c.axis}/>
+      <rect x={labelX[i] - 4} y={barY + barH + 26} width="10" height="10" rx="2" fill={p.colour}/>
+      <text x={labelX[i] + 10} y={barY + barH + 35} fill={c.ink} fontSize="12">{p.label}</text>
+      <text x={labelX[i] + 10} y={barY + barH + 50} fill={c.secondary} fontSize="12">{`${p.value >= 0 ? '+' : '−'}${Math.abs(p.value).toFixed(2)}`}</text>
+    </g>)}
+  </svg>;
+}
+
+export type SectorRow = { area: string; as_of: string; household: number; corporate: number; government: number | null; government_year: string | null };
+
+/** Debt by sector as % of GDP per economy: households, companies and government stacked (same denominator). */
+export function SectorStack({ theme, rows }: { theme: Theme; rows: SectorRow[] }) {
+  const c = palette(theme);
+  const W = 760, left = 150, right = 690, rowH = 44, top = 40;
+  const hi = Math.ceil(Math.max(...rows.map(r => r.household + r.corporate + (r.government ?? 0))) / 50) * 50;
+  const x = scale(0, hi, left, right);
+  const H = top + rows.length * rowH + 30;
+  const colours = { household: c.series[0], corporate: c.series[1], government: c.series[6] };
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`Debt by sector, % of GDP: ${rows.map(r => `${entityName(r.area)} households ${r.household.toFixed(0)}, companies ${r.corporate.toFixed(0)}, government ${r.government === null ? 'not available' : r.government.toFixed(0)}`).join('; ')}`}>
+    {(['household', 'corporate', 'government'] as const).map((k, i) => <g key={k} transform={`translate(${left + i * 150}, 12)`}>
+      <rect width="12" height="12" rx="3" fill={colours[k]}/><text x={18} y={11} fill={c.ink} fontSize="12">{{ household: 'households', corporate: 'companies', government: 'government' }[k]}</text></g>)}
+    {ticks(0, hi, hi > 300 ? 100 : 50).map(t => <g key={t}>
+      <line x1={x(t)} x2={x(t)} y1={top - 6} y2={H - 26} stroke={c.grid}/>
+      <text x={x(t)} y={H - 8} textAnchor="middle" fill={c.muted} fontSize="12">{`${t}%`}</text></g>)}
+    {rows.map((r, i) => {
+      const cy = top + i * rowH + 12;
+      const segments = [['household', 0, r.household], ['corporate', r.household, r.household + r.corporate],
+        ...(r.government === null ? [] : [['government', r.household + r.corporate, r.household + r.corporate + r.government]])] as [keyof typeof colours, number, number][];
+      return <g key={r.area}>
+        <text x={0} y={cy + 5} fill={c.ink} fontSize="13">{entityName(r.area)}</text>
+        {segments.map(([k, from, to]) => <rect key={k} data-part="segment" x={x(from)} y={cy - 11} width={Math.max(1, x(to) - x(from))}
+          height="22" fill={colours[k]} stroke={c.surface} strokeWidth="2">
+          <title>{`${entityName(r.area)} ${k}: ${(to - from).toFixed(1)}% of GDP${k === 'government' ? ` (${r.government_year})` : ` (${r.as_of.slice(0, 7)})`}`}</title></rect>)}
+        <text x={x(r.household + r.corporate + (r.government ?? 0)) + 8} y={cy + 5} fill={c.ink} fontSize="12" fontWeight="700">
+          {`${(r.household + r.corporate + (r.government ?? 0)).toFixed(0)}%`}</text>
+        {r.government === null && <text x={x(r.household + r.corporate) + 52} y={cy + 5} fill={c.muted} fontSize="11">no free government series</text>}
       </g>;
     })}
   </svg>;

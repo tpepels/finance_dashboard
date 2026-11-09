@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, CurrencyRows, CycleClock, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, RiskReturnMap, StagflationMap, Thermometers, nudge, scale } from './heroes';
+import { ChangeBars, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, CycleClock, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, RiskReturnMap, StagflationMap, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -124,5 +124,45 @@ describe('hero graphics', () => {
     expect(rows.querySelectorAll('[data-part="gap"]')).toHaveLength(2);
     expect(screen.getByText('−3.5%')).toBeTruthy();
     expect(screen.getByText('no data')).toBeTruthy();
+  });
+
+  it('thermometers also take labelled non-country rows with their own note and format', () => {
+    render(<Thermometers theme="light" title="Stress" unit="" rows={[
+      { area: 'nfci', label: 'Financial conditions (NFCI)', min: -1, max: 3, mean: 0, latest: -0.46, asOf: '2026-10-30', note: 'lower than 56% of history' }]}/>);
+    expect(screen.getByText('Financial conditions (NFCI)')).toBeTruthy();
+    expect(screen.getByText('lower than 56% of history')).toBeTruthy();
+  });
+
+  it('shows credit against its trend per economy, with the gap and five-year change', () => {
+    render(<CreditVsTrend theme="light" rows={[{ area: 'PT', as_of: '2026-01-01', ratio: 128.6, trend: 152.8, gap: -24.3, ratio_change_5y: -50.8 }]}/>);
+    const chart = screen.getByRole('img', { name: /credit to gdp against its trend/i });
+    expect(chart.querySelector('[data-part="trend"]')).toBeTruthy();
+    expect(screen.getByText('−24.3 pp vs trend')).toBeTruthy();
+    expect(screen.getByText('−50.8 pp in 5 years')).toBeTruthy();
+  });
+
+  it('draws each burden as a move from five years ago to now', () => {
+    render(<Dumbbells theme="dark" unit="% of income" rows={[{ key: 'private:US', label: 'United States, private sector', entity: 'US',
+      back: 13.7, latest: 13.8, mean: 15 }, { key: 'corporations:US', label: 'United States, companies', entity: 'US', back: 42.1, latest: 36.9, mean: 40 }]}/>);
+    const chart = screen.getByRole('img', { name: /five years ago and now/i });
+    expect(chart.querySelectorAll('[data-part="then"]')).toHaveLength(2);
+    expect(screen.getByText('−5.2')).toBeTruthy();
+  });
+
+  it('splits a published total into its parts around zero', () => {
+    render(<PartsBar theme="light" title="OFR stress index by source" total={-1.484} parts={[
+      { key: 'credit', label: 'Credit', value: -0.842 }, { key: 'volatility', label: 'Volatility', value: 0.237 }]}/>);
+    const bar = screen.getByRole('img', { name: /stress index by source/i });
+    expect(bar.querySelectorAll('[data-part="part"]')).toHaveLength(2);
+    expect(screen.getByText('Credit')).toBeTruthy();
+    expect(screen.getByText('total −1.48')).toBeTruthy();
+  });
+
+  it('stacks household, corporate and government debt per economy and says when government is missing', () => {
+    render(<SectorStack theme="light" rows={[{ area: 'US', as_of: '2026-01-01', household: 67.2, corporate: 72.5, government: 124.4, government_year: '2025' },
+      { area: 'DE', as_of: '2026-01-01', household: 47.9, corporate: 86.9, government: null, government_year: null }]}/>);
+    const stack = screen.getByRole('img', { name: /debt by sector/i });
+    expect(stack.querySelectorAll('[data-part="segment"]')).toHaveLength(5);
+    expect(screen.getByText(/no free government series/i)).toBeTruthy();
   });
 });

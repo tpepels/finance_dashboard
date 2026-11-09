@@ -24,12 +24,19 @@ def meta(source, *, unit="index", frequency="Q"):
             "measurement": "Officially measured BLS time series"}
 
 
+def synthetic(kind: str, count: int) -> dict:
+    """A comparison spec for compiler behaviour no remaining tile uses (growth, monetary and credit tiles
+    moved to the Phase 3 engine). Built on a live raw tile so every other field stays valid."""
+    base = BY_ID["global_productivity"]
+    return {**base, "id": f"synthetic_{kind}", "kind": kind, "sources": [f"synthetic.series.{i}" for i in range(count)]}
+
+
 class ResearchIndicatorTests(unittest.TestCase):
     def test_every_research_indicator_is_backed_by_a_real_mapped_source(self):
         catalog, _ = load_documents()
         known = {s["id"]: s for s in catalog["series"]}
         self.assertEqual(len(SPECS), len(BY_ID))
-        self.assertEqual(len(SPECS), 34)   # growth and monetary tiles moved to the engine (C01-C06, M01-M04)
+        self.assertEqual(len(SPECS), 27)   # growth, monetary and credit tiles moved to the engine
         self.assertGreaterEqual(len(load_documents()[0]["series"]), 93)
         self.assertEqual(len({s["id"] for s in SPECS}), len(SPECS))
         self.assertEqual(set(s["region"] for s in SPECS), {r["id"] for r in REGIONS})
@@ -96,8 +103,7 @@ class ResearchIndicatorTests(unittest.TestCase):
 
     def test_pair_differential_uses_only_common_period(self):
         # No remaining tile is a pair differential; the compiler keeps the behaviour, exercised on a synthetic spec.
-        credit = BY_ID["compare_credit"]
-        spec = {**credit, "id": "synthetic_pair_differential", "kind": "pair_differential", "sources": credit["sources"][:2]}
+        spec = synthetic("pair_differential", 2)
         a,b = spec["sources"]
         output = compile_indicator(spec,
             {a: [(date(2023,1,1), D("2.7")), (date(2024,1,1), D("2.9"))],
@@ -109,7 +115,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertEqual(output["headline"]["value"], "2.2")
 
     def test_credit_dispersion_needs_all_three_identical_quarters(self):
-        spec = BY_ID["compare_credit_dispersion"]
+        spec = synthetic("cross_country_dispersion", 3)
         us, ea, jp = spec["sources"]
         output = compile_indicator(spec,
             {us: [(date(2024,1,1), D("1.2")), (date(2024,4,1), D("1.5"))],
@@ -174,7 +180,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertEqual(data["series"][0]["points"], [])
 
     def test_exact_source_dates_kept_in_cross_country_comparisons(self):
-        spec = BY_ID["compare_credit"]
+        spec = synthetic("raw", 3)
         metadata = {sid: meta(sid, unit="percent", frequency="D") for sid in spec["sources"]}
         observations = {
             spec["sources"][0]: [(date(2026,1,2), D("4.25"))],
@@ -222,7 +228,7 @@ class ResearchIndicatorTests(unittest.TestCase):
         self.assertIsNone(short["series"][0]["historical_context"])
 
     def test_country_comparison_is_ranked_only_at_full_common_source_date(self):
-        spec = BY_ID["compare_credit"]
+        spec = synthetic("raw", 3)
         sources = spec["sources"]
         metadata = {sid: meta(sid, unit="percent", frequency="A") for sid in sources}
         values = {sid: [(date(2024, 1, 1), D(index)),
