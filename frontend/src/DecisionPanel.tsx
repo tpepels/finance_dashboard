@@ -7,12 +7,15 @@ type Stats = { months: number; annualized_return?: number; annualized_volatility
 type HedgeRow = { month: string; eur_unhedged: number; eur_hedged: number; eur_inflation: number | null };
 type Wealth = Record<'eur_unhedged' | 'eur_hedged', [string, number][]>;
 type Limitation = { code: string; text: string; detail?: string };
+/** One entry of the bundle's shared limitation list (the export prints the same list). */
+type Shown = Limitation & { source: 'phase2' | 'input' | 'method'; series_ids: string[]; roles: string[];
+  accepted_under: { analysis_id: string; role: string }[] };
 
 /** An engine result bundle (`/api/analysis/{id}`); values are null when Phase 2 withholds them. */
 export type Bundle<V, E = null> = {
   analysis_id: string; question: string; decision_informed: string;
   phase2: { state: string; evaluated_at: string; limitations: Limitation[]; open_gates: string[] };
-  values: V | null; estimates: E | null; method_limitations: Limitation[];
+  values: V | null; estimates: E | null; method_limitations: Limitation[]; limitations: Shown[];
 };
 export type P07Values = { rows: HedgeRow[]; nominal: Record<string, Stats>; real_eur: Record<string, Stats>;
   real_period: { start: string; end: string } | null; wealth: { nominal: Wealth; real: Wealth } };
@@ -63,11 +66,16 @@ async function load<T>(id: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-/** Phase 2 data limitations, the method's own limits and the AI export, under every card. */
+/** The bundle's limitation list (data, borrowed inputs, method) and the AI export, under every card. */
 function Limits({ bundle }: { bundle: Bundle<unknown, unknown> }) {
-  const texts = [...bundle.phase2.limitations, ...bundle.method_limitations].map(item => item.text);
   return <>
-    <ul className="decision-limits">{[...new Set(texts)].map(text => <li key={text}>{text}</li>)}</ul>
+    <ul className="decision-limits">{bundle.limitations.map(item => <li key={`${item.code}|${item.detail ?? ''}`}>
+      {item.text}
+      {item.detail && <span className="decision-limit-detail"> {item.detail}</span>}
+      {(item.series_ids.length > 0 || item.accepted_under.length > 0) && <span className="decision-limit-scope">
+        {' '}({[item.series_ids.join(', '),
+          ...item.accepted_under.map(a => `accepted under ${a.analysis_id}`)].filter(Boolean).join('; ')})</span>}
+    </li>)}</ul>
     <a className="decision-export" href={`/api/analysis/${bundle.analysis_id}/export`} download>Export for AI</a>
   </>;
 }

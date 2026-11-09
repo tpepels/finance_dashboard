@@ -109,6 +109,19 @@ class EngineApiTests(unittest.TestCase):
         for item in bundle["phase2"]["limitations"] + bundle["method_limitations"]:
             self.assertIn(item["text"], response.text)
 
+    def test_export_names_code_series_role_and_detail_of_every_limitation(self):
+        self.app.state.acceptance = cache_of(report({"code": "role_descoped_by_phase1_revision",
+                                                     "role": "fx_quotes", "detail": "Replaced by an ECB role."}))
+        text = self.client.get("/api/analysis/P07/export", params={"today": "2026-11-06"}).text
+        bundle = self.client.get("/api/analysis/P07", params={"today": "2026-11-06"}).json()
+        for item in bundle["limitations"]:
+            self.assertIn(item["code"], text)
+            for series_id in item["series_ids"]:
+                self.assertIn(series_id, text)
+        self.assertIn("fx_quotes", text)
+        self.assertIn("Replaced by an ECB role.", text)
+        self.assertIn('"limitations"', text.split("--- data (JSON) ---")[1])
+
     def test_conditionals_listing(self):
         rows = self.client.get("/api/conditionals").json()
         self.assertEqual([row["analysis_id"] for row in rows], ["P07"])

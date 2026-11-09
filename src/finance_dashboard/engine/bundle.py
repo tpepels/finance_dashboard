@@ -46,6 +46,43 @@ def _input_record(role: str, series_id: str, points: list, catalog_series: dict,
             "limitations": provenance["limitations"] if provenance else []}
 
 
+def shown_limitations(analysis_id: str, phase2: dict, inputs: list[dict], method: list[dict]) -> list[dict]:
+    """The one limitation list a card and its export both show.
+
+    Analysis-level Phase 2 limitations first, then those that only reach the
+    analysis through an input (a borrowed input carries its lending role's
+    limits), then the method's own limits. Each (code, detail) appears once,
+    naming every affected series and role and, for borrowed inputs, the
+    analysis and role under which Phase 2 accepted them.
+    """
+    groups: dict[tuple, dict] = {}
+
+    def add(item: dict, source: str, series_ids=(), accepted_under=None):
+        key = (item["code"], item.get("detail"))
+        group = groups.setdefault(key, {"code": item["code"], "text": item["text"],
+                                        **({"detail": item["detail"]} if item.get("detail") else {}),
+                                        "source": source, "series_ids": set(), "roles": set(),
+                                        "accepted_under": []})
+        group["series_ids"].update(item.get("series_ids") or [], series_ids)
+        for raw in item.get("items", [item]):
+            group["series_ids"].update(raw.get("fallback_series_ids") or [])
+            group["roles"].update([raw["role"]] if raw.get("role") else raw.get("roles") or [])
+        if accepted_under and accepted_under not in group["accepted_under"]:
+            group["accepted_under"].append(accepted_under)
+
+    for item in phase2["limitations"]:
+        add(item, "phase2")
+    for record in inputs:
+        lender = record["accepted_under"]
+        borrowed = lender if lender and lender["analysis_id"] != analysis_id else None
+        for item in record["limitations"]:
+            add(item, "input", [record["series_id"]], borrowed)
+    for item in method:
+        add(item, "method")
+    return [{**group, "series_ids": sorted(group["series_ids"]), "roles": sorted(group["roles"])}
+            for group in groups.values()]
+
+
 def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple[date, float]]],
                  snapshot: AcceptanceSnapshot, corpus_analysis: dict, catalog_series: dict[str, dict],
                  view: dict, computed_at: datetime) -> dict:
@@ -63,6 +100,7 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
     computed = None
     if phase2["state"] in RESOLVED_ANALYSIS_STATES and not unaccepted:
         computed = definition.compute({role: points.get(role, []) for role in definition.inputs}, view)
+    method = method_limitations(definition.analysis_id)
     return {
         "analysis_id": definition.analysis_id,
         "question": corpus_analysis.get("title"),
@@ -76,7 +114,8 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
         "values": computed.values if computed else None,
         "estimates": computed.estimates if computed else None,
         "comparison": computed.comparison if computed else None,
-        "method_limitations": method_limitations(definition.analysis_id),
+        "method_limitations": method,
+        "limitations": shown_limitations(definition.analysis_id, phase2, inputs, method),
         "citations": [{key: source.get(key) for key in ("id", "label", "url")}
                       for source in corpus_analysis.get("method_sources", [])],
         "view": view,

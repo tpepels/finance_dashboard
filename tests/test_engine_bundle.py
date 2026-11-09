@@ -9,7 +9,7 @@ from finance_dashboard.engine.transforms import applied
 
 KEYS = {"analysis_id", "question", "decision_informed", "evidence_tier", "engine_version", "computed_at",
         "phase2", "inputs", "transforms", "values", "estimates", "comparison", "method_limitations",
-        "citations", "view"}
+        "citations", "view", "limitations"}
 
 
 def role(name, series_ids, limitations=()):
@@ -91,6 +91,22 @@ class BundleTests(unittest.TestCase):
         bundle = self.bundle(definition, points={"a_role": [], "x_role": []})
         self.assertIsNone(bundle["values"])
         self.assertIn("input_not_accepted:x.series", bundle["phase2"]["open_gates"])
+
+    def test_one_limitation_list_covers_analysis_inputs_and_method(self):
+        shown = self.bundle()["limitations"]
+        by_code = {item["code"]: item for item in shown}
+        # analysis-level, from P07's own role
+        self.assertEqual(by_code["dimensions_as_declared_in_catalogue"]["series_ids"], ["a.series"])
+        self.assertEqual(by_code["dimensions_as_declared_in_catalogue"]["source"], "phase2")
+        # borrowed input: the lending analysis and role are named
+        borrowed = by_code["latest_revised_values_not_real_time"]
+        self.assertEqual(borrowed["source"], "input")
+        self.assertEqual(borrowed["accepted_under"], [{"analysis_id": "V05", "role": "b_role"}])
+        self.assertEqual(borrowed["series_ids"], ["b.series"])
+        # method limits last, every item with readable text, nothing listed twice
+        self.assertEqual(shown[-1]["source"], "method")
+        self.assertTrue(all(item["text"] for item in shown))
+        self.assertEqual(len({(i["code"], i.get("detail")) for i in shown}), len(shown))
 
     def test_no_paths_or_credentials(self):
         text = json.dumps(self.bundle())

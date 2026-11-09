@@ -9,7 +9,10 @@ const phase2 = (texts: string[], state = 'accepted') => ({ state, evaluated_at: 
   limitations: texts.map((text, i) => ({ code: `code_${i}`, text, series_ids: [] })) });
 const bundle = (id: string, values: unknown, estimates: unknown, limits: string[], method: string[]) => ({
   analysis_id: id, question: `${id} question`, decision_informed: 'A decision.', phase2: phase2(limits),
-  values, estimates, method_limitations: method.map((text, i) => ({ code: `m_${i}`, text })), inputs: [], transforms: [] });
+  values, estimates, method_limitations: method.map((text, i) => ({ code: `m_${i}`, text })), inputs: [], transforms: [],
+  limitations: [
+    ...limits.map((text, i) => ({ code: `code_${i}`, text, source: 'phase2', series_ids: [], roles: [], accepted_under: [] })),
+    ...method.map((text, i) => ({ code: `m_${i}`, text, source: 'method', series_ids: [], roles: [], accepted_under: [] }))] });
 
 const p06 = bundle('P06', { horizon_years: 10, equity_world_snapshot: null,
   bonds: { us_real_10y: { as_of: '2026-11-04', yield: 0.0264 } }, ea_inflation: null },
@@ -53,6 +56,18 @@ describe('DecisionPanel', () => {
     expect(exports.map(a => a.getAttribute('href')).sort())
       .toEqual(['/api/analysis/F03/export', '/api/analysis/P06/export', '/api/analysis/P07/export']);
     expect(urls.every(url => url.startsWith('/api/analysis/'))).toBe(true);
+  });
+
+  it('shows borrowed-input limitations with their detail and the analysis that accepted them', async () => {
+    const borrowed = { code: 'exact_source_unavailable_fallback_used', text: 'A cited fallback is used.', source: 'input',
+      detail: 'Baa spread replaces the ICE high-yield spread.', series_ids: ['credit_gap.pt.bis'], roles: [],
+      accepted_under: [{ analysis_id: 'F01', role: 'published_credit_gap' }] };
+    stubFetch({ F03: { ...f03, limitations: [...f03.limitations, borrowed] } });
+    render(<DecisionPanel theme="light" dataVersion={0}/>);
+    await waitFor(() => expect(screen.getByText('A cited fallback is used.')).toBeTruthy());
+    expect(screen.getByText(/Baa spread replaces/)).toBeTruthy();
+    expect(screen.getByText(/credit_gap\.pt\.bis/)).toBeTruthy();
+    expect(screen.getByText(/accepted under F01/)).toBeTruthy();
   });
 
   it('shows open gates instead of numbers when Phase 2 withholds values', async () => {

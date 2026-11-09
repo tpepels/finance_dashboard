@@ -8,6 +8,19 @@ def _lines(title: str, items: list[str]) -> list[str]:
     return [f"## {title}"] + ([f"- {item}" for item in items] if items else ["- none"]) + [""]
 
 
+def _limitation(item: dict) -> str:
+    parts = [f"[{item['source']}: {item['code']}] {item['text']}"]
+    if item.get("detail"):
+        parts.append(f"Detail: {item['detail']}")
+    if item["roles"]:
+        parts.append("Roles: " + ", ".join(item["roles"]))
+    if item["series_ids"]:
+        parts.append("Series: " + ", ".join(item["series_ids"]))
+    if item["accepted_under"]:
+        parts.append("Accepted under: " + ", ".join(f"{a['analysis_id']}/{a['role']}" for a in item["accepted_under"]))
+    return " ".join(parts)
+
+
 def export_text(bundle: dict) -> str:
     phase2 = bundle["phase2"]
     header = [
@@ -21,18 +34,17 @@ def export_text(bundle: dict) -> str:
     ]
     if phase2["open_gates"]:
         header += _lines("Open gates (no values are shown)", phase2["open_gates"])
-    header += _lines("Phase 2 data limitations", [
-        item["text"] + (f" ({item['detail']})" if item.get("detail") else "") for item in phase2["limitations"]])
-    header += _lines("Method limitations", [item["text"] for item in bundle["method_limitations"]])
+    header += _lines("Limitations (data, inputs and method)", [_limitation(item) for item in bundle["limitations"]])
     header += _lines("Inputs", [
         f"{item['role']}: {item['name']} [{item['series_id']}], {item['publisher']} {item['source_key']}, "
         f"{item['geography']}, {item['unit']}, {item['frequency']}, {item['observations']} observations "
         f"{item['first']} to {item['last']}; accepted under {json.dumps(item['accepted_under'])}; {item['source_url']}"
-        + "".join(f"\n  - limitation: {lim['text']}" for lim in item["limitations"])
         for item in bundle["inputs"]])
     header += _lines("Transforms", [f"{item['name']}: {item['formula']} {json.dumps(item['params'])}"
                                     for item in bundle["transforms"]])
     header += _lines("Shown side by side", bundle["comparison"] or [])
     header += _lines("Citations", [f"{item['id']} {item['label']}: {item['url']}" for item in bundle["citations"]])
-    data = json.dumps({"values": bundle["values"], "estimates": bundle["estimates"]}, indent=1)
+    data = json.dumps({"values": bundle["values"], "estimates": bundle["estimates"],
+                       "limitations": bundle["limitations"], "phase2": bundle["phase2"],
+                       "inputs": bundle["inputs"]}, indent=1)
     return "\n".join(header) + "\n--- data (JSON) ---\n" + data + "\n"
