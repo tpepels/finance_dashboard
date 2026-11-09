@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { entityName, timeChart, type Recession, type Theme, type TimeSeries } from './chartKit';
+import { breakGaps, entityName, timeChart, type Point, type Recession, type Theme, type TimeSeries } from './chartKit';
 import { Dumbbells, PairBars, StackedShares } from './heroes';
 import TimePanel from './TimePanel';
 import { Section, spanOf, useBundles, type Bundle } from './analysisShell';
@@ -109,10 +109,12 @@ function Inequality({ bundle, theme, recessions }: { bundle: Bundle<L07Values>; 
   const data = bundle.values as L07Values;
   const then = data.economies[0]?.then_year ?? '1980', now = data.economies[0]?.latest_year ?? '';
   const panels = useMemo(() => multiples(data.economies.map(r => ({ key: r.area, title: entityName(r.area), entity: r.area, unit: '% of pre-tax income',
-    lines: [{ name: 'Top 1%', slot: 7, data: data.history[r.area].top1 }, { name: 'Bottom 50%', slot: 0, data: data.history[r.area].bottom50 }] })),
+    // Early WID years are decades apart: break the line there and show the points as dots, never bridged.
+    lines: [{ name: 'Top 1%', slot: 7, dots: true, data: breakGaps(data.history[r.area].top1 as Point[], 400) },
+      { name: 'Bottom 50%', slot: 0, dots: true, data: breakGaps(data.history[r.area].bottom50 as Point[], 400) }] })),
   theme, recessions, 'l07'), [data, theme, recessions]);
   return <>
-    <div className="decision-hero decision-hero-split">
+    <div className="decision-hero decision-hero-stack">
       <Dumbbells theme={theme} unit="% of pre-tax income" title={`Top 1% income share, ${then} and ${now}`}
         legend={`Top 1% · ring: ${then} · dot: latest`}
         rows={data.economies.map(r => ({ key: r.area, label: entityName(r.area), entity: r.area, back: r.top1_then, latest: r.top1_latest }))}/>

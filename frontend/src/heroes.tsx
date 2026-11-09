@@ -799,3 +799,67 @@ export function StackedShares({ theme, title, rows, labels }: { theme: Theme; ti
     })}
   </svg>;
 }
+
+export type CorrelationCell = { pair: string; period: string; rho: number | null; months: number };
+
+/** Correlations by pair and period: blue = offset each other, grey = unrelated, red = moved together. */
+export function CorrelationGrid({ theme, cells, pairs, periods, labels }: {
+  theme: Theme; cells: CorrelationCell[]; pairs: string[]; periods: string[]; labels: Record<string, string>;
+}) {
+  const c = palette(theme);
+  const left = 170, top = 44, cw = 130, ch = 68;
+  const W = left + periods.length * cw + 10, H = top + pairs.length * ch + 30;
+  const blue = ['#2a78d6', '#86b6ef'], red = ['#e34948', '#f2a3a2'], mid = theme === 'dark' ? '#383835' : '#f0efec';
+  const fill = (rho: number) => rho <= -0.3 ? blue[0] : rho <= -0.1 ? blue[1] : rho < 0.1 ? mid : rho < 0.3 ? red[1] : red[0];
+  const ink = (rho: number) => Math.abs(rho) >= 0.3 ? '#ffffff' : (theme === 'dark' && Math.abs(rho) < 0.1 ? c.ink : '#14232b');
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`How often assets moved together: ${cells.map(x => `${labels[x.pair] ?? x.pair}, ${x.period}: ${x.rho === null ? 'too few months' : x.rho.toFixed(2)}`).join('; ')}`}>
+    {periods.map((p, i) => <text key={p} x={left + i * cw + cw / 2} y={top - 14} textAnchor="middle" fill={c.ink} fontSize="12" fontWeight="700">{p}</text>)}
+    {pairs.map((p, j) => <text key={p} x={left - 12} y={top + j * ch + ch / 2 + 4} textAnchor="end" fill={c.ink} fontSize="13">{labels[p] ?? p}</text>)}
+    {cells.map(cell => {
+      const i = periods.indexOf(cell.period), j = pairs.indexOf(cell.pair);
+      if (i < 0 || j < 0) return null;
+      const x0 = left + i * cw, y0 = top + j * ch;
+      return <g key={`${cell.pair}-${cell.period}`} data-part="cell">
+        <rect x={x0 + 2} y={y0 + 2} width={cw - 4} height={ch - 4} rx="6" fill={cell.rho === null ? c.grid : fill(cell.rho)}>
+          <title>{`${labels[cell.pair] ?? cell.pair}, ${cell.period}: ${cell.rho === null ? 'too few months' : cell.rho.toFixed(2)} over ${cell.months} months`}</title></rect>
+        {cell.rho === null
+          ? <text x={x0 + cw / 2} y={y0 + ch / 2 + 4} textAnchor="middle" fill={c.muted} fontSize="13">too few</text>
+          : <><text x={x0 + cw / 2} y={y0 + ch / 2} textAnchor="middle" fill={ink(cell.rho)} fontSize="18" fontWeight="700">
+              {`${cell.rho < 0 ? '−' : ''}${Math.abs(cell.rho).toFixed(2)}`}</text>
+            <text x={x0 + cw / 2} y={y0 + ch / 2 + 17} textAnchor="middle" fill={ink(cell.rho)} fontSize="11">{`${cell.months} months`}</text></>}
+      </g>;
+    })}
+    <text x={left} y={H - 6} fill={c.muted} fontSize="11">blue: one tends to rise when the other falls (diversifies) · grey: unrelated · red: they move together</text>
+  </svg>;
+}
+
+export type Episode = { peak: string; trough: string; recovery: string | null; depth: number; months_down: number;
+  months_to_recover: number | null; us_recession: boolean };
+
+/** Each fall deeper than 15%: how deep it went (bar) and how long it took to fall and to recover. */
+export function EpisodeBars({ theme, episodes }: { theme: Theme; episodes: Episode[] }) {
+  const c = palette(theme);
+  const W = 760, left = 190, right = 470, rowH = 50, top = 34;
+  const deepest = Math.min(-0.2, ...episodes.map(e => e.depth));
+  const x = scale(deepest * 1.1, 0, left, right);
+  const H = top + episodes.length * rowH + 10;
+  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+    aria-label={`World equity falls deeper than 15%: ${episodes.map(e => `${e.peak} to ${e.trough}, ${(e.depth * 100).toFixed(0)}%, ${e.recovery ? `recovered ${e.recovery}` : 'not yet recovered'}`).join('; ')}`}>
+    <text x={left} y={16} fill={c.muted} fontSize="11">depth from peak to trough</text>
+    <text x={right + 20} y={16} fill={c.muted} fontSize="11">months falling · months to recover</text>
+    {episodes.map((e, i) => {
+      const y0 = top + i * rowH;
+      return <g key={e.peak}>
+        <text x={0} y={y0 + 16} fill={c.ink} fontSize="13" fontWeight="700">{`${e.peak} → ${e.trough}`}</text>
+        <text x={0} y={y0 + 33} fill={c.muted} fontSize="11">{e.us_recession ? 'during a US recession' : 'no US recession'}</text>
+        <rect data-part="depth" x={x(e.depth)} y={y0 + 6} width={x(0) - x(e.depth)} height="20" rx="4" fill={c.negative}>
+          <title>{`${(e.depth * 100).toFixed(1)}% from ${e.peak} to ${e.trough}`}</title></rect>
+        <text x={x(e.depth) - 8} y={y0 + 21} textAnchor="end" fill={c.ink} fontSize="13" fontWeight="700">{`−${Math.abs(e.depth * 100).toFixed(0)}%`}</text>
+        <text x={right + 20} y={y0 + 21} fill={c.ink} fontSize="13">{`${e.months_down} · `}
+          <tspan fontWeight="700">{e.months_to_recover === null ? 'not yet recovered' : `${e.months_to_recover}`}</tspan></text>
+      </g>;
+    })}
+    <line x1={x(0)} x2={x(0)} y1={top - 4} y2={H - 6} stroke={c.zero} strokeWidth="1.5"/>
+  </svg>;
+}

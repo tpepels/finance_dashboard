@@ -37,7 +37,7 @@ const ALIAS: Record<string, keyof typeof ENTITY> = { EU: 'EA', US_BLS: 'US' };
 export const ENTITY_NAME: Record<string, string> = {
   US: 'United States', EA: 'Euro area', JP: 'Japan', DE: 'Germany', CN: 'China', PT: 'Portugal', IN: 'India',
   GB: 'United Kingdom', EU: 'European Union', FR: 'France', G7: 'G7', G20: 'G20', WORLD: 'World',
-  IT: 'Italy', ES: 'Spain', NL: 'Netherlands', US_BLS: 'United States (BLS nonfarm business)',
+  IT: 'Italy', ES: 'Spain', NL: 'Netherlands', US_BLS: 'US nonfarm business (BLS)',
 };
 export const entityName = (entity: string) => ENTITY_NAME[entity] ?? entity;
 
@@ -242,7 +242,7 @@ export function timeChart(input: TimeChartInput): EChartsOption {
         data: s.data,
         step: s.step ? 'end' as const : undefined,
         showSymbol: s.dots || s.data.length < 30,
-        symbolSize: 8,
+        symbolSize: s.dots && s.data.length > 60 ? 3 : 8,
         connectNulls: false,
         lineStyle: { color: colour, width: s.width ?? (compact ? 2.5 : 2) },
         itemStyle: { color: colour },

@@ -55,6 +55,10 @@ TRANSFORMS: dict[str, str] = {
     "real_per_hour_index": "real value per hour = (nominal / value-added price index) / hours, indexed to 100 in the first "
                            "year where every input is observed; pay and productivity use the same price index",
     "share_of_total": "part / total * 100 on the same period; parts that do not add up leave an explicit remainder",
+    "pearson_correlation": "Pearson correlation of matched monthly returns in euros, per period; reported only with at "
+                           "least 24 months (12 for the stock-fall subset)",
+    "drawdown_episodes": "peak-to-trough-to-recovery episodes of month-end levels whose depth exceeds the threshold; "
+                         "depth = trough / peak - 1",
     "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",

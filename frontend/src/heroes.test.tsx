@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { ChangeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
+import { ChangeBars, CorrelationGrid, EpisodeBars, PairBars, StackedShares, ExternalBars, EffectDials, GrowthInflationBars, PhaseBoard, PeDots, StrengthGrid, CreditVsTrend, Dumbbells, PartsBar, SectorStack, CurrencyRows, RateLadder, YieldSplit, GrowthStrip, ReturnRuler, Thermometers, nudge, scale } from './heroes';
 
 afterEach(() => cleanup());
 
@@ -224,5 +224,27 @@ describe('hero graphics', () => {
     expect(chart.querySelectorAll('[data-part="share"]')).toHaveLength(2);
     expect(screen.getByText('60%')).toBeTruthy();
     expect(screen.getByText('Wages')).toBeTruthy();
+  });
+
+  it('colours correlations blue to red around a grey zero and shows each sample size', () => {
+    render(<CorrelationGrid theme="light" pairs={['stocks_bonds']} periods={['2000–2009', 'All years']}
+      labels={{ stocks_bonds: 'Stocks and bonds' }}
+      cells={[{ pair: 'stocks_bonds', period: '2000–2009', rho: -0.15, months: 108 },
+        { pair: 'stocks_bonds', period: 'All years', rho: null, months: 5 }]}/>);
+    const grid = screen.getByRole('img', { name: /moved together/i });
+    expect(grid.querySelectorAll('[data-part="cell"]')).toHaveLength(2);
+    expect(screen.getByText('−0.15')).toBeTruthy();
+    expect(screen.getByText('108 months')).toBeTruthy();
+    expect(screen.getByText('too few')).toBeTruthy();
+  });
+
+  it('draws each crisis as its depth and its time to recover', () => {
+    render(<EpisodeBars theme="dark" episodes={[
+      { peak: '2007-10', trough: '2009-02', recovery: '2013-09', depth: -0.55, months_down: 16, months_to_recover: 55, us_recession: true },
+      { peak: '2021-12', trough: '2022-09', recovery: null, depth: -0.26, months_down: 9, months_to_recover: null, us_recession: false }]}/>);
+    const bars = screen.getByRole('img', { name: /falls deeper than 15%/i });
+    expect(bars.querySelectorAll('[data-part="depth"]')).toHaveLength(2);
+    expect(screen.getByText('−55%')).toBeTruthy();
+    expect(screen.getByText('not yet recovered')).toBeTruthy();
   });
 });

@@ -160,6 +160,16 @@
       "pretax_national_income": "Shares are of pre-tax national income (World Inequality Database), before taxes and transfers.",
       "harmonised_estimates": "WID series combine tax data, surveys and national accounts; earlier years carry more uncertainty.",
       "world_is_global_distribution": "The world row is the global distribution across all individuals, not an average of countries."
+    },
+    "P02": {
+      "us_bonds_proxy": "Bonds are the US 10-year sovereign total return (Swinkels), ending in 2022; a free world bond index is not available.",
+      "gold_monthly_average": "Gold uses monthly average prices, which smooth month-to-month moves and can understate correlations.",
+      "correlations_change": "Correlations shift between regimes; the 2022 inflation shock is a reminder that stocks and bonds can fall together."
+    },
+    "P03": {
+      "index_not_fund": "Drawdowns are of the MSCI ACWI net total return index in US dollars, not a fund in euros; fees and currency are excluded.",
+      "month_end_resolution": "Month-end values understate intra-month lows.",
+      "threshold_choice": "Only falls deeper than 15% are listed; smaller corrections are visible in the underwater chart."
     }
   }
 }

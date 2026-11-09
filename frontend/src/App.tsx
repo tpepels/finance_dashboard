@@ -6,6 +6,7 @@ import CreditPanel from './CreditPanel';
 import ValuationPanel from './ValuationPanel';
 import GlobalPanel from './GlobalPanel';
 import LabourPanel from './LabourPanel';
+import PortfolioPanel from './PortfolioPanel';
 import SourceExplorer from './SourceExplorer';
 import SourceCoveragePanel from './SourceCoveragePanel';
 import OperationsStatus from './OperationsStatus';
@@ -54,6 +55,7 @@ export default function App() {
         <a href="#monetary">Rates &amp; currencies</a>
         <a href="#credit">Credit &amp; stress</a>
         <a href="#valuation">Valuation</a>
+        <a href="#portfolio">Portfolio</a>
         <a href="#global">World</a>
         <a href="#labour">Labour &amp; inequality</a>
         <a href="#research-sources">Source data</a>
@@ -76,6 +78,7 @@ export default function App() {
       <MonetaryPanel theme={theme} dataVersion={dataVersion}/>
       <CreditPanel theme={theme} dataVersion={dataVersion}/>
       <ValuationPanel theme={theme} dataVersion={dataVersion}/>
+      <PortfolioPanel theme={theme} dataVersion={dataVersion}/>
       <GlobalPanel theme={theme} dataVersion={dataVersion}/>
       <LabourPanel theme={theme} dataVersion={dataVersion}/>
     <div className="research-source-shell" id="research-sources">

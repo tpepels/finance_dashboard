@@ -1093,8 +1093,123 @@ L07 = AnalysisDefinition("L07", {
     **{f"bottom50:{a}": f"inequality.{a.lower()}.pretax_income.bottom50" for a in INEQUALITY_AREAS},
 }, _l07)
 
+def pearson(x: list[float], y: list[float]) -> float | None:
+    if len(x) < 3 or len(x) != len(y):
+        return None
+    mx, my = sum(x) / len(x), sum(y) / len(y)
+    vx, vy = sum((a - mx) ** 2 for a in x), sum((b - my) ** 2 for b in y)
+    return sum((a - mx) * (b - my) for a, b in zip(x, y)) / math.sqrt(vx * vy) if vx and vy else None
+
+
+def _eur_returns(levels: dict | None, returns: dict | None, fx: dict) -> dict:
+    """Monthly EUR returns from USD month-end levels or USD monthly returns; fx in USD per EUR."""
+    out = {}
+    source = returns if returns is not None else {k: levels[k][1] / levels[previous_month(k)][1] - 1
+                                                   for k in levels if previous_month(k) in levels}
+    for key, r in source.items():
+        prev = previous_month(key)
+        if key in fx and prev in fx:
+            out[key] = (1 + r) * fx[prev][1] / fx[key][1] - 1
+    return out
+
+
+P02_PAIRS = {"stocks_bonds": ("equity", "bonds"), "stocks_gold": ("equity", "gold"), "bonds_gold": ("bonds", "gold")}
+P02_PERIODS = (("2000–2009", 2000, 2009), ("2010–2019", 2010, 2019), ("2020 onward", 2020, 9999), ("All years", 0, 9999))
+
+
+def _p02(daily: dict, view: dict) -> Computed:
+    points = _completed(daily, view)
+    fx = month_end(points.get("usd_per_eur", []))
+    rets = {"equity": _eur_returns(month_end(points.get("equity", [])), None, fx),
+            "gold": _eur_returns(month_end(points.get("gold", [])), None, fx),
+            "bonds": _eur_returns(None, {k: v for k, (_, v) in month_end(points.get("bonds", [])).items()}, fx)}
+    falls = {k for k, r in rets["equity"].items() if r < -0.05}
+    cells, rolling = [], {}
+    for pair, (a, b) in P02_PAIRS.items():
+        months = sorted(set(rets[a]) & set(rets[b]))
+        periods = [(name, [m for m in months if start <= m[0] <= end], 24) for name, start, end in P02_PERIODS]
+        periods.append(("Months stocks fell over 5%", [m for m in months if m in falls], 12))
+        for name, chosen, minimum in periods:
+            rho = pearson([rets[a][m] for m in chosen], [rets[b][m] for m in chosen]) if len(chosen) >= minimum else None
+            cells.append({"pair": pair, "period": name, "rho": rho, "months": len(chosen),
+                          "from": _month_label(chosen[0]) if chosen else None, "to": _month_label(chosen[-1]) if chosen else None})
+        series = []
+        for i in range(35, len(months)):
+            window = months[i - 35:i + 1]
+            if (window[-1][0] - window[0][0]) * 12 + window[-1][1] - window[0][1] == 35:
+                series.append([_month_label(window[-1]), pearson([rets[a][m] for m in window], [rets[b][m] for m in window])])
+        rolling[pair] = series
+    return Computed(values={"cells": cells, "rolling": rolling, "pairs": list(P02_PAIRS),
+                            "periods": [p for p, *_ in P02_PERIODS] + ["Months stocks fell over 5%"]}, estimates=None,
+                    comparison=["cells", "rolling"], transforms=[
+        applied("complete_months", applied_to=list(daily), today=view_today(view).isoformat()),
+        applied("month_end", applied_to=list(daily)),
+        applied("monthly_return", applied_to=["equity", "gold"]),
+        applied("fx_translation", applied_to=["equity", "gold", "bonds"], produces=["EUR returns"]),
+        applied("pearson_correlation", applied_to=list(P02_PAIRS), produces=["cells", "rolling"], rolling_months=36)])
+
+
+P02 = AnalysisDefinition("P02", {"equity": "equity.world.msci_acwi_netr_usd", "gold": "gold.usd.monthly_average",
+                                 "bonds": "returns.swinkels.us.sovereign_10y_original_1962_usd",
+                                 "usd_per_eur": "fx.usd_per_eur.ecb"}, _p02)
+
+
+def drawdown_episodes(points: list[tuple[date, float]], threshold: float, recession_months: set) -> list[dict]:
+    """Peak → trough → recovery episodes of month-end levels deeper than `threshold` (a negative fraction)."""
+    ends = month_end(points)
+    keys = sorted(ends)
+    episodes, peak, trough, start = [], None, None, None
+
+    def months_between(a, b):
+        return (b[0] - a[0]) * 12 + b[1] - a[1]
+
+    def close(recovery):
+        depth = ends[trough][1] / ends[start][1] - 1
+        if depth <= threshold:
+            span_end = recovery or keys[-1]
+            episodes.append({"peak": _month_label(start), "trough": _month_label(trough),
+                             "recovery": _month_label(recovery) if recovery else None, "depth": depth,
+                             "months_down": months_between(start, trough),
+                             "months_to_recover": months_between(trough, recovery) if recovery else None,
+                             "us_recession": any(start <= m <= span_end for m in recession_months)})
+    for key in keys:
+        level = ends[key][1]
+        if peak is None or level >= ends[peak][1]:
+            if start is not None:
+                close(key)
+                start = None
+            peak = key
+            continue
+        if start is None:
+            start, trough = peak, key
+        elif level < ends[trough][1]:
+            trough = key
+    if start is not None:
+        close(None)
+    return episodes
+
+
+def _p03(daily: dict, view: dict) -> Computed:
+    points = _completed(daily, view)
+    recession = {k for k, (_, v) in month_end(points.get("recession", [])).items() if v >= 0.5}
+    ends = month_end(points.get("equity", []))
+    peak, underwater = None, []
+    for key in sorted(ends):
+        level = ends[key][1]
+        peak = level if peak is None else max(peak, level)
+        underwater.append([_month_label(key), level / peak - 1])
+    values = {"episodes": drawdown_episodes(points.get("equity", []), -0.15, recession), "underwater": underwater}
+    return Computed(values=values, estimates=None, comparison=["episodes"], transforms=[
+        applied("complete_months", applied_to=list(daily), today=view_today(view).isoformat()),
+        applied("month_end", applied_to=["equity", "recession"]),
+        applied("drawdown_episodes", applied_to=["equity"], threshold=-0.15, produces=["episodes"]),
+        applied("drawdown", applied_to=["equity"], produces=["underwater"])])
+
+
+P03 = AnalysisDefinition("P03", {"equity": "equity.world.msci_acwi_netr_usd", "recession": "recession.us.nber_indicator"}, _p03)
+
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
                                               "F05": F05, "F06": F06, "F07": F07, "V01": V01, "V02": V02, "V03": V03,
                                               "V05": V05, "G05": G05, "G06": G06, "L01": L01, "L02": L02,
-                                              "L03": L03, "L05": L05, "L07": L07}
+                                              "L03": L03, "L05": L05, "L07": L07, "P02": P02, "P03": P03}
