@@ -12,7 +12,7 @@ The single existing background refresh thread invokes `wisesheets_local.refresh_
 
 The provider client enumerates all accessible SEC company pages, deduplicates by CIK, fetches five-year annual net income, preserves negative earnings, requires actual SEC filing provenance, and converts reporting-currency records to USD using source-validated ECB daily FX histories. It excludes unconvertible values and reports annual reporting/converted issuer coverage. World Bank GDP is matched to the corresponding reported fiscal year; that fiscal year may not coincide with calendar year.
 
-A successful collection atomically replaces `/srv/finance-dashboard/wisesheets/sec_filer_profit.json`. The existing read-only endpoint `GET /api/earnings/sec-filers` returns the validated file and its recorded date/stale status. The separate **Supplementary company earnings** chart displays annual net income/world GDP, counts and FX-conversion coverage. Page views do not invoke Wisesheets.
+A successful collection atomically replaces `/srv/finance-dashboard/wisesheets/sec_filer_profit.json`. The read-only endpoint `GET /api/earnings/sec-filers` was retired on 2026-11-10 with the pre-engine dashboard; it returned the validated file and its recorded date/stale status. The separate **Supplementary company earnings** chart displays annual net income/world GDP, counts and FX-conversion coverage. Page views do not invoke Wisesheets.
 
 No full-universe collection is run if `WISESHEETS_API_KEY` is absent; the bundled snapshot remains available and eventually reports its age. Do not expose the API token in exported chart configuration or Docker logs.
 

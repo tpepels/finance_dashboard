@@ -67,16 +67,10 @@ class StandaloneContainerTests(TestCase):
                         self.assertEqual(response.status_code, 200)
                         self.assertEqual(response.json()["series"][0]["status"], "no_data")
                         self.assertEqual(client.get("/docs").status_code, 200)
-                        self.assertEqual(client.post("/api/chart-insight", json={
+                        # Retired readouts: no route answers (the page fallback accepts only GET).
+                        self.assertIn(client.post("/api/chart-insight", json={
                             "series_ids": ["policy_rate.us.bis", "policy_rate.ea.bis"]
-                        }).status_code, 200)
-                        self.assertEqual(client.post("/api/chart-insight", json={
-                            "series_ids": ["policy_rate.us.bis", "labour.world.income_share"]
-                        }).status_code, 422)
-                        aggregate = client.get("/api/earnings/sec-filers")
-                        self.assertEqual(aggregate.status_code, 200)
-                        self.assertEqual(aggregate.json()["id"], "profit.us_sec_filers.world_gdp_share")
-                        self.assertEqual(len(aggregate.json()["observations"]), 5)
+                        }).status_code, (404, 405))
             finally:
                 engine.dispose()
 

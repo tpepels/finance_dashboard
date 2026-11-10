@@ -9,41 +9,13 @@ async function json<T>(url: string, options?: RequestInit): Promise<T> {
 let contextPromise: Promise<DataContext> | undefined;
 const seriesCache = new Map<string, Promise<LoadedSeries>>();
 
-export interface InsightSource {
-  id: string;
-  name: string;
-  status: 'ready' | 'no_data';
-  date?: string;
-  value?: string;
-  unit?: string;
-  count: number;
-  year_change?: {
-    from_date: string;
-    to_date: string;
-    difference: string;
-    unit: string;
-  } | null;
-}
-export interface InsightResponse {
-  series: InsightSource[];
-  matched_spread?: {
-    date: string;
-    highest: { id: string; name: string; value: string };
-    lowest: { id: string; name: string; value: string };
-    difference: string;
-    unit: string;
-  } | null;
-  method: string;
-}
-const insightCache = new Map<string, Promise<InsightResponse>>();
 
-/** Explicitly invalidate observation/readout caches after a confirmed local import.
+/** Explicitly invalidate observation caches after a confirmed local import.
  * Never discard source history or user chart configuration.
  */
 export function invalidateSourceCaches(): void {
   contextPromise = undefined;
   seriesCache.clear();
-  insightCache.clear();
 }
 
 
@@ -98,18 +70,3 @@ export function loadSeries(id: string): Promise<LoadedSeries> {
   return task;
 }
 
-export function loadInsight(ids: string[], start?: string, end?: string): Promise<InsightResponse> {
-  const key = JSON.stringify([ids, start ?? null, end ?? null]);
-  const cached = insightCache.get(key);
-  if (cached) return cached;
-  const request = json<InsightResponse>('/api/chart-insight', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ series_ids: ids, start, end }),
-  });
-  insightCache.set(key, request);
-  return request.catch(error => {
-    insightCache.delete(key);
-    throw error;
-  });
-}

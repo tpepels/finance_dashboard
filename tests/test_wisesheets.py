@@ -202,19 +202,8 @@ class WiseTests(unittest.TestCase):
             try:
                 app=create_app(engine)
                 with TestClient(app) as browser:
-                    with patch("finance_dashboard.api.load_sec_profit_snapshot",
-                               return_value=None):
-                        self.assertEqual(
-                            browser.get("/api/earnings/sec-filers").status_code,404)
-                    expected={"id":"profit.us_sec_filers.world_gdp_share",
-                              "status":"partial_us_sec_reporter_coverage",
-                              "observations":[{"year":2024,
-                                               "sec_filer_net_income_usd":"100"}]}
-                    with patch("finance_dashboard.api.load_sec_profit_snapshot",
-                               return_value=expected):
-                        response=browser.get("/api/earnings/sec-filers")
-                        self.assertEqual(response.status_code,200)
-                        self.assertEqual(response.json(),expected)
+                    # The pre-engine SEC filer earnings view is retired; G03 shows listed earnings.
+                    self.assertEqual(browser.get("/api/earnings/sec-filers").status_code, 404)
             finally:
                 engine.dispose()
 

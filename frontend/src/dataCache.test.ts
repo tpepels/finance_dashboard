@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { invalidateSourceCaches, loadSeries, loadInsight } from './data';
+import { invalidateSourceCaches, loadSeries } from './data';
 
 const requests:string[]=[];
 beforeEach(()=>{
@@ -24,18 +24,13 @@ beforeEach(()=>{
 afterEach(()=>{vi.unstubAllGlobals();});
 
 describe('source import invalidates old observation promises',()=>{
-  it('re-fetches source observations, current source status and interpretations',async()=>{
+  it('re-fetches source observations and current source status',async()=>{
     await loadSeries('labour.de.pwt_labour_share');
     await loadSeries('labour.de.pwt_labour_share');
-    await loadInsight(['labour.de.pwt_labour_share']);
-    await loadInsight(['labour.de.pwt_labour_share']);
     expect(requests.filter(x=>x==='/api/query')).toHaveLength(1);
-    expect(requests.filter(x=>x==='/api/chart-insight')).toHaveLength(1);
     invalidateSourceCaches();
     await loadSeries('labour.de.pwt_labour_share');
-    await loadInsight(['labour.de.pwt_labour_share']);
     expect(requests.filter(x=>x==='/api/query')).toHaveLength(2);
-    expect(requests.filter(x=>x==='/api/chart-insight')).toHaveLength(2);
     expect(requests.filter(x=>x==='/api/data-status')).toHaveLength(2);
   });
 });

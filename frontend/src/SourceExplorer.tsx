@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import ChartCard from './ChartCard';
-import SupplementaryEarnings from './SupplementaryEarnings';
 import { loadContext } from './data';
 import { CHAPTERS, curatedCharts } from './editorial';
 import type { ChartDefinition, ChartSettings, DataContext, RangePreset, SeriesDefinition, ViewMode } from './types';
@@ -156,7 +155,6 @@ export default function SourceExplorer({ theme, dataVersion }: {
                 </div>)}
             </div>}
           </section>)}
-        <SupplementaryEarnings key={dataVersion} theme={theme}/>
         <section className="library-section" id="source-library">
           <h2>Additional source histories</h2>
           <p>The main research chapters contain deliberate, comparable measurements. Other source histories

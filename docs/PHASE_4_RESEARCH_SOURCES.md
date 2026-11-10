@@ -141,7 +141,7 @@ Pre-specified evaluation horizons are 6 and 12 months. At month-end origin `t`:
 5. At least **60** historical training cases with sufficient event diversity and a separate retrospective test of at least **24 predictions / 5 positive / 12 negative outcomes** are required before Brier, expanding historical-prevalence baseline, AUC and calibration bins are displayed.
 6. Overlapping future windows violate test independence. The model now counts approximate event clusters and reports a deterministic, chronologically chosen, nonoverlapping subsample's Brier/AUC **only if the regular sample-size and outcome-diversity gates pass**. Those diagnostics reduce one source of dependence but are not independent recession episodes. Retrospective NBER event dating means **even a successful historical evaluation is not independently validated live forecast calibration**. The model does not claim a statistically significant crisis probability, economic causation or universality.
 
-The API is `GET /api/vintage/backtest?horizon_months=12` and the dashboard includes its status, source dates, sample counts and documented metrics. If the source cache cannot meet test requirements, it displays **insufficient_vintages** or **insufficient_holdout_events**, with no fictitious probabilities.
+(Retired 2026-11-10 with the pre-engine dashboard: the `GET /api/vintage/backtest` route and its view were removed when Phase 3 closed.) The API was `GET /api/vintage/backtest?horizon_months=12` and the dashboard included its status, source dates, sample counts and documented metrics. If the source cache cannot meet test requirements, it displays **insufficient_vintages** or **insufficient_holdout_events**, with no fictitious probabilities.
 
 ## 5. Acceptance status
 

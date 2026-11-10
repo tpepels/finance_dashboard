@@ -1,9 +1,7 @@
 # Current architecture — local finance research dashboard
 
 
-> **Pre-redesign implementation snapshot (2026-11-02), not the approved target architecture.** Source counts, UI composition and runtime assertions below reflect that date and may be stale during Phase 2. The binding Phase 3 analytical-consolidation and Phase 4 clean-slate frontend decision is in [the sole development plan](DEVELOPMENT_PLAN.md). Historical phase files are archived.
-
-Updated 2026-11-02, incorporating owner's local-only deployment decision and Phase 4 additions.
+> Deployment, persistence and evidence sections date from 2026-11-02; the analytics, API and frontend sections were updated when Phase 3 closed (2026-11-10). The roadmap is [the development plan](DEVELOPMENT_PLAN.md).
 
 ## One-process deployment
 
@@ -17,14 +15,9 @@ FastAPI is served on container port 8080; the host maps port 5052. `FINANCE_BIND
 2. **Acquisition**: `providers.py`, `market.py`, `wisesheets.py` and attached data-specific adapter modules. No frontend directly contacts FRED, BIS, OECD, Yahoo or external providers. Lack of live data remains explicit; no placeholder observations are invented.
 3. **Persistence**: `database.py` contains append-only observations, ingestion runs, equity/FX prices and source corrections in **SQLite WAL**. Alembic migrations run before FastAPI starts. The `/data` bind volume survives image updates. An app-ingestion timestamp does **not** establish when a historical statistic was publicly released.
 4. **Background data updates**: `standalone.py` launches **one in-process daemon thread** when configured. `worker.py` contains the shared macro/optional market ingestion functions but does not launch another container. SEC Wisesheets full-universe collection is monthly and quota-aware.
-5. **Economic analytics**:
-   - `research.py` defines 46 question-led macro series/relationships across world/OECD, United States, euro area/EU27, Japan and cross-economy comparisons.
-   - `insights.py` provides source-native annual differences and exact-common-date country spreads, with no synthetic matching.
-   - `risk_diagnostics.py` provides source-defined Sahm, Treasury inversion, BIS credit-gap and valuation historical-rank research; no opaque or probabilistic scores.
-   - `portfolio_risk.py` computes consecutive-common-calendar-month ETF returns, max drawdown, EUR FX translation, volatility and optional monthly-rebalanced portfolio metrics. Requires actual stored Yahoo/ECB data; no holdings-history or issuer NAV claims.
-   - `market_analytics.py` provides the existing GLD/VT return-correlation proxy, distinct from the genuine MSCI ACWI/spot-gold return series.
-6. **API**: `api.py` exposes only documented source identifiers and validated request models. New Phase 4 routes `GET /api/risk`, `GET /api/risk/{scope}`, `POST /api/market/compare`, `GET /api/operations`; original research, Wisesheets, market and catalog endpoints remain.
-7. **Frontend**: `ResearchDashboard.tsx` renders always-visible regionally organized macro graphs, `Phase4Panel.tsx` presents separate risk and optional market research, and `SourceExplorer.tsx` preserves the original 21 graphs and raw dataset access in a secondary section. ECharts adds light gray unlabeled **US NBER contraction bands**, with explicit geographic caveat.
+5. **Analytical engine** (`engine/`, Phase 3): one result bundle per analysis (`/api/analysis/{id}`) with its Phase 2 state and every limitation, its inputs and their provenance, the named transforms applied (`transforms.py` registry), values and estimates, and an AI export (`/api/analysis/{id}/export`). `analyses.py` defines all 37 corpus analyses; `artifacts.py` loads the archives some read (holdings filings, framework originals, input-output tables, chronologies, owner inputs). Only analyses Phase 2 resolves, or the alternatives Phase 2 verified for them (labelled `basis: verified_alternatives`), carry values. There is no other calculation path.
+6. **API**: `api.py` serves the engine (`/api/analysis*`, `/api/conditionals`, `/api/recessions`), the owner inputs (`/api/owner-inputs`), the provenance layer (`/api/series`, `/api/query`, `/api/charts`, market and holdings sources, source coverage and evidence) and operations. The pre-engine research, risk, insight, comparison, backtest and Marxian-accounting routes are retired.
+7. **Frontend**: eight analysis panels (`DecisionPanel`, `GrowthPanel`, `MonetaryPanel`, `CreditPanel`, `ValuationPanel`, `PortfolioPanel`, `GlobalPanel`, `LabourPanel`) draw only from engine bundles, with one graphic per idea (`heroes.tsx`) and zoomable time charts with NBER recession bands (`chartKit.ts`, `TimePanel.tsx`). `SourceExplorer.tsx` keeps the original source charts and raw dataset access as the provenance layer, without calculations.
 8. **Resilience**: `backup.py` uses SQLite's consistent online-backup API, verifies SQLite integrity, and records SHA-256 checksums. Automatic backups run after the daily refresh in the same process with 14 manifest bundles retained under `/data/backups`. Manual verification is available. Copy bundles to separate physical storage.
 
 ## Time and evidence contracts

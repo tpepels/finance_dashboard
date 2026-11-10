@@ -162,7 +162,7 @@ docker compose exec finance-dashboard python -c \
   "import os,httpx; k=os.environ.get('WISESHEETS_API_KEY',''); r=httpx.get('https://api.wisesheets.io/v1/me/',headers={'Authorization':'Bearer '+k},timeout=15); print('Wisesheets HTTP:',r.status_code)"
 ```
 
-Wisesheets subscription limits may prevent the requested full filer enumeration. Inspect `/api/earnings/sec-filers`, snapshot provenance and source coverage rather than assuming completeness.
+Wisesheets subscription limits may prevent the requested full filer enumeration. Inspect the snapshot file, snapshot provenance and source coverage rather than assuming completeness.
 
 Markets and ECB FX run automatically from the same existing service when `FINANCE_INCLUDE_MARKETS=1`; `/api/market/status` shows historical coverage and errors. Yahoo history is rate-limited/unofficial, and a configured collector cannot guarantee provider availability. Macro coverage can be checked through `/api/data-status`; 142 mappings are not 142 successfully imported histories.
 

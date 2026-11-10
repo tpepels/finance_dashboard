@@ -14,8 +14,8 @@ Binding scientific scope: [Phase 1 charter](PHASE1_SCIENTIFIC_CHARTER.md) (inclu
 |---|---|---|
 | 1 — Scientific charter and product design | Approved question catalogue, methods, visual contract | Closed 2026-11-03; revised by the owner 2026-11-06 |
 | 2 — Data, provenance and research corpus | Every active analysis reaches an evidenced end state | Complete 2026-11-08 |
-| 3 — Comparative analytical engine | Transforms, alignment, estimates with uncertainty | Active |
-| 4 — Interaction and visualization | Per-chart configurable views, overview, research panels | Starts with the first slice |
+| 3 — Comparative analytical engine | Transforms, alignment, estimates with uncertainty | Complete 2026-11-10 |
+| 4 — Interaction and visualization | Per-chart configurable views, overview, research panels | Active |
 | 5 — Portfolio application and validation | Owner portfolio inputs, scenario and backtest validation | Later slices |
 
 Phases describe responsibilities, not a strict sequence: work proceeds in **end-to-end slices** (data → analysis → chart) so that useful results appear early. A slice may only use analyses whose Phase 2 state is `accepted` or `conditional`.
@@ -114,9 +114,17 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **Banking crises and dark-mode pass (2026-11-10):** the Jordà-Schularick-Taylor Macrohistory R6 crisis chronology (18 economies, 1870-2020; `python -m finance_dashboard.jst`) adds independent shock context: US banking crises beside each recession in C05, and how many economies' crises began during each world equity fall in P03. All panels were checked in dark mode; rebalancing bar labels and sparse-point markers were fixed.
 
+* **Phase 3 complete (2026-11-10):** every active analysis produces a bundle and every chart draws from one. The last pre-engine calculation paths are removed: the source explorer's statistical readouts (`/api/chart-insight`, `insights.py`), the SEC filer earnings view, the gold/VT proxy, market comparisons (`portfolio_risk.py`), the vintage recession backtest (`vintage_backtest.py`) and the OECD Marxian accounting route (`marx_accounts.py`). The source explorer stays as the provenance layer without calculations.
+
 ## Next slices
 
-1. **Owner review** of the graphics added since the last review (C02, C05, G01-G03, L04, P01, P04, P05, the portfolio form).
+Phase 4, per the [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md), in end-to-end slices:
+
+1. **Method and Sources on every analysis:** the transforms with their formulas, the inputs with publisher, dates, observation counts, links and where Phase 2 accepted them, and the method citations, beside "What limits this" and the AI export.
+2. **Research workbench:** a searchable catalogue of all 37 questions (topic, region, source, decision informed) that opens each analysis.
+3. **Overview:** six research experiences (the contract's groups), each with its lead graphic and a two-sentence evidence summary assembled only from the bundle's own numbers and dates.
+4. **Configurable figures:** per-figure country selection and period, saved and restorable views that never change another figure.
+5. **Owner review** of the graphics added since the last review (C02, C05, G01-G03, L04, P01, P04, P05, the portfolio form).
 
 ## Working rules
 

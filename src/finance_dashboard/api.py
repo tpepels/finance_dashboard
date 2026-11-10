@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from pathlib import Path
-from .wisesheets import load_sec_profit_snapshot
 from os import environ
 import re
 
@@ -19,14 +18,9 @@ from .database import IngestionRun, ObservationVersion, MarketPriceVersion, FxRa
 from .service import current_observations
 from .market import instruments
 from .market_service import MarketIngestionService
-from .market_analytics import rolling_gold_vs_global_etf
-from .insights import same_measure, summarize
-from .portfolio_risk import compare_market_histories
 from .vintage import SOURCES as VINTAGE_SOURCES, read_snapshot as read_alfred_snapshot, available_snapshots, latest_asof_reading
-from .vintage_backtest import walk_forward
 from .sec_holdings import list_holdings, read_position_source, HoldingsError
 from .ucits_holdings import read_ucits_sources, UcitsHoldingsError
-from .marx_accounts import read as read_oecd_accounts, compute_country_year, SCENARIOS as MARX_SCENARIOS, AccountingError
 
 from .source_coverage import build_coverage
 from .source_policy import policy_summary
@@ -448,17 +442,6 @@ def create_app(engine=None) -> FastAPI:
             raise HTTPException(404, "Unknown series")
         return item
 
-    @app.get("/api/earnings/sec-filers")
-    def sec_filer_earnings():
-        """Monthly snapshot of current SEC reporting-company universe, not world."""
-        try:
-            payload = load_sec_profit_snapshot()
-        except Exception:
-            raise HTTPException(503, "SEC earnings snapshot invalid") from None
-        if payload is None:
-            raise HTTPException(404, "SEC earnings full-universe scan not yet collected")
-        return payload
-
     @app.get("/api/vintages")
     def vintage_inventory():
         """Official ALFRED point-in-time cache; never a substitute for app snapshots."""
@@ -479,13 +462,6 @@ def create_app(engine=None) -> FastAPI:
         if data is None:
             raise HTTPException(404, "No verified ALFRED vintage stored for this source date")
         return {**data, "latest_asof_reading":latest_asof_reading(data)}
-
-    @app.get("/api/vintage/backtest")
-    def vintage_recession_backtest(horizon_months: int = 12):
-        if horizon_months not in (6,12):
-            raise HTTPException(422, "Only pre-registered 6/12 month horizons are supported")
-        return walk_forward(Path(environ.get("FINANCE_VINTAGE_DIR","/data/vintages")),
-                            horizon=horizon_months)
 
     @app.get("/api/holdings/ucits/sources")
     def original_ucits_sources():
@@ -514,35 +490,6 @@ def create_app(engine=None) -> FastAPI:
                 instrument_id, asof=asof)
         except HoldingsError:
             raise HTTPException(422, "No official SEC holdings contract for this asset") from None
-
-    @app.get("/api/marx")
-    def marx_data_availability():
-        dataset = read_oecd_accounts(Path(environ.get("FINANCE_SURPLUS_DIR","/data/surplus")))
-        if dataset is None:
-            return {"status":"not_ingested","source":"OECD_IOT_2025_VALUE_ADDED_COMPONENTS",
-                    "scenarios":list(MARX_SCENARIOS),
-                    "warning":"No audited OECD IOT extract; never manufacture a surplus-value rate."}
-        return {"status":"source_extract_available","source":dataset["release"],
-                "country_years":sorted(set((r["country"],r["year"]) for r in dataset["rows"])),
-                "scenarios":list(MARX_SCENARIOS),
-                "source_extract_sha256":dataset["normalized_extract_sha256"],
-                "warning":"National accounts accounting sensitivity, not an observed Marxian exploitation rate."}
-
-    @app.get("/api/marx/{country}/{year}")
-    def marx_accounting(country: str,year: int,scenario: str = "all_industries",
-                        adjust_selfemployment: bool = False):
-        if (scenario not in MARX_SCENARIOS or len(country) != 2
-            or not country.isalpha() or year<1995 or year>2022):
-            raise HTTPException(422,"Unsupported country/year/classification scope")
-        data = read_oecd_accounts(Path(environ.get("FINANCE_SURPLUS_DIR","/data/surplus")))
-        if data is None:
-            raise HTTPException(404,"Audited OECD IOT extract not yet ingested")
-        try:
-            return compute_country_year(data,country=country.upper(),year=year,
-                                        scenario=scenario,
-                                        adjust_selfemployment=adjust_selfemployment)
-        except AccountingError:
-            raise HTTPException(422,"OECD source components incomplete or inconsistent") from None
 
     @app.get("/api/markets")
     def markets():
@@ -578,48 +525,6 @@ def create_app(engine=None) -> FastAPI:
         return {"series": result, "base_currency": "EUR",
                 "snapshot_kind": "app_first_seen_not_source_publication_vintage",
                 "calendar_alignment": "Native trading dates; no invented market closures or FX"}
-
-    @app.post("/api/market/compare")
-    def market_comparison(request: PortfolioComparison):
-        """Actual stored market/ECB histories, currency-aligned common months."""
-        invalid = [sid for sid in request.instrument_ids if sid not in market_registry]
-        if invalid:
-            raise HTTPException(404, "Unknown selected market instruments")
-        if request.currency == "USD" and any(
-            market_registry[sid]["trading_currency"] != "USD"
-            for sid in request.instrument_ids
-        ):
-            raise HTTPException(
-                422, "USD comparison requires USD-quoted assets; EUR-to-USD conversion is not provided"
-            )
-        service = MarketIngestionService(db, registry=market_registry)
-        histories = {
-            sid: service.read_performance(sid, start=request.start,
-                                          end=request.end, snapshot_at=request.snapshot_at)
-            for sid in request.instrument_ids
-        }
-        if any(len(item.get("observations", [])) > 100_000
-               for item in histories.values()):
-            raise HTTPException(413, "Market comparison exceeds source observation limit")
-        try:
-            weights = ({k: v / 100 for k, v in request.weights_pct.items()}
-                       if request.weights_pct is not None else None)
-            return compare_market_histories(
-                histories, market_registry, currency=request.currency, weights=weights,
-            )
-        except ValueError:
-            raise HTTPException(422, "Invalid market/currency comparison inputs") from None
-
-    @app.get("/api/market/gold-world-proxy")
-    def gold_world_proxy(currency: str = "USD", window_months: int = 36):
-        if currency not in ("USD", "EUR") or not 12 <= window_months <= 120:
-            raise HTTPException(422, "Invalid correlation currency or window")
-        service=MarketIngestionService(db,registry=market_registry)
-        gold=service.read_performance("gld")
-        world=service.read_performance("vt")
-        if gold["status"]!="ready" or world["status"]!="ready":
-            raise HTTPException(409, "Gold/VT proxy histories not yet ingested")
-        return rolling_gold_vs_global_etf(gold,world,months=window_months,currency=currency)
 
     @app.get("/api/market/status")
     def market_status():
@@ -683,22 +588,6 @@ def create_app(engine=None) -> FastAPI:
                     ]
                 })
         return {"series": output, "snapshot_kind": "app_first_seen_not_publication_vintage"}
-
-    @app.post("/api/chart-insight")
-    def chart_insight(request: SeriesQuery):
-        """Backend-only descriptive statistics; compare like-for-like measures."""
-        for sid in request.series_ids:
-            if sid not in supported:
-                raise HTTPException(422, f"Unavailable source: {sid}")
-        if not same_measure(request.series_ids):
-            raise HTTPException(422, "Unrelated economic measurements cannot share an insight")
-        with Session(db) as session:
-            rows = [(by_id[sid], current_observations(
-                session, sid, request.start, request.end, request.snapshot_at))
-                    for sid in request.series_ids]
-        if any(len(points) > 100_000 for _, points in rows):
-            raise HTTPException(413, "Readout exceeds source observation limit")
-        return summarize(rows)
 
     @app.get("/api/data-status")
     def data_status():

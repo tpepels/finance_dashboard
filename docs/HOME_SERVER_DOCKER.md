@@ -24,7 +24,7 @@ docker compose up -d --build finance-dashboard
 docker compose logs --tail=100 finance-dashboard
 ```
 
-Open `http://media-server:5052/` and `http://media-server:5052/api/data-status`. The integrated SEC earnings dataset is available at `/api/earnings/sec-filers`.
+Open `http://media-server:5052/` and `http://media-server:5052/api/data-status`. The SEC earnings snapshot is still collected; its pre-engine view and `/api/earnings/sec-filers` route were retired on 2026-11-10 (listed-company earnings now appear in G03).
 
 The first startup migrates persistent SQLite and immediately starts asynchronous data ingestion in a Python thread. The page remains usable before all 42 sources have completed their first backfill, but individual charts may initially show missing-data states. Every 24 hours the existing macro refresh cycles again. If a Wisesheets key is configured, a *full accessible SEC filer scan* is performed only when due (roughly 30-day period), with retry cooldown, source-quality checks and bounded provider requests. The last valid snapshot persists at `/srv/finance-dashboard/wisesheets/sec_filer_profit.json`. Without a key, the bundled last verified snapshot is still readable but becomes stale.
 

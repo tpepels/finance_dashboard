@@ -50,24 +50,8 @@ class Phase4ApiTests(unittest.TestCase):
         listed = self.client.get("/api/markets")
         self.assertEqual(listed.status_code, 200)
         self.assertGreaterEqual(listed.json()["count"], 24)
-        response = self.client.post("/api/market/compare",
-            json={"instrument_ids": ["vt", "gld"], "currency": "EUR"})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], "no_data")
-        self.assertEqual(set(response.json()["missing_instruments"]), {"vt", "gld"})
-        self.assertEqual(response.json()["instruments"], [])
-        self.assertEqual(self.client.post("/api/market/compare", json={
-            "instrument_ids": ["vwce.de", "vt"], "currency": "USD",
-        }).status_code, 422)
-        self.assertEqual(self.client.post("/api/market/compare", json={
-            "instrument_ids": ["vt", "vt"], "currency": "EUR",
-        }).status_code, 422)
-        self.assertEqual(self.client.post("/api/market/compare", json={
-            "instrument_ids": ["vt", "gld"], "weights_pct": {"vt": 40, "gld": 50},
-        }).status_code, 422)
-        self.assertEqual(self.client.post("/api/market/compare", json={
-            "instrument_ids": ["vt", "unregistered"], "currency": "EUR",
-        }).status_code, 404)
+        # Pre-engine market comparisons are retired; portfolio analyses run on the engine (P02-P05).
+        self.assertEqual(self.client.post("/api/market/compare", json={"instrument_ids": ["vt", "gld"]}).status_code, 404)
 
     def test_source_readiness_distinguishes_env_configuration_and_on_disk_evidence(self):
         with patch.dict(os.environ, {

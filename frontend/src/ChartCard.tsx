@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChartDefinition, ChartSettings, DataContext, LoadedSeries, RangePreset, ViewMode } from './types';
-import { loadInsight, loadSeries } from './data';
-import type { InsightResponse } from './data';
+import { loadSeries } from './data';
 import { EDITORIAL, semanticallyCompatible } from './editorial';
-import InsightReadout from './InsightReadout';
 import { chartCsv, compareCompatible, rawCompatible, transformSeries, VIEW_MODE_LABELS, windowFor } from './transform';
 import { chartOptions, createChart, numberLabel } from './viz';
 import type { ChartInstance } from './viz';
@@ -51,8 +49,6 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
   const root = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(expanded);
   const [loaded, setLoaded] = useState<LoadedSeries[]>([]);
-  const [insight, setInsight] = useState<InsightResponse | null>(null);
-  const [insightError, setInsightError] = useState('');
   const [loading, setLoading] = useState(false);
   const [tableVisible, setTableVisible] = useState(false);
   const [tablePage, setTablePage] = useState(0);
@@ -93,17 +89,6 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
   const window = useMemo(() => windowFor(activeLoaded, range, from, to),
     [activeLoaded, range, from, to]);
   const invalidRange = range === 'custom' && Boolean(from && to && from > to);
-  useEffect(() => {
-    if (!(visible || expanded) || !ids.length || !semanticallyCompatible(ids)
-        || activeLoaded.length !== ids.length || invalidRange) return;
-    let cancelled = false;
-    loadInsight(ids, window.start, window.end).then(result => {
-      if (!cancelled) { setInsight(result); setInsightError(''); }
-    }).catch(error => {
-      if (!cancelled) setInsightError(error instanceof Error ? error.message : 'Unable to read insights');
-    });
-    return () => { cancelled = true; };
-  }, [visible, expanded, ids.join('|'), activeLoaded.length, window.start, window.end, invalidRange, dataVersion]);
 
   const incompatibleRaw = !semanticallyCompatible(ids) || (mode === 'raw' && !rawCompatible(activeLoaded));
   const plotted = useMemo(() => invalidRange || incompatibleRaw ? [] :
@@ -205,7 +190,6 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
             ? <div ref={host} className="plot plot-preview" role="img"
                 aria-label={`Preview chart: ${definition.title}`} />
             : !loading && <p className="notice">No source observations yet. Open the chart to inspect the provider status.</p>}
-          <InsightReadout result={insight} error={insightError} compact />
         </>}
         {EDITORIAL[definition.id] && <p className="preview-interpretation">
           <strong>How to read this:</strong> {EDITORIAL[definition.id].reading}
@@ -215,7 +199,6 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
 
       {expanded && <div className="chart-body" id={`body-${definition.id}`}>
         <p className="chart-rationale">{EDITORIAL[definition.id]?.reading ?? definition.rationale}</p>
-        <InsightReadout result={insight} error={insightError} />
         <div className="controls">
           <fieldset className="compact-field">
             <legend>Range</legend>
