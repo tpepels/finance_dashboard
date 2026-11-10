@@ -7,11 +7,18 @@ export type Limitation = { code: string; text: string; detail?: string };
 export type Shown = Limitation & { source: 'phase2' | 'input' | 'method'; series_ids: string[]; roles: string[];
   accepted_under: { analysis_id: string; role: string }[] };
 
+export type Transform = { name: string; formula: string; params: Record<string, unknown> };
+export type Input = { role: string; series_id: string; name: string | null; publisher: string | null; source_key: string | null;
+  source_url: string | null; geography: string | null; unit: string | null; frequency: string | null; first: string | null;
+  last: string | null; observations: number; accepted_under: { analysis_id: string; role: string } | null };
+export type Citation = { id: string; label: string; url: string | null };
+
 /** An engine result bundle (`/api/analysis/{id}`); values are null when Phase 2 withholds them. */
 export type Bundle<V, E = null> = {
   analysis_id: string; question: string; decision_informed: string;
   phase2: { state: string; evaluated_at: string; limitations: Limitation[]; open_gates: string[] };
   values: V | null; estimates: E | null; method_limitations: Limitation[]; limitations: Shown[];
+  transforms?: Transform[]; inputs?: Input[]; citations?: Citation[];
   basis?: { kind: 'original' | 'verified_alternatives'; variants: string[] } | null;
 };
 
@@ -62,9 +69,50 @@ export function useBundles(ids: string[], dataVersion: number) {
   return { bundles, recessions, error };
 }
 
+const FREQUENCY: Record<string, string> = { D: 'daily', W: 'weekly', M: 'monthly', Q: 'quarterly', A: 'annual' };
+
+/** How the shown numbers are made: each named transform in plain language, in the order applied. */
+function Method({ bundle }: { bundle: Bundle<unknown, unknown> }) {
+  const steps = bundle.transforms ?? [];
+  return <details className="decision-limits-fold">
+    <summary>Method</summary>
+    {steps.length === 0 ? <p className="decision-limit-detail">Values are shown as published; no transformation is applied.</p>
+      : <ol className="decision-limits">{steps.map((t, i) => {
+        const applied = Array.isArray(t.params?.applied_to) ? (t.params.applied_to as string[]) : [];
+        return <li key={`${t.name}-${i}`}><strong>{t.name.replace(/_/g, ' ')}</strong>: {t.formula}
+          {applied.length > 0 && <span className="decision-limit-scope"> (applied to {applied.join(', ')})</span>}</li>;
+      })}</ol>}
+  </details>;
+}
+
+/** Every input with its publisher, period and link, and where Phase 2 checked it; then the method references. */
+function Sources({ bundle }: { bundle: Bundle<unknown, unknown> }) {
+  const inputs = bundle.inputs ?? [];
+  const citations = bundle.citations ?? [];
+  return <details className="decision-limits-fold">
+    <summary>Sources ({inputs.length + citations.length})</summary>
+    <ul className="decision-limits">
+      {inputs.map(input => <li key={input.role}>
+        {input.source_url ? <a href={input.source_url} target="_blank" rel="noreferrer">{input.name ?? input.series_id}</a>
+          : input.name ?? input.series_id}
+        <span className="decision-limit-detail"> {[`${input.publisher ?? ''} ${input.source_key ?? ''}`.trim(),
+          FREQUENCY[input.frequency ?? ''] ?? input.frequency,
+          input.first ? `${input.first} to ${input.last}` : 'no observations yet',
+          `${input.observations.toLocaleString('en-US')} observations`].filter(Boolean).join(' · ')}</span>
+        {input.accepted_under && input.accepted_under.analysis_id !== bundle.analysis_id && <span className="decision-limit-scope">
+          {' '}(checked under {input.accepted_under.analysis_id})</span>}
+      </li>)}
+      {citations.map(c => <li key={c.id}>{c.url ? <a href={c.url} target="_blank" rel="noreferrer">{c.label}</a> : c.label}
+        <span className="decision-limit-detail"> method reference</span></li>)}
+    </ul>
+  </details>;
+}
+
 /** Limitations (data, borrowed inputs, method) folded away, with the AI export beside them. */
 function Limits({ bundle }: { bundle: Bundle<unknown, unknown> }) {
   return <footer className="decision-foot">
+    <Method bundle={bundle}/>
+    <Sources bundle={bundle}/>
     <details className="decision-limits-fold">
       <summary>What limits this ({bundle.limitations.length})</summary>
       <ul className="decision-limits">{bundle.limitations.map(item => <li key={`${item.code}|${item.detail ?? ''}`}>

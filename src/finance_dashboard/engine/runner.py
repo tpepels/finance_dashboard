@@ -56,7 +56,16 @@ def analysis_bundle(session: Session, analysis_id: str, *, snapshot: AcceptanceS
 
 
 def list_analyses(snapshot: AcceptanceSnapshot, corpus_document: dict) -> list[dict]:
-    return [{"analysis_id": row["id"], "question": row["title"],
+    """The catalogue: question, decision informed, method sources and geographies, for the workbench search."""
+    labels = {source["id"]: source.get("label", source["id"]) for source in corpus_document.get("original_sources", [])}
+
+    def geographies(row):
+        roles = (row.get("comparison_contract") or {}).get("original_requirements", [])
+        return sorted({g for role in roles for g in (role.get("expected") or {}).get("geography", []) or []})
+    return [{"analysis_id": row["id"], "question": row["title"], "decision_informed": row.get("decision_informed"),
+             "evidence_tier": row.get("evidence_tier"),
+             "sources": [labels.get(sid, sid) for sid in row.get("primary_method_sources", [])],
+             "geographies": geographies(row),
              "state": analysis_phase2(snapshot, row["id"])["state"], "has_engine": row["id"] in DEFINITIONS}
             for row in corpus_document["analyses"]]
 

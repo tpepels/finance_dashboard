@@ -83,6 +83,9 @@ class EngineApiTests(unittest.TestCase):
         self.assertTrue(all(row["has_engine"] for row in rows.values()), [r for r in rows if not rows[r]["has_engine"]])
         self.assertEqual(rows["G03"]["state"], "deferred")
         self.assertTrue(rows["P07"]["question"])
+        self.assertTrue(rows["P07"]["decision_informed"])
+        self.assertTrue(rows["M02"]["sources"])                 # method source labels, for search
+        self.assertIn("US", rows["M02"]["geographies"])
 
     def test_unavailable_acceptance_is_503(self):
         def failing():
