@@ -71,6 +71,8 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
             values,dimensions = _ofr_fsi(body,definition,source['url'])
         elif provider == 'BOJ_TSS':
             values,dimensions = _boj(body,definition,source['url'])
+        elif provider == 'BUNDESBANK':
+            values,dimensions = _bundesbank(body,definition,source['url'])
         elif provider == 'OECD_CLI':
             values,dimensions = _oecd_cli(body,definition,source['url'])
         elif provider == 'IMF_BOP_IIP':
@@ -764,6 +766,28 @@ def _boj(body,definition,url):
             _add(values,seen,_native_period(row[0].replace('/','-'),spec[2]),row[column])
     return values,{'source_native_unit':'percent','source_native_unit_label':named['Unit'][column],
         'source_publisher_metadata':{'series_code':definition['source_key'],'name':named['Name of time-series'][column]},
+        'individual_observation_first_publication_verified':False}
+
+
+def _bundesbank(body,definition,url):
+    """Independent reader of a Bundesbank CSV download: key in the header, native unit, one value per period."""
+    from .source_reconciliation import EvidenceError
+    key=definition['source_key']
+    flow=key.split('.',1)[0]
+    if (not url.startswith('https://api.statistiken.bundesbank.de/rest/data/%s/%s'%(flow,key[len(flow)+1:]))
+            or definition['unit']!='percent' or definition['frequency'] not in ('M','D')):
+        raise EvidenceError('source_identity_mismatch')
+    rows=list(csv.reader(io.StringIO(body.lstrip('\ufeff'))))
+    unit={row[0]:row[1] for row in rows if len(row)>1 and row[0] in ('BBK_UNIT_ENG',)}
+    if not rows or len(rows[0])<2 or rows[0][1]!=key or unit.get('BBK_UNIT_ENG')!='percent':
+        raise EvidenceError('source_identity_mismatch')
+    pattern=r'\d{4}-\d{2}' if definition['frequency']=='M' else r'\d{4}-\d{2}-\d{2}'
+    values,seen=({},set())
+    for row in rows:
+        if row and re.fullmatch(pattern,row[0]):
+            _add(values,seen,_native_period(row[0],definition['frequency']),row[1] if len(row)>1 else None)
+    return values,{'source_native_unit':'percent','source_native_unit_label':unit['BBK_UNIT_ENG'],
+        'source_publisher_metadata':{'series_key':key,'title':rows[1][1] if len(rows)>1 and len(rows[1])>1 else None},
         'individual_observation_first_publication_verified':False}
 
 

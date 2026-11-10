@@ -22,8 +22,8 @@ class TargetedPhase2SourcesTests(unittest.TestCase):
 
     def test_selects_canonical_new_provider_families_without_parallel_inventory(self):
         ids = select_source_ids(self.registry, new_sources=True)
-        self.assertEqual(len(NATIVE_SOURCE_FAMILIES), 7)
-        self.assertEqual(len(ids), 59)
+        self.assertEqual(len(NATIVE_SOURCE_FAMILIES), 8)
+        self.assertEqual(len(ids), 60)
         self.assertIn("activity.us.oecd_cli", ids)
         self.assertIn("bank.us.fdic_total_assets", ids)
         self.assertIn("credit.us.private_nonfinancial_stock_bis", ids)

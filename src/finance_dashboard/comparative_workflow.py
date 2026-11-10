@@ -33,7 +33,7 @@ from finance_dashboard.comparative_corpus import store_comparative_corpus, compa
 # Publisher families introduced by the native-source Phase 2 increment. Selection
 # derives from canonical source definitions rather than a second ID inventory.
 NATIVE_SOURCE_FAMILIES = frozenset({
-    "BIS_TOTAL_CREDIT", "BOJ_TSS", "FED_G17_DIFFUSION", "OECD_CLI",
+    "BIS_TOTAL_CREDIT", "BOJ_TSS", "BUNDESBANK", "FED_G17_DIFFUSION", "OECD_CLI",
     "OFR_FSI", "IMF_BOP_IIP", "FDIC_BANKFIND",
 })
 

@@ -6781,6 +6781,54 @@
       "revision_policy": "not_established",
       "rights": "review_required",
       "notes": "Rebuilt from raw Internet Archive captures of MSCI's factsheet URLs (CDX SHA-1 checked, hash-pinned). Comparison rows printed on other MSCI factsheets count as MSCI's own values. Sparse: months the archive did not capture are absent, never filled; any two documents printing different values for one month block the series. Definitions per MSCI Fundamental Data Methodology (March 2021, pinned). Ratio is currency-invariant. Rights may restrict redistribution."
+    },
+    {
+      "id": "bond.de.bund_10y_par_yield_month_end",
+      "name": "Bundesbank 10-year par yield on listed Federal securities, end of month",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "BUNDESBANK",
+      "source_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A",
+      "source_url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A",
+      "geography": "DE",
+      "frequency": "M",
+      "unit": "percent",
+      "measurement": "Yields derived from the term structure of interest rates on listed Federal securities with annual coupon payments, residual maturity 10.0 years, end of month (Deutsche Bundesbank). The input Swinkels names for his German hypothetical 10-year bond return.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Monthly from September 1972. The bond return is computed in the engine with Swinkels' par-bond revaluation formula, which reproduces his published German series exactly."
+    },
+    {
+      "id": "valuation.acwi.msci_index_market_cap_usd",
+      "name": "MSCI ACWI Index float-adjusted market capitalisation (archived MSCI factsheets)",
+      "theme": "valuation",
+      "status": "mapped",
+      "provider": "MSCI_REGIONAL_FACTSHEETS",
+      "source_key": "ACWI/MKT_CAP",
+      "source_url": "https://www.msci.com/documents/10199/255599/msci-acwi-net.pdf",
+      "geography": "MSCI_ACWI_INDEX",
+      "frequency": "M",
+      "unit": "million_usd",
+      "measurement": "Index market capitalisation in USD millions, as printed under INDEX CHARACTERISTICS (Mkt Cap, Index) on MSCI's own monthly ACWI factsheet; the month is the document's as-of month-end. With the trailing P/E (cap over earnings), cap / P/E is the constituents' aggregate trailing earnings.",
+      "revision_policy": "not_established",
+      "rights": "review_required",
+      "notes": "Read only from the ACWI factsheet itself, never from comparison rows on other factsheets. Same archive, pinning and conflict rule as the P/E series: months the Internet Archive did not capture are absent; two documents printing different values for one month block it."
+    },
+    {
+      "id": "stress.us.high_yield_oas_fred_archive",
+      "name": "ICE BofA US High Yield Index option-adjusted spread, full FRED history as archived (Internet Archive capture of 2025-11-04)",
+      "theme": "credit_recession",
+      "status": "mapped",
+      "provider": "FRED_WAYBACK",
+      "source_key": "BAMLH0A0HYM2/20251104204105",
+      "source_url": "https://web.archive.org/web/20251104204105id_/https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2",
+      "geography": "US",
+      "frequency": "D",
+      "unit": "percent",
+      "measurement": "ICE BofA US High Yield Index option-adjusted spread in percentage points",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "FRED's own full download (1996-12-31 to 2025-11-03) as served before FRED cut the series to three years; pinned by the Internet Archive's CDX digest. Every day it shares with the current FRED series agrees exactly; the engine joins the two only while that holds."
     }
   ]
 }

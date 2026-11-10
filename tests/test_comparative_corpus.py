@@ -221,10 +221,18 @@ class ComparativeCorpusTests(unittest.TestCase):
         self.assertIn("common native history", panel["limitations"][0])
 
     def test_declared_fallback_gets_its_own_derived_common_history_panel(self):
-        """A verified-unavailable role's fallback is joined through the same exact gates."""
+        """A verified-unavailable role's fallback is joined through the same exact gates.
+
+        The corpus no longer declares a series fallback (F04's high-yield history was recovered from an
+        archived FRED download), so this test gives F04's role the former Baa fallback in its own copy."""
         f04 = next(a for a in self.document["analyses"] if a["id"] == "F04")
-        role = next(r for r in f04["comparison_contract"]["original_requirements"]
-                    if r.get("verified_unavailability"))
+        role = next(r for r in f04["comparison_contract"]["original_requirements"] if r["role"] == "high_yield_oas")
+        role["verified_unavailability"] = {"reviewed_on": "2026-11-06", "reason": "test fixture", "evidence_urls": [],
+            "fallback": {"reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md", "series_ids": ["credit.us.baa_10y_spread"],
+                         "expected": {"frequency": "D", "unit": "percentage_points", "geography": ["US"],
+                                      "population": "Moody's seasoned Baa corporate bonds",
+                                      "concept": "Corporate minus Treasury yield spread"},
+                         "population_difference": "Baa yield spread, not option-adjusted high yield."}}
         fallback = role["verified_unavailability"]["fallback"]
         variants = self.runtime().panel_variants(f04, self.registry)
         derived = [v for v in variants if v["id"] == "role_" + role["role"] + "_fallback_common_history"]

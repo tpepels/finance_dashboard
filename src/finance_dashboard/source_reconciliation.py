@@ -374,6 +374,23 @@ def _stored_values(database_url, series_ids):
         engine.dispose()
 
 
+def _archive_verified_periods(root, definition, extra, db_values, dialect) -> list:
+    """Stored FRED days no longer in FRED's current file, verified by the identical value in FRED's own
+    earlier full download as archived by the Internet Archive (pinned capture, read back verified)."""
+    if not extra or definition.get("provider") != "FRED":
+        return []
+    from .fred_wayback import CAPTURES, read_fred_wayback
+    code = definition.get("source_key")
+    if code not in CAPTURES:
+        return []
+    try:
+        archived, _ = read_fred_wayback(root, code)
+    except (OSError, ValueError):
+        return []
+    return [period for period in extra
+            if period in archived and _storage_value(archived[period], dialect) == _storage_value(db_values[period], dialect)]
+
+
 def _storage_value(value, dialect):
     # Independently express the persistence representation, not the ingestion
     # parser: SQLite stores Numeric via a float; PostgreSQL numeric rounds
@@ -454,6 +471,23 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             except (OSError, ValueError):
                 failures[sid] = "original_msci_documents_missing_or_invalid"
             continue
+        if definition and definition["provider"] == "FRED_WAYBACK":
+            from .fred_wayback import read_fred_wayback
+            try:
+                code = definition["source_key"].partition("/")[0]
+                values, capture = read_fred_wayback(root, code)
+                originals[sid] = values
+                proof[sid] = {"source": "FRED_DOWNLOAD_INTERNET_ARCHIVE_CAPTURE", "source_snapshot_scope": "full_original_download",
+                              "source_first_publication_at": None, **capture,
+                              "source_sha256": capture["payload_sha256"], "source_manifest_sha256": capture["manifest_sha256"],
+                              "source_periods": len(values), "source_first_observation": min(values).isoformat(),
+                              "source_last_observation": max(values).isoformat(),
+                              "limitations": "FRED's own download as served at the capture time; the capture time only bounds dissemination."}
+            except EvidenceError as exc:
+                failures[sid] = exc.code
+            except (OSError, ValueError):
+                failures[sid] = "original_fred_archive_capture_missing_or_invalid"
+            continue
         if definition and definition["provider"] == "MSCI_REGIONAL_FACTSHEETS":
             from .msci_regional_factsheets import (
                 MsciFactsheetError, read_msci_regional_evidence, series_conflicts, series_values,
@@ -530,6 +564,10 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
                 for period in sorted(source.keys() & db_values.keys())
                 if _storage_value(source[period], dialect) != db_values[period]]
             matches = not missing and not mismatches
+            by_archive = _archive_verified_periods(root, registry[sid], extra, db_values, dialect)
+            extra = [period for period in extra if period not in by_archive]
+            if by_archive:
+                item["extra_periods_verified_by_archived_original"] = [period.isoformat() for period in by_archive]
             item.update(proof[sid])
             from .comparative_corpus import observation_values_digest
             item.update(stored_observations_sha256=observation_values_digest(db_values),

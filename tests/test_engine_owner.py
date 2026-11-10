@@ -65,6 +65,7 @@ class OwnerEngineTests(unittest.TestCase):
         points["gold"] = monthly((2010, 1), [1000.0 + i for i in range(n)])
         points["bonds"] = monthly((2010, 1), [0.002] * n)
         points["usd_per_eur"] = monthly((2010, 1), [1.2] * n)
+        points["bund_yield"] = monthly((2010, 1), [3.0] * n)
         values = P05.compute(points, {"today": "2026-11-09"}, {"owner_inputs": EXAMPLE}).values
         self.assertEqual([r["key"] for r in values["rules"]], ["never", "calendar", "threshold"])
         self.assertEqual(values["period"]["months"], n - 1)
@@ -73,3 +74,27 @@ class OwnerEngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EuroBondTests(unittest.TestCase):
+    def test_par_bond_return_reproduces_swinkels_published_values(self):
+        from finance_dashboard.engine.transforms import par_bond_returns
+        out = par_bond_returns({(1972, 9): 7.92, (1972, 10): 8.29, (1972, 11): 8.48, (1973, 1): 8.7})
+        self.assertAlmostEqual(out[(1972, 10)], -1.8087803085468472e-2, places=15)
+        self.assertAlmostEqual(out[(1972, 11)], -5.6645672829775569e-3, places=15)
+        self.assertNotIn((1973, 1), out)        # a missing month breaks the chain; nothing is bridged
+
+    def test_p05_uses_euro_bonds_for_a_euro_or_hedged_bond_holding(self):
+        n = 30
+        points = {role: [] for role in P05.inputs}
+        points["equity"] = monthly((2010, 1), [100 * (1.01 ** i) for i in range(n)])
+        points["gold"] = monthly((2010, 1), [1000.0 + i for i in range(n)])
+        points["bonds"] = monthly((2010, 1), [0.002] * 12)              # the US series ends early
+        points["usd_per_eur"] = monthly((2010, 1), [1.2] * n)
+        points["bund_yield"] = monthly((2010, 1), [3.0] * n)
+        euro = P05.compute(points, {"today": "2026-11-09"}, {"owner_inputs": {**EXAMPLE, "bonds_hedged": True}}).values
+        self.assertEqual(euro["bond_leg"], "euro")
+        self.assertEqual(euro["period"]["months"], n - 1)
+        usd = P05.compute(points, {"today": "2026-11-09"}, {"owner_inputs": {**EXAMPLE, "bonds_hedged": False}}).values
+        self.assertEqual(usd["bond_leg"], "us_in_eur")
+        self.assertEqual(usd["period"]["months"], 11)

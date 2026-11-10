@@ -12,7 +12,8 @@ const bundle = (id: string, values: unknown) => ({ analysis_id: id, question: `$
   method_limitations: [], inputs: [], transforms: [], limitations: [] });
 const bundles: Record<string, unknown> = {
   G03: { ...bundle('G03', { alternatives: [{ key: 'eu27_profit_share', name: 'EU27 profit share', unit: '% of value added', latest: 40.1,
-    min: 38, max: 42, own_mean: 40, as_of: '2025-01-01', history: [['2025-01-01', 40.1]] }], oecd_coverage: [], oecd_members: [] }),
+    min: 38, max: 42, own_mean: 40, as_of: '2025-01-01', history: [['2025-01-01', 40.1]] }], oecd_coverage: [], oecd_members: [],
+    listed_earnings: { history: [['2026-09-01', 4810]], share_of_gdp: [['2024', 3.9], ['2025', 4.1]], latest: { month: '2026-09-01', earnings_usd_bn: 4810, market_cap_usd_bn: 102696, pe: 21.35 } } }),
     phase2: { state: 'deferred', evaluated_at: '2026-11-08', limitations: [], open_gates: ['listed_parent_net_income'] },
     basis: { kind: 'verified_alternatives', variants: ['eurostat_nfc_gross_profit_share'] } },
   G01: bundle('G01', { latest: { date: '2026-07-31', accession: 'a', top10_pct: 25, issuers: [{ name: 'NVIDIA CORPORATION', pct: 4.6 }, { name: 'APPLE INC.', pct: 4.5 }] },
@@ -39,7 +40,8 @@ describe('GlobalPanel', () => {
     expect(screen.getByRole('img', { name: /^largest issuers/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /index weight against share of world gdp/i })).toBeTruthy();
     expect(screen.getByRole('note', { name: /alternatives, not the original method/i })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /^corporate profit measures/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /^corporate profit measures.*listed company earnings/i })).toBeTruthy();
+    expect(screen.getByText(/\$4\.8 trillion/)).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
   });
 });

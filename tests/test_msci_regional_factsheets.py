@@ -47,7 +47,7 @@ def text_pdf(pages):
     return bytes(out)
 
 
-def factsheet(index="World", asof="SEP 30, 2026", rows=None, *, misaligned=False, countries=True):
+def factsheet(index="World", asof="SEP 30, 2026", rows=None, *, misaligned=False, countries=True, mkt_cap="77,499,426.33"):
     rows = rows or [("MSCI World", "1.52", "22.69", "17.92", "4.10"),
                     ("MSCI Emerging Markets", "2.02", "14.90", "9.72", "2.39"),
                     ("MSCI ACWI", "1.58", "21.35", "16.28", "3.77")]
@@ -74,6 +74,9 @@ def factsheet(index="World", asof="SEP 30, 2026", rows=None, *, misaligned=False
               ("    Real Estate 1%", "")]
     second = ["INDEX CHARACTERISTICS                         TOP 10 CONSTITUENTS",
               "  Number of           1,604", "  Constituents",
+              *(["               Mkt Cap ( USD Millions)          APPLE        US    3,807.42",
+                 f"  Index           {mkt_cap}         NVIDIA       US    3,294.13",
+                 "  Largest          3,807,419.99"] if mkt_cap else []),
               "SECTOR WEIGHTS".ljust(cut) + ("COUNTRY WEIGHTS" if countries else ""),
               *[left.ljust(cut) + (right if countries else "") for left, right in legend],
               f"                                         MSCI {index} Index (USD) | msci.com"]
@@ -101,6 +104,12 @@ class FactsheetParsingTests(unittest.TestCase):
         self.assertEqual(composition["sector_weights_pct"]["Information Technology"], "30")
         self.assertEqual(composition["country_weights_pct"], {"Japan": "6", "Other": "24", "United States": "70"})
         self.assertEqual(facts["transfer_encoding"], "identity")
+
+    def test_the_headline_index_market_cap_is_read_as_printed(self):
+        facts, _ = msci.parse_factsheet_payload(factsheet(index="ACWI", rows=[("MSCI ACWI", "1.58", "21.35", "16.28", "3.77")]))
+        self.assertEqual(facts["index_market_cap_usd_m"], "77499426.33")
+        facts, _ = msci.parse_factsheet_payload(factsheet(mkt_cap=None))
+        self.assertIsNone(facts["index_market_cap_usd_m"])
 
     def test_gzip_payload_is_the_archived_pdf(self):
         pdf = factsheet()
@@ -155,6 +164,10 @@ class ArchiveTests(unittest.TestCase):
                 self.assertEqual(msci.series_values(evidence, "ACWI/PE"), {})
                 self.assertEqual(set(msci.series_conflicts(evidence, "ACWI/PE")[0]["values"]), {"21.35", "21.40"})
                 self.assertEqual(msci.series_values(evidence, "ACWI/PE_FWD"), {date(2026, 9, 1): Decimal("16.28")})
+                # Market cap comes only from the index's own factsheet, never a comparison row.
+                self.assertEqual(msci.series_values(evidence, "ACWI/MKT_CAP"), {date(2026, 9, 1): Decimal("77499426.33")})
+                self.assertEqual(msci.series_values(evidence, "WORLD/MKT_CAP"), {date(2026, 9, 1): Decimal("77499426.33")})
+                self.assertEqual(msci.series_values(evidence, "EM/MKT_CAP"), {})
 
     def test_rejected_documents_are_retained_and_tampering_is_detected(self):
         with TemporaryDirectory() as temp:

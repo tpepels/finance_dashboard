@@ -73,12 +73,13 @@ function Burdens({ bundle, theme, recessions }: { bundle: Bundle<F02Values>; the
   </>;
 }
 
-const GAUGE_FORMAT: Record<string, (v: number) => string> = { baa: v => `${v.toFixed(2)} pp` };
+const GAUGE_FORMAT: Record<string, (v: number) => string> = { baa: v => `${v.toFixed(2)} pp`, high_yield: v => `${v.toFixed(2)} pp` };
+const SPREADS = new Set(['baa', 'high_yield']);
 
 function Stress({ bundle, theme, recessions }: { bundle: Bundle<F04Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as F04Values;
   const panels = useMemo(() => multiples(data.gauges.map(g => ({ key: g.key, title: g.name, entity: g.key === 'ofr_fsi' ? 'WORLD' : 'US',
-    unit: g.key === 'baa' ? 'percentage points' : 'index, 0 = average', refLines: g.key === 'baa' ? [] : [{ value: 0, label: '' }],
+    unit: SPREADS.has(g.key) ? 'percentage points' : 'index, 0 = average', refLines: SPREADS.has(g.key) ? [] : [{ value: 0, label: '' }],
     lines: [{ name: g.name, slot: 0, data: (data.history[g.key] ?? []).map(([m, v]) => [monthDate(m), v] as [string, number]) }] })),
   theme, recessions, 'f04', v => v.toFixed(1)), [data, theme, recessions]);
   const parts = data.fsi_parts;

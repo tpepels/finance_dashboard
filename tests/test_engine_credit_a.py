@@ -44,7 +44,8 @@ class CreditEngineTests(unittest.TestCase):
 
     def test_f04_stress_within_its_own_history_and_additive_parts(self):
         self.assertIs(DEFINITIONS["F04"], F04)
-        self.assertNotIn("stress.us.high_yield_oas", F04.inputs.values())   # only the accepted fallback is drawn
+        self.assertIn("stress.us.high_yield_oas_fred_archive", F04.inputs.values())   # full history: archive + current FRED
+        self.assertNotIn("credit.us.baa_10y_spread", F04.inputs.values())             # the former fallback is no longer an accepted input
         day = date(2026, 11, 3)
         points = {role: [] for role in F04.inputs}
         points["ofr_fsi"] = [(date(2026, 11, 2), 0.0), (day, -1.484)]

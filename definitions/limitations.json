@@ -90,7 +90,7 @@
     "F04": {
       "stress_now_not_forecast": "Stress indexes describe conditions now; they are not forecasts of crashes and not exit signals.",
       "index_zero_average": "The NFCI and OFR index are centred on their long-run averages: above zero is tighter or more stressed than usual.",
-      "baa_fallback": "The Baa corporate spread stands in for the high-yield spread, whose free history is too short."
+      "high_yield_archive_join": "The high-yield spread joins FRED's own full download archived by the Internet Archive (1996 to November 2025) with FRED's current three years; every shared day agrees exactly, and any disagreement would withhold the join."
     },
     "F05": {
       "different_dates": "Household and corporate debt are quarterly BIS figures; government debt is the IMF's annual figure, so its year can lag.",
@@ -198,9 +198,9 @@
       "single_shocks": "Each shock is applied alone; real episodes usually combine several."
     },
     "P05": {
-      "us_bonds_proxy": "Bonds are the US 10-year sovereign total return in euros (Swinkels), which ends in 2022; the simulation stops where every asset in your mix has data.",
       "history_not_forecast": "A replay of one historical path; the order of returns (sequence risk) will differ in future.",
-      "simplified_tax": "Tax is your chosen simplification: a rate on gains realised when selling (no loss offsets or allowances), or a yearly rate on the whole value (no tax-free allowance). It is not tax advice."
+      "simplified_tax": "Tax is your chosen simplification: a rate on gains realised when selling (no loss offsets or allowances), or a yearly rate on the whole value (no tax-free allowance). It is not tax advice.",
+      "bond_leg": "Euro or hedged bonds are a hypothetical German 10-year government bond, rebuilt from the Bundesbank month-end par yield with Swinkels' formula (it reproduces his published series exactly) from 1972; unhedged foreign bonds are the US 10-year sovereign in euros (Swinkels), which ends in 2022."
     },
     "C02": {
       "fixed_windows": "An inversion counts as a warning if it starts within 24 months before a recession; a Sahm trigger counts from 12 months before to 18 months after the start. Other windows would move some signals between warning and false alarm.",

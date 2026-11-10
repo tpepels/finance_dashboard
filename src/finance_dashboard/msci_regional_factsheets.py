@@ -255,6 +255,21 @@ def _composition(text: str, lines: list[str], index: str) -> dict:
             "gics_vintage": "pre_2018_telecommunication" if "Telecommunication Services" in sectors else "communication_services"}
 
 
+def _market_cap(lines: list[str]) -> str | None:
+    """The headline index's float-adjusted market cap in USD millions (INDEX CHARACTERISTICS), or None if not printed."""
+    heads = [i for i, line in enumerate(lines) if re.search(r"Mkt Cap\s*\(\s*USD Millions\s*\)", line)]
+    if len(heads) != 1:
+        return None
+    for line in lines[heads[0] + 1:heads[0] + 4]:
+        match = re.match(r"^\s*Index\s+([0-9][0-9,]*\.[0-9]+)\b", line)
+        if match:
+            value = Decimal(match.group(1).replace(",", ""))
+            if not Decimal(1000) < value < Decimal(1_000_000_000):
+                raise MsciFactsheetError("market_cap_implausible")
+            return str(value)
+    return None
+
+
 def parse_factsheet_text(text: str) -> dict:
     lines = text.replace("\f", "\n").splitlines()
     index, currency = _title([line for line in lines if line.strip()])
@@ -268,7 +283,7 @@ def parse_factsheet_text(text: str) -> dict:
     except MsciFactsheetError as exc:
         composition, reason = None, str(exc)
     return {"schema_version": 1, "source": SOURCE, "index": index, "currency": currency,
-            "as_of": asof.isoformat(), "fundamentals": rows,
+            "as_of": asof.isoformat(), "fundamentals": rows, "index_market_cap_usd_m": _market_cap(lines),
             "composition": composition, "composition_rejected": reason}
 
 
@@ -645,11 +660,14 @@ def _read_evidence(root: Path) -> dict:
                 continue
             for measure in ("pe", "pe_fwd"):
                 values[index][month].setdefault(measure, defaultdict(list))[row[measure]].append(doc["capture_url"])
+        if doc.get("index_market_cap_usd_m") and doc["index"] in INDEXES and doc.get("currency") == "USD":
+            values[doc["index"]][month].setdefault("mkt_cap", defaultdict(list))[doc["index_market_cap_usd_m"]].append(
+                doc["capture_url"])
         if doc["composition"] is not None:
             composition[doc["index"]][month].append((doc["composition"], doc["capture_url"]))
     panels, conflicts = {}, []
     for index in INDEXES:
-        series = {"pe": {}, "pe_fwd": {}}
+        series = {"pe": {}, "pe_fwd": {}, "mkt_cap": {}}
         for month, measures in sorted(values[index].items()):
             for measure, printed in measures.items():
                 if len(printed) > 1:
@@ -672,6 +690,7 @@ def _read_evidence(root: Path) -> dict:
             "bound": INDEXES[index]["bound"],
             "pe": {m.isoformat(): v for m, v in series["pe"].items()},
             "pe_fwd": {m.isoformat(): v for m, v in series["pe_fwd"].items()},
+            "mkt_cap": {m.isoformat(): v for m, v in series["mkt_cap"].items()},
             "composition": composed,
             "coverage": {
                 "months_with_values": len(months),
@@ -717,7 +736,7 @@ def read_msci_regional_summary(root: Path) -> dict:
             "panels": panels}
 
 
-SERIES_KEYS = {f"{index}/{measure}": (index, measure) for index in BOUND_INDEXES for measure in ("PE", "PE_FWD")}
+SERIES_KEYS = {f"{index}/{measure}": (index, measure) for index in BOUND_INDEXES for measure in ("PE", "PE_FWD", "MKT_CAP")}
 
 
 def series_conflicts(evidence: dict, key: str) -> list[dict]:

@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { entityName, timeChart, type Recession, type Theme, type TimeSeries } from './chartKit';
+import { breakGaps, entityName, timeChart, type Point, type Recession, type Theme, type TimeSeries } from './chartKit';
 import { Dumbbells, ExternalBars, PairBars, RankedBars, StackedShares, Thermometers, type ExternalRow } from './heroes';
 import TimePanel from './TimePanel';
 import { Section, spanOf, useBundles, yearDate, type Bundle } from './analysisShell';
@@ -14,7 +14,9 @@ type G02Values = { date: string | null; countries: { area: string; index_weight:
   us_weight_history: Line };
 
 type G03Values = { alternatives: { key: string; name: string; unit: string; latest: number; min: number; max: number; own_mean: number;
-  as_of: string; history: Line }[]; oecd_coverage: Line; oecd_members: Line };
+  as_of: string; history: Line }[]; oecd_coverage: Line; oecd_members: Line;
+  listed_earnings?: { history: Line; share_of_gdp: [string, number][];
+    latest: { month: string; earnings_usd_bn: number; market_cap_usd_bn: number; pe: number } | null } };
 
 const FALLBACK: [string, string] = ['1970-01-01', '2025-01-01'];
 
@@ -24,19 +26,35 @@ const G03_WITHHELD = <p className="decision-caption">The question needs the cons
 
 function Profits({ bundle, theme, recessions }: { bundle: Bundle<G03Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as G03Values;
+  const listed = data.listed_earnings;
+  const shares = listed?.share_of_gdp ?? [];
+  const listedRow = shares.length ? [{ area: 'listed', label: 'Listed company earnings / world GDP',
+    min: Math.min(...shares.map(s => s[1])), max: Math.max(...shares.map(s => s[1])),
+    mean: shares.reduce((a, s) => a + s[1], 0) / shares.length, latest: shares.at(-1)![1], asOf: shares.at(-1)![0],
+    note: 'MSCI ACWI, December of each year', format: (v: number) => `${v.toFixed(1)}%` }] : [];
   const option = useMemo(() => timeChart({ theme, recessions, unit: '%', format: v => v.toFixed(0),
     series: data.alternatives.map((a, i) => ({ name: a.name, slot: i, dots: true, data: a.history })) }), [data, theme, recessions]);
+  const earningsLine = listed?.history ?? [];
+  const earningsOption = useMemo(() => timeChart({ theme, recessions, unit: 'USD billions, trailing 12 months',
+    format: v => v.toFixed(0), series: [{ name: 'Aggregate earnings of MSCI ACWI companies', slot: 2, dots: true, data: breakGaps(earningsLine as Point[], 45) }] }),
+  [earningsLine, theme, recessions]);
+  const latest = listed?.latest;
   return <>
     <div className="decision-hero">
-      <Thermometers theme={theme} title="Corporate profit measures within their own history" unit="" rows={data.alternatives.map(a => ({
+      <Thermometers theme={theme} title="Corporate profit measures within their own history" unit="" rows={[...listedRow, ...data.alternatives.map(a => ({
         area: a.key, label: a.key === 'eu27_profit_share' ? 'EU27 profit share' : 'OECD surplus / GDP', min: a.min, max: a.max,
-        mean: a.own_mean, latest: a.latest, asOf: a.as_of.slice(0, 4), note: a.unit, format: v => `${v.toFixed(1)}%` }))}/>
-      <p className="decision-caption">Not the answer to the question: both are national-accounts alternatives covering listed and
-        unlisted companies, gross of depreciation, and neither covers the whole world.
+        mean: a.own_mean, latest: a.latest, asOf: a.as_of.slice(0, 4), note: a.unit, format: (v: number) => `${v.toFixed(1)}%` }))]}/>
+      <p className="decision-caption">{latest && <>The closest measure: the roughly 2,500 large and mid-sized listed companies in MSCI ACWI
+        earned ${(latest.earnings_usd_bn / 1000).toFixed(1)} trillion in the 12 months to {latest.month.slice(0, 7)} (index market cap
+        ${(latest.market_cap_usd_bn / 1000).toFixed(1)} trillion at a P/E of {latest.pe.toFixed(1)}; MSCI defines P/E as total cap over total
+        earnings). It covers index constituents only, not every listed company. </>}The other two are national-accounts measures of all
+        companies, listed or not, gross of depreciation.
         {data.oecd_members.length > 0 && <> The latest OECD figure ({data.oecd_members.at(-1)![0].slice(0, 4)}) covers
           {' '}{data.oecd_members.at(-1)![1]} of 38 members, {data.oecd_coverage.at(-1)?.[1].toFixed(0)}% of their GDP.</>}</p>
     </div>
     <div className="decision-charts">
+      {earningsLine.length > 0 && <TimePanel title="Aggregate earnings of MSCI ACWI companies" option={earningsOption} presets={false}
+        span={spanOf([earningsLine], ['2015-01-01', '2026-01-01'])}/>}
       <TimePanel title="Alternative corporate profit measures" option={option} presets={false}
         span={spanOf(data.alternatives.map(a => a.history), ['1999-01-01', '2025-01-01'])}/>
     </div>

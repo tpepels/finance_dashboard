@@ -14,7 +14,7 @@ type Fund = { key: string; name: string; date: string; countries: { key: string;
 type P01Values = { funds: Fund[] };
 
 type P04Values = { is_example: boolean; shocks: Impact[]; history: { us_10y: Line; usd_per_eur: Line } };
-type P05Values = { is_example: boolean; chosen: string; period: { from: string | null; to: string | null; months: number };
+type P05Values = { is_example: boolean; chosen: string; bond_leg?: 'euro' | 'us_in_eur'; period: { from: string | null; to: string | null; months: number };
   rules: (RuleResult & { path: Line })[]; inputs: { allocation: Record<string, number> } };
 
 const exampleNote = (example: boolean) => example
@@ -53,7 +53,9 @@ function Rebalancing({ bundle, theme, recessions }: { bundle: Bundle<P05Values>;
     <div className="decision-hero">
       <RuleBars theme={theme} rules={data.rules} chosen={data.chosen}/>
       <p className="decision-caption">Your mix ({mix}) replayed month by month in euros from {data.period.from} to {data.period.to},
-        under three rules, with trading costs charged on what each rebalance trades. One historical path: a different order of returns
+        under three rules, with trading costs charged on what each rebalance trades. Bonds are {data.bond_leg === 'us_in_eur'
+          ? 'the US 10-year Treasury translated into euros (Swinkels), which ends in 2022'
+          : 'a German 10-year government bond, rebuilt from Bundesbank yields with Swinkels\' formula'}. One historical path: a different order of returns
         would give different numbers.{exampleNote(data.is_example)}</p>
     </div>
     <div className="decision-charts">

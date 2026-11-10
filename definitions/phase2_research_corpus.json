@@ -1631,37 +1631,23 @@
           },
           {
             "role": "high_yield_oas",
-            "description": "Original ICE BofA US high-yield option-adjusted spread.",
-            "series_ids": ["stress.us.high_yield_oas"],
+            "description": "Original ICE BofA US high-yield option-adjusted spread: FRED's current three years plus FRED's own full download archived by the Internet Archive before the cut (1996-2025); the two agree on every shared day.",
+            "series_ids": [
+              "stress.us.high_yield_oas",
+              "stress.us.high_yield_oas_fred_archive"
+            ],
             "expected": {
               "frequency": "D",
               "unit": "percent",
-              "geography": ["US"],
+              "geography": [
+                "US"
+              ],
               "population": "Source-defined US high-yield corporate bond index",
               "concept": "Option-adjusted credit spread"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
-            "artifact_ids": [],
-            "verified_unavailability": {
-              "reviewed_on": "2026-11-06",
-              "reason": "Since April 2026 FRED serves only the latest three years of the ICE BofA high-yield OAS; the full history is licensed by ICE and not freely available, so the stored history cannot stay verified as days roll off.",
-              "evidence_urls": [
-                "https://fred.stlouisfed.org/series/BAMLH0A0HYM2"
-              ],
-              "fallback": {
-                "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
-                "series_ids": ["credit.us.baa_10y_spread"],
-                "expected": {
-                  "frequency": "D",
-                  "unit": "percentage_points",
-                  "geography": ["US"],
-                  "population": "Moody's seasoned Baa corporate bonds",
-                  "concept": "Corporate minus Treasury yield spread"
-                },
-                "population_difference": "Lower investment-grade (Baa) yield spread versus 10-year Treasury, not option-adjusted and not high-yield; available since 1986."
-              }
-            }
+            "artifact_ids": []
           }
         ],
         "variants": [
@@ -4083,6 +4069,28 @@
         ],
         "variants": [
           {
+            "id": "msci_acwi_aggregate_earnings",
+            "label": "MSCI ACWI aggregate trailing earnings (index market cap / P/E)",
+            "kind": "approved_fallback",
+            "scope": "MSCI's own factsheet market capitalisation and trailing P/E for the ACWI index; MSCI defines the index P/E as total market cap over total trailing earnings (losses included), so cap / P/E is the constituents' aggregate trailing net earnings. Listed large and mid caps in 23 developed and 24 emerging markets, float-adjusted, not every listed parent.",
+            "series_ids": [
+              "valuation.acwi.msci_index_market_cap_usd",
+              "valuation.acwi.msci_trailing_pe"
+            ],
+            "frequency": "M",
+            "start": "2015-01-01",
+            "end": "latest_common",
+            "join": "exact_period_intersection",
+            "missingness": "no_fill",
+            "temporal_mode": "current_source_snapshot",
+            "checks": [],
+            "limitations": [
+              "Float-adjusted index constituents (about 85% of each market's free-float cap), not the full listed-parent universe.",
+              "Months the Internet Archive did not capture are absent; earnings are trailing 12 months as of each factsheet."
+            ],
+            "satisfies_original_method": false
+          },
+          {
             "id": "eurostat_nfc_gross_profit_share",
             "label": "EU27 nonfinancial corporate gross profit share",
             "kind": "approved_fallback",
@@ -5289,6 +5297,25 @@
             "input_type": "policy",
             "artifact_ids": [],
             "supply": "user"
+          },
+          {
+            "role": "euro_sovereign_par_yield",
+            "description": "Bundesbank month-end 10-year par yield on listed Federal securities: the input Swinkels names for his German hypothetical 10-year bond return. The monthly return is computed in Phase 3 with his published formula.",
+            "series_ids": [
+              "bond.de.bund_10y_par_yield_month_end"
+            ],
+            "expected": {
+              "frequency": "M",
+              "unit": "percent",
+              "geography": [
+                "DE"
+              ],
+              "population": "German listed Federal securities, residual maturity 10 years",
+              "concept": "Month-end 10-year par yield"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": []

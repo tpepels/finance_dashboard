@@ -59,6 +59,12 @@ TRANSFORMS: dict[str, str] = {
                            "least 24 months (12 for the stock-fall subset)",
     "drawdown_episodes": "peak-to-trough-to-recovery episodes of month-end levels whose depth exceeds the threshold; "
                          "depth = trough / peak - 1",
+    "splice_identical": "join an archived history with the publisher's current series only if every shared day has the "
+                        "identical value; current values after the archive's end are appended; any difference withholds the join",
+    "par_bond_return": "Swinkels' par-bond revaluation: a 10-year par bond bought at last month's month-end yield y0 and "
+                       "revalued at this month's yield y1 with 10 - 1/12 years left, semi-annual discounting: "
+                       "r = y0/1200 + (y0/y1)(1 - (1 + y1/200)^(-2(10 - 1/12))) + (1 + y1/200)^(-2(10 - 1/12)) - 1; "
+                       "only consecutive observed months",
     "signal_timing": "for each NBER recession start: the first month the yield spread was below zero in the preceding "
                      "window, the first month the Sahm indicator reached its threshold around the start, and the NBER "
                      "peak announcement, each in months relative to the start; signals outside every window are "
@@ -170,3 +176,26 @@ def percentile(sorted_values: list[float], q: float) -> float | None:
     low = int(position)
     high = min(low + 1, len(sorted_values) - 1)
     return sorted_values[low] + (sorted_values[high] - sorted_values[low]) * (position - low)
+
+
+def par_bond_returns(yields: dict[tuple[int, int], float]) -> dict[tuple[int, int], float]:
+    """Monthly simple returns of a hypothetical 10-year par bond from month-end yields in percent (Swinkels' formula)."""
+    n = -2 * (10 - 1 / 12)
+    out = {}
+    for key in sorted(yields):
+        back = previous_month(key)
+        if back in yields and yields[key]:
+            y0, y1 = yields[back], yields[key]
+            out[key] = y0 / 1200 + (y0 / y1) * (1 - (1 + y1 / 200) ** n) + (1 + y1 / 200) ** n - 1
+    return out
+
+
+def splice_identical(archive: list[tuple], current: list[tuple]) -> tuple[list[tuple], dict]:
+    """Archive then current; joined only when every shared date carries the same value."""
+    a, c = dict(archive), dict(current)
+    shared = set(a) & set(c)
+    differing = sum(1 for day in shared if a[day] != c[day])
+    check = {"overlap_days": len(shared), "differing_days": differing}
+    if differing:
+        return [], check
+    return sorted({**a, **c}.items()), check

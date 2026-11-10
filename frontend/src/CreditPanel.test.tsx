@@ -17,9 +17,9 @@ const bundles: Record<string, unknown> = {
     history: { PT: { ratio: line, trend: line, gap: line } } }),
   F02: bundle('F02', { rows: [{ series: 'private', area: 'US', latest: 13.8, as_of: '2026-01-01', back: 13.7, back_as_of: '2021-01-01', change: 0.1, own_mean: 15, min: 12, max: 18 }],
     history: { 'private:US': line } }),
-  F04: bundle('F04', { gauges: [{ key: 'nfci', name: 'NFCI', ...own }],
+  F04: bundle('F04', { gauges: [{ key: 'high_yield', name: 'US high-yield bond spread (ICE BofA option-adjusted)', ...own, latest: 2.9 }, { key: 'nfci', name: 'NFCI', ...own }],
     fsi_parts: { date: '2026-11-03', categories: [{ key: 'credit', value: -0.842 }], regions: [{ key: 'region_united_states', value: -0.9 }] },
-    history: { nfci: [['2026-10', -0.4]], adjusted_nfci: [], ofr_fsi: [], baa: [] } }),
+    history: { nfci: [['2026-10', -0.4]], adjusted_nfci: [], ofr_fsi: [], baa: [], high_yield: [['2026-10', 2.9]] } }),
   F05: bundle('F05', { economies: [{ area: 'US', as_of: '2026-01-01', household: 67, corporate: 72, government: 124, government_year: '2025' }],
     history: { US: { household: line, corporate: line } }, bank: { equity_to_assets: 9.9, as_of: '2026-04-01', history: line } }),
   F06: bundle('F06', { residential: [{ area: 'PT', ...own, change_5y_pct: 48.2, back_as_of: '2021-04-01' }], commercial: [],
@@ -42,6 +42,7 @@ describe('CreditPanel', () => {
     await waitFor(() => expect(screen.getByRole('img', { name: /credit to gdp against its trend/i })).toBeTruthy());
     expect(screen.getByRole('img', { name: /five years ago and now/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /stress index by source/i })).toBeTruthy();
+    expect(screen.getByText('2.90 pp')).toBeTruthy();
     expect(screen.getByRole('img', { name: /debt by sector/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /real house prices/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /nonbank/i })).toBeTruthy();

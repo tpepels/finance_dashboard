@@ -116,7 +116,9 @@ class BundleTests(unittest.TestCase):
 
 DEFERRED_WITH_ALTERNATIVE = snapshot_from_report({"analyses": [
     {"id": "G03", "acceptance": {"state": "deferred", "blocking_roles": ["listed_parent_net_income"], "limitations": [],
-        "source_resolution": {"verified_native_alternative_variants": ["eu_variant"]}, "requirements": []}}]}, AT)
+        "source_resolution": {"verified_native_alternative_variants": ["eu_variant"]}, "requirements": []}},
+    {"id": "G02", "acceptance": {"state": "conditional", "blocking_roles": [], "limitations": [],
+        "requirements": [role("gdp_role", ["gdp.series"])]}}]}, AT)
 
 
 def alternatives_seen(points, view):
@@ -137,6 +139,14 @@ class AlternativeBasisTests(unittest.TestCase):
         self.assertEqual(bundle["values"], {"roles": ["eu"]})
         eu = next(i for i in bundle["inputs"] if i["role"] == "eu")
         self.assertEqual(eu["accepted_under"], {"analysis_id": "G03", "role": "variant:eu_variant"})
+
+    def test_inputs_phase2_accepted_elsewhere_stay_usable_beside_alternatives(self):
+        definition = AnalysisDefinition("G03", {"eu": "eu.series", "gdp": "gdp.series", "listed": "listed.series"},
+                                        alternatives_seen, alternatives={"eu_variant": ("eu",)})
+        points = {"eu": [(date(2024, 1, 1), 40.0)], "gdp": [(date(2024, 1, 1), 1.0)], "listed": [(date(2024, 1, 1), 1.0)]}
+        bundle = build_bundle(definition, points=points, snapshot=DEFERRED_WITH_ALTERNATIVE, corpus_analysis={"title": "G03"},
+                              catalog_series={}, view={}, computed_at=AT)
+        self.assertEqual(bundle["values"], {"roles": ["eu", "gdp"]})
 
     def test_an_unverified_alternative_keeps_values_withheld(self):
         bundle = self.build(DEFERRED_WITH_ALTERNATIVE, {"other_variant": ("eu",)})

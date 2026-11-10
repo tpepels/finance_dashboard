@@ -85,6 +85,17 @@ class G03Tests(unittest.TestCase):
         self.assertTrue(all(a["non_equivalent"] for a in values["alternatives"]))
         self.assertNotIn("listed_profit_ratio", values)
 
+    def test_listed_earnings_from_index_cap_over_pe_and_their_share_of_world_gdp(self):
+        points = {role: [] for role in G03.inputs}
+        points["acwi_mkt_cap"] = [(date(2024, 12, 1), 80_000_000.0), (date(2025, 6, 1), 90_000_000.0)]
+        points["acwi_pe"] = [(date(2024, 12, 1), 20.0), (date(2025, 6, 1), 22.5)]
+        points["world_gdp"] = [(date(2024, 1, 1), 110e12), (date(2025, 1, 1), 115e12)]
+        values = G03.compute(points, {}).values
+        listed = values["listed_earnings"]
+        self.assertEqual(listed["history"], [["2024-12-01", 4000.0], ["2025-06-01", 4000.0]])   # USD billions
+        self.assertEqual(listed["share_of_gdp"], [["2024", 4000e9 / 110e12 * 100]])            # December months only
+        self.assertEqual(listed["latest"]["month"], "2025-06-01")
+
     def test_alternatives_name_the_corpus_variants_that_supply_them(self):
         from finance_dashboard.research_corpus import load_research_corpus
         corpus = next(a for a in load_research_corpus()["analyses"] if a["id"] == "G03")
@@ -96,3 +107,26 @@ class G03Tests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SpliceTests(unittest.TestCase):
+    def test_archive_and_current_join_only_when_every_shared_day_agrees(self):
+        from finance_dashboard.engine.transforms import splice_identical
+        archive = [(date(2020, 1, 2), 5.0), (date(2023, 11, 6), 3.9), (date(2023, 11, 7), 3.8)]
+        current = [(date(2023, 11, 6), 3.9), (date(2023, 11, 7), 3.8), (date(2026, 11, 5), 2.9)]
+        joined, check = splice_identical(archive, current)
+        self.assertEqual([d for d, _ in joined], [date(2020, 1, 2), date(2023, 11, 6), date(2023, 11, 7), date(2026, 11, 5)])
+        self.assertEqual(check, {"overlap_days": 2, "differing_days": 0})
+        joined, check = splice_identical(archive, [(date(2023, 11, 6), 4.0), (date(2026, 11, 5), 2.9)])
+        self.assertEqual(joined, [])
+        self.assertEqual(check["differing_days"], 1)
+
+    def test_f04_shows_the_high_yield_spread_from_the_joined_history(self):
+        from finance_dashboard.engine.analyses import F04
+        points = {role: [] for role in F04.inputs}
+        points["hy_archive"] = [(date(1997, 1, 2), 3.06), (date(2025, 11, 3), 3.04)]
+        points["hy_current"] = [(date(2025, 11, 3), 3.04), (date(2026, 11, 5), 2.9)]
+        values = F04.compute(points, {}).values
+        hy = next(g for g in values["gauges"] if g["key"] == "high_yield")
+        self.assertEqual((hy["history_start"], hy["as_of"], hy["latest"]), ("1997-01-02", "2026-11-05", 2.9))
+        self.assertEqual(values["high_yield_check"], {"overlap_days": 1, "differing_days": 0})

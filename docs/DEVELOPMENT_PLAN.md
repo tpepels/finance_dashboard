@@ -99,15 +99,17 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **G03 and L04 (2026-11-09):** the engine computes from alternatives Phase 2 itself verified when the original method is unresolved, and labels the result (`basis: verified_alternatives`); G03 shows the EU27 and OECD corporate profit measures that way. The WIOD 2016 world input-output tables are archived (`python -m finance_dashboard.wiod_io`, pinned to DataverseNL's SHA-1) and the authors' input-origin ratio is recomputed: all 2,580 published WIOT values (645 country-years) match. Their total value is basic-price output plus the product-taxes row, which counts those taxes twice; it is reproduced as published and recorded. L04 shows the full method and value added only side by side.
 
+* **Gap sources, first three (2026-11-10):**
+  * Euro bonds: new Bundesbank provider for the month-end 10-year par yield (`bond.de.bund_10y_par_yield_month_end`, 1972-09 onward), the input Swinkels names; his formula on it reproduces all 603 of his German returns to 3e-16. Accepted in Phase 2 as a P05 role; the engine's `par_bond_return` transform rebuilds the return, and P05 uses it for euro or hedged bonds (replay now 2001-2026).
+  * G03: MSCI ACWI index market cap is read from the archived factsheets (58 months, 2015-2026, no conflicts) and joins the trailing P/E as a third Phase 2-verified alternative; cap / P/E is the constituents' aggregate trailing earnings ($4.8 trillion to September 2026, 3.0-3.4% of world GDP at year ends).
+  * F04: FRED's full high-yield spread download (1996-12-31 to 2025-11-03) is archived from the Internet Archive (`python -m finance_dashboard.fred_wayback`, pinned by CDX digest). It agrees with FRED's current three years on all 522 shared days; reconciliation counts days that rolled out of FRED as verified by the identical archived value, and F04 is now accepted. The Baa stand-in is retired.
+
 ## Next slices
 
 1. **L04 extension 1995-2021:** EU KLEMS & INTANProd Release 2025 (capital, labour and value added by industry, 1995-2021) with OECD ICIO 2025 (1995-2022) for the input-origin ratio, reconciled with WIOD over 2000-2014.
 2. **Sources found for the known gaps** (each to be pinned, read and taken through Phase 2):
-   * Euro bond leg for P02, P04, P05: Bundesbank Svensson 10-year Bund yield, monthly from 1972-09 (`BBSIS.M.I.ZST.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A`), turned into a total return with Swinkels' own yield-to-return method; replaces the US series that ends in 2022.
    * C02 real-time Sahm rule: Philadelphia Fed Real-Time Data Set, unemployment-rate vintages (`rucqvmd.xlsx`), to compute what the rule showed with the data known at each date.
    * C05 and P03 independent shock dates: Jordà-Schularick-Taylor Macrohistory R6 (crisis dates, 18 economies, 1870-2020); Laeven & Valencia systemic banking crises (IMF WP 2026/094, 1970-2025) to be checked for a data file.
-   * F04 high-yield spread: FRED now serves only three years of ICE BofA BAMLH0A0HYM2. Internet Archive captures of FRED's own text file hold the full daily history (1996-12-31 to 2021-03-16), and later captures bridge to the current three years.
-   * G03 listed-company profits: archived MSCI ACWI factsheets print index market cap and P/E (571 of 593 documents print the market cap). MSCI defines the index P/E as total cap over total earnings, so cap / P/E is the aggregate net earnings of the listed constituents, the spec's "MSCI aggregate index earnings" alternative.
    * P05 and P04 owner roles: Phase 2 still lists target weights, rebalancing rule, costs, tax and withdrawal plan as open; the owner-input store now supplies them and should be registered as their source.
 
 ## Working rules

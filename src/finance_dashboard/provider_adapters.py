@@ -23,6 +23,7 @@ from .bis_credit import BIS_TC_ROOT, TC_SERIES, tc_key, parse_bis_total_credit
 from .bis_dsr import BIS_DSR_ROOT, DSR_SERIES, parse_bis_dsr
 from .bis_property import PROPERTY_SOURCES, BIS_SPP_ROOT, BIS_CPP_ROOT, parse_bis_property
 from .boj_call_rates import BOJ_SERIES, boj_url, parse_boj_csv
+from .bundesbank import BUNDESBANK_SERIES, bundesbank_url, parse_bundesbank_csv
 from .fdic_banks import FDIC_FINANCIALS_URL, FDIC_QUERY, FDIC_SERIES, parse_fdic_aggregates
 from .fed_g17 import G17_DIFFUSION_SERIES, G17_DIFFUSION_URL, parse_g17_diffusion
 from .imf_external import IMF_SDMX_ROOT, IMF_SERIES, imf_key, parse_imf_bop_iip
@@ -649,6 +650,32 @@ def fetch_boj_tss(self, series_id, start, item, key):
         raise SourceUnavailable("BOJ series code differs from the approved daily/monthly definition")
     response = self._get(boj_url(exact[0]), headers={"Accept": "text/csv"})
     return FetchedSeries(series_id, boj_url(exact[0]), None, parse_boj_csv(response.text, series_id, start))
+
+
+def fetch_bundesbank(self, series_id, start, item, key):
+    """Validate and fetch native data for BUNDESBANK."""
+    exact = BUNDESBANK_SERIES.get(series_id)
+    if exact is None or key != exact[1]:
+        raise SourceUnavailable("Bundesbank series key differs from the approved definition")
+    url = bundesbank_url(exact[0], exact[1])
+    response = self._get(url, params={"format": "csv", "lang": "en"}, headers={"Accept": "text/csv"})
+    return FetchedSeries(series_id, str(response.request.url), None, parse_bundesbank_csv(response.text, series_id, start))
+
+
+def fetch_fred_wayback(self, series_id, start, item, key):
+    """Validate and read native data for FRED_WAYBACK (an archived FRED download, verified)."""
+    from .fred_wayback import CAPTURES, read_fred_wayback
+    code, _, timestamp = key.partition("/")
+    if CAPTURES.get(code, {}).get("timestamp") != timestamp:
+        raise SourceUnavailable("Archived FRED capture differs from the pinned definition")
+    try:
+        values, _ = read_fred_wayback(Path(os.environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")), code)
+    except (OSError, ProviderError) as exc:
+        raise ProviderError("Archived FRED capture is missing or invalid") from exc
+    values = {day: value for day, value in values.items() if start is None or day >= start}
+    if not values:
+        raise ProviderError("Archived FRED capture has no values in requested period")
+    return FetchedSeries(series_id, item["source_url"], None, values)
 
 
 def fetch_oecd_cli(self, series_id, start, item, key):

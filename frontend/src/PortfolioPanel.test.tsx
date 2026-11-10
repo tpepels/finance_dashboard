@@ -17,7 +17,7 @@ const bundles: Record<string, unknown> = {
   'owner-inputs': { ...owner, is_example: true },
   P04: bundle('P04', { is_example: true, inputs: owner, shocks: [{ key: 'rates_up', label: 'Bond yields rise by 1 percentage point', impact_pct: -1.75 }],
     history: { us_10y: [['2020-01', 1.8]], usd_per_eur: [['2020-01', 1.1]] } }),
-  P05: bundle('P05', { is_example: true, chosen: 'threshold', inputs: owner, period: { from: '1999-01', to: '2022-12', months: 288 },
+  P05: bundle('P05', { is_example: true, chosen: 'threshold', bond_leg: 'euro', inputs: owner, period: { from: '1999-01', to: '2022-12', months: 288 },
     rules: [{ key: 'never', label: 'Never rebalance', final: 250000, max_drawdown: -0.4, costs: 0, rebalances: 0,
       path: [['1999-01', 100000], ['2022-12', 250000]] }] }),
   P01: bundle('P01', { funds: [{ key: 'ucits_world', name: 'iShares Core MSCI World UCITS ETF', date: '2026-11-05',
@@ -45,6 +45,7 @@ describe('PortfolioPanel', () => {
     expect(screen.getByRole('img', { name: /effect on your portfolio/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /rebalancing rules/i })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Your portfolio' })).toBeTruthy();
+    expect(screen.getByText(/german 10-year government bond/i)).toBeTruthy();
     expect(screen.getAllByText(/example portfolio/i).length).toBeGreaterThan(0);
     expect(container.querySelector('table')).toBeNull();
   });

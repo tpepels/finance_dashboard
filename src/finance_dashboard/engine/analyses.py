@@ -13,7 +13,7 @@ from statistics import pstdev
 
 from .recessions import recession_periods
 from .bundle import AnalysisDefinition, Computed
-from .transforms import (applied, complete_months, contiguous_tail, index_100, month_end, own_history,
+from .transforms import (applied, par_bond_returns, splice_identical, complete_months, contiguous_tail, index_100, month_end, own_history,
                          percentile, previous_month, return_summary)
 
 
@@ -659,8 +659,7 @@ F02 = AnalysisDefinition("F02", {f"{series}:{area}": sid for (series, area), sid
 
 STRESS_GAUGES = {"nfci": ("Chicago Fed financial conditions (NFCI)", "stress.us.nfci"),
                  "adjusted_nfci": ("NFCI adjusted for the economy", "stress.us.adjusted_nfci"),
-                 "ofr_fsi": ("OFR financial stress index (global)", "stress.global.ofr_fsi"),
-                 "baa": ("Baa corporate bond spread over 10-year Treasuries", "credit.us.baa_10y_spread")}
+                 "ofr_fsi": ("OFR financial stress index (global)", "stress.global.ofr_fsi")}
 FSI_CATEGORIES = ("credit", "equity_valuation", "safe_assets", "funding", "volatility")
 FSI_REGIONS = ("region_united_states", "region_other_advanced", "region_emerging_markets")
 
@@ -674,8 +673,15 @@ def _parts(points: dict, names: tuple[str, ...]) -> dict | None:
     return {"date": day.isoformat(), "parts": [{"key": n, "value": s[day]} for n, s in zip(names, series)]}
 
 
+HIGH_YIELD_NAME = "US high-yield bond spread (ICE BofA option-adjusted)"
+
+
 def _f04(points: dict, view: dict) -> Computed:
     gauges = []
+    high_yield, check = splice_identical(points.get("hy_archive", []), points.get("hy_current", []))
+    own = _with_range(high_yield)
+    if own:
+        gauges.append({"key": "high_yield", "name": HIGH_YIELD_NAME, **own})
     for key, (name, _) in STRESS_GAUGES.items():
         own = _with_range(points.get(key, []))
         if own:
@@ -685,14 +691,18 @@ def _f04(points: dict, view: dict) -> Computed:
               "fsi_parts": {"date": categories["date"], "categories": categories["parts"],
                             "regions": regions["parts"] if regions and regions["date"] == categories["date"] else []}
               if categories else None,
-              "history": {key: _month_series(points.get(key, [])) for key in STRESS_GAUGES}}
+              "history": {**{key: _month_series(points.get(key, [])) for key in STRESS_GAUGES},
+                          "high_yield": _month_series(high_yield)},
+              "high_yield_check": check}
     return Computed(values=values, estimates=None, comparison=["gauges", "fsi_parts"], transforms=[
+        applied("splice_identical", applied_to=["hy_archive", "hy_current"], produces=["high_yield"], **check),
         applied("own_history", applied_to=list(STRESS_GAUGES), produces=["gauges"]),
         applied("additive_parts", applied_to=[f"fsi_part:{n}" for n in FSI_CATEGORIES + FSI_REGIONS], produces=["fsi_parts"]),
         applied("month_end", applied_to=list(STRESS_GAUGES), produces=["history"])])
 
 
 F04 = AnalysisDefinition("F04", {
+    "hy_current": "stress.us.high_yield_oas", "hy_archive": "stress.us.high_yield_oas_fred_archive",
     **{key: sid for key, (_, sid) in STRESS_GAUGES.items()},
     **{f"fsi_part:{n}": f"stress.global.ofr_fsi.{n}" for n in FSI_CATEGORIES + FSI_REGIONS},
 }, _f04)
@@ -1434,9 +1444,12 @@ def _p05(daily: dict, view: dict, artifacts: dict) -> Computed:
     owner = _owner(artifacts)
     points = _completed(daily, view)
     fx = month_end(points.get("usd_per_eur", []))
+    euro_bonds = bool(owner.get("bonds_hedged", True))
+    bond_returns = (par_bond_returns({k: v for k, (_, v) in month_end(points.get("bund_yield", [])).items()}) if euro_bonds
+                    else _eur_returns(None, {k: v for k, (_, v) in month_end(points.get("bonds", [])).items()}, fx))
     returns = {"equity": _eur_returns(month_end(points.get("equity", [])), None, fx),
                "gold": _eur_returns(month_end(points.get("gold", [])), None, fx),
-               "bonds": _eur_returns(None, {k: v for k, (_, v) in month_end(points.get("bonds", [])).items()}, fx)}
+               "bonds": bond_returns}
     weights = owner["allocation"]
     used = [a for a, w in weights.items() if w > 0]
     months = sorted(set.intersection(*(set(returns[a]) for a in used))) if used else []
@@ -1453,20 +1466,23 @@ def _p05(daily: dict, view: dict, artifacts: dict) -> Computed:
                                                           tax_rate=owner.get("tax", {}).get("rate_pct", 0.0) / 100)}
              for key in ("never", "calendar", "threshold")]
     values = {"rules": rules, "chosen": reb["rule"], "is_example": owner.get("is_example", True),
+              "bond_leg": "euro" if euro_bonds else "us_in_eur",
               "period": {"from": _month_label(run[0]) if run else None, "to": _month_label(run[-1]) if run else None, "months": len(run)},
               "inputs": {**{k: owner[k] for k in ("allocation", "rebalancing", "trading_cost_bps", "start_value_eur",
                                                   "monthly_contribution_eur", "annual_withdrawal_pct")},
                          "tax": owner.get("tax", {"mode": "none", "rate_pct": 0.0})}}
     return Computed(values=values, estimates=None, comparison=["rules"], transforms=[
         applied("complete_months", applied_to=list(daily), today=view_today(view).isoformat()),
-        applied("fx_translation", applied_to=["equity", "gold", "bonds"], produces=["EUR returns"]),
+        applied("fx_translation", applied_to=["equity", "gold"] + ([] if euro_bonds else ["bonds"]), produces=["EUR returns"]),
+        *([applied("par_bond_return", applied_to=["bund_yield"], produces=["German 10-year bond monthly return"])] if euro_bonds else []),
         applied("contiguous_tail", applied_to=["matched months"]),
         applied("rebalancing_simulation", applied_to=["owner_inputs"], rules=["never", "calendar", "threshold"])])
 
 
 P05 = AnalysisDefinition("P05", {"equity": "equity.world.msci_acwi_netr_usd", "gold": "gold.usd.monthly_average",
                                  "bonds": "returns.swinkels.us.sovereign_10y_original_1962_usd",
-                                 "usd_per_eur": "fx.usd_per_eur.ecb"}, _p05, artifacts=("owner_inputs",))
+                                 "usd_per_eur": "fx.usd_per_eur.ecb",
+                                 "bund_yield": "bond.de.bund_10y_par_yield_month_end"}, _p05, artifacts=("owner_inputs",))
 
 def _mi(key: tuple[int, int]) -> int:
     return key[0] * 12 + key[1] - 1
@@ -1636,16 +1652,33 @@ def _g03(points: dict, view: dict) -> Computed:
                                  **(_with_range(series) or {}), "history": _series(series)})
     coverage = points.get("oecd_coverage", [])
     members = points.get("oecd_members", [])
-    values = {"alternatives": alternatives, "oecd_coverage": _series(coverage), "oecd_members": _series(members)}
-    return Computed(values=values, estimates=None, comparison=list(G03_ALTERNATIVES), transforms=[])
+    cap, pe = dict(points.get("acwi_mkt_cap", [])), dict(points.get("acwi_pe", []))
+    earnings = {day: cap[day] / pe[day] / 1000 for day in sorted(set(cap) & set(pe)) if pe[day]}   # USD billions
+    gdp = {day.year: value for day, value in points.get("world_gdp", [])}
+    share = [[str(day.year), value * 1e9 / gdp[day.year] * 100] for day, value in earnings.items()
+             if day.month == 12 and day.year in gdp and gdp[day.year]]
+    latest = max(earnings) if earnings else None
+    values = {"alternatives": alternatives, "oecd_coverage": _series(coverage), "oecd_members": _series(members),
+              "listed_earnings": {"history": [[day.isoformat(), value] for day, value in earnings.items()],
+                                  "share_of_gdp": share,
+                                  "latest": {"month": latest.isoformat(), "earnings_usd_bn": earnings[latest],
+                                             "market_cap_usd_bn": cap[latest] / 1000, "pe": pe[latest]} if latest else None}}
+    return Computed(values=values, estimates=None, comparison=list(G03_ALTERNATIVES) + ["listed_earnings"], transforms=[
+        *([applied("share_of_total", applied_to=["acwi_mkt_cap", "acwi_pe"],
+                   note="aggregate trailing earnings = index market cap / index P/E (MSCI: P/E = total cap / total earnings); "
+                        "share of world GDP from December months only, against that calendar year's GDP")] if earnings else [])])
 
 
 G03 = AnalysisDefinition("G03", {"eu27_profit_share": "profit.eu27.nonfinancial_gross_surplus_value_added",
                                  "oecd_surplus_gdp": "profit.oecd38.corporate_gross_surplus_gdp",
                                  "oecd_coverage": "profit.oecd38.corporate_gross_surplus_gdp_coverage",
-                                 "oecd_members": "profit.oecd38.corporate_gross_surplus_member_count"}, _g03,
+                                 "oecd_members": "profit.oecd38.corporate_gross_surplus_member_count",
+                                 "acwi_mkt_cap": "valuation.acwi.msci_index_market_cap_usd",
+                                 "acwi_pe": "valuation.acwi.msci_trailing_pe",
+                                 "world_gdp": "gdp.nominal_usd.world"}, _g03,
                          alternatives={"eurostat_nfc_gross_profit_share": ("eu27_profit_share",),
-                                       "oecd_corporate_gross_surplus_context": ("oecd_surplus_gdp", "oecd_coverage", "oecd_members")})
+                                       "oecd_corporate_gross_surplus_context": ("oecd_surplus_gdp", "oecd_coverage", "oecd_members"),
+                                       "msci_acwi_aggregate_earnings": ("acwi_mkt_cap", "acwi_pe")})
 
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,

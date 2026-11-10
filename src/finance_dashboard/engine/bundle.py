@@ -97,6 +97,7 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
     alternative_role = {role: variant for variant in verified for role in definition.alternatives[variant]}
     inputs = []
     unaccepted = []
+    accepted_roles = set()
     for role, series_id in definition.inputs.items():
         if role in alternative_role:
             provenance = {"accepted_under": {"analysis_id": definition.analysis_id, "role": f"variant:{alternative_role[role]}"},
@@ -104,6 +105,7 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
         else:
             try:
                 provenance = input_provenance(snapshot, definition.analysis_id, series_id)
+                accepted_roles.add(role)
             except UnacceptedInput:
                 provenance = None
                 if resolved:
@@ -117,7 +119,7 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
     elif verified:
         basis = {"kind": "verified_alternatives", "variants": verified}
     if basis:
-        usable = definition.inputs if basis["kind"] == "original" else alternative_role
+        usable = definition.inputs if basis["kind"] == "original" else set(alternative_role) | accepted_roles
         role_points = {role: points.get(role, []) if role in usable else [] for role in definition.inputs}
         computed = (definition.compute(role_points, view, artifacts or {}) if definition.artifacts
                     else definition.compute(role_points, view))
