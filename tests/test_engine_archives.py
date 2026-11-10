@@ -138,3 +138,28 @@ class EventArtifactTests(unittest.TestCase):
         covid = next(e for e in events if e["id"] == "covid_pandemic_2020")
         self.assertEqual(covid["date"], "2020-03-11")
         self.assertTrue(covid["source_url"].startswith("https://"))
+
+
+class L04ExtensionTests(unittest.TestCase):
+    def test_the_euklems_method_spans_1995_2021_with_bounds_and_the_wiod_overlap(self):
+        row = {"surplus_value_comp": 0.76, "surplus_value_lab": 0.51, "profit_rate_comp": 0.15, "profit_rate_lab": 0.12}
+        k = lambda v: {"PRT": {1995: {**row, "surplus_value_comp": v - 0.1}, 2014: {**row, "surplus_value_comp": v + 0.02},
+                               2021: {**row, "surplus_value_comp": v}}}
+        rates = {"status": "ready", "years": [2014], "input_output": False,
+                 "classifications": {"rotta_kumar_2024": {"PRT": {2014: row}}},
+                 "extension": {"source": "EU KLEMS & INTANProd Release 2025", "variants": {
+                     "rotta_kumar_2024|mixed_productive": k(0.6), "rotta_kumar_2024|mixed_unproductive": k(0.58)},
+                     "overlap": {"PRT": {"years": 15, "mean_difference": -0.01}}}}
+        values = L04.compute({}, {}, {"marxian_rates": rates}).values
+        self.assertEqual(values["methods"], ["klems", "sea"])
+        prt = next(r for r in values["countries"] if r["country"] == "PRT")
+        klems = prt["methods"]["klems"]
+        self.assertEqual(klems["year"], 2021)
+        self.assertAlmostEqual(klems["surplus_value"]["min"], 0.51)
+        self.assertAlmostEqual(klems["surplus_value"]["max"], 0.6)
+        self.assertEqual({v["classification"] for v in klems["surplus_value"]["variants"]},
+                         {"rotta_kumar_2024|mixed_productive", "rotta_kumar_2024|mixed_unproductive"})
+        history = values["history"]["klems"]["PRT"]
+        self.assertEqual(history["rotta_kumar_2024|mixed_productive:comp"][0], ["1995-01-01", 0.5])
+        self.assertEqual(history["wiod:comp"], [["2014-01-01", 0.76]])
+        self.assertEqual(values["overlap"]["PRT"]["mean_difference"], -0.01)

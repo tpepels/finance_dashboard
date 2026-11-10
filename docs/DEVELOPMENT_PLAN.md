@@ -108,9 +108,11 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
   * C02: the Philadelphia Fed's unemployment vintages (collected from the original BLS releases, `python -m finance_dashboard.philly_rtdsm`) recompute the Sahm rule at each of 244 quarterly vintages since 1965; FRED's real-time Sahm values agree at two decimals in 242. The two differences (April and July 2026) are listed on the page and in the export.
   * Owner-supplied Phase 2 roles are accepted when their supplying store holds valid values: your saved portfolio inputs (never the example) for P04 and P05, and the curated shock register for C05 and P03, each with a limitation saying where the values come from. Saving inputs re-evaluates Phase 2 in the background. C05 and P03 have no open gates; with saved inputs P04 keeps only convexity and P05 only constituent returns and benchmark weights.
 
+* **L04 extension (2026-11-10):** EU KLEMS & INTANProd Release 2025 all-country files (national, growth and capital accounts) are archived (`python -m finance_dashboard.euklems_marxian`) and the SEA formulas applied to 1995-2021 for the eight non-Chinese L04 countries. Each WIOD industry maps to one EU KLEMS leaf; the finest published cover is used per country, and an industry spanning both sides (M; E under Tsoulfidis & Paitaridis; M-N in Japan) is counted once each way. Over 2000-2014 the rate of surplus value differs from WIOD by -0.05 to +0.08 (United States -0.14 to -0.10). L04 offers it as a third method beside WIOD.
+
 ## Next slices
 
-1. **L04 extension 1995-2021:** EU KLEMS & INTANProd Release 2025 (capital, labour and value added by industry, 1995-2021) with OECD ICIO 2025 (1995-2022) for the input-origin ratio, reconciled with WIOD over 2000-2014.
+1. **L04 input-output correction after 2014:** needs the OECD ICIO 2025 tables (1995-2022). The OECD site refuses automated downloads (HTTP 403 challenge), so the owner downloads them; the reader then follows `wiod_io`.
 2. **Sources found for the known gaps** (each to be pinned, read and taken through Phase 2):
    * More shock dates beyond the curated register: Jordà-Schularick-Taylor Macrohistory R6 crisis dates (18 economies, 1870-2020).
 

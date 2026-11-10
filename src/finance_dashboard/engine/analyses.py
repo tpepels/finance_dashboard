@@ -1266,42 +1266,62 @@ L04_METHODS = {"io": ("io_", "Input-output corrected value added (the authors' f
                "sea": ("", "Value added from the Socio-Economic Accounts only")}
 
 
+def _spread(rows: dict[str, dict], year: int, prefix: str) -> dict:
+    """Min, max and every variant of both measures across classifications and wage definitions in one year."""
+    variants = {"surplus_value": [], "profit_rate": []}
+    for cls, row in rows.items():
+        for wage in L04_WAGES:
+            for measure in variants:
+                key = f"{prefix}{measure}_{wage}"
+                if key in row.get(year, {}):
+                    variants[measure].append({"classification": cls, "wage": wage, "value": row[year][key]})
+    return {"year": year, **{measure: ({"min": min(v["value"] for v in items), "max": max(v["value"] for v in items),
+                                       "variants": items} if items else None) for measure, items in variants.items()}}
+
+
+def _lines(rows: dict[str, dict], prefix: str, label=lambda cls: cls) -> dict:
+    return {f"{label(cls)}:{wage}": [[f"{y}-01-01", data[y][f"{prefix}surplus_value_{wage}"]]
+                                     for y in sorted(data) if f"{prefix}surplus_value_{wage}" in data[y]]
+            for cls, data in rows.items() for wage in ("comp", "lab")}
+
+
 def _l04(points: dict, view: dict, artifacts: dict) -> Computed:
     rates = artifacts.get("marxian_rates") or {}
     classes = rates.get("classifications", {})
-    methods = [m for m in L04_METHODS if m == "sea" or rates.get("input_output")]
+    extension = rates.get("extension") or {}
+    klems = extension.get("variants", {})
+    methods = (["io"] if rates.get("input_output") else []) + (["klems"] if klems else []) + ["sea"]
     countries, history = [], {m: {} for m in methods}
     for country in L04_COUNTRIES:
-        years = sorted(set().union(*(set(c.get(country, {})) for c in classes.values()))) if classes else []
+        wiod_rows = {cls: data.get(country, {}) for cls, data in classes.items()}
+        years = sorted(set().union(*(set(r) for r in wiod_rows.values()))) if wiod_rows else []
         if not years:
             continue
-        year = years[-1]
-        entry = {"country": country, "year": year, "methods": {}}
-        for method in methods:
+        entry = {"country": country, "year": years[-1], "methods": {}}
+        for method in [m for m in methods if m != "klems"]:
             prefix = L04_METHODS[method][0]
-            variants = {"surplus_value": [], "profit_rate": []}
-            for cls, data in classes.items():
-                row = data.get(country, {}).get(year, {})
-                for wage in L04_WAGES:
-                    for measure in variants:
-                        key = f"{prefix}{measure}_{wage}"
-                        if key in row:
-                            variants[measure].append({"classification": cls, "wage": wage, "value": row[key]})
-            entry["methods"][method] = {measure: ({"min": min(v["value"] for v in items), "max": max(v["value"] for v in items),
-                                                   "variants": items} if items else None)
-                                        for measure, items in variants.items()}
-            history[method][country] = {
-                f"{cls}:{wage}": [[f"{y}-01-01", data[country][y][f"{prefix}surplus_value_{wage}"]]
-                                  for y in sorted(data.get(country, {})) if f"{prefix}surplus_value_{wage}" in data[country][y]]
-                for cls, data in classes.items() for wage in ("comp", "lab")}
+            entry["methods"][method] = _spread(wiod_rows, years[-1], prefix)
+            history[method][country] = _lines(wiod_rows, prefix)
+        klems_rows = {key: data.get(country, {}) for key, data in klems.items() if data.get(country)}
+        if klems_rows:
+            last = max(set.intersection(*(set(r) for r in klems_rows.values())))
+            entry["methods"]["klems"] = _spread(klems_rows, last, "")
+            history["klems"][country] = {**_lines(klems_rows, ""),
+                                         **_lines({"wiod": wiod_rows.get("rotta_kumar_2024", {})}, "")}
         countries.append(entry)
+    labels = {m: L04_METHODS[m][1] for m in methods if m in L04_METHODS}
+    if klems:
+        labels["klems"] = "EU KLEMS 2025, value added only, 1995 onward (mixed industries counted both ways)"
     return Computed(values={"countries": countries, "history": history, "wages": L04_WAGES, "methods": methods,
-                            "method_labels": {m: L04_METHODS[m][1] for m in methods},
-                            "classifications": list(classes)}, estimates=None, comparison=["surplus_value", "profit_rate"],
+                            "method_labels": labels, "classifications": list(classes),
+                            "overlap": extension.get("overlap", {}), "extension_source": extension.get("source")},
+                    estimates=None, comparison=["surplus_value", "profit_rate"],
                     transforms=[applied("share_of_total", applied_to=["marxian_rates"],
                                         note="rate of surplus value = (VA - wages) / wages; net profit rate = (VA - wages) / K "
                                              "of the productive sector; the input-output method replaces VA by "
-                                             "(WIOT.VA.PA / WIOT.TV.PA) x GO.PA (Rotta & Kumar Table A3)")])
+                                             "(WIOT.VA.PA / WIOT.TV.PA) x GO.PA (Rotta & Kumar Table A3); the EU KLEMS "
+                                             "method applies the same SEA formulas to EU KLEMS industries, counting an "
+                                             "industry that spans both sides once as productive and once as unproductive")])
 
 
 L04 = AnalysisDefinition("L04", {}, _l04, artifacts=("marxian_rates",))

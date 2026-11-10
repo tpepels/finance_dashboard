@@ -888,7 +888,6 @@ export function VariantSpread({ theme, title, rows, format, wageLabels }: {
   const x = scale(lo, hi, left, right);
   const present = new Set(rows.flatMap(r => r.variants.map(v => v.wage)));
   const wages = Object.keys(wageLabels).filter(w => present.has(w));
-  const classes = [...new Set(rows.flatMap(r => r.variants.map(v => v.classification)))];
   const H = top + rows.length * rowH + 30;
   return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}: ${rows.map(r => `${r.label} ${format(r.min)} to ${format(r.max)}`).join('; ')}`}>
@@ -908,7 +907,7 @@ export function VariantSpread({ theme, title, rows, format, wageLabels }: {
         <rect x={x(r.min)} y={cy - 5} width={Math.max(2, x(r.max) - x(r.min))} height="10" rx="5" fill={c.grid}/>
         {r.variants.map((v, j) => {
           const colour = c.series[Math.max(0, wages.indexOf(v.wage))];
-          const ring = classes.indexOf(v.classification) === 1;
+          const ring = v.classification.startsWith('tsoulfidis');
           return <circle key={j} data-part="variant" cx={x(v.value)} cy={cy} r={ring ? 5 : 6} fill={ring ? c.surface : colour}
             stroke={colour} strokeWidth="2"><title>{`${r.label}: ${format(v.value)} (${wageLabels[v.wage] ?? v.wage}, ${v.classification})`}</title></circle>;
         })}
