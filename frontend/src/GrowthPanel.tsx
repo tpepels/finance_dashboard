@@ -72,7 +72,7 @@ function Persistence({ bundle, theme, recessions }: { bundle: Bundle<C05Values>;
       <RecoveryBars theme={theme} episodes={shown} labels={data.labels}/>
       <p className="decision-caption">Each bar runs from the level's pre-recession peak until it was regained; the label gives the
         fall from peak to trough and the months to recover. Pale bars have not yet regained their peak. Recessions before 1948, with
-        only industrial production, are in the export. Shocks named under a year come from a curated, sourced register.</p>
+        only industrial production, are in the export. Shocks named under a year come from a curated, sourced register; US banking crises from the Jordà-Schularick-Taylor chronology.</p>
     </div>
     <h4 className="decision-subhead">United States: levels through every recession</h4>
     <div className="decision-multiples">

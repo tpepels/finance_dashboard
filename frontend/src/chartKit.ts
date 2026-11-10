@@ -236,13 +236,14 @@ export function timeChart(input: TimeChartInput): EChartsOption {
     ],
     series: series.map((s, index) => {
       const colour = seriesColour(s, theme);
+      const observed = s.data.filter(p => p[1] !== null).length;   // gap markers inserted by breakGaps are not points
       return {
         type: 'line' as const,
         name: s.name,
         data: s.data,
         step: s.step ? 'end' as const : undefined,
-        showSymbol: s.dots || s.data.length < 30,
-        symbolSize: s.dots && s.data.length > 60 ? 3 : 8,
+        showSymbol: s.dots || observed < 30,
+        symbolSize: s.dots && observed > 60 ? 3 : 8,
         connectNulls: false,
         lineStyle: { color: colour, width: s.width ?? (compact ? 2.5 : 2) },
         itemStyle: { color: colour },

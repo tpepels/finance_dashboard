@@ -1484,6 +1484,72 @@
         "redistribution": "not_cleared",
         "machine_verified_licence": false
       }
+    },
+    {
+      "id": "jst-macrohistory",
+      "hosts": [
+        "www.macrohistory.net"
+      ],
+      "evidence_url": "https://www.macrohistory.net/database/",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "jst-macrohistory-files",
+      "hosts": [
+        "sfff5b3ac9317c4be.jimcontent.com"
+      ],
+      "evidence_url": "https://www.macrohistory.net/database/",
+      "classification": "internal_conservative",
+      "rate": {
+        "limit": 8,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 450,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 1800,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120,
+        "lease_seconds": 240
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
     }
   ],
   "collection_policy": {

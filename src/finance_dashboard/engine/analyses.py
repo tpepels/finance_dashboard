@@ -1200,7 +1200,7 @@ def drawdown_episodes(points: list[tuple[date, float]], threshold: float, recess
     return episodes
 
 
-def _p03(daily: dict, view: dict) -> Computed:
+def _p03(daily: dict, view: dict, artifacts: dict) -> Computed:
     points = _completed(daily, view)
     recession = {k for k, (_, v) in month_end(points.get("recession", [])).items() if v >= 0.5}
     ends = month_end(points.get("equity", []))
@@ -1209,7 +1209,16 @@ def _p03(daily: dict, view: dict) -> Computed:
         level = ends[key][1]
         peak = level if peak is None else max(peak, level)
         underwater.append([_month_label(key), level / peak - 1])
-    values = {"episodes": drawdown_episodes(points.get("equity", []), -0.15, recession), "underwater": underwater}
+    starts = (artifacts.get("jst_crises") or {}).get("starts", {})
+    episodes = drawdown_episodes(points.get("equity", []), -0.15, recession)
+    for episode in episodes:
+        first = int(episode["peak"][:4])
+        until = episode.get("recovery") or (_month_label(max(ends)) if ends else episode["trough"])
+        last = int(until[:4])
+        episode["banking_crises"] = sorted(country for country, years in starts.items()
+                                           if any(first <= y <= last for y in years))
+    values = {"episodes": episodes, "underwater": underwater,
+              "banking_crisis_coverage": (artifacts.get("jst_crises") or {}).get("coverage")}
     return Computed(values=values, estimates=None, comparison=["episodes"], transforms=[
         applied("complete_months", applied_to=list(daily), today=view_today(view).isoformat()),
         applied("month_end", applied_to=["equity", "recession"]),
@@ -1217,7 +1226,8 @@ def _p03(daily: dict, view: dict) -> Computed:
         applied("drawdown", applied_to=["equity"], produces=["underwater"])])
 
 
-P03 = AnalysisDefinition("P03", {"equity": "equity.world.msci_acwi_netr_usd", "recession": "recession.us.nber_indicator"}, _p03)
+P03 = AnalysisDefinition("P03", {"equity": "equity.world.msci_acwi_netr_usd", "recession": "recession.us.nber_indicator"}, _p03,
+                         artifacts=("jst_crises",))
 
 def _g01(points: dict, view: dict, artifacts: dict) -> Computed:
     filings = sorted(artifacts.get("acwi_nport") or [], key=lambda f: f["date"])
@@ -1663,8 +1673,10 @@ def _c05(daily: dict, view: dict, artifacts: dict) -> Computed:
         lo, hi = _mi(start) - 6, _mi(end or start) + 1
         shocks = [{"date": e["date"], "label": e["label"]} for e in events
                   if lo <= _mi((int(e["date"][:4]), int(e["date"][5:7]))) <= hi]
+        us_crises = (artifacts.get("jst_crises") or {}).get("starts", {}).get("USA", [])
+        crises = [y for y in us_crises if start[0] - 1 <= y <= (end or start)[0]]
         episodes.append({"start": _month_label(start), "end": _month_label(end) if end else None,
-                         "measures": measures, "shocks": shocks})
+                         "measures": measures, "shocks": shocks, "banking_crises": crises})
     values = {"episodes": episodes, "labels": C05_MEASURES,
               "history": {m: [[_month_label(k), v] for k, v in sorted(levels[m].items())] for m in C05_MEASURES}}
     return Computed(values=values, estimates=None, comparison=list(C05_MEASURES), transforms=[
@@ -1675,7 +1687,7 @@ def _c05(daily: dict, view: dict, artifacts: dict) -> Computed:
 
 C05 = AnalysisDefinition("C05", {"industrial_production": "activity.us.industrial_production",
                                  "payrolls": "activity.us.nonfarm_payrolls", "gdp": "activity.us.real_gdp_level",
-                                 "nber": "recession.us.nber_indicator"}, _c05, artifacts=("shock_events",))
+                                 "nber": "recession.us.nber_indicator"}, _c05, artifacts=("shock_events", "jst_crises"))
 
 G03_ALTERNATIVES = {
     "eu27_profit_share": ("EU27 non-financial corporations: gross profit share of value added", "% of value added"),

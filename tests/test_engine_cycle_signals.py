@@ -146,3 +146,23 @@ class FirstReleaseCheckTests(unittest.TestCase):
         self.assertEqual((check["compared"], check["equal_at_two_decimals"]), (2, 1))
         self.assertEqual(check["differences"], [{"vintage": "2001Q2", "month": "2001-04", "recomputed": 0.18, "fred": 0.1}])
         self.assertEqual(check["points"], [["2001-01", 0.1], ["2001-04", 0.18], ["2009-01", 1.0]])
+
+
+class JstContextTests(unittest.TestCase):
+    def test_c05_lists_us_banking_crises_starting_around_a_recession(self):
+        n = 36
+        nber = months_from((2007, 1), [12 <= i <= 29 for i in range(n)])                 # 2008-01..2009-06
+        level = [100.0] * 12 + [90.0] * 18 + [101.0] * 6
+        points = {"nber": nber, "industrial_production": monthly((2007, 1), level), "payrolls": [], "gdp": []}
+        jst = {"starts": {"USA": [1984, 2007], "ESP": [2008]}}
+        values = C05.compute(points, {"today": "2012-01-01"}, {"shock_events": [], "jst_crises": jst}).values
+        self.assertEqual(values["episodes"][-1]["banking_crises"], [2007])
+
+    def test_p03_counts_economies_whose_banking_crisis_started_during_a_fall(self):
+        from finance_dashboard.engine.analyses import P03
+        equity = monthly((2007, 1), [100.0] * 10 + [70.0] * 14 + [110.0] * 6)
+        points = {"equity": equity, "recession": monthly((2007, 1), [0.0] * 30)}
+        jst = {"starts": {"USA": [2007], "ESP": [2008], "JPN": [1997]}}
+        values = P03.compute(points, {"today": "2012-01-01"}, {"jst_crises": jst}).values
+        episode = values["episodes"][0]
+        self.assertEqual(episode["banking_crises"], ["ESP", "USA"])

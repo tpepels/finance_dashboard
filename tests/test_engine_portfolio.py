@@ -42,7 +42,7 @@ class PortfolioEngineTests(unittest.TestCase):
         points = {role: [] for role in P03.inputs}
         points["equity"] = monthly((2020, 1), [100, 90, 70, 80, 105, 110, 108, 109])
         points["recession"] = monthly((2020, 1), [0, 0, 1, 1, 0, 0, 0, 0])
-        values = P03.compute(points, {"today": "2026-11-09"}).values
+        values = P03.compute(points, {"today": "2026-11-09"}, {}).values
         self.assertEqual(len(values["episodes"]), 1)
         self.assertEqual(values["underwater"][2][0], "2020-03")
 

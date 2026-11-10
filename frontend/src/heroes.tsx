@@ -845,12 +845,12 @@ export function CorrelationGrid({ theme, cells, pairs, periods, labels }: {
 }
 
 export type Episode = { peak: string; trough: string; recovery: string | null; depth: number; months_down: number;
-  months_to_recover: number | null; us_recession: boolean };
+  months_to_recover: number | null; us_recession: boolean; banking_crises?: string[] };
 
 /** Each fall deeper than 15%: how deep it went (bar) and how long it took to fall and to recover. */
 export function EpisodeBars({ theme, episodes }: { theme: Theme; episodes: Episode[] }) {
   const c = palette(theme);
-  const W = 760, left = 190, right = 470, rowH = 50, top = 34;
+  const W = 760, left = 190, right = 470, rowH = 58, top = 34;
   const deepest = Math.min(-0.2, ...episodes.map(e => e.depth));
   const x = scale(deepest * 1.1, 0, left, right);
   const H = top + episodes.length * rowH + 10;
@@ -863,6 +863,9 @@ export function EpisodeBars({ theme, episodes }: { theme: Theme; episodes: Episo
       return <g key={e.peak}>
         <text x={0} y={y0 + 16} fill={c.ink} fontSize="13" fontWeight="700">{`${e.peak} → ${e.trough}`}</text>
         <text x={0} y={y0 + 33} fill={c.muted} fontSize="11">{e.us_recession ? 'during a US recession' : 'no US recession'}</text>
+        {e.banking_crises && e.banking_crises.length > 0 && <text x={0} y={y0 + 46} fill={c.muted} fontSize="11">
+          {`banking crises began in ${e.banking_crises.length} of 18 economies`}
+          <title>{`Jordà-Schularick-Taylor: ${e.banking_crises.join(', ')}`}</title></text>}
         <rect data-part="depth" x={x(e.depth)} y={y0 + 6} width={x(0) - x(e.depth)} height="20" rx="4" fill={c.negative}>
           <title>{`${(e.depth * 100).toFixed(1)}% from ${e.peak} to ${e.trough}`}</title></rect>
         <text x={x(e.depth) - 8} y={y0 + 21} textAnchor="end" fill={c.ink} fontSize="13" fontWeight="700">{`−${Math.abs(e.depth * 100).toFixed(0)}%`}</text>
@@ -987,7 +990,7 @@ export function RuleBars({ theme, rules, chosen }: { theme: Theme; rules: RuleRe
         {mine && <text x={left - 12} y={y0 + 33} textAnchor="end" fill={c.secondary} fontSize="11">your rule</text>}
         <rect data-part="final" x={left} y={y0 + 4} width={Math.max(2, x(r.final) - left)} height="18" rx="4"
           fill={c.series[0]} fillOpacity={mine ? 1 : 0.55}/>
-        <text x={x(r.final) - 6} y={y0 + 17} textAnchor="end" fill={c.surface} fontSize="12" fontWeight="700">{eur(r.final)}</text>
+        <text x={x(r.final) - 6} y={y0 + 17} textAnchor="end" fill="#ffffff" fontSize="12" fontWeight="700">{eur(r.final)}</text>
         <text x={540} y={y0 + 17} fill={c.negative} fontSize="13" fontWeight="700">{pct(r.max_drawdown, 0)}</text>
         <text x={640} y={y0 + 17} fill={c.ink} fontSize="12">{rules.some(q => q.taxes)
           ? `${eur(r.costs)} · ${eur(r.taxes ?? 0)} · ${r.rebalances}` : `${eur(r.costs)} · ${r.rebalances}`}</text>
@@ -1054,7 +1057,8 @@ export function SignalTimeline({ theme, recessions, falseAlarms, window }: { the
 }
 
 type Recovery = { peak: string; trough: string; depth: number; months_down: number; months_to_recover: number | null } | null;
-export type RecoveryEpisode = { start: string; end: string | null; shocks: { date: string; label: string }[]; measures: Record<string, Recovery> };
+export type RecoveryEpisode = { start: string; end: string | null; shocks: { date: string; label: string }[];
+  banking_crises?: number[]; measures: Record<string, Recovery> };
 
 /** Per recession, one thin bar per measure: months from the pre-recession peak until it was regained; depth at the end. */
 export function RecoveryBars({ theme, episodes, labels }: { theme: Theme; episodes: RecoveryEpisode[]; labels: Record<string, string> }) {
@@ -1080,6 +1084,8 @@ export function RecoveryBars({ theme, episodes, labels }: { theme: Theme; episod
       const y0 = top + i * rowH;
       return <g key={e.start}>
         <text x={0} y={y0 + 14} fill={c.ink} fontSize="13" fontWeight="700">{e.start.slice(0, 4)}</text>
+        {(e.banking_crises ?? []).map((year, j) => <text key={`bc-${year}`} x={0} y={y0 + 28 + (e.shocks.length + j) * 12}
+          fill={c.muted} fontSize="10">{`US banking crisis ${year}`}<title>Jordà-Schularick-Taylor crisis chronology</title></text>)}
         {e.shocks.map((s, j) => <text key={s.date} x={0} y={y0 + 28 + j * 12} fill={c.muted} fontSize="10">
           {s.label.length > 24 ? `${s.label.slice(0, 23)}…` : s.label}<title>{`${s.date}: ${s.label}`}</title></text>)}
         {keys.map((k, j) => {

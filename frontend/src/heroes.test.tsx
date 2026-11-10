@@ -329,4 +329,14 @@ describe('hero graphics', () => {
     expect(screen.getByText('−18% · not yet')).toBeTruthy();
     expect(screen.getByText('WHO pandemic')).toBeTruthy();
   });
+
+  it('notes banking crises that began during a market fall and around a recession', () => {
+    render(<EpisodeBars theme="light" episodes={[{ peak: '2007-10', trough: '2009-02', recovery: '2013-09', depth: -0.55,
+      months_down: 16, months_to_recover: 55, us_recession: true, banking_crises: ['ESP', 'USA'] }]}/>);
+    expect(screen.getByText(/banking crises began in 2 of 18 economies/i)).toBeTruthy();
+    render(<RecoveryBars theme="light" labels={{ payrolls: 'Payroll jobs' }} episodes={[{ start: '2008-01', end: '2009-06',
+      shocks: [], banking_crises: [2007], measures: { payrolls: { peak: '2008-01', trough: '2010-02', depth: -0.063,
+        months_down: 25, months_to_recover: 77 } } }]}/>);
+    expect(screen.getByText('US banking crisis 2007')).toBeTruthy();
+  });
 });

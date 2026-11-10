@@ -112,10 +112,11 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **L04 full method to 2021 (2026-11-10):** the input-origin ratio is recomputed from the already archived OECD ICIO 2025 tables (1995-2022, verified by the ICIO reader's publisher pins) with the authors' rule; over 2000-2014 it is within about 0.04 of WIOD's for all nine countries. EU KLEMS output times that ratio extends the full method to 2021 (`icio_marxian.py`); over 2000-2014 it differs from the WIOD full method by -0.11 to +0.15 in the rate of surplus value. L04's switch offers WIOD full method, EU KLEMS + ICIO full method, EU KLEMS value added only, and WIOD value added only.
 
+* **Banking crises and dark-mode pass (2026-11-10):** the Jordà-Schularick-Taylor Macrohistory R6 crisis chronology (18 economies, 1870-2020; `python -m finance_dashboard.jst`) adds independent shock context: US banking crises beside each recession in C05, and how many economies' crises began during each world equity fall in P03. All panels were checked in dark mode; rebalancing bar labels and sparse-point markers were fixed.
+
 ## Next slices
 
-1. **Sources found for the known gaps** (each to be pinned, read and taken through Phase 2):
-   * More shock dates beyond the curated register: Jordà-Schularick-Taylor Macrohistory R6 crisis dates (18 economies, 1870-2020).
+1. **Owner review** of the graphics added since the last review (C02, C05, G01-G03, L04, P01, P04, P05, the portfolio form).
 
 ## Working rules
 

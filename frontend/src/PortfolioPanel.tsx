@@ -134,7 +134,8 @@ function Crises({ bundle, theme, recessions }: { bundle: Bundle<P03Values>; them
     <div className="decision-hero">
       <EpisodeBars theme={theme} episodes={data.episodes}/>
       <p className="decision-caption">MSCI ACWI net total return in US dollars, month-end. Months to recover count from the low back to the
-        previous peak; that is the stretch a cash reserve and a rebalancing plan have to carry you through.</p>
+        previous peak; that is the stretch a cash reserve and a rebalancing plan have to carry you through. Banking crises are the
+        Jordà-Schularick-Taylor chronology (18 advanced economies, to 2020); hover a row for the countries.</p>
     </div>
     <div className="decision-charts">
       <TimePanel title="World equities below their previous peak" option={option} span={spanOf([under], ['2001-01-01', '2026-01-01'])}/>
