@@ -374,6 +374,7 @@ def research_corpus_report(
     native_role_evidence: dict[str, Any] | None = None,
     alfred_revision_proof: dict[str, Any] | None = None,
     unbound_source_evidence: dict[str, Any] | None = None,
+    owner_supply: dict[tuple[str, str], dict] | None = None,
 ) -> dict[str, Any]:
     """Join runtime evidence; declarations and source counts cannot grant approval."""
     from .comparative_corpus import comparative_evidence_summary
@@ -471,7 +472,8 @@ def research_corpus_report(
             publisher_vintage_proof=publisher_vintage_proof,
             native_role_evidence=native_role_evidence,
             alfred_revision_proof=alfred_revision_proof,
-            unbound_source_evidence=unbound_source_evidence)
+            unbound_source_evidence=unbound_source_evidence,
+            owner_supply=owner_supply)
         external_coverage = {item["id"]: item for item in (observations or {}).get("items", []) if item.get("family") == "fx"}
         requirements = []
         for role in acceptance.pop("requirements"):

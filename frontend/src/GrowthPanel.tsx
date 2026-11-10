@@ -17,7 +17,9 @@ type Gauge = { key: string; name: string; latest: number; min: number; max: numb
 type C02Values = { now: { spread: { month: string; value: number } | null; sahm: { month: string; value: number } | null;
   months_inverted_last_24: number; threshold: number }; gauges: Gauge[]; recessions: SignalEpisode[];
   false_alarms: { curve: Alarm[]; sahm: Alarm[] }; windows: { curve_months_before: number; sahm_months: [number, number] };
-  history: { spread: Line; sahm: Line } };
+  history: { spread: Line; sahm: Line };
+  first_release_check: { points: Line; compared: number; equal_at_two_decimals: number;
+    differences: { vintage: string; month: string; recomputed: number; fred: number }[] } | null };
 type C05Values = { labels: Record<string, string>; episodes: RecoveryEpisode[]; history: Record<string, Line> };
 
 const months = (line: Line): Line => line.map(([m, v]) => [monthDate(m), v]);
@@ -29,8 +31,12 @@ function Signals({ bundle, theme, recessions }: { bundle: Bundle<C02Values>; the
     { key: 'spread', title: '10-year minus 3-month Treasury yield', unit: 'percentage points', slot: 0, line: months(data.history.spread),
       ref: { value: 0, label: 'inverted below' } },
     { key: 'sahm', title: 'Sahm rule indicator', unit: 'percentage points', slot: 1, line: months(data.history.sahm),
-      ref: { value: data.now.threshold, label: 'trigger' } }].map(p => ({ ...p, option: timeChart({ theme, recessions, unit: p.unit,
-    format: v => v.toFixed(1), refLines: [p.ref], series: [{ name: p.title, slot: p.slot, data: p.line }] }) })), [data, theme, recessions]);
+      ref: { value: data.now.threshold, label: 'trigger' },
+      extra: data.first_release_check ? [{ name: 'Recomputed from original releases (Philadelphia Fed vintages)', slot: 4,
+        dots: true, width: 0, data: months(data.first_release_check.points) }] : [] }].map(p => ({ ...p, option: timeChart({ theme,
+    recessions, unit: p.unit, format: v => v.toFixed(1), refLines: [p.ref],
+    series: [{ name: p.title, slot: p.slot, data: p.line }, ...((p as { extra?: TimeSeries[] }).extra ?? [])] }) })), [data, theme, recessions]);
+  const check = data.first_release_check;
   return <>
     <div className="decision-hero decision-hero-stack">
       <Thermometers theme={theme} title="Both signals now, within their own history" unit="" rows={data.gauges.map(g => ({ area: g.key,
@@ -41,7 +47,10 @@ function Signals({ bundle, theme, recessions }: { bundle: Bundle<C02Values>; the
       <p className="decision-caption">The two signals are shown side by side, not combined. The yield curve tends to warn early and
         sometimes wrongly; the Sahm rule confirms after a recession has begun. The NBER announced each recession months later.
         An inversion counts as a warning within {data.windows.curve_months_before} months before a recession; the curve has been inverted
-        in {data.now.months_inverted_last_24} of the last 24 months.</p>
+        in {data.now.months_inverted_last_24} of the last 24 months.
+        {check && <> FRED's real-time Sahm values agree with the rule recomputed from the original BLS releases (Philadelphia Fed) in
+          {' '}{check.equal_at_two_decimals} of {check.compared} quarterly vintages{check.differences.length > 0 && <>; they differ
+          for {check.differences.map(d => `${d.month} (${d.recomputed.toFixed(2)} vs ${d.fred.toFixed(2)})`).join(', ')}</>}.</>}</p>
     </div>
     <div className="decision-charts">
       {charts.map(p => <TimePanel key={p.key} title={p.title} option={p.option} span={spanOf([p.line], ['1960-01-01', '2026-01-01'])}

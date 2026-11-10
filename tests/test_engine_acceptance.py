@@ -103,6 +103,22 @@ class AcceptanceSnapshotTests(unittest.TestCase):
         cache.get()
         self.assertEqual(len(calls), 2)
 
+    def test_refresh_reevaluates_now_while_the_current_snapshot_stays_served(self):
+        calls, pending = [], []
+
+        def loader():
+            calls.append(1)
+            return self.snap
+        cache = AcceptanceCache(loader, ttl_seconds=3600, clock=lambda: 0.0, spawn=lambda work: work())
+        cache.get()
+        cache.refresh()
+        self.assertEqual(len(calls), 2)
+        deferred = AcceptanceCache(loader, ttl_seconds=3600, clock=lambda: 0.0, spawn=pending.append)
+        deferred.warm(); pending.pop()()
+        deferred.refresh()
+        self.assertIs(deferred.get(), self.snap)        # still served while the refresh runs
+        self.assertEqual(len(pending), 1)
+
     def test_first_request_does_not_wait_for_the_evaluation(self):
         pending = []
         cache = AcceptanceCache(lambda: self.snap, ttl_seconds=60, clock=lambda: 0.0, spawn=pending.append)

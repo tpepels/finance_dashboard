@@ -29,7 +29,9 @@
     "supervisory_labour_not_separated": "Supervisory labour cannot be separated from other labour outside the United States.",
     "surplus_includes_depreciation": "Surplus is gross of depreciation, because the WIOD Socio-Economic Accounts publish no consumption of fixed capital by industry.",
     "turnover_and_circulating_capital_not_published": "Capital turnover and circulating capital are not published, so profit rates use fixed capital only.",
-    "io_total_value_adds_product_taxes": "The input-origin ratio is recomputed from the WIOD input-output tables and matches the authors; their total value counts product taxes twice, as published."
+    "io_total_value_adds_product_taxes": "The input-origin ratio is recomputed from the WIOD input-output tables and matches the authors; their total value counts product taxes twice, as published.",
+    "owner_supplied_values_not_verified": "Supplied by your saved portfolio inputs; validated for range and consistency, not checked against any account or publisher.",
+    "curated_shock_register": "Shock events come from a curated register, each dated by the official source it cites; not a complete census of shocks."
   },
   "method": {
     "P06": {
@@ -206,7 +208,7 @@
       "fixed_windows": "An inversion counts as a warning if it starts within 24 months before a recession; a Sahm trigger counts from 12 months before to 18 months after the start. Other windows would move some signals between warning and false alarm.",
       "month_end_spread": "The daily yield spread is read at each month's last trading day.",
       "few_recessions": "Only five US recessions fall inside the yield-spread history since 1982, too few to estimate how reliable either signal is.",
-      "revised_sahm": "The Sahm series is today's published history; what was known in each month may have differed."
+      "revised_sahm": "The Sahm series is FRED's real-time series. It is checked against the Sahm rule recomputed from the Philadelphia Fed's unemployment vintages, collected from the original BLS releases, at each quarterly vintage; months that differ are listed."
     },
     "C05": {
       "peak_window": "The pre-recession peak is the highest level in the 12 months before the recession starts; a different window can change depth and recovery times.",

@@ -405,11 +405,15 @@ def create_app(engine=None) -> FastAPI:
     def save_owner(body: dict):
         """Validate and store the owner's portfolio parameters locally."""
         try:
-            return save_owner_inputs(None, body)
+            saved = save_owner_inputs(None, body)
         except (OwnerInputError, ValueError, TypeError, KeyError) as error:
             raise HTTPException(422, str(error) or "Invalid portfolio inputs") from None
         except OSError:
             raise HTTPException(500, "Your portfolio inputs could not be stored; check that the data folder is writable") from None
+        # Phase 2 accepts owner-supplied roles from these inputs: re-evaluate in the background.
+        if persistent:
+            app.state.acceptance.refresh()
+        return saved
 
     @app.get("/api/recessions")
     def recessions():

@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .comparative_corpus import build_comparative_corpus
+from .owner_supply import current_supply
 from .research_artifacts import research_artifact_evidence
 from .phase2_publication_evidence import publisher_vintage_evidence
 from .phase2_native_role_originals import native_role_original_evidence
@@ -110,7 +111,8 @@ def evaluate_corpus(engine, series_registry: list, document: dict, *,
         publisher_vintage_proof=first_vintage,
         native_role_evidence=role_originals,
         alfred_revision_proof=revisions,
-        unbound_source_evidence=unbound)
+        unbound_source_evidence=unbound,
+        owner_supply=current_supply())
     return CorpusEvaluation(
         public_report=report, comparative=comparative, source_proof=proof,
         artifact_evidence=structured, publisher_vintage_proof=first_vintage,

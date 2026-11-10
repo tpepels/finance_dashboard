@@ -74,6 +74,9 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
         from ..catalog import DEFAULT_ROOT
         register = DEFAULT_ROOT / "definitions" / "shock_events.json"
         return json.loads(register.read_text())["events"]
+    if name == "rtdsm_sahm":
+        from ..philly_rtdsm import read
+        return read(Path(evidence_root))
     if name == "nber_chronology":
         from ..nber_chronology import read_nber_chronology
         return read_nber_chronology(Path(evidence_root))

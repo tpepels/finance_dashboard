@@ -104,13 +104,15 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
   * G03: MSCI ACWI index market cap is read from the archived factsheets (58 months, 2015-2026, no conflicts) and joins the trailing P/E as a third Phase 2-verified alternative; cap / P/E is the constituents' aggregate trailing earnings ($4.8 trillion to September 2026, 3.0-3.4% of world GDP at year ends).
   * F04: FRED's full high-yield spread download (1996-12-31 to 2025-11-03) is archived from the Internet Archive (`python -m finance_dashboard.fred_wayback`, pinned by CDX digest). It agrees with FRED's current three years on all 522 shared days; reconciliation counts days that rolled out of FRED as verified by the identical archived value, and F04 is now accepted. The Baa stand-in is retired.
 
+* **Gap sources, next three (2026-11-10):**
+  * C02: the Philadelphia Fed's unemployment vintages (collected from the original BLS releases, `python -m finance_dashboard.philly_rtdsm`) recompute the Sahm rule at each of 244 quarterly vintages since 1965; FRED's real-time Sahm values agree at two decimals in 242. The two differences (April and July 2026) are listed on the page and in the export.
+  * Owner-supplied Phase 2 roles are accepted when their supplying store holds valid values: your saved portfolio inputs (never the example) for P04 and P05, and the curated shock register for C05 and P03, each with a limitation saying where the values come from. Saving inputs re-evaluates Phase 2 in the background. C05 and P03 have no open gates; with saved inputs P04 keeps only convexity and P05 only constituent returns and benchmark weights.
+
 ## Next slices
 
 1. **L04 extension 1995-2021:** EU KLEMS & INTANProd Release 2025 (capital, labour and value added by industry, 1995-2021) with OECD ICIO 2025 (1995-2022) for the input-origin ratio, reconciled with WIOD over 2000-2014.
 2. **Sources found for the known gaps** (each to be pinned, read and taken through Phase 2):
-   * C02 real-time Sahm rule: Philadelphia Fed Real-Time Data Set, unemployment-rate vintages (`rucqvmd.xlsx`), to compute what the rule showed with the data known at each date.
-   * C05 and P03 independent shock dates: Jordà-Schularick-Taylor Macrohistory R6 (crisis dates, 18 economies, 1870-2020); Laeven & Valencia systemic banking crises (IMF WP 2026/094, 1970-2025) to be checked for a data file.
-   * P05 and P04 owner roles: Phase 2 still lists target weights, rebalancing rule, costs, tax and withdrawal plan as open; the owner-input store now supplies them and should be registered as their source.
+   * More shock dates beyond the curated register: Jordà-Schularick-Taylor Macrohistory R6 crisis dates (18 economies, 1870-2020).
 
 ## Working rules
 

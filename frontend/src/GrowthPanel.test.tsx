@@ -27,6 +27,8 @@ const c02 = bundle('C02', { now: { spread: { month: '2026-10', value: 0.4 }, sah
   recessions: [{ start: '2020-03', curve_inverted: { month: '2019-05', offset: -10 }, sahm_triggered: { month: '2020-04', offset: 1 },
     announced: { date: '2020-06-08', offset: 3 }, curve_observed: true, sahm_observed: true }],
   false_alarms: { curve: [], sahm: [] }, windows: { curve_months_before: 24, sahm_months: [-12, 18] },
+  first_release_check: { points: [['2026-07', 0.0]], compared: 244, equal_at_two_decimals: 242,
+    differences: [{ vintage: '2026Q2', month: '2026-04', recomputed: 0.2, fred: 0.13 }], source: {} },
   history: { spread: [['2026-10', 0.4]], sahm: [['2026-10', 0.2]] } });
 const c05 = bundle('C05', { labels: { industrial_production: 'Industrial production', payrolls: 'Payroll jobs', gdp: 'Real GDP' },
   episodes: [{ start: '2020-03', end: '2020-04', shocks: [], measures: { industrial_production: null, gdp: null,
@@ -60,6 +62,7 @@ describe('GrowthPanel', () => {
     expect(screen.getByRole('img', { name: /12-month price change/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /signals around each recession/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /months to regain/i })).toBeTruthy();
+    expect(screen.getByText(/242 of 244 quarterly vintages/)).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
     expect(urls.filter(u => u.startsWith('/api/analysis/')).sort()).toEqual(['/api/analysis/C01', '/api/analysis/C02', '/api/analysis/C03', '/api/analysis/C05', '/api/analysis/C06']);
     expect(screen.getAllByText('Export for AI')).toHaveLength(5);

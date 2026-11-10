@@ -1566,6 +1566,16 @@ def _c02(daily: dict, view: dict, artifacts: dict) -> Computed:
         return out
     false_curve = alarms(_runs(spread, lambda v: v < 0), 0, CURVE_WINDOW)
     false_sahm = alarms(_runs(sahm, lambda v: v >= SAHM_THRESHOLD), SAHM_WINDOW[1], -SAHM_WINDOW[0])
+    rtdsm = artifacts.get("rtdsm_sahm") or {}
+    compared = [(p, sahm[(int(p["month"][:4]), int(p["month"][5:7]))]) for p in rtdsm.get("points", [])
+                if (int(p["month"][:4]), int(p["month"][5:7])) in sahm]
+    first_release_check = {
+        "points": [[p["month"], round(p["value"], 2)] for p in rtdsm.get("points", [])],
+        "compared": len(compared),
+        "equal_at_two_decimals": sum(1 for p, fred in compared if round(p["value"], 2) == round(fred, 2)),
+        "differences": [{"vintage": p["vintage"], "month": p["month"], "recomputed": round(p["value"], 2), "fred": fred}
+                        for p, fred in compared if round(p["value"], 2) != round(fred, 2)],
+        "source": {k: rtdsm[k] for k in ("url", "source_sha256") if k in rtdsm}} if rtdsm else None
     now_spread = max(spread) if spread else None
     now_sahm = max(sahm) if sahm else None
     recent = [_mk(i) for i in range(last - 23, last + 1)]
@@ -1576,6 +1586,7 @@ def _c02(daily: dict, view: dict, artifacts: dict) -> Computed:
         "gauges": [g for g in (_gauge("spread", "10-year minus 3-month Treasury yield", [(date(*k, 1), v) for k, v in sorted(spread.items())], "pp"),
                                _gauge("sahm", "Sahm rule indicator", [(date(*k, 1), v) for k, v in sorted(sahm.items())], "pp")) if g],
         "recessions": recessions, "false_alarms": {"curve": false_curve, "sahm": false_sahm},
+        "first_release_check": first_release_check,
         "windows": {"curve_months_before": CURVE_WINDOW, "sahm_months": list(SAHM_WINDOW)},
         "history": {"spread": [[_month_label(k), v] for k, v in sorted(spread.items())],
                     "sahm": [[_month_label(k), v] for k, v in sorted(sahm.items())]}}
@@ -1587,7 +1598,7 @@ def _c02(daily: dict, view: dict, artifacts: dict) -> Computed:
 
 
 C02 = AnalysisDefinition("C02", {"spread": "rates.us.treasury_10y_3m_spread", "sahm": "recession.us.sahm",
-                                 "nber": "recession.us.nber_indicator"}, _c02, artifacts=("nber_chronology",))
+                                 "nber": "recession.us.nber_indicator"}, _c02, artifacts=("nber_chronology", "rtdsm_sahm"))
 
 
 def recovery(levels: dict[tuple[int, int], float], start: tuple[int, int], end: tuple[int, int] | None) -> dict | None:

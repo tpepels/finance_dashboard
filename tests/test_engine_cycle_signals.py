@@ -130,3 +130,19 @@ class SpliceTests(unittest.TestCase):
         hy = next(g for g in values["gauges"] if g["key"] == "high_yield")
         self.assertEqual((hy["history_start"], hy["as_of"], hy["latest"]), ("1997-01-02", "2026-11-05", 2.9))
         self.assertEqual(values["high_yield_check"], {"overlap_days": 1, "differing_days": 0})
+
+
+class FirstReleaseCheckTests(unittest.TestCase):
+    def test_fred_real_time_sahm_is_compared_with_the_vintage_recomputation(self):
+        n = 48
+        points = {"spread": monthly((2000, 1), [1.0] * n), "sahm": monthly((2000, 1), [0.1] * n),
+                  "nber": months_from((2000, 1), [False] * n)}
+        rtdsm = {"points": [{"vintage": "2001Q1", "month": "2001-01", "value": 0.1},
+                            {"vintage": "2001Q2", "month": "2001-04", "value": 0.18},
+                            {"vintage": "2009Q1", "month": "2009-01", "value": 1.0}],
+                 "source_sha256": "x", "url": "https://www.philadelphiafed.org/x"}
+        values = C02.compute(points, {"today": "2004-06-01"}, {"nber_chronology": {}, "rtdsm_sahm": rtdsm}).values
+        check = values["first_release_check"]
+        self.assertEqual((check["compared"], check["equal_at_two_decimals"]), (2, 1))
+        self.assertEqual(check["differences"], [{"vintage": "2001Q2", "month": "2001-04", "recomputed": 0.18, "fred": 0.1}])
+        self.assertEqual(check["points"], [["2001-01", 0.1], ["2001-04", 0.18], ["2009-01", 1.0]])

@@ -152,6 +152,10 @@ class AcceptanceCache:
             self._loading = True
         self._spawn(self._run)  # outside the lock: a synchronous spawn re-enters it
 
+    def refresh(self) -> None:
+        """Re-evaluate now (for example after the owner saves inputs); the current snapshot stays served meanwhile."""
+        self.warm()
+
     def get(self) -> AcceptanceSnapshot:
         with self._lock:
             if self._value is None and self._error is not None and not self._loading:

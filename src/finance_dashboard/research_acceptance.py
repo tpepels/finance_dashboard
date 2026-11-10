@@ -258,7 +258,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                         alfred_revision_proof: dict | None = None,
                         unbound_source_evidence: dict | None = None,
                         holdings_sources: dict | None = None,
-                        as_of: date | None = None) -> dict[str, Any]:
+                        as_of: date | None = None,
+                        owner_supply: dict | None = None) -> dict[str, Any]:
     """Evaluate all original roles using the current, independently checked inputs.
 
     `panels` must come from comparative_evidence_summary, which reconstructs
@@ -305,7 +306,19 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     for role in roles:
         if role.get("supply") == "user":
             # Owner-supplied parameters (weights, policies, costs, holdings
-            # exports) are inputs to the application, not publisher data.
+            # exports) are inputs to the application, not publisher data. A role
+            # is accepted only when its supplying store holds valid values.
+            supplied = (owner_supply or {}).get((analysis["id"], role["role"]))
+            if supplied:
+                check = _gate("user_supplied", "passed", "owner_inputs_supplied" if supplied["supplied_by"] == "owner_inputs"
+                              else "curated_register_supplied", (), supplied_by=supplied["supplied_by"],
+                              scope="Supplied by the application's own store; validated, not checked against a publisher.")
+                requirements.append({**role, "state": "user_input", "accepted": True,
+                    "sources_checked": observations_checked, "mapped_source_count": 0,
+                    "sources_with_observations": 0, "first_publication_verified": False,
+                    "limitations": [supplied["limitation"]], "source_asof_verified": False, "checks": [check],
+                    "blocking_checks": []})
+                continue
             check = _gate("user_supplied", "passed", "owner_supplied_parameter", (),
                           scope="Provided by the owner at analysis time; never fetched or inferred.")
             requirements.append({**role, "state": "user_input", "accepted": False,
