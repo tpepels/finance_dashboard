@@ -441,22 +441,28 @@ def marxian_rates(evidence_root: Path) -> dict:
     from .euklems_marxian import archived_rows, klems_sums
     rows = archived_rows(evidence_root)
     if rows:
-        variants = {f"{name}|mixed_{side}": rates_from_sums(klems_sums(rows, cls, mixed_as=code))
+        from .icio_marxian import icio_ratios
+        variants = {f"{name}|mixed_{side}": rates_from_sums(klems_sums(rows, cls, mixed_as=code),
+                                                            icio_ratios(evidence_root, cls, code))
                     for name, cls in (("rotta_kumar_2024", baseline), ("tsoulfidis_paitaridis_2017", alternative))
                     for side, code in (("productive", "PA"), ("unproductive", "UA"))}
         wiod = result["classifications"]["rotta_kumar_2024"]
-        overlap = {}
-        for country in wiod:
-            means = []
-            for side in ("productive", "unproductive"):
-                k = variants[f"rotta_kumar_2024|mixed_{side}"].get(country, {})
-                diffs = [k[y]["surplus_value_comp"] - wiod[country][y]["surplus_value_comp"] for y in YEARS
-                         if "surplus_value_comp" in k.get(y, {}) and "surplus_value_comp" in wiod[country].get(y, {})]
-                if diffs:
-                    means.append(sum(diffs) / len(diffs))
-            if means:
-                overlap[country] = {"years": len(YEARS), "mean_difference": [min(means), max(means)]}
-        result["extension"] = {"source": "EU KLEMS & INTANProd Release 2025", "variants": variants, "overlap": overlap}
+
+        def overlap(measure):
+            out = {}
+            for country in wiod:
+                means = []
+                for side in ("productive", "unproductive"):
+                    k = variants[f"rotta_kumar_2024|mixed_{side}"].get(country, {})
+                    diffs = [k[y][measure] - wiod[country][y][measure] for y in YEARS
+                             if measure in k.get(y, {}) and measure in wiod[country].get(y, {})]
+                    if diffs:
+                        means.append(sum(diffs) / len(diffs))
+                if means:
+                    out[country] = {"years": len(YEARS), "mean_difference": [min(means), max(means)]}
+            return out
+        result["extension"] = {"source": "EU KLEMS & INTANProd Release 2025; OECD ICIO 2025", "variants": variants,
+                               "overlap": overlap("surplus_value_comp"), "overlap_io": overlap("io_surplus_value_comp")}
     _RATES_CACHE[folder.name] = result
     return result
 

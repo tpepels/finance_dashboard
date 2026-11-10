@@ -16,13 +16,14 @@ type L07Values = { economies: { area: string; then_year: string; latest_year: st
   bottom50_then: number; bottom50_latest: number }[]; history: Record<string, { top1: Line; bottom50: Line }> };
 
 type Spread = { min: number; max: number; variants: Variant[] } | null;
-type Method = 'io' | 'klems' | 'sea';
+type Method = 'io' | 'klems_io' | 'klems' | 'sea';
 type L04Values = { countries: { country: string; year: number; methods: Partial<Record<Method, { year?: number; surplus_value: Spread; profit_rate: Spread }>> }[];
   history: Partial<Record<Method, Record<string, Record<string, Line>>>>; wages: Record<string, string>; classifications: string[];
-  methods: Method[]; method_labels: Record<string, string>; overlap?: Record<string, { years: number; mean_difference: number[] }> };
+  methods: Method[]; method_labels: Record<string, string>; overlap?: Record<string, { years: number; mean_difference: number[] }>;
+  overlap_io?: Record<string, { years: number; mean_difference: number[] }> };
 
 const METHOD_SHORT: Record<Method, string> = { io: "Authors' full method (input-output corrected)",
-  klems: 'EU KLEMS 1995–2021 (value added only)', sea: 'Value added only' };
+  klems_io: 'EU KLEMS + ICIO 1995–2021 (full method)', klems: 'EU KLEMS 1995–2021 (value added only)', sea: 'Value added only' };
 const signed = (v: number) => `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(2)}`;
 
 const ISO3: Record<string, string> = { USA: 'US', DEU: 'DE', FRA: 'FR', GBR: 'GB', ITA: 'IT', ESP: 'ES', PRT: 'PT', JPN: 'JP', CHN: 'CN' };
@@ -148,7 +149,7 @@ function Marxian({ bundle, theme, recessions }: { bundle: Bundle<L04Values>; the
   const history = data.history[method] ?? {};
   const panels = useMemo(() => multiples(data.countries.filter(c => history[c.country]).map(c => ({ key: c.country,
     title: entityName(ISO3[c.country] ?? c.country), entity: ISO3[c.country], unit: 'rate of surplus value',
-    lines: method === 'klems' ? [
+    lines: method.startsWith('klems') ? [
       { name: 'EU KLEMS, mixed industries productive', slot: 0, data: history[c.country]?.['rotta_kumar_2024|mixed_productive:comp'] ?? [] },
       { name: 'EU KLEMS, mixed industries unproductive', slot: 2, data: history[c.country]?.['rotta_kumar_2024|mixed_unproductive:comp'] ?? [] },
       { name: 'WIOD 2016', slot: 1, data: history[c.country]?.['wiod:comp'] ?? [] }] : [
@@ -165,10 +166,17 @@ function Marxian({ bundle, theme, recessions }: { bundle: Bundle<L04Values>; the
       <VariantSpread theme={theme} title={`Rate of surplus value, ${year}`} rows={rows('surplus_value')} format={pctFmt} wageLabels={data.wages}/>
       <h4 className="decision-subhead">Net profit rate of the productive sector, {year}: surplus relative to capital stock</h4>
       <VariantSpread theme={theme} title={`Net profit rate of the productive sector, ${year}`} rows={rows('profit_rate')} format={pctFmt} wageLabels={data.wages}/>
-      <p className="decision-caption">Rotta & Kumar's framework on {method === 'klems' ? 'EU KLEMS 2025' : 'the WIOD 2016'} data, under two published choices of which industries
+      <p className="decision-caption">Rotta & Kumar's framework on {method === 'klems_io' ? 'EU KLEMS 2025 and OECD ICIO 2025' : method === 'klems' ? 'EU KLEMS 2025' : 'the WIOD 2016'} data, under two published choices of which industries
         are productive (dot and ring) and three measures of labour income (colours). The width of each bar is how much the answer
         depends on those choices. {method === 'io'
           ? 'Value added here is their full method: productive output less only the inputs bought from productive industries, from the world input-output tables (recomputed and matched to all 645 published country-years).'
+          : method === 'klems_io'
+            ? <>Their full method extended to {year}: EU KLEMS 2025 output times the input-origin ratio recomputed from the OECD's
+              2025 input-output tables with the same rule (over 2000–2014 that ratio is within about 0.04 of WIOD's). Merged industries
+              spanning both sides are counted once each way. Over 2000–2014 this differs from the WIOD full method on average by
+              {' '}{Object.entries(data.overlap_io ?? {}).map(([c, o]) =>
+                `${entityName(ISO3[c] ?? c)} ${signed(o.mean_difference[0])} to ${signed(o.mean_difference.at(-1)!)}`).join(', ')}
+              {' '}(rate of surplus value, employee compensation). China is not in EU KLEMS.</>
           : method === 'klems'
             ? <>The same formulas on EU KLEMS 2025 industry data (value added only), up to {year}. EU KLEMS merges some WIOD industries;
               where a merged industry spans both sides (professional services M; waste and water E under the alternative
@@ -180,7 +188,7 @@ function Marxian({ bundle, theme, recessions }: { bundle: Bundle<L04Values>; the
             : 'Value added here comes from the Socio-Economic Accounts alone, without the input-output correction; switch above to compare.'}</p>
     </div>
     <h4 className="decision-subhead">Rate of surplus value over time, Rotta & Kumar sectors, {method === 'io' ? 'full method: two wage measures'
-      : method === 'klems' ? 'employee compensation: EU KLEMS with mixed industries productive (blue) or unproductive (green), WIOD 2016 (orange)'
+      : method.startsWith('klems') ? `employee compensation, ${method === 'klems_io' ? 'full method' : 'value added only'}: EU KLEMS with mixed industries productive (blue) or unproductive (green), WIOD 2016 (orange)`
       : 'value added only: two wage measures'}</h4>
     <Grid panels={panels}/>
   </>;

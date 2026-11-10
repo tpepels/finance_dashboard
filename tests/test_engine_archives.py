@@ -163,3 +163,20 @@ class L04ExtensionTests(unittest.TestCase):
         self.assertEqual(history["rotta_kumar_2024|mixed_productive:comp"][0], ["1995-01-01", 0.5])
         self.assertEqual(history["wiod:comp"], [["2014-01-01", 0.76]])
         self.assertEqual(values["overlap"]["PRT"]["mean_difference"], -0.01)
+
+
+class L04FullExtensionTests(unittest.TestCase):
+    def test_the_full_method_extends_when_the_extension_carries_input_output_rates(self):
+        row = {"surplus_value_comp": 0.6, "io_surplus_value_comp": 1.2, "io_surplus_value_lab": 1.0,
+               "io_profit_rate_comp": 0.4, "profit_rate_comp": 0.2}
+        wiod = {"surplus_value_comp": 0.76, "io_surplus_value_comp": 1.3}
+        rates = {"status": "ready", "years": [2014], "input_output": True,
+                 "classifications": {"rotta_kumar_2024": {"PRT": {2014: wiod}}},
+                 "extension": {"source": "EU KLEMS 2025 + ICIO 2025", "variants": {
+                     "rotta_kumar_2024|mixed_productive": {"PRT": {2021: row}}}, "overlap": {}, "overlap_io": {}}}
+        values = L04.compute({}, {}, {"marxian_rates": rates}).values
+        self.assertEqual(values["methods"], ["io", "klems_io", "klems", "sea"])
+        prt = next(r for r in values["countries"] if r["country"] == "PRT")
+        self.assertEqual(prt["methods"]["klems_io"]["year"], 2021)
+        self.assertEqual(prt["methods"]["klems_io"]["surplus_value"]["max"], 1.2)
+        self.assertEqual(values["history"]["klems_io"]["PRT"]["wiod:comp"], [["2014-01-01", 1.3]])

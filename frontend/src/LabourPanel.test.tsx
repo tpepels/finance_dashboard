@@ -12,17 +12,21 @@ const bundle = (id: string, values: unknown) => ({ analysis_id: id, question: `$
   method_limitations: [], inputs: [], transforms: [], limitations: [] });
 const line = [['2020-01-01', 1]];
 const bundles: Record<string, unknown> = {
-  L04: bundle('L04', { classifications: ['rotta_kumar_2024'], wages: { comp: 'employee compensation' }, methods: ['io', 'klems', 'sea'], overlap: { PRT: { years: 15, mean_difference: [-0.008, -0.002] } },
+  L04: bundle('L04', { classifications: ['rotta_kumar_2024'], wages: { comp: 'employee compensation' }, methods: ['io', 'klems_io', 'klems', 'sea'], overlap: { PRT: { years: 15, mean_difference: [-0.008, -0.002] } },
+    overlap_io: { PRT: { years: 15, mean_difference: [-0.073, 0.023] } },
     method_labels: { io: 'Input-output corrected value added', sea: 'Value added from the Socio-Economic Accounts only' },
     countries: [{ country: 'PRT', year: 2014, methods: {
       io: { surplus_value: { min: 1.0, max: 1.5, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 1.5 }] },
         profit_rate: { min: 0.3, max: 0.4, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.4 }] } },
       sea: { surplus_value: { min: 0.38, max: 0.76, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.76 }] },
         profit_rate: { min: 0.12, max: 0.16, variants: [{ classification: 'rotta_kumar_2024', wage: 'comp', value: 0.15 }] } },
+      klems_io: { year: 2021, surplus_value: { min: 0.85, max: 1.37, variants: [{ classification: 'rotta_kumar_2024|mixed_productive', wage: 'comp', value: 1.37 }] },
+        profit_rate: { min: 0.3, max: 0.4, variants: [{ classification: 'rotta_kumar_2024|mixed_productive', wage: 'comp', value: 0.4 }] } },
       klems: { year: 2021, surplus_value: { min: 0.31, max: 0.58, variants: [{ classification: 'rotta_kumar_2024|mixed_productive', wage: 'comp', value: 0.58 }] },
         profit_rate: { min: 0.1, max: 0.2, variants: [{ classification: 'rotta_kumar_2024|mixed_productive', wage: 'comp', value: 0.2 }] } } } }],
     history: { io: { PRT: { 'rotta_kumar_2024:comp': [['2014-01-01', 1.5]], 'rotta_kumar_2024:lab': [] } },
       sea: { PRT: { 'rotta_kumar_2024:comp': [['2014-01-01', 0.76]], 'rotta_kumar_2024:lab': [] } },
+      klems_io: { PRT: { 'rotta_kumar_2024|mixed_productive:comp': [['2021-01-01', 1.37]], 'wiod:comp': [['2014-01-01', 1.5]] } },
       klems: { PRT: { 'rotta_kumar_2024|mixed_productive:comp': [['2021-01-01', 0.58]], 'wiod:comp': [['2014-01-01', 0.76]] } } } }),
   L01: bundle('L01', { economies: [{ area: 'DE', base_year: '1995', latest_year: '2021', productivity: 118.2, pay: 111.4 }],
     history: { DE: { productivity: line, pay: line } } }),
@@ -53,9 +57,12 @@ describe('LabourPanel', () => {
     expect(screen.getByRole('img', { name: /rate of surplus value.*portugal 100% to 150%/i })).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: /^value added only$/i }));
     expect(screen.getByRole('img', { name: /rate of surplus value.*portugal 38% to 76%/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole('radio', { name: /eu klems/i }));
+    fireEvent.click(screen.getByRole('radio', { name: /value added only\)$/i }));
     expect(screen.getByRole('img', { name: /rate of surplus value, 2021.*portugal 31% to 58%/i })).toBeTruthy();
     expect(screen.getByText(/portugal −0\.01 to −0\.00/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: /icio/i }));
+    expect(screen.getByRole('img', { name: /rate of surplus value, 2021.*portugal 85% to 137%/i })).toBeTruthy();
+    expect(screen.getByText(/portugal −0\.07 to \+0\.02/i)).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
   });
 });

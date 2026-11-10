@@ -110,10 +110,11 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **L04 extension (2026-11-10):** EU KLEMS & INTANProd Release 2025 all-country files (national, growth and capital accounts) are archived (`python -m finance_dashboard.euklems_marxian`) and the SEA formulas applied to 1995-2021 for the eight non-Chinese L04 countries. Each WIOD industry maps to one EU KLEMS leaf; the finest published cover is used per country, and an industry spanning both sides (M; E under Tsoulfidis & Paitaridis; M-N in Japan) is counted once each way. Over 2000-2014 the rate of surplus value differs from WIOD by -0.05 to +0.08 (United States -0.14 to -0.10). L04 offers it as a third method beside WIOD.
 
+* **L04 full method to 2021 (2026-11-10):** the input-origin ratio is recomputed from the already archived OECD ICIO 2025 tables (1995-2022, verified by the ICIO reader's publisher pins) with the authors' rule; over 2000-2014 it is within about 0.04 of WIOD's for all nine countries. EU KLEMS output times that ratio extends the full method to 2021 (`icio_marxian.py`); over 2000-2014 it differs from the WIOD full method by -0.11 to +0.15 in the rate of surplus value. L04's switch offers WIOD full method, EU KLEMS + ICIO full method, EU KLEMS value added only, and WIOD value added only.
+
 ## Next slices
 
-1. **L04 input-output correction after 2014:** needs the OECD ICIO 2025 tables (1995-2022). The OECD site refuses automated downloads (HTTP 403 challenge), so the owner downloads them; the reader then follows `wiod_io`.
-2. **Sources found for the known gaps** (each to be pinned, read and taken through Phase 2):
+1. **Sources found for the known gaps** (each to be pinned, read and taken through Phase 2):
    * More shock dates beyond the curated register: Jordà-Schularick-Taylor Macrohistory R6 crisis dates (18 economies, 1870-2020).
 
 ## Working rules

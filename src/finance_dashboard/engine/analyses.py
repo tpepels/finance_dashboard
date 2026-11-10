@@ -1290,7 +1290,10 @@ def _l04(points: dict, view: dict, artifacts: dict) -> Computed:
     classes = rates.get("classifications", {})
     extension = rates.get("extension") or {}
     klems = extension.get("variants", {})
-    methods = (["io"] if rates.get("input_output") else []) + (["klems"] if klems else []) + ["sea"]
+    klems_io = any(key.startswith("io_") for data in klems.values() for years in data.values()
+                   for row in years.values() for key in row)
+    methods = (["io"] if rates.get("input_output") else []) + (["klems_io"] if klems_io else []) + \
+        (["klems"] if klems else []) + ["sea"]
     countries, history = [], {m: {} for m in methods}
     for country in L04_COUNTRIES:
         wiod_rows = {cls: data.get(country, {}) for cls, data in classes.items()}
@@ -1298,23 +1301,28 @@ def _l04(points: dict, view: dict, artifacts: dict) -> Computed:
         if not years:
             continue
         entry = {"country": country, "year": years[-1], "methods": {}}
-        for method in [m for m in methods if m != "klems"]:
+        for method in [m for m in methods if not m.startswith("klems")]:
             prefix = L04_METHODS[method][0]
             entry["methods"][method] = _spread(wiod_rows, years[-1], prefix)
             history[method][country] = _lines(wiod_rows, prefix)
         klems_rows = {key: data.get(country, {}) for key, data in klems.items() if data.get(country)}
         if klems_rows:
             last = max(set.intersection(*(set(r) for r in klems_rows.values())))
-            entry["methods"]["klems"] = _spread(klems_rows, last, "")
-            history["klems"][country] = {**_lines(klems_rows, ""),
-                                         **_lines({"wiod": wiod_rows.get("rotta_kumar_2024", {})}, "")}
+            for method, prefix in (("klems", ""), ("klems_io", "io_")):
+                if method in methods:
+                    entry["methods"][method] = _spread(klems_rows, last, prefix)
+                    history[method][country] = {**_lines(klems_rows, prefix),
+                                                **_lines({"wiod": wiod_rows.get("rotta_kumar_2024", {})}, prefix)}
         countries.append(entry)
     labels = {m: L04_METHODS[m][1] for m in methods if m in L04_METHODS}
     if klems:
         labels["klems"] = "EU KLEMS 2025, value added only, 1995 onward (mixed industries counted both ways)"
+    if klems_io:
+        labels["klems_io"] = "EU KLEMS 2025 with the ICIO 2025 input-output correction, 1995 onward"
     return Computed(values={"countries": countries, "history": history, "wages": L04_WAGES, "methods": methods,
                             "method_labels": labels, "classifications": list(classes),
-                            "overlap": extension.get("overlap", {}), "extension_source": extension.get("source")},
+                            "overlap": extension.get("overlap", {}), "overlap_io": extension.get("overlap_io", {}),
+                            "extension_source": extension.get("source")},
                     estimates=None, comparison=["surplus_value", "profit_rate"],
                     transforms=[applied("share_of_total", applied_to=["marxian_rates"],
                                         note="rate of surplus value = (VA - wages) / wages; net profit rate = (VA - wages) / K "

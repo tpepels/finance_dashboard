@@ -186,7 +186,7 @@
     },
     "L04": {
       "theory_laden": "Marxian rates depend on which industries count as productive and how labour income is measured; the spread across variants is the point of this view.",
-      "wiod_2000_2014": "WIOD (both methods) covers 2000-2014. The EU KLEMS 2025 view extends value added only to 2021 for the eight non-Chinese countries; over 2000-2014 it differs from WIOD by up to about 0.05 in the rate of surplus value (the United States by about 0.10-0.14), and the input-output correction is not extended.",
+      "wiod_2000_2014": "WIOD covers 2000-2014. EU KLEMS 2025 extends both methods to 2021 for the eight non-Chinese countries, the full method with the input-origin ratio recomputed from OECD ICIO 2025 (within about 0.04 of WIOD's ratio over 2000-2014). Over 2000-2014 the extensions differ from WIOD by up to about 0.05 (value added only) and 0.15 (full method) in the rate of surplus value, most for the United States; the page and export give the gaps per country.",
       "two_value_added_methods": "The authors' full method corrects productive value added with the WIOD input-output tables; the value-added-only view shows how much that correction matters. Their total value counts product taxes twice, reproduced as published.",
       "merged_industries_as_bounds": "EU KLEMS merges some WIOD industries; a merged industry spanning productive and unproductive activities (M, and E under the alternative classification, M-N in Japan) is counted once each way, never split by imputation."
     },
