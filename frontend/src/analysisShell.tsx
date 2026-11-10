@@ -144,6 +144,12 @@ export function Section({ bundle, children, withheld }: { bundle: Bundle<unknown
   </section>;
 }
 
+/** Where the latest value sits in its own history, in words; the extremes are named plainly. */
+export const historyPosition = (p: number | null) => {
+  if (p === null) return '';
+  const pct = Math.round(p * 100);
+  return pct <= 0 ? 'lowest in its history' : pct >= 100 ? 'highest in its history' : `higher than ${pct}% of its history`;
+};
 export const monthDate = (month: string) => month.length === 7 ? `${month}-01` : month;
 export const yearDate = (year: string) => year.length === 4 ? `${year}-01-01` : year;
 export const percentAxis = (v: number) => `${(v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0)}%`;

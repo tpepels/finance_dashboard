@@ -8,6 +8,7 @@ import GlobalPanel from './GlobalPanel';
 import LabourPanel from './LabourPanel';
 import PortfolioPanel from './PortfolioPanel';
 import Workbench from './Workbench';
+import Overview from './Overview';
 import SourceExplorer from './SourceExplorer';
 import SourceCoveragePanel from './SourceCoveragePanel';
 import OperationsStatus from './OperationsStatus';
@@ -51,6 +52,7 @@ export default function App() {
     <div className="research-utility-bar">
       <span>GLOBAL CAPITAL MONITOR</span>
       <nav className="research-utility-actions" aria-label="Additional analyses">
+        <a href="#overview">Overview</a>
         <a href="#workbench">Find a question</a>
         <a href="#decisions">Decisions</a>
         <a href="#growth">Growth &amp; inflation</a>
@@ -75,6 +77,7 @@ export default function App() {
       </nav>
     </div>
     <div className="research-content">
+      <Overview theme={theme} dataVersion={dataVersion}/>
       <Workbench/>
       <DecisionPanel theme={theme} dataVersion={dataVersion}/>
       <GrowthPanel theme={theme} dataVersion={dataVersion}/>

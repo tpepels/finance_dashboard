@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { entityName, timeChart, type Recession, type Theme, type TimeSeries } from './chartKit';
 import { CreditVsTrend, Dumbbells, PartsBar, SectorStack, Thermometers, type SectorRow, type TrendRow } from './heroes';
 import TimePanel from './TimePanel';
-import { Section, monthDate, spanOf, useBundles, type Bundle } from './analysisShell';
+import { Section, historyPosition, monthDate, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
 type Own = { latest: number; as_of: string; own_mean: number; own_percentile: number | null; min: number; max: number };
@@ -18,7 +18,7 @@ type F06Values = { residential: ({ area: string; change_5y_pct: number | null } 
 type F07Values = { positions: ({ key: string; name: string; unit: string } & Own)[]; history: Record<string, Line> };
 
 const FALLBACK: [string, string] = ['1970-01-01', '2026-01-01'];
-const percentile = (p: number | null) => p === null ? '' : `higher than ${Math.round(p * 100)}% of its history`;
+const percentile = historyPosition;
 const signedPct = (v: number | null) => v === null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)}% in 5 years`;
 
 function multiples(series: { key: string; title: string; entity?: string; lines: TimeSeries[]; unit: string; refLines?: { value: number; label: string }[] }[],

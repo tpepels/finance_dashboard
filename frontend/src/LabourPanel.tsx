@@ -64,14 +64,19 @@ function PayProductivity({ bundle, theme, recessions }: { bundle: Bundle<L01Valu
 const SPLIT_LABELS = { compensation: 'Wages and salaries', net_operating_surplus: 'Net profit', depreciation: 'Depreciation',
   net_production_taxes: 'Production taxes (net)', remainder: 'Unallocated remainder' };
 
+/** L02's lead graphic, shared with the overview. */
+export function SplitLead({ bundle, theme }: { bundle: Bundle<L02Values>; theme: Theme }) {
+  return <StackedShares theme={theme} title="How company value added is split" labels={SPLIT_LABELS}
+    rows={(bundle.values as L02Values).economies.map(r => ({ key: r.area, label: `${entityName(r.area)} ${r.year}`, parts: r.parts }))}/>;
+}
+
 function ValueAddedSplit({ bundle, theme, recessions }: { bundle: Bundle<L02Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as L02Values;
   const panels = useMemo(() => multiples(data.economies.map(r => ({ key: r.area, title: entityName(r.area), entity: r.area, unit: '% of value added',
     lines: [{ name: 'Labour share', entity: r.area, data: data.history[r.area].labour_share }] })), theme, recessions, 'l02'), [data, theme, recessions]);
   return <>
     <div className="decision-hero">
-      <StackedShares theme={theme} title="How company value added is split" labels={SPLIT_LABELS}
-        rows={data.economies.map(r => ({ key: r.area, label: `${entityName(r.area)} ${r.year}`, parts: r.parts }))}/>
+      <SplitLead bundle={bundle} theme={theme}/>
       <p className="decision-caption">Gross value added of non-financial corporations (OECD), latest year: wages, net operating surplus (profit
         after depreciation), depreciation and net production taxes. A falling wage share leaves more for profits, which feeds earnings
         growth assumptions.</p>

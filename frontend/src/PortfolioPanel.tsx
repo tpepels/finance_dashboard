@@ -125,6 +125,11 @@ function Diversification({ bundle, theme, recessions }: { bundle: Bundle<P02Valu
   </>;
 }
 
+/** P03's lead graphic, shared with the overview. */
+export function FallsLead({ bundle, theme }: { bundle: Bundle<P03Values>; theme: Theme }) {
+  return <EpisodeBars theme={theme} episodes={(bundle.values as P03Values).episodes}/>;
+}
+
 function Crises({ bundle, theme, recessions }: { bundle: Bundle<P03Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as P03Values;
   const under = useMemo(() => data.underwater.map(([m, v]) => [monthDate(m), v] as [string, number]), [data]);
@@ -132,7 +137,7 @@ function Crises({ bundle, theme, recessions }: { bundle: Bundle<P03Values>; them
     series: [{ name: 'World equities', slot: 0, area: true, data: under }] }), [theme, recessions, under]);
   return <>
     <div className="decision-hero">
-      <EpisodeBars theme={theme} episodes={data.episodes}/>
+      <FallsLead bundle={bundle} theme={theme}/>
       <p className="decision-caption">MSCI ACWI net total return in US dollars, month-end. Months to recover count from the low back to the
         previous peak; that is the stretch a cash reserve and a rebalancing plan have to carry you through. Banking crises are the
         Jordà-Schularick-Taylor chronology (18 advanced economies, to 2020); hover a row for the countries.</p>

@@ -5,7 +5,7 @@ import TimePanel from './TimePanel';
 import { Section, monthDate, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
-type M01Values = { ladder: BankRow[]; fed_target: { lower: number | null; upper: number | null };
+export type M01Values = { ladder: BankRow[]; fed_target: { lower: number | null; upper: number | null };
   gaps: { eur_minus_usd: Line; eur_minus_jpy: Line }; history: { fed: Line; ecb: Line; boj: Line } };
 type M02Values = { split: { now: YieldParts | null; year_ago: YieldParts | null; published_breakeven: number | null };
   history: { nominal: Line; real: Line; breakeven: Line } };
@@ -14,6 +14,14 @@ type M04Values = { currencies: (CurrencyRow & { fx: Line; moves: Line; gaps: Lin
 const months = (line: Line): Line => line.map(([m, v]) => [monthDate(m), v]);
 const pctFormat = (v: number) => `${v.toFixed(Math.abs(v) < 10 ? 1 : 0)}%`;
 const FALLBACK: [string, string] = ['1999-01-01', '2026-01-01'];
+
+/** M01's lead graphic, shared with the overview. */
+export function PolicyLead({ bundle, theme }: { bundle: Bundle<M01Values>; theme: Theme }) {
+  const data = bundle.values as M01Values;
+  return <RateLadder theme={theme} banks={data.ladder} target={data.fed_target} gaps={[
+    { label: 'Euro minus dollar', value: data.gaps.eur_minus_usd.at(-1)?.[1] ?? null },
+    { label: 'Euro minus yen', value: data.gaps.eur_minus_jpy.at(-1)?.[1] ?? null }]}/>;
+}
 
 function Policy({ bundle, theme, recessions }: { bundle: Bundle<M01Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as M01Values;
@@ -30,9 +38,7 @@ function Policy({ bundle, theme, recessions }: { bundle: Bundle<M01Values>; them
     series: gaps, refLines: [{ value: 0, label: 'no gap' }] }), [theme, recessions, gaps]);
   return <>
     <div className="decision-hero">
-      <RateLadder theme={theme} banks={data.ladder} target={data.fed_target} gaps={[
-        { label: 'Euro minus dollar', value: data.gaps.eur_minus_usd.at(-1)?.[1] ?? null },
-        { label: 'Euro minus yen', value: data.gaps.eur_minus_jpy.at(-1)?.[1] ?? null }]}/>
+      <PolicyLead bundle={bundle} theme={theme}/>
       <p className="decision-caption">The shaded band on the Federal Reserve row is its target range. A negative gap means
         euro cash earns less than dollar cash, which is roughly what hedging dollars back to euros costs a year.</p>
     </div>

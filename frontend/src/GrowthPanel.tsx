@@ -6,7 +6,7 @@ import TimePanel from './TimePanel';
 import { Section, monthDate, percentAxis, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
-type C01Values = { clock: ClockRow[]; history: Record<string, Line>;
+export type C01Values = { clock: ClockRow[]; history: Record<string, Line>;
   us_activity: { industrial_production_yoy: Line; gdp_qoq: Line; unemployment: Line };
   diffusion: Record<'1m' | '3m' | '6m', Line> };
 type C03Values = { strip: StripRow[]; history: Record<string, Line>; dispersion: Line; dispersion_cohort: string[] };
@@ -82,6 +82,11 @@ function Persistence({ bundle, theme, recessions }: { bundle: Bundle<C05Values>;
   </>;
 }
 
+/** C01's lead graphic, shared with the overview. */
+export function CycleLead({ bundle, theme }: { bundle: Bundle<C01Values>; theme: Theme }) {
+  return <PhaseBoard theme={theme} rows={(bundle.values as C01Values).clock}/>;
+}
+
 function Cycle({ bundle, theme, recessions }: { bundle: Bundle<C01Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as C01Values;
   const asOf = data.clock.map(r => r.as_of).sort().at(-1);
@@ -104,7 +109,7 @@ function Cycle({ bundle, theme, recessions }: { bundle: Bundle<C01Values>; theme
   [us, data, theme, recessions]);
   return <>
     <div className="decision-hero">
-      <PhaseBoard theme={theme} rows={data.clock}/>
+      <CycleLead bundle={bundle} theme={theme}/>
       <p className="decision-caption">Each economy's OECD leading indicator against its long-term trend (100): above or below trend, and
         whether it rose or fell in the last month, place it in one of the four phases, which follow each other left to right. The
         number is the distance from trend; the small line is the last 12 months. Latest month: {asOf}.</p>

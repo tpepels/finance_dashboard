@@ -150,17 +150,28 @@ function Hedging({ bundle, theme, recessions }: { bundle: Bundle<P07Values>; the
   </>;
 }
 
+function creditGapRows(data: F03Values) {
+  const known = (area: string): area is keyof typeof ENTITY => area in ENTITY;
+  return data.rows.filter(r => known(r.area)).filter(r => r.credit_gap && data.history[r.area]?.credit_gap_range).map(r => ({
+    area: r.area as keyof typeof ENTITY, latest: r.credit_gap!.latest, mean: r.credit_gap!.own_mean, asOf: r.credit_gap!.as_of,
+    ...data.history[r.area].credit_gap_range! }));
+}
+
+/** F03's lead graphic, shared with the overview: credit gaps against the BIS guide band. */
+export function CreditLead({ bundle, theme }: { bundle: Bundle<F03Values>; theme: Theme }) {
+  const data = bundle.values as F03Values;
+  return <Thermometers theme={theme} title="Credit gap" unit="pp" rows={creditGapRows(data)}
+    zones={[{ from: data.guide.low_pp, to: data.guide.high_pp }, { from: data.guide.high_pp, to: null }]}/>;
+}
+
 function Credit({ bundle, theme, recessions }: { bundle: Bundle<F03Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as F03Values;
   const known = (area: string): area is keyof typeof ENTITY => area in ENTITY;
   const rows = data.rows.filter(r => known(r.area));
-  const gapRows = rows.filter(r => r.credit_gap && data.history[r.area]?.credit_gap_range).map(r => ({
-    area: r.area as keyof typeof ENTITY, latest: r.credit_gap!.latest, mean: r.credit_gap!.own_mean, asOf: r.credit_gap!.as_of,
-    ...data.history[r.area].credit_gap_range! }));
+  const gapRows = creditGapRows(data);
   const dsrRows = rows.filter(r => r.private_dsr && data.history[r.area]?.private_dsr_range).map(r => ({
     area: r.area as keyof typeof ENTITY, latest: r.private_dsr!.latest, mean: r.private_dsr!.own_mean, asOf: r.private_dsr!.as_of,
     ...data.history[r.area].private_dsr_range! }));
-  const zones = [{ from: data.guide.low_pp, to: data.guide.high_pp }, { from: data.guide.high_pp, to: null }];
   const gapCharts = useMemo(() => gapRows.map(r => ({ area: r.area, option: timeChart({
     theme, recessions, compact: true, nonUS: r.area !== 'US', unit: 'pp', format: v => v.toFixed(0),
     zones: [{ from: data.guide.low_pp, to: data.guide.high_pp, label: '2–10 pp', tone: 'watch' as const },
@@ -177,7 +188,7 @@ function Credit({ bundle, theme, recessions }: { bundle: Bundle<F03Values>; them
   const span = (series: [string, number][]): [string, string] => [series[0]?.[0] ?? '1960-01-01', series.at(-1)?.[0] ?? '2026-01-01'];
   return <>
     <div className="decision-hero decision-hero-stack">
-      <Thermometers theme={theme} title="Credit gap" unit="pp" rows={gapRows} zones={zones}/>
+      <CreditLead bundle={bundle} theme={theme}/>
       <Thermometers theme={theme} title="Debt service" unit="%" rows={dsrRows}/>
     </div>
     <p className="decision-caption">Credit gap: private credit to GDP against its long-term trend (BIS); shaded zones mark the BIS

@@ -118,13 +118,14 @@ Measured on 2026-11-08 after the V03 import: 382 of 383 catalogue sources have i
 
 * **Phase 4, first slices (2026-11-10):** every analysis offers Method (each named transform with its formula, in order) and Sources (each input's publisher, key, frequency, period, observation count and link, where Phase 2 checked it, and the method references) beside "What limits this" and the AI export. A research workbench ("Find a question") lists all 37 questions, searchable by words in the question, decision or sources, with topic and region filters that narrow only the list.
 
+* **Overview (2026-11-10):** the page opens with six research experiences (growth and the cycle, policy rates and the euro, debt and credit fragility, valuation, labour and capital, market falls), each with its lead analysis's graphic, the question, and a two-sentence evidence summary that the engine assembles only from that bundle's own numbers and dates (`engine/summaries.py`; also in the AI export). The panels share the same lead graphics.
+
 ## Next slices
 
 Phase 4, per the [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md), in end-to-end slices:
 
-1. **Overview:** six research experiences (the contract's groups), each with its lead graphic and a two-sentence evidence summary assembled only from the bundle's own numbers and dates.
-2. **Configurable figures:** per-figure country selection and period, saved and restorable views that never change another figure.
-3. **Owner review** of the graphics added since the last review (C02, C05, G01-G03, L04, P01, P04, P05, the portfolio form).
+1. **Configurable figures:** per-figure country selection and period, saved and restorable views that never change another figure.
+2. **Owner review** of the graphics added since the last review (C02, C05, G01-G03, L04, P01, P04, P05, the portfolio form, the overview and the workbench).
 
 ## Working rules
 

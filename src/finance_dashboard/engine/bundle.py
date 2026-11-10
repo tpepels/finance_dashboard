@@ -14,6 +14,7 @@ from typing import Callable
 from .acceptance import (RESOLVED_ANALYSIS_STATES, AcceptanceSnapshot, UnacceptedInput, analysis_phase2,
                          input_provenance)
 from .limitations import method_limitations
+from .summaries import summarize
 
 ENGINE_VERSION = "1"
 
@@ -143,4 +144,5 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
                       for source in corpus_analysis.get("method_sources", [])],
         "view": view,
         "basis": basis,
+        "summary": summarize(definition.analysis_id, computed.values if computed else None),
     }

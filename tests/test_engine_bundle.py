@@ -9,7 +9,7 @@ from finance_dashboard.engine.transforms import applied
 
 KEYS = {"analysis_id", "question", "decision_informed", "evidence_tier", "engine_version", "computed_at",
         "phase2", "inputs", "transforms", "values", "estimates", "comparison", "method_limitations",
-        "citations", "view", "limitations", "basis"}
+        "citations", "view", "limitations", "basis", "summary"}
 
 
 def role(name, series_ids, limitations=()):
@@ -159,6 +159,17 @@ class AlternativeBasisTests(unittest.TestCase):
         self.assertIn("Basis: verified native alternatives (eu_variant), not the original method", text)
         self.assertIn("Open gates of the original method", text)
         self.assertNotIn("no values are shown", text)
+
+    def test_the_summary_comes_from_the_values_and_reaches_the_export(self):
+        from finance_dashboard.engine.export import export_text
+        definition = AnalysisDefinition("P03", {}, lambda p, v: Computed(values={"underwater": [["2026-10", -0.05]], "episodes": []},
+                                                                         estimates=None, transforms=[], comparison=[]))
+        snap = snapshot_from_report({"analyses": [{"id": "P03", "acceptance": {"state": "accepted", "blocking_roles": [],
+                                                                               "limitations": [], "requirements": []}}]}, AT)
+        bundle = build_bundle(definition, points={}, snapshot=snap, corpus_analysis={"title": "P03"}, catalog_series={},
+                              view={}, computed_at=AT)
+        self.assertEqual(bundle["summary"], ["At the end of 2026-10 world equities (MSCI ACWI, US dollars) were 5.0% below their previous peak."])
+        self.assertIn("Evidence summary", export_text(bundle))
 
     def test_resolved_analyses_have_the_original_basis(self):
         bundle = BundleTests().bundle()

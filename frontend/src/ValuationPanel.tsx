@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { breakGaps, timeChart, type Point, type Recession, type Theme, type TimeSeries } from './chartKit';
 import { PeDots, StrengthGrid, Thermometers, type PeRow, type StrengthCell } from './heroes';
 import TimePanel from './TimePanel';
-import { Section, spanOf, useBundles, type Bundle } from './analysisShell';
+import { Section, historyPosition, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
 type Gauge = { key: string; name: string; unit: string; latest: number; as_of: string; own_mean: number; own_percentile: number | null; min: number; max: number };
@@ -11,12 +11,17 @@ type V03Values = { regions: PeRow[]; history: Record<string, { trailing: Line; f
 type V05Values = { cells: StrengthCell[]; eras: string[]; horizons: number[] };
 
 const FALLBACK: [string, string] = ['1881-01-01', '2026-01-01'];
-const percentile = (p: number | null) => p === null ? '' : `higher than ${Math.round(p * 100)}% of its history`;
+const percentile = historyPosition;
 const formatFor = (unit: string) => (v: number) => unit === '%' ? `${v.toFixed(1)}%` : unit === 'pp' ? `${v.toFixed(2)} pp` : `${v.toFixed(1)}×`;
 
 function gaugeRows(gauges: Gauge[]) {
   return gauges.map(g => ({ area: g.key, label: g.name, min: g.min, max: g.max, mean: g.own_mean, latest: g.latest, asOf: g.as_of,
     note: percentile(g.own_percentile), format: formatFor(g.unit) }));
+}
+
+/** V01's lead graphic, shared with the overview. */
+export function ValuationLead({ bundle, theme }: { bundle: Bundle<GaugeValues>; theme: Theme }) {
+  return <Thermometers theme={theme} title="US equity valuation" unit="" rows={gaugeRows((bundle.values as GaugeValues).gauges)}/>;
 }
 
 function UsValuation({ bundle, theme, recessions }: { bundle: Bundle<GaugeValues>; theme: Theme; recessions: Recession[] }) {
@@ -28,7 +33,7 @@ function UsValuation({ bundle, theme, recessions }: { bundle: Bundle<GaugeValues
     series: [{ name: p.title, slot: 0, data: data.history[p.key] ?? [] }] }) })), [data, theme, recessions]);
   return <>
     <div className="decision-hero">
-      <Thermometers theme={theme} title="US equity valuation" unit="" rows={gaugeRows(data.gauges)}/>
+      <ValuationLead bundle={bundle} theme={theme}/>
       <p className="decision-caption">Each measure on a track from its lowest to its highest reading; the tick is its long-run average.
         The excess CAPE yield is the earnings yield (1/CAPE) minus the real yield on inflation-linked bonds: below zero, stocks offer
         no extra expected return over safe real bonds.</p>

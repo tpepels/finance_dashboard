@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { Section, type Bundle } from './analysisShell';
+import { Section, historyPosition, type Bundle } from './analysisShell';
 
 const bundle = {
   analysis_id: 'M02', question: 'What is driving bond yields?', decision_informed: 'Duration and inflation-linked bonds.',
@@ -35,5 +35,12 @@ describe('Section', () => {
     const borrowed = { ...bundle, inputs: [{ ...(bundle as any).inputs[0], accepted_under: { analysis_id: 'M01', role: 'x' } }] };
     render(<Section bundle={borrowed as Bundle<unknown>}><div/></Section>);
     expect(screen.getByText(/checked under M01/)).toBeTruthy();
+  });
+
+  it('names the extremes of a history plainly', () => {
+    expect(historyPosition(0)).toBe('lowest in its history');
+    expect(historyPosition(1)).toBe('highest in its history');
+    expect(historyPosition(0.934)).toBe('higher than 93% of its history');
+    expect(historyPosition(null)).toBe('');
   });
 });

@@ -39,6 +39,8 @@ def export_text(bundle: dict) -> str:
             header += _lines("Open gates of the original method", phase2["open_gates"])
     elif phase2["open_gates"]:
         header += _lines("Open gates (no values are shown)", phase2["open_gates"])
+    if bundle.get("summary"):
+        header += _lines("Evidence summary (assembled from the values below)", bundle["summary"])
     header += _lines("Limitations (data, inputs and method)", [_limitation(item) for item in bundle["limitations"]])
     header += _lines("Inputs", [
         f"{item['role']}: {item['name']} [{item['series_id']}], {item['publisher']} {item['source_key']}, "

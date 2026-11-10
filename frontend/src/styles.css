@@ -585,3 +585,17 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .workbench-state-accepted { color: #1f8a5a; }
 .workbench-state-deferred { color: #b26b00; }
 .workbench :focus-visible { outline: 2px solid var(--dx-focus); outline-offset: 2px; }
+
+/* Overview: six research experiences, one per row: the graphic near its natural size, the words beside it. */
+.overview { max-width: 1240px; margin: 0 auto 40px; }
+.overview-grid { display: grid; gap: 18px; }
+.overview-card { display: grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap: 24px; align-items: center;
+  padding: 18px 22px; background: var(--dx-surface); border: 1px solid var(--dx-rule); border-radius: 10px; }
+@media (max-width: 900px) { .overview-card { grid-template-columns: 1fr; } .overview-words { order: -1; } }
+.overview-words { display: flex; flex-direction: column; gap: 8px; }
+.overview-card h3 { margin: 0; font-size: 19px; color: var(--dx-ink); }
+.overview-question { margin: 0; font-size: 14px; color: var(--dx-secondary); }
+.overview-graphic .hero-svg { width: 100%; height: auto; }
+.overview-summary { margin: 0; font-size: 15px; line-height: 1.55; color: var(--dx-ink); }
+.overview-open { margin-top: 4px; font-size: 14px; font-weight: 600; color: var(--dx-ink); }
+.overview-open:focus-visible { outline: 2px solid var(--dx-focus); outline-offset: 2px; }
