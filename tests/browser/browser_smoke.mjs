@@ -447,7 +447,7 @@ try {
   assert.ok(utilityBounds && utilityBounds.x >= 0 && utilityBounds.x + utilityBounds.width <= 390,
     'Source data and sync remain reachable from the mobile navigation without horizontal scrolling');
   await mobileSource.click();
-  await shown(mobile.locator('#source-coverage summary'));
+  await shown(mobile.locator('#source-coverage > summary'));
   await mobile.goto(seeded);
   await mobile.keyboard.press('Tab');
   assert.equal(await mobile.getByRole('link', { name: 'Skip to content', exact: true }).evaluate(element => element === document.activeElement), true);
