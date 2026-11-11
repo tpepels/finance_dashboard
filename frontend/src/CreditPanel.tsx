@@ -148,7 +148,7 @@ const POSITION_FORMAT: Record<string, (v: number) => string> = {
 function Nonbanks({ bundle, theme, recessions }: { bundle: Bundle<F07Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as F07Values;
   const charts = useMemo(() => [
-    { key: 'broker_leverage', title: 'Broker-dealers: assets per unit of equity', unit: '×', format: (v: number) => v.toFixed(0) },
+    { key: 'broker_leverage', title: 'Broker-dealers: financial assets per unit of book equity', unit: '×', format: (v: number) => v.toFixed(0) },
     { key: 'repo_share', title: 'Broker-dealers: share of liabilities funded by repo', unit: '%', format: (v: number) => v.toFixed(0) },
     { key: 'mmf_assets', title: 'Money-market fund assets', unit: 'USD trillion', format: (v: number) => (v / 1e6).toFixed(1) },
   ].map(p => ({ ...p, option: timeChart({ theme, recessions, unit: p.unit, format: p.format,

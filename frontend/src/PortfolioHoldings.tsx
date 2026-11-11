@@ -62,7 +62,7 @@ export default function PortfolioHoldings() {
   const [error, setError] = useState('');
   const [notice, setNotice] = usePortfolioEditorState('holdings.notice', '');
   const [dirty, setDirty] = usePortfolioEditorState('holdings.dirty', false);
-  const [version, setVersion] = useState(0);
+  const [version, setVersion] = usePortfolioEditorState('holdings.reloadVersion', 0);
   const [table, setTable] = usePortfolioEditorState('holdings.import', '');
   const generation = usePortfolioEditorRef('holdings.generation', 0);
   const loadedVersion = usePortfolioEditorRef('holdings.loadedVersion', -1);

@@ -67,6 +67,14 @@ def run(image: str) -> None:
                 "Path('/data/owner-inputs.json').write_text('{\"version\":1}'); "
                 "assert not Path('/data/backups').exists(); "
                 "assert not Path('/data/source-policy/rate-ledger.sqlite3').exists()")
+            execute(name, "import json,urllib.request; "
+                "body={'revision':0,'combine_accounts':True,'positions':["
+                "{'id':'fixture-one','account':'Synthetic account','name':'Synthetic fund',"
+                "'quantity':2,'price_eur':50,'value_eur':100,'asset_class':'equity'}]}; "
+                "request=urllib.request.Request('http://127.0.0.1:8080/api/portfolio-holdings',"
+                "data=json.dumps(body).encode(),headers={'Content-Type':'application/json'},method='PUT'); "
+                "saved=json.load(urllib.request.urlopen(request,timeout=10)); "
+                "assert saved['revision']==1 and saved['summary']['total_value_eur']==100")
             docker("rm", "-f", name)
             names.remove(name)
             name = start(data)
@@ -74,12 +82,17 @@ def run(image: str) -> None:
             execute(name, "import sqlite3; "
                 "c=sqlite3.connect('/data/finance.sqlite3'); "
                 "assert c.execute('SELECT value FROM recovery_marker').fetchone()[0]==42; c.close()")
+            execute(name, "import json,urllib.request; "
+                "saved=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/portfolio-holdings',timeout=10)); "
+                "assert saved['revision']==1 and saved['summary']['total_value_eur']==100")
             docker("exec", name, "python", "-m", "finance_dashboard", "backup", "local",
                    "--output-dir", "/data/backups")
             execute(name, "from pathlib import Path; from finance_dashboard.backup import restore_backup; "
                 "m=next(Path('/data/backups').glob('finance-*Z.json')); "
                 "restore_backup(m,Path('/data/restored')); "
-                "assert Path('/data/restored/owner-inputs.json').read_text()=='{\"version\":1}'")
+                "assert Path('/data/restored/owner-inputs.json').read_text()=='{\"version\":1}'; "
+                "assert Path('/data/restored/portfolio-holdings.json').read_bytes()=="
+                "Path('/data/portfolio-holdings.json').read_bytes()")
             denied = start(blocked)
             deadline = time.monotonic() + 45
             while time.monotonic() < deadline:
@@ -93,7 +106,7 @@ def run(image: str) -> None:
             assert sentinel.read_text() == "existing state must survive\n"
             assert sorted(p.name for p in blocked.iterdir()) == [sentinel.name]
             print("Passed: fresh storage, UID/GID 23456:23457, offline startup, populated recreation, "
-                  "backup/restore, unwritable storage preserves existing files")
+                  "holdings API/persistence/backup restore, unwritable storage preserves existing files")
         finally:
             for name in names:
                 docker("rm", "-f", name, check=False)

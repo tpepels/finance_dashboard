@@ -496,6 +496,7 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
 .decision-hero-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
 .decision-hero-pair { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 28px; align-items: start; }
 .decision-hero-pair.decision-hero-even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.decision-hero-pair > *, .decision-hero-split > * { min-width: 0; }
 .decision-hero-wide { display: flex; flex-direction: column; gap: 14px; }
 .decision-hero-head { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; }
 .decision-hero-head .decision-caption { margin: 0; }

@@ -20,9 +20,10 @@ import tempfile
 def fixture_data():
     from engine_fixtures import monthly
     from test_engine_p07 import p07_fixture
+    from test_engine_p06_f03 import p06_fixture
     from finance_dashboard.engine.analyses import C01
 
-    data = p07_fixture()
+    data = {**p06_fixture(), **p07_fixture()}
     # Stress the native-rate renderer with signed/zero values and one large
     # observation; these are labelled test inputs, not economic evidence.
     rates = data["policy_rate.ea.ecb_dfr"]
@@ -45,10 +46,10 @@ def fixture_data():
 
 
 def fixture_report(mode: str):
-    from finance_dashboard.engine.analyses import C01, P07
+    from finance_dashboard.engine.analyses import C01, P06, P07
     from finance_dashboard.research_corpus import load_research_corpus
 
-    definitions = {"C01": C01, "P07": P07} if mode == "seeded" else {}
+    definitions = {"C01": C01, "P06": P06, "P07": P07} if mode == "seeded" else {}
     rows = []
     for row in load_research_corpus()["analyses"]:
         definition = definitions.get(row["id"])
@@ -132,7 +133,7 @@ def serve(mode: str, ui: Path, port: int = 0):
         async def fixture_metadata(request, call_next):
             if request.url.path == "/__browser-fixture":
                 return JSONResponse({"mode": mode, "test_only": True,
-                    "accepted_fixture_analyses": ["C01", "P07"] if mode == "seeded" else [],
+                    "accepted_fixture_analyses": ["C01", "P06", "P07"] if mode == "seeded" else [],
                     "note": "Synthetic fixture values and fixture acceptance; no production evidence."})
             return await call_next(request)
 

@@ -106,7 +106,7 @@
     },
     "F07": {
       "us_sector_aggregates": "These are US Financial Accounts sector totals, not individual firms or funds.",
-      "leverage_book_values": "Leverage is total assets over equity capital at book values.",
+      "leverage_book_values": "The broker-dealer proxy divides Z.1 financial assets by book equity capital; nonfinancial assets are excluded.",
       "context_not_signal": "High leverage and repo dependence describe fragility, not timing."
     },
     "V01": {

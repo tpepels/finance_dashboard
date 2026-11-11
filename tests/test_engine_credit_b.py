@@ -51,6 +51,10 @@ class CreditBEngineTests(unittest.TestCase):
         self.assertAlmostEqual(values["latest"]["repo_share"], 50.0)
         self.assertEqual(values["history"]["broker_leverage"], [["2025-01-01", 20.0]])
         positions = {p["key"]: p for p in values["positions"]}
+        self.assertIn('financial assets', positions['broker_leverage']['name'].lower())
+        from finance_dashboard.engine.limitations import method_limitations
+        self.assertTrue(any('financial assets' in item['text'].lower()
+                            for item in method_limitations('F07')))
         self.assertEqual((positions["broker_leverage"]["min"], positions["broker_leverage"]["max"]), (20.0, 20.0))
         self.assertEqual(positions["repo_share"]["latest"], 50.0)
 

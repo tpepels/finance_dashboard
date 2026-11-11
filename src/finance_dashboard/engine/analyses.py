@@ -784,7 +784,7 @@ def _f07(points: dict, view: dict) -> Computed:
               "history": {"broker_leverage": leverage, "repo_share": repo, "mmf_assets": _series(points.get("mmf_assets", [])),
                           "finance_company_assets": _series(points.get("finance_assets", []))}}
     as_points = lambda line: [(date.fromisoformat(d), v) for d, v in line]  # noqa: E731
-    positions = [("broker_leverage", "Broker-dealer assets per unit of equity", "×", as_points(leverage)),
+    positions = [("broker_leverage", "Broker-dealer financial assets per unit of book equity", "×", as_points(leverage)),
                  ("repo_share", "Broker-dealer liabilities funded by repo", "%", as_points(repo)),
                  ("mmf_assets", "Money-market fund assets", "USD million", points.get("mmf_assets", []))]
     values["positions"] = [{"key": key, "name": name, "unit": unit, **own}
