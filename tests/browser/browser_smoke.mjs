@@ -198,7 +198,8 @@ try {
   await screenshot(page, 'seeded-overview-light');
   const overviewSize = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, page: document.documentElement.scrollHeight }));
   results.overviewSize = overviewSize;
-  assert.ok(overviewSize.page < 2500, 'The default overview must remain a concise working surface');
+  // The owner explicitly chose a full scrollable dashboard, not the former six-card short overview.
+  assert.ok(overviewSize.page < 12000, 'Eight-topic dashboard must remain bounded without mounting 37 full analyses');
   const started = performance.now();
   const canonicalBefore = await json(page, `${seeded}/api/analysis/C01`);
   results.performance = { c01FixtureApiMilliseconds: Math.round((performance.now() - started) * 100) / 100,

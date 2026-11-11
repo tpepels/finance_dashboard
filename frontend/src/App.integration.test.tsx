@@ -124,6 +124,7 @@ describe('dashboard shell', () => {
     await user.type(screen.getByLabelText('Holdings table'), 'Unsaved import text');
     const modelValue = await screen.findByLabelText('Starting value (€)');
     await user.clear(modelValue); await user.type(modelValue, '141000');
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Dashboard' }));
     expect(screen.queryByLabelText('Position 1 name')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));

@@ -70,8 +70,10 @@ describe('server saved figures workspace', () => {
     await within(space).findByRole('button', { name: 'Open Gamma' });
     expect(records.find(r => r.id === 'a')).toMatchObject({ name: 'Alpha', revision: 3, spec: { geographies: ['US'] } });
     expect(records.find(r => r.id === 'copy')).toMatchObject({ name: 'Gamma', revision: 2, spec: { geographies: [] } });
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Find a question' }));
     await user.selectOptions(await screen.findByLabelText('Region'), 'US');
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Saved figures' }));
     expect(within(active).getByLabelText('Figure name')).toHaveProperty('value', 'Gamma');
     expect(records.find(r => r.id === 'b').spec.geographies).toEqual(['DE']);
