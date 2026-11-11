@@ -208,7 +208,7 @@ try {
   const independentBefore = await json(page, `${seeded}/api/analysis/P07`);
   assert.ok(canonicalBefore.values.clock.length > 1);
   assert.equal((await json(page, `${seeded}/api/analysis/C03`)).values, null);
-  record('All37 fresh question links, back/forward and concise default; navigation preserves owner inputs and saved figures');
+  record('All 37 question links, back/forward and full eight-topic dashboard; navigation preserves owner inputs and saved figures');
   await page.goto(`${seeded}/#q-C01`);
   await shown(section(page, 'C01').getByRole('button', { name: 'Configure', exact: true }));
   await section(page, 'C01').getByRole('button', { name: 'Configure', exact: true }).click();
@@ -518,7 +518,7 @@ try {
     await fault.goto(seeded);
     if (failure === 'loading') {
       await shown(fault.getByText(/being reassessed; this page retries automatically/).first());
-      await shown(fault.getByRole('article', { name: 'Growth and the business cycle', exact: true }).locator('.overview-summary').first());
+      await shown(fault.locator('#dashboard-growth .dashboard-summary').first());
       assert.ok(count >= 2);
     } else {
       await shown(fault.getByText(/Some research findings could not be read/).first());
