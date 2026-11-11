@@ -87,6 +87,7 @@ def serve(mode: str, ui: Path, port: int = 0):
             "FINANCE_HOLDINGS_DIR": str(root / "holdings"),
             "FINANCE_SURPLUS_DIR": str(root / "surplus"),
             "FINANCE_OWNER_INPUTS": str(root / "owner-inputs.json"),
+            "FINANCE_PORTFOLIO_HOLDINGS": str(root / "portfolio-holdings.json"),
             "FINANCE_SAVED_VIEWS": str(root / "saved-views.json"),
             "FINANCE_MAINTENANCE_STATE": str(root / "maintenance/jobs.json"),
             "FINANCE_DIAGNOSTICS_PATH": str(root / "maintenance/diagnostics.jsonl"),

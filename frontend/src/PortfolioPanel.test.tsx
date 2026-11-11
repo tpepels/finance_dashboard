@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 
 vi.mock('./viz', () => ({ createChart: vi.fn(() => ({ setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn(),
   dispatchAction: vi.fn(), on: vi.fn(), off: vi.fn(), getOption: vi.fn(() => ({})), group: '' })),
@@ -41,12 +41,35 @@ describe('PortfolioPanel', () => {
     const { container } = render(<PortfolioPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByRole('img', { name: /moved together/i })).toBeTruthy());
     expect(screen.getByRole('img', { name: /falls deeper than 15%/i })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /where your funds invest/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /published fund country exposures/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /effect on your portfolio/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /rebalancing rules/i })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Your portfolio' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Model portfolio scenarios' })).toBeTruthy();
     expect(screen.getByText(/german 10-year government bond/i)).toBeTruthy();
     expect(screen.getAllByText(/example portfolio/i).length).toBeGreaterThan(0);
     expect(container.querySelector('table')).toBeNull();
+  });
+
+  it('keeps the owner snapshot separate from published fund exposure examples', async () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const positions = [{ id: 'a', account: 'Example account', name: 'Example regional ETF', isin: null, ticker: 'REGION',
+      quantity: 4, price_eur: 25, value_eur: 100, asset_class: 'equity', identity_source: 'unresolved', source_url: null }];
+    const ownerPortfolio = { version: 1, revision: 1, as_of: null, combine_accounts: true, scope: 'listed_positions',
+      monthly_contribution_eur: null, annual_withdrawal_eur: null, positions, summary: { total_value_eur: 100, position_count: 1,
+        accounts: [{ account: 'Example account', value_eur: 100, positions: 1 }], positions: [{ ...positions[0], account_weight: 1, portfolio_weight: 1 }],
+        funds: [{ key: 'region', name: 'Example regional ETF', isin: null, value_eur: 100, weight: 1, quantity: 4, accounts: ['Example account'], asset_class: 'equity' }],
+        asset_classes: [{ asset_class: 'equity', value_eur: 100, weight: 1 }], warnings: ['The instrument identity needs confirmation.'] } };
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      const id = url.split('/').pop() as string;
+      return Promise.resolve(new Response(JSON.stringify(id === 'recessions' ? { periods: [] }
+        : id === 'portfolio-holdings' ? ownerPortfolio : id === 'P01' ? { ...bundles.P01 as object, values: { ...(bundles.P01 as any).values, owner_portfolio: ownerPortfolio } } : bundles[id])));
+    }));
+    render(<PortfolioPanel theme="light" dataVersion={0}/>);
+    const snapshot = await screen.findByRole('region', { name: 'Recorded ETF positions' });
+    expect(within(snapshot).getByText(/Observation date not provided/)).toBeTruthy();
+    expect(within(snapshot).getByRole('rowheader', { name: 'Example regional ETF' })).toBeTruthy();
+    expect(within(snapshot).getByText(/Listed positions only/)).toBeTruthy();
+    expect(screen.getByText(/These published fund examples are separate/)).toBeTruthy();
+    expect(within(snapshot).getByRole('link', { name: 'Edit ETF holdings' }).getAttribute('href')).toBe('#portfolio-holdings');
   });
 });

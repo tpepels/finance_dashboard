@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import { Section, historyPosition, load, useBundles, type Bundle } from './analysisShell';
+import { ResearchSelection, Section, historyPosition, load, useBundles, type Bundle } from './analysisShell';
 
 const bundle = {
   analysis_id: 'M02', question: 'What is driving bond yields?', decision_informed: 'Duration and inflation-linked bonds.',
@@ -42,6 +42,21 @@ describe('Section', () => {
     expect(historyPosition(1)).toBe('highest in its history');
     expect(historyPosition(0.934)).toBe('higher than 93% of its history');
     expect(historyPosition(null)).toBe('');
+  });
+
+  it('keeps a topic concise until its question is selected, preserving its server finding', () => {
+    const withFinding = { ...bundle, summary: ['The nominal yield was 4.2% on 2026-11-06.'] };
+    const page = render(<ResearchSelection.Provider value={{ question: null }}>
+      <Section bundle={withFinding}><p>Complete analytical history</p></Section>
+    </ResearchSelection.Provider>);
+    expect(screen.getByText(/nominal yield was 4.2%/)).toBeTruthy();
+    expect(screen.queryByText('Complete analytical history')).toBeNull();
+    expect(screen.getByRole('link', { name: /Open M02/ }).getAttribute('href')).toBe('#q-M02');
+    page.rerender(<ResearchSelection.Provider value={{ question: 'M02' }}>
+      <Section bundle={withFinding}><p>Complete analytical history</p></Section>
+    </ResearchSelection.Provider>);
+    expect(screen.getByText('Complete analytical history')).toBeTruthy();
+    expect(screen.getByText('Sources (2)')).toBeTruthy();
   });
 });
 

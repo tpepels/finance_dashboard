@@ -6809,7 +6809,7 @@
       "geography": "MSCI_ACWI_INDEX",
       "frequency": "M",
       "unit": "million_usd",
-      "measurement": "Index market capitalisation in USD millions, as printed under INDEX CHARACTERISTICS (Mkt Cap, Index) on MSCI's own monthly ACWI factsheet; the month is the document's as-of month-end. With the trailing P/E (cap over earnings), cap / P/E is the constituents' aggregate trailing earnings.",
+      "measurement": "Index market capitalization in USD millions, printed under INDEX CHARACTERISTICS on MSCI's ACWI factsheet for its as-of month-end. Dividing by trailing P/E gives an implied index earnings proxy only: earnings are normalized and inclusion-adjusted, and matching the P/E numerator population to this total capitalization is unverified.",
       "revision_policy": "not_established",
       "rights": "review_required",
       "notes": "Read only from the ACWI factsheet itself, never from comparison rows on other factsheets. Same archive, pinning and conflict rule as the P/E series: months the Internet Archive did not capture are absent; two documents printing different values for one month block it."

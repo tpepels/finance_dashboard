@@ -119,6 +119,7 @@ async function enabled(locator) {
 const section = (page, id) => page.locator('section.decision-section').filter({ has: page.locator(`#q-${id}`) });
 const workspace = page => page.getByRole('region', { name: 'Saved figures', exact: true });
 async function openSaved(page, name) {
+  await page.getByRole('link', { name: 'Saved figures', exact: true }).click();
   await workspace(page).getByRole('button', { name: `Open ${name}`, exact: true }).click();
   const found = workspace(page).getByRole('region', { name: 'Configure C01', exact: true }).filter({ visible: true });
   await shown(found.getByLabel('Figure name', { exact: true }));
@@ -137,9 +138,13 @@ try {
   const emptyPage = await emptyContext.newPage();
   await emptyPage.goto(empty);
   await shown(emptyPage.getByRole('heading', { name: 'Overview', exact: true }));
+  await emptyPage.getByRole('link', { name: 'Saved figures', exact: true }).click();
   await shown(emptyPage.getByText('No saved figures yet.', { exact: true }));
-  await shown(emptyPage.locator('#ov-C01').locator('..').getByText('C01 is not computed: Phase 2 state is incomplete.'));
-  await shown(section(emptyPage, 'C01').getByText(/Not computed: Phase 2 state is incomplete/));
+  await emptyPage.getByRole('link', { name: 'Overview', exact: true }).click();
+  await shown(emptyPage.getByText('C01 is not computed: research state is incomplete.'));
+  await emptyPage.goto(`${empty}/#q-C01`);
+  await shown(section(emptyPage, 'C01').getByText(/Not computed: research state is incomplete/));
+  await emptyPage.getByRole('link', { name: 'Find a question', exact: true }).click();
   await emptyPage.getByRole('searchbox', { name: 'Find a question', exact: true }).fill('hedging');
   await shown(emptyPage.locator('#workbench a[href="#q-P07"]'));
   await screenshot(emptyPage, 'empty-install-desktop');
@@ -150,11 +155,44 @@ try {
   await desktop.tracing.start({ screenshots: true, snapshots: true, sources: true });
   const page = await desktop.newPage();
   await page.goto(seeded);
-  await shown(section(page, 'C01').getByRole('button', { name: 'Configure', exact: true }));
-  const catalogue = await json(page, `${seeded}/api/analysis`);
-  for (const row of catalogue) await shown(page.locator(`#q-${row.analysis_id}`));
+  await shown(page.getByRole('heading', { name: 'Overview', exact: true }));
+  await page.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
   const initialReads = Object.fromEntries(page.__canonicalReads);
-  assert.ok(Object.values(initialReads).every(count => count === 1), `Initial analysis loads must reuse duplicate in-flight reads: ${JSON.stringify(initialReads)}`);
+  assert.equal(Object.keys(initialReads).length, 6);
+  assert.ok(Object.values(initialReads).every(count => count === 1), 'Each overview analysis is read once on initial load');
+  const catalogue = await json(page, `${seeded}/api/analysis`);
+  const ownerBeforeNavigation = await json(page, `${seeded}/api/owner-inputs`);
+  const savedBeforeNavigation = await savedRows(page, seeded);
+  // Fresh URLs exercise delayed headings and every preserved public anchor.
+  for (const row of catalogue) {
+    await page.goto(`${seeded}/#q-${row.analysis_id}`);
+    await page.reload();
+    await shown(page.locator(`#q-${row.analysis_id}`));
+    assert.equal(await page.locator('.decision-section h3[id^="q-"]').count(), 1);
+  }
+  assert.deepEqual(await json(page, `${seeded}/api/owner-inputs`), ownerBeforeNavigation);
+  assert.deepEqual(await savedRows(page, seeded), savedBeforeNavigation);
+  for (const hash of ['#theme-monetary_policy', '#supplementary-wisesheets', '#chart-gdp_growth_global']) {
+    await page.goto(`${seeded}/${hash}`);
+    await shown(page.locator(hash));
+    assert.equal(await page.getByText('Source data & chart explorer', { exact: true }).evaluate(element => element.closest('details').open), true);
+    if (hash.startsWith('#chart-')) assert.equal(await page.locator(hash).getByRole('button', { name: /^Close/ }).getAttribute('aria-expanded'), 'true');
+  }
+  await page.goBack(); await shown(page.locator('#supplementary-wisesheets'));
+  await page.goForward(); await shown(page.locator('#chart-gdp_growth_global'));
+  await page.goto(`${seeded}/#q-C01`);
+  await shown(page.locator('#q-C01'));
+  await page.goto(`${seeded}/#q-P07`);
+  await shown(page.locator('#q-P07'));
+  await page.goBack(); await shown(page.locator('#q-C01'));
+  await page.goForward(); await shown(page.locator('#q-P07'));
+  await page.goto(`${seeded}/#overview`);
+  await shown(page.getByRole('heading', { name: 'Overview', exact: true }));
+  await page.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
+  await screenshot(page, 'seeded-overview-light');
+  const overviewSize = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, page: document.documentElement.scrollHeight }));
+  results.overviewSize = overviewSize;
+  assert.ok(overviewSize.page < 2500, 'The default overview must remain a concise working surface');
   const started = performance.now();
   const canonicalBefore = await json(page, `${seeded}/api/analysis/C01`);
   results.performance = { c01FixtureApiMilliseconds: Math.round((performance.now() - started) * 100) / 100,
@@ -163,7 +201,9 @@ try {
   const independentBefore = await json(page, `${seeded}/api/analysis/P07`);
   assert.ok(canonicalBefore.values.clock.length > 1);
   assert.equal((await json(page, `${seeded}/api/analysis/C03`)).values, null);
-  await screenshot(page, 'seeded-overview-light');
+  record('All37 fresh question links, back/forward and concise default; navigation preserves owner inputs and saved figures');
+  await page.goto(`${seeded}/#q-C01`);
+  await shown(section(page, 'C01').getByRole('button', { name: 'Configure', exact: true }));
   await section(page, 'C01').getByRole('button', { name: 'Configure', exact: true }).click();
   const draft = section(page, 'C01').getByRole('region', { name: 'Configure C01' });
   await shown(draft.getByLabel('Figure name', { exact: true }));
@@ -216,7 +256,7 @@ try {
   assert.equal(await draft.getByRole('button', { name: 'Save changes', exact: true }).isEnabled(), false);
   await draft.getByLabel('End period', { exact: true }).fill('2025-02');
   await enabled(draft.getByRole('button', { name: 'Save changes', exact: true }));
-  record('All analysis sections render; one initial canonical read per question; exact Germany view, sparse table, method/sources and matching export, independent C01/P07');
+  record('Selected analysis renders; exact Germany view, sparse table, method/sources and matching export, independent C01/P07');
 
   // Preserve the original while editing a separately identified copy.
   let saved = await openSaved(page, 'Browser Germany');
@@ -230,9 +270,11 @@ try {
   let latest = await savedRows(page, seeded);
   assert.deepEqual(latest.find(row => row.id === original.id), original);
   assert.equal(latest.find(row => row.name === 'Browser reset copy').spec.transform, native.defaults.transform);
+  await page.getByRole('link', { name: 'Find a question', exact: true }).click();
   await page.getByRole('searchbox', { name: 'Find a question', exact: true }).fill('hedging');
   await page.locator('#workbench').getByRole('combobox', { name: 'Region', exact: true }).selectOption('US');
   assert.deepEqual(await savedRows(page, seeded), latest);
+  await page.getByRole('link', { name: 'Saved figures', exact: true }).click();
   await page.reload();
   await shown(workspace(page).getByRole('button', { name: 'Open Browser Germany', exact: true }));
   await shown(workspace(page).getByRole('button', { name: 'Open Browser reset copy', exact: true }));
@@ -240,7 +282,7 @@ try {
 
   // Both tabs open revision 1 before either saves. The stale write must fail.
   const second = await desktop.newPage();
-  await second.goto(seeded);
+  await second.goto(`${seeded}/#saved-figures`);
   const left = await openSaved(page, 'Browser Germany');
   const right = await openSaved(second, 'Browser Germany');
   await left.getByLabel('Figure name', { exact: true }).fill('Browser tab A');
@@ -266,9 +308,13 @@ try {
   await screenshot(page, 'compare-independent-figures', workspace(page));
   await page.getByRole('button', { name: 'Use dark appearance', exact: true }).click();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+  await screenshot(page, 'saved-compare-dark');
+  await page.goto(`${seeded}/#overview`);
+  await page.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
   await screenshot(page, 'seeded-overview-dark');
   record('Independent compare editors and explicit link control; dark appearance');
 
+  await page.goto(`${seeded}/#q-P07`);
   await section(page, 'P07').getByRole('button', { name: 'Configure', exact: true }).click();
   const ratesEditor = section(page, 'P07').getByRole('region', { name: 'Configure P07' });
   const rateCap = await json(page, `${seeded}/api/analysis/P07/views/capabilities`);
@@ -304,19 +350,79 @@ try {
   await screenshot(page, 'structured-result-with-method', ratesEditor);
   record('Complete structured analytical result is accessible and its unsupported date filters are disabled/explained');
 
-  const owner = page.getByRole('region', { name: 'Your portfolio', exact: true });
+  await page.goto(`${seeded}/#portfolio`);
+  const owner = page.getByRole('region', { name: 'Model portfolio scenarios', exact: true });
   await owner.getByLabel('Equities (%)', { exact: true }).fill('60');
   await owner.getByLabel('Bonds (%)', { exact: true }).fill('40');
   await owner.getByLabel('Gold (%)', { exact: true }).fill('0');
   await owner.getByLabel('Starting value (€)', { exact: true }).fill('123000');
-  await owner.getByRole('button', { name: 'Save my portfolio', exact: true }).click();
-  await shown(owner.getByText('Saved. The portfolio analyses now use your figures.', { exact: true }));
+  await owner.getByRole('button', { name: 'Save model scenario', exact: true }).click();
+  await shown(owner.getByText('Saved. The model analyses now use this scenario.', { exact: true }));
   const ownerData = await json(page, `${seeded}/api/owner-inputs`);
   assert.equal(ownerData.start_value_eur, 123000);
   assert.equal(ownerData.is_example, false);
   assert.equal((await savedRows(page, seeded)).find(row => row.id === original.id).name, 'Browser tab A');
   await screenshot(page, 'owner-portfolio-saved', owner);
   record('Portfolio form saves a non-example60/40 allocation and preserves independent saved figures');
+
+  // Actual instrument positions are independent of the broad model scenario.
+  const holdings = page.getByRole('region', { name: 'ETF holdings', exact: true });
+  await holdings.getByText('ETF holdings', { exact: true }).click();
+  await holdings.getByText('Import a table', { exact: true }).click();
+  await holdings.getByLabel('Holdings table', { exact: true }).fill('account\tname\tticker\tquantity\tprice_eur\tvalue_eur\tasset_class\nFixture A\tExample World ETF\tDEMO\t2\t50\t100\tequity\nFixture B\tExample Bond ETF\tBOND\t1\t25\t25\tbonds');
+  await holdings.getByRole('button', { name: 'Add imported rows', exact: true }).click();
+  await shown(holdings.getByLabel('Position 1 name', { exact: true }));
+  await owner.getByLabel('Starting value (€)', { exact: true }).fill('141000');
+  await page.getByRole('link', { name: 'Overview', exact: true }).click();
+  await page.goBack();
+  await holdings.getByText('ETF holdings', { exact: true }).click();
+  await shown(holdings.getByLabel('Position 1 name', { exact: true }));
+  assert.equal(await holdings.getByLabel('Position 1 name', { exact: true }).inputValue(), 'Example World ETF');
+  assert.equal(await owner.getByLabel('Starting value (€)', { exact: true }).inputValue(), '141000');
+  await owner.getByLabel('Starting value (€)', { exact: true }).fill('123000');
+  assert.equal(await holdings.getByLabel('Position 1 identity', { exact: true }).inputValue(), 'unresolved');
+  let releaseRequest;
+  let submittedRequest;
+  const requestSeen = new Promise(resolve => { releaseRequest = resolve; });
+  const holdSave = route => {
+    if (route.request().method() === 'PUT') { submittedRequest = route; releaseRequest(); return; }
+    return route.continue();
+  };
+  await page.route('**/api/portfolio-holdings', holdSave);
+  await holdings.getByRole('button', { name: 'Save holdings', exact: true }).click();
+  await requestSeen;
+  await holdings.getByLabel('Position 1 name', { exact: true }).fill('Newer unsaved browser edit');
+  await submittedRequest.continue();
+  await shown(holdings.getByText(/Newer edits remain unsaved/));
+  assert.equal(await holdings.getByLabel('Position 1 name', { exact: true }).inputValue(), 'Newer unsaved browser edit');
+  await page.unroute('**/api/portfolio-holdings', holdSave);
+  await holdings.getByLabel('Position 1 name', { exact: true }).fill('Example World ETF');
+  const holdingsData = await json(page, `${seeded}/api/portfolio-holdings`);
+  assert.equal(holdingsData.positions.length, 2);
+  assert.equal(holdingsData.as_of, null);
+  assert.equal(holdingsData.monthly_contribution_eur, null);
+  assert.equal(holdingsData.summary.total_value_eur, null, 'Separate accounts have no invented combined total');
+  assert.deepEqual(await json(page, `${seeded}/api/owner-inputs`), ownerData, 'Holdings import must not change the model scenario');
+  await screenshot(page, 'holdings-separate-accounts', holdings);
+
+  const holdingsTab = await desktop.newPage();
+  await holdingsTab.goto(`${seeded}/#portfolio`);
+  const otherHoldings = holdingsTab.getByRole('region', { name: 'ETF holdings', exact: true });
+  await otherHoldings.getByText('ETF holdings', { exact: true }).click();
+  await shown(otherHoldings.getByLabel('Position 1 name', { exact: true }));
+  await holdings.getByRole('checkbox', { name: 'Combine these accounts into one portfolio', exact: true }).check();
+  await holdings.getByRole('button', { name: 'Save holdings', exact: true }).click();
+  await poll(async () => (await json(page, `${seeded}/api/portfolio-holdings`)).summary.total_value_eur === 125, 'server aggregate after explicit combination');
+  holdingsTab.__expectedStatuses = [409];
+  await otherHoldings.getByLabel('Position 1 name', { exact: true }).fill('Conflicting fixture draft');
+  await otherHoldings.getByRole('button', { name: 'Save holdings', exact: true }).click();
+  await shown(otherHoldings.getByRole('alert'));
+  assert.equal(await otherHoldings.getByLabel('Position 1 name', { exact: true }).inputValue(), 'Conflicting fixture draft');
+  await otherHoldings.getByRole('button', { name: 'Reload holdings', exact: true }).click();
+  await poll(async () => await otherHoldings.getByLabel('Position 1 name', { exact: true }).inputValue() === 'Example World ETF', 'holdings conflict reload');
+  await holdingsTab.close();
+  assert.deepEqual(await json(page, `${seeded}/api/owner-inputs`), ownerData);
+  record('Actual holdings: table import, unknown dates/flows, separate accounts, explicit combination, revision conflict and model-store independence');
   await desktop.tracing.stop({ path: path.join(output, 'desktop-trace.zip') });
   await desktop.close();
 
@@ -324,8 +430,22 @@ try {
   const mobileContext = await context(seeded, { width: 390, height: 844 });
   const mobile = await mobileContext.newPage();
   await mobile.goto(seeded);
-  await shown(section(mobile, 'C01').getByRole('button', { name: 'Configure', exact: true }));
+  await shown(mobile.getByRole('heading', { name: 'Overview', exact: true }));
+  await mobile.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
   await screenshot(mobile, 'mobile-overview-light');
+  const utilityBounds = await mobile.getByRole('button', { name: 'Data & sync', exact: true }).boundingBox();
+  assert.ok(utilityBounds.x >= 0 && utilityBounds.x + utilityBounds.width <= 390, 'Data & sync remains reachable without horizontal navigation');
+  await mobile.keyboard.press('Tab');
+  assert.equal(await mobile.getByRole('link', { name: 'Skip to content', exact: true }).evaluate(element => element === document.activeElement), true);
+  await mobile.keyboard.press('Enter');
+  assert.equal(await mobile.getByRole('main').evaluate(element => element === document.activeElement), true);
+  for (const row of catalogue) {
+    await mobile.goto(`${seeded}/#q-${row.analysis_id}`);
+    await shown(mobile.locator(`#q-${row.analysis_id}`));
+    assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Question ${row.analysis_id} fits390px`);
+  }
+  await mobile.goto(`${seeded}/#q-C01`);
+  await shown(section(mobile, 'C01').getByRole('button', { name: 'Configure', exact: true }));
   const configure = section(mobile, 'C01').getByRole('button', { name: 'Configure', exact: true });
   let reached = false;
   for (let tabs = 0; tabs < 200; tabs += 1) {
@@ -354,10 +474,17 @@ try {
   await mobile.waitForTimeout(200);
   await mobileEditor.evaluate(element => window.scrollTo({ left: 0, top: element.getBoundingClientRect().top + window.scrollY - 90, behavior: 'instant' }));
   await screenshot(mobile, 'mobile-dark');
-  await mobile.evaluate(() => window.scrollTo({ left: 0, top: 0, behavior: 'instant' }));
+  await mobile.goto(`${seeded}/#overview`);
   await screenshot(mobile, 'mobile-overview-dark');
   record('390px light/dark, keyboard editor activation/tab order and visible focus');
   await mobileContext.close();
+  const tabletContext = await context(seeded, { width: 1024, height: 768 });
+  const tablet = await tabletContext.newPage();
+  await tablet.goto(`${seeded}/#q-C01`);
+  await shown(tablet.locator('#q-C01'));
+  assert.ok(await tablet.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  await screenshot(tablet, 'tablet-selected-analysis');
+  await tabletContext.close();
 
   // Controlled boundary failures: loading retries, permanent failure, lost connection.
   for (const failure of ['loading', 'evaluation', 'connection']) {
@@ -376,11 +503,11 @@ try {
     });
     await fault.goto(seeded);
     if (failure === 'loading') {
-      await shown(fault.getByText(/evaluation in progress; this page retries automatically/).first());
-      await shown(section(fault, 'C01').getByRole('button', { name: 'Configure', exact: true }));
+      await shown(fault.getByText(/being reassessed; this page retries automatically/).first());
+      await shown(fault.getByRole('article', { name: 'Growth and the business cycle', exact: true }).locator('.overview-summary').first());
       assert.ok(count >= 2);
     } else {
-      await shown(fault.getByText(failure === 'evaluation' ? /acceptance evaluation unavailable/ : /Failed to fetch/).first());
+      await shown(fault.getByText(/Some research findings could not be read/).first());
       const atFailure = count;
       await fault.waitForTimeout(1200);
       assert.equal(count, atFailure, 'Permanent failure must not spin a reload/retry loop');

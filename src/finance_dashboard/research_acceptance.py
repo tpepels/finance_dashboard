@@ -310,7 +310,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             # is accepted only when its supplying store holds valid values.
             supplied = (owner_supply or {}).get((analysis["id"], role["role"]))
             if supplied:
-                check = _gate("user_supplied", "passed", "owner_inputs_supplied" if supplied["supplied_by"] == "owner_inputs"
+                check = _gate("user_supplied", "passed", "owner_inputs_supplied" if supplied["supplied_by"] in ("owner_inputs", "portfolio_holdings")
                               else "curated_register_supplied", (), supplied_by=supplied["supplied_by"],
                               scope="Supplied by the application's own store; validated, not checked against a publisher.")
                 requirements.append({**role, "state": "user_input", "accepted": True,

@@ -60,6 +60,9 @@ def _nport(holdings_root: Path, instrument: str, latest_only: bool = False) -> l
 
 def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
     """Load one named archive; unknown names raise KeyError."""
+    if name == 'portfolio_holdings':
+        from ..portfolio_holdings import load_portfolio_holdings
+        return load_portfolio_holdings()
     if name == "acwi_nport":
         return _nport(Path(holdings_root), "acwi")
     if name in ("vt_nport", "bnd_nport"):
@@ -86,6 +89,21 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
     if name == "owner_inputs":
         from ..owner_inputs import load_owner_inputs
         return load_owner_inputs()
+    if name == "cvm_profit_coverage":
+        from ..cvm_profits import read_cvm_sources
+        report = read_cvm_sources(Path(evidence_root))
+        if not report["records"]:
+            return None
+        # read_cvm_sources verifies original bytes and acquisition receipts.
+        # Only native coverage counts are exposed; no income is summed.
+        return {"status": report["status"], "sources": [
+            {"year": source["archive_year"], **source["population"], "source_url": source["source_url"],
+             "original_archive_sha256": source["original_archive_sha256"],
+             "evidence_retrieved_at_utc": source["evidence_retrieved_at_utc"]}
+            for source in report["records"]],
+            "aggregate_produced": False, "listed_population_verified": False,
+            "ultimate_parent_deduplication_verified": False,
+            "worldwide_population_verified": False}
     if name == "marxian_rates":
         from ..marxian_sectors import marxian_rates
         return marxian_rates(Path(evidence_root))

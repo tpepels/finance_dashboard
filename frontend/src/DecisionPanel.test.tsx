@@ -92,7 +92,7 @@ describe('DecisionPanel', () => {
       return Promise.resolve(new Response(JSON.stringify({ P06: p06, P07: p07, F03: f03, recessions }[id])));
     }));
     render(<DecisionPanel theme="light" dataVersion={0}/>);
-    await waitFor(() => expect(screen.getByText(/evaluation in progress/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/being reassessed.*retries automatically/i)).toBeTruthy());
     await waitFor(() => expect(screen.getByRole('img', { name: /real return per year/i })).toBeTruthy());
   });
 });

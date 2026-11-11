@@ -1,51 +1,39 @@
-import type { ReactNode } from 'react';
 import type { Theme } from './chartKit';
-import { useBundles, type Bundle } from './analysisShell';
-import { CycleLead } from './GrowthPanel';
-import { PolicyLead } from './MonetaryPanel';
-import { CreditLead } from './DecisionPanel';
-import { ValuationLead } from './ValuationPanel';
-import { SplitLead } from './LabourPanel';
-import { FallsLead } from './PortfolioPanel';
+import { useBundles } from './analysisShell';
+import { researchStateLabel } from './researchNavigation';
 
-type Lead = { id: string; title: string; panel: string; graphic: (bundle: Bundle<any>, theme: Theme) => ReactNode };
-
-/** The visualization contract's six research experiences, each led by one analysis. */
-const EXPERIENCES: Lead[] = [
-  { id: 'C01', title: 'Growth and the business cycle', panel: 'growth', graphic: (b, t) => <CycleLead bundle={b} theme={t}/> },
-  { id: 'M01', title: 'Policy rates and the euro', panel: 'monetary', graphic: (b, t) => <PolicyLead bundle={b} theme={t}/> },
-  { id: 'F03', title: 'Debt and credit fragility', panel: 'decisions', graphic: (b, t) => <CreditLead bundle={b} theme={t}/> },
-  { id: 'V01', title: 'Valuation and expected returns', panel: 'valuation', graphic: (b, t) => <ValuationLead bundle={b} theme={t}/> },
-  { id: 'L02', title: 'Labour, capital and inequality', panel: 'labour', graphic: (b, t) => <SplitLead bundle={b} theme={t}/> },
-  { id: 'P03', title: 'Market falls and recoveries', panel: 'portfolio', graphic: (b, t) => <FallsLead bundle={b} theme={t}/> },
+const EXPERIENCES = [
+  { id: 'C01', title: 'Growth and the business cycle' }, { id: 'M01', title: 'Policy rates and the euro' },
+  { id: 'F03', title: 'Debt and credit fragility' }, { id: 'V01', title: 'Valuation and expected returns' },
+  { id: 'L02', title: 'Labour, capital and inequality' }, { id: 'P03', title: 'Market falls and recoveries' },
 ];
 
-type WithSummary = Bundle<unknown> & { summary?: string[] };
-
-/** Overview: six research experiences, each with its lead graphic and a two-sentence summary built from the data. */
-export default function Overview({ theme, dataVersion }: { theme: Theme; dataVersion: number }) {
-  const { bundles, error } = useBundles(EXPERIENCES.map(e => e.id), dataVersion);
-  return <div className="overview" id="overview">
-    <header className="decision-intro">
-      <h2>Overview</h2>
-      <p>Six questions that frame the rest of the dashboard. Each sentence below is assembled from the analysis's own numbers and dates;
-        open an analysis for its history, method, sources and limits.</p>
+/** Findings come from Python analyses; this surface only presents them. */
+export default function Overview({ dataVersion }: { theme: Theme; dataVersion: number }) {
+  const { bundles, error, loading, retry } = useBundles(EXPERIENCES.map(item => item.id), dataVersion);
+  return <section className="overview" id="overview" tabIndex={-1} aria-labelledby="overview-title">
+    <header className="decision-intro overview-intro">
+      <div><h2 id="overview-title">Overview</h2><p>Six findings from the recorded evidence. Each uses its own source period; open the question to inspect its scope and limits.</p></div>
+      <a className="workspace-action" href="#workbench">Find a question <span aria-hidden="true">→</span></a>
     </header>
-    {error && <p className="decision-note" role="status">{error}</p>}
-    <div className="overview-grid">
-      {EXPERIENCES.map(e => {
-        const bundle = bundles[e.id] as WithSummary | undefined;
-        return <article key={e.id} className="overview-card" aria-labelledby={`ov-${e.id}`}>
-          <div className="overview-graphic">{bundle?.values ? e.graphic(bundle, theme) : null}</div>
-          <div className="overview-words">
-            <h3 id={`ov-${e.id}`}>{e.title}</h3>
-            {bundle && <p className="overview-question">{bundle.question}</p>}
-            {bundle?.values ? (bundle.summary ?? []).map(sentence => <p key={sentence} className="overview-summary">{sentence}</p>)
-              : bundle && <p className="decision-note" role="status">{e.id} is not computed: Phase 2 state is {bundle.phase2.state}.</p>}
-            <a className="overview-open" href={`#q-${e.id}`} aria-label={`Open ${e.id}: the full analysis`}>Open the full analysis</a>
+    {loading && <p className="decision-note" role="status">Reading research findings…</p>}
+    {error && <div className="workspace-error"><p role="alert">{error}</p><button type="button" onClick={retry}>Retry findings</button></div>}
+    <div className="overview-findings">
+      {EXPERIENCES.map(item => {
+        const bundle = bundles[item.id];
+        return <article key={item.id} className="overview-finding" aria-labelledby={`ov-${item.id}`}>
+          <div className="finding-label"><span className="research-id">{item.id}</span><h3 id={`ov-${item.id}`}>{item.title}</h3></div>
+          <div className="finding-content">
+            {bundle ? <>
+              <p className="research-state">{researchStateLabel(bundle.phase2.state)}{bundle.basis?.kind === 'verified_alternatives' ? ' · verified alternatives' : ''}</p>
+              {bundle.values ? (bundle.summary?.length ? bundle.summary.slice(0, 2).map(sentence => <p key={sentence} className="overview-summary">{sentence}</p>)
+                : <p className="decision-note">Finding unavailable. Open the full recorded analysis.</p>)
+                : <p className="decision-note">{item.id} is not computed: research state is {bundle.phase2.state}.</p>}
+            </> : <p className="finding-placeholder">{loading ? 'Waiting for evaluated evidence…' : 'Finding unavailable. Open the analysis or retry.'}</p>}
+            <a className="overview-open" href={`#q-${item.id}`} aria-label={`Open ${item.id}: the full analysis`}>Open analysis <span aria-hidden="true">→</span></a>
           </div>
         </article>;
       })}
     </div>
-  </div>;
+  </section>;
 }

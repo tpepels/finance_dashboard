@@ -43,6 +43,24 @@ def cache_of(public_report):
 
 
 class EngineApiTests(unittest.TestCase):
+    def test_research_status_retries_only_while_assessment_is_loading(self):
+        self.app.state.acceptance = AcceptanceCache(lambda: snapshot_from_report(report(), AT),
+                                                   ttl_seconds=3600, spawn=lambda work: None)
+        response = self.client.get('/api/research-status')
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.headers['Retry-After'], '30')
+        self.assertNotIn('counts', response.json())
+
+    def test_research_status_preserves_original_deferred_state_and_limitation_text(self):
+        response = self.client.get('/api/research-status')
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        rows = {r['analysis_id']: r for r in body['questions']}
+        self.assertEqual(rows['G03']['state'], 'deferred')
+        self.assertTrue(rows['G03']['phase2']['limitations'][0]['text'])
+        self.assertEqual(body['counts']['conditional'], 1)
+        self.assertEqual(body['evaluated_at'], AT.isoformat())
+
     def test_saved_view_crud_preserves_independence_and_rejects_stale_writes(self):
         with TemporaryDirectory() as tmp, patch.dict(os.environ, {'FINANCE_SAVED_VIEWS': str(Path(tmp)/'saved-views.json')}):
             cap = self.client.get('/api/analysis/P07/views/capabilities').json()

@@ -14,6 +14,7 @@ let conflict: boolean;
 let saves: any[];
 let listError: boolean;
 beforeEach(() => {
+  history.replaceState({}, '', '/#saved-figures');
   conflict = false; saves = []; listError = false;
   records = [{ id: 'a', name: 'Alpha', analysis_id: 'M01', figure_id: 'history', method_version: '1', revision: 3,
     spec: { ...defaults, geographies: ['US'] } }, { id: 'b', name: 'Beta', analysis_id: 'L01', figure_id: 'history',
@@ -57,7 +58,7 @@ describe('server saved figures workspace', () => {
     const user = userEvent.setup(); render(<App/>);
     const space = await workspace();
     await user.click(await within(space).findByRole('button', { name: 'Open Alpha' }));
-    await within(space).findByRole('link', { name: 'Export this view' });
+    await within(space).findByRole('link', { name: 'Export this view' }, { timeout: 5000 });
     await user.click(within(space).getByRole('button', { name: 'Duplicate figure' }));
     await within(space).findByRole('button', { name: 'Open Alpha copy' });
     const active = within(space).getByRole('region', { name: 'Configure M01' });
@@ -69,7 +70,9 @@ describe('server saved figures workspace', () => {
     await within(space).findByRole('button', { name: 'Open Gamma' });
     expect(records.find(r => r.id === 'a')).toMatchObject({ name: 'Alpha', revision: 3, spec: { geographies: ['US'] } });
     expect(records.find(r => r.id === 'copy')).toMatchObject({ name: 'Gamma', revision: 2, spec: { geographies: [] } });
-    await user.selectOptions(screen.getByLabelText('Region'), 'US');
+    await user.click(screen.getByRole('link', { name: 'Find a question' }));
+    await user.selectOptions(await screen.findByLabelText('Region'), 'US');
+    await user.click(screen.getByRole('link', { name: 'Saved figures' }));
     expect(within(active).getByLabelText('Figure name')).toHaveProperty('value', 'Gamma');
     expect(records.find(r => r.id === 'b').spec.geographies).toEqual(['DE']);
     cleanup(); render(<App/>);

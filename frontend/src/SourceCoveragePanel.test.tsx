@@ -42,6 +42,22 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('single-page source completeness panel', () => {
+  it('separates an age-qualified observation from a deferred refresh and links affected questions', async () => {
+    const deferred = { ...recorded, state: 'refresh_deferred_with_data', observation_state: 'current',
+      refresh_state: 'deferred', freshness_basis: 'calendar_age', expected_lag_days: 750,
+      research_questions: ['C03'], next_action: 'Wait for the publisher budget before refreshing.' };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => ({ ok: true, json: async () => String(url) === '/api/maintenance'
+      ? { active_job_id: null, jobs: [], operations: [] } : { ...payload, items: [deferred] } })));
+    const user = userEvent.setup();
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/25 sources need attention/));
+    await user.click(screen.getByText(/Source diagnostics/));
+    expect(screen.getByText('Within expected age')).toBeTruthy();
+    expect(screen.getByText('Refresh deferred')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'C03' }).getAttribute('href')).toBe('#q-C03');
+    expect(screen.getByText(/Wait for the publisher budget/)).toBeTruthy();
+    expect(screen.getByText(/does not establish the latest publisher release/)).toBeTruthy();
+  });
   it('shows only concise missing-data counts before opening technical detail', async () => {
     render(<SourceCoveragePanel/>);
     expect(await screen.findByText(/25 sources need attention/)).toBeTruthy();

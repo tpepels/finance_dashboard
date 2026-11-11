@@ -8,9 +8,15 @@ One Docker container serves the React/TypeScript/ECharts UI and FastAPI API, kee
 
 All 37 questions have engine definitions. Independent figures now support declared compatible series/geographies, periods, server-computed transforms, chart encodings, event context, saved variants, compare/reset and exact-view exports. Curated reference graphics remain available; unsupported combinations explain why they are unavailable.
 
+Each question now has a short finding computed from its own evidence. The concise overview opens a focused research workspace with expandable details; question/source deep links and browser history remain usable. Research status separates the usable finding from original-method limits.
+
 A fresh read-only assessment of the verified local corpus reports **24 accepted, 12 conditional and one documented deferral**, with no incomplete analysis. P06's rolling sparse observations are verified against their archived originals. Accepted output is bound to the assessed database versions and original-evidence state; changed inputs are withheld pending reassessment.
 
 Backups include portfolio inputs, saved figures and the publisher-policy ledger, with verified restore into an empty directory. Builds use frozen Python/npm dependencies and pinned runtime images. Independent portfolio arithmetic, desktop/mobile browser flows and recovery checks pass.
+
+Record actual positions under **Portfolio → ETF holdings**. Account values, exact-ISIN grouping and portfolio weights are computed on the server and included in recovery. Actual snapshots stay separate from model scenarios; unknown dates, cash flows and share classes remain explicit. See [recorded holdings](docs/PORTFOLIO_HOLDINGS.md).
+
+Source collection now handles exact OECD windows, shared publisher originals, multi-document WID pacing and fair rotation after failed requests. Observation age and refresh outcomes are shown separately. G03 includes verified Brazilian filing-sample coverage and labels the cap/P-E calculation as an implied index earnings proxy, preserving its worldwide original-method deferral. See [research completion](docs/RESEARCH_COMPLETION.md) and [collection reliability](docs/SOURCE_COLLECTION_RELIABILITY.md).
 
 The verified release is running at **http://localhost:5052/** locally and **http://192.168.1.200:5052/** on `media-server`. The server uses the selected verified local corpus; its previous corpus and image remain available for rollback.
 
@@ -60,6 +66,9 @@ Docker builds run frontend tests/build, Python syntax compilation and catalogue 
 | [Architecture](docs/ARCHITECTURE.md) | Runtime, evidence and calculation boundaries |
 | [Server source setup](docs/SERVER_SOURCE_SETUP.md) | Credentials, collection and readiness |
 | [Home-server integration](docs/HOME_SERVER_DOCKER.md) | Existing Compose project integration |
+| [Research completion](docs/RESEARCH_COMPLETION.md) | Findings, verified alternatives and remaining evidence boundaries |
+| [Recorded holdings](docs/PORTFOLIO_HOLDINGS.md) | Actual positions, identities, account combination and model separation |
+| [Collection reliability](docs/SOURCE_COLLECTION_RELIABILITY.md) | Publisher pacing, shared originals and fair refresh ordering |
 | [Commands](docs/COMMANDS.md) | Research/source CLI |
 | [Charter](docs/PHASE1_SCIENTIFIC_CHARTER.md), [catalogue](docs/PHASE1_ANALYSIS_CATALOGUE.md), [specifications](docs/PHASE1_ANALYSIS_SPECIFICATIONS.md), [visualization contract](docs/PHASE1_VISUALIZATION_CONTRACT.md) | Scientific and interaction requirements; dated approval statements are historical |
 | [Source policy](docs/SOURCE_POLICY.md), [data policy](docs/DATA_POLICY.md) | Publisher pacing, original evidence and preservation |

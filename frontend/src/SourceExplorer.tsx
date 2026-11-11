@@ -38,11 +38,10 @@ function sourceChart(s: SeriesDefinition): ChartDefinition {
   };
 }
 
-const link = readLink();
-
 export default function SourceExplorer({ theme, dataVersion }: {
   theme?: 'light' | 'dark'; dataVersion?: number;
 }) {
+  const [link, setLink] = useState(readLink);
   const [context, setContext] = useState<DataContext | null>(null);
   const [failure, setFailure] = useState('');
   const [openCharts, setOpenCharts] = useState<Set<string>>(
@@ -50,6 +49,26 @@ export default function SourceExplorer({ theme, dataVersion }: {
   const [closedThemes, setClosedThemes] = useState<Set<string>>(new Set());
   const [librarySource, setLibrarySource] = useState(link.id?.startsWith('source-')
     ? link.id.slice('source-'.length) : '');
+  useEffect(() => {
+    const navigate = () => {
+      const requested = readLink();
+      const chartId = location.hash.startsWith('#chart-') ? location.hash.slice('#chart-'.length) : requested.id;
+      setLink({ id: chartId, settings: requested.id === chartId ? requested.settings : undefined });
+      if (chartId) {
+        setOpenCharts(previous => new Set([...previous, chartId]));
+        const chapter = CHAPTERS.find(item => item.chartIds.includes(chartId));
+        if (chapter) setClosedThemes(previous => new Set([...previous].filter(id => id !== chapter.id)));
+        if (chartId.startsWith('source-')) setLibrarySource(chartId.slice('source-'.length));
+      }
+      if (location.hash.startsWith('#theme-')) {
+        const id = location.hash.slice('#theme-'.length);
+        setClosedThemes(previous => new Set([...previous].filter(value => value !== id)));
+      }
+    };
+    navigate();
+    window.addEventListener('hashchange', navigate); window.addEventListener('popstate', navigate);
+    return () => { window.removeEventListener('hashchange', navigate); window.removeEventListener('popstate', navigate); };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -72,7 +91,7 @@ export default function SourceExplorer({ theme, dataVersion }: {
       requestAnimationFrame(() =>
         document.getElementById(`chart-${link.id}`)?.scrollIntoView({ block: 'start' }));
     }
-  }, [context]);
+  }, [context, link.id]);
 
   function toggleChart(id: string) {
     setOpenCharts(before => {
@@ -132,7 +151,7 @@ export default function SourceExplorer({ theme, dataVersion }: {
           </div>
         </nav>
         {chapters.map(chapter =>
-          <section className="theme-section" id={`theme-${chapter.id}`} key={chapter.id}>
+          <section className="theme-section" id={`theme-${chapter.id}`} tabIndex={-1} key={chapter.id}>
             <div className="theme-top">
               <span className="theme-index">{chapter.name.slice(0, 2)}</span>
               <div className="theme-titles">
@@ -155,7 +174,7 @@ export default function SourceExplorer({ theme, dataVersion }: {
                 </div>)}
             </div>}
           </section>)}
-        <section className="library-section" id="source-library">
+        <section className="library-section" id="source-library" tabIndex={-1}>
           <h2>Additional source histories</h2>
           <p>The main research chapters contain deliberate, comparable measurements. Other source histories
             are accessible individually here; unrelated measures are never combined on a shared scale.</p>
@@ -177,6 +196,12 @@ export default function SourceExplorer({ theme, dataVersion }: {
                   deepLink={extraChart.id === link.id ? link.settings : undefined} />
               </div>}
             </>}
+        </section>
+        <section className="library-section" id="supplementary-wisesheets" tabIndex={-1}>
+          <h2>SEC earnings</h2>
+          <p>The supplementary earnings dataset covers current-directory US SEC filers. It does not establish worldwide consolidated listed-company profit coverage.</p>
+          <p>Inspect its configured access and recorded collection outcome in Data &amp; sync.</p>
+          <a href="#source-coverage">Open data collection status</a>
         </section>
         <section className="site-methods">
           <h2>How to read the evidence</h2>

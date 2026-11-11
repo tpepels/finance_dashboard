@@ -36,7 +36,7 @@ export default function SavedViews({ theme, dataVersion = 0 }: { theme: Theme; d
   const compare = (record: SavedView) => {
     open(record); setCompared(old => old.includes(record.id) ? old.filter(id => id !== record.id) : [...old, record.id]);
   };
-  return <section className="saved-views" id="saved-figures" aria-labelledby="saved-figures-title">
+  return <section className="saved-views" id="saved-figures" tabIndex={-1} aria-labelledby="saved-figures-title">
     <div className="saved-views-head"><div><h2 id="saved-figures-title">Saved figures</h2>
       <p>Independent views saved on this server. Configure any research question to add one.</p></div>
       <button type="button" className="figure-button" aria-pressed={comparing} onClick={() => { setComparing(value => !value); setLinked(false); }}>Compare figures</button></div>

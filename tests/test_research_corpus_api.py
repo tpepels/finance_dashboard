@@ -129,11 +129,11 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         self.assertEqual(link["observation_coverage"]["latest_source_date"], "2026-08-01")
         self.assertIsNotNone(link["observation_coverage"]["last_success_utc"])
         self.assertNotIn("PRIVATE", result.text)
-        # The current C02 source inventory names the official recession
-        # chronology without using the NBER abbreviation; test the actual
-        # methodological requirement rather than obsolete wording.
-        self.assertIn("US recession chronology", entry["outstanding_evidence"])
-        self.assertIn("release-time revisions", entry["outstanding_evidence"])
+        # A stored value is not an original, period-matched comparison.
+        self.assertFalse(entry["acceptance"]["accepted"])
+        sahm = next(role for role in entry["requirements"] if role["role"] == "published_sahm")
+        self.assertFalse(sahm["accepted"])
+        self.assertIn("original_source_values", sahm["blocking_checks"])
 
 
 if __name__ == "__main__":

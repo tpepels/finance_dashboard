@@ -11,7 +11,8 @@ from uuid import uuid4
 from .bis import ProviderError
 
 
-def record_acquisition_receipt(bundle: Path, source_identity: dict) -> Path:
+def record_acquisition_receipt(bundle: Path, source_identity: dict, *,
+                               acquisition: dict | None = None) -> Path:
     """Atomically append one receipt after a downloaded source pair is validated.
 
     A publisher can return an older byte-identical dataset after a revision.
@@ -29,6 +30,10 @@ def record_acquisition_receipt(bundle: Path, source_identity: dict) -> Path:
         record = {"schema_version": 1, "observed_at_utc": observed.isoformat(),
                   "bundle_digest": bundle.name, "manifest_sha256": manifest_hash,
                   "source_identity": source_identity}
+        if acquisition is not None:
+            # Association with a shared original is observed again without
+            # claiming a second publisher retrieval took place.
+            record["acquisition"] = acquisition
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", prefix=".receipt-",
                                          suffix=".json", dir=receipts, delete=False) as handle:
             temporary = Path(handle.name)

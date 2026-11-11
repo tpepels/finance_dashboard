@@ -1367,11 +1367,13 @@ def _p01(points: dict, view: dict, artifacts: dict) -> Computed:
             f = filings[-1]
             funds.append({"key": key, "name": name, "date": f["date"], "countries": _top_shares(f["countries"]),
                           "sectors": None, "top": f["issuers"][:10]})
-    return Computed(values={"funds": funds}, estimates=None, comparison=["funds"], transforms=[
+    return Computed(values={"funds": funds, 'owner_portfolio': artifacts.get('portfolio_holdings')},
+                    estimates=None, comparison=["funds"], transforms=[
         applied("share_of_total", applied_to=["fund positions"], total="fund net assets", grouping="country, sector, issuer")])
 
 
-P01 = AnalysisDefinition("P01", {}, _p01, artifacts=("ucits_world", "vt_nport", "bnd_nport"))
+P01 = AnalysisDefinition("P01", {}, _p01,
+                         artifacts=("ucits_world", "vt_nport", "bnd_nport", "portfolio_holdings"))
 
 def _owner(artifacts: dict) -> dict:
     from ..owner_inputs import EXAMPLE
@@ -1692,12 +1694,14 @@ C05 = AnalysisDefinition("C05", {"industrial_production": "activity.us.industria
                                  "payrolls": "activity.us.nonfarm_payrolls", "gdp": "activity.us.real_gdp_level",
                                  "nber": "recession.us.nber_indicator"}, _c05, artifacts=("shock_events", "jst_crises"))
 
+G03_METHODOLOGY_URL = "https://www.msci.com/indexes/documents/methodology/0_MSCI_Fundamental_Data_Methodology_20240625.pdf"
+
 G03_ALTERNATIVES = {
     "eu27_profit_share": ("EU27 non-financial corporations: gross profit share of value added", "% of value added"),
     "oecd_surplus_gdp": ("OECD38 corporations: gross operating surplus relative to GDP", "% of GDP")}
 
 
-def _g03(points: dict, view: dict) -> Computed:
+def _g03(points: dict, view: dict, artifacts: dict | None = None) -> Computed:
     alternatives = []
     for key, (name, unit) in G03_ALTERNATIVES.items():
         series = points.get(key, [])
@@ -1713,14 +1717,24 @@ def _g03(points: dict, view: dict) -> Computed:
              if day.month == 12 and day.year in gdp and gdp[day.year]]
     latest = max(earnings) if earnings else None
     values = {"alternatives": alternatives, "oecd_coverage": _series(coverage), "oecd_members": _series(members),
-              "listed_earnings": {"history": [[day.isoformat(), value] for day, value in earnings.items()],
+              "listed_profit_coverage": (artifacts or {}).get("cvm_profit_coverage"),
+              # Legacy value keys remain compatible; this arithmetic is an index
+              # proxy, not a reconstruction of reported issuer net profits.
+              "listed_earnings": {"measure": "implied_index_earnings_proxy",
+                                  "reported_company_profit": False,
+                                  "cap_and_pe_population_match_verified": False,
+                                  "methodology_url": G03_METHODOLOGY_URL,
+                                  "history": [[day.isoformat(), value] for day, value in earnings.items()],
                                   "share_of_gdp": share,
                                   "latest": {"month": latest.isoformat(), "earnings_usd_bn": earnings[latest],
                                              "market_cap_usd_bn": cap[latest] / 1000, "pe": pe[latest]} if latest else None}}
     return Computed(values=values, estimates=None, comparison=list(G03_ALTERNATIVES) + ["listed_earnings"], transforms=[
         *([applied("share_of_total", applied_to=["acwi_mkt_cap", "acwi_pe"],
-                   note="aggregate trailing earnings = index market cap / index P/E (MSCI: P/E = total cap / total earnings); "
-                        "share of world GDP from December months only, against that calendar year's GDP")] if earnings else [])])
+                   note="implied index earnings proxy = factsheet index market cap / trailing P/E; MSCI uses normalized "
+                        "continuing-operations earnings and inclusion factors, excluding securities with missing EPS. "
+                        "Matching coverage of factsheet cap and the P/E numerator is unverified. The December proxy / "
+                        "same-calendar-year world GDP is an arithmetic comparison, not reported listed-company profits / GDP",
+                   methodology_url=G03_METHODOLOGY_URL)] if earnings else [])])
 
 
 G03 = AnalysisDefinition("G03", {"eu27_profit_share": "profit.eu27.nonfinancial_gross_surplus_value_added",
@@ -1729,7 +1743,7 @@ G03 = AnalysisDefinition("G03", {"eu27_profit_share": "profit.eu27.nonfinancial_
                                  "oecd_members": "profit.oecd38.corporate_gross_surplus_member_count",
                                  "acwi_mkt_cap": "valuation.acwi.msci_index_market_cap_usd",
                                  "acwi_pe": "valuation.acwi.msci_trailing_pe",
-                                 "world_gdp": "gdp.nominal_usd.world"}, _g03,
+                                 "world_gdp": "gdp.nominal_usd.world"}, _g03, artifacts=("cvm_profit_coverage",),
                          alternatives={"eurostat_nfc_gross_profit_share": ("eu27_profit_share",),
                                        "oecd_corporate_gross_surplus_context": ("oecd_surplus_gdp", "oecd_coverage", "oecd_members"),
                                        "msci_acwi_aggregate_earnings": ("acwi_mkt_cap", "acwi_pe")})

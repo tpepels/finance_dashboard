@@ -116,7 +116,7 @@ rtk docker compose exec -T finance-dashboard python -m finance_dashboard backup 
 rtk docker compose exec -T finance-dashboard python -m finance_dashboard backup verify /data/backups/EXACT_MANIFEST_FILENAME.json
 ```
 
-Use the actual returned manifest name. Copy that manifest and every component it names to another disk/device. Version 2 bundles include the primary SQLite database, optional SEC filer snapshot, existing evidence directories, and optional application state: `FINANCE_OWNER_INPUTS`, `FINANCE_SAVED_VIEWS` and `FINANCE_SOURCE_POLICY_DB`. The policy ledger is captured through SQLite's backup API, including committed WAL changes. Both archive and individual state members have hashes. Missing optional files are omitted; inspect the manifest to confirm the state expected for this installation. Credentials and `.env` are excluded. Historical bundles remain verifiable/restorable, but cannot supply state they never contained.
+Use the actual returned manifest name. Copy that manifest and every component it names to another disk/device. Version 2 bundles include the primary SQLite database, optional SEC filer snapshot, existing evidence directories, and optional application state: `FINANCE_OWNER_INPUTS`, `FINANCE_SAVED_VIEWS`, `FINANCE_PORTFOLIO_HOLDINGS` and `FINANCE_SOURCE_POLICY_DB`. The policy ledger is captured through SQLite's backup API, including committed WAL changes. Both archive and individual state members have hashes. Missing optional files are omitted; inspect the manifest to confirm the state expected for this installation. Credentials and `.env` are excluded. Historical bundles remain verifiable/restorable, but cannot supply state they never contained.
 
 Restore into a **new or empty** directory. The command verifies every component before staging a restore, preserves the source bundle and refuses populated destinations. For example, mount the recovery bundles read-only and a new parent directory writable by the configured UID/GID:
 
@@ -165,6 +165,7 @@ export FINANCE_HOLDINGS_DIR="$FINANCE_DEV_DATA/holdings"
 export FINANCE_SURPLUS_DIR="$FINANCE_DEV_DATA/surplus"
 export FINANCE_OWNER_INPUTS="$FINANCE_DEV_DATA/owner-inputs.json"
 export FINANCE_SAVED_VIEWS="$FINANCE_DEV_DATA/saved-views.json"
+export FINANCE_PORTFOLIO_HOLDINGS="$FINANCE_DEV_DATA/portfolio-holdings.json"
 export FINANCE_MAINTENANCE_STATE="$FINANCE_DEV_DATA/maintenance/jobs.json"
 export FINANCE_SOURCE_POLICY_DB="$FINANCE_DEV_DATA/source-policy/rate-ledger.sqlite3"
 export FINANCE_BACKUP_DIR="$FINANCE_DEV_DATA/backups"
@@ -229,3 +230,5 @@ Use `FINANCE_AUTO_REFRESH=1` and `FINANCE_REFRESH_ON_START=0` when bringing up a
 When source versions/originals change, analysis and export endpoints withhold affected output and return a retryable acceptance-loading state until a fresh assessment succeeds. A large corpus can take several minutes to assess; health and source diagnostics remain available. This prevents a cached acceptance result from authorizing unverified revisions.
 
 The deployed release and rollback paths are listed in [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md). Keep the local and server stores independent; conflicting manifests/receipts must not be merged by copying files over one another.
+
+See [recorded holdings](PORTFOLIO_HOLDINGS.md) for the private position snapshot and its separation from model scenarios, and [source collection reliability](SOURCE_COLLECTION_RELIABILITY.md) for shared-original reuse, fair refresh ordering and publisher-paced background waits.

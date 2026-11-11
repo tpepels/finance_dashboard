@@ -1,8 +1,12 @@
 /** Shared shell for analysis panels: bundle types, loading with Phase 2 retry, sections and folded limitations. */
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { createContext, lazy, Suspense, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Recession } from './chartKit';
 import { detailMessage } from './figureViews';
+import { researchStateLabel } from './researchNavigation';
 const FigureEditor = lazy(() => import('./FigureEditor'));
+
+/** Standalone panels remain complete; the application chooses a topic or an individual question. */
+export const ResearchSelection = createContext<{ question: string | null } | null>(null);
 
 
 export type Limitation = { code: string; text: string; detail?: string };
@@ -23,6 +27,7 @@ export type Bundle<V, E = null> = {
   values: V | null; estimates: E | null; method_limitations: Limitation[]; limitations: Shown[];
   transforms?: Transform[]; inputs?: Input[]; citations?: Citation[];
   basis?: { kind: 'original' | 'verified_alternatives'; variants: string[] } | null;
+  summary?: string[];
 };
 
 /** The server is still evaluating Phase 2 acceptance; retry after the stated delay. */
@@ -66,29 +71,34 @@ export function useBundles(ids: string[], dataVersion: number) {
   const [bundles, setBundles] = useState<Record<string, Bundle<unknown, unknown>>>({});
   const [recessions, setRecessions] = useState<Recession[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [retryVersion, setRetryVersion] = useState(0);
   const key = ids.join(',');
   useEffect(() => {
     let cancelled = false;
+    setLoading(true); setError('');
     // Preserve each question/editor while withholding values whose evidence is being refreshed.
     setBundles(previous => Object.fromEntries(Object.entries(previous).map(([id, bundle]) => [id,
       { ...bundle, values: null, estimates: null, phase2: { ...bundle.phase2, state: 'refreshing', open_gates: ['refresh in progress'] } }])));
     let timer: ReturnType<typeof setTimeout> | undefined;
     load<{ periods: Recession[] }>('/api/recessions', dataVersion).then(r => { if (!cancelled) setRecessions(r.periods); }).catch(() => undefined);
     const attempt = () => {
-      Promise.all(key.split(',').map(id => load<Bundle<unknown, unknown>>(`/api/analysis/${id}`, dataVersion))).then(loaded => {
-        if (!cancelled) { setBundles(Object.fromEntries(loaded.map(b => [b.analysis_id, b]))); setError(''); }
-      }).catch(err => {
+      Promise.allSettled(key.split(',').map(id => load<Bundle<unknown, unknown>>(`/api/analysis/${id}`, dataVersion)
+        .then(bundle => { if (!cancelled) setBundles(previous => ({ ...previous, [bundle.analysis_id]: bundle })); }))).then(results => {
         if (cancelled) return;
-        if (err instanceof Pending) {
-          setError(`${err.message}; this page retries automatically.`);
-          timer = setTimeout(attempt, err.retryAfterSeconds * 1000);
-        } else setError(err instanceof Error ? err.message : 'Unavailable');
+        const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
+        const pending = failures.find(result => result.reason instanceof Pending)?.reason as Pending | undefined;
+        setLoading(false);
+        if (pending) {
+          setError('Research evidence is being reassessed; this page retries automatically.');
+          timer = setTimeout(attempt, pending.retryAfterSeconds * 1000);
+        } else setError(failures.length ? 'Some research findings could not be read. Open another question or retry.' : '');
       });
     };
     attempt();
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [key, dataVersion]);
-  return { bundles, recessions, error };
+  }, [key, dataVersion, retryVersion]);
+  return { bundles, recessions, error, loading, retry: () => setRetryVersion(value => value + 1) };
 }
 
 const FREQUENCY: Record<string, string> = { D: 'daily', W: 'weekly', M: 'monthly', Q: 'quarterly', A: 'annual' };
@@ -151,13 +161,23 @@ export function BundleDetails({ bundle, exportHref, exportLabel = 'Export for AI
 
 export function Section({ bundle, children, withheld }: { bundle: Bundle<unknown, unknown>; children: ReactNode; withheld?: ReactNode }) {
   const [configuring, setConfiguring] = useState(false);
+  const selection = useContext(ResearchSelection);
+  if (selection?.question && selection.question !== bundle.analysis_id) return null;
+  const compact = selection !== null && !selection.question;
   return <section className="decision-section" aria-labelledby={`q-${bundle.analysis_id}`}>
     <header className="decision-section-head">
-      <h3 id={`q-${bundle.analysis_id}`}>{bundle.question}</h3>
+      <p className="research-evidence-line"><span className="research-id">{bundle.analysis_id}</span>{' '}
+        {researchStateLabel(bundle.phase2.state)}{bundle.basis?.kind === 'verified_alternatives' ? ' · verified alternatives' : ''}
+        {bundle.phase2.evaluated_at && <span> · Assessed {bundle.phase2.evaluated_at.replace('T', ' ').replace(/\.\d+/, '')}</span>}</p>
+      <h3 id={`q-${bundle.analysis_id}`} tabIndex={-1}>{bundle.question}</h3>
       <p>{bundle.decision_informed}</p>
-      <button type="button" className="figure-configure" aria-expanded={configuring} aria-controls={`configure-${bundle.analysis_id}`}
+      {Boolean(bundle.values) && bundle.summary && <div className="research-finding-text">{bundle.summary.map(sentence => <p key={sentence}>{sentence}</p>)}</div>}
+      {compact ? <a className="overview-open" href={`#q-${bundle.analysis_id}`} aria-label={`Open ${bundle.analysis_id}: ${bundle.question}`}>Open analysis →</a>
+        : <button type="button" className="figure-configure" aria-expanded={configuring} aria-controls={`configure-${bundle.analysis_id}`}
         onClick={() => setConfiguring(open => !open)}>{configuring ? 'Close configuration' : 'Configure'}</button>
+      }
     </header>
+    {!compact && <>
     {configuring && <div id={`configure-${bundle.analysis_id}`}><Suspense fallback={<p role="status">Loading figure editor…</p>}>
       <FigureEditor analysisId={bundle.analysis_id}/>
     </Suspense></div>}
@@ -165,10 +185,12 @@ export function Section({ bundle, children, withheld }: { bundle: Bundle<unknown
       aria-label="Shown from alternatives, not the original method">
       The original method cannot be computed yet ({bundle.phase2.open_gates.length} inputs missing). What is shown comes from
       alternative sources that Phase 2 verified for this question. They measure something related, not the same thing.</p>}
-    {bundle.values ? children : <p className="decision-note" role="status">Not computed: Phase 2 state is {bundle.phase2.state}
+    {bundle.values ? children : <p className="decision-note" role="status">Not computed: research state is {bundle.phase2.state}
       {bundle.phase2.open_gates.length > 0 && <>; open gates: {bundle.phase2.open_gates.join(', ')}</>}.</p>}
     {!bundle.values && withheld}
     <BundleDetails bundle={bundle}/>
+    </>}
+    {compact && !bundle.values && <p className="decision-note">Not computed: {researchStateLabel(bundle.phase2.state)}.</p>}
   </section>;
 }
 

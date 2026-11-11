@@ -360,7 +360,8 @@ def create_app(engine=None) -> FastAPI:
         evidence = EvidenceState.capture([Path(environ.get(key, default)) for key, default in [
             ('FINANCE_SOURCE_EVIDENCE_DIR', '/data/source-evidence'),
             ('FINANCE_VINTAGE_DIR', '/data/vintages'), ('FINANCE_HOLDINGS_DIR', '/data/holdings'),
-            ('FINANCE_OWNER_INPUTS', '/data/owner-inputs.json')]])
+            ('FINANCE_OWNER_INPUTS', '/data/owner-inputs.json'),
+            ('FINANCE_PORTFOLIO_HOLDINGS', '/data/portfolio-holdings.json')]])
         evaluation = current_corpus_evaluation()
         if not evidence.unchanged():
             raise AcceptedInputsChanged('Evidence changed during assessment')
@@ -435,6 +436,12 @@ def create_app(engine=None) -> FastAPI:
         """Every corpus analysis with its Phase 2 state and whether the engine computes it."""
         return list_analyses(acceptance_or_503(), research_sources)
 
+    @app.get('/api/research-status')
+    def research_status_report():
+        """Research scope and current evidence boundaries, without recomputing figures."""
+        from .research_status import research_status
+        return research_status(acceptance_or_503(), research_sources)
+
     @app.get("/api/analysis/{analysis_id}")
     def analysis_result(analysis_id: str, today: date | None = None, view: str | None = None):
         """One analysis as a self-describing result bundle."""
@@ -457,6 +464,32 @@ def create_app(engine=None) -> FastAPI:
     def owner_inputs():
         """The owner's portfolio parameters, or the labelled example until they are saved."""
         return load_owner_inputs()
+
+    def holdings_operation(action):
+        from .portfolio_holdings import (PortfolioHoldingsError, PortfolioHoldingsConflict,
+                                         PortfolioHoldingsUnavailable)
+        try:
+            return action()
+        except PortfolioHoldingsConflict as error:
+            raise HTTPException(409, str(error)) from None
+        except PortfolioHoldingsUnavailable:
+            raise HTTPException(503, 'Your holdings could not be read; preserve the file and restore a verified backup') from None
+        except PortfolioHoldingsError as error:
+            raise HTTPException(422, str(error)) from None
+        except OSError:
+            raise HTTPException(503, 'Your holdings could not be stored; check the writable data directory') from None
+
+    @app.get('/api/portfolio-holdings')
+    def owner_holdings():
+        from .portfolio_holdings import load_portfolio_holdings
+        return holdings_operation(load_portfolio_holdings)
+
+    @app.put('/api/portfolio-holdings')
+    def save_owner_holdings(body: dict):
+        from .portfolio_holdings import save_portfolio_holdings
+        saved = holdings_operation(lambda: save_portfolio_holdings(body))
+        app.state.acceptance.invalidate()
+        return saved
 
     def saved_store_operation(action):
         from .saved_views import (SavedViewStore, SavedViewConflict, SavedViewNotFound,

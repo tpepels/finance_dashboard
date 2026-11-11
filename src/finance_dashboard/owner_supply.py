@@ -39,7 +39,8 @@ def _register_valid(events: list[dict]) -> bool:
     return True
 
 
-def supplied_roles(owner: dict | None, events: list[dict] | None) -> dict[tuple[str, str], dict]:
+def supplied_roles(owner: dict | None, events: list[dict] | None, *,
+                   portfolio: dict | None = None) -> dict[tuple[str, str], dict]:
     out = {}
     if owner and owner.get("is_example") is False:
         for key, fields in OWNER_ROLES.items():
@@ -55,6 +56,16 @@ def supplied_roles(owner: dict | None, events: list[dict] | None) -> dict[tuple[
                         "limitation": {"code": "curated_shock_register",
                                        "detail": f"{len(events)} events from definitions/shock_events.json, each dated by "
                                                  "the official source it cites; a curated list, not a complete census."}}
+    if (portfolio and portfolio.get('as_of') and portfolio.get('scope') == 'full_invested_portfolio'
+            and portfolio.get('positions') and (portfolio.get('summary') or {}).get('total_value_eur')
+            and all(p.get('isin') and p.get('identity_source') != 'unresolved'
+                    for p in portfolio['positions'])):
+        out[('P01', 'portfolio_fund_weights')] = {
+            'supplied_by': 'portfolio_holdings', 'fields': ['positions', 'as_of', 'scope'],
+            'limitation': {'code': 'owner_supplied_values_not_verified',
+                           'detail': 'Dated fund positions and values supplied by the owner; '
+                                     'full invested-portfolio scope excludes cash. Values and fund '
+                                     'identities are not independently checked against a broker.'}}
     return out
 
 
@@ -67,4 +78,9 @@ def current_supply() -> dict[tuple[str, str], dict]:
         events = json.loads((DEFAULT_ROOT / "definitions" / "shock_events.json").read_text())["events"]
     except (OSError, ValueError, KeyError):
         events = []
-    return supplied_roles(load_owner_inputs(), events)
+    from .portfolio_holdings import load_portfolio_holdings, PortfolioHoldingsError
+    try:
+        portfolio = load_portfolio_holdings()
+    except (PortfolioHoldingsError, OSError):
+        portfolio = None  # Preserve unreadable state; the holdings API reports the error.
+    return supplied_roles(load_owner_inputs(), events, portfolio=portfolio)

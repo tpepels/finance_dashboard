@@ -1,4 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, type FormEvent } from 'react';
+import PortfolioHoldings from './PortfolioHoldings';
+import { usePortfolioEditorRef, usePortfolioEditorState } from './PortfolioEditorSession';
 
 type Inputs = {
   allocation: { equity: number; bonds: number; gold: number };
@@ -21,13 +23,16 @@ function Field({ label, value, onChange, step = 1, suffix }: { label: string; va
 }
 
 /** The owner's portfolio parameters: a local form whose saved values feed the portfolio analyses (P04, P05). */
-export default function OwnerInputs() {
-  const [form, setForm] = useState<Record<string, string>>({});
-  const [rule, setRule] = useState<Inputs['rebalancing']['rule']>('threshold');
-  const [hedgedBonds, setHedgedBonds] = useState(true);
-  const [taxMode, setTaxMode] = useState<Inputs['tax']['mode']>('none');
-  const [example, setExample] = useState<boolean | null>(null);
-  const [status, setStatus] = useState<{ kind: 'saved' | 'error'; text: string } | null>(null);
+function ModelInputs() {
+  const [form, setForm] = usePortfolioEditorState<Record<string, string>>('model.form', {});
+  const [rule, setRule] = usePortfolioEditorState<Inputs['rebalancing']['rule']>('model.rule', 'threshold');
+  const [hedgedBonds, setHedgedBonds] = usePortfolioEditorState('model.hedgedBonds', true);
+  const [taxMode, setTaxMode] = usePortfolioEditorState<Inputs['tax']['mode']>('model.taxMode', 'none');
+  const [example, setExample] = usePortfolioEditorState<boolean | null>('model.example', null);
+  const [status, setStatus] = usePortfolioEditorState<{ kind: 'saved' | 'error'; text: string } | null>('model.status', null);
+  const [saving, setSaving] = usePortfolioEditorState('model.saving', false);
+  const loaded = usePortfolioEditorRef('model.loaded', false);
+  const generation = usePortfolioEditorRef('model.generation', 0);
 
   const fill = (d: Inputs) => {
     setForm({ equity: percent(d.allocation.equity), bonds: percent(d.allocation.bonds), gold: percent(d.allocation.gold),
@@ -39,9 +44,11 @@ export default function OwnerInputs() {
     setRule(d.rebalancing.rule);
     setHedgedBonds(d.bonds_hedged);
     setExample(Boolean(d.is_example));
+    loaded.current = true;
   };
 
   useEffect(() => {
+    if (loaded.current) return;
     fetch('/api/owner-inputs', { cache: 'no-store' }).then(r => r.json()).then(fill).catch(() => setStatus({ kind: 'error',
       text: 'Your saved portfolio could not be loaded; the analyses use the example portfolio.' }));
   }, []);
@@ -52,11 +59,14 @@ export default function OwnerInputs() {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    const submittedGeneration = generation.current;
+    setSaving(true);
     const body = { allocation: { equity: num('equity') / 100, bonds: num('bonds') / 100, gold: num('gold') / 100 },
       equity_hedged_share: num('hedged') / 100, equity_euro_share: num('euro') / 100, bonds_hedged: hedgedBonds,
       bond_duration_years: num('duration'), rebalancing: { rule, months: num('months'), band_pp: num('band') },
       trading_cost_bps: num('cost'), start_value_eur: num('start'), monthly_contribution_eur: num('contribution'),
       annual_withdrawal_pct: num('withdrawal') / 100, tax: { mode: taxMode, rate_pct: num('taxRate') } };
+    try {
     const response = await fetch('/api/owner-inputs', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body) });
     const data = await response.json().catch(() => ({}));
@@ -64,19 +74,26 @@ export default function OwnerInputs() {
       setStatus({ kind: 'error', text: `Not saved: ${(data as { detail?: string }).detail ?? 'the server refused these inputs'}.` });
       return;
     }
-    fill(data as Inputs);
-    setStatus({ kind: 'saved', text: 'Saved. The portfolio analyses now use your figures.' });
+    if (generation.current === submittedGeneration) {
+      fill(data as Inputs);
+      setStatus({ kind: 'saved', text: 'Saved. The model analyses now use this scenario.' });
+    } else {
+      setExample(Boolean((data as Inputs).is_example));
+      setStatus({ kind: 'saved', text: 'Submitted model scenario saved. Newer model edits remain unsaved.' });
+    }
     window.dispatchEvent(new Event('gcm-data-updated'));
+    } catch { setStatus({ kind: 'error', text: 'The model scenario could not be saved. Your draft is retained; retry when the server is available.' }); }
+    finally { setSaving(false); }
   };
 
   if (example === null && !status) return null;
   return <section className="decision-section owner-inputs" aria-labelledby="owner-inputs-title">
     <header className="decision-section-head">
-      <h3 id="owner-inputs-title">Your portfolio</h3>
-      <p>{example ? 'The analyses below use an example portfolio until you save your own figures.'
-        : 'The analyses below use the figures you saved.'} They are stored on this server.</p>
+      <h3 id="owner-inputs-title">Model portfolio scenarios</h3>
+      <p>{example ? 'The model analyses use an example portfolio until you save a scenario.'
+        : 'The model analyses use your saved scenario.'} These broad asset assumptions are separate from your actual ETF holdings.</p>
     </header>
-    <form className="owner-form" onSubmit={save}>
+    <form className="owner-form" onSubmit={save} onChangeCapture={() => { generation.current += 1; setStatus(null); }}>
       <fieldset>
         <legend>Mix <span className={Math.abs(total - 100) < 0.1 ? 'owner-total' : 'owner-total owner-total-off'}>{total.toFixed(0)}% of 100%</span></legend>
         <Field label="Equities (%)" value={form.equity ?? ''} onChange={set('equity')}/>
@@ -129,9 +146,13 @@ export default function OwnerInputs() {
         <p className="owner-hint">Yearly on value applies your entered rate to the whole portfolio every 12 replay months; no allowances or loss offsets.</p>
       </fieldset>
       <div className="owner-actions">
-        <button type="submit">Save my portfolio</button>
+        <button type="submit" disabled={saving}>{saving ? 'Saving model scenario…' : 'Save model scenario'}</button>
         {status && <p role={status.kind === 'error' ? 'alert' : 'status'} className={`owner-status owner-status-${status.kind}`}>{status.text}</p>}
       </div>
     </form>
   </section>;
+}
+
+export default function OwnerInputs() {
+  return <><PortfolioHoldings/><ModelInputs/></>;
 }

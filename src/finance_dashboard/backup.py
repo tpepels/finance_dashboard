@@ -24,6 +24,7 @@ EVIDENCE_ROOT_NAMES = {"vintages", "holdings", "surplus", "maintenance", "source
 STATE_MEMBERS = {
     "owner_inputs": "owner-inputs.json",
     "saved_views": "saved-views.json",
+    "portfolio_holdings": "portfolio-holdings.json",
     "source_policy": "source-policy/rate-ledger.sqlite3",
 }
 BUNDLE_FIELDS = ("database", "earnings_snapshot", "evidence_archive", "application_state")
@@ -115,6 +116,7 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
                  evidence_roots: dict[str, Path] | None = None,
                  owner_inputs_path: Path | None = None,
                  saved_views_path: Path | None = None,
+                 portfolio_holdings_path: Path | None = None,
                  policy_db_path: Path | None = None) -> dict:
     """Return a verified backup manifest, deleting only older OWNED backups."""
     if keep < 1 or keep > 365:
@@ -222,6 +224,8 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
                 "FINANCE_OWNER_INPUTS", source.parent / "owner-inputs.json")),
             "saved_views": Path(saved_views_path or os.environ.get(
                 "FINANCE_SAVED_VIEWS", source.parent / "saved-views.json")),
+            "portfolio_holdings": Path(portfolio_holdings_path or os.environ.get(
+                "FINANCE_PORTFOLIO_HOLDINGS", source.parent / "portfolio-holdings.json")),
             "source_policy": Path(policy_db_path or os.environ.get(
                 "FINANCE_SOURCE_POLICY_DB", source.parent / "source-policy/rate-ledger.sqlite3")),
         })

@@ -18,10 +18,10 @@ Scientific scope remains governed by the [charter](PHASE1_SCIENTIFIC_CHARTER.md)
 | Research acceptance | Fresh release-code assessment: 24 accepted, 12 conditional, one deferred (G03); no incomplete analysis |
 | P06 | Accepted after independently checking its latest page and archived rolled-off September observation |
 | Analytical engine | Phase 3 implementation complete; empirical acceptance varies by installation and refresh |
-| Interaction | Overview, workbench, eight panels, methods, sources, exports and portfolio form implemented; independent configurable/saved figures implemented |
-| Portfolio | Inputs, shocks, rebalancing replay, costs and tax modes implemented; independent arithmetic/source checks implemented; formal owner review remains |
+| Interaction | Concise overview, all-question findings, focused workspace with expandable research detail, independent configurable/saved figures and preserved source/question deep links |
+| Portfolio | Separate actual holdings snapshot with account/ISIN weights and recovery; model scenarios retain independent inputs and explicit replay limitations |
 | Runtime | Same pinned image deployed locally and on media-server; fresh/non-root startup, recreation, verified restore and actual LAN access checked |
-| Verification | 1,166 Python tests OK with 10 optional skips; frontend: 129 passing; TypeScript/Vite and 14 browser flows passing |
+| Verification | Updated Python suite: 1,215 tests OK with 10 optional skips; frontend: 149 passing; TypeScript/Vite and expanded browser flows verified |
 
 The live local and server containers use the same verified release image. Each has completed a fresh full-corpus assessment with the states above. A clean installation intentionally has no equivalent research history; each later collection can change acceptance.
 

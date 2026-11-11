@@ -85,3 +85,9 @@
 ## Execution rulings
 
 The owner explicitly asked to finish this work, continuing the established application and deployment scope; implementation proceeds without an additional design-approval stop. Presentation defaults to concise pending optional steering. Original-method G03 completion cannot be invented from cap/P-E or national corporate accounts; deliver a correct bounded answer and a visible evidence boundary. Missing personal inputs remain the owner's labelled example. No host reboot or hosted CI run is claimed.
+
+## Owner holdings addendum
+
+During execution the owner confirmed the concise presentation, supplied two lists of real positions and explicitly requested combining them. Add a typed, private `portfolio-holdings.json` store and `GET/PUT /api/portfolio-holdings`, with revisions, strict validation, exact-ISIN grouping, Decimal money totals, nullable dates/cash flows and separate account controls. Include this state in verified backup/restore and bind it to acceptance invalidation. Expose the computed snapshot in P01 and an editable/importable frontend table. Keep the existing model scenario store separate so importing actual holdings cannot mislabel an ACWI/sovereign/gold replay as the owner's actual returns.
+
+Independent synthetic tests must cover invalid saves, corrupt-state preservation, concurrent stale writes, aggregation without guessing share classes, precious metals distinct from gold, API/model independence and full recovery. Actual positions are seeded only in private staged data after the owner's combination instruction; no private values enter source or image. An unknown valuation date, cash flows, unreported cash and unresolved share classes remain explicit. Root owns API/backup/P01/owner-supply integration; a dedicated store implementer owns the new typed module and tests; the presentation implementer owns the UI.

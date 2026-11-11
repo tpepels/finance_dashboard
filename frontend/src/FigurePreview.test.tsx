@@ -23,7 +23,7 @@ describe('computed figure rendering', () => {
     const option = chart.setOption.mock.calls.find(([o]) => o.series?.[0]?.type === 'scatter')?.[0];
     expect(option?.series[0].data).toEqual([[10, 5, '2020-01']]);
     expect(option?.xAxis.name).toContain('First series');
-    expect(option?.yAxis.name).toContain('Second series');
+    expect(screen.getByText(/Second series \(percent\)/, { selector: '.time-panel-unit' })).toBeTruthy();
   });
   it('uses category labels for archive snapshots and never date zoom controls', () => {
     render(<FigurePreview bundle={bundle('bar', true)} theme="light"/>);

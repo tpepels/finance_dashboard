@@ -6,11 +6,13 @@ from sqlalchemy import create_engine
 
 from finance_dashboard.worker import refresh_all, main
 from finance_dashboard.catalog import load_documents
+from finance_dashboard.database import Base
 
 
 class TargetedRefreshTests(unittest.TestCase):
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:")
+        Base.metadata.create_all(self.engine)
         self.series = {row["id"]: row for row in load_documents()[0]["series"]}
 
     def tearDown(self):
