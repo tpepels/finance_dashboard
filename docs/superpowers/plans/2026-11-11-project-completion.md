@@ -144,7 +144,7 @@ Do not split the large `engine/analyses.py` merely for tidiness. Extract a focus
 
 ### Task 7: Release on the LAN server and rehearse recovery
 
-**Files:** finalize `docs/RUNNING.md`, `HOME_SERVER_DOCKER.md`, `SERVER_SOURCE_SETUP.md`, `ARCHITECTURE.md`, `README.md` and the roadmap. No server address/credentials are currently supplied; actual deployment occurs when the owner supplies the target/access.
+**Files:** finalize `docs/RUNNING.md`, `HOME_SERVER_DOCKER.md`, `SERVER_SOURCE_SETUP.md`, `ARCHITECTURE.md`, `README.md` and the roadmap. At plan creation the target was unspecified; the owner subsequently supplied `media-server` and selected the verified local corpus with the previous server data preserved.
 
 **Interfaces:** same release image/revision and schema on both hosts; local storage paths/UID/GID/keys differ through server configuration only. Retain previous image plus its verified matching data snapshot.
 
@@ -158,10 +158,20 @@ Do not split the large `engine/analyses.py` merely for tidiness. Extract a focus
 
 ## Plan self-review
 
-The tasks cover the roadmap's seven priorities and the visualization contract's independent views, supported encodings, event semantics, methods/sources/tables and exact exports. Review Focus cases are assigned to testable tasks. Runtime and saved-view state share backup requirements; task 4 extends task 2 rather than creating another backup system. Scientific/visual approval, fresh corpus assessment and actual second-device/server checks remain outstanding; this planning review does not mark them complete.
+At the planning checkpoint, the tasks covered the roadmap's seven priorities and the visualization contract's independent views, supported encodings, event semantics, methods/sources/tables and exact exports. Runtime and saved-view state share backup requirements; task 4 extends task 2 rather than creating another backup system. The task checklists above preserve the original proposed steps; the execution record below gives measured outcomes and explicit verification limits.
 
 ## Execution record — 2026-11-11
 
-Tasks 1–6 implemented. Current automated evidence: full Python suite, locked frontend tests/build, real Chromium desktop/390px flows, non-root container startup/recreation and verified recovery/restore. The exact final counts, deployment image, data paths and remaining operator checks are in [release verification](../../RELEASE_VERIFICATION.md).
+Tasks 1–7 implemented. Evidence: 1,166 Python tests OK (10 optional skips), 129 locked frontend tests, TypeScript/production build, 14 real Chromium flows, non-root fresh/populated container startup and verified recovery/restore. Both live installations run the same pinned image and report 24 accepted, 12 conditional and one deferred analysis, with none incomplete. The server is reachable over the LAN from the development computer. Complete recovery copies are verified on separate hosts, and the previous server image/data remain intact. Exact image identity, operating paths and rollback are in [release verification](../../RELEASE_VERIFICATION.md).
 
-Rulings: keep curated reference graphics and expose scientifically compatible independent variants; cadence-unknown derived outputs are dots/tables; complex structured results reject unsupported date bounds. Bind acceptance to exact current observation versions and original filesystem identities, rehashing after any change. The owner explicitly chose the verified local corpus for the server while preserving the previous server corpus separately. No host reboot is performed on the shared media server; container replacement/restart policy is the scoped reliability check. Formal owner visual approval is not claimed by automated tests.
+| Task | Execution outcome |
+|---|---|
+| 1 | Read-only full-corpus assessment; P06 regression reproduced and fixed using the archived original |
+| 2 | Frozen builds, selectable scheduling, versioned application-state recovery and CI jobs; isolated UID/recreation/restore checks pass |
+| 3 | Server-validated independent views and exact exports; current evidence and source versions gate all output |
+| 4 | Durable atomic saved figures, conflict recovery, independent compare/reset and backup coverage; browser flows pass |
+| 5 | Independent portfolio arithmetic and gap/input corrections; model limitations remain visible |
+| 6 | Desktop/mobile/keyboard/light/dark, error recovery and performance improvements verified |
+| 7 | Local and media-server deployment, complete restored corpus, LAN checks, retained old image/data and verified off-server recovery copy |
+
+Rulings: keep curated reference graphics and expose scientifically compatible independent variants; cadence-unknown derived outputs are dots/tables; complex structured results reject unsupported date bounds. Bind acceptance to exact current observation versions and original filesystem identities, rehashing after any change. The owner explicitly chose the verified local corpus for the server while preserving the previous server corpus separately. No host reboot is performed on the shared media server; container replacement/restart policy is the scoped reliability check. Formal owner visual approval remains a review of the delivered app and is not claimed by automated tests. No code push or hosted CI execution was requested. Original-method research deferral G03 remains explicit; no missing source history was invented.

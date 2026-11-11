@@ -12,6 +12,8 @@ A fresh read-only assessment of the verified local corpus reports **24 accepted,
 
 Backups include portfolio inputs, saved figures and the publisher-policy ledger, with verified restore into an empty directory. Builds use frozen Python/npm dependencies and pinned runtime images. Independent portfolio arithmetic, desktop/mobile browser flows and recovery checks pass.
 
+The verified release is running at **http://localhost:5052/** locally and **http://192.168.1.200:5052/** on `media-server`. The server uses the selected verified local corpus; its previous corpus and image remain available for rollback.
+
 See the [roadmap](docs/DEVELOPMENT_PLAN.md), [implementation plan](docs/superpowers/plans/2026-11-11-project-completion.md), [initial project review](docs/PROJECT_REVIEW.md) and [release verification](docs/RELEASE_VERIFICATION.md).
 
 ## Run locally or on your LAN server

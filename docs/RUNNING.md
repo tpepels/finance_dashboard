@@ -77,7 +77,7 @@ Startup validates the catalogue, runs Alembic migrations and starts Uvicorn on c
 
 A new data directory contains no research histories. The scheduled collector starts asynchronously; additional original archives, vintages and owner-supplied files may still be necessary. While acceptance evaluates, analysis requests may return **503 with `Retry-After`**; the panels retry. An empty or withheld chart is not proof of installation failure.
 
-Use **Data & sync**, `/api/source-coverage`, `/api/operations` and `/api/analysis` to distinguish stored observations, failed/deferred collection and accepted research. A successful sync does not certify all source roles. P06 was incomplete in the reviewed populated installation; see [the review](PROJECT_REVIEW.md).
+Use **Data & sync**, `/api/source-coverage`, `/api/operations` and `/api/analysis` to distinguish stored observations, failed/deferred collection and accepted research. A successful sync does not certify all source roles. The release resolves the initial P06 failure using its archived original; both deployed corpora report 24 accepted, 12 conditional and one deferred question. See [release verification](RELEASE_VERIFICATION.md) for the current state and [the initial review](PROJECT_REVIEW.md) for the starting state.
 
 ## Transfer the existing research installation
 

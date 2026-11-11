@@ -1,6 +1,6 @@
 # Development plan
 
-The sole current roadmap, reviewed **2026-11-11**. Detailed tasks are in the [completion implementation plan](superpowers/plans/2026-11-11-project-completion.md); measured evidence is in the [project review](PROJECT_REVIEW.md). Earlier milestones remain in git history and [the archived history](archive/DEVELOPMENT_PLAN_HISTORY_2026-11.md).
+The sole current roadmap, reviewed **2026-11-11**. Detailed tasks are in the [completion implementation plan](superpowers/plans/2026-11-11-project-completion.md); final evidence is in [release verification](RELEASE_VERIFICATION.md). The [initial project review](PROJECT_REVIEW.md) records the starting state. Earlier milestones remain in git history and [the archived history](archive/DEVELOPMENT_PLAN_HISTORY_2026-11.md).
 
 ## Goal and deployment target
 
@@ -20,10 +20,10 @@ Scientific scope remains governed by the [charter](PHASE1_SCIENTIFIC_CHARTER.md)
 | Analytical engine | Phase 3 implementation complete; empirical acceptance varies by installation and refresh |
 | Interaction | Overview, workbench, eight panels, methods, sources, exports and portfolio form implemented; independent configurable/saved figures implemented |
 | Portfolio | Inputs, shocks, rebalancing replay, costs and tax modes implemented; independent arithmetic/source checks implemented; formal owner review remains |
-| Runtime | Docker build, fresh Compose startup, non-root writes, recreation persistence and host LAN-interface health checked |
-| Verification | Full Python suite passes with 10 optional skips; frontend: 129 passing; TypeScript/Vite and 14 browser flows passing |
+| Runtime | Same pinned image deployed locally and on media-server; fresh/non-root startup, recreation, verified restore and actual LAN access checked |
+| Verification | 1,166 Python tests OK with 10 optional skips; frontend: 129 passing; TypeScript/Vite and 14 browser flows passing |
 
-The running image differs from the reviewed checkout's built image. Its cached acceptance result describes that installation. A fresh read-only evaluation against the complete corpus is the first release gate. A clean installation intentionally has no equivalent research history.
+The live local and server containers use the same verified release image. Each has completed a fresh full-corpus assessment with the states above. A clean installation intentionally has no equivalent research history; each later collection can change acceptance.
 
 ## Completion order
 
@@ -53,13 +53,13 @@ Steps 3–4 finish configurable figures. Step 5 closes Phase 5 validation rather
 - One canonical research CLI, one managed HTTP client, one acceptance engine; extend established paths.
 - Preserve observations, originals, receipts, journals and backups. Take a verified recovery copy before migrations or acquisition.
 - Investigate evidence gates; do not bypass acceptance to repair a blank chart.
-- Run full offline tests before commits and verify CI after pushing. No commit or push was made in this review.
+- Run full offline tests before code commits and verify CI after pushing. Implementation commits are on `codex/project-completion`; no push was requested and no remote CI execution is claimed.
 - Use [RUNNING.md](RUNNING.md) for operation; keep reviews distinct from the roadmap and scientific contracts.
 
 ## Implementation outcome — 2026-11-11
 
-Priorities 1–6 are implemented and verified. P06 is accepted after independently checking the rolled-off September original; the fresh local corpus has 24 accepted, 12 conditional and one documented deferred question. Independent figures/saved variants, exact exports, complete defined application-state recovery, frozen builds, portfolio validation and integrated mobile/browser checks are implemented.
+Priorities 1–7 are implemented and verified within the recorded operating limits. P06 is accepted after independently checking the rolled-off September original; both live corpora have 24 accepted, 12 conditional and one documented deferred question. Independent figures/saved variants, exact exports, complete defined application-state recovery, frozen builds, portfolio validation and integrated mobile/browser checks are implemented.
 
 An independent review found and reproduced stale acceptance authorizing new revisions, sparse derived lines, incompatible FX axes and ineffective structured-result date bounds. Regression tests now cover those failures and the corrected behaviour. See [release verification](RELEASE_VERIFICATION.md).
 
-The owner chose the verified local corpus for `media-server`, retaining the divergent previous server store intact. Rollout uses a staged restored corpus and a pinned release image; it does not merge or overwrite conflicting original archives. Formal owner visual acceptance is a user review of the delivered application. Host reboot is excluded from the app-only rollout because this server also runs unrelated media/network services; container recreation and restart policy are verified.
+The owner chose the verified local corpus for `media-server`, retaining the divergent previous server store intact. Both hosts run image `finance-dashboard:release-d0c7f37`; the server is available at **http://192.168.1.200:5052/**. The staged restored corpus, previous image/data and off-server recovery copy are recorded in release verification. Formal owner visual acceptance remains a user review of the delivered application. Host reboot is excluded from the app-only rollout because this server also runs unrelated media/network services; container recreation and restart policy are verified.
