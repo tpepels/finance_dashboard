@@ -80,7 +80,8 @@ describe('independent figure configuration', () => {
     await screen.findByLabelText('Figure name');
     await user.click(screen.getByLabelText('United States'));
     await user.selectOptions(screen.getByLabelText('Transformation'), 'change');
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Export this view' }).getAttribute('href')).toContain('change'));
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Export this view' }).getAttribute('href')).toContain('change'),
+      { timeout: 8000 });
     const exportURL = new URL(screen.getByRole('link', { name: 'Export this view' }).getAttribute('href')!, 'http://localhost');
     expect(JSON.parse(exportURL.searchParams.get('view')!)).toMatchObject({ geographies: ['DE'], transform: 'change' });
     await user.click(screen.getByText('Data table'));

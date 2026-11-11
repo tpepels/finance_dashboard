@@ -26,8 +26,8 @@ export type TimeSeries = {
 
 /** Dataviz reference categorical palette; validated against this dashboard's surfaces (light #fcfdfd, dark #16232a). */
 const SERIES = {
-  light: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'],
-  dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
+  light: ['#2467bd', '#b54d16', '#087e69', '#967000', '#af4687', '#517c1e', '#7955c6', '#ca394e'],
+  dark: ['#68aaff', '#ff9c64', '#45d2b0', '#e5c85c', '#e990c9', '#a3cd69', '#b29aff', '#ff8297'],
 };
 
 /** Every economy keeps its colour on every chart. Eight hues at most: the EU shares the euro area's colour,
@@ -50,17 +50,17 @@ export function palette(theme: Theme) {
   const dark = theme === 'dark';
   return {
     series: SERIES[theme],
-    surface: dark ? '#16232a' : '#fcfdfd',
-    ink: dark ? '#e6eef0' : '#14232b',
-    secondary: dark ? '#a9bcc3' : '#4a5d66',
-    muted: dark ? '#7d929a' : '#6f8188',
-    grid: dark ? '#24343b' : '#e3e9eb',
-    axis: dark ? '#3a4c54' : '#bccacf',
+    surface: dark ? '#121923' : '#fcfdfd',
+    ink: dark ? '#edf3fc' : '#14232b',
+    secondary: dark ? '#b7c5d8' : '#4a5d66',
+    muted: dark ? '#9bacc3' : '#596d76',
+    grid: dark ? '#242e3d' : '#e3e9eb',
+    axis: dark ? '#42516a' : '#bccacf',
     recession: dark ? 'rgba(169,188,195,0.13)' : 'rgba(20,35,43,0.075)',
     recessionNamed: dark ? 'rgba(169,188,195,0.20)' : 'rgba(20,35,43,0.12)',
     // Diverging pair for above/below zero: blue ↔ red with a grey midpoint.
-    positive: dark ? '#3987e5' : '#2a78d6',
-    negative: dark ? '#e66767' : '#e34948',
+    positive: dark ? '#68aaff' : '#2467bd',
+    negative: dark ? '#ff8297' : '#ca394e',
     zero: dark ? '#4f636b' : '#9fb0b6',
   };
 }
@@ -236,6 +236,9 @@ export function timeChart(input: TimeChartInput): EChartsOption {
     ],
     series: series.map((s, index) => {
       const colour = seriesColour(s, theme);
+      const identity = s.entity !== undefined ? (ENTITY[(s.entity in ENTITY ? s.entity : ALIAS[s.entity]) as keyof typeof ENTITY] ?? 0) : (s.slot ?? 0);
+      const patterns = ['solid', 'dashed', 'dotted'] as const;
+      const symbols = ['circle', 'rect', 'triangle', 'diamond', 'roundRect', 'pin', 'arrow', 'emptyCircle'];
       const observed = s.data.filter(p => p[1] !== null).length;   // gap markers inserted by breakGaps are not points
       return {
         type: 'line' as const,
@@ -243,9 +246,10 @@ export function timeChart(input: TimeChartInput): EChartsOption {
         data: s.data,
         step: s.step ? 'end' as const : undefined,
         showSymbol: s.dots || observed < 30,
+        symbol: symbols[identity % symbols.length],
         symbolSize: s.dots && observed > 60 ? 3 : 8,
         connectNulls: false,
-        lineStyle: { color: colour, width: s.width ?? (compact ? 2.5 : 2) },
+        lineStyle: { color: colour, width: s.width ?? (compact ? 2.5 : 2), type: patterns[identity % patterns.length] },
         itemStyle: { color: colour },
         areaStyle: s.area ? { color: colour, opacity: 0.12 } : undefined,
         emphasis: { focus: 'series' as const },

@@ -25,6 +25,7 @@ const fetchMock = vi.fn(async (input: string) => {
     markets: { total: 24, with_data: 0, without_data: 24, needs_attention: 24 },
     fx: { total: 3, with_data: 0, without_data: 3, needs_attention: 3 } }, items: [], method: 'Measured source periods only' });
   if (path === '/api/recessions') return json({ periods: [] });
+  if (path === '/api/saved-views') return json({ items: [] });
   if (path === '/api/portfolio-holdings') return json({ version: 1, revision: 0, as_of: null, combine_accounts: false,
     scope: 'listed_positions', monthly_contribution_eur: null, annual_withdrawal_eur: null, positions: [],
     summary: { accounts: [], total_value_eur: null, positions: [], funds: [], asset_classes: [], warnings: [], position_count: 0 } });
@@ -43,22 +44,40 @@ const fetchMock = vi.fn(async (input: string) => {
   return new Response('{}', { status: 404 });
 });
 
+const observers: ((entries: { isIntersecting: boolean }[]) => void)[] = [];
+
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  observers.length = 0;
+  vi.stubGlobal('IntersectionObserver', class {
+    constructor(callback: (entries: { isIntersecting: boolean }[]) => void) { observers.push(callback); }
+    observe() {} disconnect() {}
+  });
   localStorage.clear();
   history.replaceState({}, '', '/');
 });
 afterEach(() => { cleanup(); fetchMock.mockClear(); });
 
 describe('dashboard shell', () => {
-  it('opens a focused topic from navigation while the default remains concise', async () => {
+  it('shows every dashboard topic and question with optional navigation and progressive evidence', async () => {
     const user = userEvent.setup();
     render(<App/>);
     expect(screen.getByRole('heading', { level: 1, name: 'Global Capital Monitor' })).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Skip to content' }).getAttribute('href')).toBe('#main-content');
+    expect(screen.getByRole('heading', { name: 'Dashboard', level: 2 })).toBeTruthy();
+    expect(document.querySelectorAll('.dashboard-topic')).toHaveLength(8);
+    expect(document.querySelectorAll('.dashboard-questions a')).toHaveLength(37);
+    expect(screen.queryByRole('navigation')).toBeNull();
+    await screen.findByText('C01 is not computed: research state is incomplete.');
+    const initialReads = fetchMock.mock.calls.map(([url]) => String(url)).filter(url => url.startsWith('/api/analysis/'));
+    expect(initialReads.sort()).toEqual(['/api/analysis/C01', '/api/analysis/P06']);
+    act(() => { observers[0]([{ isIntersecting: true }]); });
+    await screen.findByText('M01 is not computed: research state is incomplete.');
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/analysis/M01')).toBe(true);
     expect(screen.queryByRole('heading', { name: 'Growth, inflation and commodities' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Growth & inflation' }));
     expect(await screen.findByRole('heading', { name: 'Growth, inflation and commodities' })).toBeTruthy();
     expect(document.activeElement?.id).toBe('research-workspace');
@@ -78,7 +97,7 @@ describe('dashboard shell', () => {
     expect(await screen.findByRole('heading', { name: 'Is activity turning?' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'What drives yields?' })).toBeNull();
     act(() => { history.replaceState({}, '', '/#overview'); window.dispatchEvent(new PopStateEvent('popstate')); });
-    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Configure' })).toBeNull();
   });
 
@@ -88,7 +107,7 @@ describe('dashboard shell', () => {
     const summary = await screen.findByText('ETF holdings');
     expect(summary.closest('details')?.open).toBe(true);
     expect(screen.getByRole('heading', { name: 'Portfolio resilience' })).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Overview', level: 2 })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
   });
 
   it('retains an unsaved holdings draft while another workspace is visited', async () => {
@@ -105,8 +124,10 @@ describe('dashboard shell', () => {
     await user.type(screen.getByLabelText('Holdings table'), 'Unsaved import text');
     const modelValue = await screen.findByLabelText('Starting value (€)');
     await user.clear(modelValue); await user.type(modelValue, '141000');
-    await user.click(screen.getByRole('link', { name: 'Overview' }));
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('link', { name: 'Dashboard' }));
     expect(screen.queryByLabelText('Position 1 name')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Portfolio' }));
     await user.click(await screen.findByText('ETF holdings'));
     expect(screen.getByLabelText('Position 1 name')).toHaveProperty('value', 'Unsaved instrument draft');
@@ -120,7 +141,7 @@ describe('dashboard shell', () => {
     render(<App/>);
     const appendix = await screen.findByText('Original source appendix loaded');
     expect(appendix.closest('details')?.open).toBe(true);
-    expect(screen.queryByRole('heading', { name: 'Overview', level: 2 })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
     expect(document.activeElement?.id).toBe(hash.slice(1));
   });
 
@@ -138,9 +159,17 @@ describe('dashboard shell', () => {
     const user = userEvent.setup();
     render(<App/>);
     expect(screen.queryByText('Original source appendix loaded')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Source data' }));
     await user.click(screen.getByText('Source data & chart explorer'));
     expect(await screen.findByText('Original source appendix loaded')).toBeTruthy();
+  });
+
+  it('opens source coverage when directly loaded from a fresh deep link', async () => {
+    history.replaceState({}, '', '/#source-coverage');
+    render(<App/>);
+    await waitFor(() => expect((document.getElementById('source-coverage') as HTMLDetailsElement | null)?.open).toBe(true));
+    expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
   });
 
   it('opens dashboard data maintenance directly from the utility bar', async () => {
@@ -149,5 +178,50 @@ describe('dashboard shell', () => {
     await user.click(screen.getByRole('button', { name: 'Data & sync' }));
     expect(await screen.findByRole('button', { name: 'Sync current data' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sync history' })).toBeTruthy();
+  });
+
+  it('closes navigation after selection and restores the menu control on Escape', async () => {
+    const user = userEvent.setup();
+    render(<App/>);
+    const menu = screen.getByRole('button', { name: 'Menu' });
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    await user.click(menu);
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+    await user.click(screen.getByRole('link', { name: 'Growth & inflation' }));
+    expect(await screen.findByRole('heading', { name: 'Growth, inflation and commodities' })).toBeTruthy();
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement?.id).toBe('research-workspace');
+    await user.click(menu);
+    screen.getByRole('link', { name: 'Dashboard' }).focus();
+    await user.keyboard('{Escape}');
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(menu);
+  });
+
+  it('changes and remembers density without resetting a portfolio draft', async () => {
+    history.replaceState({}, '', '/#portfolio-holdings');
+    const user = userEvent.setup();
+    const view = render(<App/>);
+    const model = await screen.findByLabelText('Starting value (€)');
+    await user.clear(model); await user.type(model, '141000');
+    await user.click(screen.getByRole('button', { name: 'Use compact spacing' }));
+    expect(model).toHaveProperty('value', '141000');
+    expect(document.querySelector('.research-app')?.getAttribute('data-density')).toBe('compact');
+    expect(localStorage.getItem('gcm-density')).toBe('compact');
+    await user.click(screen.getByRole('button', { name: 'Use dark appearance' }));
+    expect(model).toHaveProperty('value', '141000');
+    view.unmount();
+    render(<App/>);
+    expect(screen.getByRole('button', { name: 'Use comfortable spacing' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('does not request saved figures until that workspace is first visited', async () => {
+    const user = userEvent.setup();
+    render(<App/>);
+    await screen.findByText('C01 is not computed: research state is incomplete.');
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/saved-views')).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('link', { name: 'Saved figures' }));
+    expect(await screen.findByText('No saved figures yet.')).toBeTruthy();
   });
 });

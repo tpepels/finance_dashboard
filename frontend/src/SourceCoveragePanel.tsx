@@ -70,6 +70,8 @@ export default function SourceCoveragePanel() {
     refresh();
     window.addEventListener('gcm-data-updated', refresh);
     window.addEventListener('gcm-open-data-manager', manage);
+    // Deep links can mount this lazy workspace after App's one-shot event.
+    if (location.hash === '#source-coverage') manage();
     return () => {
       live = false;
       window.removeEventListener('gcm-data-updated', refresh);

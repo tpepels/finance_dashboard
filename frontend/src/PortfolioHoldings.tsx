@@ -70,6 +70,8 @@ export default function PortfolioHoldings() {
   useEffect(() => {
     const open = () => { if (disclosure.current) disclosure.current.open = true; };
     window.addEventListener('gcm-open-portfolio-holdings', open);
+    // The panel is lazy-mounted after App's hash effect; the event may have fired already.
+    if (location.hash === '#portfolio-holdings') open();
     return () => window.removeEventListener('gcm-open-portfolio-holdings', open);
   }, []);
   useEffect(() => {

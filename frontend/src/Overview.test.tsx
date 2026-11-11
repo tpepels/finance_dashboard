@@ -21,20 +21,23 @@ const bundles: Record<string, unknown> = {
 };
 
 describe('Overview', () => {
-  afterEach(() => cleanup());
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-  it('shows six research experiences with their graphic, the data-built summary and a way into each analysis', async () => {
+  it('shows all eight dashboard topics with canonical findings, withheld data, and every question link', async () => {
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    // Without IntersectionObserver, the documented fallback renders every topic.
+    vi.stubGlobal('IntersectionObserver', undefined);
     vi.stubGlobal('fetch', vi.fn((url: string) => {
       const id = url.split('/').pop() as string;
-      return Promise.resolve(new Response(JSON.stringify(id === 'recessions' ? { periods: [] } : bundles[id])));
+      return Promise.resolve(new Response(JSON.stringify(id === 'recessions' ? { periods: [] } : (bundles[id] ?? bundle(id, null, [])))));
     }));
     render(<Overview theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByText(/1 of 1 economies in expansion/)).toBeTruthy());
-    expect(screen.getAllByRole('article')).toHaveLength(6);
-    expect(screen.getByRole('heading', { name: 'Growth and the business cycle' })).toBeTruthy();
+    expect(document.querySelectorAll('.dashboard-topic')).toHaveLength(8);
+    expect(document.querySelectorAll('.dashboard-questions a')).toHaveLength(37);
+    expect(screen.getByRole('heading', { name: 'Growth & inflation' })).toBeTruthy();
     expect(screen.getByText('In 2026-10 the US CAPE was 40.7.')).toBeTruthy();
-    expect(screen.getByRole('link', { name: /open M01/i }).getAttribute('href')).toBe('#q-M01');
-    expect(screen.getByText(/F03 is not computed/i)).toBeTruthy();       // withheld values are said, not hidden
+    expect(screen.getByRole('link', { name: 'Open M01: full analysis' }).getAttribute('href')).toBe('#q-M01');
+    expect(screen.getByText(/F03 is not computed/i)).toBeTruthy(); // Withheld values remain explicit
   });
 });
