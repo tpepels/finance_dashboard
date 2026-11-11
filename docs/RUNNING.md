@@ -97,7 +97,7 @@ Cloning code does **not** transfer the roughly 67 GB of private research state. 
 5. The second, dry-run comparison should report no changed file contents. Correct destination ownership for its configured UID/GID; do not apply recursive ownership changes to unrelated server paths.
 6. On the destination, start Compose and check health, source counts, acceptance states, key original archives and saved portfolio inputs. Keep the source stopped while verifying the new authoritative installation.
 
-Do not copy only a live `finance.sqlite3`: committed WAL data and independent original evidence can be omitted. The existing online backup is useful, but currently omits portfolio inputs and the source-policy ledger. A complete stopped-tree copy is the current migration/recovery procedure. Long transfers require corresponding downtime unless a separately verified online transfer procedure is introduced.
+Do not copy only a live `finance.sqlite3`: committed WAL data and independent original evidence can be omitted. The stopped-tree procedure transfers the whole installation, including historical journals and backups. The verified bundle procedure below transfers the current database, source evidence and application state without needing a raw copy of live SQLite files. An online bundle uses a consistent snapshot of each SQLite database; separate databases and JSON files do not share a transaction. Pause owner edits and collection for an exact release checkpoint.
 
 ## Stop, update and recover
 
@@ -109,14 +109,25 @@ rtk docker compose stop finance-dashboard
 
 Before an update, retain the current image identity and an independent, verified stopped-tree copy. Build the new image before the maintenance window when possible; then stop, copy and verify the data, update/recreate only this service, and check health and acceptance. Startup migrations can change the schema: image rollback alone may not be sufficient. Restore the matching pre-update data copy with the previous image if needed.
 
-Online database/evidence backups remain available:
+Create and verify a recovery bundle through the application CLI:
 
 ```bash
-rtk docker compose exec -T finance-dashboard python -m finance_dashboard.backup --output-dir /data/backups --keep 14
-rtk docker compose exec -T finance-dashboard python -m finance_dashboard.backup --verify-manifest /data/backups/EXACT_MANIFEST_FILENAME.json
+rtk docker compose exec -T finance-dashboard python -m finance_dashboard backup local --output-dir /data/backups --keep 14
+rtk docker compose exec -T finance-dashboard python -m finance_dashboard backup verify /data/backups/EXACT_MANIFEST_FILENAME.json
 ```
 
-Use the actual returned manifest name. This backup is not currently a complete application-state backup. Keep a complete stopped-tree copy on another disk/device; backups beside the live database do not protect against disk loss. Restore into a separate directory with both services stopped; retain damaged/current files until the restored installation has passed checks.
+Use the actual returned manifest name. Copy that manifest and every component it names to another disk/device. Version 2 bundles include the primary SQLite database, optional SEC filer snapshot, existing evidence directories, and optional application state: `FINANCE_OWNER_INPUTS`, `FINANCE_SAVED_VIEWS` and `FINANCE_SOURCE_POLICY_DB`. The policy ledger is captured through SQLite's backup API, including committed WAL changes. Both archive and individual state members have hashes. Missing optional files are omitted; inspect the manifest to confirm the state expected for this installation. Credentials and `.env` are excluded. Historical bundles remain verifiable/restorable, but cannot supply state they never contained.
+
+Restore into a **new or empty** directory. The command verifies every component before staging a restore, preserves the source bundle and refuses populated destinations. For example, mount the recovery bundles read-only and a new parent directory writable by the configured UID/GID:
+
+```bash
+rtk docker run --rm --network none --user 1000:1000 --entrypoint python \
+  -v /srv/recovery-bundles:/recovery:ro -v /srv/new-installation-parent:/restore \
+  YOUR_RECORDED_RELEASE_IMAGE -m finance_dashboard backup restore \
+  /recovery/EXACT_MANIFEST_FILENAME.json /restore/finance-dashboard
+```
+
+The restored tree uses standard `/data` relative paths (`finance.sqlite3`, `owner-inputs.json`, `saved-views.json`, `source-policy/rate-ledger.sqlite3` and evidence roots). Point the destination Compose `FINANCE_DATA_DIR` at that new tree and use the bundle's matching release image. Keep collection disabled during health, schema, source-count, evidence, portfolio and publisher-cooldown checks. Retain damaged/current files until the restored installation passes these checks. Backups beside the live database do not protect against disk loss.
 
 Inspect failures without printing resolved credentials:
 
@@ -133,13 +144,13 @@ Do not use `down -v`, prune volumes or delete the data directory as a repair ste
 Use Python 3.12 and Node 24 (the image's versions). The package declares Python >=3.11; 3.12 is the verified target. Do not use the host's default Python 3.14 merely because it is installed. Existing `.venv` and frontend dependencies may already be ready.
 
 ```bash
-rtk proxy python3.12 -m venv .venv
-rtk proxy .venv/bin/python -m pip install -e '.[test]'
-rtk proxy npm --prefix frontend install
+rtk uv lock --check
+rtk uv sync --frozen --extra test --python 3.12
+rtk proxy npm --prefix frontend ci --no-audit --no-fund
 rtk proxy npm --prefix frontend run build
 ```
 
-Until dependency-lock adoption is implemented, installation resolves allowed versions and is not a reproducible release build. Do not overwrite existing lockfiles during an unrelated review.
+The release installs the reviewed `uv.lock` with uv 0.13.7 and `frontend/package-lock.json` with `npm ci`. Commit deliberate dependency updates with their lock changes; frozen builds do not resolve newer versions. Python tests run independently of the image build in CI; CI also checks the locked frontend and isolated release-image startup/recovery.
 
 In a shell at the repository root, configure a **separate development** data directory. Native execution does not automatically load Compose's `.env`:
 
@@ -153,6 +164,7 @@ export FINANCE_VINTAGE_DIR="$FINANCE_DEV_DATA/vintages"
 export FINANCE_HOLDINGS_DIR="$FINANCE_DEV_DATA/holdings"
 export FINANCE_SURPLUS_DIR="$FINANCE_DEV_DATA/surplus"
 export FINANCE_OWNER_INPUTS="$FINANCE_DEV_DATA/owner-inputs.json"
+export FINANCE_SAVED_VIEWS="$FINANCE_DEV_DATA/saved-views.json"
 export FINANCE_MAINTENANCE_STATE="$FINANCE_DEV_DATA/maintenance/jobs.json"
 export FINANCE_SOURCE_POLICY_DB="$FINANCE_DEV_DATA/source-policy/rate-ledger.sqlite3"
 export FINANCE_BACKUP_DIR="$FINANCE_DEV_DATA/backups"
@@ -174,16 +186,38 @@ Open the Vite URL it prints (normally `http://127.0.0.1:5173`). Browser API requ
 
 ## Disabling automatic collection for a smoke test
 
-The current standalone Compose file hardcodes auto-refresh and Wisesheets-refresh enablement. `.env` cannot disable those literal values. Create an untracked `compose.override.yaml` containing:
+Set these values in the installation's `.env` before starting Compose:
 
-```yaml
-services:
-  finance-dashboard:
-    environment:
-      FINANCE_AUTO_REFRESH: "0"
-      FINANCE_WISESHEETS_REFRESH: "0"
+```dotenv
+FINANCE_AUTO_REFRESH=0
+FINANCE_WISESHEETS_REFRESH=0
 ```
 
-Pass it explicitly: `docker compose -f docker-compose.yml -f compose.override.yaml up -d --build --wait`. This also disables the automatic backup cycle, which lives in the refresh thread. Keep manual backups. Remove the override from the command when resuming normal collection. Making these flags configurable in `.env` is task 2 of the completion plan.
+Run the usual `rtk docker compose up -d --build --wait`. Disabling auto-refresh prevents scheduled publisher work and the automatic backup cycle, which lives in the same thread. Keep manual backups. Defaults remain `1` for auto-refresh/Wisesheets and `86400` for `REFRESH_INTERVAL_SECONDS`; the minimum interval is 3600 seconds. SEC holdings collection defaults to `0` until fund identity and SEC contact are configured.
+
+Run the repeatable isolated image checks without using any research installation:
+
+```bash
+rtk docker build -t finance-dashboard:check .
+rtk proxy python3 tests/container_smoke.py --image finance-dashboard:check
+```
+
+These checks use unique container names, temporary storage, no external network and UID/GID 23456/23457. They cover a new writable directory, populated recreation, manual backup/restore and an unwritable directory whose existing files must survive startup failure.
+
+For repeatable real-browser checks, use the separate locked driver and isolated
+fixture servers described in [browser checks](../tests/browser/README.md):
+
+```bash
+rtk proxy npm --prefix tests/browser ci --no-audit --no-fund
+rtk proxy npm --prefix tests/browser exec -- playwright install chromium
+rtk node tests/browser/browser_smoke.mjs --python .venv/bin/python
+```
+
+Build `frontend/dist` first. The harness creates and deletes separate empty and
+seeded installations, binds unused loopback ports, blocks outgoing connections,
+and writes screenshots, a trace and its report under `output/playwright`.
+Its C01/P07 values and acceptance are explicitly test fixtures; this verifies
+product behaviour without certifying the production corpus or owner acceptance.
+CI runs the same browser check and retains its artifacts.
 
 References: [Docker Compose environment interpolation](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/), [Compose up and health waiting](https://docs.docker.com/reference/cli/docker/compose/up/), [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/).

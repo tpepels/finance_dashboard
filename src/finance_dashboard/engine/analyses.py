@@ -65,13 +65,16 @@ def p07_hedging(fx: dict, equity: dict, eur_rate: dict, usd_rate: dict, hicp: di
 
 
 def p07_wealth(rows: list[dict]) -> dict:
-    """Wealth from 100: nominal over all rows, real over rows with observed inflation."""
+    """Wealth from 100: nominal over all rows, real over the final observed inflation run."""
     out = {"nominal": {}, "real": {}}
+    real_rows = [row for row in rows if row["eur_inflation"] is not None]
+    real_tail = contiguous_tail(tuple(int(x) for x in row["month"].split("-")) for row in real_rows)
+    real_months = {f"{y:04d}-{m:02d}" for y, m in real_tail}
     for key in ("eur_unhedged", "eur_hedged"):
         out["nominal"][key] = [[m, v] for m, v in index_100([(row["month"], row[key]) for row in rows])]
         out["real"][key] = [[m, v] for m, v in index_100(
             [(row["month"], (1 + row[key]) / (1 + row["eur_inflation"]) - 1)
-             for row in rows if row["eur_inflation"] is not None])]
+             for row in real_rows if row["month"] in real_months])]
     return out
 
 

@@ -362,6 +362,46 @@ def _readonly_engine(database_url):
     return create_engine("sqlite://", creator=connect, poolclass=NullPool)
 
 
+def _preserved_sparse_snapshots(reader, root, definition, values, evidence, selection, stored):
+    """Certify rolled-off sparse observations from their newest archived original.
+
+    This is restricted to the publisher's sparse Siblis snapshots. It neither
+    fills intervening months nor infers first publication. All archived source
+    identities, receipts and original bytes are independently checked again.
+    A newer archived value always takes precedence over an older one.
+    """
+    if definition['provider'] not in {'SIBLIS_WORLD_PE', 'SIBLIS_WORLD_EARNINGS_YIELD'}:
+        return values, evidence
+    missing = set(stored) - set(values)
+    chosen = selection.get('chosen')
+    if not missing or chosen is None or chosen[4] != 'acquisition_receipt':
+        return values, evidence
+    candidates = _receipt_candidates(selection['parent'], selection['identity'])
+    layered, proofs = dict(values), []
+    seen = set()
+    for item in sorted(candidates, key=lambda row: (row[0], row[4]), reverse=True):
+        if item[0] > chosen[0] or not _is_full(item[3]) or item[1] in seen:
+            continue
+        seen.add(item[1])
+        original, proof = reader(root, definition,
+            lambda _p, _i, candidate=item: (*candidate[:4], 'acquisition_receipt'), _original_file)
+        periods = missing & original.keys()
+        if periods:
+            layered.update({period: original[period] for period in periods})
+            proofs.append({'periods': sorted(period.isoformat() for period in periods),
+                           'source_manifest_sha256': proof['source_manifest_sha256'],
+                           'source_dependencies': proof['source_dependencies']})
+            missing -= periods
+        if not missing:
+            break
+    if not proofs:
+        return values, evidence
+    return layered, {**evidence,
+        'archived_sparse_periods': sorted(p for proof in proofs for p in proof['periods']),
+        'archived_sparse_proofs': proofs,
+        'selection_method': 'acquisition_receipt_with_preserved_sparse_originals'}
+
+
 def _stored_values(database_url, series_ids):
     engine = _readonly_engine(database_url)
     try:
@@ -536,6 +576,8 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
                     for period in db_values.keys() & values.keys()):
                 values, evidence = _overlay_later_subsets(
                     reader, root, definition, values, evidence, selection)
+            values, evidence = _preserved_sparse_snapshots(
+                reader, root, definition, values, evidence, selection, db_values)
             originals[sid] = values
             proof[sid] = evidence
         except EvidenceError as exc:

@@ -41,6 +41,15 @@ describe('OwnerInputs', () => {
     expect(refreshed).toHaveBeenCalled();
   });
 
+  it('explains which currency and bond assumptions the descriptive replay actually uses', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(example)))));
+    render(<OwnerInputs/>);
+    await screen.findByText(/example portfolio/i);
+    expect(screen.getByText(/P05.*unhedged in EUR/i)).toBeTruthy();
+    expect(screen.getByText(/German 10-year par-bond reconstruction/i)).toBeTruthy();
+    expect(screen.getByText(/whole portfolio every 12 replay months/i)).toBeTruthy();
+  });
+
   it('shows why inputs were refused', async () => {
     vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => init?.method === 'PUT'
       ? Promise.resolve(new Response(JSON.stringify({ detail: 'allocation to equities, bonds and gold must add up to 100%' }), { status: 422 }))

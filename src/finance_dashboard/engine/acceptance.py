@@ -23,6 +23,9 @@ RESOLVED_ANALYSIS_STATES = ("accepted", "conditional")
 class AcceptanceSnapshot:
     evaluated_at: datetime
     analyses: dict[str, dict]
+    source_versions: dict[str, str] | None = None
+    source_values: dict[str, str] | None = None
+    evidence_state: object | None = None
 
 
 class UnacceptedInput(ValueError):
@@ -33,13 +36,14 @@ class AcceptanceUnavailable(RuntimeError):
     """The Phase 2 acceptance evaluation could not be completed."""
 
 
-def snapshot_from_report(public_report: dict, evaluated_at: datetime) -> AcceptanceSnapshot:
+def snapshot_from_report(public_report: dict, evaluated_at: datetime, *, source_versions=None,
+                         source_values=None, evidence_state=None) -> AcceptanceSnapshot:
     """research_corpus_report moves each analysis's role results from its
     acceptance onto the analysis row; both shapes are read."""
     return AcceptanceSnapshot(evaluated_at, {
         row["id"]: {**row["acceptance"],
                     "requirements": row.get("requirements", row["acceptance"].get("requirements", []))}
-        for row in public_report["analyses"]})
+            for row in public_report["analyses"]}, source_versions, source_values, evidence_state)
 
 
 def grouped(items: list[dict]) -> list[dict]:
@@ -154,6 +158,13 @@ class AcceptanceCache:
 
     def refresh(self) -> None:
         """Re-evaluate now (for example after the owner saves inputs); the current snapshot stays served meanwhile."""
+        self.warm()
+
+    def invalidate(self) -> None:
+        """Known changed inputs must not use the previous assessment."""
+        with self._lock:
+            self._value = None
+            self._error = None
         self.warm()
 
     def get(self) -> AcceptanceSnapshot:

@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from os import environ
 import re
+import json
 
 from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.responses import PlainTextResponse
@@ -32,6 +33,8 @@ from .engine.artifacts import load_artifact
 from .owner_inputs import OwnerInputError, load_owner_inputs, save_owner_inputs
 from .engine.runner import analysis_bundle, conditionals, list_analyses
 from .engine.recessions import SERIES_ID as RECESSION_SERIES, recession_periods
+from .engine.views import figure_capabilities
+from .engine.evidence_guard import EvidenceState, AcceptedInputsChanged
 from .icio import read_icio_evidence
 from .maintenance import MaintenanceManager, BusyMaintenance
 from .developer_logs import read_events, recent_jobs, record_event
@@ -53,6 +56,20 @@ class SeriesQuery(BaseModel):
         if self.start and self.end and self.start > self.end:
             raise ValueError("start must be on or before end")
         return self
+
+
+class SavedViewCreate(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    name: str = Field(min_length=1, max_length=120)
+    analysis_id: str
+    spec: dict
+
+
+class SavedViewUpdate(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    name: str = Field(min_length=1, max_length=120)
+    spec: dict
+    revision: int = Field(ge=1)
 
 
 class MaintenanceCommand(BaseModel):
@@ -328,16 +345,31 @@ def create_app(engine=None) -> FastAPI:
         except (OSError, ValueError, KeyError, TypeError):
             raise HTTPException(422, "Original ICIO matrix evidence failed validation") from None
 
-    def current_corpus_report(analyses=None):
+    def current_corpus_evaluation(analyses=None):
         root = Path(environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence"))
         document = research_sources if analyses is None else {**research_sources, "analyses": analyses}
         return evaluate_corpus(db, catalog["series"], document,
             evidence_root=root, market_registry=market_registry,
             vintage_root=Path(environ.get("FINANCE_VINTAGE_DIR", "/data/vintages")),
-            holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))).public_report
+            holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings")))
+
+    def current_corpus_report(analyses=None):
+        return current_corpus_evaluation(analyses).public_report
 
     def acceptance_snapshot():
-        return snapshot_from_report(current_corpus_report(), datetime.now(timezone.utc))
+        evidence = EvidenceState.capture([Path(environ.get(key, default)) for key, default in [
+            ('FINANCE_SOURCE_EVIDENCE_DIR', '/data/source-evidence'),
+            ('FINANCE_VINTAGE_DIR', '/data/vintages'), ('FINANCE_HOLDINGS_DIR', '/data/holdings'),
+            ('FINANCE_OWNER_INPUTS', '/data/owner-inputs.json')]])
+        evaluation = current_corpus_evaluation()
+        if not evidence.unchanged():
+            raise AcceptedInputsChanged('Evidence changed during assessment')
+        versions = {sid: coverage['all_current_versions_sha256'] for panel in evaluation.comparative['panels']
+                    for sid, coverage in panel['input_coverage'].items()}
+        values = {row['series_id']:row['stored_observations_sha256'] for row in evaluation.source_proof['series']
+                  if row.get('stored_observations_sha256')}
+        return snapshot_from_report(evaluation.public_report, datetime.now(timezone.utc), source_versions=versions,
+                                    source_values=values, evidence_state=evidence)
 
     app.state.acceptance = AcceptanceCache(
         acceptance_snapshot, ttl_seconds=float(environ.get("FINANCE_ACCEPTANCE_TTL_SECONDS", "3600")))
@@ -351,23 +383,49 @@ def create_app(engine=None) -> FastAPI:
 
     def acceptance_or_503():
         try:
-            return app.state.acceptance.get()
+            snapshot = app.state.acceptance.get()
+            if snapshot.evidence_state is not None and not snapshot.evidence_state.unchanged():
+                app.state.acceptance.invalidate()
+                raise AcceptanceLoading()
+            return snapshot
         except AcceptanceLoading:
             raise HTTPException(503, "Phase 2 acceptance evaluation in progress",
                                 headers={"Retry-After": "30"}) from None
         except AcceptanceUnavailable as error:
             record_event("system", "collector_failed", level="error", stage="phase2_acceptance",
                          reason=str(error))
+            if str(error) == 'AcceptedInputsChanged':
+                raise HTTPException(503, 'Sources changed during assessment; this page will retry',
+                                    headers={'Retry-After': '30'}) from None
             raise HTTPException(503, "Phase 2 acceptance evaluation unavailable") from None
 
-    def engine_bundle(analysis_id: str, today: date | None):
+    def engine_bundle(analysis_id: str, today: date | None, raw_view: str | None = None):
+        if not any(row['id'] == analysis_id for row in research_sources['analyses']):
+            raise HTTPException(404, 'Unknown analysis')
         snapshot = acceptance_or_503()
         view = {"today": (today or date.today()).isoformat()}
+        if raw_view is not None:
+            try:
+                if len(raw_view) > 16000: raise ValueError('Figure specification is too large')
+                parsed = json.loads(raw_view)
+                if not isinstance(parsed, dict) or 'today' in parsed: raise ValueError('Use a figure object; today is a separate query parameter')
+                if 'figure_id' not in parsed: raise ValueError('Select a figure')
+                view.update(parsed)
+            except (ValueError, TypeError) as error:
+                raise HTTPException(422, str(error)) from None
         with Session(db) as session:
-            bundle = analysis_bundle(session, analysis_id, snapshot=snapshot, corpus_document=research_sources,
-                                     catalog_series=by_id, view=view, artifact_loader=lambda name: load_artifact(
-                                         name, evidence_root=Path(environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")),
-                                         holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))))
+            try:
+                bundle = analysis_bundle(session, analysis_id, snapshot=snapshot, corpus_document=research_sources,
+                                         catalog_series=by_id, view=view, artifact_loader=lambda name: load_artifact(
+                                             name, evidence_root=Path(environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")),
+                                             holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))))
+            except ValueError as error:
+                if raw_view is None: raise
+                raise HTTPException(422, str(error)) from None
+            except AcceptedInputsChanged:
+                app.state.acceptance.invalidate()
+                raise HTTPException(503, 'Input evidence changed; acceptance is being reassessed',
+                                    headers={'Retry-After':'30'}) from None
         if bundle is None:
             raise HTTPException(404, "Unknown analysis")
         return bundle
@@ -378,14 +436,19 @@ def create_app(engine=None) -> FastAPI:
         return list_analyses(acceptance_or_503(), research_sources)
 
     @app.get("/api/analysis/{analysis_id}")
-    def analysis_result(analysis_id: str, today: date | None = None):
+    def analysis_result(analysis_id: str, today: date | None = None, view: str | None = None):
         """One analysis as a self-describing result bundle."""
-        return engine_bundle(analysis_id, today)
+        return engine_bundle(analysis_id, today, view)
+
+    @app.get('/api/analysis/{analysis_id}/views/capabilities')
+    def analysis_view_capabilities(analysis_id: str, today: date | None = None):
+        bundle = engine_bundle(analysis_id, today)
+        return figure_capabilities(analysis_id, by_id, bundle)
 
     @app.get("/api/analysis/{analysis_id}/export", response_class=PlainTextResponse)
-    def analysis_export(analysis_id: str, today: date | None = None):
+    def analysis_export(analysis_id: str, today: date | None = None, view: str | None = None):
         """The bundle as one text file for discussing it with an AI."""
-        bundle = engine_bundle(analysis_id, today)
+        bundle = engine_bundle(analysis_id, today, view)
         name = f"{analysis_id}-{bundle['computed_at'][:10]}.txt"
         return PlainTextResponse(export_text(bundle),
                                  headers={"Content-Disposition": f'attachment; filename="{name}"'})
@@ -394,6 +457,49 @@ def create_app(engine=None) -> FastAPI:
     def owner_inputs():
         """The owner's portfolio parameters, or the labelled example until they are saved."""
         return load_owner_inputs()
+
+    def saved_store_operation(action):
+        from .saved_views import (SavedViewStore, SavedViewConflict, SavedViewNotFound,
+                                  SavedViewUnavailable, SavedViewError)
+        try:
+            return action(SavedViewStore())
+        except SavedViewConflict as error:
+            raise HTTPException(409, str(error)) from None
+        except SavedViewNotFound as error:
+            raise HTTPException(404, str(error)) from None
+        except SavedViewUnavailable:
+            raise HTTPException(503, 'Saved figures could not be read; preserve the file and restore a verified backup') from None
+        except SavedViewError as error:
+            raise HTTPException(422, str(error)) from None
+        except OSError:
+            raise HTTPException(503, 'Saved figures could not be stored; check the writable data directory') from None
+
+    def normalized_saved_spec(analysis_id, spec):
+        bundle = engine_bundle(analysis_id, None, json.dumps(spec))
+        return {k: v for k, v in bundle['view'].items() if k != 'today'}
+
+    @app.get('/api/saved-views')
+    def saved_views_list():
+        return {'items': saved_store_operation(lambda store: store.list())}
+
+    @app.post('/api/saved-views', status_code=201)
+    def saved_view_create(body: SavedViewCreate):
+        normalized = normalized_saved_spec(body.analysis_id, body.spec)
+        return saved_store_operation(lambda store: store.create(body.name, body.analysis_id, normalized))
+
+    @app.put('/api/saved-views/{view_id}')
+    def saved_view_update(view_id: str, body: SavedViewUpdate):
+        rows = saved_store_operation(lambda store: store.list())
+        current = next((r for r in rows if r['id'] == view_id), None)
+        if current is None: raise HTTPException(404, 'Saved figure not found')
+        normalized = normalized_saved_spec(current['analysis_id'], body.spec)
+        return saved_store_operation(lambda store: store.update(view_id, body.name, normalized, body.revision))
+
+    @app.delete('/api/saved-views/{view_id}', status_code=204)
+    def saved_view_delete(view_id: str, revision: int):
+        saved_store_operation(lambda store: store.delete(view_id, revision))
+        from fastapi.responses import Response
+        return Response(status_code=204)
 
     @app.put("/api/owner-inputs")
     def save_owner(body: dict):

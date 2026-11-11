@@ -74,7 +74,7 @@ export default function OwnerInputs() {
     <header className="decision-section-head">
       <h3 id="owner-inputs-title">Your portfolio</h3>
       <p>{example ? 'The analyses below use an example portfolio until you save your own figures.'
-        : 'The analyses below use the figures you saved.'} They are stored only on this machine.</p>
+        : 'The analyses below use the figures you saved.'} They are stored on this server.</p>
     </header>
     <form className="owner-form" onSubmit={save}>
       <fieldset>
@@ -92,6 +92,8 @@ export default function OwnerInputs() {
           <input id="owner-bonds-hedged" type="checkbox" checked={hedgedBonds} onChange={e => setHedgedBonds(e.target.checked)}/>
           <label htmlFor="owner-bonds-hedged">Bonds are euro or hedged to euro</label>
         </div>
+        <p className="owner-hint">Equity euro share, hedge share and duration feed the P04 shocks. P05 equity replay uses USD ACWI unhedged in EUR.</p>
+        <p className="owner-hint">The bonds checkbox selects a hypothetical German 10-year par-bond reconstruction for P05; it does not model an actual hedged fund.</p>
       </fieldset>
       <fieldset>
         <legend>Rebalancing and costs</legend>
@@ -124,8 +126,7 @@ export default function OwnerInputs() {
           </select>
         </div>
         <Field label="Tax rate (%)" value={form.taxRate ?? ''} onChange={set('taxRate')} step={0.1}/>
-        <p className="owner-hint">Yearly on value approximates a wealth-based tax such as Dutch box 3 (for example 36% of a deemed
-          return of about 6% ≈ 2.2% a year, ignoring the allowance).</p>
+        <p className="owner-hint">Yearly on value applies your entered rate to the whole portfolio every 12 replay months; no allowances or loss offsets.</p>
       </fieldset>
       <div className="owner-actions">
         <button type="submit">Save my portfolio</button>

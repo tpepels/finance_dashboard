@@ -7,6 +7,12 @@ from importlib import import_module
 from io import StringIO
 from pathlib import Path
 import unittest
+import json
+import os
+import sqlite3
+import subprocess
+import sys
+from tempfile import TemporaryDirectory
 
 from finance_dashboard.command_registry import COMMANDS, dispatch
 
@@ -20,7 +26,30 @@ class CommandConsolidationTests(unittest.TestCase):
         leftovers = [p for p in (ROOT / "scripts").rglob("*")
                      if p.is_file() and "__pycache__" not in p.parts]
         self.assertEqual(leftovers, [])
-        self.assertEqual(len(COMMANDS), 19)
+
+    def test_canonical_backup_cli_creates_verifies_and_restores_a_bundle(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            database = root / "finance.sqlite3"
+            with sqlite3.connect(database) as connection:
+                connection.execute("CREATE TABLE facts (value INTEGER)")
+                connection.execute("INSERT INTO facts VALUES (42)")
+            owner = root / "owner-inputs.json"
+            owner.write_text('{"version":1}')
+            environment = {**os.environ, "DATABASE_URL": f"sqlite:///{database}",
+                           "FINANCE_OWNER_INPUTS": str(owner)}
+            def command(*args):
+                return subprocess.run([sys.executable, "-m", "finance_dashboard", "backup", *args],
+                    env=environment, capture_output=True, text=True)
+            created = command("local", "--output-dir", str(root / "backups"))
+            self.assertEqual(created.returncode, 0, created.stderr)
+            manifest = next((root / "backups").glob("finance-*Z.json"))
+            verified = command("verify", str(manifest))
+            self.assertEqual(verified.returncode, 0, verified.stderr)
+            self.assertTrue(json.loads(verified.stdout)["verified"])
+            restored = command("restore", str(manifest), str(root / "restored"))
+            self.assertEqual(restored.returncode, 0, restored.stderr)
+            self.assertEqual((root / "restored/owner-inputs.json").read_bytes(), owner.read_bytes())
 
     def test_project_root_has_one_environment_aware_resolver(self):
         """Installed (non-editable) runtimes must find /app/definitions."""

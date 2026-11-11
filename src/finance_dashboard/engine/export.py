@@ -51,7 +51,8 @@ def export_text(bundle: dict) -> str:
                                     for item in bundle["transforms"]])
     header += _lines("Shown side by side", bundle["comparison"] or [])
     header += _lines("Citations", [f"{item['id']} {item['label']}: {item['url']}" for item in bundle["citations"]])
-    data = json.dumps({"values": bundle["values"], "estimates": bundle["estimates"],
+    data = json.dumps({"values": bundle["values"] if 'figure' not in bundle else bundle['figure'],
+                       "figure": bundle.get('figure'), "view": bundle['view'], "estimates": bundle["estimates"],
                        "limitations": bundle["limitations"], "phase2": bundle["phase2"],
                        "inputs": bundle["inputs"]}, indent=1)
     return "\n".join(header) + "\n--- data (JSON) ---\n" + data + "\n"

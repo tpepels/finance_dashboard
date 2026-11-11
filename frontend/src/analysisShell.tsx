@@ -1,6 +1,9 @@
 /** Shared shell for analysis panels: bundle types, loading with Phase 2 retry, sections and folded limitations. */
-import { useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import type { Recession } from './chartKit';
+import { detailMessage } from './figureViews';
+const FigureEditor = lazy(() => import('./FigureEditor'));
+
 
 export type Limitation = { code: string; text: string; detail?: string };
 /** One entry of the bundle's shared limitation list (the export prints the same list). */
@@ -23,7 +26,7 @@ export type Bundle<V, E = null> = {
 };
 
 /** The server is still evaluating Phase 2 acceptance; retry after the stated delay. */
-class Pending extends Error {
+export class Pending extends Error {
   constructor(message: string, readonly retryAfterSeconds: number) { super(message); }
 }
 
@@ -32,14 +35,30 @@ function retryAfter(header: string | null): number {
   return header !== null && Number.isFinite(seconds) && seconds >= 0 ? seconds : 30;
 }
 
-export async function load<T>(path: string): Promise<T> {
-  const response = await fetch(path, { cache: 'no-store' });
-  if (response.status === 503 && response.headers.has('Retry-After')) {
-    const body = await response.json().catch(() => ({})) as { detail?: string };
-    throw new Pending(body.detail ?? 'Phase 2 acceptance evaluation in progress', retryAfter(response.headers.get('Retry-After')));
-  }
-  if (!response.ok) throw new Error(`${path} unavailable (${response.status})`);
-  return response.json() as Promise<T>;
+const inFlight = new Map<string, Promise<unknown>>();
+let readGeneration = 0;
+export function invalidateAnalysisReads() { readGeneration += 1; inFlight.clear(); }
+/** Share identical in-flight JSON reads; no completed result survives a refresh. */
+export function load<T>(path: string, version: number = 0): Promise<T> {
+  const key = `${readGeneration}:${version}:${path}`;
+  const existing = inFlight.get(key);
+  if (existing) return existing as Promise<T>;
+  const pending = (async () => {
+    const response = await fetch(path, { cache: 'no-store' });
+    if (response.status === 503 && response.headers.has('Retry-After')) {
+      const body = await response.json().catch(() => ({})) as { detail?: string };
+      throw new Pending(body.detail ?? 'Phase 2 acceptance evaluation in progress', retryAfter(response.headers.get('Retry-After')));
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(detailMessage(body.detail, `${path} unavailable (${response.status})`));
+    }
+    return response.json() as Promise<T>;
+  })();
+  inFlight.set(key, pending);
+  const release = () => { if (inFlight.get(key) === pending) inFlight.delete(key); };
+  pending.then(release, release);
+  return pending;
 }
 
 /** Load the bundles for a panel and the recession periods; while Phase 2 is still evaluating, say so and retry. */
@@ -50,10 +69,13 @@ export function useBundles(ids: string[], dataVersion: number) {
   const key = ids.join(',');
   useEffect(() => {
     let cancelled = false;
+    // Preserve each question/editor while withholding values whose evidence is being refreshed.
+    setBundles(previous => Object.fromEntries(Object.entries(previous).map(([id, bundle]) => [id,
+      { ...bundle, values: null, estimates: null, phase2: { ...bundle.phase2, state: 'refreshing', open_gates: ['refresh in progress'] } }])));
     let timer: ReturnType<typeof setTimeout> | undefined;
-    load<{ periods: Recession[] }>('/api/recessions').then(r => { if (!cancelled) setRecessions(r.periods); }).catch(() => undefined);
+    load<{ periods: Recession[] }>('/api/recessions', dataVersion).then(r => { if (!cancelled) setRecessions(r.periods); }).catch(() => undefined);
     const attempt = () => {
-      Promise.all(key.split(',').map(id => load<Bundle<unknown, unknown>>(`/api/analysis/${id}`))).then(loaded => {
+      Promise.all(key.split(',').map(id => load<Bundle<unknown, unknown>>(`/api/analysis/${id}`, dataVersion))).then(loaded => {
         if (!cancelled) { setBundles(Object.fromEntries(loaded.map(b => [b.analysis_id, b]))); setError(''); }
       }).catch(err => {
         if (cancelled) return;
@@ -109,7 +131,7 @@ function Sources({ bundle }: { bundle: Bundle<unknown, unknown> }) {
 }
 
 /** Limitations (data, borrowed inputs, method) folded away, with the AI export beside them. */
-function Limits({ bundle }: { bundle: Bundle<unknown, unknown> }) {
+export function BundleDetails({ bundle, exportHref, exportLabel = 'Export for AI' }: { bundle: Bundle<unknown, unknown>; exportHref?: string; exportLabel?: string }) {
   return <footer className="decision-foot">
     <Method bundle={bundle}/>
     <Sources bundle={bundle}/>
@@ -123,16 +145,22 @@ function Limits({ bundle }: { bundle: Bundle<unknown, unknown> }) {
             ...item.accepted_under.map(a => `accepted under ${a.analysis_id}`)].filter(Boolean).join('; ')})</span>}
       </li>)}</ul>
     </details>
-    <a className="decision-export" href={`/api/analysis/${bundle.analysis_id}/export`} download>Export for AI</a>
+    <a className="decision-export" href={exportHref ?? `/api/analysis/${bundle.analysis_id}/export`} download>{exportLabel}</a>
   </footer>;
 }
 
 export function Section({ bundle, children, withheld }: { bundle: Bundle<unknown, unknown>; children: ReactNode; withheld?: ReactNode }) {
+  const [configuring, setConfiguring] = useState(false);
   return <section className="decision-section" aria-labelledby={`q-${bundle.analysis_id}`}>
     <header className="decision-section-head">
       <h3 id={`q-${bundle.analysis_id}`}>{bundle.question}</h3>
       <p>{bundle.decision_informed}</p>
+      <button type="button" className="figure-configure" aria-expanded={configuring} aria-controls={`configure-${bundle.analysis_id}`}
+        onClick={() => setConfiguring(open => !open)}>{configuring ? 'Close configuration' : 'Configure'}</button>
     </header>
+    {configuring && <div id={`configure-${bundle.analysis_id}`}><Suspense fallback={<p role="status">Loading figure editor…</p>}>
+      <FigureEditor analysisId={bundle.analysis_id}/>
+    </Suspense></div>}
     {bundle.basis?.kind === 'verified_alternatives' && <p className="decision-basis" role="note"
       aria-label="Shown from alternatives, not the original method">
       The original method cannot be computed yet ({bundle.phase2.open_gates.length} inputs missing). What is shown comes from
@@ -140,7 +168,7 @@ export function Section({ bundle, children, withheld }: { bundle: Bundle<unknown
     {bundle.values ? children : <p className="decision-note" role="status">Not computed: Phase 2 state is {bundle.phase2.state}
       {bundle.phase2.open_gates.length > 0 && <>; open gates: {bundle.phase2.open_gates.join(', ')}</>}.</p>}
     {!bundle.values && withheld}
-    <Limits bundle={bundle}/>
+    <BundleDetails bundle={bundle}/>
   </section>;
 }
 

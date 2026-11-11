@@ -38,6 +38,22 @@ def environ(**updates):
 
 
 class StandaloneContainerTests(TestCase):
+    def test_offline_startup_serves_health_without_running_scheduled_publishers(self):
+        publisher_work = threading.Event()
+        with tempfile.TemporaryDirectory() as tmp:
+            engine = make_engine(f"sqlite+pysqlite:///{Path(tmp) / 'finance.sqlite3'}")
+            Base.metadata.create_all(engine)
+            try:
+                with (environ(FINANCE_AUTO_REFRESH="0", FINANCE_AUTO_BACKUP="1",
+                              FINANCE_DASHBOARD_UI_DIR=None),
+                      patch("finance_dashboard.standalone.refresh_loop",
+                            side_effect=lambda *a, **kw: publisher_work.set())):
+                    with TestClient(create_app(engine)) as client:
+                        self.assertEqual(client.get("/api/health").status_code, 200)
+                        self.assertFalse(publisher_work.wait(timeout=0.05))
+            finally:
+                engine.dispose()
+
     def test_bundled_html_and_all_existing_api_routes_share_one_origin(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

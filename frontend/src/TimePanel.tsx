@@ -12,21 +12,30 @@ export default function TimePanel({ title, caption, option, height = 300, span, 
 }) {
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType | null>(null);
+  const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined');
   const [active, setActive] = useState<Preset>(initial ?? 'All');
   useEffect(() => {
-    if (!host.current) return;
+    if (visible || !host.current) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) { setVisible(true); observer.disconnect(); }
+    }, { rootMargin: '400px' });
+    observer.observe(host.current);
+    return () => observer.disconnect();
+  }, [visible]);
+  useEffect(() => {
+    if (!host.current || !visible) return;
     const instance = createChart(host.current) as unknown as EChartsType;
     chart.current = instance;
     if (group) { instance.group = group; connectCharts(group); }
     const observer = new ResizeObserver(() => instance.resize());
     observer.observe(host.current);
     return () => { observer.disconnect(); instance.dispose(); chart.current = null; };
-  }, [group]);
+  }, [group, visible]);
   useEffect(() => {
     chart.current?.setOption(option as never, true);
     // A full option reset returns the chart to All; reapply the chosen window.
     if (span && active !== 'All') chart.current?.dispatchAction({ type: 'dataZoom', ...presetWindow(active, span[0], span[1]) });
-  }, [option]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [option, visible, group]); // eslint-disable-line react-hooks/exhaustive-deps
   // Recession names appear once the zoomed window is short enough for them to stay apart.
   useEffect(() => {
     const instance = chart.current;
@@ -45,7 +54,7 @@ export default function TimePanel({ title, caption, option, height = 300, span, 
     instance.on('datazoom', update);
     update();   // an opening zoom (initial preset) also decides whether names fit
     return () => { instance.off('datazoom', update); };
-  }, [option, span, compact]);
+  }, [option, span, compact, visible, group]);
   const choose = (preset: Preset) => {
     setActive(preset);
     if (span) chart.current?.dispatchAction({ type: 'dataZoom', ...presetWindow(preset, span[0], span[1]) });

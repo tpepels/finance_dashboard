@@ -9,6 +9,9 @@ from importlib import import_module
 import sys
 
 COMMANDS = {
+    "backup local": ("finance_dashboard.backup", "local_main"),
+    "backup verify": ("finance_dashboard.backup", "verify_main"),
+    "backup restore": ("finance_dashboard.backup", "restore_main"),
     "research operating": ("finance_dashboard.research_operating", "main"),
     "research compare": ("finance_dashboard.comparative_workflow", "main"),
     "research corpus": ("finance_dashboard.research_corpus_cli", "main"),

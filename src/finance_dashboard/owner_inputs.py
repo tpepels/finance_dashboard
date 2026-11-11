@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import os
 from pathlib import Path
 import tempfile
@@ -35,26 +36,48 @@ def default_path() -> Path:
     return Path(os.environ.get("FINANCE_OWNER_INPUTS", "/data/owner-inputs.json"))
 
 
+def _number(value, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise OwnerInputError(f"{name} must be a finite number")
+    try:
+        number = float(value)
+    except (ValueError, OverflowError) as exc:
+        raise OwnerInputError(f"{name} must be a finite number") from exc
+    if not math.isfinite(number):
+        raise OwnerInputError(f"{name} must be a finite number")
+    return number
+
+
 def _fraction(value, name: str) -> float:
-    number = float(value)
+    number = _number(value, name)
     if not 0 <= number <= 1:
         raise OwnerInputError(f"{name} must be between 0 and 1")
     return number
 
 
 def validate(raw: dict) -> dict:
+    if not isinstance(raw, dict):
+        raise OwnerInputError("owner inputs must be an object")
     data = copy.deepcopy({**EXAMPLE, **{k: v for k, v in raw.items() if k in EXAMPLE}})
+    for field in ("allocation", "rebalancing", "tax"):
+        if not isinstance(data[field], dict):
+            raise OwnerInputError(f"{field} must be an object")
+    if not isinstance(data["bonds_hedged"], bool):
+        raise OwnerInputError("bonds_hedged must be true or false")
     allocation = {k: _fraction(data["allocation"].get(k, 0), f"allocation to {k}") for k in ("equity", "bonds", "gold")}
     if abs(sum(allocation.values()) - 1) > 0.001:
         raise OwnerInputError("allocation to equities, bonds and gold must add up to 100%")
     rebalancing = data["rebalancing"]
     if rebalancing.get("rule") not in ("never", "calendar", "threshold"):
         raise OwnerInputError("rebalancing rule must be never, calendar or threshold")
-    months, band = int(rebalancing.get("months", 12)), float(rebalancing.get("band_pp", 5))
+    month_number = _number(rebalancing.get("months", 12), "rebalancing months")
+    if not month_number.is_integer():
+        raise OwnerInputError("rebalancing months must be a whole number")
+    months, band = int(month_number), _number(rebalancing.get("band_pp", 5), "rebalancing band")
     if not 1 <= months <= 60 or not 0.5 <= band <= 50:
         raise OwnerInputError("rebalancing every 1 to 60 months, with a band of 0.5 to 50 percentage points")
-    numbers = {k: float(data[k]) for k in ("bond_duration_years", "trading_cost_bps", "start_value_eur",
-                                            "monthly_contribution_eur")}
+    numbers = {k: _number(data[k], k) for k in ("bond_duration_years", "trading_cost_bps", "start_value_eur",
+                                              "monthly_contribution_eur")}
     if not 0 <= numbers["bond_duration_years"] <= 30 or not 0 <= numbers["trading_cost_bps"] <= 500:
         raise OwnerInputError("bond duration must be 0 to 30 years and trading costs 0 to 500 basis points")
     if numbers["start_value_eur"] <= 0 or numbers["monthly_contribution_eur"] < 0:
@@ -62,13 +85,13 @@ def validate(raw: dict) -> dict:
     tax = data["tax"]
     if tax.get("mode") not in ("none", "realised_gains", "yearly_on_value"):
         raise OwnerInputError("tax must be none, on realised gains, or yearly on value")
-    rate = float(tax.get("rate_pct", 0))
+    rate = _number(tax.get("rate_pct", 0), "tax rate")
     if not 0 <= rate <= 60:
         raise OwnerInputError("tax rate must be between 0% and 60%")
     return {"allocation": allocation, "tax": {"mode": tax["mode"], "rate_pct": rate},
             "equity_hedged_share": _fraction(data["equity_hedged_share"], "share of foreign equity hedged"),
             "equity_euro_share": _fraction(data["equity_euro_share"], "euro-area share of equities"),
-            "bonds_hedged": bool(data["bonds_hedged"]),
+            "bonds_hedged": data["bonds_hedged"],
             "rebalancing": {"rule": rebalancing["rule"], "months": months, "band_pp": band},
             "annual_withdrawal_pct": _fraction(data["annual_withdrawal_pct"], "yearly withdrawal"),
             **numbers}
