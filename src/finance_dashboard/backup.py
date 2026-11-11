@@ -101,7 +101,7 @@ def _backup_state(output: Path, prefix: str, sources: dict[str, Path]) -> dict |
         if not records:
             return None
         archived = staging / "state.tar.gz"
-        with tarfile.open(archived, "w:gz") as archive:
+        with tarfile.open(archived, "w:gz", compresslevel=1) as archive:
             for record in records.values():
                 archive.add(staging / record["member"], arcname=record["member"], recursive=False)
         target = output / (prefix + ".state.tar.gz")
@@ -199,7 +199,7 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
                         continue
                     files.append((entry, name + "/" + entry.relative_to(base).as_posix()))
             if files:
-                with tarfile.open(temporary_archive, mode="w:gz") as archive:
+                with tarfile.open(temporary_archive, mode="w:gz", compresslevel=1) as archive:
                     for entry, archive_name in files:
                         archive.add(entry, arcname=archive_name, recursive=False)
                 with tarfile.open(temporary_archive, mode="r:gz") as archive:

@@ -15,13 +15,13 @@ Scientific scope remains governed by the [charter](PHASE1_SCIENTIFIC_CHARTER.md)
 | Area | State |
 |---|---|
 | Catalogue and engine | 398 mapped source definitions; 37 questions and 37 engine definitions |
-| Research acceptance | Earlier Phase 2 closure is historical. Running installation: 23 accepted, 12 conditional, one deferred (G03), one incomplete (P06) |
-| P06 | `global_earnings_yield` open; no values or estimates in its current running bundle |
+| Research acceptance | Fresh release-code assessment: 24 accepted, 12 conditional, one deferred (G03); no incomplete analysis |
+| P06 | Accepted after independently checking its latest page and archived rolled-off September observation |
 | Analytical engine | Phase 3 implementation complete; empirical acceptance varies by installation and refresh |
-| Interaction | Overview, workbench, eight panels, methods, sources, exports and portfolio form implemented; configurable/saved figures remain |
-| Portfolio | Inputs, shocks, rebalancing replay, costs and tax modes implemented; independent validation and owner acceptance remain |
+| Interaction | Overview, workbench, eight panels, methods, sources, exports and portfolio form implemented; independent configurable/saved figures implemented |
+| Portfolio | Inputs, shocks, rebalancing replay, costs and tax modes implemented; independent arithmetic/source checks implemented; formal owner review remains |
 | Runtime | Docker build, fresh Compose startup, non-root writes, recreation persistence and host LAN-interface health checked |
-| Verification | Python: 1,111 tests, 10 optional skips; frontend: 108 passing; TypeScript/Vite passing |
+| Verification | Full Python suite passes with 10 optional skips; frontend: 129 passing; TypeScript/Vite and 14 browser flows passing |
 
 The running image differs from the reviewed checkout's built image. Its cached acceptance result describes that installation. A fresh read-only evaluation against the complete corpus is the first release gate. A clean installation intentionally has no equivalent research history.
 
@@ -55,3 +55,11 @@ Steps 3–4 finish configurable figures. Step 5 closes Phase 5 validation rather
 - Investigate evidence gates; do not bypass acceptance to repair a blank chart.
 - Run full offline tests before commits and verify CI after pushing. No commit or push was made in this review.
 - Use [RUNNING.md](RUNNING.md) for operation; keep reviews distinct from the roadmap and scientific contracts.
+
+## Implementation outcome — 2026-11-11
+
+Priorities 1–6 are implemented and verified. P06 is accepted after independently checking the rolled-off September original; the fresh local corpus has 24 accepted, 12 conditional and one documented deferred question. Independent figures/saved variants, exact exports, complete defined application-state recovery, frozen builds, portfolio validation and integrated mobile/browser checks are implemented.
+
+An independent review found and reproduced stale acceptance authorizing new revisions, sparse derived lines, incompatible FX axes and ineffective structured-result date bounds. Regression tests now cover those failures and the corrected behaviour. See [release verification](RELEASE_VERIFICATION.md).
+
+The owner chose the verified local corpus for `media-server`, retaining the divergent previous server store intact. Rollout uses a staged restored corpus and a pinned release image; it does not merge or overwrite conflicting original archives. Formal owner visual acceptance is a user review of the delivered application. Host reboot is excluded from the app-only rollout because this server also runs unrelated media/network services; container recreation and restart policy are verified.

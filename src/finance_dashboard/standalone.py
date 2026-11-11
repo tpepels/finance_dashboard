@@ -56,6 +56,10 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
     from .worker import refresh_all, refresh_market_all
 
     scheduled_stop = _ScheduledStop(stopped)
+    # Restored/verified releases can warm acceptance without immediately
+    # reacquiring the entire corpus. Normal daily updates remain enabled.
+    if not enabled('FINANCE_REFRESH_ON_START', '1') and stopped.wait(interval_seconds):
+        return
     while not stopped.is_set():
         if manual_sync_pending.is_set():
             if stopped.wait(interval_seconds):

@@ -1,5 +1,7 @@
 # Project review — 2026-11-11
 
+This is the initial audit. Implementation outcomes and deployment evidence are recorded in [release verification](RELEASE_VERIFICATION.md).
+
 Scope: repository at `40d743f` before this documentation update, operational documentation, installed development environment, existing local service and an isolated fresh deployment. The owner confirmed Linux + Docker Compose, LAN IP and port for the remote server.
 
 ## Findings

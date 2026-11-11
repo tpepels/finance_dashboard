@@ -159,3 +159,9 @@ Do not split the large `engine/analyses.py` merely for tidiness. Extract a focus
 ## Plan self-review
 
 The tasks cover the roadmap's seven priorities and the visualization contract's independent views, supported encodings, event semantics, methods/sources/tables and exact exports. Review Focus cases are assigned to testable tasks. Runtime and saved-view state share backup requirements; task 4 extends task 2 rather than creating another backup system. Scientific/visual approval, fresh corpus assessment and actual second-device/server checks remain outstanding; this planning review does not mark them complete.
+
+## Execution record — 2026-11-11
+
+Tasks 1–6 implemented. Current automated evidence: full Python suite, locked frontend tests/build, real Chromium desktop/390px flows, non-root container startup/recreation and verified recovery/restore. The exact final counts, deployment image, data paths and remaining operator checks are in [release verification](../../RELEASE_VERIFICATION.md).
+
+Rulings: keep curated reference graphics and expose scientifically compatible independent variants; cadence-unknown derived outputs are dots/tables; complex structured results reject unsupported date bounds. Bind acceptance to exact current observation versions and original filesystem identities, rehashing after any change. The owner explicitly chose the verified local corpus for the server while preserving the previous server corpus separately. No host reboot is performed on the shared media server; container replacement/restart policy is the scoped reliability check. Formal owner visual approval is not claimed by automated tests.

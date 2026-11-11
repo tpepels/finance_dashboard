@@ -18,7 +18,7 @@ Edit the `.env` used by that Compose project; do not replace an existing file. G
 | `FINANCE_SOURCE_POLICY_ACKNOWLEDGED` | Comma-separated operator attestations; add `oecd-sdmx` only after verifying permitted direct outbound access |
 | `FINANCE_AUTO_BACKUP`, `FINANCE_BACKUP_KEEP` | Backup cycle and retention; backups share the refresh thread and must be copied off the source disk |
 
-Use `.env.example` as the current variable inventory. The standalone Compose file still hardcodes `FINANCE_AUTO_REFRESH=1`, `FINANCE_WISESHEETS_REFRESH=1` and `REFRESH_INTERVAL_SECONDS=86400`; those cannot be changed by `.env` alone. The runbook explains a Compose override for offline startup. The existing-stack snippet passes these settings through.
+Use `.env.example` as the current variable inventory. The standalone Compose file and existing-stack snippet pass refresh flags/interval through `.env`. Set `FINANCE_AUTO_REFRESH=0` for fully offline operation. Set `FINANCE_REFRESH_ON_START=0` with automatic refresh enabled to warm acceptance against a restored corpus first, then start collection after the first daily interval.
 
 All publishers share the managed source-policy client and durable `/data/source-policy/rate-ledger.sqlite3`. Observe publisher pacing, denial/backpressure cooldowns and original-response capture. A missing key or unavailable provider must produce an explicit state, never invented observations. See [SOURCE_POLICY.md](SOURCE_POLICY.md).
 
@@ -52,4 +52,4 @@ Detailed evidence investigations remain in [OECD evidence](PHASE2_OECD_EVIDENCE.
 
 ## Recovery coverage
 
-`finance_dashboard.backup` creates a verified online SQLite copy plus selected source-evidence/vintage/holdings/maintenance/surplus and earnings components. It currently omits portfolio inputs and the policy ledger. Preserve the **complete stopped data directory** for transfer/disaster recovery until the completion plan adds those components; test restore into a separate directory and retain an independent copy off the same disk.
+`finance_dashboard.backup` creates a verified online SQLite copy plus selected source-evidence/vintage/holdings/maintenance/surplus and earnings components. Version-2 bundles also preserve portfolio inputs, saved figures and a consistent policy-ledger snapshot including committed WAL state. Verify and restore to a separate new/empty directory, retain an independent copy off the same disk, and keep the prior image/data pair for rollback. Transient hidden collector markers are not original evidence; restoring them is not required for numerical reproducibility.

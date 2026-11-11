@@ -4,15 +4,15 @@ A private research workbench for a EUR-based long-term ETF investor. It combines
 
 One Docker container serves the React/TypeScript/ECharts UI and FastAPI API, keeps SQLite and research archives in `/data`, and performs scheduled source updates. The same image runs locally and on a Linux server on your network.
 
-## Status — reviewed 2026-11-11
+## Status — release 2026-11-11
 
-All 37 catalogue questions have engine definitions. The overview, workbench, analysis panels, owner portfolio form, methods, sources and exports are implemented. Remaining work includes configurable/saved figures, portfolio validation and release operations.
+All 37 questions have engine definitions. Independent figures now support declared compatible series/geographies, periods, server-computed transforms, chart encodings, event context, saved variants, compare/reset and exact-view exports. Curated reference graphics remain available; unsupported combinations explain why they are unavailable.
 
-The running installation reports **23 accepted, 12 conditional, one deferred and one incomplete** analysis. P06 is withheld because `global_earnings_yield` is unresolved. This is a report from the existing running image, not a fresh certification of all originals against the checkout.
+A fresh read-only assessment of the verified local corpus reports **24 accepted, 12 conditional and one documented deferral**, with no incomplete analysis. P06's rolling sparse observations are verified against their archived originals. Accepted output is bound to the assessed database versions and original-evidence state; changed inputs are withheld pending reassessment.
 
-Verification: 1,111 Python tests ran successfully (10 optional checks skipped), 108 frontend tests passed, the frontend built, and an isolated Docker Compose installation passed startup and persistence checks.
+Backups include portfolio inputs, saved figures and the publisher-policy ledger, with verified restore into an empty directory. Builds use frozen Python/npm dependencies and pinned runtime images. Independent portfolio arithmetic, desktop/mobile browser flows and recovery checks pass.
 
-See the [project review](docs/PROJECT_REVIEW.md), [authoritative roadmap](docs/DEVELOPMENT_PLAN.md) and [completion implementation plan](docs/superpowers/plans/2026-11-11-project-completion.md).
+See the [roadmap](docs/DEVELOPMENT_PLAN.md), [implementation plan](docs/superpowers/plans/2026-11-11-project-completion.md), [initial project review](docs/PROJECT_REVIEW.md) and [release verification](docs/RELEASE_VERIFICATION.md).
 
 ## Run locally or on your LAN server
 

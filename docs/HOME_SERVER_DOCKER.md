@@ -25,4 +25,4 @@ Open `http://SERVER_LAN_IP:5052/` and check `/api/health` from another LAN devic
 
 The same container contains UI, API, SQLite, scheduled collection and backups. No Node server, separate worker/database or additional scheduler is needed. See [source setup](SERVER_SOURCE_SETUP.md) for optional credentials and actual readiness; a health check does not certify data completeness.
 
-Backup currently omits saved portfolio inputs and publisher-policy state. Follow the runbook's full stopped-tree preservation procedure before updates/transfers, rather than assuming the scheduled database/evidence bundle captures the entire installation.
+Version-2 recovery bundles include owner inputs, saved figures and the publisher-policy ledger. Verify the bundle and restore into a new/empty directory before switching the service mount. Preserve the previous image and data tree for rollback. The 2026-11-11 release stages the owner-selected local corpus separately on `media-server`; it does not merge conflicting originals into the previous `/srv/finance-dashboard` corpus. See [release verification](RELEASE_VERIFICATION.md).

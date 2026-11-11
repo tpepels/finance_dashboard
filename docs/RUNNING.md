@@ -221,3 +221,11 @@ product behaviour without certifying the production corpus or owner acceptance.
 CI runs the same browser check and retains its artifacts.
 
 References: [Docker Compose environment interpolation](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/), [Compose up and health waiting](https://docs.docker.com/reference/cli/docker/compose/up/), [bind mounts](https://docs.docker.com/engine/storage/bind-mounts/).
+
+## Restored corpus and initial refresh
+
+Use `FINANCE_AUTO_REFRESH=1` and `FINANCE_REFRESH_ON_START=0` when bringing up an already verified research corpus. Acceptance starts immediately, without a simultaneous publisher acquisition changing its inputs. The scheduled collector runs after `REFRESH_INTERVAL_SECONDS` (normally 86400), and daily cycles continue normally. Setting the latter flag back to 1 restores immediate acquisition on startup. Manual **Data & sync** remains available.
+
+When source versions/originals change, analysis and export endpoints withhold affected output and return a retryable acceptance-loading state until a fresh assessment succeeds. A large corpus can take several minutes to assess; health and source diagnostics remain available. This prevents a cached acceptance result from authorizing unverified revisions.
+
+The deployed release and rollback paths are listed in [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md). Keep the local and server stores independent; conflicting manifests/receipts must not be merged by copying files over one another.

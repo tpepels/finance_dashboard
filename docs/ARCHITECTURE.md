@@ -24,7 +24,7 @@ The standalone Compose service maps port 5052 by default and bind-mounts `FINANC
 | `api.py` | Same-origin data, analyses, portfolio inputs, source evidence and operations; expensive acceptance evaluated in a cached background job |
 | `standalone.py`, `worker.py` | One in-process refresh thread, macro/optional market collection, optional Wisesheets/vintage/holdings tasks and daily backup |
 | Frontend panels, `Overview`, `Workbench` | Read engine bundles; overview and searchable catalogue lead to eight analysis panels |
-| `analysisShell.tsx`, `TimePanel.tsx`, chart helpers | Methods, sources, limitations, AI export, charts and zoom presets; independently configurable saved figures are still planned |
+| `analysisShell.tsx`, `TimePanel.tsx`, chart helpers | Methods, sources, limitations, AI export, charts and zoom presets; independent capability-bound figures and server-backed saved variants are implemented |
 | `owner_inputs.py` | Validate/atomically save portfolio inputs at `/data/owner-inputs.json`; clearly identify the example until owner values are saved |
 | `backup.py` | Consistent online SQLite copy, selected evidence/earnings archives, hashes, integrity checks and bounded retention |
 
@@ -36,7 +36,7 @@ The analytical engine gates original-method output on research acceptance. Expli
 
 National-account surplus, listed net income and Marxian surplus-value measures retain separate conceptual populations and denominators. Missing periods stay missing. No unsupported crash probability, synthetic risk score or implicit timing signal is produced.
 
-Portfolio P04/P05 use owner allocations, shock assumptions and historical replay. Rebalancing rules, contributions/withdrawals, trading costs and tax modes are implemented; historical coverage, par-bond reconstruction and currency/hedging approximations remain explicit. Their independent release validation is outstanding.
+Portfolio P04/P05 use owner allocations, shock assumptions and historical replay. Rebalancing rules, contributions/withdrawals, trading costs and tax modes are implemented; historical coverage, par-bond reconstruction and currency/hedging approximations remain explicit. Independent fixture arithmetic and original-return reconciliation checks are recorded in [PORTFOLIO_VALIDATION.md](PORTFOLIO_VALIDATION.md); model and empirical limits remain explicit.
 
 The source explorer is the provenance/inspection layer. Pre-engine research, risk, insight, market comparison, vintage backtest and Marxian-accounting routes were retired; do not restore them as parallel calculation paths.
 
@@ -44,13 +44,15 @@ The source explorer is the provenance/inspection layer. Pre-engine research, ris
 
 - Service health (`/api/health`) checks database connectivity, not empirical corpus completeness. Acceptance loading can return 503 with `Retry-After` while the UI retries.
 - Automatic backups run after the refresh cycle, not as a pre-migration startup backup. Disable automatic refresh and its automatic backup cycle is also disabled.
-- Current backups omit the portfolio-input file and source-policy ledger. Until task 2 expands recovery coverage, transfer/recover a complete stopped data tree. Scheduled bundles alone are not complete application-state recovery.
+- Version-2 backups include portfolio inputs, saved figures and a consistent publisher-policy SQLite snapshot. Restore validates all components and installs into a new/empty directory; old manifests remain verifiable.
 - Backups on the same disk do not protect against disk loss; retain an independent complete copy.
-- Some Compose scheduler flags are hardcoded; use the runbook's override procedure for an offline smoke test.
-- Dependency locks exist untracked in the reviewed workspace, but Docker does not yet use them. Reproducible-build adoption is planned.
+- Compose exposes refresh flags and interval. `FINANCE_REFRESH_ON_START=0` defers the first acquisition until the configured interval while acceptance warms immediately; automatic daily updates remain enabled.
+- Docker and CI use reviewed frozen Python/npm locks and pinned base images. Original lockfiles from the initial workspace were preserved before adoption.
 
 ## Verification
 
-`.github/workflows/python-static.yml` runs Python syntax/selected Ruff checks, the full offline suite and supported CLI checks. Docker build runs frontend tests/build, Python syntax and catalogue validation. The full Python suite is separate from image build. Frontend/browser/container/recovery CI coverage remains in the completion plan.
+`.github/workflows/python-static.yml` runs Python syntax/selected Ruff checks, the full offline suite and supported CLI checks. Docker build runs frontend tests/build, Python syntax and catalogue validation. The full Python suite is separate from image build. Frontend, container/recovery and isolated Chromium checks are also configured in CI. The workflows were validated locally; remote GitHub execution requires pushing the branch.
 
-The 2026-11-11 review checked full Python/frontend tests, a frontend build, cached-layer image build, fresh non-root Compose startup/persistence, host LAN-interface health and native startup. Actual destination-server and second-device verification remain required.
+The 2026-11-11 review checked full Python/frontend tests, a frontend build, cached-layer image build, fresh non-root Compose startup/persistence, host LAN-interface health and native startup. Release deployment and verification are recorded in [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md).
+
+Acceptance snapshots retain exact per-source observation-version digests plus original-file/directory identities. A changed version, original file, receipt, archive or owner-input file invalidates release of values until a fresh hash-based assessment succeeds. Requests pin one database transaction; exports use the same guard. Cadence-unknown derived histories offer dots/tables, preserving sparse observations.
