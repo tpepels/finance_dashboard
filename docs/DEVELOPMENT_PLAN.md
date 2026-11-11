@@ -1,6 +1,6 @@
 # Development plan
 
-The sole current roadmap, reviewed **2026-11-11**. Detailed tasks are in the [completion implementation plan](superpowers/plans/2026-11-11-project-completion.md); final evidence is in [release verification](RELEASE_VERIFICATION.md). The [initial project review](PROJECT_REVIEW.md) records the starting state. Earlier milestones remain in git history and [the archived history](archive/DEVELOPMENT_PLAN_HISTORY_2026-11.md).
+The sole current roadmap, reviewed **2026-11-11**. Detailed tasks are in the [completion implementation plan](superpowers/plans/2026-11-11-project-completion.md) and [research/presentation plan](superpowers/plans/2026-11-11-research-presentation.md); current evidence is in [research release verification](RESEARCH_RELEASE_VERIFICATION.md). The [initial project review](PROJECT_REVIEW.md) records the starting state. Earlier milestones remain in git history and [the archived history](archive/DEVELOPMENT_PLAN_HISTORY_2026-11.md).
 
 ## Goal and deployment target
 
@@ -56,10 +56,16 @@ Steps 3–4 finish configurable figures. Step 5 closes Phase 5 validation rather
 - Run full offline tests before code commits and verify CI after pushing. Implementation commits are on `codex/project-completion`; no push was requested and no remote CI execution is claimed.
 - Use [RUNNING.md](RUNNING.md) for operation; keep reviews distinct from the roadmap and scientific contracts.
 
-## Implementation outcome — 2026-11-11
+## First implementation outcome — 2026-11-11
 
 Priorities 1–7 are implemented and verified within the recorded operating limits. P06 is accepted after independently checking the rolled-off September original; both live corpora have 24 accepted, 12 conditional and one documented deferred question. Independent figures/saved variants, exact exports, complete defined application-state recovery, frozen builds, portfolio validation and integrated mobile/browser checks are implemented.
 
 An independent review found and reproduced stale acceptance authorizing new revisions, sparse derived lines, incompatible FX axes and ineffective structured-result date bounds. Regression tests now cover those failures and the corrected behaviour. See [release verification](RELEASE_VERIFICATION.md).
 
-The owner chose the verified local corpus for `media-server`, retaining the divergent previous server store intact. Both hosts run image `finance-dashboard:release-d0c7f37`; the server is available at **http://192.168.1.200:5052/**. The staged restored corpus, previous image/data and off-server recovery copy are recorded in release verification. Formal owner visual acceptance remains a user review of the delivered application. Host reboot is excluded from the app-only rollout because this server also runs unrelated media/network services; container recreation and restart policy are verified.
+The owner chose the verified local corpus for `media-server`, retaining the divergent previous server store intact. The first release used image `finance-dashboard:release-d0c7f37`; its image/data pair remains available for rollback. Its operating evidence is retained in the historical release verification.
+
+## Research and presentation outcome — 2026-11-11
+
+The follow-up request is implemented: concise findings for all 37 questions, expandable research detail, independent observation-age and collection states, repaired source collection and an actual portfolio snapshot separate from model scenarios. The owner confirmed combining the supplied accounts. Unknown dates, cash flows, complete portfolio scope and two unconfirmed share classes remain explicit. All conditional/deferred research boundaries are documented in [research completion](RESEARCH_COMPLETION.md); no acceptance threshold was relaxed.
+
+Both hosts now run `finance-dashboard:release-84230be`, at **http://localhost:5052/** and **http://192.168.1.200:5052/**. The exact image, test evidence, new data directories, sealed recovery copy and rollback scripts are recorded in [current release verification](RESEARCH_RELEASE_VERIFICATION.md). The previous local data, previous server release and divergent original server corpus remain intact. Formal owner visual acceptance remains a user review of the delivered application. Only the finance service was recreated; unrelated services and the shared host were preserved.

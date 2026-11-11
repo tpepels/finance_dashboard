@@ -77,7 +77,7 @@ Startup validates the catalogue, runs Alembic migrations and starts Uvicorn on c
 
 A new data directory contains no research histories. The scheduled collector starts asynchronously; additional original archives, vintages and owner-supplied files may still be necessary. While acceptance evaluates, analysis requests may return **503 with `Retry-After`**; the panels retry. An empty or withheld chart is not proof of installation failure.
 
-Use **Data & sync**, `/api/source-coverage`, `/api/operations` and `/api/analysis` to distinguish stored observations, failed/deferred collection and accepted research. A successful sync does not certify all source roles. The release resolves the initial P06 failure using its archived original; both deployed corpora report 24 accepted, 12 conditional and one deferred question. See [release verification](RELEASE_VERIFICATION.md) for the current state and [the initial review](PROJECT_REVIEW.md) for the starting state.
+Use **Data & sync**, `/api/source-coverage`, `/api/operations` and `/api/analysis` to distinguish stored observations, failed/deferred collection and accepted research. A successful sync does not certify all source roles. The release resolves the initial P06 failure using its archived original; both deployed corpora report 24 accepted, 12 conditional and one deferred question. See [current release verification](RESEARCH_RELEASE_VERIFICATION.md) for the current state and [the initial review](PROJECT_REVIEW.md) for the starting state.
 
 ## Transfer the existing research installation
 
@@ -229,6 +229,6 @@ Use `FINANCE_AUTO_REFRESH=1` and `FINANCE_REFRESH_ON_START=0` when bringing up a
 
 When source versions/originals change, analysis and export endpoints withhold affected output and return a retryable acceptance-loading state until a fresh assessment succeeds. A large corpus can take several minutes to assess; health and source diagnostics remain available. This prevents a cached acceptance result from authorizing unverified revisions.
 
-The deployed release and rollback paths are listed in [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md). Keep the local and server stores independent; conflicting manifests/receipts must not be merged by copying files over one another.
+The deployed release and rollback paths are listed in [RESEARCH_RELEASE_VERIFICATION.md](RESEARCH_RELEASE_VERIFICATION.md). Keep the local and server stores independent; conflicting manifests/receipts must not be merged by copying files over one another.
 
 See [recorded holdings](PORTFOLIO_HOLDINGS.md) for the private position snapshot and its separation from model scenarios, and [source collection reliability](SOURCE_COLLECTION_RELIABILITY.md) for shared-original reuse, fair refresh ordering and publisher-paced background waits.

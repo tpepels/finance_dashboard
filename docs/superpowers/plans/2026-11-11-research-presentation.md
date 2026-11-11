@@ -33,10 +33,10 @@
 
 **Interfaces:** Preserve the G03 values/bundle structure and deferred-original gate. Correct names, formulas and disclosures consistently across bundle, chart and export.
 
-- [ ] Reproduce the cap/P-E interpretation with an independent fixture; assert a proxy cannot be labelled realized consolidated listed-company profits.
-- [ ] Use the official MSCI methodology to state normalization/free-float and denominator-coverage limits. Correct current conditional descriptions from real archived evidence; do not remove scientific limits just to improve counts.
-- [ ] Document every conditional/deferred question's usable answer, verified source coverage and remaining boundary, with primary references.
-- [ ] Run owning engine/API/frontend tests and record the evidence.
+- [x] Reproduce the cap/P-E interpretation with an independent fixture; assert a proxy cannot be labelled realized consolidated listed-company profits.
+- [x] Use the official MSCI methodology to state normalization/free-float and denominator-coverage limits. Correct current conditional descriptions from real archived evidence; do not remove scientific limits just to improve counts.
+- [x] Document every conditional/deferred question's usable answer, verified source coverage and remaining boundary, with primary references.
+- [x] Run owning engine/API/frontend tests and record the evidence.
 
 ### Task 2: Repair source windows and common-original collection
 
@@ -44,10 +44,10 @@
 
 **Interfaces:** Keep `ProviderRouter.fetch(series_id, start)` and `IngestionService.refresh(...)` compatible. Each successful series retains a truthful immutable acquisition receipt.
 
-- [ ] Run failing exact-date annual flow/stock tests and real temporary-ledger G17/FDIC sequential-fetch tests.
-- [ ] Trim OECD rows to the exact requested date after year-rounded retrieval. Reuse identical immutable responses inside the batch with evidence capture intact; a fresh router can see revisions.
-- [ ] Reproduce WID's CSV/metadata starvation and provide bounded completion/resumption through the canonical boundary, with no partial success or request-budget bypass.
-- [ ] Verify missing/denied/unavailable sources retain their evidence and actionable failure states; run source/policy/architecture suites.
+- [x] Run failing exact-date annual flow/stock tests and real temporary-ledger G17/FDIC sequential-fetch tests.
+- [x] Trim OECD rows to the exact requested date after year-rounded retrieval. Reuse identical immutable responses inside the batch with evidence capture intact; a fresh router can see revisions.
+- [x] Reproduce WID's CSV/metadata starvation and provide bounded completion/resumption through the canonical boundary, with no partial success or request-budget bypass.
+- [x] Verify missing/denied/unavailable sources retain their evidence and actionable failure states; run source/policy/architecture suites.
 
 ### Task 3: Deliver findings and research/source status
 
@@ -55,11 +55,11 @@
 
 **Interfaces:** Retain `summarize(analysis_id: str, values: dict | None) -> list[str]`. Add `research_status(snapshot, document) -> dict` exposed as `GET /api/research-status`: `evaluated_at`, `counts`, `questions`, with existing catalogue fields plus `phase2` limitations/open gates and role dispositions. Extend source rows with independent `observation_state`, `refresh_state`, `research_questions` and readable `next_action` while preserving existing fields.
 
-- [ ] Add independent fixtures for each question family; verify own-date, units, empty/withheld handling and no probability/causality claims.
-- [ ] Implement concise findings across the 37-question catalogue where computed values exist; correct existing summary date/concept errors. Deferred originals retain an explicit no-answer explanation plus named alternatives.
-- [ ] Add snapshot-derived research status with current role dispositions and limitation text. Test loading/reassessment paths and unknown/missing roles without leaking raw errors or original bodies.
-- [ ] Test and implement independent collection/freshness axes and engine-source question mapping, including current-but-deferred and stale-but-successful sources.
-- [ ] Run full Python suite and catalogue validation.
+- [x] Add independent fixtures for each question family; verify own-date, units, empty/withheld handling and no probability/causality claims.
+- [x] Implement concise findings across the 37-question catalogue where computed values exist; correct existing summary date/concept errors. Deferred originals retain an explicit no-answer explanation plus named alternatives.
+- [x] Add snapshot-derived research status with current role dispositions and limitation text. Test loading/reassessment paths and unknown/missing roles without leaking raw errors or original bodies.
+- [x] Test and implement independent collection/freshness axes and engine-source question mapping, including current-but-deferred and stale-but-successful sources.
+- [x] Run full Python suite and catalogue validation.
 
 ### Task 4: Focus the presentation and make evidence readable
 
@@ -67,27 +67,31 @@
 
 **Interfaces:** Consume existing bundles' `summary` and `/api/research-status`. Source details consume compatible extended coverage. All `#q-ID` links and topic anchors must still navigate correctly; saved figures remain independent.
 
-- [ ] Add behavior tests for selected topic/question, back/forward/deep links, loading/retry, research-state filtering and preserved saved figures.
-- [ ] Implement a concise overview and focused research workspace, accessible navigation, h1/main/skip link, loading states and short question findings with expandable evidence.
-- [ ] Repair narrow graphic label cropping and numeric/table readability; preserve source dates, units, missingness and exact export. Respect reduced motion and ensure theme/data controls are reachable.
-- [ ] Run all frontend tests/build, then real desktop/390px light/dark/keyboard navigation through all questions and saved-view/error flows. Inspect screenshots and console output.
+- [x] Add behavior tests for selected topic/question, back/forward/deep links, loading/retry, research-state filtering and preserved saved figures.
+- [x] Implement a concise overview and focused research workspace, accessible navigation, h1/main/skip link, loading states and short question findings with expandable evidence.
+- [x] Repair narrow graphic label cropping and numeric/table readability; preserve source dates, units, missingness and exact export. Respect reduced motion and ensure theme/data controls are reachable.
+- [x] Run all frontend tests/build, then real desktop/390px light/dark/keyboard navigation through all questions and saved-view/error flows. Inspect screenshots and console output.
 
 ### Task 5: Acquire, reassess and release the verified improvement
 
 **Files:** operating/deployment records, `README.md`, roadmap, runbook and release verification. Separate staged data and release source/image, no original corpus overwrite.
 
-- [ ] Restore the existing verified full recovery bundle into a new disk-backed working directory. Apply a bounded canonical acquisition/reconciliation plan using existing configured source access; preserve every original and journal actual failures/deferments.
-- [ ] Compare source coverage and full research assessment before/after. Correct any regression before release, and report actual unresolved evidence instead of promised coverage.
-- [ ] Complete independent code review, full Python/frontend/build/browser checks and isolated image/recovery verification after final changes.
-- [ ] Adopt reviewed files into the original workspace; deploy the same pinned image to local and server services with retained previous image/data and verified recovery copy. Change only finance service configuration.
-- [ ] Verify live LAN health, question findings, exact exports, saves and new navigation. Finalize operator documentation and measured research/source outcomes.
+- [x] Restore the existing verified full recovery bundle into a new disk-backed working directory. Apply a bounded canonical acquisition/reconciliation plan using existing configured source access; preserve every original and journal actual failures/deferments.
+- [x] Compare source coverage and full research assessment before/after. Correct any regression before release, and report actual unresolved evidence instead of promised coverage.
+- [x] Complete independent code review, full Python/frontend/build/browser checks and isolated image/recovery verification after final changes.
+- [x] Adopt reviewed files into the original workspace; deploy the same pinned image to local and server services with retained previous image/data and verified recovery copy. Change only finance service configuration.
+- [x] Verify live LAN health, question findings, exact exports, saves and new navigation. Finalize operator documentation and measured research/source outcomes.
 
 ## Execution rulings
 
-The owner explicitly asked to finish this work, continuing the established application and deployment scope; implementation proceeds without an additional design-approval stop. Presentation defaults to concise pending optional steering. Original-method G03 completion cannot be invented from cap/P-E or national corporate accounts; deliver a correct bounded answer and a visible evidence boundary. Missing personal inputs remain the owner's labelled example. No host reboot or hosted CI run is claimed.
+The owner explicitly asked to finish this work, continuing the established application and deployment scope; implementation proceeds without an additional design-approval stop. The owner confirmed a concise dashboard with expandable research detail. Original-method G03 completion cannot be invented from cap/P-E or national corporate accounts; deliver a correct bounded answer and a visible evidence boundary. Supplied actual positions remain separate from model examples; missing personal inputs remain unknown. No host reboot or hosted CI run is claimed.
 
 ## Owner holdings addendum
 
 During execution the owner confirmed the concise presentation, supplied two lists of real positions and explicitly requested combining them. Add a typed, private `portfolio-holdings.json` store and `GET/PUT /api/portfolio-holdings`, with revisions, strict validation, exact-ISIN grouping, Decimal money totals, nullable dates/cash flows and separate account controls. Include this state in verified backup/restore and bind it to acceptance invalidation. Expose the computed snapshot in P01 and an editable/importable frontend table. Keep the existing model scenario store separate so importing actual holdings cannot mislabel an ACWI/sovereign/gold replay as the owner's actual returns.
 
 Independent synthetic tests must cover invalid saves, corrupt-state preservation, concurrent stale writes, aggregation without guessing share classes, precious metals distinct from gold, API/model independence and full recovery. Actual positions are seeded only in private staged data after the owner's combination instruction; no private values enter source or image. An unknown valuation date, cash flows, unreported cash and unresolved share classes remain explicit. Root owns API/backup/P01/owner-supply integration; a dedicated store implementer owns the new typed module and tests; the presentation implementer owns the UI.
+
+## Verified outcome
+
+Tasks 1–5 and the holdings addendum are implemented. Final code is `84230be`; both installations run the same pinned image and independently report 24 accepted, 12 conditional and one deferred question, with none incomplete. Final verification includes 1,215 Python tests (10 optional skips), 149 frontend tests, the locked production build, 16 browser fixture flow groups, 74 populated question checks, isolated non-root container/recovery checks and targeted real-browser checks against both live hosts. Independent review defects were reproduced and fixed before release. The original-method and personal-input boundaries remain explicit, and previous image/data pairs are retained. See [current release verification](../../RESEARCH_RELEASE_VERIFICATION.md) for identities, evidence and rollback paths.

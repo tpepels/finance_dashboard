@@ -1,5 +1,7 @@
 # Release verification — 2026-11-11
 
+This is the first completion release record. The subsequent [research and presentation release](RESEARCH_RELEASE_VERIFICATION.md) records the current improvements and deployment paths.
+
 ## Scope and outcome
 
 The implementation extends the existing private research workbench and single-container runtime. It does not invent missing source histories or certify a deferred original method. G03 keeps its documented verified alternatives and original-method deferral.

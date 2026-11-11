@@ -20,7 +20,7 @@ Source collection now handles exact OECD windows, shared publisher originals, mu
 
 The verified release is running at **http://localhost:5052/** locally and **http://192.168.1.200:5052/** on `media-server`. The server uses the selected verified local corpus; its previous corpus and image remain available for rollback.
 
-See the [roadmap](docs/DEVELOPMENT_PLAN.md), [implementation plan](docs/superpowers/plans/2026-11-11-project-completion.md), [initial project review](docs/PROJECT_REVIEW.md) and [release verification](docs/RELEASE_VERIFICATION.md).
+See the [roadmap](docs/DEVELOPMENT_PLAN.md), [research/presentation plan](docs/superpowers/plans/2026-11-11-research-presentation.md), [initial project review](docs/PROJECT_REVIEW.md) and [current release verification](docs/RESEARCH_RELEASE_VERIFICATION.md).
 
 ## Run locally or on your LAN server
 
