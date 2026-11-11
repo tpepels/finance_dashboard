@@ -30,7 +30,7 @@ Changed inputs cannot reuse stale calculations; dates and configured views canno
 ### Task 3: Implement visual hierarchy
 **Files:** `App.tsx`, `Overview.tsx`, `Workbench.tsx`, `styles.css`, `chartKit.ts`, related frontend tests. Task 2 owns analysisShell.
 **Interfaces:** Existing public hash routes, semantic headings, appearance preferences and portfolio/saved contexts.
-- [ ] Build desktop navigation rail/mobile disclosure, clear active workspace/topic, reading canvas and comfortable/compact control.
+- [ ] Build the full scrollable default dashboard across all topics, optional navigation menu on every screen size, clear drilldowns and comfortable/compact control.
 - [ ] Apply coherent near-black tokens and distinctive chart palettes; retain light mode, text labels and redundant series cues.
 - [ ] Split secondary UI imports if safe; verify route/focus/draft preservation, responsiveness and build output.
 

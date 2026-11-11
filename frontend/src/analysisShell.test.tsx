@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { ResearchSelection, Section, historyPosition, load, useBundles, type Bundle } from './analysisShell';
 
 const bundle = {
@@ -101,4 +101,60 @@ it('withholds old accepted values during refresh while keeping the question moun
   await screen.findByText(/state is incomplete/);
   expect(screen.queryByText('Accepted plotted values')).toBeNull();
   cleanup(); vi.unstubAllGlobals();
+});
+
+
+describe('question loading scope', () => {
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+  function Probe({ version = 0 }: { version?: number }) {
+    const state = useBundles(['M01', 'M02', 'M04'], version);
+    return <div>{Object.keys(state.bundles).map(id => <p key={id}>{id}: {JSON.stringify(state.bundles[id].values)}</p>)}
+      <span>{state.error}</span></div>;
+  }
+  const response = (id: string) => new Response(JSON.stringify({ ...bundle, analysis_id: id }));
+
+  it('requests only the selected question, while topic views progressively request all questions', async () => {
+    const fetcher = vi.fn(async (path: string) => path === '/api/recessions'
+      ? new Response('{"periods":[]}') : response(path.split('/').at(-1)!));
+    vi.stubGlobal('fetch', fetcher);
+    const page = render(<ResearchSelection.Provider value={{ question: 'M02' }}><Probe/></ResearchSelection.Provider>);
+    await screen.findByText('M02: {"ok":1}');
+    expect(fetcher.mock.calls.filter(([path]) => path.startsWith('/api/analysis/')).map(([path]) => path)).toEqual(['/api/analysis/M02']);
+    page.rerender(<ResearchSelection.Provider value={{ question: null }}><Probe/></ResearchSelection.Provider>);
+    await screen.findByText('M01: {"ok":1}'); await screen.findByText('M04: {"ok":1}');
+  });
+
+  it('retries pending questions without repeating successful siblings or forgetting a permanent error', async () => {
+    vi.useFakeTimers();
+    let pendingReads = 0;
+    const fetcher = vi.fn(async (path: string) => {
+      if (path === '/api/recessions') return new Response('{"periods":[]}');
+      if (path.endsWith('/M02') && ++pendingReads === 1)
+        return new Response('{}', { status: 503, headers: { 'Retry-After': '1' } });
+      if (path.endsWith('/M04')) return new Response('{}', { status: 500 });
+      return response(path.split('/').at(-1)!);
+    });
+    vi.stubGlobal('fetch', fetcher);
+    await act(async () => { render(<Probe/>); });
+    expect(screen.getByText('M01: {"ok":1}')).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(screen.getByText('M02: {"ok":1}')).toBeTruthy();
+    expect(fetcher.mock.calls.filter(([path]) => path.endsWith('/M01'))).toHaveLength(1);
+    expect(fetcher.mock.calls.filter(([path]) => path.endsWith('/M04'))).toHaveLength(1);
+    expect(screen.getByText(/Some research findings could not be read/)).toBeTruthy();
+  });
+
+  it('ignores a late result from the previous selection', async () => {
+    let release!: (r: Response) => void;
+    const fetcher = vi.fn((path: string) => path.endsWith('/M01')
+      ? new Promise<Response>(resolve => { release = resolve; })
+      : Promise.resolve(path === '/api/recessions' ? new Response('{"periods":[]}') : response(path.split('/').at(-1)!)));
+    vi.stubGlobal('fetch', fetcher);
+    const page = render(<ResearchSelection.Provider value={{ question: 'M01' }}><Probe/></ResearchSelection.Provider>);
+    page.rerender(<ResearchSelection.Provider value={{ question: 'M02' }}><Probe/></ResearchSelection.Provider>);
+    await screen.findByText('M02: {"ok":1}');
+    await act(async () => { release(response('M01')); });
+    expect(screen.queryByText('M01: {"ok":1}')).toBeNull();
+    expect(screen.queryByText('M04: {"ok":1}')).toBeNull();
+  });
 });

@@ -10,6 +10,37 @@ const periods: Recession[] = [
 ];
 
 describe('chart kit', () => {
+  it('keeps readable chart marks and text on both surfaces', () => {
+    const luminance = (hex: string) => {
+      const channels = hex.slice(1).match(/../g)!.map(value => parseInt(value, 16) / 255)
+        .map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+      return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+    };
+    const contrast = (left: string, right: string) => {
+      const a = luminance(left), b = luminance(right);
+      return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+    };
+    for (const theme of ['light', 'dark'] as const) {
+      const colors = palette(theme);
+      for (const color of colors.series) expect(contrast(color, colors.surface)).toBeGreaterThanOrEqual(3);
+      expect(contrast(colors.muted, colors.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(colors.secondary, colors.surface)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('retains entity line patterns and symbols when series order changes', () => {
+    const series = ['US', 'EA', 'JP'].map(entity => ({ name: entity, entity, data: [['2026-01-01', 1] as [string, number]] }));
+    const original = timeChart({ theme: 'dark', unit: '', recessions: [], series }) as Record<string, any>;
+    const reversed = timeChart({ theme: 'dark', unit: '', recessions: [], series: [...series].reverse() }) as Record<string, any>;
+    expect(new Set(original.series.map((item: any) => item.lineStyle.type)).size).toBe(3);
+    expect(new Set(original.series.map((item: any) => item.symbol)).size).toBe(3);
+    for (const item of original.series) {
+      const match = reversed.series.find((other: any) => other.name === item.name);
+      expect(match.symbol).toBe(item.symbol);
+      expect(match.lineStyle).toEqual(item.lineStyle);
+    }
+  });
+
   it('keeps one colour per entity in both themes, never a status hue', () => {
     expect(palette('light').series).toHaveLength(8);
     expect(palette('dark').series[0]).not.toEqual(palette('light').series[0]);
