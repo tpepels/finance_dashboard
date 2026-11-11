@@ -72,7 +72,9 @@ describe('server saved figures workspace', () => {
     expect(records.find(r => r.id === 'copy')).toMatchObject({ name: 'Gamma', revision: 2, spec: { geographies: [] } });
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Find a question' }));
-    await user.selectOptions(await screen.findByLabelText('Region'), 'US');
+    await waitFor(() => expect(Array.from((screen.getByLabelText('Region') as HTMLSelectElement).options)
+      .some(option => option.value === 'US')).toBe(true), { timeout: 8000 });
+    await user.selectOptions(screen.getByLabelText('Region'), 'US');
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Saved figures' }));
     expect(within(active).getByLabelText('Figure name')).toHaveProperty('value', 'Gamma');

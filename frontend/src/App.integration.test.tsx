@@ -165,6 +165,13 @@ describe('dashboard shell', () => {
     expect(await screen.findByText('Original source appendix loaded')).toBeTruthy();
   });
 
+  it('opens source coverage when directly loaded from a fresh deep link', async () => {
+    history.replaceState({}, '', '/#source-coverage');
+    render(<App/>);
+    await waitFor(() => expect((document.getElementById('source-coverage') as HTMLDetailsElement | null)?.open).toBe(true));
+    expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
+  });
+
   it('opens dashboard data maintenance directly from the utility bar', async () => {
     const user = userEvent.setup();
     render(<App/>);
