@@ -24,6 +24,20 @@ NOW = datetime(2026, 11, 3, tzinfo=timezone.utc)
 
 
 class SourceCoverageTests(unittest.TestCase):
+    def test_observation_freshness_is_independent_of_deferred_or_successful_refresh(self):
+        self.add_macro('activity.us.oecd_cli', status='deferred', when=date(2026, 10, 1),
+                       error='source_policy_deferred')
+        self.add_macro('activity.jp.oecd_cli', status='success', when=date(2020, 1, 1))
+        report = build_coverage(self.engine, self.catalog, self.registry, asof=date(2026, 11, 11))
+        rows = {r['id']: r for r in report['items']}
+        self.assertEqual(rows['activity.us.oecd_cli']['observation_state'], 'current')
+        self.assertEqual(rows['activity.us.oecd_cli']['refresh_state'], 'deferred')
+        self.assertIn('C01', rows['activity.us.oecd_cli']['research_questions'])
+        self.assertIn('budget', rows['activity.us.oecd_cli']['next_action'].lower())
+        self.assertEqual(rows['activity.jp.oecd_cli']['observation_state'], 'stale')
+        self.assertEqual(rows['activity.jp.oecd_cli']['refresh_state'], 'success')
+        self.assertEqual(rows['gold.usd.spot']['observation_state'], 'missing')
+
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:",
             connect_args={"check_same_thread": False}, poolclass=StaticPool)

@@ -1,5 +1,6 @@
 """Owner-input API: read the current inputs, save valid ones, refuse invalid ones with a reason."""
 import os
+from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -38,6 +39,18 @@ class OwnerInputApiTests(unittest.TestCase):
             response = self.client.put("/api/owner-inputs", json=EXAMPLE)
         self.assertEqual(response.status_code, 500)
         self.assertIn("could not be stored", response.json()["detail"])
+
+    def test_malformed_input_returns_422_and_preserves_saved_owner_data(self):
+        self.assertEqual(self.client.put("/api/owner-inputs", json=EXAMPLE).status_code, 200)
+        path = Path(self.folder.name) / "owner-inputs.json"
+        before = path.read_bytes()
+        for bad in ({**EXAMPLE, "allocation": []}, {**EXAMPLE, "tax": None},
+                    {**EXAMPLE, "start_value_eur": "Infinity"}, {**EXAMPLE, "bonds_hedged": "false"}):
+            with self.subTest(raw=bad):
+                response = self.client.put("/api/owner-inputs", json=bad)
+                self.assertEqual(response.status_code, 422)
+                self.assertTrue(response.json()["detail"])
+                self.assertEqual(path.read_bytes(), before)
 
 
 if __name__ == "__main__":

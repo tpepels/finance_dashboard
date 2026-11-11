@@ -16,6 +16,8 @@ interface SourceRow {
   published_through?: string | null; published_release?: string | null;
   evidence_kind?: string | null; evidence_scope?: string | null;
   evidence_bundle_digest?: string | null; evidence_receipt_recorded?: boolean;
+  observation_state?: string; refresh_state?: string; research_questions?: string[];
+  next_action?: string; freshness_basis?: string; expected_lag_days?: number | null;
 }
 interface Coverage {
   asof: string;
@@ -63,7 +65,7 @@ export default function SourceCoveragePanel() {
     const manage = () => {
       if (ref.current) ref.current.open = true;
       if (typeof ref.current?.scrollIntoView === 'function')
-        ref.current.scrollIntoView({block:'start', behavior:'smooth'});
+        ref.current.scrollIntoView({block:'start', behavior:'instant'});
     };
     refresh();
     window.addEventListener('gcm-data-updated', refresh);
@@ -120,6 +122,8 @@ export default function SourceCoveragePanel() {
             {' '}{report.summary.markets.with_data}/{report.summary.markets.total} market,
             {' '}{report.summary.fx.with_data}/{report.summary.fx.total} FX histories stored.
             {' '}Existing observations are preserved when a refresh fails.</p>
+          <p className="research-coverage-method">“Within expected age” checks the source's normal reporting lag; it does not establish the latest publisher release.
+            A refresh can be deferred or fail while previously recorded observations remain usable.</p>
           <button type="button" className="research-export-audit" onClick={exportSourceAudit}>
             Download full source audit (CSV)
           </button>
@@ -143,7 +147,7 @@ export default function SourceCoveragePanel() {
           <table aria-label="Source observations">
             <thead><tr>
               <th>Source</th><th>Collection state</th><th>Stored dates</th>
-              <th>Last source date</th><th>Latest attempt</th>
+              <th>Last source date / freshness</th><th>Latest attempt</th><th>Research / next action</th>
             </tr></thead>
             <tbody>{rows.map(item => <tr key={item.family + ':' + item.id}>
               <td><strong>{item.name}</strong><small>{item.id} · {item.provider}</small></td>
@@ -160,13 +164,20 @@ export default function SourceCoveragePanel() {
                 {item.complete_for_pinned_release &&
                   <small>Complete for {item.published_release} (through {item.published_through})</small>}
               </td>
-              <td>{item.latest_source_date ?? '—'}</td>
+              <td>{item.latest_source_date ?? '—'}
+                {item.observation_state && <small>{item.freshness_basis === 'pinned_release' ? 'Complete for the named release'
+                  : item.observation_state === 'current' ? 'Within expected age' : item.observation_state === 'stale' ? 'Older than expected' : 'No observations'}</small>}
+              </td>
               <td>{item.last_attempt_state}
+                {item.refresh_state && <small>{({ success: 'Refresh succeeded', deferred: 'Refresh deferred', failed: 'Refresh failed',
+                  running: 'Refresh running', never: 'No refresh recorded' } as Record<string, string>)[item.refresh_state] ?? item.refresh_state}</small>}
                 {item.evidence_kind && <small>
                   Evidence: {item.evidence_scope || item.evidence_kind}
                   {item.evidence_receipt_recorded ? ' · archived receipt' : ' · no linked receipt'}
                 </small>}
               </td>
+              <td>{(item.research_questions ?? []).map(id => <a className="source-question-link" key={id} href={`#q-${id}`}>{id}</a>)}
+                {item.next_action && <small>{item.next_action}</small>}</td>
             </tr>)}</tbody>
           </table>
           {rows.length === 0 && <p>No sources match these filters.</p>}

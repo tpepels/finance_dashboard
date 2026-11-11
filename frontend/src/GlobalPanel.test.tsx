@@ -13,6 +13,9 @@ const bundle = (id: string, values: unknown) => ({ analysis_id: id, question: `$
 const bundles: Record<string, unknown> = {
   G03: { ...bundle('G03', { alternatives: [{ key: 'eu27_profit_share', name: 'EU27 profit share', unit: '% of value added', latest: 40.1,
     min: 38, max: 42, own_mean: 40, as_of: '2025-01-01', history: [['2025-01-01', 40.1]] }], oecd_coverage: [], oecd_members: [],
+    listed_profit_coverage: { status: 'regional_source_partial', sources: [{ year: 2025, filing_issuers: 671,
+      filing_versions: 761, consolidated_income_issuers: 442, source_url: 'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip' }], aggregate_produced: false, listed_population_verified: false,
+      ultimate_parent_deduplication_verified: false, worldwide_population_verified: false },
     listed_earnings: { history: [['2026-09-01', 4810]], share_of_gdp: [['2024', 3.9], ['2025', 4.1]], latest: { month: '2026-09-01', earnings_usd_bn: 4810, market_cap_usd_bn: 102696, pe: 21.35 } } }),
     phase2: { state: 'deferred', evaluated_at: '2026-11-08', limitations: [], open_gates: ['listed_parent_net_income'] },
     basis: { kind: 'verified_alternatives', variants: ['eurostat_nfc_gross_profit_share'] } },
@@ -37,11 +40,23 @@ describe('GlobalPanel', () => {
     const { container } = render(<GlobalPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByRole('img', { name: /external position/i })).toBeTruthy());
     expect(screen.getByRole('img', { name: /1995 and 2022/i })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /^largest issuers/i })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /index weight against share of world gdp/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /^largest ETF issuer-name groups/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /fund investment-country weights and world gdp/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'ETF NAV: ten largest issuer-name groups' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'MSCI index: ten largest security weights' })).toBeTruthy();
+    expect(screen.getByText(/N-PORT investment-country assignments/)).toBeTruthy();
+    expect(screen.queryByText(/about 2,300 companies/)).toBeNull();
     expect(screen.getByRole('note', { name: /alternatives, not the original method/i })).toBeTruthy();
-    expect(screen.getByRole('img', { name: /^corporate profit measures.*listed company earnings/i })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /^corporate profit measures.*implied index earnings proxy/i })).toBeTruthy();
     expect(screen.getByText(/\$4\.8 trillion/)).toBeTruthy();
+    expect(screen.queryByText(/companies.*earned/)).toBeNull();
+    expect(screen.getByText(/not reported company net profit/i)).toBeTruthy();
+    expect(screen.getByRole('link', { name: /MSCI earnings methodology/i }).getAttribute('href')).toBe(
+      'https://www.msci.com/indexes/documents/methodology/0_MSCI_Fundamental_Data_Methodology_20240625.pdf');
+    expect(screen.getByText(/Brazil.*2025.*442.*671.*761/)).toBeTruthy();
+    expect(screen.getByText(/listing.*ultimate-parent.*global coverage.*unverified/i)).toBeTruthy();
+    expect(screen.getByRole('link', { name: /CVM original annual archive/i }).getAttribute('href')).toBe(
+      'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip');
     expect(container.querySelector('table')).toBeNull();
   });
 });

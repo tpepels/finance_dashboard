@@ -16,11 +16,18 @@ from pathlib import Path
 import shutil
 import sqlite3
 import tarfile
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory, mkdtemp
 
 from sqlalchemy.engine import make_url
 
 EVIDENCE_ROOT_NAMES = {"vintages", "holdings", "surplus", "maintenance", "source-evidence"}
+STATE_MEMBERS = {
+    "owner_inputs": "owner-inputs.json",
+    "saved_views": "saved-views.json",
+    "portfolio_holdings": "portfolio-holdings.json",
+    "source_policy": "source-policy/rate-ledger.sqlite3",
+}
+BUNDLE_FIELDS = ("database", "earnings_snapshot", "evidence_archive", "application_state")
 
 
 def source_database_path() -> Path:
@@ -57,10 +64,60 @@ def _valid_database(path: Path) -> None:
             raise ValueError("SQLite backup failed integrity_check")
 
 
+def _snapshot_database(source: Path, destination: Path) -> None:
+    with closing(sqlite3.connect(source.resolve().as_uri() + "?mode=ro", uri=True, timeout=30)) as original:
+        original.execute("BEGIN")
+        original.execute("SELECT name FROM sqlite_schema LIMIT 1").fetchone()
+        with closing(sqlite3.connect(destination, timeout=30)) as copied:
+            original.backup(copied, pages=128, sleep=0.05)
+    _valid_database(destination)
+
+
+def _file_record(path: Path) -> dict:
+    return {"file": path.name, "bytes": path.stat().st_size, "sha256": _hash(path)}
+
+
+def _backup_state(output: Path, prefix: str, sources: dict[str, Path]) -> dict | None:
+    """Capture only the named application files, never credential files."""
+    with TemporaryDirectory(prefix=".finance-state-", dir=output) as temp:
+        staging = Path(temp)
+        records = {}
+        for name, source in sources.items():
+            if not source.exists() and not source.is_symlink():
+                continue
+            if source.is_symlink() or not source.is_file():
+                raise ValueError("Application state must be a regular file")
+            member = STATE_MEMBERS[name]
+            target = staging / member
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if name == "source_policy":
+                _snapshot_database(source, target)
+            else:
+                shutil.copyfile(source, target)
+                # Invalid owner/saved data must remain available for diagnosis;
+                # a backup must not turn it into apparently valid empty state.
+                json.loads(target.read_text(encoding="utf-8"))
+            records[name] = {"member": member, "bytes": target.stat().st_size,
+                             "sha256": _hash(target)}
+        if not records:
+            return None
+        archived = staging / "state.tar.gz"
+        with tarfile.open(archived, "w:gz", compresslevel=1) as archive:
+            for record in records.values():
+                archive.add(staging / record["member"], arcname=record["member"], recursive=False)
+        target = output / (prefix + ".state.tar.gz")
+        os.replace(archived, target)
+        return {**_file_record(target), "version": 1, "components": records}
+
+
 def backup_local(output_dir: Path, *, source_db: Path | None = None,
                  earnings_snapshot: Path | None = None,
                  keep: int = 14,
-                 evidence_roots: dict[str, Path] | None = None) -> dict:
+                 evidence_roots: dict[str, Path] | None = None,
+                 owner_inputs_path: Path | None = None,
+                 saved_views_path: Path | None = None,
+                 portfolio_holdings_path: Path | None = None,
+                 policy_db_path: Path | None = None) -> dict:
     """Return a verified backup manifest, deleting only older OWNED backups."""
     if keep < 1 or keep > 365:
         raise ValueError("Backup retention must be 1..365")
@@ -89,18 +146,11 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
     temporary_db = _temp_in(out, ".sqlite3")
     created = []
     try:
-        with closing(sqlite3.connect(f"file:{source}?mode=ro", uri=True, timeout=30)) as original:
-            # Pin one source snapshot before stepping through the copy. A
-            # read-only WAL shared-memory view can otherwise restart every
-            # backup batch; active writers must not change the selected snapshot.
-            original.execute("BEGIN")
-            original.execute("SELECT name FROM sqlite_schema LIMIT 1").fetchone()
-            with closing(sqlite3.connect(temporary_db, timeout=30)) as destination:
-                original.backup(destination, pages=128, sleep=0.05)
-        _valid_database(temporary_db)
+        _snapshot_database(source, temporary_db)
         os.replace(temporary_db, database_target)
         created.append(database_target)
         manifest = {
+            "format_version": 2,
             "created_at_utc": datetime.now(timezone.utc).isoformat(),
             "method": "SQLite sqlite3 backup API, integrity_check passed",
             "database": {
@@ -110,6 +160,7 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
             },
             "earnings_snapshot": None,
             "evidence_archive": None,
+            "application_state": None,
             "note": ("Copy this bundle off-site. A backup kept only within the "
                      "same /data volume does not survive failure of that disk."),
         }
@@ -150,7 +201,7 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
                         continue
                     files.append((entry, name + "/" + entry.relative_to(base).as_posix()))
             if files:
-                with tarfile.open(temporary_archive, mode="w:gz") as archive:
+                with tarfile.open(temporary_archive, mode="w:gz", compresslevel=1) as archive:
                     for entry, archive_name in files:
                         archive.add(entry, arcname=archive_name, recursive=False)
                 with tarfile.open(temporary_archive, mode="r:gz") as archive:
@@ -168,11 +219,24 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
                 }
         finally:
             temporary_archive.unlink(missing_ok=True)
+        manifest["application_state"] = _backup_state(out, prefix, {
+            "owner_inputs": Path(owner_inputs_path or os.environ.get(
+                "FINANCE_OWNER_INPUTS", source.parent / "owner-inputs.json")),
+            "saved_views": Path(saved_views_path or os.environ.get(
+                "FINANCE_SAVED_VIEWS", source.parent / "saved-views.json")),
+            "portfolio_holdings": Path(portfolio_holdings_path or os.environ.get(
+                "FINANCE_PORTFOLIO_HOLDINGS", source.parent / "portfolio-holdings.json")),
+            "source_policy": Path(policy_db_path or os.environ.get(
+                "FINANCE_SOURCE_POLICY_DB", source.parent / "source-policy/rate-ledger.sqlite3")),
+        })
+        if manifest["application_state"]:
+            created.append(out / manifest["application_state"]["file"])
         temporary_manifest = _temp_in(out, ".json")
         try:
             temporary_manifest.write_text(json.dumps(manifest, indent=2) + "\n",
                                           encoding="utf-8")
             os.replace(temporary_manifest, manifest_path)
+            created.append(manifest_path)
         finally:
             temporary_manifest.unlink(missing_ok=True)
         # Only prune verified bundles owned by this application, never raw user files.
@@ -181,19 +245,20 @@ def backup_local(output_dir: Path, *, source_db: Path | None = None,
                      and p.is_file() and not p.is_symlink()]
         for outdated in manifests[keep:]:
             try:
+                verify_manifest(outdated)
                 old = json.loads(outdated.read_text(encoding="utf-8"))
-                for item in (old.get("database"), old.get("earnings_snapshot"),
-                             old.get("evidence_archive")):
+                for item in (old.get(field) for field in BUNDLE_FIELDS):
                     if not isinstance(item, dict):
                         continue
                     candidate = out / item.get("file", "")
                     if (candidate.parent == out and not candidate.is_symlink()
                         and candidate.name.startswith("finance-")
                         and (candidate.suffix in (".sqlite3", ".json")
-                             or candidate.name.endswith(".evidence.tar.gz"))):
+                             or candidate.name.endswith((".evidence.tar.gz", ".state.tar.gz")))):
                         candidate.unlink(missing_ok=True)
                 outdated.unlink(missing_ok=True)
-            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            except (OSError, TypeError, ValueError, sqlite3.DatabaseError,
+                    tarfile.TarError, UnicodeError):
                 # A malformed manifest must not destroy unrelated files.
                 continue
         return manifest
@@ -209,7 +274,11 @@ def verify_manifest(path: Path) -> dict:
     """Verify a complete backup bundle without trusting paths in a manifest."""
     manifest_path = Path(path)
     contents = json.loads(manifest_path.read_text(encoding="utf-8"))
-    for field in ("database", "earnings_snapshot", "evidence_archive"):
+    if not isinstance(contents, dict):
+        raise ValueError("Malformed backup manifest")
+    if contents.get("format_version", 1) not in (1, 2):
+        raise ValueError("Unsupported backup format version")
+    for field in BUNDLE_FIELDS:
         record = contents.get(field)
         if record is None:
             if field == "database":
@@ -222,6 +291,7 @@ def verify_manifest(path: Path) -> dict:
             "database": ".sqlite3",
             "earnings_snapshot": ".sec-filer.json",
             "evidence_archive": ".evidence.tar.gz",
+            "application_state": ".state.tar.gz",
         }[field]
         if (Path(filename).name != filename or not filename.startswith("finance-")
             or not filename.endswith(valid_suffix)):
@@ -231,38 +301,118 @@ def verify_manifest(path: Path) -> dict:
             raise ValueError("Missing or symbolic-link backup component")
         if _hash(file_path) != record.get("sha256"):
             raise ValueError("Backup SHA-256 mismatch")
+        if "bytes" in record and file_path.stat().st_size != record["bytes"]:
+            raise ValueError("Backup byte count mismatch")
         if field == "database":
             _valid_database(file_path)
         elif field == "earnings_snapshot":
             if json.loads(file_path.read_text(encoding="utf-8")).get("id") != (
                 "profit.us_sec_filers.world_gdp_share"):
                 raise ValueError("Invalid SEC backup identity")
-        else:
+        elif field == "evidence_archive":
             with tarfile.open(file_path, mode="r:gz") as archive:
                 members = archive.getmembers()
                 if len(members) != record.get("source_files"):
                     raise ValueError("Evidence backup member count mismatch")
+                if len({m.name for m in members}) != len(members):
+                    raise ValueError("Duplicate evidence backup member")
                 for member in members:
                     parts = Path(member.name).parts
                     if (not member.isfile() or len(parts) < 2 or
                         parts[0] not in EVIDENCE_ROOT_NAMES or
                         ".." in parts or member.name.startswith("/")):
                         raise ValueError("Unsafe or unexpected evidence backup member")
+        else:
+            _verify_state(file_path, record)
     return {
         "verified": True,
         "manifest": manifest_path.name,
-        "components": [k for k in ("database", "earnings_snapshot", "evidence_archive")
+        "components": [k for k in BUNDLE_FIELDS
                        if contents.get(k) is not None],
     }
 
 
-def main() -> None:
+def _verify_state(path: Path, record: dict) -> None:
+    components = record.get("components")
+    if (record.get("version") != 1 or not isinstance(components, dict)
+            or not components or set(components) - STATE_MEMBERS.keys()):
+        raise ValueError("Unsupported application state metadata")
+    expected = {}
+    for name, metadata in components.items():
+        if not isinstance(metadata, dict) or metadata.get("member") != STATE_MEMBERS[name]:
+            raise ValueError("Invalid application state member metadata")
+        expected[STATE_MEMBERS[name]] = metadata
+    with tarfile.open(path, "r:gz") as archive, TemporaryDirectory(prefix="finance-verify-state-") as temp:
+        members = archive.getmembers()
+        if len(members) != len(expected) or {m.name for m in members} != set(expected):
+            raise ValueError("Application state archive member mismatch")
+        for member in members:
+            if not member.isfile():
+                raise ValueError("Unsafe application state member")
+            metadata = expected[member.name]
+            digest = sha256()
+            staged = Path(temp) / "state"
+            with archive.extractfile(member) as stream, staged.open("wb") as output:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+                    output.write(chunk)
+            if member.size != metadata.get("bytes") or digest.hexdigest() != metadata.get("sha256"):
+                raise ValueError("Application state member SHA-256 or size mismatch")
+            if member.name == STATE_MEMBERS["source_policy"]:
+                _valid_database(staged)
+            else:
+                json.loads(staged.read_text(encoding="utf-8"))
+
+
+def restore_backup(manifest_path: Path, destination: Path) -> dict:
+    """Validate first, stage privately, then atomically install into an empty tree.
+
+    Original bundles and current installations are never replaced. Environment
+    and credentials deliberately remain the operator's responsibility.
+    """
+    manifest_path = Path(manifest_path)
+    verified = verify_manifest(manifest_path)
+    contents = json.loads(manifest_path.read_text(encoding="utf-8"))
+    target = Path(destination).absolute()
+    if target.is_symlink() or (target.exists() and (not target.is_dir() or any(target.iterdir()))):
+        raise ValueError("Restore destination must be a new or empty directory")
+    if not target.parent.is_dir():
+        raise ValueError("Restore destination parent directory must exist")
+    staging = Path(mkdtemp(prefix=".finance-restore-", dir=target.parent))
+    try:
+        shutil.copyfile(manifest_path.parent / contents["database"]["file"], staging / "finance.sqlite3")
+        if contents.get("earnings_snapshot"):
+            snapshot = staging / "wisesheets/sec_filer_profit.json"
+            snapshot.parent.mkdir()
+            shutil.copyfile(manifest_path.parent / contents["earnings_snapshot"]["file"], snapshot)
+        for field in ("evidence_archive", "application_state"):
+            if not contents.get(field):
+                continue
+            with tarfile.open(manifest_path.parent / contents[field]["file"], "r:gz") as archive:
+                for member in archive.getmembers():
+                    output = staging / member.name
+                    output.parent.mkdir(parents=True, exist_ok=True)
+                    with archive.extractfile(member) as inp, output.open("xb") as dest:
+                        shutil.copyfileobj(inp, dest)
+        _valid_database(staging / "finance.sqlite3")
+        policy = staging / STATE_MEMBERS["source_policy"]
+        if policy.exists():
+            _valid_database(policy)
+        # os.replace refuses a directory that gained contents during staging.
+        os.replace(staging, target)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+    return {"restored": True, "destination": str(target), **verified}
+
+
+def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Verified SQLite online backup")
     parser.add_argument("--output-dir", default="/data/backups")
     parser.add_argument("--keep", type=int, default=14)
     parser.add_argument("--verify-manifest", default=None,
                         help="Verify SHA-256 and integrity of an existing backup manifest")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.verify_manifest:
         print(json.dumps(verify_manifest(Path(args.verify_manifest)), indent=2))
         return
@@ -272,6 +422,25 @@ def main() -> None:
     manifest = backup_local(Path(args.output_dir), source_db=db,
                             earnings_snapshot=snapshot, keep=args.keep)
     print(json.dumps(manifest, indent=2))
+
+
+def local_main(argv=None) -> None:
+    main(argv)
+
+
+def verify_main(argv=None) -> None:
+    parser = argparse.ArgumentParser(description="Verify a complete recovery bundle")
+    parser.add_argument("manifest", type=Path)
+    args = parser.parse_args(argv)
+    print(json.dumps(verify_manifest(args.manifest), indent=2))
+
+
+def restore_main(argv=None) -> None:
+    parser = argparse.ArgumentParser(description="Restore a verified bundle into a new empty directory")
+    parser.add_argument("manifest", type=Path)
+    parser.add_argument("destination", type=Path)
+    args = parser.parse_args(argv)
+    print(json.dumps(restore_backup(args.manifest, args.destination), indent=2))
 
 
 if __name__ == "__main__":

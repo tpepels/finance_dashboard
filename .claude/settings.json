@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh run watch *)",
+      "Bash(curl -fsS http://localhost:5052/api/health)"
+    ]
+  }
+}

@@ -38,6 +38,41 @@ def environ(**updates):
 
 
 class StandaloneContainerTests(TestCase):
+    def test_deferred_first_refresh_keeps_startup_read_only_until_interval(self):
+        from finance_dashboard.standalone import refresh_loop
+        collected = threading.Event()
+        class StopAtFirstWait:
+            def is_set(self): return False
+            def wait(self, seconds):
+                self.seconds = seconds
+                return True
+        stop = StopAtFirstWait()
+        def collect(*args, **kwargs):
+            collected.set()
+            return 0
+        with (environ(FINANCE_REFRESH_ON_START='0', FINANCE_VINTAGE_REFRESH='0',
+                      FINANCE_SEC_HOLDINGS_REFRESH='0', FINANCE_AUTO_BACKUP='0'),
+              patch('finance_dashboard.worker.refresh_all', side_effect=collect)):
+            refresh_loop(None, stop, interval_seconds=86400, include_markets=False, refresh_wisesheets=False)
+        self.assertFalse(collected.is_set())
+        self.assertEqual(stop.seconds, 86400)
+
+    def test_offline_startup_serves_health_without_running_scheduled_publishers(self):
+        publisher_work = threading.Event()
+        with tempfile.TemporaryDirectory() as tmp:
+            engine = make_engine(f"sqlite+pysqlite:///{Path(tmp) / 'finance.sqlite3'}")
+            Base.metadata.create_all(engine)
+            try:
+                with (environ(FINANCE_AUTO_REFRESH="0", FINANCE_AUTO_BACKUP="1",
+                              FINANCE_DASHBOARD_UI_DIR=None),
+                      patch("finance_dashboard.standalone.refresh_loop",
+                            side_effect=lambda *a, **kw: publisher_work.set())):
+                    with TestClient(create_app(engine)) as client:
+                        self.assertEqual(client.get("/api/health").status_code, 200)
+                        self.assertFalse(publisher_work.wait(timeout=0.05))
+            finally:
+                engine.dispose()
+
     def test_bundled_html_and_all_existing_api_routes_share_one_origin(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -6,6 +6,8 @@ import os
 from contextlib import redirect_stdout
 from unittest.mock import patch
 import unittest
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -41,6 +43,61 @@ def cache_of(public_report):
 
 
 class EngineApiTests(unittest.TestCase):
+    def test_research_status_retries_only_while_assessment_is_loading(self):
+        self.app.state.acceptance = AcceptanceCache(lambda: snapshot_from_report(report(), AT),
+                                                   ttl_seconds=3600, spawn=lambda work: None)
+        response = self.client.get('/api/research-status')
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.headers['Retry-After'], '30')
+        self.assertNotIn('counts', response.json())
+
+    def test_research_status_preserves_original_deferred_state_and_limitation_text(self):
+        response = self.client.get('/api/research-status')
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        rows = {r['analysis_id']: r for r in body['questions']}
+        self.assertEqual(rows['G03']['state'], 'deferred')
+        self.assertTrue(rows['G03']['phase2']['limitations'][0]['text'])
+        self.assertEqual(body['counts']['conditional'], 1)
+        self.assertEqual(body['evaluated_at'], AT.isoformat())
+
+    def test_saved_view_crud_preserves_independence_and_rejects_stale_writes(self):
+        with TemporaryDirectory() as tmp, patch.dict(os.environ, {'FINANCE_SAVED_VIEWS': str(Path(tmp)/'saved-views.json')}):
+            cap = self.client.get('/api/analysis/P07/views/capabilities').json()
+            spec = cap['figures'][0]['defaults']
+            first = self.client.post('/api/saved-views', json={'name': 'First', 'analysis_id': 'P07', 'spec': spec})
+            self.assertEqual(first.status_code, 201, first.text)
+            a = first.json()
+            second = self.client.post('/api/saved-views', json={'name': 'Second', 'analysis_id': 'P07', 'spec': spec}).json()
+            update = {'name': 'Renamed', 'spec': spec, 'revision': a['revision']}
+            self.assertEqual(self.client.put('/api/saved-views/'+a['id'], json=update).status_code, 200)
+            self.assertEqual(self.client.put('/api/saved-views/'+a['id'], json=update).status_code, 409)
+            rows = {r['id']: r for r in self.client.get('/api/saved-views').json()['items']}
+            self.assertEqual(rows[second['id']]['name'], 'Second')
+            self.assertEqual(rows[a['id']]['name'], 'Renamed')
+            invalid = self.client.post('/api/saved-views', json={'name':'Bad','analysis_id':'P07','spec':{**spec,'roles':['unknown']}})
+            self.assertEqual(invalid.status_code, 422)
+            self.assertEqual(self.client.delete('/api/saved-views/'+a['id'], params={'revision': 1}).status_code, 409)
+            self.assertEqual(self.client.delete('/api/saved-views/'+a['id'], params={'revision': 2}).status_code, 204)
+            Path(tmp,'saved-views.json').write_text('corrupted')
+            self.assertEqual(self.client.get('/api/saved-views').status_code, 503)
+
+    def test_configured_figure_and_export_share_the_same_server_values(self):
+        response = self.client.get('/api/analysis/P07/views/capabilities')
+        self.assertEqual(response.status_code, 200)
+        figure = next(f for f in response.json()['figures'] if any(r['id']=='equity_netr_usd' for r in f['roles']))
+        spec = {**figure['defaults'], 'start': '2024-01-01', 'transform': 'index_100', 'events': []}
+        params = {'today': '2026-11-06', 'view': json.dumps(spec)}
+        body = self.client.get('/api/analysis/P07', params=params)
+        self.assertEqual(body.status_code, 200, body.text)
+        text = self.client.get('/api/analysis/P07/export', params=params).text
+        exported = json.loads(text.split('--- data (JSON) ---\n')[1])
+        self.assertEqual(exported['figure'], body.json()['figure'])
+        self.assertEqual(body.json()['view']['transform'], 'index_100')
+        rejected = self.client.get('/api/analysis/P07', params={'view': json.dumps({**spec, 'geographies': ['MARS']})})
+        self.assertEqual(rejected.status_code, 422)
+        self.assertEqual(self.client.get('/api/analysis/UNKNOWN/views/capabilities').status_code, 404)
+
     def setUp(self):
         self.engine = memory_engine()
         seed(self.engine, p07_fixture())

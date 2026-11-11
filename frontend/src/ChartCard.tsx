@@ -167,7 +167,7 @@ export default function ChartCard({ definition, context, expanded, onToggle, dee
   }
 
   return (
-    <article ref={root} className={`chart-card ${expanded ? 'is-expanded' : ''}`} id={`chart-${definition.id}`}>
+    <article ref={root} className={`chart-card ${expanded ? 'is-expanded' : ''}`} id={`chart-${definition.id}`} tabIndex={-1}>
       <div className="chart-heading">
         <div>
           <div className="chart-meta">

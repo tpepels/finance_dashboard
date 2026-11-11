@@ -445,7 +445,10 @@ def fetch_oecd_nfc_accounts(self, series_id, start, item, key):
                 or row.get("ACCOUNTING_ENTRY") != entry or row.get("UNIT_MULT") != "6"):
             raise ProviderError("OECD sector accounts returned a different series")
         if row.get("OBS_VALUE") not in (None, ""):
-            out[date(int(row["TIME_PERIOD"]), 1, 1)] = Decimal(row["OBS_VALUE"])
+            day = date(int(row["TIME_PERIOD"]), 1, 1)
+            value = Decimal(row["OBS_VALUE"])
+            if start is None or day >= start:
+                out[day] = value
     if not out:
         raise ProviderError("OECD Table 14 response contains no usable observations")
     return FetchedSeries(series_id, str(response.request.url), None, out)
@@ -505,7 +508,7 @@ def fetch_bea_q(self, series_id, start, item, key):
     from .remaining_sources import BEA_TABLE_ROWS, parse_bea_table_row
     if key not in approved and key not in BEA_TABLE_ROWS:
         raise SourceUnavailable("Unknown BEA Q table/version")
-    response = self._get(BEA_Q_URL)
+    response = self._get_document(BEA_Q_URL)
     if key in BEA_TABLE_ROWS:
         observations = parse_bea_table_row(response.text, key, start=start)
     else:
@@ -627,7 +630,7 @@ def fetch_fed_g17_diffusion(self, series_id, start, item, key):
     exact = G17_DIFFUSION_SERIES.get(series_id)
     if exact is None or key != f"diff_sa.txt#{exact[0]}":
         raise SourceUnavailable("G.17 diffusion span or block identity differs from the approved definition")
-    response = self._get(G17_DIFFUSION_URL)
+    response = self._get_document(G17_DIFFUSION_URL)
     return FetchedSeries(series_id, G17_DIFFUSION_URL, None,
                          parse_g17_diffusion(response.text, block=exact[0], span=exact[1], start=start))
 
@@ -638,7 +641,7 @@ def fetch_ofr_fsi(self, series_id, start, item, key):
     column = OFR_FSI_SERIES.get(series_id)
     if column is None or key != f"fsi.csv#{column}":
         raise SourceUnavailable("OFR FSI column identity differs from the approved definition")
-    response = self._get(OFR_FSI_URL, headers={"Accept": "text/csv"})
+    response = self._get_document(OFR_FSI_URL, headers={"Accept": "text/csv"})
     return FetchedSeries(series_id, OFR_FSI_URL, None, parse_ofr_fsi(response.text, column, start))
 
 
@@ -708,7 +711,7 @@ def fetch_fdic_bankfind(self, series_id, start, item, key):
     field = FDIC_SERIES.get(series_id)
     if field is None or key != f"financials?agg_by=REPDTE#{field}":
         raise SourceUnavailable("FDIC aggregate field differs from the approved definition")
-    response = self._get(FDIC_FINANCIALS_URL, params=FDIC_QUERY)
+    response = self._get_document(FDIC_FINANCIALS_URL, params=FDIC_QUERY)
     return FetchedSeries(series_id, str(response.request.url), None,
                          parse_fdic_aggregates(response.json(), series_id, start))
 

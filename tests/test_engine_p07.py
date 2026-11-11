@@ -33,6 +33,33 @@ def p07_fixture():
 
 
 class P07EngineTests(unittest.TestCase):
+    def test_literal_fx_carry_and_inflation_arithmetic_uses_starting_rates(self):
+        # A USD holding moves 100 -> 120 while USD/EUR moves 2 -> 3:
+        # its EUR value moves 50 -> 40 (-20%). Start-month carry is -1%,
+        # so hedged wealth is 118.8; after 10% inflation, real wealth is 108.
+        result = p07_hedging(series([2.0, 3.0]), series([100.0, 120.0]),
+                             series([0.0, 60.0]), series([12.0, 0.0]), series([100.0, 110.0]))
+        row = result["rows"][0]
+        self.assertAlmostEqual(row["usd_return"], 0.2)
+        self.assertAlmostEqual(row["eur_unhedged"], -0.2)
+        self.assertAlmostEqual(row["hedge_carry"], -0.01)
+        self.assertAlmostEqual(row["eur_hedged"], 0.188)
+        self.assertAlmostEqual(result["nominal"]["eur_unhedged"]["final_wealth"], 0.8)
+        self.assertAlmostEqual(result["real_eur"]["eur_hedged"]["final_wealth"], 1.08)
+
+    def test_real_wealth_and_statistics_use_the_same_tail_after_an_inflation_gap(self):
+        from finance_dashboard.engine.analyses import p07_wealth
+        rates = series([0.0] * 5)
+        hicp = series([100.0, 100.0, 100.0, 100.0, 100.0])
+        del hicp[(2020, 3)]
+        result = p07_hedging(series([1.0] * 5), series([100.0, 110.0, 121.0, 133.1, 146.41]), rates, rates, hicp)
+        self.assertEqual(result["real_period"], {"start": "2020-05", "end": "2020-05"})
+        self.assertEqual(result["real_eur"]["eur_unhedged"]["months"], 1)
+        wealth = p07_wealth(result["rows"])
+        self.assertEqual([month for month, _ in wealth["real"]["eur_unhedged"]], ["2020-05"])
+        self.assertAlmostEqual(wealth["real"]["eur_unhedged"][0][1], 110.0)
+        self.assertAlmostEqual(wealth["nominal"]["eur_unhedged"][-1][1], 146.41)
+
     def test_unhedged_and_hedged_eur_returns(self):
         result = p07_hedging(series([1.0, 1.1]), series([100.0, 110.0]), series([2.0, 2.0]),
                              series([5.0, 5.0]), series([100.0, 101.0]))

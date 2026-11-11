@@ -1,0 +1,7 @@
+{
+  "name": "finance-dashboard-browser-checks",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node browser_smoke.mjs" },
+  "devDependencies": { "playwright": "1.65.0" }
+}

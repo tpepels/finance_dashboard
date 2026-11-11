@@ -3,6 +3,7 @@ import { timeChart, type Recession, type Theme, type TimeSeries } from './chartK
 import { CorrelationGrid, EpisodeBars, ImpactBars, RankedBars, RuleBars, StackedShares, type Impact, type RuleResult, type CorrelationCell, type Episode } from './heroes';
 import TimePanel from './TimePanel';
 import OwnerInputs from './OwnerInputs';
+import type { Holdings as OwnerHoldings } from './PortfolioHoldings';
 import { Section, monthDate, percentAxis, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
@@ -11,14 +12,15 @@ type P03Values = { episodes: Episode[]; underwater: Line };
 
 type Fund = { key: string; name: string; date: string; countries: { key: string; share: number }[];
   sectors: { key: string; share: number }[] | null; top: { name: string; pct: number }[] };
-type P01Values = { funds: Fund[] };
+type P01Values = { funds: Fund[]; owner_portfolio?: OwnerHoldings | null };
 
 type P04Values = { is_example: boolean; shocks: Impact[]; history: { us_10y: Line; usd_per_eur: Line } };
 type P05Values = { is_example: boolean; chosen: string; bond_leg?: 'euro' | 'us_in_eur'; period: { from: string | null; to: string | null; months: number };
   rules: (RuleResult & { path: Line })[]; inputs: { allocation: Record<string, number> } };
 
 const exampleNote = (example: boolean) => example
-  ? ' These figures use the example portfolio; enter your own under Your portfolio above.' : ' These figures use your saved portfolio.';
+  ? ' These figures use the example model portfolio; edit Model portfolio scenarios to explore other assumptions.'
+  : ' These figures use your saved model scenario, independently of your recorded ETF positions.';
 
 function Sensitivity({ bundle, theme, recessions }: { bundle: Bundle<P04Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as P04Values;
@@ -90,19 +92,36 @@ function Holdings({ bundle, theme }: { bundle: Bundle<P01Values>; theme: Theme }
   const countryRows = shared(data.funds.map(f => ({ key: f.key, label: label(f), parts: f.countries })), name);
   const sectorRows = shared(data.funds.filter(f => f.sectors).map(f => ({ key: f.key, label: label(f), parts: f.sectors ?? [] })), k => k);
   const labels = { ...Object.fromEntries([...countryRows, ...sectorRows].flatMap(r => r.parts.map(p => [p.key, p.key]))), remainder: 'Other' };
-  return <div className="decision-hero decision-hero-stack">
-    <StackedShares theme={theme} title="Where your funds invest, by country" labels={labels} rows={countryRows}/>
-    {sectorRows.length > 0 && <StackedShares theme={theme} title="By sector" labels={labels} rows={sectorRows}/>}
+  const owner = data.owner_portfolio;
+  const euro = (value: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'EUR' }).format(value);
+  const weight = (value: number | null) => value === null ? '—' : new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionDigits: 2 }).format(value);
+  return <>
+    <section className="recorded-holdings" aria-labelledby="recorded-holdings-title"><h4 id="recorded-holdings-title">Recorded ETF positions</h4>
+      {owner && owner.positions.length > 0 ? <>
+        <p>{owner.as_of ?? 'Observation date not provided'} · {owner.scope === 'full_invested_portfolio' ? 'Full invested portfolio' : 'Listed positions only'}
+          {' · '}{owner.summary.position_count} positions{owner.summary.total_value_eur !== null && <> · {euro(owner.summary.total_value_eur)}</>}</p>
+        <p className="decision-caption">Supplied market values and instrument identities describe this snapshot. They do not establish investment returns or underlying country and issuer exposures.
+          {owner.summary.total_value_eur === null && ' Accounts remain separate; combined portfolio weights are not shown.'}</p>
+        <div className="holdings-table-scroll"><table aria-label="Recorded account values"><thead><tr><th scope="col">Account</th><th scope="col">Positions</th><th scope="col">Recorded value</th></tr></thead><tbody>
+          {owner.summary.accounts.map(account => <tr key={account.account}><th scope="row">{account.account}</th><td>{account.positions}</td><td>{euro(account.value_eur)}</td></tr>)}</tbody></table></div>
+        <div className="holdings-table-scroll"><table aria-label="Recorded instrument values"><thead><tr><th scope="col">Instrument</th><th scope="col">ISIN</th><th scope="col">Quantity</th><th scope="col">Recorded value</th><th scope="col">Portfolio weight</th></tr></thead><tbody>
+          {owner.summary.funds.map(fund => <tr key={fund.key}><th scope="row">{fund.name}</th><td>{fund.isin ?? 'Needs confirmation'}</td><td>{fund.quantity.toLocaleString('en-GB', { maximumFractionDigits: 8 })}</td><td>{euro(fund.value_eur)}</td><td>{weight(fund.weight)}</td></tr>)}</tbody></table></div>
+        {owner.summary.warnings.length > 0 && <ul className="holdings-warnings">{owner.summary.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>}
+      </> : <p className="decision-caption">No ETF positions have been recorded. Add a dated snapshot by account to inspect your actual holdings separately from the examples below.</p>}
+      <a href="#portfolio-holdings" className="overview-open">Edit ETF holdings</a>
+    </section>
+    <div className="decision-hero decision-hero-stack">
+    <p className="decision-caption">These published fund examples are separate from your recorded ETF positions. They are the iShares MSCI World UCITS file and SEC N-PORT filings for VT and BND;
+      countries are the issuer's reported location. They are not a weighted look-through of your actual funds. The model scenario's broad equity, bond and gold mix does not supply instrument weights.</p>
+    <StackedShares theme={theme} title="Published fund country exposures" labels={labels} rows={countryRows}/>
+    {sectorRows.length > 0 && <StackedShares theme={theme} title="Published fund sector exposures" labels={labels} rows={sectorRows}/>}
     <div className="decision-hero-pair decision-hero-even">
       {data.funds.filter(f => f.key !== 'bnd').map(f => <div key={`top-${f.key}`}>
         <h4 className="decision-subhead">Largest holdings: {FUND_LABEL[f.key] ?? f.name}</h4>
         <RankedBars theme={theme} title={`Largest holdings: ${f.name}`} rows={f.top}/>
       </div>)}
     </div>
-    <p className="decision-caption">Read from each fund's own published holdings: the iShares file for the UCITS ETF, SEC N-PORT filings for
-      VT and BND. Countries are the issuer's reported location. Combining them into your portfolio needs your weights, which you can
-      enter under Your portfolio.</p>
-  </div>;
+  </div></>;
 }
 
 const PAIR_LABEL: Record<string, string> = { stocks_bonds: 'Stocks and bonds', stocks_gold: 'Stocks and gold', bonds_gold: 'Bonds and gold' };

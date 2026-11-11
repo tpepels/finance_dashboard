@@ -8,12 +8,169 @@ import tarfile
 from tempfile import TemporaryDirectory
 import unittest
 import os
+import io
+from hashlib import sha256
 from unittest.mock import patch
 
 from finance_dashboard.backup import backup_local, verify_manifest, _hash
 
 
 class LocalBackupTests(unittest.TestCase):
+    def test_retention_keeps_unverifiable_old_bundle_without_breaking_new_backup(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "finance.sqlite3"
+            sqlite3.connect(db).close()
+            out = root / "backups"
+            old = backup_local(out, source_db=db, evidence_roots={})
+            old_manifest = next(out.glob("finance-*Z.json"))
+            invalid = out / old["database"]["file"]
+            invalid.write_bytes(b"not a SQLite database")
+            old["database"]["sha256"] = _hash(invalid)
+            old["database"]["bytes"] = invalid.stat().st_size
+            old_manifest.write_text(json.dumps(old))
+            current = backup_local(out, source_db=db, evidence_roots={}, keep=1)
+            self.assertTrue(invalid.exists())
+            self.assertTrue(old_manifest.exists())
+            new_manifest = out / current["database"]["file"].replace(".sqlite3", ".json")
+            self.assertTrue(verify_manifest(new_manifest)["verified"])
+
+    def test_policy_state_integrity_is_checked_even_when_bundle_hashes_match(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "finance.sqlite3"
+            sqlite3.connect(db).close()
+            ledger = root / "policy.sqlite3"
+            with sqlite3.connect(ledger) as connection:
+                connection.execute("CREATE TABLE requests (value INTEGER)")
+            manifest = backup_local(root / "backups", source_db=db, evidence_roots={},
+                policy_db_path=ledger)
+            manifest_path = next((root / "backups").glob("finance-*Z.json"))
+            archive_path = manifest_path.parent / manifest["application_state"]["file"]
+            payload = b"invalid sqlite payload"
+            member_name = "source-policy/rate-ledger.sqlite3"
+            with tarfile.open(archive_path, "w:gz") as archive:
+                member = tarfile.TarInfo(member_name)
+                member.size = len(payload)
+                archive.addfile(member, io.BytesIO(payload))
+            metadata = manifest["application_state"]
+            metadata["sha256"] = _hash(archive_path)
+            metadata["bytes"] = archive_path.stat().st_size
+            metadata["components"]["source_policy"] = {
+                "member": member_name, "bytes": len(payload), "sha256": sha256(payload).hexdigest()}
+            manifest_path.write_text(json.dumps(manifest))
+            with self.assertRaises((ValueError, sqlite3.DatabaseError)):
+                verify_manifest(manifest_path)
+
+    def test_restore_keeps_owner_saved_views_and_committed_policy_wal(self):
+        from finance_dashboard.backup import restore_backup
+        from finance_dashboard.source_policy_ledger import SourcePolicyGate
+        from finance_dashboard.source_policy_types import PolicyDeferred
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "finance.sqlite3"
+            sqlite3.connect(db).close()
+            owner = root / "owner-inputs.json"
+            owner.write_text('{"version":1,"portfolio":{"capital":12345}}')
+            views = root / "saved-views.json"
+            views.write_text('{"version":1,"records":[{"id":"one","revision":2}]}')
+            ledger = root / "source-policy" / "rate-ledger.sqlite3"
+            gate = SourcePolicyGate(state_path=ledger, clock=lambda: 1000)
+            connection = gate._connection()
+            try:
+                connection.execute("PRAGMA journal_mode=WAL")
+                connection.execute("PRAGMA wal_autocheckpoint=0")
+                connection.execute("INSERT INTO requests VALUES ('fred-v1', 999)")
+                connection.execute("INSERT INTO policy_state VALUES ('fred-v1', 0, 4600, 429)")
+                self.assertGreater(Path(str(ledger) + "-wal").stat().st_size, 0)
+                bundle = root / "backups"
+                manifest = backup_local(bundle, source_db=db, evidence_roots={},
+                    owner_inputs_path=owner, saved_views_path=views, policy_db_path=ledger)
+                manifest_path = next(bundle.glob("finance-*Z.json"))
+                target = root / "different-installation"
+                result = restore_backup(manifest_path, target)
+                self.assertTrue(result["restored"])
+                self.assertEqual((target / "owner-inputs.json").read_bytes(), owner.read_bytes())
+                self.assertEqual((target / "saved-views.json").read_bytes(), views.read_bytes())
+                restored = SourcePolicyGate(state_path=target / "source-policy/rate-ledger.sqlite3",
+                    clock=lambda: 1000, max_wait_seconds=0)
+                self.assertEqual(restored.availability("fred-v1")["retry_at"], 4600)
+                with self.assertRaises(PolicyDeferred):
+                    restored.reserve(restored.registry.by_id["fred-v1"])
+                self.assertEqual(restored.report()["requests_recorded"], 1)
+                self.assertEqual(manifest["application_state"]["version"], 1)
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM requests").fetchone()[0], 1)
+            finally:
+                connection.close()
+
+    def test_tampered_state_is_rejected_before_restore_creates_target(self):
+        from finance_dashboard.backup import restore_backup
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "finance.sqlite3"
+            sqlite3.connect(db).close()
+            owner = root / "owner-inputs.json"
+            owner.write_text('{"version":1}')
+            manifest = backup_local(root / "backups", source_db=db, evidence_roots={},
+                owner_inputs_path=owner)
+            manifest_path = next((root / "backups").glob("finance-*Z.json"))
+            archive = manifest_path.parent / manifest["application_state"]["file"]
+            archive.write_bytes(archive.read_bytes() + b"tampered")
+            with self.assertRaisesRegex(ValueError, "SHA-256"):
+                restore_backup(manifest_path, root / "restored")
+            self.assertFalse((root / "restored").exists())
+            self.assertEqual(owner.read_text(), '{"version":1}')
+
+    def test_rehashed_state_with_changed_member_cannot_bypass_member_hash(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "finance.sqlite3"
+            sqlite3.connect(db).close()
+            owner = root / "owner-inputs.json"
+            owner.write_text('{"version":1}')
+            manifest = backup_local(root / "backups", source_db=db, evidence_roots={},
+                owner_inputs_path=owner)
+            manifest_path = next((root / "backups").glob("finance-*Z.json"))
+            archive_path = manifest_path.parent / manifest["application_state"]["file"]
+            with tarfile.open(archive_path, "w:gz") as archive:
+                payload = b'{"version":999}'
+                member = tarfile.TarInfo("owner-inputs.json")
+                member.size = len(payload)
+                archive.addfile(member, io.BytesIO(payload))
+            manifest["application_state"]["sha256"] = _hash(archive_path)
+            manifest["application_state"]["bytes"] = archive_path.stat().st_size
+            manifest_path.write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "member|SHA-256"):
+                verify_manifest(manifest_path)
+
+    def test_historical_manifest_restores_evidence_and_refuses_populated_target(self):
+        from finance_dashboard.backup import restore_backup
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db = root / "finance.sqlite3"
+            with sqlite3.connect(db) as connection:
+                connection.execute("CREATE TABLE facts (value TEXT)")
+                connection.execute("INSERT INTO facts VALUES ('retained')")
+            evidence = root / "source-evidence"
+            evidence.mkdir()
+            (evidence / "original.csv").write_text("year,value\n2024,2\n")
+            manifest = backup_local(root / "backups", source_db=db,
+                evidence_roots={"source-evidence": evidence})
+            manifest.pop("application_state", None)
+            manifest.pop("format_version", None)
+            manifest_path = next((root / "backups").glob("finance-*Z.json"))
+            manifest_path.write_text(json.dumps(manifest))
+            self.assertTrue(verify_manifest(manifest_path)["verified"])
+            target = root / "new-empty-target"
+            target.mkdir()
+            restore_backup(manifest_path, target)
+            self.assertEqual((target / "source-evidence/original.csv").read_text(), "year,value\n2024,2\n")
+            with sqlite3.connect(target / "finance.sqlite3") as connection:
+                self.assertEqual(connection.execute("SELECT value FROM facts").fetchone()[0], "retained")
+            with self.assertRaisesRegex(ValueError, "empty"):
+                restore_backup(manifest_path, target)
+            self.assertEqual((target / "source-evidence/original.csv").read_text(), "year,value\n2024,2\n")
+
     @unittest.skipUnless(os.name == "posix", "Read-only WAL permissions require POSIX")
     def test_large_readonly_wal_source_finishes_without_restarting_each_batch(self):
         with TemporaryDirectory() as temp:

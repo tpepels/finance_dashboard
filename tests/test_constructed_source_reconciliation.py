@@ -61,6 +61,26 @@ def audit(root, sid, values):
 
 
 class ConstructedSourceTests(unittest.TestCase):
+    def test_sparse_refresh_keeps_a_rolled_off_month_verified_by_its_original(self):
+        sid = 'valuation.world.global_earnings_yield'
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            for html in [published_html(), published_html().replace('Sept 2026', 'Oct 2026')]:
+                with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, text=html))) as client:
+                    SourceAcquisition(ProviderRouter(client), root).fetch(sid)
+            values = {date(year, 12, 1): Decimal(5) for year in range(2016, 2026)}
+            values.update({date(2026, m, 1): Decimal(100) / Decimal('21.60') for m in [9, 10]})
+            item = audit(root, sid, values)
+            self.assertTrue(item['source_covers_all_stored_periods'], item)
+            self.assertEqual(item['archived_sparse_periods'], ['2026-09-01'])
+            self.assertFalse(item['individual_observation_first_publication_verified'])
+            # Re-hash the older original every time; a valid latest page cannot
+            # certify the month that only the damaged older page contains.
+            for raw in root.glob('responses/*/*/response-0.bin'):
+                if b'Sept 2026' in raw.read_bytes():
+                    raw.write_bytes(b'corrupt')
+            self.assertFalse(audit(root, sid, values)['source_covers_all_stored_periods'])
+
     def test_msci_capture_keeps_exact_query_and_native_original_identity(self):
         sid = 'equity.world.msci_acwi_netr_usd'
         original = {'msci_index_code': '892400', 'index_variant_type': 'NETR',

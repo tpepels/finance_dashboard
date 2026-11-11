@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import closing
 from email.utils import parsedate_to_datetime
 import os
+import math
 from pathlib import Path
 import sqlite3
 import threading
@@ -30,13 +31,20 @@ class SourcePolicyGate:
 
     def __init__(self, *, registry: PolicyRegistry | None = None,
                  state_path: Path | None = None, clock=None, sleep=None,
-                 max_wait_seconds: float = DEFAULT_MAX_WAIT_SECONDS):
+                 max_wait_seconds: float = DEFAULT_MAX_WAIT_SECONDS,
+                 wait_seconds_by_policy: dict[str, float] | None = None):
         self.registry = registry or PolicyRegistry()
         self.state_path = Path(state_path) if state_path is not None else Path(
             os.environ.get("FINANCE_SOURCE_POLICY_DB", str(DEFAULT_LEDGER)))
         self.clock = clock or time.time
         self.sleep = sleep or time.sleep
         self.max_wait_seconds = max_wait_seconds
+        self.wait_seconds_by_policy = dict(wait_seconds_by_policy or {})
+        if any(key not in self.registry.by_id or isinstance(value, bool)
+               or not isinstance(value, (float, int)) or not math.isfinite(value)
+               or not 0 <= value <= 400
+               for key, value in self.wait_seconds_by_policy.items()):
+            raise ValueError("invalid_publisher_wait_budget")
         self._schema_ready = False
         self._schema_lock = threading.Lock()
 
@@ -189,6 +197,7 @@ class SourcePolicyGate:
 
     def reserve(self, policy: Policy) -> str:
         waited = 0.0
+        wait_limit = self.wait_seconds_by_policy.get(policy.id, self.max_wait_seconds)
         while True:
             try:
                 return self._reserve_once(policy)
@@ -197,7 +206,7 @@ class SourcePolicyGate:
                 # Short pacing waits (spacing, concurrency, a sub-second rolling
                 # window such as SEC's 8/s) are slept; long windows still raise.
                 if (exc.reason not in {"minimum_spacing", "concurrency_limit", "rolling_window_limit"}
-                        or remaining <= 0 or waited + remaining > self.max_wait_seconds):
+                        or remaining <= 0 or waited + remaining > wait_limit):
                     raise
                 self.sleep(remaining)
                 waited += remaining

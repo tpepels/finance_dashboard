@@ -15,6 +15,8 @@ type G02Values = { date: string | null; countries: { area: string; index_weight:
 
 type G03Values = { alternatives: { key: string; name: string; unit: string; latest: number; min: number; max: number; own_mean: number;
   as_of: string; history: Line }[]; oecd_coverage: Line; oecd_members: Line;
+  listed_profit_coverage?: { status: string; sources: { year: number; filing_issuers: number;
+    filing_versions: number; consolidated_income_issuers: number; source_url?: string }[] } | null;
   listed_earnings?: { history: Line; share_of_gdp: [string, number][];
     latest: { month: string; earnings_usd_bn: number; market_cap_usd_bn: number; pe: number } | null } };
 
@@ -22,21 +24,21 @@ const FALLBACK: [string, string] = ['1970-01-01', '2025-01-01'];
 
 const G03_WITHHELD = <p className="decision-caption">The question needs the consolidated net profit of listed companies worldwide,
   with each company counted once under its parent, in one currency, against world GDP. No published or collected source covers that
-  universe yet, and its national-accounts alternatives are not available either.</p>;
+  universe yet. Verified alternatives are shown only when their own source evidence is available.</p>;
 
 function Profits({ bundle, theme, recessions }: { bundle: Bundle<G03Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as G03Values;
   const listed = data.listed_earnings;
   const shares = listed?.share_of_gdp ?? [];
-  const listedRow = shares.length ? [{ area: 'listed', label: 'Listed company earnings / world GDP',
+  const listedRow = shares.length ? [{ area: 'listed', label: 'Implied index earnings proxy / world GDP',
     min: Math.min(...shares.map(s => s[1])), max: Math.max(...shares.map(s => s[1])),
     mean: shares.reduce((a, s) => a + s[1], 0) / shares.length, latest: shares.at(-1)![1], asOf: shares.at(-1)![0],
-    note: 'MSCI ACWI, December of each year', format: (v: number) => `${v.toFixed(1)}%` }] : [];
+    note: 'ACWI December proxy', format: (v: number) => `${v.toFixed(1)}%` }] : [];
   const option = useMemo(() => timeChart({ theme, recessions, unit: '%', format: v => v.toFixed(0),
     series: data.alternatives.map((a, i) => ({ name: a.name, slot: i, dots: true, data: a.history })) }), [data, theme, recessions]);
   const earningsLine = listed?.history ?? [];
-  const earningsOption = useMemo(() => timeChart({ theme, recessions, unit: 'USD billions, trailing 12 months',
-    format: v => v.toFixed(0), series: [{ name: 'Aggregate earnings of MSCI ACWI companies', slot: 2, dots: true, data: breakGaps(earningsLine as Point[], 45) }] }),
+  const earningsOption = useMemo(() => timeChart({ theme, recessions, unit: 'USD billions, implied index earnings proxy',
+    format: v => v.toFixed(0), series: [{ name: 'MSCI ACWI implied index earnings proxy', slot: 2, dots: true, data: breakGaps(earningsLine as Point[], 45) }] }),
   [earningsLine, theme, recessions]);
   const latest = listed?.latest;
   return <>
@@ -44,16 +46,25 @@ function Profits({ bundle, theme, recessions }: { bundle: Bundle<G03Values>; the
       <Thermometers theme={theme} title="Corporate profit measures within their own history" unit="" rows={[...listedRow, ...data.alternatives.map(a => ({
         area: a.key, label: a.key === 'eu27_profit_share' ? 'EU27 profit share' : 'OECD surplus / GDP', min: a.min, max: a.max,
         mean: a.own_mean, latest: a.latest, asOf: a.as_of.slice(0, 4), note: a.unit, format: (v: number) => `${v.toFixed(1)}%` }))]}/>
-      <p className="decision-caption">{latest && <>The closest measure: the roughly 2,500 large and mid-sized listed companies in MSCI ACWI
-        earned ${(latest.earnings_usd_bn / 1000).toFixed(1)} trillion in the 12 months to {latest.month.slice(0, 7)} (index market cap
-        ${(latest.market_cap_usd_bn / 1000).toFixed(1)} trillion at a P/E of {latest.pe.toFixed(1)}; MSCI defines P/E as total cap over total
-        earnings). It covers index constituents only, not every listed company. </>}The other two are national-accounts measures of all
-        companies, listed or not, gross of depreciation.
+      <p className="decision-caption">{latest && <>In {latest.month.slice(0, 7)}, MSCI ACWI's published index market cap
+        (${(latest.market_cap_usd_bn / 1000).toFixed(1)} trillion) divided by its trailing P/E ({latest.pe.toFixed(1)}) gives an implied
+        index earnings proxy of ${(latest.earnings_usd_bn / 1000).toFixed(1)} trillion. This is not reported company net profit:
+        MSCI normalizes continuing-operations earnings, applies free-float inclusion factors and excludes missing EPS; matching the
+        P/E numerator to the factsheet's total market cap is unverified. The proxy-to-GDP ratio is an arithmetic comparison.
+        {' '}<a href="https://www.msci.com/indexes/documents/methodology/0_MSCI_Fundamental_Data_Methodology_20240625.pdf"
+          target="_blank" rel="noreferrer">MSCI earnings methodology</a>. </>}The national-accounts alternatives cover listed and unlisted
+        companies and measure gross operating surplus, before depreciation, rather than after-tax net profit.
         {data.oecd_members.length > 0 && <> The latest OECD figure ({data.oecd_members.at(-1)![0].slice(0, 4)}) covers
           {' '}{data.oecd_members.at(-1)![1]} of 38 members, {data.oecd_coverage.at(-1)?.[1].toFixed(0)}% of their GDP.</>}</p>
     </div>
+    {data.listed_profit_coverage?.sources.map(sample => <p className="decision-caption" key={sample.year}>
+      Brazil CVM {sample.year} original sample: {sample.consolidated_income_issuers} consolidated-income reporters among
+      {' '}{sample.filing_issuers} filing issuers and {sample.filing_versions} filing versions. Listing, ultimate-parent and global coverage
+      remain unverified; no profit aggregate or FX conversion is inferred.
+      {sample.source_url && <> <a href={sample.source_url} target="_blank" rel="noreferrer">CVM original annual archive</a>.</>}
+    </p>)}
     <div className="decision-charts">
-      {earningsLine.length > 0 && <TimePanel title="Aggregate earnings of MSCI ACWI companies" option={earningsOption} presets={false}
+      {earningsLine.length > 0 && <TimePanel title="MSCI ACWI implied index earnings proxy" option={earningsOption} presets={false}
         span={spanOf([earningsLine], ['2015-01-01', '2026-01-01'])}/>}
       <TimePanel title="Alternative corporate profit measures" option={option} presets={false}
         span={spanOf(data.alternatives.map(a => a.history), ['1999-01-01', '2025-01-01'])}/>
@@ -71,20 +82,20 @@ function Concentration({ bundle, theme, recessions }: { bundle: Bundle<G01Values
     { key: 'remainder', share: Math.max(0, 100 - top5.reduce((a, i) => a + i.pct, 0) - next5Share) }];
   const labels = Object.fromEntries(parts.map(p => [p.key, p.key === 'remainder' ? 'All other holdings' : p.key.replace(/,? (INC\.|CORPORATION|CORP\.?)$/i, '')]));
   const lines: TimeSeries[] = useMemo(() => [
-    { name: 'Ten largest issuers in the ACWI ETF', slot: 0, dots: true, data: data.top_share_history },
-    { name: 'MSCI ACWI published top 10', slot: 1, dots: true, data: data.published_top10 }], [data]);
-  const option = useMemo(() => timeChart({ theme, recessions, unit: '% of the index', format: v => v.toFixed(0), series: lines }),
+    { name: 'ETF NAV: ten largest issuer-name groups', slot: 0, dots: true, data: data.top_share_history },
+    { name: 'MSCI index: ten largest security weights', slot: 1, dots: true, data: data.published_top10 }], [data]);
+  const option = useMemo(() => timeChart({ theme, recessions, unit: '%', format: v => v.toFixed(0), series: lines }),
     [theme, recessions, lines]);
   return <>
     <div className="decision-hero decision-hero-stack">
       <StackedShares theme={theme} title={`Concentration of a world ETF, ${latest?.date ?? ''}`} labels={labels}
         rows={[{ key: 'acwi', label: 'iShares MSCI ACWI ETF', parts }]}/>
-      <RankedBars theme={theme} title="Largest issuers" rows={issuers.slice(0, 12)}/>
-      <p className="decision-caption">From the fund's own SEC filing: the ten largest companies are {latest?.top10_pct?.toFixed(0) ?? '—'}% of a
-        world equity fund that holds about 2,300 companies. An equal-weight or ex-top-holdings tilt would change this.</p>
+      <RankedBars theme={theme} title="Largest ETF issuer-name groups" rows={issuers.slice(0, 12)}/>
+      <p className="decision-caption">In the fund's SEC filing, its ten largest normalized issuer-name groups are {latest?.top10_pct?.toFixed(0) ?? '—'}% of reported ETF NAV.
+        MSCI's published top ten are index security weights. These measures have different universes, grouping rules and denominators.</p>
     </div>
     <div className="decision-charts">
-      <TimePanel title="Share of the ten largest issuers" option={option} span={spanOf(lines.map(l => l.data as Line), ['2023-01-01', '2026-01-01'])}
+      <TimePanel title="Top-ten concentration by source" option={option} span={spanOf(lines.map(l => l.data as Line), ['2023-01-01', '2026-01-01'])}
         presets={false}/>
     </div>
   </>;
@@ -97,11 +108,10 @@ function Weights({ bundle, theme, recessions }: { bundle: Bundle<G02Values>; the
   const year = data.countries.find(c => c.gdp_year)?.gdp_year ?? '';
   return <>
     <div className="decision-hero">
-      <PairBars theme={theme} title="Index weight against share of world GDP" unit="%" signed={false} legend={[`weight in the ACWI ETF (${data.date ?? ''})`, `share of world GDP (${year})`]}
+      <PairBars theme={theme} title="Fund investment-country weights and world GDP" unit="%" signed={false} legend={[`ACWI ETF NAV, N-PORT country (${data.date ?? ''})`, `share of world GDP (${year})`]}
         rows={data.countries.map(c => ({ key: c.area, label: entityName(c.area), entity: c.area, a: c.index_weight, b: c.gdp_share }))}/>
-      <p className="decision-caption">A market-cap world fund weights countries by the value of their listed companies, not by the size of
-        their economies. Countries follow the issuer's reported location: China looks small partly because many Chinese companies are
-        registered in the Cayman Islands or Hong Kong.</p>
+      <p className="decision-caption">The fund side uses N-PORT investment-country assignments and reported NAV. These are not MSCI's index-country classifications or companies' revenue exposures.
+        Groups such as the Cayman Islands follow the filing assignment; this chart does not establish why a security received that assignment.</p>
     </div>
     <div className="decision-charts">
       <TimePanel title="United States weight in the fund" option={option} span={spanOf([data.us_weight_history], ['2023-01-01', '2026-01-01'])} presets={false}/>

@@ -85,7 +85,7 @@ class G03Tests(unittest.TestCase):
         self.assertTrue(all(a["non_equivalent"] for a in values["alternatives"]))
         self.assertNotIn("listed_profit_ratio", values)
 
-    def test_listed_earnings_from_index_cap_over_pe_and_their_share_of_world_gdp(self):
+    def test_implied_index_earnings_arithmetic_and_december_gdp_comparison(self):
         points = {role: [] for role in G03.inputs}
         points["acwi_mkt_cap"] = [(date(2024, 12, 1), 80_000_000.0), (date(2025, 6, 1), 90_000_000.0)]
         points["acwi_pe"] = [(date(2024, 12, 1), 20.0), (date(2025, 6, 1), 22.5)]
@@ -95,6 +95,27 @@ class G03Tests(unittest.TestCase):
         self.assertEqual(listed["history"], [["2024-12-01", 4000.0], ["2025-06-01", 4000.0]])   # USD billions
         self.assertEqual(listed["share_of_gdp"], [["2024", 4000e9 / 110e12 * 100]])            # December months only
         self.assertEqual(listed["latest"]["month"], "2025-06-01")
+
+    def test_missing_eps_population_cannot_be_presented_as_reported_company_profit(self):
+        # Independent example: A has $60bn cap and $3bn normalized earnings;
+        # B has $20bn cap but no EPS, so MSCI excludes B from the P/E ratio.
+        # The printed P/E is 20 while total index cap/P-E is $4bn, which is
+        # neither A's $3bn earnings nor verified A+B reported net profit.
+        points = {role: [] for role in G03.inputs}
+        points["acwi_mkt_cap"] = [(date(2024, 12, 1), 80_000.0)]  # USD millions
+        points["acwi_pe"] = [(date(2024, 12, 1), 20.0)]
+        points["world_gdp"] = [(date(2024, 1, 1), 2e12)]
+        computed = G03.compute(points, {})
+        proxy = computed.values["listed_earnings"]
+        self.assertEqual(proxy["history"], [["2024-12-01", 4.0]])
+        self.assertEqual(proxy["share_of_gdp"], [["2024", 0.2]])
+        self.assertEqual(proxy.get("measure"), "implied_index_earnings_proxy")
+        self.assertIs(proxy.get("reported_company_profit"), False)
+        self.assertIs(proxy.get("cap_and_pe_population_match_verified"), False)
+        self.assertEqual(proxy.get("methodology_url"),
+            "https://www.msci.com/indexes/documents/methodology/0_MSCI_Fundamental_Data_Methodology_20240625.pdf")
+        self.assertIn("normalized", computed.transforms[0]["params"]["note"])
+        self.assertIn("unverified", computed.transforms[0]["params"]["note"])
 
     def test_alternatives_name_the_corpus_variants_that_supply_them(self):
         from finance_dashboard.research_corpus import load_research_corpus

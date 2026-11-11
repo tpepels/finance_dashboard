@@ -5,6 +5,15 @@
  *  - Thermometers: each economy on a track spanning its own history, with zones and its own mean.
  */
 import { entityColour, entityName, palette, type Theme } from './chartKit';
+import type { ComponentProps } from 'react';
+
+/** Wide research figures remain readable and keyboard-scrollable on narrow screens. */
+function ResearchGraphic(props: ComponentProps<'svg'>) {
+  return <div className="hero-scroll" tabIndex={0} role="group" aria-label="Scrollable research graphic">
+    <span className="graphic-scroll-cue">Scroll horizontally to see the full chart</span>
+    <svg {...props}/>
+  </div>;
+}
 
 export const scale = (d0: number, d1: number, r0: number, r1: number) =>
   (value: number) => r0 + (value - d0) / (d1 - d0) * (r1 - r0);
@@ -56,7 +65,7 @@ export function ReturnRuler({ theme, equity, markers }: {
   const H = 150 + (Math.max(0, ...rows) + 1) * 38;
   const summary = [equity ? `${equity.label} ${pct(equity.p10)} to ${pct(equity.p90)}, median ${pct(equity.p50)}` : '',
     ...markers.map(m => `${m.label} ${pct(m.value, 2)}`)].filter(Boolean).join('; ');
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Expected real return per year: ${summary}`}>
     {ticks(lo, hi, 0.02).map(t => <g key={t}>
       <line x1={x(t)} x2={x(t)} y1={axisY - 4} y2={axisY + 4} stroke={c.axis}/>
@@ -95,7 +104,7 @@ export function ReturnRuler({ theme, equity, markers }: {
           stroke={c.surface} strokeWidth="5" paintOrder="stroke">{pct(m.value, 2)}</text>
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 
@@ -115,7 +124,7 @@ export function Thermometers({ theme, title, unit, rows, zones = [] }: {
   const H = rows.length * rowH + 30;
   const zoneFill = (i: number) => i === 0 ? (theme === 'dark' ? 'rgba(201,133,0,0.22)' : 'rgba(237,161,0,0.20)')
     : (theme === 'dark' ? 'rgba(230,103,103,0.26)' : 'rgba(227,73,72,0.20)');
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}, each economy within its own history: ${rows.map(r =>
       `${name(r)} ${show(r, r.latest)} (own range ${show(r, r.min)} to ${show(r, r.max)})`).join('; ')}`}>
     <text x={left} y={14} fill={c.muted} fontSize="11">lowest in its history</text>
@@ -144,7 +153,7 @@ export function Thermometers({ theme, title, unit, rows, zones = [] }: {
       </g>;
     })}
     <text x={nameW - 120} y={H - 4} fill={c.muted} fontSize="11">{`${title}. Tick: own long-run mean. Dot: latest.`}</text>
-  </svg>;
+  </ResearchGraphic>;
 }
 
 /** Spread label positions so neighbours are at least `gap` apart (input order kept). */
@@ -170,7 +179,7 @@ export function GrowthStrip({ theme, rows }: { theme: Theme; rows: StripRow[] })
   const lo = Math.floor(Math.min(...values)) - 1, hi = Math.ceil(Math.max(...values)) + 1;
   const x = scale(lo, hi, left, right);
   const H = top + rows.length * rowH + 30;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Real growth, latest year within each region's decade: ${rows.map(r => `${entityName(r.area)} ${r.latest.toFixed(1)}% in ${r.year}`).join('; ')}`}>
     {ticks(lo, hi, hi - lo > 12 ? 4 : 2).map(t => <g key={t}>
       <line x1={x(t)} x2={x(t)} y1={top - 10} y2={H - 26} stroke={t === 0 ? c.zero : c.grid} strokeWidth={t === 0 ? 1.5 : 1}/>
@@ -195,7 +204,7 @@ export function GrowthStrip({ theme, rows }: { theme: Theme; rows: StripRow[] })
           stroke={c.surface} strokeWidth="4" paintOrder="stroke">{`${r.latest.toFixed(1)}%`}</text>
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type ChangeItem = { key: string; name: string; latest: number | null; as_of: string | null };
@@ -209,7 +218,7 @@ export function ChangeBars({ theme, items }: { theme: Theme; items: ChangeItem[]
   const x = scale(-reach, reach, left, right);
   const H = top + items.length * rowH + 16;
   const label = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(Math.abs(v) < 0.1 ? 1 : 0)}%`;
-  return <svg className="hero-svg hero-svg-map" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg hero-svg-map" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`12-month price change: ${items.map(i => `${i.name} ${i.latest === null ? 'no data' : label(i.latest)}`).join('; ')}`}>
     <line x1={x(0)} x2={x(0)} y1={top - 6} y2={H - 10} stroke={c.zero} strokeWidth="1.5"/>
     {items.map((item, i) => {
@@ -225,7 +234,7 @@ export function ChangeBars({ theme, items }: { theme: Theme; items: ChangeItem[]
         </>}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 const pp = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)} pp`;
@@ -246,7 +255,7 @@ export function RateLadder({ theme, banks, target, gaps }: {
   const reach = Math.max(0.5, ...gaps.map(g => Math.abs(g.value ?? 0))) * 1.2;
   const gx = scale(-reach, reach, left, right);
   const H = gapTop + gaps.length * 36 + 14;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Policy rates now and a year ago: ${banks.map(b => `${b.name} ${b.latest ?? 'n/a'}% (a year ago ${b.year_ago ?? 'n/a'}%)`).join('; ')}`}>
     <text x={left} y={14} fill={c.muted} fontSize="11">ring: a year ago · dot: latest</text>
     {ticks(0, hi, hi > 6 ? 2 : 1).map(t => <g key={t}>
@@ -287,7 +296,7 @@ export function RateLadder({ theme, banks, target, gaps }: {
         </>}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type YieldParts = { date: string; nominal: number; real: number; breakeven: number };
@@ -302,7 +311,7 @@ export function YieldSplit({ theme, now, yearAgo }: { theme: Theme; now: YieldPa
   const lo = Math.min(0, ...all), hi = Math.max(...all) * 1.15;
   const y = scale(lo, hi, base, top);
   const realColour = c.series[0], beColour = c.series[1];
-  return <svg className="hero-svg hero-svg-map" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg hero-svg-map" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`US 10-year yield split: ${bars.map(b => `${b.label} ${b.parts.nominal.toFixed(2)}% = real ${b.parts.real.toFixed(2)}% + breakeven ${b.parts.breakeven.toFixed(2)}%`).join('; ')}`}>
     <line x1={40} x2={W - 160} y1={y(0)} y2={y(0)} stroke={c.zero} strokeWidth="1.5"/>
     {bars.map((b, i) => {
@@ -330,7 +339,7 @@ export function YieldSplit({ theme, now, yearAgo }: { theme: Theme; now: YieldPa
         <text y={110} fill={c.ink} fontSize="13" fontWeight="700">{`breakeven ${pp(now.breakeven - yearAgo.breakeven)}`}</text>
       </>}
     </g>
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type CurrencyRow = { currency: string; move_12m: number | null; move_as_of: string | null; gap: number | null; gap_as_of: string | null };
@@ -352,7 +361,7 @@ export function CurrencyRows({ theme, rows }: { theme: Theme; rows: CurrencyRow[
       <text x={v >= 0 ? x(v) + 8 : x(v) - 8} y={cy + 5} textAnchor={v >= 0 ? 'start' : 'end'} fill={c.ink} fontSize="13"
         fontWeight="700" stroke={c.surface} strokeWidth="4" paintOrder="stroke">{text}</text>
     </g>;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`The euro against other currencies: ${rows.map(r => `${r.currency}: euro ${r.move_12m === null ? 'no data' : `${r.move_12m.toFixed(1)}%`} over 12 months, rate gap ${r.gap ?? 'n/a'} pp`).join('; ')}`}>
     <text x={mx(0)} y={16} textAnchor="middle" fill={c.muted} fontSize="11">euro's move over 12 months (stronger →)</text>
     <text x={gx(0)} y={16} textAnchor="middle" fill={c.muted} fontSize="11">rate gap: ECB minus the other bank</text>
@@ -366,7 +375,7 @@ export function CurrencyRows({ theme, rows }: { theme: Theme; rows: CurrencyRow[
         {bar(r.gap, gx, cy, 'gap', r.gap === null ? '' : pp(r.gap))}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 const ppText = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} pp`;
@@ -380,7 +389,7 @@ export function CreditVsTrend({ theme, rows }: { theme: Theme; rows: TrendRow[] 
   const hi = Math.ceil(Math.max(100, ...rows.flatMap(r => [r.ratio, r.trend])) / 50) * 50;
   const x = scale(0, hi, left, right);
   const H = top + rows.length * rowH + 26;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Private credit to GDP against its trend: ${rows.map(r => `${entityName(r.area)} ${r.ratio.toFixed(0)}% against a trend of ${r.trend.toFixed(0)}%`).join('; ')}`}>
     <text x={left} y={14} fill={c.muted} fontSize="11">tick: BIS long-term trend · dot: credit to GDP now (% of GDP)</text>
     {ticks(0, hi, 50).map(t => <g key={t}>
@@ -402,7 +411,7 @@ export function CreditVsTrend({ theme, rows }: { theme: Theme; rows: TrendRow[] 
         {r.ratio_change_5y !== null && <text x={right + 14} y={cy + 15} fill={c.secondary} fontSize="12">{`${ppText(r.ratio_change_5y)} in 5 years`}</text>}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type DumbbellRow = { key: string; label: string; entity: string; back: number | null; latest: number; mean?: number };
@@ -414,7 +423,7 @@ export function Dumbbells({ theme, rows, unit, legend, title }: { theme: Theme; 
   const hi = Math.ceil(Math.max(...rows.flatMap(r => [r.latest, r.back ?? r.latest, r.mean ?? 0])) / 5) * 5 + 5;
   const x = scale(0, hi, left, right);
   const H = top + rows.length * rowH + 26;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title ?? 'Five years ago and now'} (${unit}): ${rows.map(r => `${r.label} ${r.back ?? 'n/a'} to ${r.latest}`).join('; ')}`}>
     <text x={left} y={14} fill={c.muted} fontSize="11">{legend ?? `ring: five years ago · dot: now · tick: own long-run mean (${unit})`}</text>
     {ticks(0, hi, hi > 30 ? 10 : 5).map(t => <g key={t}>
@@ -436,7 +445,7 @@ export function Dumbbells({ theme, rows, unit, legend, title }: { theme: Theme; 
           {`${change >= 0 ? '+' : '−'}${Math.abs(change).toFixed(1)}`}</text>}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type Part = { key: string; label: string; value: number };
@@ -456,7 +465,7 @@ export function PartsBar({ theme, title, parts, total }: { theme: Theme; title: 
     return { ...p, from, to: from + Math.abs(p.value), colour: c.series[slots[i % slots.length]] };
   });
   const labelX = nudge(placed.map(p => (x(p.from) + x(p.to)) / 2), 110);
-  return <svg className="hero-svg" viewBox={`0 0 ${W} 150`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} 150`} role="img"
     aria-label={`${title}: ${parts.map(p => `${p.label} ${p.value.toFixed(2)}`).join('; ')}; total ${total.toFixed(2)}`}>
     <text x={left} y={18} fill={c.ink} fontSize="13" fontWeight="700">{title}</text>
     <text x={right} y={18} textAnchor="end" fill={c.ink} fontSize="13" fontWeight="700">{`total ${total < 0 ? '−' : '+'}${Math.abs(total).toFixed(2)}`}</text>
@@ -471,7 +480,7 @@ export function PartsBar({ theme, title, parts, total }: { theme: Theme; title: 
       <text x={labelX[i] + 10} y={barY + barH + 35} fill={c.ink} fontSize="12">{p.label}</text>
       <text x={labelX[i] + 10} y={barY + barH + 50} fill={c.secondary} fontSize="12">{`${p.value >= 0 ? '+' : '−'}${Math.abs(p.value).toFixed(2)}`}</text>
     </g>)}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type SectorRow = { area: string; as_of: string; household: number; corporate: number; government: number | null; government_year: string | null };
@@ -484,7 +493,7 @@ export function SectorStack({ theme, rows }: { theme: Theme; rows: SectorRow[] }
   const x = scale(0, hi, left, right);
   const H = top + rows.length * rowH + 30;
   const colours = { household: c.series[0], corporate: c.series[1], government: c.series[6] };
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Debt by sector, % of GDP: ${rows.map(r => `${entityName(r.area)} households ${r.household.toFixed(0)}, companies ${r.corporate.toFixed(0)}, government ${r.government === null ? 'not available' : r.government.toFixed(0)}`).join('; ')}`}>
     {(['household', 'corporate', 'government'] as const).map((k, i) => <g key={k} transform={`translate(${left + i * 150}, 12)`}>
       <rect width="12" height="12" rx="3" fill={colours[k]}/><text x={18} y={11} fill={c.ink} fontSize="12">{{ household: 'households', corporate: 'companies', government: 'government' }[k]}</text></g>)}
@@ -505,7 +514,7 @@ export function SectorStack({ theme, rows }: { theme: Theme; rows: SectorRow[] }
         {r.government === null && <text x={x(r.household + r.corporate) + 52} y={cy + 5} fill={c.muted} fontSize="11">no free government series</text>}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type PeRow = { region: string; as_of: string; trailing: number; forward: number | null; trailing_min: number; trailing_max: number; months: number };
@@ -520,7 +529,7 @@ export function PeDots({ theme, rows }: { theme: Theme; rows: PeRow[] }) {
   const hi = Math.ceil(Math.max(...rows.flatMap(r => [r.trailing_max, r.trailing, r.forward ?? 0])) / 5) * 5 + 5;
   const x = scale(0, hi, left, right);
   const H = top + rows.length * rowH + 26;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Price to earnings by region: ${rows.map(r => `${REGION_LABEL[r.region] ?? r.region} trailing ${r.trailing}, forward ${r.forward ?? 'n/a'}`).join('; ')}`}>
     <text x={left} y={14} fill={c.muted} fontSize="11">dot: trailing P/E · ring: forward P/E · bar: range in archived factsheets</text>
     {ticks(0, hi, 5).map(t => <g key={t}>
@@ -540,7 +549,7 @@ export function PeDots({ theme, rows }: { theme: Theme; rows: PeRow[] }) {
           strokeWidth="4" paintOrder="stroke">{r.trailing.toFixed(1)}</text>
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type StrengthCell = { horizon_years: number; era: string; windows: number; effective_windows: number; rho: number | null };
@@ -555,7 +564,7 @@ export function StrengthGrid({ theme, cells, eras, horizons }: { theme: Theme; c
   const step = (rho: number) => Math.max(0, Math.min(ramp.length - 1, Math.floor(Math.max(0, rho) * ramp.length)));
   const fill = (rho: number) => ramp[step(rho)];
   const ink = (rho: number) => step(rho) >= 2 ? '#ffffff' : '#14232b';
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`How well valuation ranked later returns: ${cells.map(x => `${x.horizon_years} years, ${x.era}: ${x.rho === null ? 'too few windows' : x.rho.toFixed(2)}`).join('; ')}`}>
     {eras.map((era, i) => <text key={era} x={left + i * cw + cw / 2} y={top - 12} textAnchor="middle" fill={c.ink} fontSize="13" fontWeight="700">{era}</text>)}
     {horizons.map((h, j) => <text key={h} x={left - 12} y={top + j * ch + ch / 2 + 4} textAnchor="end" fill={c.ink} fontSize="13">{`next ${h} years`}</text>)}
@@ -573,7 +582,7 @@ export function StrengthGrid({ theme, cells, eras, horizons }: { theme: Theme; c
       </g>;
     })}
     <text x={left} y={H - 6} fill={c.muted} fontSize="11">0 = no ranking power · 1 = cheaper starts always ranked better returns</text>
-  </svg>;
+  </ResearchGraphic>;
 }
 
 const PHASES = [
@@ -593,7 +602,7 @@ export function PhaseBoard({ theme, rows }: { theme: Theme; rows: ClockRow[] }) 
   const levels = rows.flatMap(r => r.trail.map(t => t[1]));
   const reach = Math.max(0.5, ...levels.map(Math.abs));
   const tint = { recovery: c.series[2], expansion: c.series[0], slowdown: c.series[3], contraction: c.series[7] } as Record<string, string>;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Cycle phase by economy: ${rows.map(r => `${entityName(r.area)} ${r.phase}, ${r.trail.at(-1)![1].toFixed(2)} from trend`).join('; ')}`}>
     {columns.map((col, i) => <g key={col.key} transform={`translate(${i * colW}, 0)`}>
       <rect x={4} y={0} width={colW - 8} height={H} rx="8" fill={tint[col.key]} fillOpacity="0.07"/>
@@ -615,7 +624,7 @@ export function PhaseBoard({ theme, rows }: { theme: Theme; rows: ClockRow[] }) 
         </g>;
       })}
     </g>)}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type HedgeEffect = { return_pp: number | null; volatility_pp: number | null; max_drawdown_pp: number | null; months: number };
@@ -630,7 +639,7 @@ export function EffectDials({ theme, effect }: { theme: Theme; effect: HedgeEffe
   ];
   const W = 760, R = 90, cy = 120;
   const fmt = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} pp`;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} 210`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} 210`} role="img"
     aria-label={`What hedging changed over ${effect.months} months: ${dials.map(d => `${d.label} ${d.value === null ? 'n/a' : fmt(d.value)}`).join('; ')}`}>
     {dials.map((d, i) => {
       const cx = 130 + i * 250;
@@ -655,7 +664,7 @@ export function EffectDials({ theme, effect }: { theme: Theme; effect: HedgeEffe
           {better ? 'hedging helped' : 'hedging hurt'}</text>}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 /** Per country, inflation (red) and real growth (blue) side by side for each recent year, with the 2% target. */
@@ -667,7 +676,7 @@ export function GrowthInflationBars({ theme, series }: { theme: Theme; series: R
   const lo = Math.floor(Math.min(...values)) - 1, hi = Math.ceil(Math.max(...values)) + 1;
   const y = scale(lo, hi, bottom, top);
   const W = Math.max(1, entries.length) * panelW + 40;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Inflation and growth by year: ${entries.map(([a, pts]) => `${entityName(a)} ${pts.map(p => `${p[0]} growth ${p[1].toFixed(1)}%, inflation ${p[2].toFixed(1)}%`).join(', ')}`).join('; ')}`}>
     {ticks(lo, hi, hi - lo > 12 ? 4 : 2).map(t => <g key={t}>
       <line x1={36} x2={W - 4} y1={y(t)} y2={y(t)} stroke={t === 0 ? c.zero : c.grid}/>
@@ -695,7 +704,7 @@ export function GrowthInflationBars({ theme, series }: { theme: Theme; series: R
       <rect width="12" height="12" rx="2" fill={c.negative}/><text x={18} y={11} fill={c.ink} fontSize="13">inflation</text>
       <rect x={110} width="12" height="12" rx="2" fill={c.positive}/><text x={128} y={11} fill={c.ink} fontSize="13">real growth</text>
     </g>
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type ExternalRow = { area: string; current_account_gdp: number | null; current_account_year: string | null;
@@ -718,7 +727,7 @@ export function ExternalBars({ theme, rows }: { theme: Theme; rows: ExternalRow[
       <text x={v >= 0 ? x(v) + 8 : x(v) - 8} y={cy + 5} textAnchor={v >= 0 ? 'start' : 'end'} fill={c.ink} fontSize="13"
         fontWeight="700" stroke={c.surface} strokeWidth="4" paintOrder="stroke">{fmt(v)}</text>
     </g>;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`External position, % of GDP: ${rows.map(r => `${entityName(r.area)} current account ${r.current_account_gdp ?? 'n/a'}, net position ${r.net_position_gdp === null ? 'n/a' : r.net_position_gdp.toFixed(1)}`).join('; ')}`}>
     <text x={cx(0)} y={16} textAnchor="middle" fill={c.muted} fontSize="11">current account, latest year (surplus →)</text>
     <text x={nx(0)} y={16} textAnchor="middle" fill={c.muted} fontSize="11">net foreign assets (creditor →)</text>
@@ -733,7 +742,7 @@ export function ExternalBars({ theme, rows }: { theme: Theme; rows: ExternalRow[
         {bar(r.net_position_gdp, nx, cy, 'net-position', r.net_position_year)}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type PairRow = { key: string; label: string; entity?: string; a: number | null; b: number | null };
@@ -756,7 +765,7 @@ export function PairBars({ theme, title, unit, legend, rows, signed = true }: { 
     <text x={v >= 0 ? x(v) + 6 : x(v) - 6} y={y0 + 11} textAnchor={v >= 0 ? 'start' : 'end'} fill={c.ink} fontSize="12" fontWeight="700"
       stroke={c.surface} strokeWidth="4" paintOrder="stroke">{fmt(v)}</text>
   </g>;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}: ${rows.map(r => `${r.label} ${legend[0]} ${r.a ?? 'n/a'}, ${legend[1]} ${r.b ?? 'n/a'}`).join('; ')}`}>
     {legend.map((name, i) => <g key={name} transform={`translate(${left + legendAt[i]}, 12)`}>
       <rect width="12" height="12" rx="3" fill={colours[i]}/><text x={18} y={11} fill={c.ink} fontSize="13">{name}</text></g>)}
@@ -770,7 +779,7 @@ export function PairBars({ theme, title, unit, legend, rows, signed = true }: { 
         {bar(r.b, y0 + 18, 'b', colours[1])}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type ShareRow = { key: string; label: string; parts: { key: string; share: number }[] };
@@ -783,7 +792,7 @@ export function StackedShares({ theme, title, rows, labels }: { theme: Theme; ti
   const slots = [0, 1, 6, 3, 2, 4, 5, 7];
   const colour = (k: string) => k === 'remainder' ? c.muted : c.series[slots[keys.indexOf(k) % slots.length]];
   const H = top + rows.length * rowH + 10;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}: ${rows.map(r => `${r.label} ${r.parts.map(p => `${labels[p.key] ?? p.key} ${p.share.toFixed(0)}%`).join(', ')}`).join('; ')}`}>
     {keys.map((k, i) => <g key={k} transform={`translate(${left + (i % 4) * 140}, ${8 + Math.floor(i / 4) * 18})`}>
       <rect width="12" height="12" rx="3" fill={colour(k)}/><text x={18} y={11} fill={c.ink} fontSize="12">{labels[k] ?? k}</text></g>)}
@@ -806,7 +815,7 @@ export function StackedShares({ theme, title, rows, labels }: { theme: Theme; ti
         })}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type CorrelationCell = { pair: string; period: string; rho: number | null; months: number };
@@ -821,7 +830,7 @@ export function CorrelationGrid({ theme, cells, pairs, periods, labels }: {
   const blue = ['#2a78d6', '#86b6ef'], red = ['#e34948', '#f2a3a2'], mid = theme === 'dark' ? '#383835' : '#f0efec';
   const fill = (rho: number) => rho <= -0.3 ? blue[0] : rho <= -0.1 ? blue[1] : rho < 0.1 ? mid : rho < 0.3 ? red[1] : red[0];
   const ink = (rho: number) => Math.abs(rho) >= 0.3 ? '#ffffff' : (theme === 'dark' && Math.abs(rho) < 0.1 ? c.ink : '#14232b');
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`How often assets moved together: ${cells.map(x => `${labels[x.pair] ?? x.pair}, ${x.period}: ${x.rho === null ? 'too few months' : x.rho.toFixed(2)}`).join('; ')}`}>
     {periods.map((p, i) => <text key={p} x={left + i * cw + cw / 2} y={top - 14} textAnchor="middle" fill={c.ink} fontSize="12" fontWeight="700">
       {p.startsWith('Months stocks fell') ? 'Stock falls >5%' : p}</text>)}
@@ -841,7 +850,7 @@ export function CorrelationGrid({ theme, cells, pairs, periods, labels }: {
       </g>;
     })}
     <text x={left} y={H - 6} fill={c.muted} fontSize="11">blue: one tends to rise when the other falls (diversifies) · grey: unrelated · red: they move together</text>
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type Episode = { peak: string; trough: string; recovery: string | null; depth: number; months_down: number;
@@ -854,7 +863,7 @@ export function EpisodeBars({ theme, episodes }: { theme: Theme; episodes: Episo
   const deepest = Math.min(-0.2, ...episodes.map(e => e.depth));
   const x = scale(deepest * 1.1, 0, left, right);
   const H = top + episodes.length * rowH + 10;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`World equity falls deeper than 15%: ${episodes.map(e => `${e.peak} to ${e.trough}, ${(e.depth * 100).toFixed(0)}%, ${e.recovery ? `recovered ${e.recovery}` : 'not yet recovered'}`).join('; ')}`}>
     <text x={left} y={16} fill={c.muted} fontSize="11">depth from peak to trough</text>
     <text x={right + 20} y={16} fill={c.muted} fontSize="11">months falling · months to recover</text>
@@ -874,7 +883,7 @@ export function EpisodeBars({ theme, episodes }: { theme: Theme; episodes: Episo
       </g>;
     })}
     <line x1={x(0)} x2={x(0)} y1={top - 4} y2={H - 6} stroke={c.zero} strokeWidth="1.5"/>
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type Variant = { classification: string; wage: string; value: number };
@@ -892,7 +901,7 @@ export function VariantSpread({ theme, title, rows, format, wageLabels }: {
   const present = new Set(rows.flatMap(r => r.variants.map(v => v.wage)));
   const wages = Object.keys(wageLabels).filter(w => present.has(w));
   const H = top + rows.length * rowH + 30;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}: ${rows.map(r => `${r.label} ${format(r.min)} to ${format(r.max)}`).join('; ')}`}>
     {wages.map((w, i) => <g key={w} transform={`translate(${legendOffsets(wages.map(k => wageLabels[k]), 6.6, 22)[i]}, 10)`}>
       <circle cx="6" cy="6" r="6" fill={c.series[i]}/><text x={18} y={11} fill={c.ink} fontSize="12">{wageLabels[w]}</text></g>)}
@@ -917,7 +926,7 @@ export function VariantSpread({ theme, title, rows, format, wageLabels }: {
         <text x={right + 16} y={cy + 5} fill={c.ink} fontSize="13" fontWeight="700">{`${format(r.min)}–${format(r.max)}`}</text>
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 /** The largest holdings as ranked bars with their share of the fund. */
@@ -927,7 +936,7 @@ export function RankedBars({ theme, title, rows }: { theme: Theme; title: string
   const hi = Math.max(1, ...rows.map(r => r.pct)) * 1.1;
   const x = scale(0, hi, left, right);
   const H = top + rows.length * rowH + 6;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`${title}: ${rows.map(r => `${r.name} ${r.pct.toFixed(1)}%`).join('; ')}`}>
     {rows.map((r, i) => {
       const y0 = top + i * rowH;
@@ -937,7 +946,7 @@ export function RankedBars({ theme, title, rows }: { theme: Theme; title: string
         <text x={x(r.pct) + 6} y={y0 + 15} fill={c.ink} fontSize="12" fontWeight="700">{`${r.pct.toFixed(1)}%`}</text>
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type Impact = { key: string; label: string; impact_pct: number };
@@ -950,7 +959,7 @@ export function ImpactBars({ theme, rows }: { theme: Theme; rows: Impact[] }) {
   const x = scale(-reach, reach * 0.3, left, right);
   const H = top + rows.length * rowH + 24;
   const fmt = (v: number) => `${v < 0 ? '−' : '+'}${Math.abs(v).toFixed(1)}%`;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Effect on your portfolio: ${rows.map(r => `${r.label} ${fmt(r.impact_pct)}`).join('; ')}`}>
     <line x1={x(0)} x2={x(0)} y1={top} y2={H - 20} stroke={c.secondary}/>
     <text x={x(0)} y={H - 4} textAnchor="middle" fill={c.muted} fontSize="12">no change</text>
@@ -964,7 +973,7 @@ export function ImpactBars({ theme, rows }: { theme: Theme; rows: Impact[] }) {
           fontSize="13" fontWeight="700">{fmt(r.impact_pct)}</text>
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 export type RuleResult = { key: string; label: string; final: number; max_drawdown: number; costs: number; taxes?: number; rebalances: number };
@@ -977,7 +986,7 @@ export function RuleBars({ theme, rules, chosen }: { theme: Theme; rules: RuleRe
   const x = scale(0, hi, left, right);
   const H = top + rules.length * rowH + 4;
   const eur = (v: number) => `€${Math.round(v).toLocaleString('en-US')}`;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Rebalancing rules: ${rules.map(r => `${r.label} ends at ${eur(r.final)}, deepest fall ${pct(r.max_drawdown, 0)}`).join('; ')}`}>
     <text x={left} y={16} fill={c.muted} fontSize="12">ending value</text>
     <text x={540} y={16} fill={c.muted} fontSize="12">deepest fall</text>
@@ -996,7 +1005,7 @@ export function RuleBars({ theme, rules, chosen }: { theme: Theme; rules: RuleRe
           ? `${eur(r.costs)} · ${eur(r.taxes ?? 0)} · ${r.rebalances}` : `${eur(r.costs)} · ${r.rebalances}`}</text>
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 type Signal = { month: string; offset: number } | null;
@@ -1026,7 +1035,7 @@ export function SignalTimeline({ theme, recessions, falseAlarms, window }: { the
   };
   const legend = [['curve', 'yield curve first inverted'], ['sahm', 'Sahm rule reached 0.5'], ['announced', 'NBER announced the recession']] as const;
   const at = legendOffsets(legend.map(l => l[1]), 6.8, 26);
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Signals around each recession: ${recessions.map(r => `${r.start.slice(0, 4)}: curve ${r.curve_inverted ? `${r.curve_inverted.offset} months` : 'none'}, Sahm ${r.sahm_triggered ? `${r.sahm_triggered.offset} months` : 'none'}`).join('; ')}`}>
     {legend.map(([kind, text], i) => <g key={kind} transform={`translate(${left + at[i]}, 10)`}>
       {mark(kind, 6, 7, text, false)}<text x={18} y={12} fill={c.ink} fontSize="12">{text}</text></g>)}
@@ -1053,7 +1062,7 @@ export function SignalTimeline({ theme, recessions, falseAlarms, window }: { the
       {alarmLines.map((a, i) => <g key={a.text} transform={`translate(0, ${18 + i * 20})`}>
         {mark(a.kind, 8, 0, a.text, false)}<text x={22} y={4} fill={c.ink} fontSize="12">{a.text}</text></g>)}
     </g>}
-  </svg>;
+  </ResearchGraphic>;
 }
 
 type Recovery = { peak: string; trough: string; depth: number; months_down: number; months_to_recover: number | null } | null;
@@ -1073,7 +1082,7 @@ export function RecoveryBars({ theme, episodes, labels }: { theme: Theme; episod
   const H = top + rows.length * rowH + 26;
   const at = legendOffsets(keys.map(k => labels[k]), 6.8, 26);
   const fmt = (r: NonNullable<Recovery>) => `−${Math.abs(r.depth) < 0.01 ? (Math.abs(r.depth) * 100).toFixed(1) : Math.round(Math.abs(r.depth) * 100)}% · ${r.months_to_recover === null ? 'not yet' : `${r.months_to_recover} mo`}`;
-  return <svg className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+  return <ResearchGraphic className="hero-svg" viewBox={`0 0 ${W} ${H}`} role="img"
     aria-label={`Months to regain the pre-recession peak: ${episodes.map(e => `${e.start.slice(0, 4)} ${keys.filter(k => e.measures[k]).map(k => `${labels[k]} ${fmt(e.measures[k]!)}`).join(', ')}`).join('; ')}`}>
     {keys.map((k, i) => <g key={k} transform={`translate(${left + at[i]}, 8)`}>
       <rect width="12" height="12" rx="3" fill={c.series[i]}/><text x={18} y={11} fill={c.ink} fontSize="12">{labels[k]}</text></g>)}
@@ -1102,5 +1111,5 @@ export function RecoveryBars({ theme, episodes, labels }: { theme: Theme; episod
         })}
       </g>;
     })}
-  </svg>;
+  </ResearchGraphic>;
 }

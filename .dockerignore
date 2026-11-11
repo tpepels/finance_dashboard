@@ -6,14 +6,15 @@ __pycache__
 .env
 .env.*
 !.env.example
-# Focused Python tests are copied into the build stage for local verification.
-# Do not exclude tests here: Dockerfile runs them during image build.
+# Python tests are compiled in the image; the full offline suite runs in CI.
 node_modules
 
 frontend/node_modules/
 frontend/dist/
 frontend/public/data/
 frontend/.vite/
+tests/browser/node_modules/
+output/
 
 # Never send the local database or collected private data into Docker build context
 data-local/
@@ -21,3 +22,4 @@ data-local/
 *.sqlite3-wal
 *.sqlite3-shm
 build/
+.superpowers/

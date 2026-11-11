@@ -40,6 +40,28 @@ def f03_fixture():
 
 
 class P06F03EngineTests(unittest.TestCase):
+    def test_incomplete_or_gapped_horizon_does_not_supply_a_calibration_window(self):
+        # A full 12-month outcome requires 13 adjacent monthly levels.
+        for real in (series([100] * 12), {key: value for key, value in series([100] * 13).items()
+                                          if key != (2020, 6)}):
+            with self.subTest(months=list(real)):
+                result = p06_expected_returns(series([25] * 13), real, {}, {}, {}, horizon_years=1)
+                self.assertAlmostEqual(result["equity_us"]["earnings_yield"], 0.04)
+                self.assertEqual(result["equity_us"]["calibration_windows"], 0)
+                self.assertIsNone(result["equity_us"]["range_real"])
+
+    def test_literal_yield_units_snapshot_and_trailing_inflation_deflation(self):
+        result = p06_expected_returns({}, {}, series([5.0]),
+                                      {"us_nominal_10y": (date(2020, 1, 1), 4.0),
+                                       "us_real_10y": (date(2020, 1, 1), 1.5),
+                                       "ea_aaa_10y": (date(2020, 1, 1), 4.0)},
+                                      series([100.0] * 12 + [110.0]))
+        self.assertAlmostEqual(result["equity_world_snapshot"]["earnings_yield"], 0.05)
+        self.assertEqual(result["equity_world_snapshot"]["snapshots"], 1)
+        self.assertAlmostEqual(result["bonds"]["us_breakeven_10y"]["yield"], 0.025)
+        self.assertAlmostEqual(result["ea_inflation"]["rate"], 0.1)
+        self.assertAlmostEqual(result["bonds"]["ea_aaa_10y_real_trailing"]["yield"], -0.0545454545454545)
+
     def test_equity_range_from_realised_minus_starting_earnings_yield(self):
         months = 12 * 10 + 1
         result = p06_expected_returns(series([20.0] * months), series([1.06 ** (i / 12) for i in range(months)]),

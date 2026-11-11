@@ -117,7 +117,27 @@ def _summary(items: list[dict]) -> dict:
         "collection_deferred", "refresh_deferred_with_data",
         "refresh_failed_with_data", "stale", "source_unresolved",
     } for item in items)
+    result['observations'] = {state: sum(item['observation_state'] == state for item in items)
+                              for state in ('current', 'stale', 'missing')}
     return result
+
+
+def _next_action(*, mapped, count, stale, complete, status, error):
+    if not mapped:
+        return 'Resolve the source identity before collection.'
+    if error in ('provider_http_401', 'provider_http_403'):
+        return 'Access was refused; configure authorized access before retrying.'
+    if status == 'deferred':
+        return 'Wait for the publisher budget or cooldown before the next collection attempt.'
+    if status == 'failed':
+        return 'Review the recorded failure and collector; existing observations are preserved.'
+    if not count:
+        return 'Collect the original history before using this source.'
+    if complete:
+        return 'Complete for the named pinned release; check the publisher for a newer edition.'
+    if stale:
+        return 'Check the latest publisher release and refresh this history if new observations exist.'
+    return 'Within the expected source-date window; continue scheduled collection.'
 
 
 def _internal_calendar_gaps(first: date | None, last: date | None,
@@ -179,6 +199,13 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     regular_cadence = provider not in (
         "MSCI_PUBLISHED_TOP10", "MSCI_REGIONAL_FACTSHEETS", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
         "SIBLIS_WORLD_EARNINGS_YIELD", "CORGANO_SPOT")
+    stale = lag is not None and lag > SOURCE_LAGS[frequency] and not is_complete_for_release
+    refresh_state = last['status'] if last else 'never'
+    # This is an engine dependency map, not a claim that every mapped input is
+    # accepted. Market/explorer-only histories can legitimately have no engine use.
+    from .engine.analyses import DEFINITIONS
+    used_by = sorted(aid for aid, definition in DEFINITIONS.items()
+                     if family == 'macro' and id in definition.inputs.values())
     return {
         "family": family, "id": id, "name": name, "provider": provider,
         "frequency": frequency, "state": state, "collection_enabled": configured,
@@ -198,6 +225,14 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         "unobserved_internal_periods": _internal_calendar_gaps(
             oldest, latest, frequency, int(count)) if regular_cadence else None,
         "regular_cadence_assumed": regular_cadence,
+        'observation_state': 'missing' if count == 0 else 'stale' if stale else 'current',
+        'freshness_basis': 'missing' if count == 0 else 'pinned_release' if is_complete_for_release else 'calendar_age',
+        'expected_lag_days': SOURCE_LAGS[frequency],
+        'refresh_state': refresh_state,
+        'research_questions': used_by,
+        'next_action': _next_action(mapped=mapped, count=count, stale=stale,
+                                    complete=is_complete_for_release, status=refresh_state,
+                                    error=last_error),
         "last_attempt_utc": last["started_at"].isoformat() if last else None,
         "last_attempt_state": last["status"] if last else "never",
         "last_success_utc": successful["ended_at"].isoformat()

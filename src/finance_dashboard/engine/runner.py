@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from ..service import current_observations
 from .acceptance import AcceptanceSnapshot, analysis_phase2
@@ -11,10 +12,21 @@ from .analyses import DEFINITIONS
 from .bundle import AnalysisDefinition, Computed, build_bundle
 
 
-def load_points(session: Session, definition: AnalysisDefinition) -> dict[str, list[tuple[date, float]]]:
+def load_points(session: Session, definition: AnalysisDefinition, snapshot=None) -> dict[str, list[tuple[date, float]]]:
     """Current observed values of each declared input, by role."""
-    return {role: [(row.period, float(row.value)) for row in current_observations(session, series_id)]
-            for role, series_id in definition.inputs.items()}
+    from ..comparative_corpus import observation_versions_digest, observation_values_digest
+    from .evidence_guard import AcceptedInputsChanged
+    result = {}
+    for role, series_id in definition.inputs.items():
+        rows = current_observations(session, series_id)
+        if snapshot is not None:
+            version = (snapshot.source_versions or {}).get(series_id)
+            value = (snapshot.source_values or {}).get(series_id)
+            if ((version is not None and observation_versions_digest(rows) != version)
+                    or (value is not None and observation_values_digest({r.period:r.value for r in rows}) != value)):
+                raise AcceptedInputsChanged('Observation versions changed since evidence assessment')
+        result[role] = [(row.period, float(row.value)) for row in rows]
+    return result
 
 
 def corpus_analysis(document: dict, analysis_id: str) -> dict | None:
@@ -49,10 +61,36 @@ def analysis_bundle(session: Session, analysis_id: str, *, snapshot: AcceptanceS
     if row is None:
         return None
     definition = DEFINITIONS.get(analysis_id) or AnalysisDefinition(analysis_id, {}, _not_computed)
-    return build_bundle(definition, points=load_points(session, definition), snapshot=snapshot,
+    if session.bind.dialect.name == 'sqlite' and not session.in_transaction():
+        session.connection().exec_driver_sql('BEGIN')
+    elif session.bind.dialect.name == 'postgresql' and not session.in_transaction():
+        session.execute(text('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY'))
+    if snapshot.evidence_state is not None and not snapshot.evidence_state.unchanged():
+        from .evidence_guard import AcceptedInputsChanged
+        raise AcceptedInputsChanged('Original evidence changed since assessment')
+    points = load_points(session, definition, snapshot)
+    bundle = build_bundle(definition, points=points, snapshot=snapshot,
                         corpus_analysis=row, catalog_series=catalog_series, view=view,
                         computed_at=datetime.now(timezone.utc),
                         artifacts=_load_artifacts(definition.artifacts, artifact_loader))
+    if 'figure_id' in view:
+        from .views import figure_capabilities, validate_view, render_figure, VIEW_FORMULAS
+        from .recessions import SERIES_ID, recession_periods
+        capabilities = figure_capabilities(analysis_id, catalog_series, bundle)
+        spec = validate_view(analysis_id, {k: v for k, v in view.items() if k != 'today'}, capabilities=capabilities)
+        chronology = recession_periods([(r.period, float(r.value)) for r in current_observations(session, SERIES_ID)]) if 'us_recessions' in spec.events else []
+        bundle['view'] = {'today': view.get('today'), **spec.model_dump()}
+        bundle['figure'] = render_figure(analysis_id, spec, points, bundle, capabilities=capabilities, recessions=chronology)
+        bundle['transforms'].append({'name': 'figure_' + spec.transform, 'formula': VIEW_FORMULAS[spec.transform],
+            'params': spec.model_dump()})
+        for event in spec.events:
+            reference = {'us_recessions': ('NBER US business-cycle dates (US context)', 'https://www.nber.org/research/business-cycle-dating'),
+                         'covid_shock': ('WHO COVID-19 public-health emergency chronology', 'https://www.who.int/europe/emergencies/situations/covid-19')}[event]
+            bundle['citations'].append({'id': 'view:' + event, 'label': reference[0], 'url': reference[1]})
+    if snapshot.evidence_state is not None and not snapshot.evidence_state.unchanged():
+        from .evidence_guard import AcceptedInputsChanged
+        raise AcceptedInputsChanged('Original evidence changed during computation')
+    return bundle
 
 
 def list_analyses(snapshot: AcceptanceSnapshot, corpus_document: dict) -> list[dict]:

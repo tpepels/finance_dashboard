@@ -127,7 +127,8 @@ class ArtifactRunnerTests(unittest.TestCase):
         with Session(memory_engine()) as session:
             bundle = analysis_bundle(session, "P01", snapshot=snap, corpus_document=document, catalog_series={},
                                      view={}, artifact_loader=broken)
-        self.assertEqual(bundle["values"], {"funds": []})
+        self.assertEqual(bundle["values"]["funds"], [])
+        self.assertIsNone(bundle["values"].get("owner_portfolio"))
 
 
 class EventArtifactTests(unittest.TestCase):
@@ -180,3 +181,51 @@ class L04FullExtensionTests(unittest.TestCase):
         self.assertEqual(prt["methods"]["klems_io"]["year"], 2021)
         self.assertEqual(prt["methods"]["klems_io"]["surplus_value"]["max"], 1.2)
         self.assertEqual(values["history"]["klems_io"]["PRT"]["wiod:comp"], [["2014-01-01", 1.3]])
+
+
+class CvmCoverageTests(unittest.TestCase):
+    def test_g03_shows_only_verified_native_reporter_coverage(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        import httpx
+        from finance_dashboard.cvm_profits import collect_cvm_annual_source
+        from finance_dashboard.engine.artifacts import load_artifact
+        from finance_dashboard.engine.analyses import G03
+        from test_cvm_profits import excerpt_package
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(
+                    200, content=excerpt_package(), request=request))) as client:
+                collect_cvm_annual_source(root=root, year=2025, client=client)
+            coverage = load_artifact("cvm_profit_coverage", evidence_root=root, holdings_root=root)
+            sample = coverage["sources"][0]
+            self.assertEqual((sample["year"], sample["filing_issuers"], sample["filing_versions"],
+                              sample["consolidated_income_issuers"]), (2025, 9, 12, 9))
+            self.assertEqual(sample.get("source_url"), "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip")
+            self.assertFalse(coverage["aggregate_produced"])
+            self.assertFalse(coverage["listed_population_verified"])
+            self.assertFalse(coverage["ultimate_parent_deduplication_verified"])
+            self.assertFalse(coverage["worldwide_population_verified"])
+            points = {role: [] for role in G03.inputs}
+            values = G03.compute(points, {}, {"cvm_profit_coverage": coverage}).values
+            self.assertEqual(values["listed_profit_coverage"], coverage)
+            self.assertEqual(values["listed_earnings"]["history"], [])
+
+    def test_missing_or_tampered_cvm_original_never_becomes_a_sample(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        import httpx
+        from finance_dashboard.bis import ProviderError
+        from finance_dashboard.cvm_profits import collect_cvm_annual_source
+        from finance_dashboard.engine.artifacts import load_artifact
+        from test_cvm_profits import excerpt_package
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertIsNone(load_artifact("cvm_profit_coverage", evidence_root=root, holdings_root=root))
+            with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(
+                    200, content=excerpt_package(), request=request))) as client:
+                acquired = collect_cvm_annual_source(root=root, year=2025, client=client)
+            original = root / "corporate-profits/cvm/2025" / acquired["bundle_digest"] / "original.zip"
+            original.write_bytes(original.read_bytes() + b"tampered")
+            with self.assertRaises(ProviderError):
+                load_artifact("cvm_profit_coverage", evidence_root=root, holdings_root=root)

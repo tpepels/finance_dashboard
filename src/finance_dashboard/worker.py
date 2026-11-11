@@ -13,8 +13,10 @@ import time
 from .providers import ProviderRouter, PROVIDER_CODES
 from .source_capture import SourceAcquisition
 from pathlib import Path
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 from .catalog import load_documents
-from .database import make_engine
+from .database import make_engine, IngestionRun
 from .service import IngestionService, safe_source_failure_code
 from .source_policy import PolicyDeferred
 from .refresh_coordinator import reserve_refresh
@@ -86,6 +88,20 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
             chosen = [sid for sid in client.supported_ids()
                       if (series_ids is None or sid in series_ids)
                       and (providers is None or client.definitions[sid]["provider"] in providers)]
+            # A publisher quota may be smaller than its catalogue. Restarting
+            # at the same ID every day would starve the tail indefinitely.
+            # Rotate completed attempts, including failures: otherwise a
+            # quota-sized permanently failing prefix would still monopolize
+            # every cycle. A policy deferral has not used a publisher attempt
+            # and must not move an unserved source behind those already tried.
+            with Session(engine) as session:
+                last_completed = dict(session.execute(
+                    select(IngestionRun.series_id, func.max(func.coalesce(
+                        IngestionRun.ended_at, IngestionRun.started_at)))
+                    .where(IngestionRun.series_id.in_(chosen), IngestionRun.status.in_(("success", "failed")))
+                    .group_by(IngestionRun.series_id)).all())
+            chosen.sort(key=lambda sid: (sid in last_completed,
+                                         last_completed.get(sid) or datetime.min, sid))
             tasks = [
                 RefreshTask(
                     family="macro", source_id=sid,
