@@ -440,8 +440,15 @@ try {
   await shown(mobile.getByRole('heading', { name: 'Dashboard', exact: true }));
   await mobile.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
   await screenshot(mobile, 'mobile-overview-light');
-  const utilityBounds = await mobile.getByRole('button', { name: 'Data & sync', exact: true }).boundingBox();
-  assert.ok(utilityBounds.x >= 0 && utilityBounds.x + utilityBounds.width <= 390, 'Data & sync remains reachable without horizontal navigation');
+  // The mobile toolbar deliberately hides Data & sync; it remains reachable through the one navigation menu.
+  await mobile.getByRole('button', { name: 'Menu', exact: true }).click();
+  const mobileSource = mobile.getByRole('link', { name: 'Source data', exact: true });
+  const utilityBounds = await mobileSource.boundingBox();
+  assert.ok(utilityBounds && utilityBounds.x >= 0 && utilityBounds.x + utilityBounds.width <= 390,
+    'Source data and sync remain reachable from the mobile navigation without horizontal scrolling');
+  await mobileSource.click();
+  await shown(mobile.locator('#source-coverage summary'));
+  await mobile.goto(seeded);
   await mobile.keyboard.press('Tab');
   assert.equal(await mobile.getByRole('link', { name: 'Skip to content', exact: true }).evaluate(element => element === document.activeElement), true);
   await mobile.keyboard.press('Enter');
