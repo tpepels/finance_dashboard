@@ -118,8 +118,14 @@ async function enabled(locator) {
 }
 const section = (page, id) => page.locator('section.decision-section').filter({ has: page.locator(`#q-${id}`) });
 const workspace = page => page.getByRole('region', { name: 'Saved figures', exact: true });
+async function navigate(page, name) {
+  const link = page.getByRole('link', { name, exact: true }).first();
+  if (!await link.isVisible()) await page.getByRole('button', { name: /Menu/ }).click();
+  await page.getByRole('link', { name, exact: true }).first().click();
+}
+
 async function openSaved(page, name) {
-  await page.getByRole('link', { name: 'Saved figures', exact: true }).click();
+  await navigate(page, 'Saved figures');
   await workspace(page).getByRole('button', { name: `Open ${name}`, exact: true }).click();
   const found = workspace(page).getByRole('region', { name: 'Configure C01', exact: true }).filter({ visible: true });
   await shown(found.getByLabel('Figure name', { exact: true }));
@@ -137,14 +143,14 @@ try {
   const emptyContext = await context(empty);
   const emptyPage = await emptyContext.newPage();
   await emptyPage.goto(empty);
-  await shown(emptyPage.getByRole('heading', { name: 'Overview', exact: true }));
-  await emptyPage.getByRole('link', { name: 'Saved figures', exact: true }).click();
+  await shown(emptyPage.getByRole('heading', { name: 'Dashboard', exact: true }));
+  await navigate(emptyPage, 'Saved figures');
   await shown(emptyPage.getByText('No saved figures yet.', { exact: true }));
-  await emptyPage.getByRole('link', { name: 'Overview', exact: true }).click();
+  await navigate(emptyPage, 'Dashboard');
   await shown(emptyPage.getByText('C01 is not computed: research state is incomplete.'));
   await emptyPage.goto(`${empty}/#q-C01`);
   await shown(section(emptyPage, 'C01').getByText(/Not computed: research state is incomplete/));
-  await emptyPage.getByRole('link', { name: 'Find a question', exact: true }).click();
+  await navigate(emptyPage, 'Find a question');
   await emptyPage.getByRole('searchbox', { name: 'Find a question', exact: true }).fill('hedging');
   await shown(emptyPage.locator('#workbench a[href="#q-P07"]'));
   await screenshot(emptyPage, 'empty-install-desktop');
@@ -155,10 +161,10 @@ try {
   await desktop.tracing.start({ screenshots: true, snapshots: true, sources: true });
   const page = await desktop.newPage();
   await page.goto(seeded);
-  await shown(page.getByRole('heading', { name: 'Overview', exact: true }));
-  await page.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
+  await shown(page.getByRole('heading', { name: 'Dashboard', exact: true }));
+  await page.waitForFunction(() => [...document.querySelectorAll('.dashboard-topic')].slice(0, 2).every(topic => { const state = topic.querySelector('.research-state'); return state && !state.textContent.includes('Reading evidence'); }));
   const initialReads = Object.fromEntries(page.__canonicalReads);
-  assert.equal(Object.keys(initialReads).length, 6);
+  assert.ok(Object.keys(initialReads).length >= 2 && Object.keys(initialReads).length < 8, 'Only visible/nearby dashboard leads are read initially');
   assert.ok(Object.values(initialReads).every(count => count === 1), 'Each overview analysis is read once on initial load');
   const catalogue = await json(page, `${seeded}/api/analysis`);
   const ownerBeforeNavigation = await json(page, `${seeded}/api/owner-inputs`);
@@ -187,8 +193,8 @@ try {
   await page.goBack(); await shown(page.locator('#q-C01'));
   await page.goForward(); await shown(page.locator('#q-P07'));
   await page.goto(`${seeded}/#overview`);
-  await shown(page.getByRole('heading', { name: 'Overview', exact: true }));
-  await page.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
+  await shown(page.getByRole('heading', { name: 'Dashboard', exact: true }));
+  await page.waitForFunction(() => [...document.querySelectorAll('.dashboard-topic')].slice(0, 2).every(topic => { const state = topic.querySelector('.research-state'); return state && !state.textContent.includes('Reading evidence'); }));
   await screenshot(page, 'seeded-overview-light');
   const overviewSize = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, page: document.documentElement.scrollHeight }));
   results.overviewSize = overviewSize;
@@ -270,11 +276,11 @@ try {
   let latest = await savedRows(page, seeded);
   assert.deepEqual(latest.find(row => row.id === original.id), original);
   assert.equal(latest.find(row => row.name === 'Browser reset copy').spec.transform, native.defaults.transform);
-  await page.getByRole('link', { name: 'Find a question', exact: true }).click();
+  await navigate(page, 'Find a question');
   await page.getByRole('searchbox', { name: 'Find a question', exact: true }).fill('hedging');
   await page.locator('#workbench').getByRole('combobox', { name: 'Region', exact: true }).selectOption('US');
   assert.deepEqual(await savedRows(page, seeded), latest);
-  await page.getByRole('link', { name: 'Saved figures', exact: true }).click();
+  await navigate(page, 'Saved figures');
   await page.reload();
   await shown(workspace(page).getByRole('button', { name: 'Open Browser Germany', exact: true }));
   await shown(workspace(page).getByRole('button', { name: 'Open Browser reset copy', exact: true }));
@@ -310,7 +316,7 @@ try {
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
   await screenshot(page, 'saved-compare-dark');
   await page.goto(`${seeded}/#overview`);
-  await page.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => [...document.querySelectorAll('.dashboard-topic')].slice(0, 2).every(topic => { const state = topic.querySelector('.research-state'); return state && !state.textContent.includes('Reading evidence'); }));
   await screenshot(page, 'seeded-overview-dark');
   record('Independent compare editors and explicit link control; dark appearance');
 
@@ -373,7 +379,7 @@ try {
   await holdings.getByRole('button', { name: 'Add imported rows', exact: true }).click();
   await shown(holdings.getByLabel('Position 1 name', { exact: true }));
   await owner.getByLabel('Starting value (€)', { exact: true }).fill('141000');
-  await page.getByRole('link', { name: 'Overview', exact: true }).click();
+  await navigate(page, 'Dashboard');
   await page.goBack();
   await holdings.getByText('ETF holdings', { exact: true }).click();
   await shown(holdings.getByLabel('Position 1 name', { exact: true }));
@@ -430,7 +436,7 @@ try {
   const mobileContext = await context(seeded, { width: 390, height: 844 });
   const mobile = await mobileContext.newPage();
   await mobile.goto(seeded);
-  await shown(mobile.getByRole('heading', { name: 'Overview', exact: true }));
+  await shown(mobile.getByRole('heading', { name: 'Dashboard', exact: true }));
   await mobile.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
   await screenshot(mobile, 'mobile-overview-light');
   const utilityBounds = await mobile.getByRole('button', { name: 'Data & sync', exact: true }).boundingBox();

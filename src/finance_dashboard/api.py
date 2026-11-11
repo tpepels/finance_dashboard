@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from contextlib import asynccontextmanager
 from pathlib import Path
 from os import environ
 import re
@@ -35,12 +36,12 @@ from .engine.runner import analysis_bundle, conditionals, list_analyses
 from .engine.recessions import SERIES_ID as RECESSION_SERIES, recession_periods
 from .engine.views import figure_capabilities
 from .engine.evidence_guard import EvidenceState, AcceptedInputsChanged
+from .engine.cache import BundleCache
 from .icio import read_icio_evidence
 from .maintenance import MaintenanceManager, BusyMaintenance
 from .developer_logs import read_events, recent_jobs, record_event
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
-from functools import partial
 
 
 class SeriesQuery(BaseModel):
@@ -129,8 +130,18 @@ class MarketQuery(BaseModel):
 
 def create_app(engine=None) -> FastAPI:
     db = engine or make_engine()
+    bundles = BundleCache(db)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        try:
+            async with standalone_lifespan(app, engine=db):
+                yield
+        finally:
+            bundles.close()
+
     app = FastAPI(title="Global Capital Monitor", version="0.2.0",
-                  lifespan=partial(standalone_lifespan, engine=db))
+                  lifespan=lifespan)
     catalog, chart_catalog = load_documents()
     errors = validate(catalog, chart_catalog)
     if errors:
@@ -414,19 +425,27 @@ def create_app(engine=None) -> FastAPI:
                 view.update(parsed)
             except (ValueError, TypeError) as error:
                 raise HTTPException(422, str(error)) from None
-        with Session(db) as session:
-            try:
-                bundle = analysis_bundle(session, analysis_id, snapshot=snapshot, corpus_document=research_sources,
+        def compute():
+            with Session(db) as session:
+                return analysis_bundle(session, analysis_id, snapshot=snapshot, corpus_document=research_sources,
                                          catalog_series=by_id, view=view, artifact_loader=lambda name: load_artifact(
                                              name, evidence_root=Path(environ.get("FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")),
                                              holdings_root=Path(environ.get("FINANCE_HOLDINGS_DIR", "/data/holdings"))))
-            except ValueError as error:
-                if raw_view is None: raise
-                raise HTTPException(422, str(error)) from None
-            except AcceptedInputsChanged:
-                app.state.acceptance.invalidate()
-                raise HTTPException(503, 'Input evidence changed; acceptance is being reassessed',
-                                    headers={'Retry-After':'30'}) from None
+        try:
+            owner_state = EvidenceState.capture([Path(environ.get(key, default)) for key, default in (
+                ('FINANCE_OWNER_INPUTS', '/data/owner-inputs.json'),
+                ('FINANCE_PORTFOLIO_HOLDINGS', '/data/portfolio-holdings.json'))])
+            request_key = (analysis_id, json.dumps(view, sort_keys=True), owner_state.entries,
+                           environ.get('FINANCE_SOURCE_EVIDENCE_DIR', '/data/source-evidence'),
+                           environ.get('FINANCE_HOLDINGS_DIR', '/data/holdings'))
+            bundle = bundles.get(request_key, snapshot, compute)
+        except ValueError as error:
+            if raw_view is None: raise
+            raise HTTPException(422, str(error)) from None
+        except AcceptedInputsChanged:
+            app.state.acceptance.invalidate()
+            raise HTTPException(503, 'Input evidence changed; acceptance is being reassessed',
+                                headers={'Retry-After':'30'}) from None
         if bundle is None:
             raise HTTPException(404, "Unknown analysis")
         return bundle

@@ -73,29 +73,36 @@ export function useBundles(ids: string[], dataVersion: number) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [retryVersion, setRetryVersion] = useState(0);
-  const key = ids.join(',');
+  const selection = useContext(ResearchSelection);
+  const key = (selection?.question ? ids.filter(id => id === selection.question) : ids).join(',');
   useEffect(() => {
     let cancelled = false;
     setLoading(true); setError('');
     // Preserve each question/editor while withholding values whose evidence is being refreshed.
-    setBundles(previous => Object.fromEntries(Object.entries(previous).map(([id, bundle]) => [id,
+    const requested = key ? key.split(',') : [];
+    setBundles(previous => Object.fromEntries(Object.entries(previous).filter(([id]) => requested.includes(id)).map(([id, bundle]) => [id,
       { ...bundle, values: null, estimates: null, phase2: { ...bundle.phase2, state: 'refreshing', open_gates: ['refresh in progress'] } }])));
     let timer: ReturnType<typeof setTimeout> | undefined;
     load<{ periods: Recession[] }>('/api/recessions', dataVersion).then(r => { if (!cancelled) setRecessions(r.periods); }).catch(() => undefined);
-    const attempt = () => {
-      Promise.allSettled(key.split(',').map(id => load<Bundle<unknown, unknown>>(`/api/analysis/${id}`, dataVersion)
+    const failures = new Map<string, unknown>();
+    const attempt = (pendingIds: string[]) => {
+      Promise.allSettled(pendingIds.map(id => load<Bundle<unknown, unknown>>(`/api/analysis/${id}`, dataVersion)
         .then(bundle => { if (!cancelled) setBundles(previous => ({ ...previous, [bundle.analysis_id]: bundle })); }))).then(results => {
         if (cancelled) return;
-        const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
-        const pending = failures.find(result => result.reason instanceof Pending)?.reason as Pending | undefined;
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') failures.set(pendingIds[index], result.reason);
+          else failures.delete(pendingIds[index]);
+        });
+        const pending = [...failures].filter((entry): entry is [string, Pending] => entry[1] instanceof Pending);
         setLoading(false);
-        if (pending) {
+        if (pending.length) {
           setError('Research evidence is being reassessed; this page retries automatically.');
-          timer = setTimeout(attempt, pending.retryAfterSeconds * 1000);
-        } else setError(failures.length ? 'Some research findings could not be read. Open another question or retry.' : '');
+          // Never repeat already-successful work or retry before a publisher/server delay.
+          timer = setTimeout(() => attempt(pending.map(([id]) => id)), Math.max(...pending.map(([, issue]) => issue.retryAfterSeconds)) * 1000);
+        } else setError(failures.size ? 'Some research findings could not be read. Open another question or retry.' : '');
       });
     };
-    attempt();
+    attempt(requested);
     return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [key, dataVersion, retryVersion]);
   return { bundles, recessions, error, loading, retry: () => setRetryVersion(value => value + 1) };
