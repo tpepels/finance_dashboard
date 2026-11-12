@@ -961,11 +961,49 @@ def _g06(points: dict, view: dict, artifacts: dict | None = None) -> Computed:
     # An independently labeled source check, never a replacement for the
     # published TiVA FFD_DVA series above. Each edition remains distinct.
     native = (artifacts or {}).get("icio_native_direct") or {"years": [], "not_equivalent_to_oecd_tiva_ffd_dva": True}
+    # Per-year original-matrix Leontief computations are a separate evidence
+    # path, compared against published FFD_DVA shares on exactly equal years.
+    # Neither the computed numerator nor the official TiVA inputs are changed.
+    from datetime import date as _date
+    iso = {"US": "USA", "DE": "DEU", "FR": "FRA", "PT": "PRT",
+           "JP": "JPN", "CN": "CHN", "IN": "IND"}
+    calculations = []
+    for row in native["years"]:
+        source = row.get("tiva_reconstruction") or {}
+        values = source.get("selected_country_values") or {}
+        countries = {}
+        for area, code in iso.items():
+            computed = values.get(code)
+            if not computed:
+                continue
+            published = dict(points.get(f"share:{area}", [])).get(_date(row["year"], 1, 1))
+            derived = computed.get("share_pct")
+            difference = derived - published if derived is not None and published is not None else None
+            countries[area] = {**computed, "published_share_pct": published,
+                "signed_difference_pp": difference,
+                "share_comparison": ("not_current_edition" if row["edition"] != "2025"
+                    else "missing_original_publication" if difference is None
+                    else "within_0_001pp" if abs(difference) <= 0.001
+                    else "outside_0_001pp")}
+        if countries or source.get("status") == "not_computable":
+            calculations.append({"edition": row["edition"], "year": row["year"],
+                "source": row["source"], "source_sha256": row["source_sha256"],
+                "method": source.get("method"),
+                "numerical_residual": source.get("max_relative_residual"),
+                "status": source.get("status", "calculated"),
+                "error_code": source.get("error_code"), "countries": countries})
     return Computed(values={"economies": economies, "history": history,
-                            "native_icio_direct": native}, estimates=None, comparison=["economies"],
-                    transforms=[applied("native_icio_direct_final_demand",
+                            "native_icio_direct": native,
+                            "native_icio_value_added": calculations}, estimates=None,
+                    comparison=["economies"],
+                    transforms=([applied("native_icio_direct_final_demand",
                         applied_to=["edition-specific ICIO source matrices"],
-                        note="Direct shipments to foreign final-demand purchasers, not domestic value added embodied in foreign final demand; editions are not spliced.")] if native["years"] else [])
+                        note="Direct shipments are not equivalent to OECD TiVA value-added tracing.")]
+                        if native["years"] else []) +
+                        ([applied("native_icio_leontief_ffd_dva",
+                          applied_to=["per-edition original ICIO Z and Y"],
+                          note="Original-matrix reconstruction; same-year comparisons retain signed differences against published TiVA. No cross-release splicing or automatic publisher certification.")]
+                         if calculations else []))
 
 
 G06 = AnalysisDefinition("G06", {f"share:{a}": f"supply_chain.{a.lower()}.foreign_final_demand_share" for a in G06_AREAS}, _g06,
