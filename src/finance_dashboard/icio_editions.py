@@ -308,7 +308,8 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                           "original_archive_status": record["status"],
                           "status": (native["native_validation_status"]
                                      if native["annual_matrix_count"] or native["rejected_matrices"]
-                                     else auxiliary["status"])}
+                                     else auxiliary["status"] if auxiliary["status"] != "no_rdata_members"
+                                     else "original_archived_dimensions_unverified")}
             output.append({**{key: record[key] for key in ("filename", "edition", "table",
                 "status", "archive_sha256", "member_count", "source_authenticity_verified",
                 "industry_accounts_validated", "tiva_comparability_certified")},
