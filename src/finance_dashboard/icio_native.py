@@ -230,7 +230,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
                            and countries[area]["gross_output"] != 0))
     merged = {}
     for area, amounts in countries.items():
-        if area in ("CHN", "MEX") and area in fd_areas:
+        if area in ("CHN", "MEX") and n_areas != n_fd_areas and area in fd_areas:
             continue
         target = canonical_country(area)
         if target in conflicts:
@@ -243,7 +243,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
     # D86T88. CN/MX split-country nodes may only be combined unambiguously.
     common_industries: dict[str, dict[str, dict[str, Decimal]]] = {}
     for area, groups in sector_countries.items():
-        if area in ("CHN", "MEX") and area in fd_areas:
+        if area in ("CHN", "MEX") and n_areas != n_fd_areas and area in fd_areas:
             continue
         target = canonical_country(area)
         if target in conflicts:
