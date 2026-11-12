@@ -32,6 +32,7 @@ class RefreshTask:
     source_id: str
     execute: Callable[[], dict]
     progress_label: str
+    provider_group: str | None = None
 
 
 def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
@@ -43,14 +44,29 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
     """
     failures = 0
     total = len(tasks)
+    # A confirmed publisher-wide hourly quota cannot be repaired by
+    # immediately attempting twenty more series using the same source host.
+    # Do not mark those unattempted sources as fresh or failed; retain their
+    # previous acquisition history for the next scheduled cycle.
+    unavailable_groups: set[str] = set()
+    suppressed: dict[str, int] = {}
     for index, task in enumerate(tasks, 1):
         if stopped is not None and stopped.is_set():
             break
+        if task.provider_group is not None and task.provider_group in unavailable_groups:
+            failures += 1  # incomplete refresh, but no new failed IngestionRun
+            suppressed[task.provider_group] = suppressed.get(task.provider_group, 0) + 1
+            if progress is not None:
+                progress(index, total, task.progress_label)
+            continue
         try:
             report = task.execute()
             log.info("%s refreshed: %s", task.family, json.dumps(report))
-        except PolicyDeferred:
+        except PolicyDeferred as exc:
             failures += 1
+            if task.provider_group is not None and exc.reason in {
+                    "rolling_window_limit", "publisher_cooldown"}:
+                unavailable_groups.add(task.provider_group)
             record_event(task.family, "source_deferred", level="warning",
                          source_id=task.source_id,
                          reason="source_policy_deferred")
@@ -65,6 +81,12 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
                       task.family, task.source_id)
         if progress is not None:
             progress(index, total, task.progress_label)
+    for group, count in sorted(suppressed.items()):
+        record_event("macro", "stage_finished", level="warning",
+                     action="publisher_quota_exhausted", status="deferred",
+                     provider=group, sources_not_attempted=count)
+        log.warning("%s: %d additional sources left unattempted after source quota exhaustion",
+                    group, count)
     return failures
 
 
@@ -137,6 +159,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                     family="macro", source_id=sid,
                     execute=lambda sid=sid: service.refresh(sid, full=full),
                     progress_label=sid,
+                    provider_group=client.definitions[sid]["provider"],
                 )
                 for sid in chosen
             ]
