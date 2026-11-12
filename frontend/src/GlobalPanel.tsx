@@ -15,7 +15,9 @@ type NativeTivaReconstruction = { edition: string; year: number; source: string;
     signed_difference_pp?: number; share_comparison?: string }> };
 type G06Values = { economies: { area: string; first: number; first_year: string; latest: number; latest_year: string }[];
   history: Record<string, Line>; native_icio_direct?: { years: NativeIcioYear[];
-    not_equivalent_to_oecd_tiva_ffd_dva: boolean }; native_icio_value_added?: NativeTivaReconstruction[] };
+    not_equivalent_to_oecd_tiva_ffd_dva: boolean;
+    source_year_conflicts?: { edition: string; filename: string; years: number[] }[] };
+    native_icio_value_added?: NativeTivaReconstruction[] };
 
 type G01Values = { latest: { date: string; accession: string; top10_pct: number | null; issuers: { name: string; pct: number }[] } | null;
   top_share_history: Line; published_top10: Line; constituent_count: Line };
@@ -180,6 +182,7 @@ function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>
     }))].filter(series => series.data.length);
     return { area, series };
   }).filter(row => row.series.length > 1);
+  const conflicts = data.native_icio_direct?.source_year_conflicts ?? [];
   const nativeYears = data.native_icio_direct?.years ?? [];
   const verifiedNative = nativeYears.filter(record => record.structure_verified === true &&
     (record.accounting_passed === true || record.accounting_passed === null));
@@ -214,6 +217,11 @@ function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>
     <div className="decision-multiples">
       {panels.map(p => <TimePanel key={p.area} title={entityName(p.area)} option={p.option} height={220} group="g06" compact presets={false} span={p.span}/>)}
     </div>
+    {conflicts.length > 0 && <p className="decision-caption" role="status">
+      {conflicts.length} archive(s) have overlapping edition-years with different
+      original hashes. Those years are withheld from all reconstructed series.
+      See Source data → ICIO original accounting for the conflicting filenames.
+    </p>}
     {reconstructed.length > 0 && <details className="research-native-icio" aria-label="Independent ICIO value-added reconstruction">
       <summary>ICIO Leontief value-added reconstruction ({reconstructed.length} annual source records)</summary>
       <p className="decision-caption">These annual values use the full inter-industry input matrix,
