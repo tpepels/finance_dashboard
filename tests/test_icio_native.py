@@ -135,19 +135,25 @@ class IcioNativeTests(unittest.TestCase):
         self.assertEqual(archive_identity("2016-2022_EXT.zip"),
                          {"edition": "2025", "table": "extended"})
         self.assertEqual(DIMENSIONS["2023"][:2], (81, 77))
-        # Regular 2023 has no split industry population; a toy table
-        # exercises the same structural rule without changing source data.
         tiny = (3, 3, ["D01"], 1995, 2020)
-        body = "V1,CHN_D01,MEX_D01,ROW_D01," + ",".join(
-            country + "_" + f for country in ("CHN", "MEX", "ROW")
-            for f in ("HFCE", "NPISH", "GGFC", "GFCF", "INVNT", "DIRPA")) + "\\n"
-        for country in ("CHN", "MEX", "ROW"):
-            body += country + "_D01," + ",".join(["0"] * 21) + "\\n"
-        with self.assertRaises(ValueError):
-            audit_native_csv(io.StringIO(body), edition="2023", year=2020,
-                             dimensions=tiny, table="regular")
-        # The header and source identity are validated even for 2023.
-        # The malformed data above cannot be accepted as an annual matrix.
+        countries = ("CHN", "MEX", "ROW")
+        nodes = [name + "_D01" for name in countries]
+        fd = [f"{name}_{kind}" for name in countries for kind in
+              ("HFCE", "NPISH", "GGFC", "GFCF", "INVNT", "DIRPA")]
+        header = ["V1", *nodes, *fd]
+        body = [header]
+        for i, node in enumerate(nodes):
+            intermediate = [1 if i == j else 0 for j in range(3)]
+            final = [2 if j == (i * 6) else 0 for j in range(18)]
+            body.append([node, *map(str, intermediate), *map(str, final)])
+        result = audit_native_csv(io.StringIO("\n".join(",".join(row) for row in body)),
+                                  edition="2023", year=2020, dimensions=tiny, table="regular")
+        self.assertTrue(result["structure_verified"])
+        self.assertFalse(result["publisher_account_rows_present"])
+        self.assertIsNone(result["accounting_passed"])
+        self.assertTrue(result["country_concordance"]["valid"])
+        self.assertEqual(result["country_direct_flows"]["CHN"]["gross_output_usd_million"], "3")
+        self.assertEqual(result["country_direct_flows"]["CHN"]["direct_foreign_final_demand_usd_million"], "0")
 
     def test_nonmatrix_edition_package_is_not_called_audited(self):
         buffer = io.BytesIO()
