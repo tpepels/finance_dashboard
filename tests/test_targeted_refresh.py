@@ -33,6 +33,58 @@ class TargetedRefreshTests(unittest.TestCase):
         self.assertEqual(len(attempted),3)
         self.assertTrue(all(full for _,full in attempted))
 
+    def test_scheduled_refresh_reuses_complete_pinned_editions_without_network(self):
+        from datetime import date
+        from decimal import Decimal
+        from finance_dashboard.database import SeriesRow, IngestionRun, ObservationVersion, now_utc
+        from sqlalchemy.orm import Session
+        sources = {
+            "supply_chain.pt.foreign_final_demand_share": date(2022, 1, 1),
+            "returns.swinkels.au.sovereign_10y_modelled_local": date(2022, 12, 1),
+        }
+        with Session(self.engine) as session, session.begin():
+            for sid, observed in sources.items():
+                definition = self.series[sid]
+                session.add(SeriesRow(id=sid, provider=definition["provider"],
+                    source_key=definition["source_key"], updated_at=now_utc()))
+                session.add(IngestionRun(id="original-" + sid, series_id=sid,
+                    status="success", started_at=now_utc(), ended_at=now_utc(),
+                    observations_received=1, versions_added=1))
+                session.add(ObservationVersion(
+                    series_id=sid, period=observed, value=Decimal("22.5"),
+                    first_seen_at=now_utc(), ingestion_run_id="original-" + sid))
+        ids = set(sources) | {"bond.us.nominal_10y"}
+        attempted = []
+        with patch("finance_dashboard.worker.IngestionService") as service, \
+             patch("finance_dashboard.worker.record_event"):
+            service.return_value.refresh.side_effect = lambda sid, **kw: (
+                attempted.append(sid) or {"series_id": sid, "status": "success"})
+            self.assertEqual(refresh_all(self.engine, series_ids=ids,
+                                         skip_complete_pinned=True), 0)
+            self.assertEqual(attempted, ["bond.us.nominal_10y"])
+            attempted.clear()
+            self.assertEqual(refresh_all(self.engine, series_ids=ids), 0)
+            self.assertEqual(set(attempted), ids)
+
+    def test_scheduled_pinned_reuse_never_exempts_incomplete_source(self):
+        from datetime import date
+        from decimal import Decimal
+        from finance_dashboard.database import SeriesRow, IngestionRun, ObservationVersion, now_utc
+        from sqlalchemy.orm import Session
+        sid = "supply_chain.pt.foreign_final_demand_share"
+        with Session(self.engine) as session, session.begin():
+            session.add(SeriesRow(id=sid, provider=self.series[sid]["provider"],
+                source_key=self.series[sid]["source_key"], updated_at=now_utc()))
+            session.add(IngestionRun(id="old-tiva",series_id=sid,
+                started_at=now_utc(), status="success", observations_received=1,
+                versions_added=1))
+            session.add(ObservationVersion(series_id=sid,period=date(2021,1,1),
+                value=Decimal("25"),first_seen_at=now_utc(),ingestion_run_id="old-tiva"))
+        with patch("finance_dashboard.worker.IngestionService") as service:
+            service.return_value.refresh.return_value = {"status": "success"}
+            refresh_all(self.engine, series_ids={sid}, skip_complete_pinned=True)
+            service.return_value.refresh.assert_called_once()
+
     def test_invalid_id_refuses_network_and_fails_loudly(self):
         with patch("finance_dashboard.worker.IngestionService") as service:
             with self.assertRaisesRegex(ValueError,"Unknown series"):
