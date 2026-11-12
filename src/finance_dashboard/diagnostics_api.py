@@ -45,14 +45,18 @@ def _status(events: list[dict], coverage: dict, accepting: bool, importing: bool
     summaries = coverage.get("summary", {})
     attention = sum(group.get("needs_attention", 0) for group in summaries.values()
                     if isinstance(group, dict))
-    if failures:
+    unresolved_failures = sum(group.get("collection_failed", 0) +
+                              group.get("refresh_failed_with_data", 0)
+                              for group in summaries.values() if isinstance(group, dict))
+    if failures or unresolved_failures:
         colour, label = "red", "Errors require inspection"
     elif accepting or importing or attention or any(e["level"] == "warning" for e in recent):
         colour, label = "orange", "Data or research needs attention"
     else:
         colour, label = "green", "No current diagnostic issues"
     return {"colour": colour, "label": label, "recent_errors": len(failures),
-            "sources_needing_attention": attention, "assessment_running": accepting,
+            "sources_needing_attention": attention, "unresolved_source_failures": unresolved_failures,
+            "assessment_running": accepting,
             "import_running": importing, "generated_at": now.isoformat()}
 
 
