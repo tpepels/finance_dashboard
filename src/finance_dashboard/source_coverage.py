@@ -127,6 +127,8 @@ def _next_action(*, mapped, count, stale, complete, status, error):
         return 'Resolve the source identity before collection.'
     if error in ('provider_http_401', 'provider_http_403'):
         return 'Access was refused; configure authorized access before retrying.'
+    if status == 'deferred' and complete:
+        return 'Complete for the pinned release; previous network deferral does not require another download.'
     if status == 'deferred':
         return 'Wait for the publisher budget or cooldown before the next collection attempt.'
     if status == 'failed':
@@ -187,6 +189,11 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         state = "collection_disabled"
     elif count == 0:
         state = "not_ingested"
+    elif last is not None and last["status"] == "deferred" and is_complete_for_release:
+        # A publisher-quota refusal is not an outstanding failure to refresh
+        # an immutable named edition whose retained observations are complete.
+        # Keep the original deferred attempt visible in refresh_state.
+        state = "available"
     elif last is not None and last["status"] == "deferred":
         state = "refresh_deferred_with_data"
     elif last is not None and last["status"] == "failed":
@@ -219,6 +226,8 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         "published_release_date": publication["released"].isoformat()
             if release_known else None,
         "complete_for_pinned_release": is_complete_for_release,
+        "scheduled_download_unnecessary_for_pinned_release": bool(
+            is_complete_for_release and publication and family == "macro"),
         # Revisions are legitimate append-only versions, not corrupt duplicates.
         "stored_versions": int(versions),
         "additional_revisions": max(0, int(versions)-int(count)),
