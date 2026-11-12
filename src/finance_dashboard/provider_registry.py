@@ -41,7 +41,7 @@ _REGISTRATIONS = (
     ProviderRegistration("EUROSTAT_CORPORATE_GDP", "fetch_eurostat_corporate_gdp", "response", "windowed"),
     ProviderRegistration("EUROSTAT_NFC_PROFIT_GVA", "fetch_eurostat_nfc_profit_gva", "response", "windowed"),
     ProviderRegistration("EUROSTAT_HICP", "fetch_eurostat_hicp", "response", "windowed"),
-    ProviderRegistration("OECD_NFC_ACCOUNTS", "fetch_oecd_nfc_accounts", "response", "windowed",
+    ProviderRegistration("OECD_NFC_ACCOUNTS", "fetch_oecd_nfc_accounts", "response", "full",
                          request_origin="https://sdmx.oecd.org/public/rest/data"),
     ProviderRegistration("BIS_WORLD_WEIGHTED", "fetch_bis_world_weighted", "response", "windowed"),
     ProviderRegistration("ILO_LABOUR_PRODUCTIVITY_RATIO", "fetch_ilo_labour_productivity_ratio", "derived", "windowed"),
