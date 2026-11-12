@@ -17,6 +17,7 @@ dependencies = [
     "python-calamine>=0.5,<1",
     "pypdf==6.21.4",
     "numpy>=1.26,<3",
+    "rdata>=1.0,<2",
 ]
 
 [project.optional-dependencies]
