@@ -29,7 +29,7 @@ def tiny_extended(*, bad_output=False, duplicate=False, parent_nonzero=False, mi
             final[(fd_countries.index("ROW" if i == 2 else "CHN" if i in (0, 3, 4) else "MEX")) * 6] = "2"
         total = 3 if values[i] == "1" else 0
         if bad_output and i == 3:
-            total += 1
+            total += 100
         body.append([node, *values, *final, str(total)])
     body.append(["TLS", *["0"] * (len(nodes) + len(fd) + 1)])
     if not missing_va:
