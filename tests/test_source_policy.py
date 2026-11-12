@@ -213,7 +213,7 @@ class PolicyRegistryTests(PolicyHarness):
             "https://www.msci.com/indexes/index/892400",
             "https://app2.msci.com/data",
             "https://www.researchgate.net/publication/123",
-            "https://goldprice.corgano.com/prices",
+            "https://api.gold-api.com/price/XAU",
         )
         for url in origins:
             with self.subTest(origin=url):
