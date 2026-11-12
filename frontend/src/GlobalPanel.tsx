@@ -158,11 +158,11 @@ function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>
   const nativeAreas = [{ area: 'US', country: 'USA' }, { area: 'DE', country: 'DEU' },
     { area: 'FR', country: 'FRA' }, { area: 'PT', country: 'PRT' },
     { area: 'JP', country: 'JPN' }, { area: 'CN', country: 'CHN' }, { area: 'IN', country: 'IND' }];
-  const nativeSources = Array.from(new Set(verifiedNative.map(x => x.edition + ' / ' + x.source)));
+  const nativeSources = Array.from(new Set(verifiedNative.map(x => x.edition)));
   const nativePanels = nativeAreas.map(({ area, country }) => {
-    const lines = nativeSources.map((source, i) => ({
-      name: 'ICIO ' + source, slot: i,
-      data: verifiedNative.filter(r => r.edition + ' / ' + r.source === source &&
+    const lines = nativeSources.map((edition, i) => ({
+      name: 'ICIO ' + edition, slot: i,
+      data: verifiedNative.filter(r => r.edition === edition &&
         r.countries[country]?.direct_foreign_final_demand_usd_million != null)
         .map(r => [yearDate(String(r.year)),
           Number(r.countries[country].direct_foreign_final_demand_usd_million)] as [string, number])
