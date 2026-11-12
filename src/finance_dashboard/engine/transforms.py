@@ -78,6 +78,11 @@ TRANSFORMS: dict[str, str] = {
                               "pro rata, rebalance to target by rule (never, every n months, when a weight drifts beyond "
                               "the band), charge trading cost on turnover; with cost basis per asset, tax either the gains realised by "
                               "selling (no loss credit) or a yearly share of value",
+    "native_icio_leontief_ffd_dva": "for each complete original ICIO year, let X_i = row_sum(Z+Y), "
+        "A_ij = Z_ij/X_j, v_i = (X_i-column_sum(Z)_i)/X_i; for source country c, "
+        "FFD_DVA[c] = sum_(i in c) v_i [(I-A)^(-1) Y_foreign(c)]_i; "
+        "report 100 FFD_DVA / sum_(i in c) VA_i, retaining signed differences "
+        "from matched original published TiVA shares. Iteration must converge.",
     "native_icio_direct_final_demand": "for each complete edition-native annual ICIO matrix, sum each source industry's "
         "gross direct sales into final-demand columns of foreign countries (current USD millions); "
         "CN1/CN2 map to China, MX1/MX2 to Mexico where non-overlapping. No Leontief "
