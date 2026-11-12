@@ -1,0 +1,293 @@
+"""Streaming native ICIO matrix inspection and conservative cross-edition rollups.
+
+The OECD 2025 extended matrix is 85 * 50 industry nodes with 81 * 6 final
+demand columns. ICIO 2021 uses 71 * 45 and 67 * 6; ICIO 2018 uses
+69 * 36 and 65 * 6. Country variants CN1/CN2 and MX1/MX2 are mapped only
+under explicit zero-parent conditions. No flow here is labelled TiVA FFD_DVA.
+
+Industry mapping is many-to-one to the 2018 intersection. No proportionate
+allocations of combined source industries are made: ambiguous coverage is
+explicitly excluded. Source: OECD ICIO guides and exvatools extract_icio.
+"""
+from __future__ import annotations
+
+import csv
+from decimal import Decimal, InvalidOperation
+from hashlib import sha256
+import io
+import re
+from zipfile import ZipFile
+
+# Full published 2018 target sectors: each newer sector must fit in exactly
+# one target. D86T89 in 2025 spans D89, outside 2018's D86T88.
+SECTORS_2018 = """D01T03 D05T06 D07T08 D09 D10T12 D13T15 D16 D17T18 D19
+D20T21 D22 D23 D24 D25 D26 D27 D28 D29 D30 D31T33 D35T39 D41T43
+D45T47 D49T53 D55T56 D58T60 D61 D62T63 D64T66 D68 D69T82 D84 D85
+D86T88 D90T96 D97T98""".split()
+SECTORS_2021 = """D01T02 D03 D05T06 D07T08 D09 D10T12 D13T15 D16 D17T18
+D19 D20 D21 D22 D23 D24 D25 D26 D27 D28 D29 D30 D31T33 D35 D36T39
+D41T43 D45T47 D49 D50 D51 D52 D53 D55T56 D58T60 D61 D62T63
+D64T66 D68 D69T75 D77T82 D84 D85 D86T88 D90T93 D94T96 D97T98""".split()
+SECTORS_2025 = """D01 D02 D03 D05 D06 D07 D08 D09 D10T12 D13T15 D16 D17T18
+D19 D20 D21 D22 D23 D241 D242 D25 D26 D27 D28 D29 D301 D302 D31T33
+D35 D36T39 D41T43 D45T47 D49 D50 D51 D52 D53 D55T56 D58T60
+D61 D62T63 D64T66 D68 D69T75 D77T82 D84 D85 D86T89 D90T93
+D94T96 D97T98""".split()
+FINAL_USE = {"HFCE", "NPISH", "GGFC", "GFCF", "INVNT", "DIRPA", "DPABR"}
+SPLITS = {"CN1": "CHN", "CN2": "CHN", "MX1": "MEX", "MX2": "MEX"}
+DIMENSIONS = {
+    "2018": (69, 65, SECTORS_2018, 1995, 2015),
+    "2021": (71, 67, SECTORS_2021, 1995, 2018),
+    "2025": (85, 81, SECTORS_2025, 1995, 2022),
+}
+# A safeguard against hundreds of thousands of invented "years" or unsuitable
+# auxiliary archives passed as matrices.
+YEAR_MEMBER = {
+    "2018": re.compile(r"ICIO2018_(19[9][5-9]|20(?:0[0-9]|1[0-5]))\.csv", re.I),
+    "2021": re.compile(r"ICIO2021_(19[9][5-9]|20(?:0[0-9]|1[0-8]))\.csv", re.I),
+    "2025": re.compile(r"(19[9][5-9]|20(?:0[0-9]|1[0-9]|2[0-2]))\.csv", re.I),
+}
+
+
+def industry_members(code: str) -> frozenset[int]:
+    """Coarse ISIC Rev.4 divisions represented by one declared source label."""
+    value = code.removeprefix("D")
+    if "T" in value:
+        left, right = value.split("T", 1)
+        if left.isdigit() and right.isdigit() and len(left) == 2 and len(right) == 2:
+            a, b = int(left), int(right)
+            if a <= b <= 98:
+                return frozenset(range(a, b + 1))
+    if value.isdigit() and len(value) in (2, 3):
+        # 2025 D241/D242 subdivide division 24; D301/D302 subdivide 30.
+        if len(value) == 3 and value not in {"241", "242", "301", "302"}:
+            raise ValueError("icio_unknown_split_industry")
+        return frozenset({int(value[:2])})
+    raise ValueError("icio_unrecognized_industry_code")
+
+
+def common_2018_concordance(source_codes: list[str]) -> dict:
+    mapping, excluded = {}, []
+    targets = {name: industry_members(name) for name in SECTORS_2018}
+    for code in source_codes:
+        src = industry_members(code)
+        matches = [target for target, members in targets.items() if src <= members]
+        if len(matches) == 1:
+            mapping[code] = matches[0]
+        else:
+            excluded.append(code)
+    return {"target_edition": "2018", "mapping": mapping, "excluded": excluded,
+            "mapping_is_aggregative_only": True,
+            "allocated_combined_source_industries": False}
+
+
+def canonical_country(source: str) -> str:
+    return SPLITS.get(source, source)
+
+
+def _split(label: str) -> tuple[str, str]:
+    if "_" not in label:
+        raise ValueError("icio_native_industry_header_invalid")
+    area, code = label.split("_", 1)
+    if not re.fullmatch(r"[A-Z0-9]{3}", area) or not code:
+        raise ValueError("icio_native_industry_header_invalid")
+    return area, code
+
+
+def _number(text: str) -> Decimal:
+    try:
+        value = Decimal(text)
+        if not value.is_finite():
+            raise InvalidOperation
+        return value
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("icio_native_nonfinite_or_invalid_numeric_cell") from None
+
+
+def _simple_text(value: Decimal) -> str:
+    return format(value, "f")
+
+
+def audit_native_csv(stream, *, edition: str, year: int,
+                     dimensions: tuple | None = None) -> dict:
+    """Audit one native matrix with O(columns) memory; never rebalance cells.
+
+    A full accounting pass is impossible if the original contains no explicit
+    OUT/TLS/VA components. Those cases stay structurally verified only.
+    """
+    n_areas, n_fd_areas, sectors, start_year, end_year = dimensions or DIMENSIONS[edition]
+    if not start_year <= year <= end_year:
+        raise ValueError("icio_native_year_outside_edition")
+    rows = csv.reader(stream)
+    header = next(rows, None)
+    if not header or len(set(header)) != len(header):
+        raise ValueError("icio_native_header_invalid")
+    expected_nodes = n_areas * len(sectors)
+    if len(header) < expected_nodes + 1:
+        raise ValueError("icio_native_columns_incomplete")
+    nodes = header[1:1 + expected_nodes]
+    node_parts = [_split(label) for label in nodes]
+    areas = list(dict.fromkeys(country for country, _ in node_parts))
+    industry_codes = list(dict.fromkeys(code for _, code in node_parts))
+    if (len(areas) != n_areas or set(industry_codes) != set(sectors)
+            or len(industry_codes) != len(sectors)
+            or set(node_parts) != {(country, sector) for country in areas for sector in sectors}):
+        raise ValueError("icio_native_industry_dimensions_mismatch")
+    remainder = header[1 + expected_nodes:]
+    output_column = bool(remainder and remainder[-1] == "OUT")
+    fds = remainder[:-1] if output_column else remainder
+    if len(fds) != n_fd_areas * 6:
+        raise ValueError("icio_native_final_demand_dimensions_mismatch")
+    fd_parts = [_split(label) for label in fds]
+    fd_areas = list(dict.fromkeys(area for area, _ in fd_parts))
+    if (len(fd_areas) != n_fd_areas or any(cat not in FINAL_USE for _, cat in fd_parts)
+            or any(sum(x == area for x, _ in fd_parts) != 6 for area in fd_areas)
+            or any(len({cat for a, cat in fd_parts if a == area}) != 6 for area in fd_areas)):
+        raise ValueError("icio_native_final_demand_labels_invalid")
+    if set(fd_areas) - set(areas) or set(areas) - set(fd_areas) != set(SPLITS):
+        raise ValueError("icio_native_country_split_dimensions_invalid")
+    mapping = common_2018_concordance(industry_codes)
+    column_sums = [Decimal(0)] * expected_nodes
+    countries: dict[str, dict[str, Decimal]] = {}
+    def totals(country: str):
+        return countries.setdefault(country, {"gross_output": Decimal(0),
+            "direct_foreign_final_demand": Decimal(0), "direct_domestic_final_demand": Decimal(0),
+            "value_added": Decimal(0)})
+    observed = set()
+    row_failure, col_failure, output_mismatch = 0, 0, 0
+    max_row = max_col = Decimal(0)
+    numeric_scale = 0
+    specials: dict[str, list[Decimal]] = {}
+    node_output: dict[str, Decimal] = {}
+    for row in rows:
+        if len(row) != len(header):
+            raise ValueError("icio_native_row_width_invalid")
+        label = row[0]
+        if label in observed:
+            raise ValueError("icio_native_duplicate_row")
+        observed.add(label)
+        if label not in nodes and label not in {"TLS", "VA", "OUT"}:
+            raise ValueError("icio_native_unrecognized_account_row")
+        values = [_number(cell) for cell in row[1:]]
+        numeric_scale = max(numeric_scale, max(-v.as_tuple().exponent for v in values))
+        if label not in nodes:
+            specials[label] = values
+            continue
+        area, sector = _split(label)
+        t = totals(area)
+        intermediate = sum(values[:expected_nodes], Decimal(0))
+        final = sum(values[expected_nodes:expected_nodes + len(fds)], Decimal(0))
+        foreign = sum((v for v, (c, _) in zip(values[expected_nodes:expected_nodes + len(fds)], fd_parts)
+                       if c != canonical_country(area)), Decimal(0))
+        output = values[-1] if output_column else intermediate + final
+        if output < 0:
+            raise ValueError("icio_native_negative_gross_output")
+        node_output[label] = output
+        t["gross_output"] += output
+        t["direct_foreign_final_demand"] += foreign
+        t["direct_domestic_final_demand"] += final - foreign
+        if output_column:
+            residual = intermediate + final - output
+            bound = Decimal(5).scaleb(-numeric_scale - 1) * (len(fds) + expected_nodes + 1)
+            max_row = max(max_row, abs(residual))
+            row_failure += abs(residual) > bound
+        for j, val in enumerate(values[:expected_nodes]):
+            column_sums[j] += val
+    if not set(nodes) <= observed:
+        raise ValueError("icio_native_missing_industry_rows")
+    # Source product accounts must not be deduced from X-Z and then called a
+    # source accounting verification. If absent, retain explicit unknown.
+    has_accounts = output_column and set(specials) == {"TLS", "VA", "OUT"}
+    if has_accounts:
+        trow, vrow, orow = (specials[key] for key in ("TLS", "VA", "OUT"))
+        col_bound = Decimal(5).scaleb(-numeric_scale - 1) * (expected_nodes + 3)
+        for j, label in enumerate(nodes):
+            residual = column_sums[j] + trow[j] + vrow[j] - orow[j]
+            max_col = max(max_col, abs(residual))
+            col_failure += abs(residual) > col_bound
+            output_mismatch += node_output[label] != orow[j]
+            totals(_split(label)[0])["value_added"] += vrow[j]
+    elif specials and not set(specials) <= {"TLS", "VA", "OUT"}:
+        raise ValueError("icio_native_unknown_special_accounts")
+    # If split and unsplit country rows both contain production, the parent
+    # must not be summed twice or silently ignored.
+    conflicts = sorted(area for area, splits in (("CHN", ("CN1", "CN2")),
+                                                    ("MEX", ("MX1", "MX2")))
+                       if (area in countries and any(s in countries for s in splits)
+                           and countries[area]["gross_output"] != 0))
+    merged = {}
+    for area, amounts in countries.items():
+        if area in ("CHN", "MEX") and area in fd_areas:
+            continue
+        target = canonical_country(area)
+        if target in conflicts:
+            continue
+        bucket = merged.setdefault(target, {k: Decimal(0) for k in amounts})
+        for key, value in amounts.items():
+            bucket[key] += value
+    series = {}
+    for area in sorted(merged):
+        t = merged[area]
+        # Direct foreign demand for the country's goods/services is NOT
+        # domestic value added embodied abroad (OECD TiVA FFD_DVA).
+        share = 100 * t["direct_foreign_final_demand"] / t["value_added"] if (
+            has_accounts and t["value_added"] > 0) else None
+        series[area] = {
+            "gross_output_usd_million": _simple_text(t["gross_output"]),
+            "direct_foreign_final_demand_usd_million": _simple_text(t["direct_foreign_final_demand"]),
+            "domestic_final_demand_usd_million": _simple_text(t["direct_domestic_final_demand"]),
+            "source_value_added_usd_million": _simple_text(t["value_added"]) if has_accounts else None,
+            "direct_foreign_final_demand_to_va_pct": _simple_text(share) if share is not None else None}
+    return {"year": year, "edition": edition, "industry_nodes": expected_nodes,
+            "source_country_count": n_areas, "final_demand_country_count": n_fd_areas,
+            "native_industries": industry_codes,
+            "industry_concordance": mapping,
+            "country_concordance": {"split_to_parent": SPLITS, "ambiguous_unsplit_parents": conflicts,
+                "valid": not conflicts},
+            "publisher_account_rows_present": has_accounts,
+            "accounting_passed": (row_failure == col_failure == output_mismatch == 0)
+                                if has_accounts else None,
+            "row_failures": row_failure if output_column else None,
+            "column_failures": col_failure if has_accounts else None,
+            "output_vector_mismatches": output_mismatch if has_accounts else None,
+            "max_row_residual": _simple_text(max_row) if output_column else None,
+            "max_column_residual": _simple_text(max_col) if has_accounts else None,
+            "source_precision_decimals": numeric_scale,
+            "country_direct_flows": series, "units": "current_USD_million",
+            "tiva_equivalent": False, "first_publication_verified": False}
+
+
+def native_year_members(zip_file: ZipFile, edition: str) -> list[tuple[int, str]]:
+    result = []
+    matcher = YEAR_MEMBER[edition]
+    for entry in zip_file.infolist():
+        if entry.is_dir():
+            continue
+        base = entry.filename.split("/")[-1]
+        match = matcher.fullmatch(base)
+        if match:
+            result.append((int(match.group(1)), entry.filename))
+    if len({year for year, _ in result}) != len(result):
+        raise ValueError("icio_duplicate_annual_matrix_member")
+    return sorted(result)
+
+
+def audit_archive_native(zip_file: ZipFile, edition: str,
+                         *, dimensions: tuple | None = None) -> dict:
+    # Rdata and supplemental econA/B/VB/Z archives are valid source evidence,
+    # but cannot be called audited matrices without a CSV member.
+    members = native_year_members(zip_file, edition)
+    results = []
+    for year, path in members:
+        with zip_file.open(path) as original:
+            with io.TextIOWrapper(original, encoding="utf-8-sig", newline="") as stream:
+                audit = audit_native_csv(stream, edition=edition, year=year, dimensions=dimensions)
+        audit["original_member_sha256"] = None  # ZIP hash covers exact original bytes
+        results.append(audit)
+    return {"annual_matrices": results, "annual_matrix_count": len(results),
+            "native_validation_status": ("native_accounts_verified" if results
+                and all(a["accounting_passed"] is True and a["country_concordance"]["valid"]
+                        for a in results)
+                else "native_accounts_unresolved" if results else "no_native_csv_matrices"),
+            "tiva_equivalent": False,
+            "method": "edition_native_streaming_audit_v1"}
