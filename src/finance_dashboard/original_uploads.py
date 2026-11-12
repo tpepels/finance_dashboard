@@ -20,7 +20,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .developer_logs import record_event
-from .icio import PUBLISHER_ARCHIVES, import_original_archive
+from .icio import PUBLISHER_ARCHIVES, README_SHA256, import_original_archive
 from .icio_editions import archive_identity
 
 MAX_UPLOAD = 2 * 1024 ** 3
@@ -65,6 +65,24 @@ class OriginalImportManager:
         except (OSError, ValueError, TypeError):
             pass
 
+    def pinned_readme(self) -> Path | None:
+        """Reuse already validated production evidence before asking for another upload."""
+        candidates = [self.root / README]
+        for parent in ("regular-2025-2022", "regular-2025-2022-publisher",
+                       "regular-2025-2016-publisher"):
+            folder = self.evidence / "icio" / parent
+            if folder.is_dir() and not folder.is_symlink():
+                candidates.extend(folder.glob("*/readme.xlsx"))
+        for path in candidates:
+            if path.is_file() and not path.is_symlink():
+                digest = sha256()
+                with path.open("rb") as stream:
+                    for block in iter(lambda: stream.read(1024 * 1024), b""):
+                        digest.update(block)
+                if digest.hexdigest() == README_SHA256:
+                    return path
+        return None
+
     def running(self) -> bool:
         with self.lock:
             return self.active
@@ -81,7 +99,8 @@ class OriginalImportManager:
                                   "kind": "readme" if item.name == README else
                                           "verified_regular" if item.name in PUBLISHER_ARCHIVES else
                                           "edition_archive"})
-        return {"active": active, "files": files, "jobs": list(reversed(jobs))}
+        return {"active": active, "readme_available": self.pinned_readme() is not None,
+                "files": files, "jobs": list(reversed(jobs))}
 
     def _save(self):
         self.journal.parent.mkdir(parents=True, exist_ok=True)
@@ -109,7 +128,7 @@ class OriginalImportManager:
                        for n in filenames):
                 raise ValueError("Upload the selected originals first")
             if any(n in PUBLISHER_ARCHIVES for n in filenames):
-                if not (self.root / README).is_file():
+                if self.pinned_readme() is None:
                     raise ValueError("The publisher ReadMe workbook must be uploaded first")
             self.active = True
             job = {"id": uuid4().hex, "status": "queued", "created_at":
@@ -134,7 +153,7 @@ class OriginalImportManager:
                 try:
                     result = import_original_archive(
                         self.root / filename, self.evidence,
-                        self.root / README if (self.root / README).is_file() else None)
+                        self.pinned_readme())
                     row = {"filename": filename, "status": result["status"],
                            "edition": result["edition"], "table": result["table"],
                            "archive_sha256": result.get("archive_sha256")}
@@ -217,6 +236,8 @@ def install_original_uploads(app: FastAPI, importer: OriginalImportManager):
                     digest.update(chunk)
             if total == 0 or (filename == README and total > 10 * 1024 * 1024):
                 raise HTTPException(422, "Invalid original size")
+            if filename == README and digest.hexdigest() != README_SHA256:
+                raise HTTPException(422, "ReadMe does not match the pinned 2025 original")
             if target.is_symlink():
                 raise HTTPException(409, "Destination is not a regular file")
             if target.exists():
