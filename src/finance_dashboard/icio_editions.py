@@ -71,12 +71,17 @@ def inspect_archive(path: Path) -> dict:
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
-    return {**identity, "filename": path.name, "archive_sha256": digest.hexdigest(),
+    from .icio_native import audit_archive_native
+    # Validate every available annual member within this edition. Supplemental
+    # econA/Rdata packages remain distinct source evidence, not matrix claims.
+    with ZipFile(path) as z:
+        native = audit_archive_native(z, identity["edition"])
+    return {**identity, **native, "filename": path.name, "archive_sha256": digest.hexdigest(),
             "archive_bytes": path.stat().st_size, "members": members,
             "member_count": len(members), "uncompressed_bytes": total,
-            "status": "original_archived_dimensions_unverified",
+            "status": native["native_validation_status"],
             "source_authenticity_verified": False,
-            "industry_accounts_validated": False,
+            "industry_accounts_validated": native["native_validation_status"] == "native_accounts_verified",
             "tiva_comparability_certified": False,
             "scientific_analysis_certified": False,
             "first_publication_verified": False}
@@ -171,5 +176,9 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
             _verify_edition_bundle(bundle, record)
             output.append({**{key: record[key] for key in ("filename", "edition", "table",
                 "status", "archive_sha256", "member_count", "source_authenticity_verified",
-                "industry_accounts_validated", "tiva_comparability_certified")}, "bundle_digest": bundle.name})
+                "industry_accounts_validated", "tiva_comparability_certified")},
+                "bundle_digest": bundle.name,
+                "native_validation_status": record.get("native_validation_status", "not_evaluated"),
+                "annual_matrix_count": record.get("annual_matrix_count", 0),
+                "annual_matrices": record.get("annual_matrices", [])})
     return output
