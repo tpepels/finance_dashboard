@@ -22,6 +22,8 @@ class DiagnosticsSeverityTests(unittest.TestCase):
         current = {"summary": {"macro": {"needs_attention": 8}}}
         self.assertEqual(_status(events, current, False, False)["colour"], "red")
         self.assertEqual(_status([], current, False, False)["colour"], "orange")
+        self.assertEqual(_status([], {"summary": {"macro": {"needs_attention": 8,
+            "collection_failed": 1}}}, False, False)["colour"], "red")
         self.assertEqual(_status([], {"summary": {}}, False, True)["colour"], "orange")
         self.assertEqual(_status([], {"summary": {}}, False, False)["colour"], "green")
 
