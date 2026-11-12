@@ -4,11 +4,17 @@ type Matrix = { year: number; accounting_passed: boolean | null;
   industry_nodes: number; row_failures: number | null; column_failures: number | null;
   country_concordance: { valid: boolean; ambiguous_unsplit_parents: string[] };
   industry_concordance: { excluded: string[] };
+  tiva_reconstruction?: { status?: string; iterations?: number;
+    max_relative_residual?: number; error_code?: string;
+    selected_country_values?: Record<string, { status: string }> };
 };
 type Edition = { filename: string; edition: string; table: string;
   native_validation_status: string; annual_matrix_count: number;
   annual_matrices: Matrix[]; rejected_matrices?: {year: number; error_code: string}[];
-  expected_years?: number[]; observed_years?: number[]; source_authenticity_verified: boolean };
+  expected_years?: number[]; observed_years?: number[]; source_authenticity_verified: boolean;
+  auxiliary_numeric?: { status: string; parsed_members?: number;
+    total_rdata_members?: number; numeric_reports?: { member: string; status: string;
+      numeric_objects?: { name: string; shape: number[]; numeric_cells: number }[] }[] } };
 type Evidence = { historical_coverage?: { verified_years: number[]; missing_years: number[] };
   additional_editions?: Edition[] };
 
@@ -56,10 +62,24 @@ export default function IcioEditionEvidence() {
             const excluded = Array.from(new Set(item.annual_matrices.flatMap(year => year.industry_concordance.excluded)));
             const conflicts = Array.from(new Set(item.annual_matrices.flatMap(year =>
               year.country_concordance.ambiguous_unsplit_parents)));
+            const leontief = item.annual_matrices.filter(year =>
+              (year.tiva_reconstruction?.selected_country_values &&
+               Object.keys(year.tiva_reconstruction.selected_country_values).length > 0)).length;
+            const errors = item.annual_matrices.filter(year =>
+              year.tiva_reconstruction?.status === 'not_computable');
+            const auxiliary = item.auxiliary_numeric;
             return <tr key={item.filename + item.edition}>
               <td>{item.filename}</td>
               <td>{item.edition}, {item.table}</td>
-              <td>{item.annual_matrix_count}</td>
+              <td>{item.annual_matrix_count}
+                {item.annual_matrix_count > 0 && <small>{leontief} Leontief value-added reconstructions</small>}
+                {errors.length > 0 && <small>{errors.length} numerical failures:
+                  {errors.map(x => x.year + ' ' + (x.tiva_reconstruction?.error_code || '')).join(', ')}</small>}
+                {auxiliary && auxiliary.status !== 'no_rdata_members' &&
+                  <small>RData: {auxiliary.status.replaceAll('_', ' ')}
+                    {auxiliary.numeric_reports?.map(m => ' · ' + m.member + ': ' +
+                      (m.numeric_objects?.length ?? 0) + ' numeric objects')}</small>}
+              </td>
               <td>{passed}/{item.annual_matrix_count} passed
                 <small>{item.native_validation_status.replaceAll('_', ' ')}</small>
                 {!!item.rejected_matrices?.length && <small>Rejected years: {item.rejected_matrices.map(x =>
@@ -69,9 +89,11 @@ export default function IcioEditionEvidence() {
             </tr>;
           })}</tbody>
         </table></div>}
-      <p className="original-import-note">The published OECD TiVA FFD_DVA series remain authoritative.
-        Native ICIO direct foreign final-demand sales are independent checks with a different economic
-        definition; accounting failures and missing official update hashes are not silently certified.</p>
+      <p className="original-import-note">Full matrix Leontief reconstructions are shown separately
+        alongside same-year published TiVA shares in Global → Supply chains. Non-matching
+        observations, unverified original authenticity and absent published accounting rows remain
+        explicit. Auxiliary RData numeric values are extracted and inventoried but do not
+        override independently published economic observations without a matching source contract.</p>
     </>}
   </details>;
 }
