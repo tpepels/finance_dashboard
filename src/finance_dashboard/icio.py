@@ -388,7 +388,7 @@ def _store_original_bundle(parent, originals, audit, identity, sources, verify):
             (temporary / "audit.json").write_bytes(payload)
             (temporary / "manifest.json").write_bytes(canonical_bytes({"schema_version": 1,
                 "source_identity": identity, "files": files, "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
-                "sources": sources, "matrix_sha256": audit["matrix_sha256"]}))
+                "sources": sources, "matrix_sha256": audit.get("matrix_sha256", audit.get("archive_sha256"))}))
             os.rename(temporary, bundle)
             temporary = None
         verify(bundle)
