@@ -134,6 +134,119 @@ def register_edition_archive(path: Path, root: Path) -> dict:
             "archive_sha256": record["archive_sha256"], "bundle_digest": bundle.name}
 
 
+DERIVED_METHOD = "native_leontief_rdata_v2"
+
+
+def _derived_folder(root: Path, original_sha: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{64}", original_sha):
+        raise ValueError("icio_derived_source_hash_invalid")
+    return Path(root) / "icio" / "native-method-reports" / original_sha / DERIVED_METHOD
+
+
+def _read_native_derived(root: Path, original_sha: str) -> dict | None:
+    from .source_capture import canonical_bytes
+    folder = _derived_folder(root, original_sha)
+    if not folder.is_dir():
+        return None
+    results = []
+    for file in sorted(folder.iterdir()):
+        if (file.is_symlink() or not file.is_file() or
+                not re.fullmatch(r"[0-9a-f]{64}\.json", file.name)):
+            raise ValueError("icio_derived_evidence_structure_invalid")
+        body = file.read_bytes()
+        if sha256(body).hexdigest() != file.stem:
+            raise ValueError("icio_derived_evidence_hash_changed")
+        result = json.loads(body)
+        if (result.get("schema_version") != 1 or
+                result.get("source_archive_sha256") != original_sha or
+                result.get("method") != DERIVED_METHOD or
+                not isinstance(result.get("native"), dict) or
+                canonical_bytes(result) != body):
+            raise ValueError("icio_derived_evidence_identity_mismatch")
+        results.append(result)
+    if len(results) > 1:
+        # Two different values from the same original + same method could
+        # indicate a nondeterministic parser or altered code. Do not choose
+        # the more flattering result.
+        raise ValueError("icio_derived_conflicting_method_versions")
+    return results[0] if results else None
+
+
+def _store_native_derived(root: Path, original_sha: str, native: dict,
+                          auxiliary: dict) -> dict:
+    from .source_capture import canonical_bytes
+    record = {"schema_version": 1, "source_archive_sha256": original_sha,
+              "method": DERIVED_METHOD, "native": native, "auxiliary": auxiliary}
+    body = canonical_bytes(record)
+    digest = sha256(body).hexdigest()
+    folder = _derived_folder(root, original_sha)
+    folder.mkdir(parents=True, exist_ok=True)
+    previous = _read_native_derived(root, original_sha)
+    if previous is not None:
+        if previous != record:
+            raise ValueError("icio_derived_method_result_conflict")
+        return previous
+    import os
+    import tempfile
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=folder, prefix=".derived-",
+                                         delete=False) as out:
+            temporary = Path(out.name)
+            out.write(body)
+            out.flush()
+            os.fsync(out.fileno())
+        os.chmod(temporary, 0o600)
+        os.link(temporary, folder / (digest + ".json"))
+    except FileExistsError:
+        if _read_native_derived(root, original_sha) != record:
+            raise ValueError("icio_derived_method_result_conflict") from None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return record
+
+
+def reassess_registered_archive(root: Path, archive_sha: str) -> dict:
+    """Upgrade an existing sealed original without altering its manifest.
+
+    The derived scientific report is an immutable, content-addressed adjunct
+    within the same canonical ICIO source-evidence tree. Source bytes,
+    acquisition receipt, original audit and any reported failures remain
+    unchanged; every reader verifies the source original before this adjunct.
+    """
+    from .icio_native import audit_archive_native
+    from .icio_auxiliary import inspect_auxiliary_zip
+    base = Path(root) / "icio" / "other-editions"
+    if not base.is_dir():
+        raise ValueError("icio_no_existing_archives")
+    for parent in sorted(base.iterdir()):
+        if not parent.is_dir() or parent.is_symlink() or not parent.name.endswith("-" + archive_sha[:16]):
+            continue
+        for bundle in sorted(parent.iterdir()):
+            if not bundle.is_dir() or bundle.is_symlink() or not re.fullmatch(r"[0-9a-f]{64}", bundle.name):
+                continue
+            record = json.loads((bundle / "audit.json").read_bytes())
+            if record["archive_sha256"] != archive_sha:
+                continue
+            _verify_edition_bundle(bundle, record)
+            with ZipFile(bundle / "archive.zip") as z:
+                if z.testzip() is not None:
+                    raise ValueError("icio_derived_original_crc_invalid")
+                native = audit_archive_native(z, record["edition"], table=record["table"])
+                auxiliary = (inspect_auxiliary_zip(z, staging_parent=base)
+                             if not native["annual_matrix_count"] and
+                             not native["rejected_matrices"] else
+                             {"status": "no_auxiliary_parse_needed", "numeric_reports": []})
+            _store_native_derived(root, archive_sha, native, auxiliary)
+            return {"status": "reassessed_verified_original", "archive_sha256": archive_sha,
+                    "filename": record["filename"], "edition": record["edition"],
+                    "annual_matrix_count": native["annual_matrix_count"],
+                    "native_validation_status": native["native_validation_status"],
+                    "auxiliary_status": auxiliary["status"]}
+    raise ValueError("icio_existing_archive_sha_not_found")
+
+
 @lru_cache(maxsize=256)
 def _cached_file_hash(filename: str, size: int, modified_ns: int) -> str:
     """Hash each unchanged immutable archive once per process, not once per visitor."""
@@ -187,6 +300,15 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                 raise ValueError("icio_edition_archive_directory_invalid")
             record = json.loads((bundle / "audit.json").read_text())
             _verify_edition_bundle(bundle, record)
+            derived = _read_native_derived(root, record["archive_sha256"])
+            if derived is not None:
+                native = derived["native"]
+                auxiliary = derived["auxiliary"]
+                record = {**record, **native, "auxiliary_numeric": auxiliary,
+                          "original_archive_status": record["status"],
+                          "status": (native["native_validation_status"]
+                                     if native["annual_matrix_count"] or native["rejected_matrices"]
+                                     else auxiliary["status"])}
             output.append({**{key: record[key] for key in ("filename", "edition", "table",
                 "status", "archive_sha256", "member_count", "source_authenticity_verified",
                 "industry_accounts_validated", "tiva_comparability_certified")},
