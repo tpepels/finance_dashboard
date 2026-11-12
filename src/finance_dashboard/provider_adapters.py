@@ -64,7 +64,7 @@ from .provider_parsers import (
     parse_fred_json,
     parse_ecb_csv,
     parse_pink_sheet_price,
-    parse_corgano_gold,
+    parse_gold_api_spot,
     parse_un_sdg,
     parse_bis_credit_gap,
     parse_siblis_cape,
@@ -83,7 +83,7 @@ from .provider_parsers import (
     IMF_MAPPER_ROOT,
     BIS_CREDIT_GAP_ROOT,
     SIBLIS_FREE_ROOT,
-    CORGANO_GOLD_LATEST,
+    GOLD_API_SPOT_LATEST,
 )
 
 def fetch_bis(self, series_id, start, item, key):
@@ -551,12 +551,13 @@ def fetch_gold_msci_corr(self, series_id, start, item, key):
         None, observations)
 
 
-def fetch_corgano_spot(self, series_id, start, item, key):
-    """Validate and fetch native data for CORGANO_SPOT."""
-    provider = item["provider"]
-    response = self._get(CORGANO_GOLD_LATEST)
-    observations = parse_corgano_gold(response.json(), start)
-    return FetchedSeries(series_id, CORGANO_GOLD_LATEST, None, observations)
+def fetch_gold_api_spot(self, series_id, start, item, key):
+    """Collect the registered current indicative XAU/USD spot observation."""
+    if key != "price/XAU:price:updatedAt:USD":
+        raise SourceUnavailable("Gold spot catalog identity differs from live API")
+    response = self._get(GOLD_API_SPOT_LATEST)
+    observations = parse_gold_api_spot(response.json(), start)
+    return FetchedSeries(series_id, GOLD_API_SPOT_LATEST, None, observations)
 
 
 def fetch_bis_property(self, series_id, start, item, key):
