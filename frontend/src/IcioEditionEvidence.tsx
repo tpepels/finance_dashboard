@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 type Matrix = { year: number; accounting_passed: boolean | null;
   industry_nodes: number; row_failures: number | null; column_failures: number | null;
   country_concordance: { valid: boolean; ambiguous_unsplit_parents: string[] };
-  industry_concordance: { excluded: string[] };
+  industry_concordance: { excluded: string[]; incomplete_targets?: string[]; complete_targets?: string[] };
   tiva_reconstruction?: { status?: string; iterations?: number;
     max_relative_residual?: number; error_code?: string;
     selected_country_values?: Record<string, { status: string }> };
@@ -60,6 +60,8 @@ export default function IcioEditionEvidence() {
           <tbody>{editions.map(item => {
             const passed = item.annual_matrices.filter(year => year.accounting_passed === true).length;
             const excluded = Array.from(new Set(item.annual_matrices.flatMap(year => year.industry_concordance.excluded)));
+            const incomplete = Array.from(new Set(item.annual_matrices.flatMap(year =>
+              year.industry_concordance.incomplete_targets ?? [])));
             const conflicts = Array.from(new Set(item.annual_matrices.flatMap(year =>
               year.country_concordance.ambiguous_unsplit_parents)));
             const leontief = item.annual_matrices.filter(year =>
@@ -84,7 +86,10 @@ export default function IcioEditionEvidence() {
                 <small>{item.native_validation_status.replaceAll('_', ' ')}</small>
                 {!!item.rejected_matrices?.length && <small>Rejected years: {item.rejected_matrices.map(x =>
                   String(x.year) + ' (' + x.error_code + ')').join(', ')}</small>}</td>
-              <td>{excluded.length ? excluded.join(', ') + ' excluded' : 'Common 2018 groups mapped'}</td>
+              <td>{excluded.length ? excluded.join(', ') + ' source sectors excluded' :
+                'No source sectors excluded'}
+                {!!incomplete.length && <small>Incomplete 2018 target groups: {incomplete.join(', ')}
+                  (withheld from comparisons)</small>}</td>
               <td>{conflicts.length ? conflicts.join(', ') + ' ambiguous' : 'No split conflict detected'}</td>
             </tr>;
           })}</tbody>
