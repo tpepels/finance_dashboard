@@ -157,6 +157,9 @@ class OriginalImportManager:
                     row = {"filename": filename, "status": result["status"],
                            "edition": result["edition"], "table": result["table"],
                            "archive_sha256": result.get("archive_sha256")}
+                    # The canonical evidence writer has already retained and
+                    # verified the bytes. Avoid a duplicate staging copy.
+                    (self.root / filename).unlink()
                 except Exception as exc:
                     code = str(exc)
                     if not re.fullmatch(r"icio_[a-z_]{1,90}", code):
