@@ -7,6 +7,7 @@ import { Section, spanOf, useBundles, yearDate, type Bundle } from './analysisSh
 type Line = [string, number][];
 type G05Values = { economies: ExternalRow[]; history: Record<string, { current_account_gdp: Line; net_position_gdp: Line }> };
 type NativeIcioYear = { edition: string; year: number; source: string; accounting_passed: boolean | null;
+  structure_verified?: boolean; accounting_basis?: string;
   countries: Record<string, { direct_foreign_final_demand_usd_million: string }> };
 type G06Values = { economies: { area: string; first: number; first_year: string; latest: number; latest_year: string }[];
   history: Record<string, Line>; native_icio_direct?: { years: NativeIcioYear[];
@@ -152,7 +153,8 @@ function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>
   const data = bundle.values as G06Values;
   const first = data.economies[0]?.first_year ?? '', latest = data.economies[0]?.latest_year ?? '';
   const nativeYears = data.native_icio_direct?.years ?? [];
-  const verifiedNative = nativeYears.filter(record => record.accounting_passed === true);
+  const verifiedNative = nativeYears.filter(record => record.structure_verified === true &&
+    (record.accounting_passed === true || record.accounting_passed === null));
   const nativeAreas = [{ area: 'US', country: 'USA' }, { area: 'DE', country: 'DEU' },
     { area: 'FR', country: 'FRA' }, { area: 'PT', country: 'PRT' },
     { area: 'JP', country: 'JPN' }, { area: 'CN', country: 'CHN' }, { area: 'IN', country: 'IND' }];
@@ -189,8 +191,9 @@ function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>
       <p className="decision-caption">Direct sales of goods and services to foreign final-demand purchasers,
         in current USD millions. This excludes indirect domestic value added embodied in foreign production
         and is <strong>not</strong> OECD's published FFD_DVA TiVA indicator. Different editions retain separate
-        histories; only native matrices passing the original accounting audit appear in the charts.
-        {nativeYears.length - verifiedNative.length} year records are excluded because their accounting is incomplete or failed.</p>
+        histories. Only structurally complete original matrices enter the charts; those with no publisher
+        accounting rows are labelled as unverified accounts.
+        {nativeYears.length - verifiedNative.length} year records are excluded because of incomplete or failed validation.</p>
       {nativePanels.length > 0 && <div className="decision-multiples">
         {nativePanels.map(row => <TimePanel key={row.area} title={entityName(row.area) + ' · direct foreign final demand'}
           height={220} compact presets={false} span={spanOf(row.lines.map(l => l.data), FALLBACK)}
