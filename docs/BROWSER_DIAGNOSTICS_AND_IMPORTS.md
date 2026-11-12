@@ -48,8 +48,10 @@ Supported file families:
   their own industry counts (36 and 45) and economy populations. Auxiliary
   `econA`/Rdata archives are preserved as supporting originals, without
   a false claim that they are audited annual CSV matrices.
-- The overlapping `2016-2020_SML.zip` is recorded as a distinct unverified
-  source and cannot replace the pinned publisher January-2026 series.
+- `2016-2020_SML.zip` and `2016-2020_EXT.zip` belong to the 2023
+  OECD release (45 industries, 77 economies regular or 81 split economies
+  extended), **not** the 2025 release. The original 2023 editions are kept
+  separate and cannot replace the pinned January-2026 2025 regular series.
 
 The exact `ReadMe_ICIO_small.xlsx` is needed for the regular publisher
 matrices. The importer **reuses an existing hash-matched copy** in source
