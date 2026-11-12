@@ -31,6 +31,24 @@ class GlobalEngineTests(unittest.TestCase):
         de = next(r for r in values["economies"] if r["area"] == "DE")
         self.assertEqual((de["first"], de["first_year"], de["latest"], de["latest_year"]), (25.0, "1995", 30.0, "1997"))
 
+    def test_g06_keeps_publisher_tiva_separate_from_native_icio_diagnostics(self):
+        points = {role: [] for role in G06.inputs}
+        points["share:PT"] = annual(2021, [32.5, 33.1])
+        original = {"years": [{
+            "edition": "2025", "year": 2021,
+            "source": "2016-2022_EXT.zip",
+            "accounting_passed": None,
+            "structure_verified": True,
+            "accounting_basis": "source_structure_only_accounts_not_published",
+            "countries": {"PRT": {"direct_foreign_final_demand_usd_million": "8000"}}}],
+            "not_equivalent_to_oecd_tiva_ffd_dva": True}
+        bundle = G06.compute(points, {}, {"icio_native_direct": original})
+        self.assertEqual(bundle.values["history"]["PT"], [["2021", 32.5], ["2022", 33.1]])
+        self.assertIs(bundle.values["native_icio_direct"], original)
+        self.assertNotIn("direct_foreign_final_demand_usd_million", bundle.values["history"])
+        self.assertEqual(bundle.transforms[0]["name"], "native_icio_direct_final_demand")
+
+
 
 if __name__ == "__main__":
     unittest.main()
