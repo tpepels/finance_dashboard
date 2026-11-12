@@ -950,7 +950,7 @@ G05 = AnalysisDefinition("G05", {
 G06_AREAS = ("US", "DE", "FR", "PT", "JP", "CN", "IN")
 
 
-def _g06(points: dict, view: dict) -> Computed:
+def _g06(points: dict, view: dict, artifacts: dict) -> Computed:
     economies, history = [], {}
     for area in G06_AREAS:
         share = sorted(points.get(f"share:{area}", []))
@@ -958,11 +958,18 @@ def _g06(points: dict, view: dict) -> Computed:
         if share:
             economies.append({"area": area, "first": share[0][1], "first_year": str(share[0][0].year),
                               "latest": share[-1][1], "latest_year": str(share[-1][0].year)})
-    return Computed(values={"economies": economies, "history": history}, estimates=None, comparison=["economies"],
-                    transforms=[])
+    # An independently labeled source check, never a replacement for the
+    # published TiVA FFD_DVA series above. Each edition remains distinct.
+    native = artifacts.get("icio_native_direct") or {"years": [], "not_equivalent_to_oecd_tiva_ffd_dva": True}
+    return Computed(values={"economies": economies, "history": history,
+                            "native_icio_direct": native}, estimates=None, comparison=["economies"],
+                    transforms=[applied("native_icio_direct_final_demand",
+                        applied_to=["edition-specific ICIO source matrices"],
+                        note="Direct shipments to foreign final-demand purchasers, not domestic value added embodied in foreign final demand; editions are not spliced.")] if native["years"] else [])
 
 
-G06 = AnalysisDefinition("G06", {f"share:{a}": f"supply_chain.{a.lower()}.foreign_final_demand_share" for a in G06_AREAS}, _g06)
+G06 = AnalysisDefinition("G06", {f"share:{a}": f"supply_chain.{a.lower()}.foreign_final_demand_share" for a in G06_AREAS}, _g06,
+                         artifacts=("icio_native_direct",))
 
 KLEMS_AREAS = ("US", "DE", "FR", "PT", "GB", "IT", "ES", "NL")
 NFC_AREAS = ("US", "DE", "FR", "PT", "GB", "IT", "ES", "NL")
