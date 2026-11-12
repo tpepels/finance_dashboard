@@ -163,6 +163,13 @@ export default function OriginalUploader() {
           {result.error_code && <small> · {result.error_code}</small>}
         </li>)}</ul>}
     </div>}
+    {inventory.files.some(file => file.kind !== 'readme' &&
+      !uploadedSuccessfully(inventory.jobs, file.filename)) && !inventory.active &&
+      <button type="button" className="original-resume-import" disabled={busy}
+        onClick={() => { void importFiles(inventory, []).catch(reason =>
+          setError(reason instanceof Error ? reason.message : 'Import could not start')); }}>
+        Import pending uploaded archives
+      </button>}
     {inventory.files.length > 0 && <details className="original-staged-files">
       <summary>Uploaded originals ({inventory.files.length})</summary>
       <ul>{inventory.files.map(file => <li key={file.filename}>
