@@ -79,7 +79,8 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
             try:
-                macro_failures = refresh_all(engine, stopped=scheduled_stop)
+                macro_failures = refresh_all(
+                    engine, stopped=scheduled_stop, skip_complete_pinned=True)
                 if macro_failures:
                     cycle_failed = True
                     record_event("macro", "stage_finished", level="warning",
