@@ -178,8 +178,10 @@ export default function OriginalUploader() {
         <span>{file.filename}</span><small>{size(file.bytes)}</small>
       </li>)}</ul>
     </details>}
-    <p className="original-import-note">2025 regular matrices receive the full pinned original
-      accounting audit. Extended and 2018/2021 editions are preserved and indexed, but remain
-      unverified for economic comparability until their edition-specific dimensions are validated.</p>
+    <p className="original-import-note">2025 regular matrices receive the pinned original
+      accounting audit. Extended and 2018/2021/2023 originals are checked against their own
+      native dimensions and annual source flows. Where the publisher supplies no independent
+      accounting rows, those accounts remain unverified; direct foreign demand is not TiVA value
+      added, and different source editions are never silently combined.</p>
   </section>;
 }
