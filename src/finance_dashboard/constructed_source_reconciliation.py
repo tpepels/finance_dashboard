@@ -305,38 +305,80 @@ def _eurostat(raw, url, sector, measure, *, dataset='nasa_10_nf_tr', unit='CP_ME
 
 
 def _oecd_nfc(raw, url, definition):
+    """Verify exact source dimensions for both original and shared OECD S11 documents.
+
+    Older single-transaction acquisition receipts are still valid and must
+    remain independently re-verifiable. New country-scoped Table 14 originals
+    are verified against their declared multi-code request key and all
+    returned source-row identities; only the requested target is extracted.
+    """
     country, _, transaction = definition['source_key'].partition('/')
-    entries = {'B1G': 'D', 'D1': 'D', 'B2G': 'D', 'P51C': 'D', 'D29': 'D', 'D39': 'C'}
+    entries = {'B1G': 'D', 'D1': 'D', 'B2G': 'D',
+               'P51C': 'D', 'D29': 'D', 'D39': 'C'}
     stocks = {'N11N'}
-    if not re.fullmatch('[A-Z]{3}', country) or transaction not in set(entries) | stocks: _error()
+    if not re.fullmatch('[A-Z]{3}', country) or transaction not in set(entries) | stocks:
+        _error()
     query = parse_qs(urlsplit(url).query)
-    if set(query) - {'format', 'startPeriod'} or query.get('format') != ['csvfile'] or 'startPeriod' in query: _error('source_snapshot_partial')
+    if (set(query) - {'format', 'startPeriod'}
+            or query.get('format') != ['csvfile'] or 'startPeriod' in query):
+        _error('source_snapshot_partial')
+    legacy = False
     if transaction in stocks:
-        # Table 9B closing balance sheet: asset (A) entry, net fixed assets.
         key = f'A.{country}.S11.S1.A._Z.{transaction}._Z.XDC._Z.V.N.T2600'
         _url(url, 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE9B,1.1/'+key)
-        fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE9B(1.1)', 'FREQ': 'A', 'REF_AREA': country,
-                 'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1', 'ACCOUNTING_ENTRY': 'A', 'TRANSACTION': '_Z',
-                 'INSTR_ASSET': transaction, 'EXPENDITURE': '_Z', 'UNIT_MEASURE': 'XDC', 'VALUATION': '_Z', 'PRICE_BASE': 'V',
-                 'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T2600', 'UNIT_MULT': '6'}
+        fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE9B(1.1)',
+                 'FREQ': 'A', 'REF_AREA': country,
+                 'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1',
+                 'ACCOUNTING_ENTRY': 'A', 'TRANSACTION': '_Z',
+                 'INSTR_ASSET': transaction, 'EXPENDITURE': '_Z',
+                 'UNIT_MEASURE': 'XDC', 'VALUATION': '_Z', 'PRICE_BASE': 'V',
+                 'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T2600',
+                 'UNIT_MULT': '6'}
     else:
-        key = f'A.{country}.S11.S1.{entries[transaction]}.{transaction}._Z._Z.XDC.S.V.N.T0800'
-        _url(url, 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/'+key)
-        fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE14(1.1)', 'FREQ': 'A', 'REF_AREA': country,
-                 'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1', 'ACCOUNTING_ENTRY': entries[transaction], 'TRANSACTION': transaction,
-                 'INSTR_ASSET': '_Z', 'EXPENDITURE': '_Z', 'UNIT_MEASURE': 'XDC', 'VALUATION': 'S', 'PRICE_BASE': 'V',
-                 'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T0800', 'UNIT_MULT': '6'}
+        old_key = f'A.{country}.S11.S1.{entries[transaction]}.{transaction}._Z._Z.XDC.S.V.N.T0800'
+        batched_key = (f'A.{country}.S11.S1.C+D.'
+                       'B1G+B2G+D1+D29+D39+P51C._Z._Z.XDC.S.V.N.T0800')
+        root = 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/'
+        if urlsplit(url).path == urlsplit(root + old_key).path:
+            _url(url, root + old_key)
+            legacy = True
+        else:
+            _url(url, root + batched_key)
+        fixed = {'DATAFLOW': 'OECD.SDD.NAD:DSD_NASEC10@DF_TABLE14(1.1)',
+                 'FREQ': 'A', 'REF_AREA': country,
+                 'SECTOR': 'S11', 'COUNTERPART_SECTOR': 'S1',
+                 'INSTR_ASSET': '_Z', 'EXPENDITURE': '_Z',
+                 'UNIT_MEASURE': 'XDC', 'VALUATION': 'S', 'PRICE_BASE': 'V',
+                 'TRANSFORMATION': 'N', 'TABLE_IDENTIFIER': 'T0800',
+                 'UNIT_MULT': '6'}
     reader = csv.DictReader(io.StringIO(raw.decode('utf-8-sig')))
-    if not reader.fieldnames or not (set(fixed) | {'CURRENCY', 'TIME_PERIOD', 'OBS_VALUE'}) <= set(reader.fieldnames): _error('source_schema_invalid')
+    required = set(fixed) | {'CURRENCY', 'TIME_PERIOD', 'OBS_VALUE',
+                             'ACCOUNTING_ENTRY', 'TRANSACTION'}
+    if not reader.fieldnames or not required <= set(reader.fieldnames) or len(reader.fieldnames) != len(set(reader.fieldnames)):
+        _error('source_schema_invalid')
     values, seen = {}, set()
     for row in reader:
-        if any(row.get(name) != value for name, value in fixed.items()): _error()
-        if definition.get('currency') and row['CURRENCY'] != definition['currency']: _error()
-        _add(values, seen, _native_period(row['TIME_PERIOD'], 'A'), row['OBS_VALUE'])
-    # Gross operating surplus can be negative; the other flows cannot.
-    if transaction != 'B2G' and any(value < 0 for value in values.values()): _error('source_value_invalid')
+        if any(row.get(name) != value for name, value in fixed.items()):
+            _error()
+        if definition.get('currency') and row['CURRENCY'] != definition['currency']:
+            _error()
+        if transaction in stocks:
+            include = True
+        else:
+            code = row.get('TRANSACTION')
+            # A many-series original cannot smuggle another economic series
+            # under a permissive wildcard: every returned role must belong
+            # to the exact audited key with the correct uses/resources entry.
+            if (code not in entries
+                    or row.get('ACCOUNTING_ENTRY') != entries[code]
+                    or (legacy and code != transaction)):
+                _error()
+            include = code == transaction
+        if include:
+            _add(values, seen, _native_period(row['TIME_PERIOD'], 'A'), row['OBS_VALUE'])
+    if transaction != 'B2G' and any(value < 0 for value in values.values()):
+        _error('source_value_invalid')
     return values
-
 
 def _eurostat_hicp(raw, url):
     expected = {'freq': 'M', 'unit': 'I25', 'coicop18': 'TOTAL', 'geo': 'EA'}
