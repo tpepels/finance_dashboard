@@ -7,7 +7,8 @@ type Matrix = { year: number; accounting_passed: boolean | null;
 };
 type Edition = { filename: string; edition: string; table: string;
   native_validation_status: string; annual_matrix_count: number;
-  annual_matrices: Matrix[]; source_authenticity_verified: boolean };
+  annual_matrices: Matrix[]; rejected_matrices?: {year: number; error_code: string}[];
+  expected_years?: number[]; observed_years?: number[]; source_authenticity_verified: boolean };
 type Evidence = { historical_coverage?: { verified_years: number[]; missing_years: number[] };
   additional_editions?: Edition[] };
 
@@ -60,7 +61,9 @@ export default function IcioEditionEvidence() {
               <td>{item.edition}, {item.table}</td>
               <td>{item.annual_matrix_count}</td>
               <td>{passed}/{item.annual_matrix_count} passed
-                <small>{item.native_validation_status.replaceAll('_', ' ')}</small></td>
+                <small>{item.native_validation_status.replaceAll('_', ' ')}</small>
+                {!!item.rejected_matrices?.length && <small>Rejected years: {item.rejected_matrices.map(x =>
+                  String(x.year) + ' (' + x.error_code + ')').join(', ')}</small>}</td>
               <td>{excluded.length ? excluded.join(', ') + ' excluded' : 'Common 2018 groups mapped'}</td>
               <td>{conflicts.length ? conflicts.join(', ') + ' ambiguous' : 'No split conflict detected'}</td>
             </tr>;
