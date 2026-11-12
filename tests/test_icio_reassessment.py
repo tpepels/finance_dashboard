@@ -60,6 +60,27 @@ class OriginalReassessmentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "icio_derived_evidence_hash_changed"):
                 read_edition_archives(root / "evidence")
 
+    def test_duplicate_year_different_archive_hash_is_flagged_not_merged(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            source_a = root / "2011-2015_EXT.zip"
+            source_b = root / "2011-2015_EXT (1).zip"
+            with ZipFile(source_a, "w") as z:
+                z.writestr("README.txt", "release A")
+            with ZipFile(source_b, "w") as z:
+                z.writestr("README.txt", "release B, distinct original bytes")
+            register_edition_archive(source_a, root / "evidence")
+            register_edition_archive(source_b, root / "evidence")
+            rows = read_edition_archives(root / "evidence")
+            self.assertEqual(len(rows), 2)
+            self.assertNotEqual(rows[0]["archive_sha256"], rows[1]["archive_sha256"])
+            for row in rows:
+                self.assertTrue(row["source_year_conflict"])
+                self.assertEqual(row["conflicting_years"], [2011, 2012, 2013, 2014, 2015])
+                self.assertIn(row["filename"],
+                              ("2011-2015_EXT.zip", "2011-2015_EXT (1).zip"))
+                self.assertEqual(len(row["conflicting_sources"]), 5)
+
     def test_unknown_source_hash_is_not_reassessed(self):
         with TemporaryDirectory() as temp:
             with self.assertRaises(ValueError):
