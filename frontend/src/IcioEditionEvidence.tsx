@@ -13,6 +13,7 @@ type Edition = { filename: string; edition: string; table: string;
   annual_matrices: Matrix[]; rejected_matrices?: {year: number; error_code: string}[];
   expected_years?: number[]; observed_years?: number[]; source_authenticity_verified: boolean;
   source_year_conflict?: boolean; conflicting_years?: number[];
+  equivalent_annual_years?: number[]; suppressed_equivalent_years?: number[];
   conflicting_sources?: { filename: string; year: number }[];
   auxiliary_numeric?: { status: string; parsed_members?: number;
     total_rdata_members?: number; numeric_reports?: { member: string; status: string;
@@ -76,7 +77,11 @@ export default function IcioEditionEvidence() {
               <td>{item.filename}</td>
               <td>{item.edition}, {item.table}
                 {item.source_year_conflict && <small role="status">Conflicting archive versions:
-                  {item.conflicting_years?.join(', ')}. Original values withheld.</small>}</td>
+                  {item.conflicting_years?.join(', ')}. Original values withheld.</small>}
+                {!!item.equivalent_annual_years?.length && <small>
+                  Identical annual matrix data across ZIP wrappers: {item.equivalent_annual_years.join(', ')}.
+                  {item.suppressed_equivalent_years?.length ? ' Duplicate observations suppressed.' : ' Canonical copy used.'}
+                </small>}</td>
               <td>{item.annual_matrix_count}
                 {item.annual_matrix_count > 0 && <small>{leontief} Leontief value-added reconstructions</small>}
                 {errors.length > 0 && <small>{errors.length} numerical failures:
