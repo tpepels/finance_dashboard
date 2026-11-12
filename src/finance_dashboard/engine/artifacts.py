@@ -104,6 +104,27 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
             "aggregate_produced": False, "listed_population_verified": False,
             "ultimate_parent_deduplication_verified": False,
             "worldwide_population_verified": False}
+    if name == "icio_native_direct":
+        # Existing canonical original reader; never substitutes reconstructed
+        # direct final demand for OECD TiVA FFD_DVA.
+        from ..icio_editions import read_edition_archives
+        from ..icio_native import canonical_country
+        selected = {"USA", "DEU", "FRA", "PRT", "JPN", "CHN", "IND"}
+        years = []
+        for archive in read_edition_archives(Path(evidence_root)):
+            for matrix in archive.get("annual_matrices", []):
+                if not matrix["country_concordance"]["valid"]:
+                    continue
+                countries = {}
+                for country, totals in matrix.get("country_direct_flows", {}).items():
+                    if country in selected:
+                        countries[country] = totals
+                years.append({"edition": archive["edition"], "year": matrix["year"],
+                    "source": archive["filename"], "source_sha256": archive["archive_sha256"],
+                    "accounting_passed": matrix["accounting_passed"], "countries": countries})
+        return {"years": sorted(years, key=lambda x: (x["edition"], x["year"])),
+                "measurement": "gross direct deliveries to foreign final demand",
+                "not_equivalent_to_oecd_tiva_ffd_dva": True}
     if name == "marxian_rates":
         from ..marxian_sectors import marxian_rates
         return marxian_rates(Path(evidence_root))
