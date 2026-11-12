@@ -102,7 +102,30 @@ class IngestionService:
                     updated_at=now_utc(),
                 ))
             elif row.source_key != definition["source_key"] or row.provider != definition["provider"]:
-                raise ValueError("Source mapping changed: requires explicit migration")
+                # Corgano permanently ended its live API in November 2026.
+                # Existing failed-only rows have no original observations and
+                # can be rebound to the replacement feed without changing any
+                # history. Never co-mingle old midpoint data with the new
+                # provider's indicative quotes under one canonical series.
+                replacement = (
+                    series_id == "gold.usd.spot"
+                    and row.provider == "CORGANO_SPOT"
+                    and row.source_key == "api/v1/latest:data.price_usd"
+                    and definition["provider"] == "GOLD_API_SPOT"
+                    and definition["source_key"] == "price/XAU:price:updatedAt:USD"
+                )
+                if replacement:
+                    old_count = session.scalar(
+                        select(func.count()).select_from(ObservationVersion)
+                        .where(ObservationVersion.series_id == series_id))
+                    if old_count == 0:
+                        row.provider = definition["provider"]
+                        row.source_key = definition["source_key"]
+                        row.updated_at = now_utc()
+                    else:
+                        raise ValueError("Source mapping changed: requires explicit migration")
+                else:
+                    raise ValueError("Source mapping changed: requires explicit migration")
         with Session(self.engine) as session:
             last_date = session.scalar(
                 select(func.max(ObservationVersion.period)).where(ObservationVersion.series_id == series_id)
