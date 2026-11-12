@@ -28,7 +28,7 @@ OFR = ("Date,OFR FSI,Credit,Equity valuation,Safe assets,Funding,Volatility,Unit
 
 
 class AnnualSourceWindowTests(unittest.TestCase):
-    def test_oecd_flow_and_stock_round_request_year_but_filter_exact_date(self):
+    def test_oecd_full_country_source_filters_dates_locally_without_partial_request(self):
         for sid, last, template in (
                 ("profit.de.nfc_compensation", date(2025, 1, 1),
                  "OECD.SDD.NAD:DSD_NASEC10@DF_TABLE14(1.1),A,DEU,S11,S1,D,D1,_Z,_Z,XDC,S,V,N,T0800,{year},100,6,EUR\n"),
@@ -43,7 +43,7 @@ class AnnualSourceWindowTests(unittest.TestCase):
                     return httpx.Response(200, text=body)
                 with httpx.Client(transport=httpx.MockTransport(respond)) as http:
                     fetched = ProviderRouter(http).fetch(sid, start)
-                self.assertEqual(calls[0].url.params["startPeriod"], str(start.year))
+                self.assertEqual(dict(calls[0].url.params), {"format": "csvfile"})
                 self.assertEqual(fetched.observations, {last: Decimal("100")})
 
 
