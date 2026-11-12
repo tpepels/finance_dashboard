@@ -94,16 +94,11 @@ class ProviderRegistryTests(unittest.TestCase):
         observed_hosts = []
         def respond(request):
             observed_hosts.append(request.url.host)
-            if request.url.host == "goldprice.corgano.com":
+            if request.url.host == "api.gold-api.com":
                 return httpx.Response(200, json={
-                    "data": {
-                        "metal": "gold", "symbol": "XAU",
-                        "price_usd": {"per_oz": 3900.25, "per_gram": 125.4,
-                                      "per_kg": 125400},
-                        "as_of": datetime.now(timezone.utc).isoformat(),
-                    },
-                    "meta": {"unit": "USD / troy oz",
-                              "source": "Swissquote bid/ask midpoint"},
+                    "name": "Gold", "symbol": "XAU", "currency": "USD",
+                    "exchangeRate": 1, "price": 3900.25,
+                    "updatedAt": datetime.now(timezone.utc).isoformat(),
                 })
             if request.url.host == "siblisresearch.supabase.co":
                 return httpx.Response(200, json={
@@ -135,7 +130,7 @@ class ProviderRegistryTests(unittest.TestCase):
                 self.assertEqual(client._transport.requests_reserved, 3)
             self.assertEqual(gate.report()["requests_recorded"], 3)
         self.assertEqual(set(observed_hosts), {
-            "goldprice.corgano.com", "siblisresearch.supabase.co",
+            "api.gold-api.com", "siblisresearch.supabase.co",
             "unstats.un.org",
         })
 
