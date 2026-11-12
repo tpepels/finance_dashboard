@@ -950,7 +950,7 @@ G05 = AnalysisDefinition("G05", {
 G06_AREAS = ("US", "DE", "FR", "PT", "JP", "CN", "IN")
 
 
-def _g06(points: dict, view: dict, artifacts: dict) -> Computed:
+def _g06(points: dict, view: dict, artifacts: dict | None = None) -> Computed:
     economies, history = [], {}
     for area in G06_AREAS:
         share = sorted(points.get(f"share:{area}", []))
@@ -960,7 +960,7 @@ def _g06(points: dict, view: dict, artifacts: dict) -> Computed:
                               "latest": share[-1][1], "latest_year": str(share[-1][0].year)})
     # An independently labeled source check, never a replacement for the
     # published TiVA FFD_DVA series above. Each edition remains distinct.
-    native = artifacts.get("icio_native_direct") or {"years": [], "not_equivalent_to_oecd_tiva_ffd_dva": True}
+    native = (artifacts or {}).get("icio_native_direct") or {"years": [], "not_equivalent_to_oecd_tiva_ffd_dva": True}
     return Computed(values={"economies": economies, "history": history,
                             "native_icio_direct": native}, estimates=None, comparison=["economies"],
                     transforms=[applied("native_icio_direct_final_demand",
