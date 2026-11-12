@@ -427,32 +427,56 @@ def fetch_euklems(self, series_id, start, item, key):
 
 
 def fetch_oecd_nfc_accounts(self, series_id, start, item, key):
-    """Validate and fetch one OECD S11 transaction (Table 14) or net stock (Table 9B)."""
+    """Query one complete country account table, extracting exact S11 cells.
+
+    One canonical Table 14 document can serve six transaction roles for a
+    country. The Table 9B fixed-asset stock remains a separate original.
+    Reuse the existing source-document receipt/cache; no second ingestion
+    system or fabricated partial observations.
+    """
     country, _, transaction = key.partition("/")
     stock = transaction in OECD_NFC_STOCKS
     if country not in OECD_NFC_COUNTRIES or not (stock or transaction in OECD_NFC_TRANSACTIONS):
         raise SourceUnavailable("Unapproved OECD non-financial corporate account series")
-    params = {"format": "csvfile"}
-    if start:
-        params["startPeriod"] = str(start.year)
-    root = OECD_TABLE9B_ROOT if stock else OECD_TABLE14_ROOT
-    response = self._get(root + oecd_nfc_key(country, transaction), params=params)
-    rows = list(csv.DictReader(io.StringIO(response.text.lstrip("\ufeff"))))
+    if stock:
+        root = OECD_TABLE9B_ROOT
+        query = oecd_nfc_key(country, transaction)
+    else:
+        root = OECD_TABLE14_ROOT
+        # Exact SDMX OR dimensions. Publisher resource/uses and transaction
+        # codes are crossed by the DSD; invalid combinations are checked and
+        # rejected below, never used to construct economic observations.
+        query = (f"A.{country}.S11.S1.C+D."
+                 "B1G+B2G+D1+D29+D39+P51C._Z._Z.XDC.S.V.N.T0800")
+    response = self._get_document(root + query, params={"format": "csvfile"})
+    rows = csv.DictReader(io.StringIO(response.text.lstrip("\ufeff")))
     out = {}
-    entry, code_field = ("A", "INSTR_ASSET") if stock else (OECD_NFC_TRANSACTIONS[transaction], "TRANSACTION")
+    expected_entry = "A" if stock else OECD_NFC_TRANSACTIONS[transaction]
+    expected_field = "INSTR_ASSET" if stock else "TRANSACTION"
+    observed_rows = 0
     for row in rows:
-        if (row.get("REF_AREA") != country or row.get("SECTOR") != "S11" or row.get(code_field) != transaction
-                or row.get("ACCOUNTING_ENTRY") != entry or row.get("UNIT_MULT") != "6"):
-            raise ProviderError("OECD sector accounts returned a different series")
-        if row.get("OBS_VALUE") not in (None, ""):
+        if row.get("REF_AREA") != country or row.get("SECTOR") != "S11" or row.get("UNIT_MULT") != "6":
+            raise ProviderError("OECD corporate accounts source population changed")
+        if stock:
+            if row.get("INSTR_ASSET") != transaction or row.get("ACCOUNTING_ENTRY") != "A":
+                raise ProviderError("OECD corporate balance sheet source identity changed")
+            include = True
+        else:
+            code = row.get("TRANSACTION")
+            if code not in OECD_NFC_TRANSACTIONS or row.get("ACCOUNTING_ENTRY") != OECD_NFC_TRANSACTIONS[code]:
+                raise ProviderError("OECD corporate account transaction/entry mismatch")
+            include = code == transaction
+        observed_rows += 1
+        if include and row.get("OBS_VALUE") not in (None, ""):
             day = date(int(row["TIME_PERIOD"]), 1, 1)
             value = Decimal(row["OBS_VALUE"])
             if start is None or day >= start:
+                if day in out:
+                    raise ProviderError("OECD corporate source duplicated period")
                 out[day] = value
-    if not out:
-        raise ProviderError("OECD Table 14 response contains no usable observations")
+    if not observed_rows or not out:
+        raise ProviderError("OECD corporate source has no usable observations for requested role")
     return FetchedSeries(series_id, str(response.request.url), None, out)
-
 
 def fetch_bis_world_weighted(self, series_id, start, item, key):
     """Validate and fetch native data for BIS_WORLD_WEIGHTED."""
