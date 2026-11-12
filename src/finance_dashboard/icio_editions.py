@@ -324,4 +324,34 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                 "rejected_matrices": record.get("rejected_matrices", []),
                 "expected_years": record.get("expected_years"),
                 "observed_years": record.get("observed_years", [])})
+    if archive_sha is None:
+        # A second ZIP with a browser "(1)" suffix may carry different
+        # publisher content for the very same edition and annual period.
+        # Neither package is silently preferred or spliced into the research.
+        from collections import defaultdict
+        from .icio_native import expected_archive_years
+        by_period = defaultdict(list)
+        for idx, item in enumerate(output):
+            expected = item.get("expected_years")
+            if expected is None:
+                expected = expected_archive_years(item["filename"], item["edition"])
+            for year in expected or []:
+                by_period[(item["edition"], item["table"], year)].append(idx)
+        for idx, item in enumerate(output):
+            item["conflicting_years"] = []
+            item["conflicting_sources"] = []
+        for (_, _, year), indices in by_period.items():
+            if len({output[i]["archive_sha256"] for i in indices}) <= 1:
+                continue
+            for i in indices:
+                output[i]["conflicting_years"].append(year)
+                for j in indices:
+                    if i != j:
+                        output[i]["conflicting_sources"].append({
+                            "filename": output[j]["filename"],
+                            "archive_sha256": output[j]["archive_sha256"],
+                            "year": year})
+        for item in output:
+            item["conflicting_years"] = sorted(set(item["conflicting_years"]))
+            item["source_year_conflict"] = bool(item["conflicting_years"])
     return output
