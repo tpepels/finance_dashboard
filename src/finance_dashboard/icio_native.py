@@ -38,6 +38,7 @@ SPLITS = {"CN1": "CHN", "CN2": "CHN", "MX1": "MEX", "MX2": "MEX"}
 DIMENSIONS = {
     "2018": (69, 65, SECTORS_2018, 1995, 2015),
     "2021": (71, 67, SECTORS_2021, 1995, 2018),
+    "2023": (81, 77, SECTORS_2021, 1995, 2020),
     "2025": (85, 81, SECTORS_2025, 1995, 2022),
 }
 # A safeguard against hundreds of thousands of invented "years" or unsuitable
@@ -45,6 +46,7 @@ DIMENSIONS = {
 YEAR_MEMBER = {
     "2018": re.compile(r"ICIO2018_(19[9][5-9]|20(?:0[0-9]|1[0-5]))\.csv", re.I),
     "2021": re.compile(r"ICIO2021_(19[9][5-9]|20(?:0[0-9]|1[0-8]))\.csv", re.I),
+    "2023": re.compile(r"(19[9][5-9]|20(?:0[0-9]|1[0-9]|20))(?:_SML)?\.csv", re.I),
     "2025": re.compile(r"(19[9][5-9]|20(?:0[0-9]|1[0-9]|2[0-2]))\.csv", re.I),
 }
 
@@ -109,13 +111,15 @@ def _simple_text(value: Decimal) -> str:
 
 
 def audit_native_csv(stream, *, edition: str, year: int,
-                     dimensions: tuple | None = None) -> dict:
+                     dimensions: tuple | None = None, table: str = "extended") -> dict:
     """Audit one native matrix with O(columns) memory; never rebalance cells.
 
     A full accounting pass is impossible if the original contains no explicit
     OUT/TLS/VA components. Those cases stay structurally verified only.
     """
     n_areas, n_fd_areas, sectors, start_year, end_year = dimensions or DIMENSIONS[edition]
+    if edition == "2023" and table == "regular" and dimensions is None:
+        n_areas = n_fd_areas  # 77 unsplit countries / 45 sectors
     if not start_year <= year <= end_year:
         raise ValueError("icio_native_year_outside_edition")
     rows = csv.reader(stream)
@@ -144,7 +148,8 @@ def audit_native_csv(stream, *, edition: str, year: int,
             or any(sum(x == area for x, _ in fd_parts) != 6 for area in fd_areas)
             or any(len({cat for a, cat in fd_parts if a == area}) != 6 for area in fd_areas)):
         raise ValueError("icio_native_final_demand_labels_invalid")
-    if set(fd_areas) - set(areas) or set(areas) - set(fd_areas) != set(SPLITS):
+    expected_splits = set(SPLITS) if n_areas != n_fd_areas else set()
+    if set(fd_areas) - set(areas) or set(areas) - set(fd_areas) != expected_splits:
         raise ValueError("icio_native_country_split_dimensions_invalid")
     mapping = common_2018_concordance(industry_codes)
     column_sums = [Decimal(0)] * expected_nodes
@@ -312,6 +317,12 @@ def expected_archive_years(filename: str, edition: str) -> list[int] | None:
             low, high = map(int, match.groups())
             if 1995 <= low <= high <= 2022 and high - low <= 7:
                 return list(range(low, high + 1))
+    if edition == "2023":
+        match = re.fullmatch(r"(\d{4})-(\d{4})_(?:EXT|SML)(?: \([0-9]+\))?\.zip", base)
+        if match:
+            low, high = map(int, match.groups())
+            if 1995 <= low <= high <= 2020 and high - low <= 6:
+                return list(range(low, high + 1))
     if edition == "2021":
         match = re.fullmatch(r"ICIO2021_(\d{4})-(\d{4})\.zip", base)
         if match:
@@ -328,7 +339,7 @@ def expected_archive_years(filename: str, edition: str) -> list[int] | None:
 
 
 def audit_archive_native(zip_file: ZipFile, edition: str,
-                         *, dimensions: tuple | None = None) -> dict:
+                         *, dimensions: tuple | None = None, table: str = "extended") -> dict:
     # Rdata and supplemental econA/B/VB/Z archives are valid source evidence,
     # but cannot be called audited matrices without a CSV member.
     members = native_year_members(zip_file, edition)
@@ -341,10 +352,12 @@ def audit_archive_native(zip_file: ZipFile, edition: str,
     for year, path in members:
         with zip_file.open(path) as original:
             with io.TextIOWrapper(original, encoding="utf-8-sig", newline="") as stream:
-                audit = audit_native_csv(stream, edition=edition, year=year, dimensions=dimensions)
+                audit = audit_native_csv(stream, edition=edition, year=year,
+                                         dimensions=dimensions, table=table)
         audit["original_member_sha256"] = None  # ZIP hash covers exact original bytes
         results.append(audit)
-    return {"annual_matrices": results, "annual_matrix_count": len(results),
+    return {"edition": edition, "table": table,
+            "annual_matrices": results, "annual_matrix_count": len(results),
             "expected_years": mandatory, "observed_years": found,
             "native_validation_status": ("native_matrix_years_incomplete" if not complete
                 else "native_accounts_verified" if results
