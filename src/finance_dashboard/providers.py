@@ -79,7 +79,7 @@ class ProviderRouter:
         """
         request = self.client.build_request("GET", url, **kwargs)
         safe_query = {"agg_by", "agg_sum_fields", "agg_limit", "limit", "fields",
-                      "agg_sort_by", "agg_sort_order"}
+                      "agg_sort_by", "agg_sort_order", "format"}
         safe_headers = {"host", "accept", "accept-encoding", "connection", "user-agent", "cookie"}
         if (self.client.auth is not None or request.url.username or request.url.password
                 or any(key not in safe_query for key in request.url.params)
