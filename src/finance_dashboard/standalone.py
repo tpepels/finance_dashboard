@@ -7,9 +7,13 @@ with the same transactional source and ingestion semantics as the normal worker.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import json
 import logging
+import os
 from os import environ
 from pathlib import Path
+import tempfile
+import time
 from threading import Event, Lock, Thread
 from typing import AsyncIterator
 
@@ -50,6 +54,67 @@ def refresh_interval() -> int:
     return value
 
 
+def _schedule_path() -> Path:
+    return Path(environ.get("FINANCE_REFRESH_SCHEDULE_PATH",
+                            "/data/maintenance/refresh-schedule.json"))
+
+
+def _schedule_due(interval_seconds: int) -> float:
+    """Persist the first scheduled due time, so restart does not reset it.
+
+    A missing record begins a single interval on the first boot. The document
+    contains only a schema version and a UTC deadline, not any source data.
+    Missing/unreadable storage falls back to the legacy deferred interval.
+    """
+    now = time.time()
+    path = _schedule_path()
+    try:
+        if path.is_symlink():
+            raise ValueError("schedule_symlink_refused")
+        if path.is_file():
+            if path.stat().st_size > 1024:
+                raise ValueError("schedule_unbounded_state")
+            record = json.loads(path.read_text(encoding="utf-8"))
+            due = record.get("next_due_unix")
+            if record.get("schema_version") != 1 or type(due) not in (float, int):
+                raise ValueError("schedule_invalid_schema")
+            if not float("-inf") < float(due) < float("inf"):
+                raise ValueError("schedule_invalid_time")
+            if now - due <= interval_seconds * 14 and due - now <= interval_seconds * 14:
+                return float(due)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        log.warning("Refresh schedule state unreadable; using safe initial interval")
+    due = now + interval_seconds
+    _save_schedule_due(due)
+    return due
+
+
+def _save_schedule_due(due: float) -> None:
+    """Atomic small scheduler metadata update on the existing /data mount."""
+    path = _schedule_path()
+    temporary = None
+    try:
+        if path.is_symlink():
+            raise ValueError("schedule_symlink_refused")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+                mode="w", dir=path.parent, prefix=".refresh-schedule-",
+                encoding="utf-8", delete=False) as handle:
+            temporary = Path(handle.name)
+            json.dump({"schema_version": 1, "next_due_unix": due}, handle,
+                      separators=(",", ":"))
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, path)
+    except (OSError, ValueError):
+        log.warning("Could not persist refresh deadline; keeping scheduler operational")
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                  include_markets: bool, refresh_wisesheets: bool = True) -> None:
     # Import the already tested source adapters only when refresh is enabled.
@@ -58,8 +123,13 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
     scheduled_stop = _ScheduledStop(stopped)
     # Restored/verified releases can warm acceptance without immediately
     # reacquiring the entire corpus. Normal daily updates remain enabled.
-    if not enabled('FINANCE_REFRESH_ON_START', '1') and stopped.wait(interval_seconds):
-        return
+    if not enabled('FINANCE_REFRESH_ON_START', '1'):
+        # Restarting Docker must not reset the clock indefinitely. A due
+        # deadline is persisted before the initial wait and updated after
+        # each cycle. An overdue refresh begins immediately.
+        initial_wait = max(0.0, _schedule_due(interval_seconds) - time.time())
+        if initial_wait > 0 and stopped.wait(initial_wait):
+            return
     while not stopped.is_set():
         if manual_sync_pending.is_set():
             if stopped.wait(interval_seconds):
@@ -162,6 +232,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                          action="scheduled_refresh",
                          status=("interrupted" if interrupted else
                                  "partial" if cycle_failed else "complete"))
+            _save_schedule_due(time.time() + interval_seconds)
         if stopped.wait(interval_seconds):
             break
 
