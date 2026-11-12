@@ -3,6 +3,7 @@ import type { Theme } from './chartKit';
 import SourceCoveragePanel from './SourceCoveragePanel';
 import OperationsStatus from './OperationsStatus';
 import OriginalUploader from './OriginalUploader';
+import IcioEditionEvidence from './IcioEditionEvidence';
 import { isSourceExplorerHash } from './researchNavigation';
 
 const SourceExplorer = lazy(() => import('./SourceExplorer'));
@@ -14,6 +15,7 @@ export default function SourceWorkspace({ theme, dataVersion, hash }: { theme: T
   return <section className="research-source-shell workspace-sources" id="research-sources" tabIndex={-1}>
     <header className="decision-intro"><h2>Source data</h2><p>Inspect publication coverage, refresh outcomes and the original evidence.</p></header>
     <OriginalUploader/>
+    <IcioEditionEvidence/>
     <SourceCoveragePanel/>
     <OperationsStatus key={dataVersion}/>
     <details open={showSources} onToggle={event => setShowSources(event.currentTarget.open)}>
