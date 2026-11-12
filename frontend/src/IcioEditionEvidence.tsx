@@ -12,6 +12,8 @@ type Edition = { filename: string; edition: string; table: string;
   native_validation_status: string; annual_matrix_count: number;
   annual_matrices: Matrix[]; rejected_matrices?: {year: number; error_code: string}[];
   expected_years?: number[]; observed_years?: number[]; source_authenticity_verified: boolean;
+  source_year_conflict?: boolean; conflicting_years?: number[];
+  conflicting_sources?: { filename: string; year: number }[];
   auxiliary_numeric?: { status: string; parsed_members?: number;
     total_rdata_members?: number; numeric_reports?: { member: string; status: string;
       numeric_objects?: { name: string; shape: number[]; numeric_cells: number }[] }[] } };
@@ -72,7 +74,9 @@ export default function IcioEditionEvidence() {
             const auxiliary = item.auxiliary_numeric;
             return <tr key={item.filename + item.edition}>
               <td>{item.filename}</td>
-              <td>{item.edition}, {item.table}</td>
+              <td>{item.edition}, {item.table}
+                {item.source_year_conflict && <small role="status">Conflicting archive versions:
+                  {item.conflicting_years?.join(', ')}. Original values withheld.</small>}</td>
               <td>{item.annual_matrix_count}
                 {item.annual_matrix_count > 0 && <small>{leontief} Leontief value-added reconstructions</small>}
                 {errors.length > 0 && <small>{errors.length} numerical failures:
