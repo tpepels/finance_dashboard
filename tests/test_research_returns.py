@@ -255,6 +255,47 @@ class ResearchReturnsTests(unittest.TestCase):
             self.assertEqual(record["repository_release_at"], "2025-08-22T06:21:18Z")
             self.assertEqual(sum("512630" in x for x in requests), 1)
 
+    def test_swinkels_dataverse_surf_redirect_uses_managed_policy_without_credential_leaks(self):
+        from finance_dashboard.source_policy import SourcePolicyGate, managed_client
+        from finance_dashboard.source_policy_registry import PolicyRegistry
+        from finance_dashboard.source_policy_types import PolicyViolation
+        seen = []
+        now = [1_794_384_000.0]
+        def handler(request):
+            seen.append(str(request.url))
+            if request.url.host == "dataverse.nl" and request.url.path.endswith("512630"):
+                return httpx.Response(303, headers={"location":
+                    "https://objectstore.surf.nl/store/10.34894/YWT2IX/data?signature=private-value"})
+            if request.url.host == "objectstore.surf.nl":
+                return httpx.Response(200, content=(FIXTURES / ODS).read_bytes())
+            if "persistentId" in str(request.url):
+                return httpx.Response(200, content=(FIXTURES / "swinkels_publisher_metadata.json").read_bytes())
+            if request.url.host == "api.figshare.com":
+                return httpx.Response(200, content=(FIXTURES / "swinkels_original_figshare_v6_metadata.json").read_bytes())
+            if request.url.path.endswith("512631"):
+                return httpx.Response(200, content=(FIXTURES / "swinkels_readme.pdf").read_bytes())
+            return httpx.Response(404)
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            gate = SourcePolicyGate(
+                registry=PolicyRegistry(), state_path=root / "policy.sqlite",
+                clock=lambda: now[0],
+                sleep=lambda seconds: now.__setitem__(0, now[0] + seconds),
+                max_wait_seconds=400,
+            )
+            with managed_client(policy_gate=gate,
+                                transport=httpx.MockTransport(handler)) as http:
+                client = self.rr.ResearchReturnsClient(http, archive_dir=root / "evidence")
+                result = client.fetch("returns.swinkels.au.sovereign_10y_modelled_local",
+                                      date(2022, 12, 1))
+                self.assertEqual(set(result.observations), {date(2022, 12, 1)})
+                report = gate.report()
+                source = next(p for p in report["state"] if p["publisher"] == "surf-objectstore")
+                self.assertEqual(source["requests_in_ledger"], 1)
+                self.assertTrue(any("objectstore.surf.nl" in url for url in seen))
+            for manifest in (root / "evidence").rglob("*.json"):
+                self.assertNotIn("private-value", manifest.read_text())
+
     def test_http_status_survives_and_unapproved_redirect_or_changed_v6_fails(self):
         # Wrapping HTTP errors as generic parsing errors loses actionable failures.
         with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(429, request=request))) as http:
