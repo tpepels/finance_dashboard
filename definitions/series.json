@@ -394,19 +394,19 @@
     },
     {
       "id": "gold.usd.spot",
-      "name": "Live XAU/USD spot mid-price snapshot",
+      "name": "Indicative XAU/USD spot-price snapshot",
       "theme": "gold_currency",
       "status": "mapped",
-      "provider": "CORGANO_SPOT",
-      "source_key": "api/v1/latest:data.price_usd",
-      "source_url": "https://goldprice.corgano.com/api/v1/latest",
+      "provider": "GOLD_API_SPOT",
+      "source_key": "price/XAU:price:updatedAt:USD",
+      "source_url": "https://api.gold-api.com/price/XAU",
       "geography": "WORLD",
       "frequency": "D",
       "unit": "usd_per_oz",
-      "measurement": "Current indicative USD per troy ounce gold spot quote from Corgano (Swissquote bid/ask midpoint primary feed, fallback sources)",
+      "measurement": "Gold-API indicative USD spot price per troy ounce, timestamped at the source; no bid-ask midpoint or execution-price claim",
       "revision_policy": "revisable",
       "rights": "review_required",
-      "notes": "Only the current live spot quote is available. Daily historical values advertised by this provider are COMEX front-month futures closes, NOT spot and must never be used for historical spot backfill. UTC as_of required; no public redistribution without upstream terms review."
+      "notes": "Gold-API provides one current indicative quote with updatedAt. Historical spot quotes are not fabricated; this source records only observed daily snapshots and their exact UTC timestamps in acquisition evidence. Corgano retired its JSON API on 2026-11-04. Source feed is not a guaranteed executable bid/ask price."
     },
     {
       "id": "gold.world.equity_correlation",
