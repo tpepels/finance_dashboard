@@ -83,6 +83,102 @@ PUBLICATION_BOUNDS.update({
     }
     for identifier in SWINKELS_SERIES
 })
+# Publication-aware bounds confirmed against the current publisher release
+# pages on 2026-11-12. These are not generic source-frequency exemptions:
+# source content must actually reach the stated last published reference date.
+#
+# 2025 EUKLEMS & INTANProd spans through 2021. The exact publisher publication
+# DAY is not asserted: verified_as_of is our evidence check date.
+_EUKLEMS_COUNTRIES = ("de", "es", "fr", "gb", "it", "nl", "pt", "us")
+_EUKLEMS_MEASURES = (
+    "hours_worked", "labour_compensation", "value_added",
+    "value_added_price_index",
+)
+PUBLICATION_BOUNDS.update({
+    f"labour.{country}.euklems_{measure}": {
+        "version": "EUKLEMS & INTANProd 2025 release",
+        "verified_as_of": date(2026, 11, 12),
+        "through": date(2021, 1, 1),
+        "url": "https://euklems-intanprod-llee.luiss.it/",
+    } for country in _EUKLEMS_COUNTRIES for measure in _EUKLEMS_MEASURES
+})
+
+# Next 2026-Q2 BIS total-credit update is scheduled for 2026-12-07.
+_BIS_CREDIT_COUNTRIES = ("cn", "de", "jp", "pt", "us")
+_BIS_CREDIT_MEASURES = (
+    "corporate_gdp_bis", "household_gdp_bis",
+    "private_nonfinancial_gdp_bis", "private_nonfinancial_stock_bis",
+)
+PUBLICATION_BOUNDS.update({
+    f"credit.{country}.{measure}": {
+        "version": "BIS total credit, September 2026 (2026-Q1)",
+        "released": date(2026, 9, 14),
+        "through": date(2026, 1, 1),
+        "expires": date(2026, 12, 7),
+        "url": "https://data.bis.org/topics/TOTAL_CREDIT",
+    } for country in _BIS_CREDIT_COUNTRIES for measure in _BIS_CREDIT_MEASURES
+})
+
+# US Financial Accounts Z.1 2026-Q2: 11 September 2026;
+# Distributional Financial Accounts 2026-Q2: 18 September 2026.
+_FED_Z1_SERIES = (
+    "funding.us.broker_assets",
+    "funding.us.broker_equity_capital",
+    "funding.us.broker_liabilities",
+    "funding.us.broker_repo_liabilities",
+    "funding.us.broker_total_liabilities_equity",
+    "funding.us.finance_company_total_assets",
+    "funding.us.finance_company_total_liabilities",
+    "funding.us.money_market_assets",
+    "valuation.us.equity_net_worth",
+)
+_FED_DISTRIBUTIONAL_SERIES = (
+    "wealth.us.bottom50.assets", "wealth.us.bottom50.equities_mutual_funds",
+    "wealth.us.bottom50.liabilities", "wealth.us.bottom50_share",
+    "wealth.us.middle40.assets", "wealth.us.middle40.equities_mutual_funds",
+    "wealth.us.middle40.liabilities", "wealth.us.middle40_share",
+    "wealth.us.next9.assets", "wealth.us.next9.equities_mutual_funds",
+    "wealth.us.next9.liabilities", "wealth.us.next9_share",
+    "wealth.us.next_point9_share",
+    "wealth.us.top1.assets", "wealth.us.top1.equities_mutual_funds",
+    "wealth.us.top1.liabilities", "wealth.us.top1_share",
+    "wealth.us.top_point1_share",
+)
+PUBLICATION_BOUNDS.update({
+    sid: {
+        "version": "Federal Reserve Financial Accounts Z.1, 2026-Q2",
+        "released": date(2026, 9, 11),
+        "expires": date(2026, 12, 10),
+        "through": date(2026, 4, 1),
+        "url": "https://www.federalreserve.gov/releases/z1/",
+    } for sid in _FED_Z1_SERIES
+})
+PUBLICATION_BOUNDS.update({
+    sid: {
+        "version": "Federal Reserve Distributional Financial Accounts, 2026-Q2",
+        "released": date(2026, 9, 18),
+        "expires": date(2026, 12, 10),
+        "through": date(2026, 4, 1),
+        "url": "https://www.federalreserve.gov/releases/efa/efa-distributional-financial-accounts.htm",
+    } for sid in _FED_DISTRIBUTIONAL_SERIES
+})
+
+# FDIC published 2026-Q2 Quarterly Banking Profile 25 August 2026.
+# Treat the next expected late-November release conservatively as an expiry
+# boundary; never assume that a Q3 figure exists before it is published.
+PUBLICATION_BOUNDS.update({
+    sid: {
+        "version": "FDIC Quarterly Banking Profile, 2026-Q2",
+        "released": date(2026, 8, 25),
+        "expires": date(2026, 11, 21),
+        "through": date(2026, 4, 1),
+        "url": "https://www.fdic.gov/quarterly-banking-profile",
+    } for sid in (
+        "bank.us.fdic_reporting_institutions", "bank.us.fdic_total_assets",
+        "bank.us.fdic_total_equity",
+    )
+})
+
 SAFE_ERROR_CODES = {
     "provider_http_400", "provider_http_401", "provider_http_403",
     "provider_http_404", "provider_http_429", "provider_http_500",
@@ -172,7 +268,8 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     if (family == "macro" and provider == "BIS_DSR"
             and BIS_DSR_RELEASE["released"] <= asof < BIS_DSR_RELEASE["expires"]):
         publication = BIS_DSR_RELEASE
-    release_known = bool(publication and asof >= publication["released"]
+    release_confirmed_on = (publication.get("released") or publication.get("verified_as_of")) if publication else None
+    release_known = bool(release_confirmed_on and asof >= release_confirmed_on
                          and asof < publication.get("expires", date.max))
     published_through = publication["through"] if release_known else None
     is_complete_for_release = bool(
@@ -224,7 +321,9 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
             if published_through else None,
         "published_release": publication["version"] if release_known else None,
         "published_release_date": publication["released"].isoformat()
-            if release_known else None,
+            if release_known and publication.get("released") else None,
+        "publisher_release_verified_as_of": publication["verified_as_of"].isoformat()
+            if release_known and publication.get("verified_as_of") else None,
         "complete_for_pinned_release": is_complete_for_release,
         "scheduled_download_unnecessary_for_pinned_release": bool(
             is_complete_for_release and publication and family == "macro"),
