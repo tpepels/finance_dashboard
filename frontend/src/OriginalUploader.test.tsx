@@ -43,6 +43,23 @@ describe('original research file upload', () => {
     expect(screen.getByText(/Importing 1 archive/)).toBeTruthy();
   });
 
+  it('reassesses already stored archives from the browser without re-upload', async () => {
+    const requested: string[] = [];
+    const originals = { active: false, files: [], jobs: [] as unknown[] };
+    vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
+      if (url === '/api/originals/reassess') {
+        requested.push(String(options?.headers && (options.headers as Record<string, string>)['X-GCM-Action']));
+        return { ok: true, json: async () => ({ id: 'recheck', status: 'queued' }) };
+      }
+      return { ok: true, json: async () => originals };
+    }));
+    const user = userEvent.setup();
+    render(<OriginalUploader/>);
+    await user.click(screen.getByRole('button', { name: 'Reassess previously imported OECD originals' }));
+    await waitFor(() => expect(requested).toEqual(['dashboard']));
+    expect(screen.getByText(/Reassessing previously registered original archives/)).toBeTruthy();
+  });
+
   it('retains a staged regular archive until its required ReadMe is supplied', async () => {
     const original = { active: false, files: [{
       filename: '1995-2000_SML.zip', bytes: 999, kind: 'verified_regular',
