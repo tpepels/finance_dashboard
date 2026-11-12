@@ -21,10 +21,14 @@ MAX_UNCOMPRESSED = 25 * 1024 ** 3
 
 
 def archive_identity(filename: str) -> dict:
-    if re.fullmatch(r"(?:1995-2000|2001-2005|2006-2010|2011-2015|2016-2020|2016-2022)_EXT(?: \([0-9]+\))?\.zip", filename):
+    if re.fullmatch(r"(?:1995-2000|2001-2005|2006-2010|2011-2015|2016-2022)_EXT(?: \([0-9]+\))?\.zip", filename):
         return {"edition": "2025", "table": "extended"}
+    # The 2016-2020 files are from OECD's 2023 release, not the 2025
+    # January-2026 edition. Keep the two populations and sectors distinct.
+    if re.fullmatch(r"2016-2020_EXT(?: \([0-9]+\))?\.zip", filename):
+        return {"edition": "2023", "table": "extended"}
     if re.fullmatch(r"2016-2020_SML\.zip", filename):
-        return {"edition": "2025", "table": "regular", "status": "overlapping_release_unverified"}
+        return {"edition": "2023", "table": "regular"}
     if re.fullmatch(r"ICIO2018_[A-Za-z0-9_-]+\.zip", filename):
         return {"edition": "2018", "table": "edition_specific_unresolved"}
     if re.fullmatch(r"ICIO2021[A-Za-z0-9_-]+\.zip", filename):
@@ -75,7 +79,7 @@ def inspect_archive(path: Path) -> dict:
     # Validate every available annual member within this edition. Supplemental
     # econA/Rdata packages remain distinct source evidence, not matrix claims.
     with ZipFile(path) as z:
-        native = audit_archive_native(z, identity["edition"])
+        native = audit_archive_native(z, identity["edition"], table=identity["table"])
     return {**identity, **native, "filename": path.name, "archive_sha256": digest.hexdigest(),
             "archive_bytes": path.stat().st_size, "members": members,
             "member_count": len(members), "uncompressed_bytes": total,
