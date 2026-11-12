@@ -78,7 +78,24 @@ def common_2018_concordance(source_codes: list[str]) -> dict:
             mapping[code] = matches[0]
         else:
             excluded.append(code)
+    # A many-to-one mapping is lossless only when ALL component divisions
+    # of the target exist. Avoid treating a lone D01 as a complete D01T03,
+    # or only D241 as all of the source's D24.
+    source_set = set(source_codes)
+    complete, incomplete = [], []
+    valid_divisions = set().union(*(industry_members(item) for item in SECTORS_2018)) - {76}
+    for target in SECTORS_2018:
+        target_parts = industry_members(target) & valid_divisions
+        members = [source for source, mapped in mapping.items() if mapped == target]
+        covered = set().union(*(industry_members(source) for source in members))
+        special = (target != "D24" or {"D241", "D242"} <= source_set or "D24" in source_set) and (
+                   target != "D30" or {"D301", "D302"} <= source_set or "D30" in source_set)
+        if covered & valid_divisions == target_parts and special:
+            complete.append(target)
+        else:
+            incomplete.append(target)
     return {"target_edition": "2018", "mapping": mapping, "excluded": excluded,
+            "complete_targets": complete, "incomplete_targets": incomplete,
             "mapping_is_aggregative_only": True,
             "allocated_combined_source_industries": False}
 
@@ -193,7 +210,8 @@ def audit_native_csv(stream, *, edition: str, year: int,
         t["direct_foreign_final_demand"] += foreign
         t["direct_domestic_final_demand"] += final - foreign
         sector_group = mapping["mapping"].get(sector)
-        if sector_group:
+        # Never publish a partial common-sector total as a full industry.
+        if sector_group in mapping["complete_targets"]:
             group = sector_countries.setdefault(area, {}).setdefault(
                 sector_group, {"gross_output": Decimal(0),
                                "direct_foreign_final_demand": Decimal(0)})
