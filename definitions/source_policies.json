@@ -486,12 +486,12 @@
       }
     },
     {
-      "id": "corgano",
+      "id": "gold-api",
       "hosts": [
-        "goldprice.corgano.com"
+        "api.gold-api.com"
       ],
       "classification": "unverified",
-      "evidence_url": "https://goldprice.corgano.com/",
+      "evidence_url": "https://gold-api.com/docs",
       "rate": {
         "limit": 10,
         "window_seconds": 60,
