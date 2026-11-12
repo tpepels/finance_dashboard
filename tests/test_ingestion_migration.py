@@ -69,5 +69,78 @@ class IngestionEvidenceMigrationTests(unittest.TestCase):
                 self.assertEqual(points, [("2024-01-02",3.95,"legacy-run")])
 
 
+
+class RetiredGoldSourceMigrationTests(unittest.TestCase):
+    def setUp(self):
+        from sqlalchemy import create_engine
+        from finance_dashboard.database import Base
+        self.engine = create_engine("sqlite+pysqlite:///:memory:")
+        Base.metadata.create_all(self.engine)
+
+    def tearDown(self):
+        self.engine.dispose()
+
+    def test_failed_only_corgano_binding_migrates_without_losing_old_run(self):
+        from datetime import date
+        from decimal import Decimal
+        from sqlalchemy.orm import Session
+        from finance_dashboard.database import SeriesRow, IngestionRun, now_utc
+        from finance_dashboard.service import IngestionService
+        from finance_dashboard.bis import FetchedSeries
+
+        with Session(self.engine) as session, session.begin():
+            session.add(SeriesRow(
+                id="gold.usd.spot", provider="CORGANO_SPOT",
+                source_key="api/v1/latest:data.price_usd",
+                updated_at=now_utc()))
+            session.add(IngestionRun(
+                id="legacy-gold-failure", series_id="gold.usd.spot",
+                started_at=now_utc(), ended_at=now_utc(), status="failed",
+                observations_received=0, versions_added=0,
+                error="provider_failed"))
+        class Gold:
+            def fetch(self, sid, start):
+                return FetchedSeries(
+                    sid, "https://api.gold-api.com/price/XAU", None,
+                    {date(2026, 11, 12): Decimal("4092.22")})
+        done = IngestionService(self.engine, Gold()).refresh(
+            "gold.usd.spot", today=date(2026, 11, 12))
+        self.assertEqual(done["status"], "success")
+        with Session(self.engine) as session:
+            row = session.get(SeriesRow, "gold.usd.spot")
+            self.assertEqual(row.provider, "GOLD_API_SPOT")
+            self.assertEqual(row.source_key, "price/XAU:price:updatedAt:USD")
+            self.assertEqual(session.get(IngestionRun, "legacy-gold-failure").status, "failed")
+
+    def test_old_successful_corgano_observations_require_separate_migration(self):
+        from datetime import date
+        from decimal import Decimal
+        from sqlalchemy.orm import Session
+        from finance_dashboard.database import SeriesRow, IngestionRun, ObservationVersion, now_utc
+        from finance_dashboard.service import IngestionService
+
+        with Session(self.engine) as session, session.begin():
+            session.add(SeriesRow(
+                id="gold.usd.spot", provider="CORGANO_SPOT",
+                source_key="api/v1/latest:data.price_usd", updated_at=now_utc()))
+            session.add(IngestionRun(
+                id="corgano-success", series_id="gold.usd.spot",
+                started_at=now_utc(), status="success",
+                observations_received=1, versions_added=1))
+            session.add(ObservationVersion(
+                series_id="gold.usd.spot", period=date(2026, 10, 31),
+                value=Decimal("3900.25"), first_seen_at=now_utc(),
+                ingestion_run_id="corgano-success"))
+        class Network:
+            def fetch(self, *args):
+                raise AssertionError("must reject method mixing before HTTP")
+        with self.assertRaisesRegex(ValueError, "explicit migration"):
+            IngestionService(self.engine, Network()).refresh("gold.usd.spot")
+        with Session(self.engine) as session:
+            self.assertEqual(session.get(SeriesRow, "gold.usd.spot").provider,
+                             "CORGANO_SPOT")
+
+
+
 if __name__ == "__main__":
     unittest.main()
