@@ -78,6 +78,10 @@ TRANSFORMS: dict[str, str] = {
                               "pro rata, rebalance to target by rule (never, every n months, when a weight drifts beyond "
                               "the band), charge trading cost on turnover; with cost basis per asset, tax either the gains realised by "
                               "selling (no loss credit) or a yearly share of value",
+    "native_icio_direct_final_demand": "for each complete edition-native annual ICIO matrix, sum each source industry's "
+        "gross direct sales into final-demand columns of foreign countries (current USD millions); "
+        "CN1/CN2 map to China, MX1/MX2 to Mexico where non-overlapping. No Leontief "
+        "value-added tracing; never treated as OECD TiVA FFD_DVA. Editions remain distinct.",
     "matched_day": "latest date on which both series are observed (market-date match, no carry-forward)",
     "overlapping_window_percentiles": "percentiles (linear interpolation) of overlapping fixed-horizon window "
                                       "statistics; effective independent windows = windows / horizon months",
