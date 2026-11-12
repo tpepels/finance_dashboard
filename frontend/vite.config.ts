@@ -13,5 +13,11 @@ export default defineConfig({
     },
   },
   build: { outDir: 'dist', sourcemap: false },
-  test: { setupFiles: ['./src/testSetup.ts'] },
+  test: {
+    setupFiles: ['./src/testSetup.ts'],
+    // Container builds have much less CPU headroom than GitHub runners.
+    // Unbounded jsdom workers can starve user-event's interaction steps.
+    maxWorkers: 2,
+    testTimeout: 15000,
+  },
 });
