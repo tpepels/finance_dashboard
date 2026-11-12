@@ -79,7 +79,8 @@ def inspect_archive(path: Path) -> dict:
     return {**identity, **native, "filename": path.name, "archive_sha256": digest.hexdigest(),
             "archive_bytes": path.stat().st_size, "members": members,
             "member_count": len(members), "uncompressed_bytes": total,
-            "status": native["native_validation_status"],
+            "status": (native["native_validation_status"] if native["annual_matrix_count"] else
+                       "original_archived_dimensions_unverified"),
             "source_authenticity_verified": False,
             "industry_accounts_validated": native["native_validation_status"] == "native_accounts_verified",
             "tiva_comparability_certified": False,
