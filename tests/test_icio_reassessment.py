@@ -81,6 +81,32 @@ class OriginalReassessmentTests(unittest.TestCase):
                               ("2011-2015_EXT.zip", "2011-2015_EXT (1).zip"))
                 self.assertEqual(len(row["conflicting_sources"]), 5)
 
+    def test_matching_uncompressed_csv_bytes_resolve_zip_wrapper_duplicates(self):
+        from finance_dashboard.icio_editions import _annotate_source_year_collisions
+        template = {
+            "edition": "2025", "table": "extended", "expected_years": [2011, 2012],
+            "annual_matrices": [
+                {"year": 2011, "original_member_sha256": "d" * 64},
+                {"year": 2012, "original_member_sha256": "e" * 64},
+            ],
+        }
+        first = {**template, "filename": "2011-2015_EXT.zip", "archive_sha256": "a" * 64}
+        second = {**template, "filename": "2011-2015_EXT (1).zip", "archive_sha256": "b" * 64}
+        result = _annotate_source_year_collisions([first, second])
+        self.assertFalse(result[0]["source_year_conflict"])
+        self.assertFalse(result[1]["source_year_conflict"])
+        self.assertEqual(result[0]["suppressed_equivalent_years"], [])
+        self.assertEqual(result[1]["suppressed_equivalent_years"], [2011, 2012])
+        self.assertEqual(result[0]["equivalent_annual_years"], [2011, 2012])
+        different = {**second, "annual_matrices": [
+            {"year": 2011, "original_member_sha256": "f" * 64},
+            {"year": 2012, "original_member_sha256": "e" * 64},
+        ]}
+        changed = _annotate_source_year_collisions([first, different])
+        self.assertEqual(changed[0]["conflicting_years"], [2011])
+        self.assertEqual(changed[1]["conflicting_years"], [2011])
+        self.assertEqual(changed[1]["suppressed_equivalent_years"], [2012])
+
     def test_unknown_source_hash_is_not_reassessed(self):
         with TemporaryDirectory() as temp:
             with self.assertRaises(ValueError):
