@@ -50,7 +50,7 @@ _REGISTRATIONS = (
     ProviderRegistration("MSCI_NETR", "fetch_msci_netr", "response", "windowed",
                          request_origin="https://app2.msci.com/products/service/index/indexmaster/getLevelDataForGraph"),
     ProviderRegistration("GOLD_MSCI_CORR", "fetch_gold_msci_corr", "response", "full"),
-    ProviderRegistration("CORGANO_SPOT", "fetch_corgano_spot", "response", "windowed"),
+    ProviderRegistration("GOLD_API_SPOT", "fetch_gold_api_spot", "response", "windowed"),
     ProviderRegistration("BIS_PROPERTY", "fetch_bis_property", "response", "windowed"),
     ProviderRegistration("BIS_DSR", "fetch_bis_dsr", "response", "windowed"),
     ProviderRegistration("BIS_CREDIT_GAP", "fetch_bis_credit_gap", "response", "windowed"),
