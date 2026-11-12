@@ -99,8 +99,9 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 now = datetime.now(timezone.utc).date()
                 known = {sid: PUBLICATION_BOUNDS[sid] for sid in chosen
                          if sid in PUBLICATION_BOUNDS
-                         and PUBLICATION_BOUNDS[sid]["released"] <= now
-                         and now < PUBLICATION_BOUNDS[sid].get("expires", now + timedelta(days=1))}
+                         and (PUBLICATION_BOUNDS[sid].get("released")
+                              or PUBLICATION_BOUNDS[sid].get("verified_as_of")) <= now
+                         and now < PUBLICATION_BOUNDS[sid].get("expires", date.max)}
                 if known:
                     with Session(engine) as session:
                         latest = dict(session.execute(
