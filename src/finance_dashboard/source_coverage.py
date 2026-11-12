@@ -198,7 +198,7 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     last_error = last["error"] if last is not None else None
     regular_cadence = provider not in (
         "MSCI_PUBLISHED_TOP10", "MSCI_REGIONAL_FACTSHEETS", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
-        "SIBLIS_WORLD_EARNINGS_YIELD", "CORGANO_SPOT")
+        "SIBLIS_WORLD_EARNINGS_YIELD", "GOLD_API_SPOT")
     stale = lag is not None and lag > SOURCE_LAGS[frequency] and not is_complete_for_release
     refresh_state = last['status'] if last else 'never'
     # This is an engine dependency map, not a claim that every mapped input is
