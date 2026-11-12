@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 type StoredFile = { filename: string; bytes: number; kind: string };
 type Result = { filename: string; status: string; error_code?: string; edition?: string; table?: string };
 type ImportJob = {
-  id: string; status: string; completed: number; total: number;
+  id: string; status: string; mode?: string; completed: number; total: number;
   error_code?: string | null; results: Result[];
 };
 type Inventory = { active: boolean; readme_available?: boolean; files: StoredFile[]; jobs: ImportJob[] };
@@ -137,6 +137,25 @@ export default function OriginalUploader() {
       setBusy(false);
     }
   };
+  const reassess = async () => {
+    setBusy(true); setError(''); setActivity('Reassessing previously registered original archives…');
+    try {
+      const response = await fetch('/api/originals/reassess', {
+        method: 'POST', headers: { 'X-GCM-Action': 'dashboard' },
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { detail?: string };
+        throw new Error(body.detail ?? 'Original reassessment could not start (' + response.status + ')');
+      }
+      const queued = await response.json() as { id: string };
+      queuedJob.current = queued.id;
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Original reassessment failed');
+    } finally {
+      setBusy(false);
+    }
+  };
   const latest = inventory.jobs[0];
   return <section className="original-uploader" aria-labelledby="original-uploader-heading">
     <header>
@@ -156,7 +175,7 @@ export default function OriginalUploader() {
     {activity && <p role="status" className="original-import-activity">{activity}</p>}
     {error && <p role="alert" className="original-import-error">{error}</p>}
     {latest && <div className="original-import-job" role="status">
-      <strong>Import: {latest.status}</strong>
+      <strong>{latest.mode === 'reassess' ? 'Reassessment' : 'Import'}: {latest.status}</strong>
       <span>{latest.completed} of {latest.total} archives processed</span>
       <progress max={latest.total} value={latest.completed}/>
       {latest.results.length > 0 && <ul>{latest.results.map(result =>
@@ -172,6 +191,10 @@ export default function OriginalUploader() {
           setError(reason instanceof Error ? reason.message : 'Import could not start')); }}>
         Import pending uploaded archives
       </button>}
+    <button type="button" className="original-reassess-import" disabled={busy || inventory.active}
+      onClick={() => { void reassess(); }}>
+      Reassess previously imported OECD originals
+    </button>
     {inventory.files.length > 0 && <details className="original-staged-files">
       <summary>Uploaded originals ({inventory.files.length})</summary>
       <ul>{inventory.files.map(file => <li key={file.filename}>
