@@ -92,9 +92,10 @@ export default function OriginalUploader() {
       return;
     }
     const hasReadme = data.readme_available || data.files.some(file => file.filename === READ_ME);
-    if (!hasReadme && filenames.some(name => data.files.some(
-      file => file.filename === name && file.kind === 'verified_regular'))) {
-      setActivity('Archive stored. Upload ' + READ_ME + ' to validate the regular matrices.');
+    const ready = hasReadme ? filenames : filenames.filter(name => !data.files.some(
+      file => file.filename === name && file.kind === 'verified_regular'));
+    if (!ready.length) {
+      setActivity('Regular archive stored. Upload ' + READ_ME + ' to validate the matrices.');
       return;
     }
     if (data.active) {
@@ -103,7 +104,7 @@ export default function OriginalUploader() {
     }
     const response = await fetch('/api/originals/import', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-GCM-Action': 'dashboard' },
-      body: JSON.stringify({ filenames }),
+      body: JSON.stringify({ filenames: ready }),
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({})) as { detail?: string };
@@ -111,7 +112,8 @@ export default function OriginalUploader() {
     }
     const queued = await response.json() as { id: string };
     queuedJob.current = queued.id;
-    setActivity('Importing ' + filenames.length + ' archive(s); progress appears below.');
+    setActivity('Importing ' + ready.length + ' archive(s); progress appears below.' +
+      (ready.length < filenames.length ? ' Regular archives wait for the matching ReadMe.' : ''));
     await refresh();
   };
 
