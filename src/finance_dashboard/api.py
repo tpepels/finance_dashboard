@@ -785,7 +785,7 @@ def create_app(engine=None) -> FastAPI:
     from .original_uploads import OriginalImportManager, install_original_uploads
     from .diagnostics_api import install_diagnostics
     app.state.original_imports = OriginalImportManager()
-    install_original_uploads(app, app.state.original_imports)
+    install_original_uploads(app, app.state.original_imports, persistent=persistent)
     install_diagnostics(app, db=db, catalog=catalog, market_registry=market_registry,
                         maintenance=maintenance, importer=app.state.original_imports)
 
