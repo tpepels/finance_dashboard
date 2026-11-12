@@ -98,6 +98,9 @@ PUBLICATION_BOUNDS.update({
     f"labour.{country}.euklems_{measure}": {
         "version": "EUKLEMS & INTANProd 2025 release",
         "verified_as_of": date(2026, 11, 12),
+        # 30-day re-verification deadline, NOT an asserted publisher release.
+        # Without this, a yearly version could be suppressed forever.
+        "expires": date(2026, 12, 12),
         "through": date(2021, 1, 1),
         "url": "https://euklems-intanprod-llee.luiss.it/",
     } for country in _EUKLEMS_COUNTRIES for measure in _EUKLEMS_MEASURES
