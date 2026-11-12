@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 import logging
 import os
