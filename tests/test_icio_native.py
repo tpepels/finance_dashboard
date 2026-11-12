@@ -155,6 +155,18 @@ class IcioNativeTests(unittest.TestCase):
         self.assertEqual(result["country_direct_flows"]["CHN"]["gross_output_usd_million"], "3")
         self.assertEqual(result["country_direct_flows"]["CHN"]["direct_foreign_final_demand_usd_million"], "0")
 
+    def test_bad_matrix_is_retained_as_explicit_parser_rejection(self):
+        buffer = io.BytesIO()
+        with ZipFile(buffer, "w") as package:
+            package.writestr("2021.csv", "not valid matrix data\\n")
+        buffer.seek(0)
+        with ZipFile(buffer) as package:
+            report = audit_archive_native(package, "2025", dimensions=TINY)
+        self.assertEqual(report["native_validation_status"], "native_parser_rejected")
+        self.assertEqual(report["annual_matrices"], [])
+        self.assertEqual(report["rejected_matrices"][0]["year"], 2021)
+        self.assertFalse(report["tiva_equivalent"])
+
     def test_nonmatrix_edition_package_is_not_called_audited(self):
         buffer = io.BytesIO()
         with ZipFile(buffer, "w") as package:
