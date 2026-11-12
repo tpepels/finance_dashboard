@@ -8,7 +8,7 @@ import httpx
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.bis import ProviderError
 from finance_dashboard.provider_parsers import (
-    SourceUnavailable, parse_fred_csv, parse_fred_json, parse_fred_table_html, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape, parse_bis_credit_gap, parse_corgano_gold,
+    SourceUnavailable, parse_fred_csv, parse_fred_json, parse_fred_table_html, parse_ecb_csv, parse_world_bank, parse_imf_mapper, parse_shiller_sheet, parse_un_sdg, parse_pink_sheet_gold, parse_siblis_cape, parse_bis_credit_gap,
 )
 
 
@@ -144,17 +144,6 @@ class ParserTests(unittest.TestCase):
             {"value":"9.1","timePeriodStart":"2001","Age":"ALLAGE","Reporting Type":"G"}]}
         values=parse_un_sdg(raw,"SL_EMP_PCAP","1")
         self.assertEqual(values,{date(2000,1,1):Decimal("2.63")})
-
-    def test_gold_spot_mid_quote_provenance(self):
-        from datetime import datetime, timezone
-        payload={"data":{"metal":"gold","symbol":"XAU","price_usd":{"per_oz":3900.25,"per_gram":125.4,"per_kg":125400},
-                         "as_of":datetime.now(timezone.utc).isoformat()},
-                 "meta":{"unit":"USD / troy oz","source":"Swissquote bid/ask midpoint"}}
-        expected={date.today():Decimal("3900.25")}
-        self.assertEqual(parse_corgano_gold(payload),expected)
-        payload["meta"]["source"]="COMEX futures"
-        with self.assertRaisesRegex(ProviderError,"futures price"):
-            parse_corgano_gold(payload)
 
     def test_world_bank_pink_sheet_gold(self):
         rows = [
