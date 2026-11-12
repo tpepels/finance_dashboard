@@ -128,6 +128,7 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
                     "source": archive["filename"], "source_sha256": archive["archive_sha256"],
                     "accounting_passed": matrix["accounting_passed"],
                     "structure_verified": matrix["structure_verified"],
+                    "tiva_reconstruction": matrix.get("tiva_reconstruction"),
                     "accounting_basis": ("publisher_rows_verified" if matrix["accounting_passed"] is True
                         else "source_structure_only_accounts_not_published"),
                     "ambiguous_country_rollups":
