@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { invalidateAnalysisReads, ResearchSelection } from './analysisShell';
 import Overview from './Overview';
+import DiagnosticsPanel from './DiagnosticsPanel';
 import { invalidateSourceCaches } from './data';
 import { RESEARCH_TOPICS, researchLocation, isSourceExplorerHash } from './researchNavigation';
 import { PortfolioEditorSession } from './PortfolioEditorSession';
@@ -130,6 +131,7 @@ export default function App() {
         </button>
         <div className="workspace-location"><span>{locationLabel}</span>{selected.question && <span className="research-id">{selected.question}</span>}</div>
         <div className="workspace-utilities">
+          <DiagnosticsPanel/>
           <button type="button" className="research-data-link" onClick={() => {
             if (location.hash === '#source-coverage') window.dispatchEvent(new Event('gcm-open-data-manager'));
             else location.hash = 'source-coverage';
