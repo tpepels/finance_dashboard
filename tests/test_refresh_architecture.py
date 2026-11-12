@@ -91,6 +91,53 @@ class RefreshArchitectureTests(unittest.TestCase):
         self.assertEqual(logged[0][0][1], "source_deferred")
         self.assertEqual(logged[0][1]["reason"], "source_policy_deferred")
 
+    def test_one_publisher_quota_deferral_skips_remaining_requests_in_same_cycle(self):
+        attempts, events, progress = [], [], []
+        def action(label, *, deferred=False):
+            def call():
+                attempts.append(label)
+                if deferred:
+                    raise PolicyDeferred("oecd-sdmx", "rolling_window_limit", 9999999999)
+                return {"status": "success"}
+            return call
+        tasks = [
+            RefreshTask("macro", "oecd.first", action("first", deferred=True),
+                        "oecd.first", provider_group="OECD_NFC_ACCOUNTS"),
+            RefreshTask("macro", "oecd.second", action("second"),
+                        "oecd.second", provider_group="OECD_NFC_ACCOUNTS"),
+            RefreshTask("macro", "fred", action("fred"), "fred", provider_group="FRED"),
+            RefreshTask("macro", "oecd.third", action("third"),
+                        "oecd.third", provider_group="OECD_NFC_ACCOUNTS"),
+        ]
+        with patch("finance_dashboard.worker.record_event",
+                   side_effect=lambda *args, **kw: events.append((args, kw))):
+            failures = execute_refresh_tasks(
+                tasks, progress=lambda index, total, name:
+                    progress.append((index, total, name)))
+        self.assertEqual(failures, 3)
+        self.assertEqual(attempts, ["first", "fred"])
+        self.assertEqual(len(progress), 4)
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0][0][1], "source_deferred")
+        self.assertEqual(events[1][1]["action"], "publisher_quota_exhausted")
+        self.assertEqual(events[1][1]["sources_not_attempted"], 2)
+
+    def test_temporary_concurrency_deferral_does_not_skip_other_same_provider(self):
+        attempts = []
+        def busy():
+            attempts.append("busy")
+            raise PolicyDeferred("oecd-sdmx", "concurrency_limit", 9999999999)
+        def second():
+            attempts.append("second")
+            return {"status": "success"}
+        tasks = [
+            RefreshTask("macro", "one", busy, "one", provider_group="OECD_NFC_ACCOUNTS"),
+            RefreshTask("macro", "two", second, "two", provider_group="OECD_NFC_ACCOUNTS"),
+        ]
+        with patch("finance_dashboard.worker.record_event"):
+            self.assertEqual(execute_refresh_tasks(tasks), 1)
+        self.assertEqual(attempts, ["busy", "second"])
+
     def test_cancelled_batch_does_not_execute_sources(self):
         stop = Mock()
         stop.is_set.return_value = True
