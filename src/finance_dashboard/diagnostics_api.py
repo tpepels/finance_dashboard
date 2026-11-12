@@ -60,6 +60,73 @@ def _status(events: list[dict], coverage: dict, accepting: bool, importing: bool
             "import_running": importing, "generated_at": now.isoformat()}
 
 
+def _original_method_summary(root) -> dict:
+    """Bounded advisory diagnostics, without copying gigabyte-scale originals.
+
+    These metadata records are not source-byte verification. Their archived
+    original and derived receipts must be independently verified by the
+    canonical evidence reader before scientific promotion.
+    """
+    from pathlib import Path
+    from .icio_editions import _read_native_derived
+    base = Path(root) / "icio" / "other-editions"
+    result = {"source_archive_bytes_reverified": False,
+              "source_archive_hashes_not_rechecked_in_debug_export": True,
+              "archives": [], "truncated": False}
+    if not base.is_dir() or base.is_symlink():
+        return result
+    count = 0
+    for parent in sorted(base.iterdir()):
+        if parent.is_symlink() or not parent.is_dir():
+            continue
+        for manifest in sorted(parent.iterdir()):
+            if manifest.is_symlink() or not manifest.is_dir():
+                continue
+            audit = manifest / "audit.json"
+            if not audit.is_file() or audit.is_symlink() or audit.stat().st_size > 8_000_000:
+                continue
+            count += 1
+            if count > 80:
+                result["truncated"] = True
+                return result
+            try:
+                row = json.loads(audit.read_bytes())
+                sha = row["archive_sha256"]
+                addon = _read_native_derived(root, sha)
+                derived = addon["native"] if addon else row
+                aux = addon["auxiliary"] if addon else row.get("auxiliary_numeric", {})
+                years = derived.get("annual_matrices", [])
+                result["archives"].append({
+                    "filename": row.get("filename"),
+                    "edition": row.get("edition"),
+                    "table": row.get("table"),
+                    "archive_sha256": sha,
+                    "original_registration_status": row.get("status"),
+                    "current_native_status": derived.get("native_validation_status", "not_evaluated"),
+                    "derived_reassessment_present": addon is not None,
+                    "native_years": [{
+                        "year": y.get("year"),
+                        "accounting_passed": y.get("accounting_passed"),
+                        "industry_bridge_exclusions": y.get("industry_concordance", {}).get("excluded", []),
+                        "incomplete_common_sectors": y.get("industry_concordance", {}).get("incomplete_targets", []),
+                        "tiva_method": (y.get("tiva_reconstruction") or {}).get("method"),
+                        "tiva_status": (y.get("tiva_reconstruction") or {}).get("status", "not_evaluated"),
+                        "tiva_error_code": (y.get("tiva_reconstruction") or {}).get("error_code"),
+                        "numerical_residual": (y.get("tiva_reconstruction") or {}).get("max_relative_residual"),
+                    } for y in years[:40]],
+                    "rejected_years": derived.get("rejected_matrices", []),
+                    "expected_years": derived.get("expected_years"),
+                    "observed_years": derived.get("observed_years", []),
+                    "auxiliary_status": aux.get("status", "not_evaluated"),
+                    "auxiliary_parsed_members": aux.get("parsed_members", 0),
+                })
+            except (ValueError, TypeError, KeyError, OSError):
+                # A corrupt method record is a diagnostic finding in its own
+                # right, not grounds to abort the complete support bundle.
+                result["archives"].append({"status": "original_method_metadata_unreadable"})
+    return result
+
+
 def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenance, importer):
     from .source_coverage import build_coverage
     from .source_policy import policy_summary
@@ -106,6 +173,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
                          for j in operations["jobs"]],
             })
             put("diagnostics/original-import.json", importer.public_status())
+            put("diagnostics/original-method-audit.json",
+                _original_method_summary(importer.evidence))
             archive.writestr("README.txt",
                 "Redacted diagnostic bundle. No secrets, raw HTTP responses, source files, "
                 "portfolio holdings, database contents, or raw process stderr are included.\\n")
