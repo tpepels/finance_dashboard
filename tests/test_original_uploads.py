@@ -117,6 +117,9 @@ class OriginalUploadApiTests(unittest.TestCase):
                         self.assertEqual(zip_result.status_code, 200)
                         with ZipFile(io.BytesIO(zip_result.content)) as zipfile:
                             self.assertIn("diagnostics/events.json", zipfile.namelist())
+                            self.assertIn("diagnostics/original-method-audit.json", zipfile.namelist())
+                            original_diagnostics = json.loads(zipfile.read("diagnostics/original-method-audit.json"))
+                            self.assertFalse(original_diagnostics["source_archive_bytes_reverified"])
                             self.assertNotIn("DATABASE_URL", zipfile.read("README.txt").decode())
                             self.assertNotIn("finance.sqlite3", zipfile.namelist())
                         queued = api.post("/api/originals/import",
