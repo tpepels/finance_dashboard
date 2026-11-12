@@ -349,17 +349,29 @@ def audit_archive_native(zip_file: ZipFile, edition: str,
     # never count as verified native original matrices.
     complete = mandatory is None or found == mandatory
     results = []
+    rejected = []
     for year, path in members:
-        with zip_file.open(path) as original:
-            with io.TextIOWrapper(original, encoding="utf-8-sig", newline="") as stream:
-                audit = audit_native_csv(stream, edition=edition, year=year,
-                                         dimensions=dimensions, table=table)
-        audit["original_member_sha256"] = None  # ZIP hash covers exact original bytes
-        results.append(audit)
+        try:
+            with zip_file.open(path) as original:
+                with io.TextIOWrapper(original, encoding="utf-8-sig", newline="") as stream:
+                    audit = audit_native_csv(stream, edition=edition, year=year,
+                                             dimensions=dimensions, table=table)
+            audit["original_member_sha256"] = None  # ZIP hash covers exact original bytes
+            results.append(audit)
+        except (ValueError, UnicodeError, csv.Error) as exc:
+            # ZIP integrity has already been checked. Preserve the exact
+            # original for later parser adaptation, but publish no derived
+            # figures for the rejected member. No source data is corrected.
+            code = str(exc)
+            if not re.fullmatch(r"icio_[a-z_]{1,96}", code):
+                code = "icio_native_matrix_schema_rejected"
+            rejected.append({"year": year, "member": path, "error_code": code})
     return {"edition": edition, "table": table,
             "annual_matrices": results, "annual_matrix_count": len(results),
             "expected_years": mandatory, "observed_years": found,
-            "native_validation_status": ("native_matrix_years_incomplete" if not complete
+            "rejected_matrices": rejected,
+            "native_validation_status": ("native_parser_rejected" if rejected
+                else "native_matrix_years_incomplete" if not complete
                 else "native_accounts_verified" if results
                 and all(a["accounting_passed"] is True and a["country_concordance"]["valid"]
                         for a in results)
