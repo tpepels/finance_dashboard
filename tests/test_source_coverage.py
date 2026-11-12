@@ -231,6 +231,22 @@ class SourceCoverageTests(unittest.TestCase):
                 self.assertIsNone(rows[sid]["published_through"])
                 self.assertFalse(rows[sid]["complete_for_pinned_release"])
 
+    def test_complete_pinned_release_remains_available_after_budget_deferral(self):
+        tiva = "supply_chain.pt.foreign_final_demand_share"
+        sovereign = "returns.swinkels.us.sovereign_10y_modelled_local"
+        self.add_macro(tiva, status="deferred", when=date(2022, 1, 1),
+                       error="source_policy_deferred")
+        self.add_macro(sovereign, status="deferred", when=date(2022, 12, 1),
+                       error="source_policy_deferred")
+        rows={x["id"]:x for x in build_coverage(
+            self.engine, self.catalog, self.registry, asof=date(2026, 11, 12))["items"]}
+        for sid in (tiva, sovereign):
+            self.assertEqual(rows[sid]["state"], "available")
+            self.assertTrue(rows[sid]["scheduled_download_unnecessary_for_pinned_release"])
+            self.assertEqual(rows[sid]["refresh_state"], "deferred")
+            self.assertEqual(rows[sid]["last_failure_code"], "source_policy_deferred")
+            self.assertIn("pinned release", rows[sid]["next_action"].lower())
+
     def test_tiva_2022_is_current_for_pinned_edition_after_revision_date(self):
         tiva_ids = [x["id"] for x in self.catalog if x["provider"] == "OECD_TIVA"]
         for sid in tiva_ids:
