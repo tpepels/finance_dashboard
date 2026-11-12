@@ -62,7 +62,7 @@ def read_native_year(stream: TextIO, audit: dict, *, max_nodes: int = MAX_NODES)
     n = audit["industry_nodes"]
     if not isinstance(n, int) or n < 2 or n > max_nodes:
         raise NativeValueAddedError("icio_leontief_invalid_node_count")
-    if not header or header[0] not in ("V1", "V2", "VAR", "industry", "Industry", ""):
+    if not header or not header[0] or len(header[0]) > 128:
         raise NativeValueAddedError("icio_leontief_header_invalid")
     node_names = header[1:n + 1]
     if len(set(node_names)) != n:
@@ -85,7 +85,7 @@ def read_native_year(stream: TextIO, audit: dict, *, max_nodes: int = MAX_NODES)
         raise NativeValueAddedError("icio_leontief_final_demand_label_invalid")
     expected = (n + len(labels) + 1 + int(has_output))
     z = np.empty((n, n), dtype=np.float64)
-    final = np.zeros((n, len(COUNTRIES)), dtype=np.float64)
+    final = np.zeros((n, len(COUNTRIES) + 1), dtype=np.float64)
     country_positions = {
         c: np.asarray([j for j, area in enumerate(final_destinations)
                         if area == c], dtype=np.intp)
@@ -114,8 +114,9 @@ def read_native_year(stream: TextIO, audit: dict, *, max_nodes: int = MAX_NODES)
         i = known[label]
         z[i, :] = arr[:n]
         fd = arr[n:n + len(labels)]
-        final[i, :] = [float(fd[positions].sum(dtype=np.float64))
-                       for positions in country_positions.values()]
+        final[i, :-1] = [float(fd[positions].sum(dtype=np.float64))
+                        for positions in country_positions.values()]
+        final[i, -1] = float(fd.sum(dtype=np.float64))
         out[i] = arr[-1] if has_output else (z[i, :].sum(dtype=np.float64) +
                                              fd.sum(dtype=np.float64))
     if not set(known) <= seen:
@@ -172,11 +173,8 @@ def solve_foreign_final_demand(
     z[:, zero] = 0
     country_row = np.asarray([canonical_country(label.split("_", 1)[0])
                               for label in annual.nodes], dtype=str)
-    world = annual.final_by_country.sum(axis=1)
-    # The seven countries do not exhaust all 81 final-demand geographies.
-    # Rebuild Y_world from source rows externally? We cannot infer the other
-    # destinations from these selected-country aggregates. The loader must
-    # supply the complete world vector as a separate final column.
+    # The selected seven countries do not exhaust all final destinations.
+    # Column -1 is the independently retained all-country final demand.
     if annual.final_by_country.shape[1] != len(COUNTRIES) + 1:
         raise NativeValueAddedError("icio_leontief_world_demand_missing")
     world = annual.final_by_country[:, -1]
