@@ -988,3 +988,61 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
   .research-footer { font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) { .research-app *, .research-app *::before, .research-app *::after { animation: none !important; transition: none !important; } }
+
+
+/* Unified diagnostics indicator and compact console. */
+.diagnostics-anchor { position: relative; display: inline-flex; align-items: center; }
+.diagnostics-light { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border: 1px solid var(--border, #8b9ba5); border-radius: 6px; background: transparent;
+  color: inherit; cursor: pointer; font: inherit; font-size: 12px; }
+.diagnostics-light:hover { background: rgba(125,140,150,.12); }
+.diagnostics-lamp { width: 10px; height: 10px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0; border: 1px solid rgba(0,0,0,.28); }
+.diagnostics-lamp-green { background: #32aa78; box-shadow: 0 0 0 2px rgba(50,170,120,.12); }
+.diagnostics-lamp-orange { background: #e6a337; box-shadow: 0 0 0 2px rgba(230,163,55,.13); }
+.diagnostics-lamp-red { background: #d94e50; box-shadow: 0 0 0 2px rgba(217,78,80,.13); }
+.diagnostics-console { position: absolute; right: 0; top: calc(100% + 12px); width: min(680px, 90vw);
+  z-index: 110; padding: 15px; border: 1px solid #748491; border-radius: 10px;
+  background: var(--surface, #17242d); color: var(--ink, #eef4f8);
+  box-shadow: 0 16px 48px rgba(0,0,0,.24); }
+.diagnostics-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.diagnostics-head div { display: flex; flex-direction: column; gap: 4px; }
+.diagnostics-head strong { font-size: 15px; }
+.diagnostics-head small, .diagnostics-foot small { color: inherit; opacity: .75; }
+.diagnostics-head button { background: transparent; color: inherit; cursor: pointer;
+  font-size: 21px; line-height: 1; border: 1px solid #7c8c94; border-radius: 5px; padding: 2px 8px; }
+.diagnostics-summary { display: flex; gap: 9px 20px; flex-wrap: wrap; padding: 12px 0;
+  font-size: 12px; opacity: .9; }
+.diagnostics-log { box-sizing: border-box; display: block; background: #0b131b; color: #cbe6d5;
+  border: 1px solid #43515b; border-radius: 5px; padding: 12px; white-space: pre-wrap;
+  overflow: auto; max-height: 340px; min-height: 130px; font: 11px/1.65 ui-monospace, monospace; }
+.diagnostics-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.diagnostics-download { display: inline-block; background: #315d64; border-radius: 5px;
+  color: #fff; padding: 9px 12px; font-size: 12px; text-decoration: none; white-space: nowrap; }
+.diagnostics-download:hover { background: #47767f; }
+
+/* Original-data upload lives inside the existing Source data workspace. */
+.original-uploader { margin: 0 0 25px; padding: 18px; border: 1px solid #71818d55;
+  border-radius: 8px; background: rgba(125,140,150,.035); }
+.original-uploader h3 { margin: 0 0 6px; font-size: 18px; }
+.original-uploader header p { max-width: 75ch; line-height: 1.6; }
+.original-file-picker { display: inline-flex; flex-direction: column; gap: 9px;
+  border: 1px dashed #7f9b9d; border-radius: 7px; padding: 12px 16px; margin: 12px 0;
+  font-size: 13px; font-weight: 600; cursor: pointer; }
+.original-file-picker input { max-width: min(100%, 400px); font-size: 12px; }
+.original-import-activity { font-size: 13px; }
+.original-import-error { font-size: 13px; color: #c64b4e; }
+.original-import-job { margin: 12px 0; display: grid; gap: 8px; font-size: 13px; }
+.original-import-job progress { width: min(400px,100%); height: 9px; }
+.original-import-job ul, .original-staged-files ul { list-style: none; padding: 0; margin: 6px 0;
+  display: grid; gap: 5px; }
+.original-import-job li, .original-staged-files li { display: flex; flex-wrap: wrap;
+  justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid #8796a426; }
+.original-staged-files { margin: 14px 0; font-size: 13px; }
+.original-staged-files small { opacity: .75; }
+.original-import-note { font-size: 12px; max-width: 75ch; line-height: 1.5; opacity: .75; }
+@media (max-width: 600px) {
+  .diagnostics-console { position: fixed; left: 4vw; right: 4vw; top: 70px; width: 92vw; }
+  .diagnostics-light-label { display: none; }
+  .diagnostics-foot { align-items: flex-start; flex-direction: column; }
+}
