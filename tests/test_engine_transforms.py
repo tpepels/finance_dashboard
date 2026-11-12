@@ -48,7 +48,8 @@ class EngineTransformTests(unittest.TestCase):
                                            "pearson_correlation", "drawdown_episodes",
                                            "first_order_shock", "rebalancing_simulation",
                                            "signal_timing", "recovery_to_peak", "par_bond_return",
-                                           "splice_identical", "native_icio_direct_final_demand"})
+                                           "splice_identical", "native_icio_direct_final_demand",
+                                           "native_icio_leontief_ffd_dva"})
         self.assertTrue(all(TRANSFORMS[name].strip() for name in TRANSFORMS))
         self.assertEqual(applied("month_end")["formula"], TRANSFORMS["month_end"])
         with self.assertRaises(KeyError):
