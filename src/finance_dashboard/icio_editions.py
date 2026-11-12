@@ -305,6 +305,8 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                 native = derived["native"]
                 auxiliary = derived["auxiliary"]
                 record = {**record, **native, "auxiliary_numeric": auxiliary,
+                          "industry_accounts_validated":
+                              native["native_validation_status"] == "native_accounts_verified",
                           "original_archive_status": record["status"],
                           "status": (native["native_validation_status"]
                                      if native["annual_matrix_count"] or native["rejected_matrices"]
