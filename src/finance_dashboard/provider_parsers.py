@@ -326,42 +326,6 @@ def parse_gold_api_spot(payload: Any, start: date | None = None) -> dict[date, D
     return {observed.date(): price}
 
 
-def parse_corgano_gold(payload: Any, start: date | None = None) -> dict[date, Decimal]:
-    """Snapshot the current published spot *quote*, not futures-derived daily history."""
-    if not isinstance(payload, dict):
-        raise ProviderError("Gold spot response malformed")
-    row, meta = payload.get("data"), payload.get("meta")
-    if not isinstance(row, dict) or not isinstance(meta, dict):
-        raise ProviderError("Gold spot price or metadata unavailable")
-    if str(row.get("metal", "")).lower() != "gold" or str(row.get("symbol", "")).upper() not in ("XAU", "XAUUSD"):
-        raise ProviderError("Gold spot identity mismatch")
-    source = str(meta.get("source", "")).lower()
-    if not source or any(x in source for x in ("futures", "comex", "gc=f")):
-        raise ProviderError("Gold provider is missing spot provenance or substituted a futures price")
-    unit = str(meta.get("unit", "")).strip().lower()
-    if "troy ounce" not in unit and "troy oz" not in unit:
-        raise ProviderError("Gold price must be quoted per troy ounce")
-    try:
-        at = datetime.fromisoformat(str(row["as_of"]).replace("Z","+00:00"))
-    except (KeyError, ValueError, TypeError) as exc:
-        raise ProviderError("Gold spot quote lacks valid timestamp") from exc
-    if at.tzinfo is None:
-        raise ProviderError("Gold spot quote must carry its timezone")
-    from datetime import timezone, timedelta
-    if at > datetime.now(timezone.utc) + timedelta(minutes=5):
-        raise ProviderError("Gold spot quote future-dated")
-    day = at.date()
-    if start and day < start:
-        raise ProviderError("Gold spot quote is older than requested start period")
-    usd_prices = row.get("price_usd")
-    if not isinstance(usd_prices, dict) or "per_oz" not in usd_prices:
-        raise ProviderError("Gold USD quote must contain price_usd.per_oz")
-    value = _value(usd_prices["per_oz"])
-    if value is None or value <= 0:
-        raise ProviderError("Invalid current gold spot price")
-    return {day:value}
-
-
 def parse_un_sdg(payload: Any, series_code: str, area_code: str,
                  start: date | None = None) -> dict[date, Decimal]:
     """UNSD official ILO-custodied global labour share; only unbroken annual global slice."""
