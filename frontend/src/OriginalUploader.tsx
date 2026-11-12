@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type StoredFile = { filename: string; bytes: number; kind: string };
 type Result = { filename: string; status: string; error_code?: string; edition?: string; table?: string };
@@ -6,7 +6,7 @@ type ImportJob = {
   id: string; status: string; completed: number; total: number;
   error_code?: string | null; results: Result[];
 };
-type Inventory = { active: boolean; files: StoredFile[]; jobs: ImportJob[] };
+type Inventory = { active: boolean; readme_available?: boolean; files: StoredFile[]; jobs: ImportJob[] };
 
 const READ_ME = 'ReadMe_ICIO_small.xlsx';
 const initial: Inventory = { active: false, files: [], jobs: [] };
@@ -28,12 +28,22 @@ export default function OriginalUploader() {
   const [activity, setActivity] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const queuedJob = useRef<string | null>(null);
+  const acceptStatus = (next: Inventory) => {
+    setInventory(next);
+    const latest = next.jobs[0];
+    if (!next.active && latest && queuedJob.current === latest.id &&
+        ['complete', 'partial', 'failed'].includes(latest.status)) {
+      queuedJob.current = null;
+      window.dispatchEvent(new Event('gcm-data-updated'));
+    }
+  };
 
   const refresh = async () => {
     const response = await fetch('/api/originals', { cache: 'no-store' });
     if (!response.ok) throw new Error('Could not read original import status (' + response.status + ')');
     const data = await response.json() as Inventory;
-    setInventory(data);
+    acceptStatus(data);
     return data;
   };
   useEffect(() => {
@@ -41,7 +51,7 @@ export default function OriginalUploader() {
     const poll = () => {
       void fetch('/api/originals', { cache: 'no-store' })
         .then(res => { if (!res.ok) throw new Error('Original upload status unavailable'); return res.json() as Promise<Inventory>; })
-        .then(next => { if (active) setInventory(next); })
+.then(next => { if (active) acceptStatus(next); })
         .catch(() => { if (active) setError('Cannot read original import status.'); });
     };
     poll();
@@ -81,7 +91,7 @@ export default function OriginalUploader() {
       setActivity('All selected originals are already registered.');
       return;
     }
-    const hasReadme = data.files.some(file => file.filename === READ_ME);
+    const hasReadme = data.readme_available || data.files.some(file => file.filename === READ_ME);
     if (!hasReadme && filenames.some(name => data.files.some(
       file => file.filename === name && file.kind === 'verified_regular'))) {
       setActivity('Archive stored. Upload ' + READ_ME + ' to validate the regular matrices.');
@@ -99,6 +109,8 @@ export default function OriginalUploader() {
       const body = await response.json().catch(() => ({})) as { detail?: string };
       throw new Error(body.detail ?? 'Import could not start (' + response.status + ')');
     }
+    const queued = await response.json() as { id: string };
+    queuedJob.current = queued.id;
     setActivity('Importing ' + filenames.length + ' archive(s); progress appears below.');
     await refresh();
   };
