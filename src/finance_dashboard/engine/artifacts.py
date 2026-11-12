@@ -111,12 +111,21 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
         from ..icio_native import canonical_country
         selected = {"USA", "DEU", "FRA", "PRT", "JPN", "CHN", "IND"}
         years = []
+        conflicted = []
         for archive in read_edition_archives(Path(evidence_root)):
+            if archive.get("source_year_conflict"):
+                conflicted.append({
+                    "edition": archive["edition"], "filename": archive["filename"],
+                    "years": archive["conflicting_years"],
+                    "source_sha256": archive["archive_sha256"],
+                })
             if archive.get("native_validation_status") not in (
                     "native_accounts_verified",
                     "native_structure_verified_accounting_unavailable"):
                 continue  # Incomplete archive years or failed original accounts
             for matrix in archive.get("annual_matrices", []):
+                if matrix["year"] in archive.get("conflicting_years", []):
+                    continue  # Withhold all incompatible overlapping originals
                 # Source accounts for other countries remain directly
                 # observable when only a CHN/MEX parent-split rollup is
                 # ambiguous. The native audit omits those ambiguous countries.
@@ -135,6 +144,7 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
                         matrix["country_concordance"]["ambiguous_unsplit_parents"],
                     "countries": countries})
         return {"years": sorted(years, key=lambda x: (x["edition"], x["year"])),
+                "source_year_conflicts": conflicted,
                 "measurement": "gross direct deliveries to foreign final demand",
                 "not_equivalent_to_oecd_tiva_ffd_dva": True}
     if name == "marxian_rates":
