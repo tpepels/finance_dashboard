@@ -315,20 +315,39 @@ class RouterTests(unittest.TestCase):
     def router(self, handler):
         return ProviderRouter(httpx.Client(transport=httpx.MockTransport(handler)))
 
-    def test_corgano_spot_transport(self):
+    def test_gold_api_spot_transport(self):
         from datetime import datetime,timezone
         def handler(request):
-            self.assertIn("api/v1/latest", str(request.url))
+            self.assertEqual(request.url.host, "api.gold-api.com")
+            self.assertEqual(request.url.path, "/price/XAU")
             return httpx.Response(200, json={
-                "data":{"metal":"gold","symbol":"XAU","price_usd":{"per_oz":3900.25,"per_gram":125.4,"per_kg":125400},
-                        "as_of":datetime.now(timezone.utc).isoformat()},
-                "meta":{"unit":"USD / troy oz","source":"Swissquote midpoint"}
+                "name": "Gold", "symbol": "XAU", "currency": "USD",
+                "exchangeRate": 1, "price": 3900.25,
+                "updatedAt": datetime.now(timezone.utc).isoformat(),
             })
         router=self.router(handler)
         try:
-            self.assertIn(date.today(),router.fetch("gold.usd.spot").observations)
+            self.assertEqual(router.fetch("gold.usd.spot").observations[date.today()],
+                             Decimal("3900.25"))
         finally:
             router.close()
+
+    def test_gold_spot_parsing_rejects_stale_wrong_symbol_or_futures(self):
+        from datetime import datetime,timezone,timedelta
+        from finance_dashboard.provider_parsers import parse_gold_api_spot
+        good = {"name": "Gold", "symbol": "XAU", "currency": "USD",
+                "exchangeRate": 1, "price": "3900.25",
+                "updatedAt": datetime.now(timezone.utc).isoformat()}
+        self.assertEqual(parse_gold_api_spot(good)[date.today()], Decimal("3900.25"))
+        for malformed in ({**good, "symbol": "XAG"},
+                          {**good, "currency": "EUR"},
+                          {**good, "name": "Gold futures"},
+                          {**good, "updatedAt": (datetime.now(timezone.utc)
+                            - timedelta(days=7)).isoformat()},
+                          {**good, "price": "NaN"},
+                          {**good, "price": "-1"}):
+            with self.subTest(malformed=malformed), self.assertRaises(ProviderError):
+                parse_gold_api_spot(malformed)
 
     def test_un_transport(self):
         def handler(request):
