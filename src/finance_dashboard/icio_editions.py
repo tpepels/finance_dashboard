@@ -303,6 +303,7 @@ def _annotate_source_year_collisions(output: list[dict]) -> list[dict]:
             by_period[(item["edition"], item["table"], year)].append(idx)
         item["conflicting_years"] = []
         item["equivalent_annual_years"] = []
+        item["suppressed_equivalent_years"] = []
         item["conflicting_sources"] = []
     for (_, _, year), indices in by_period.items():
         if len({output[i]["archive_sha256"] for i in indices}) <= 1:
@@ -314,8 +315,12 @@ def _annotate_source_year_collisions(output: list[dict]) -> list[dict]:
             annual_hashes.append(year_record.get("original_member_sha256")
                                  if year_record else None)
         if annual_hashes[0] and all(h == annual_hashes[0] for h in annual_hashes):
+            primary = min(indices, key=lambda i: (
+                output[i]["archive_sha256"], output[i]["filename"]))
             for i in indices:
                 output[i]["equivalent_annual_years"].append(year)
+                if i != primary:
+                    output[i]["suppressed_equivalent_years"].append(year)
             continue
         for i in indices:
             output[i]["conflicting_years"].append(year)
@@ -328,6 +333,7 @@ def _annotate_source_year_collisions(output: list[dict]) -> list[dict]:
     for item in output:
         item["conflicting_years"] = sorted(set(item["conflicting_years"]))
         item["equivalent_annual_years"] = sorted(set(item["equivalent_annual_years"]))
+        item["suppressed_equivalent_years"] = sorted(set(item["suppressed_equivalent_years"]))
         item["source_year_conflict"] = bool(item["conflicting_years"])
     return output
 
