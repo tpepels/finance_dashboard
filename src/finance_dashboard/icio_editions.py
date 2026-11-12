@@ -185,5 +185,8 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                 "bundle_digest": bundle.name,
                 "native_validation_status": record.get("native_validation_status", "not_evaluated"),
                 "annual_matrix_count": record.get("annual_matrix_count", 0),
-                "annual_matrices": record.get("annual_matrices", [])})
+                "annual_matrices": record.get("annual_matrices", []),
+                "rejected_matrices": record.get("rejected_matrices", []),
+                "expected_years": record.get("expected_years"),
+                "observed_years": record.get("observed_years", [])})
     return output
