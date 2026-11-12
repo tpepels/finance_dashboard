@@ -8,6 +8,7 @@ values without an edition-specific dimensional/accounting contract.
 from __future__ import annotations
 
 from hashlib import sha256
+from functools import lru_cache
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -88,7 +89,7 @@ def register_edition_archive(path: Path, root: Path) -> dict:
     record = inspect_archive(path)
     # Duplicate downloads (for example "(1)" copies) must not occupy another
     # immutable archive slot. Reuse verified evidence with identical bytes.
-    for existing in read_edition_archives(root):
+    for existing in read_edition_archives(root, archive_sha=record["archive_sha256"]):
         if (existing["archive_sha256"] == record["archive_sha256"] and
                 existing["edition"] == record["edition"] and
                 existing["table"] == record["table"]):
@@ -115,26 +116,59 @@ def register_edition_archive(path: Path, root: Path) -> dict:
             "archive_sha256": record["archive_sha256"], "bundle_digest": bundle.name}
 
 
-def read_edition_archives(root: Path) -> list[dict]:
+@lru_cache(maxsize=256)
+def _cached_file_hash(filename: str, size: int, modified_ns: int) -> str:
+    """Hash each unchanged immutable archive once per process, not once per visitor."""
+    digest = sha256()
+    with open(filename, "rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _verify_edition_bundle(bundle: Path, record: dict) -> None:
+    from .source_capture import canonical_bytes
+    identity = {"publisher": "OECD", "edition": record["edition"],
+                "table": record["table"], "filename": record["filename"],
+                "acquisition": "owner_supplied_unverified_original"}
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    files = manifest.get("files")
+    if (manifest.get("schema_version") != 1 or
+            manifest.get("source_identity") != identity or
+            manifest.get("sources") != {"owner_supplied_archive": record["filename"]} or
+            manifest.get("matrix_sha256") != record["archive_sha256"] or
+            not isinstance(files, dict) or set(files) != {"archive.zip", "audit.json"} or
+            sha256(canonical_bytes(files)).hexdigest() != bundle.name):
+        raise ValueError("icio_edition_archive_identity_invalid")
+    for name, digest in files.items():
+        target = bundle / name
+        if target.is_symlink() or not target.is_file():
+            raise ValueError("icio_edition_archive_missing_member")
+        if name == "audit.json":
+            actual = sha256(target.read_bytes()).hexdigest()
+        else:
+            stat_info = target.stat()
+            actual = _cached_file_hash(str(target), stat_info.st_size, stat_info.st_mtime_ns)
+        if actual != digest:
+            raise ValueError("icio_edition_archive_hash_mismatch")
+
+
+def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list[dict]:
     base = Path(root) / "icio" / "other-editions"
     if not base.is_dir():
         return []
     output = []
-    from .icio import _verified_manifest
     for parent in sorted(base.iterdir()):
         if parent.is_symlink() or not parent.is_dir():
             raise ValueError("icio_edition_archive_directory_invalid")
+        if archive_sha is not None and not parent.name.endswith("-" + archive_sha[:16]):
+            continue
         for bundle in sorted(p for p in parent.iterdir() if p.is_dir() and
                              re.fullmatch(r"[0-9a-f]{64}", p.name)):
             if bundle.is_symlink():
                 raise ValueError("icio_edition_archive_directory_invalid")
             record = json.loads((bundle / "audit.json").read_text())
-            identity = {"publisher": "OECD", "edition": record["edition"],
-                        "table": record["table"], "filename": record["filename"],
-                        "acquisition": "owner_supplied_unverified_original"}
-            _verified_manifest(bundle, identity, {"archive.zip", "audit.json"},
-                               {"owner_supplied_archive": record["filename"]},
-                               record["archive_sha256"])
+            _verify_edition_bundle(bundle, record)
             output.append({key: record[key] for key in ("filename", "edition", "table",
                 "status", "archive_sha256", "member_count", "source_authenticity_verified",
                 "industry_accounts_validated", "tiva_comparability_certified")})
