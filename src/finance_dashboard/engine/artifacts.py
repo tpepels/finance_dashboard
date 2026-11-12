@@ -126,6 +126,8 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
             for matrix in archive.get("annual_matrices", []):
                 if matrix["year"] in archive.get("conflicting_years", []):
                     continue  # Withhold all incompatible overlapping originals
+                if matrix["year"] in archive.get("suppressed_equivalent_years", []):
+                    continue  # Include one exact original copy, never both
                 # Source accounts for other countries remain directly
                 # observable when only a CHN/MEX parent-split rollup is
                 # ambiguous. The native audit omits those ambiguous countries.
