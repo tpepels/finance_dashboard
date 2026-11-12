@@ -22,7 +22,9 @@ DEFINITION = {"id": "test.us.nfc_d1", "provider": "OECD_NFC_ACCOUNTS", "source_k
               "source_url": "https://data-explorer.oecd.org/", "name": "t", "theme": "labour_capital",
               "measurement": "t", "revision_policy": "revisable", "rights": "review_required", "notes": "t"}
 URL = ("https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/"
-       "A.USA.S11.S1.D.D1._Z._Z.XDC.S.V.N.T0800?format=csvfile")
+       "A.USA.S11.S1.C+D.B1G+B2G+D1+D29+D39+P51C._Z._Z.XDC.S.V.N.T0800?format=csvfile")
+OLD_URL = ("https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NASEC10@DF_TABLE14,1.1/"
+           "A.USA.S11.S1.D.D1._Z._Z.XDC.S.V.N.T0800?format=csvfile")
 
 
 class OecdNfcAccountsTests(unittest.TestCase):
@@ -36,6 +38,26 @@ class OecdNfcAccountsTests(unittest.TestCase):
             manifest = json.loads(next(Path(temp).glob("responses/*/*/manifest.json")).read_text())
             url = manifest["sources"][0]["url"]
         self.assertEqual(_oecd_nfc(BODY.encode(), url, DEFINITION)[date(2023, 1, 1)], Decimal("8000000"))
+
+    def test_previously_recorded_single_transaction_original_still_verifies(self):
+        self.assertEqual(_oecd_nfc(BODY.encode(), OLD_URL, DEFINITION),
+                         {date(2023, 1, 1): Decimal("8000000"),
+                          date(2024, 1, 1): Decimal("8566433")})
+
+    def test_shared_country_document_verifies_each_role_and_rejects_wrong_entries(self):
+        from finance_dashboard.provider_adapters import OECD_NFC_TRANSACTIONS
+        body = HEADER + "".join(
+            ROW.replace(",D,D1,", f",{entry},{code},")
+               .format(year=2024, value=100 + number)
+            for number, (code, entry) in enumerate(OECD_NFC_TRANSACTIONS.items()))
+        for number, (code, entry) in enumerate(OECD_NFC_TRANSACTIONS.items()):
+            definition = {**DEFINITION, "source_key": "USA/" + code}
+            with self.subTest(code=code):
+                self.assertEqual(_oecd_nfc(body.encode(), URL, definition),
+                                 {date(2024, 1, 1): Decimal(100 + number)})
+        wrong = body.replace(",C,D39,", ",D,D39,")
+        with self.assertRaises(EvidenceError):
+            _oecd_nfc(wrong.encode(), URL, DEFINITION)
 
     def test_reader_rejects_other_series_currency_or_partial_windows(self):
         for body, url, definition in (
