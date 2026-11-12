@@ -169,7 +169,7 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                 raise ValueError("icio_edition_archive_directory_invalid")
             record = json.loads((bundle / "audit.json").read_text())
             _verify_edition_bundle(bundle, record)
-            output.append({key: record[key] for key in ("filename", "edition", "table",
+            output.append({**{key: record[key] for key in ("filename", "edition", "table",
                 "status", "archive_sha256", "member_count", "source_authenticity_verified",
-                "industry_accounts_validated", "tiva_comparability_certified")})
+                "industry_accounts_validated", "tiva_comparability_certified")}, "bundle_digest": bundle.name})
     return output
