@@ -267,6 +267,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
             "source_value_added_usd_million": _simple_text(t["value_added"]) if has_accounts else None,
             "direct_foreign_final_demand_to_va_pct": _simple_text(share) if share is not None else None}
     return {"year": year, "edition": edition, "industry_nodes": expected_nodes,
+            "structure_verified": True,
             "source_country_count": n_areas, "final_demand_country_count": n_fd_areas,
             "native_industries": industry_codes,
             "industry_concordance": mapping,
@@ -349,6 +350,9 @@ def audit_archive_native(zip_file: ZipFile, edition: str,
                 else "native_accounts_verified" if results
                 and all(a["accounting_passed"] is True and a["country_concordance"]["valid"]
                         for a in results)
+                else "native_structure_verified_accounting_unavailable" if results
+                and all(a["accounting_passed"] is None and a["structure_verified"]
+                        and a["country_concordance"]["valid"] for a in results)
                 else "native_accounts_unresolved" if results else "no_native_csv_matrices"),
             "tiva_equivalent": False,
             "method": "edition_native_streaming_audit_v1"}
