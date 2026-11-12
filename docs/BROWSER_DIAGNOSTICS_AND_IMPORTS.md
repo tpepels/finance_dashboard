@@ -46,8 +46,10 @@ Supported file families:
   row/column accounts when provided, and explicit split-country identities.
 - Earlier `ICIO2018_*.zip` and `ICIO2021*.zip` originals, validated against
   their own industry counts (36 and 45) and economy populations. Auxiliary
-  `econA`/Rdata archives are preserved as supporting originals, without
-  a false claim that they are audited annual CSV matrices.
+  `econA`/RData archives are parsed in resource-limited isolated worker
+  processes, extracting numeric-array dimensions, finite-value checks and
+  aggregate statistics. Their values are not assigned a TiVA meaning without
+  a verified matching economic account/industry contract.
 - `2016-2020_SML.zip` and `2016-2020_EXT.zip` belong to the 2023
   OECD release (45 industries, 77 economies regular or 81 split economies
   extended), **not** the 2025 release. The original 2023 editions are kept
@@ -75,16 +77,47 @@ ICIO 2025 sector `D86T89` cannot be losslessly allocated to the older
 splits `CN1/CN2` and `MX1/MX2` are not summed with potentially overlapping
 unsplit parent countries. Ambiguous combinations are withheld.
 
-The existing G06 research engine loads these audited originals as **supplementary
-native direct final-demand** evidence, displaying separately labelled
-edition-by-edition comparison charts when accounts verify. These are direct
-output flows and **are not** the published OECD TiVA domestic-value-added
-embodied in foreign final demand (FFD_DVA). Reconstructing FFD_DVA requires
-the separate Leontief value-added tracing method and a tested reconciliation
-against the actual uploaded publisher originals. The main G06 calculation
-remains grounded in the original published TiVA data. The newly added Source
-data → ICIO original accounting and edition comparisons panel always exposes
-verified/missing original years and the native audit results.
+The G06 research engine keeps published OECD TiVA data authoritative and
+loads TWO independently labelled sets of source calculations:
+
+1. Direct foreign final-demand sales in current USD millions, summed from the
+   original ICIO intermediate/final-demand matrix. This measure does not trace
+   indirect value added. Edition-year populations remain separate.
+2. Leontief-based domestic value added embodied in foreign final demand,
+   reconstructed from the entire original inter-industry matrix Z, total output
+   X and final demand Y. The implementation solves
+   `(I - Z diag(X)^-1) q = Y_foreign(country)` iteratively with a bounded
+   convergence and residual check, then applies `VA_i / X_i` to the
+   source-country production nodes. Output is FFD_DVA in current USD millions
+   and as a share of source-country value added. Published 2025 TiVA shares
+   are compared by matching country and year, retaining signed residuals
+   and the existing 0.001 percentage-point tolerance. **These calculated
+   values never replace the official series automatically.**
+
+The source browser shows per-archive structural failures, native accounting
+residuals, exact and partial sector harmonizations, Leontief convergence
+diagnostics and per-RData numeric-array inventories. The Global → Supply
+chains section displays reconstructed share histories alongside published
+TiVA values and gives the number of matching/comparable country-years.
+
+**Already imported ZIPs:** click **Reassess previously imported OECD
+originals** in Source data. One background job re-verifies every sealed source
+archive and derives the new numeric results as immutable content-addressed
+scientific adjuncts under `icio/native-method-reports/`. Sealed archive bytes,
+original audit, acquisition receipt and SQLite observations remain unchanged.
+An interrupted job is reported as such, and can be restarted; there is no
+second independent ingestion service.
+
+**Research limits still enforced:** Structural acceptance does not prove
+original publisher provenance, vintage synchronization or exact numerical
+agreement with independently published TiVA values. No real uploaded extended
+or old-edition archives have been tested in CI; synthetic small matrices test
+the reconstruction and contract guards. Publisher-printed values have
+documented original serialization discrepancies which cannot be legitimately
+"fixed" by changing input data, the 0.001pp threshold or source versions.
+Exact unavailable cells and absent industry divisions are withheld rather
+than estimated. Source RData dimensions and sums do not establish which
+economic indicator an auxiliary numeric array measures.
 
 The older and extended archive hashes have not been independently pinned
 against the publisher, so `source_authenticity_verified=false` and
@@ -107,5 +140,9 @@ and uploads are staged under `/data/incoming/icio-2025` unless
 - `POST /api/originals/import`: JSON `{"filenames":["..."]}` to register
   selected staged archives through `finance_dashboard.icio.import_original_archive`;
   returns a job ID and progress is polled through `GET /api/originals`
+- `POST /api/originals/reassess`: start one background immutable
+  re-audit of all already registered edition archives; uses the existing
+  `X-GCM-Action: dashboard` guard and `GET /api/originals` job status.
 - `GET /api/source-evidence/icio`: regular-year coverage and
-  `additional_editions` inventory
+  `additional_editions` inventory, native Leontief results, RData parse
+  status and separate derived method evidence
