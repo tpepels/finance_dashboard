@@ -136,6 +136,24 @@ class OriginalUploadApiTests(unittest.TestCase):
                         evidence = api.get("/api/source-evidence/icio")
                         self.assertEqual(evidence.status_code, 200)
                         self.assertEqual(evidence.json()["additional_editions"][0]["edition"], "2025")
+                        # Reuse the exact sealed original; no second upload or
+                        # mutation of the original manifest is permitted.
+                        reassess = api.post("/api/originals/reassess",
+                            headers={"X-GCM-Action": "dashboard"})
+                        self.assertEqual(reassess.status_code, 202, reassess.text)
+                        reopened = None
+                        for _ in range(200):
+                            current = api.get("/api/originals").json()
+                            reopened = current["jobs"][0]
+                            if reopened["status"] in ("complete", "partial", "failed"):
+                                break
+                            time.sleep(.02)
+                        self.assertEqual(reopened["mode"], "reassess")
+                        self.assertEqual(reopened["status"], "complete", reopened)
+                        after = api.get("/api/source-evidence/icio")
+                        self.assertEqual(after.status_code, 200)
+                        self.assertEqual(after.json()["additional_editions"][0]["status"],
+                                         "original_archived_dimensions_unverified")
                 finally:
                     engine.dispose()
 
