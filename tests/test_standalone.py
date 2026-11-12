@@ -57,6 +57,70 @@ class StandaloneContainerTests(TestCase):
         self.assertFalse(collected.is_set())
         self.assertEqual(stop.seconds, 86400)
 
+    def test_deferred_schedule_survives_restarts_without_another_full_interval(self):
+        import json
+        from unittest.mock import patch
+        from finance_dashboard.standalone import refresh_loop
+        class Shutdown:
+            def __init__(self): self.seconds = None
+            def is_set(self): return False
+            def wait(self, seconds):
+                self.seconds = seconds
+                return True
+        with tempfile.TemporaryDirectory() as temp:
+            state = Path(temp) / "maintenance" / "refresh-schedule.json"
+            now = [1_800_000_000.0]
+            def boot():
+                stop = Shutdown()
+                with (environ(FINANCE_REFRESH_ON_START="0",
+                              FINANCE_REFRESH_SCHEDULE_PATH=str(state)),
+                      patch("finance_dashboard.standalone.time.time",
+                            side_effect=lambda: now[0])):
+                    refresh_loop(None, stop, interval_seconds=86400,
+                                 include_markets=False, refresh_wisesheets=False)
+                return stop.seconds
+            self.assertEqual(boot(), 86400)
+            self.assertEqual(json.loads(state.read_text())["next_due_unix"],
+                             now[0] + 86400)
+            now[0] += 1800
+            self.assertEqual(boot(), 86400 - 1800)
+            now[0] += 80000
+            self.assertEqual(boot(), 4600)
+            self.assertEqual(json.loads(state.read_text())["schema_version"], 1)
+
+    def test_overdue_refresh_deadline_is_not_reset_when_container_restarts(self):
+        from unittest.mock import patch
+        from finance_dashboard.standalone import refresh_loop
+        class Shutdown:
+            def is_set(self): return False
+            def wait(self, seconds): return True
+        with tempfile.TemporaryDirectory() as temp:
+            state = Path(temp) / "refresh-schedule.json"
+            state.write_text('{"schema_version":1,"next_due_unix":1700000000.0}')
+            seen = []
+            class StopOne:
+                def __init__(self): self.count = 0
+                def is_set(self): return self.count > 0
+                def wait(self, seconds):
+                    self.count += 1
+                    return True
+            stop = StopOne()
+            with (environ(FINANCE_REFRESH_ON_START="0",
+                          FINANCE_REFRESH_SCHEDULE_PATH=str(state),
+                          FINANCE_VINTAGE_REFRESH="0",
+                          FINANCE_SEC_HOLDINGS_REFRESH="0",
+                          FINANCE_AUTO_BACKUP="0"),
+                  patch("finance_dashboard.standalone.time.time",
+                        return_value=1800000000.0),
+                  patch("finance_dashboard.worker.refresh_all",
+                        side_effect=lambda *args, **kwargs: seen.append(1) or 0),
+                  patch("finance_dashboard.worker.refresh_market_all")):
+                refresh_loop(None, stop, interval_seconds=86400,
+                             include_markets=False, refresh_wisesheets=False)
+            self.assertEqual(seen, [1])
+            self.assertEqual(json.loads(state.read_text())["next_due_unix"],
+                             1800000000.0 + 86400)
+
     def test_offline_startup_serves_health_without_running_scheduled_publishers(self):
         publisher_work = threading.Event()
         with tempfile.TemporaryDirectory() as tmp:
