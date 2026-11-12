@@ -134,7 +134,7 @@ def register_edition_archive(path: Path, root: Path) -> dict:
             "archive_sha256": record["archive_sha256"], "bundle_digest": bundle.name}
 
 
-DERIVED_METHOD = "native_leontief_rdata_v2"
+DERIVED_METHOD = "native_leontief_rdata_v3"
 
 
 def _derived_folder(root: Path, original_sha: str) -> Path:
@@ -284,6 +284,54 @@ def _verify_edition_bundle(bundle: Path, record: dict) -> None:
             raise ValueError("icio_edition_archive_hash_mismatch")
 
 
+def _annotate_source_year_collisions(output: list[dict]) -> list[dict]:
+    """Reconcile logically equal source years without conflating ZIP metadata.
+
+    Different ZIP hashes with identical validated annual CSV member hashes
+    represent identical annual data in two archive wrappers. Different member
+    hashes, parser failures, or missing member identities are unresolved source
+    version collisions and cannot enter research calculations.
+    """
+    from collections import defaultdict
+    from .icio_native import expected_archive_years
+    by_period = defaultdict(list)
+    for idx, item in enumerate(output):
+        expected = item.get("expected_years")
+        if expected is None:
+            expected = expected_archive_years(item["filename"], item["edition"])
+        for year in expected or []:
+            by_period[(item["edition"], item["table"], year)].append(idx)
+        item["conflicting_years"] = []
+        item["equivalent_annual_years"] = []
+        item["conflicting_sources"] = []
+    for (_, _, year), indices in by_period.items():
+        if len({output[i]["archive_sha256"] for i in indices}) <= 1:
+            continue
+        annual_hashes = []
+        for idx in indices:
+            year_record = next((r for r in output[idx].get("annual_matrices", [])
+                                if r.get("year") == year), None)
+            annual_hashes.append(year_record.get("original_member_sha256")
+                                 if year_record else None)
+        if annual_hashes[0] and all(h == annual_hashes[0] for h in annual_hashes):
+            for i in indices:
+                output[i]["equivalent_annual_years"].append(year)
+            continue
+        for i in indices:
+            output[i]["conflicting_years"].append(year)
+            for j in indices:
+                if i != j:
+                    output[i]["conflicting_sources"].append({
+                        "filename": output[j]["filename"],
+                        "archive_sha256": output[j]["archive_sha256"],
+                        "year": year})
+    for item in output:
+        item["conflicting_years"] = sorted(set(item["conflicting_years"]))
+        item["equivalent_annual_years"] = sorted(set(item["equivalent_annual_years"]))
+        item["source_year_conflict"] = bool(item["conflicting_years"])
+    return output
+
+
 def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list[dict]:
     base = Path(root) / "icio" / "other-editions"
     if not base.is_dir():
@@ -325,33 +373,5 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                 "expected_years": record.get("expected_years"),
                 "observed_years": record.get("observed_years", [])})
     if archive_sha is None:
-        # A second ZIP with a browser "(1)" suffix may carry different
-        # publisher content for the very same edition and annual period.
-        # Neither package is silently preferred or spliced into the research.
-        from collections import defaultdict
-        from .icio_native import expected_archive_years
-        by_period = defaultdict(list)
-        for idx, item in enumerate(output):
-            expected = item.get("expected_years")
-            if expected is None:
-                expected = expected_archive_years(item["filename"], item["edition"])
-            for year in expected or []:
-                by_period[(item["edition"], item["table"], year)].append(idx)
-        for idx, item in enumerate(output):
-            item["conflicting_years"] = []
-            item["conflicting_sources"] = []
-        for (_, _, year), indices in by_period.items():
-            if len({output[i]["archive_sha256"] for i in indices}) <= 1:
-                continue
-            for i in indices:
-                output[i]["conflicting_years"].append(year)
-                for j in indices:
-                    if i != j:
-                        output[i]["conflicting_sources"].append({
-                            "filename": output[j]["filename"],
-                            "archive_sha256": output[j]["archive_sha256"],
-                            "year": year})
-        for item in output:
-            item["conflicting_years"] = sorted(set(item["conflicting_years"]))
-            item["source_year_conflict"] = bool(item["conflicting_years"])
+        _annotate_source_year_collisions(output)
     return output
