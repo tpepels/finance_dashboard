@@ -86,6 +86,14 @@ def register_edition_archive(path: Path, root: Path) -> dict:
     from .source_capture import canonical_bytes
     path = Path(path)
     record = inspect_archive(path)
+    # Duplicate downloads (for example "(1)" copies) must not occupy another
+    # immutable archive slot. Reuse verified evidence with identical bytes.
+    for existing in read_edition_archives(root):
+        if (existing["archive_sha256"] == record["archive_sha256"] and
+                existing["edition"] == record["edition"] and
+                existing["table"] == record["table"]):
+            return {**existing, "filename": path.name, "status": "already_registered",
+                    "duplicate_of": existing["filename"]}
     identity = {"publisher": "OECD", "edition": record["edition"],
                 "table": record["table"], "filename": path.name,
                 "acquisition": "owner_supplied_unverified_original"}
