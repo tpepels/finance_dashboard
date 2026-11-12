@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 
 from .developer_logs import record_event
 from .icio import PUBLISHER_ARCHIVES, README_SHA256, import_original_archive
-from .icio_editions import archive_identity
+from .icio_editions import archive_identity, read_edition_archives, reassess_registered_archive
 
 MAX_UPLOAD = 2 * 1024 ** 3
 README = "ReadMe_ICIO_small.xlsx"
@@ -140,6 +140,79 @@ class OriginalImportManager:
         Thread(target=self._run, args=(job["id"], accepted), daemon=True,
                name="finance-icio-original-import").start()
         return {"id": job["id"], "status": "queued"}
+
+    def submit_reassess(self, accepted):
+        """Re-derive changed scientific methods from sealed originals in /data.
+
+        No upload, database migration or overwrite of the original manifests.
+        Uses the same single importer queue/lock as new archive registration.
+        """
+        archives = read_edition_archives(self.evidence)
+        shas = sorted(set(row["archive_sha256"] for row in archives))
+        if not shas:
+            raise ValueError("No previously registered edition archives to reassess")
+        with self.lock:
+            if self.active:
+                raise RuntimeError("Original import already running")
+            self.active = True
+            job = {"id": uuid4().hex, "status": "queued", "mode": "reassess",
+                   "created_at": datetime.now(timezone.utc).isoformat(),
+                   "filenames": [row["filename"] for row in archives],
+                   "archive_shas": shas, "completed": 0, "total": len(shas),
+                   "results": [], "error_code": None}
+            self.jobs.append(job)
+            self.jobs = self.jobs[-12:]
+            self._save()
+        Thread(target=self._run_reassess, args=(job["id"], accepted), daemon=True,
+               name="finance-icio-original-reassess").start()
+        return {"id": job["id"], "status": "queued"}
+
+    def _run_reassess(self, job_id: str, accepted):
+        record_event("sync", "started", action="reassess_originals", status="running")
+        try:
+            with self.lock:
+                job = next(j for j in self.jobs if j["id"] == job_id)
+                job["status"] = "running"
+                shas = list(job["archive_shas"])
+                self._save()
+            for source_sha in shas:
+                try:
+                    result = reassess_registered_archive(self.evidence, source_sha)
+                    row = {"filename": result["filename"],
+                           "status": result["status"], "edition": result["edition"],
+                           "archive_sha256": source_sha}
+                except Exception as exc:
+                    code = str(exc)
+                    if not re.fullmatch(r"icio_[a-z_]{1,90}", code):
+                        code = "original_reassessment_failed"
+                    row = {"filename": source_sha[:12], "status": "failed", "error_code": code}
+                with self.lock:
+                    job["results"].append(row)
+                    job["completed"] += 1
+                    self._save()
+            failures = sum(row["status"] == "failed" for row in job["results"])
+            with self.lock:
+                job["status"] = "partial" if failures else "complete"
+                job["error_code"] = "original_reassessment_partial" if failures else None
+                job["finished_at"] = datetime.now(timezone.utc).isoformat()
+                self._save()
+            if failures < len(shas):
+                accepted()
+            record_event("sync", "finished", action="reassess_originals",
+                         status="partial" if failures else "complete",
+                         level="warning" if failures else "info", failed=failures)
+        except Exception:
+            with self.lock:
+                job = next(j for j in self.jobs if j["id"] == job_id)
+                job["status"] = "failed"
+                job["error_code"] = "original_reassessment_internal_error"
+                job["finished_at"] = datetime.now(timezone.utc).isoformat()
+                self._save()
+            record_event("sync", "collector_failed", action="reassess_originals",
+                         reason="internal_error", level="error")
+        finally:
+            with self.lock:
+                self.active = False
 
     def _run(self, job_id: str, accepted):
         record_event("sync", "started", action="import_originals", status="running")
@@ -261,6 +334,18 @@ def install_original_uploads(app: FastAPI, importer: OriginalImportManager, *, p
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
+
+    @app.post("/api/originals/reassess", status_code=202)
+    def reassess_originals(request: Request,
+                           x_gcm_action: str | None = Header(default=None)):
+        _guard(request, x_gcm_action)
+        try:
+            callback = app.state.acceptance.invalidate if persistent else (lambda: None)
+            return importer.submit_reassess(callback)
+        except RuntimeError:
+            raise HTTPException(409, "Original import or reassessment already running") from None
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
 
     @app.post("/api/originals/import", status_code=202)
     def start_import(request: Request, selection: ImportSelection,
