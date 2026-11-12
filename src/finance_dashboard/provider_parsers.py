@@ -65,7 +65,7 @@ PINK_SHEET_URL = "https://thedocs.worldbank.org/en/doc/74e8be41ceb20fa0da750cda2
 IMF_MAPPER_ROOT = "https://www.imf.org/external/datamapper/api/v2"
 BIS_CREDIT_GAP_ROOT = "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CREDIT_GAP/1.0"
 SIBLIS_FREE_ROOT = "https://siblisresearch.supabase.co/functions/v1/free-data-api/v1"
-CORGANO_GOLD_LATEST = "https://goldprice.corgano.com/api/v1/latest"
+GOLD_API_SPOT_LATEST = "https://api.gold-api.com/price/XAU"
 
 
 class SourceUnavailable(ProviderError):
@@ -293,6 +293,37 @@ def parse_pink_sheet_gold(rows: list[list], start: date | None = None) -> dict[d
 
 def parse_pink_sheet_brent(rows: list[list], start: date | None = None) -> dict[date, Decimal]:
     return parse_pink_sheet_price(rows, "Crude oil, Brent", start)
+
+
+def parse_gold_api_spot(payload: Any, start: date | None = None) -> dict[date, Decimal]:
+    """Current indicative XAU/USD spot; never imply a bid/ask midpoint."""
+    if not isinstance(payload, dict):
+        raise ProviderError("Gold spot response malformed")
+    if (payload.get("symbol") != "XAU" or payload.get("name") != "Gold"
+            or payload.get("currency") != "USD"):
+        raise ProviderError("Gold spot source identity or currency invalid")
+    if payload.get("exchangeRate", 1) != 1:
+        raise ProviderError("Gold spot USD exchange conversion unexpected")
+    try:
+        timestamp = datetime.fromisoformat(str(payload["updatedAt"]).replace("Z", "+00:00"))
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ProviderError("Gold spot price lacks valid UTC timestamp") from exc
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise ProviderError("Gold spot price must have timezone")
+    from datetime import timezone, timedelta
+    observed = timestamp.astimezone(timezone.utc)
+    current = datetime.now(timezone.utc)
+    if observed > current + timedelta(minutes=5):
+        raise ProviderError("Gold spot observation future dated")
+    # Closed markets can hold the final Friday quote through a long weekend.
+    if current - observed > timedelta(days=5):
+        raise ProviderError("Gold spot observation too old for snapshot")
+    if start and observed.date() < start:
+        raise ProviderError("Gold spot snapshot precedes requested window")
+    price = _value(payload.get("price"))
+    if price is None or price <= 0:
+        raise ProviderError("Invalid indicative gold spot price")
+    return {observed.date(): price}
 
 
 def parse_corgano_gold(payload: Any, start: date | None = None) -> dict[date, Decimal]:
