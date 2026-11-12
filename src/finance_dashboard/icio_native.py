@@ -357,6 +357,20 @@ def audit_archive_native(zip_file: ZipFile, edition: str,
                     audit = audit_native_csv(stream, edition=edition, year=year,
                                              dimensions=dimensions, table=table)
             audit["original_member_sha256"] = None  # ZIP hash covers exact original bytes
+            # This is a distinct, correctly labelled Leontief reconstruction,
+            # never a substitution for published OECD TiVA data. The original
+            # matrix and source-level accounting result remain immutable.
+            try:
+                from .icio_leontief import reconstruct_native_tiva, NativeValueAddedError
+                with zip_file.open(path) as original:
+                    with io.TextIOWrapper(original, encoding="utf-8-sig", newline="") as stream:
+                        audit["tiva_reconstruction"] = reconstruct_native_tiva(stream, audit)
+            except (NativeValueAddedError, UnicodeError, MemoryError) as exc:
+                code = str(exc)
+                if not re.fullmatch(r"icio_[a-z_]{1,96}", code):
+                    code = "icio_leontief_resource_or_encoding_failure"
+                audit["tiva_reconstruction"] = {"status": "not_computable",
+                                                "error_code": code}
             results.append(audit)
         except (ValueError, UnicodeError, csv.Error) as exc:
             # ZIP integrity has already been checked. Preserve the exact
