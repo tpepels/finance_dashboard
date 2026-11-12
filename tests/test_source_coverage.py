@@ -367,6 +367,11 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(rows[current]["publisher_release_verified_as_of"], "2026-11-12")
         self.assertEqual(rows[gap]["state"], "stale")
         self.assertFalse(rows[gap]["complete_for_pinned_release"])
+        expired = {row["id"]: row for row in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 12, 12))["items"]}
+        self.assertEqual(expired[current]["state"], "stale")
+        self.assertIsNone(expired[current]["published_through"])
 
     def test_bis_total_credit_release_guard_expires_on_next_scheduled_release(self):
         from finance_dashboard.source_coverage import PUBLICATION_BOUNDS
