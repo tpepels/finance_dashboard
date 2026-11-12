@@ -9,9 +9,13 @@ type G05Values = { economies: ExternalRow[]; history: Record<string, { current_a
 type NativeIcioYear = { edition: string; year: number; source: string; accounting_passed: boolean | null;
   structure_verified?: boolean; accounting_basis?: string;
   countries: Record<string, { direct_foreign_final_demand_usd_million: string }> };
+type NativeTivaReconstruction = { edition: string; year: number; source: string;
+  status: string; numerical_residual?: number; error_code?: string;
+  countries: Record<string, { status: string; share_pct?: number; published_share_pct?: number;
+    signed_difference_pp?: number; share_comparison?: string }> };
 type G06Values = { economies: { area: string; first: number; first_year: string; latest: number; latest_year: string }[];
   history: Record<string, Line>; native_icio_direct?: { years: NativeIcioYear[];
-    not_equivalent_to_oecd_tiva_ffd_dva: boolean } };
+    not_equivalent_to_oecd_tiva_ffd_dva: boolean }; native_icio_value_added?: NativeTivaReconstruction[] };
 
 type G01Values = { latest: { date: string; accession: string; top10_pct: number | null; issuers: { name: string; pct: number }[] } | null;
   top_share_history: Line; published_top10: Line; constituent_count: Line };
@@ -152,6 +156,30 @@ function External({ bundle, theme, recessions }: { bundle: Bundle<G05Values>; th
 function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as G06Values;
   const first = data.economies[0]?.first_year ?? '', latest = data.economies[0]?.latest_year ?? '';
+  const reconstructed = data.native_icio_value_added ?? [];
+  const compared = reconstructed.flatMap(row => Object.values(row.countries)
+    .filter(c => row.edition === '2025' && c.signed_difference_pp !== undefined));
+  const outsideThreshold = compared.filter(c => Math.abs(c.signed_difference_pp ?? 0) > 0.001).length;
+  const tivaEditions = Array.from(new Set(reconstructed.map(row => row.edition))).sort();
+  const comparisonPanels = [{ area: 'US', country: 'USA' }, { area: 'DE', country: 'DEU' },
+    { area: 'FR', country: 'FRA' }, { area: 'PT', country: 'PRT' },
+    { area: 'JP', country: 'JPN' }, { area: 'CN', country: 'CHN' },
+    { area: 'IN', country: 'IND' }].map(({ area }) => {
+    const series: TimeSeries[] = [{
+      name: 'Published OECD TiVA 2025',
+      slot: 0, data: data.history[area] ?? [], dots: true,
+    }, ...tivaEditions.map((edition, index) => ({
+      name: 'Reconstructed ICIO ' + edition, slot: index + 1,
+      data: reconstructed.filter(row => row.edition === edition &&
+        row.countries[area]?.status === 'reconstructed_unreconciled' &&
+        Number.isFinite(row.countries[area].share_pct))
+        .map(row => [yearDate(String(row.year)),
+          row.countries[area].share_pct!] as [string, number])
+        .sort((a, b) => a[0].localeCompare(b[0])),
+      dots: true,
+    }))].filter(series => series.data.length);
+    return { area, series };
+  }).filter(row => row.series.length > 1);
   const nativeYears = data.native_icio_direct?.years ?? [];
   const verifiedNative = nativeYears.filter(record => record.structure_verified === true &&
     (record.accounting_passed === true || record.accounting_passed === null));
@@ -186,6 +214,28 @@ function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>
     <div className="decision-multiples">
       {panels.map(p => <TimePanel key={p.area} title={entityName(p.area)} option={p.option} height={220} group="g06" compact presets={false} span={p.span}/>)}
     </div>
+    {reconstructed.length > 0 && <details className="research-native-icio" aria-label="Independent ICIO value-added reconstruction">
+      <summary>ICIO Leontief value-added reconstruction ({reconstructed.length} annual source records)</summary>
+      <p className="decision-caption">These annual values use the full inter-industry input matrix,
+        indirect production requirements and country-specific value-added coefficients.
+        The plotted measure is equivalent in concept to the OECD FFD_DVA share, but is
+        calculated independently from uploaded ICIO originals and is not substituted for
+        official TiVA. The 2025 reconstruction has {compared.length} matched published
+        comparisons, of which {outsideThreshold} differ by more than 0.001 percentage points.
+        Differences are retained. Other editions are displayed separately, never spliced.</p>
+      {comparisonPanels.length > 0 && <div className="decision-multiples">
+        {comparisonPanels.map(row => <TimePanel key={row.area}
+          title={entityName(row.area) + ' · OECD published vs ICIO reconstructed'}
+          height={230} compact presets={false}
+          span={spanOf(row.series.map(series => series.data as Line), FALLBACK)}
+          option={timeChart({ theme, recessions, nonUS: row.area !== 'US',
+            unit: '% of source-country value added', format: v => v.toFixed(2),
+            series: row.series })}/>)}
+      </div>}
+      {reconstructed.some(row => row.status === 'not_computable') &&
+        <p className="decision-caption" role="status">Some original matrices could not be reconstructed.
+          Their failure codes and source identities are retained under Source data → ICIO evidence.</p>}
+    </details>}
     {nativeYears.length > 0 && <details className="research-native-icio" aria-label="Additional ICIO original calculations">
       <summary>Independent ICIO original-matrix diagnostics ({nativeYears.length} year records)</summary>
       <p className="decision-caption">Direct sales of goods and services to foreign final-demand purchasers,
