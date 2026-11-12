@@ -311,6 +311,25 @@ def audit_native_csv(stream, *, edition: str, year: int,
             "tiva_equivalent": False, "first_publication_verified": False}
 
 
+class _HashingRawStream(io.RawIOBase):
+    """Hash exact uncompressed publisher bytes during the existing CSV read."""
+    def __init__(self, original):
+        super().__init__()
+        self.original = original
+        self.sha = sha256()
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        raw = self.original.read(len(buffer))
+        size = len(raw)
+        if size:
+            buffer[:size] = raw
+            self.sha.update(raw)
+        return size
+
+
 def native_year_members(zip_file: ZipFile, edition: str) -> list[tuple[int, str]]:
     result = []
     matcher = YEAR_MEMBER[edition]
@@ -371,10 +390,14 @@ def audit_archive_native(zip_file: ZipFile, edition: str,
     for year, path in members:
         try:
             with zip_file.open(path) as original:
-                with io.TextIOWrapper(original, encoding="utf-8-sig", newline="") as stream:
+                hashed = _HashingRawStream(original)
+                with io.TextIOWrapper(io.BufferedReader(hashed),
+                                      encoding="utf-8-sig", newline="") as stream:
                     audit = audit_native_csv(stream, edition=edition, year=year,
                                              dimensions=dimensions, table=table)
-            audit["original_member_sha256"] = None  # ZIP hash covers exact original bytes
+                    # The parser must read through the complete record stream.
+                    # An early parser rejection skips source-value comparison.
+                    audit["original_member_sha256"] = hashed.sha.hexdigest()
             # This is a distinct, correctly labelled Leontief reconstruction,
             # never a substitution for published OECD TiVA data. The original
             # matrix and source-level accounting result remain immutable.
