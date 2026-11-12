@@ -113,15 +113,19 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
         years = []
         for archive in read_edition_archives(Path(evidence_root)):
             for matrix in archive.get("annual_matrices", []):
-                if not matrix["country_concordance"]["valid"]:
-                    continue
+                # Source accounts for other countries remain directly
+                # observable when only a CHN/MEX parent-split rollup is
+                # ambiguous. The native audit omits those ambiguous countries.
                 countries = {}
                 for country, totals in matrix.get("country_direct_flows", {}).items():
                     if country in selected:
                         countries[country] = totals
                 years.append({"edition": archive["edition"], "year": matrix["year"],
                     "source": archive["filename"], "source_sha256": archive["archive_sha256"],
-                    "accounting_passed": matrix["accounting_passed"], "countries": countries})
+                    "accounting_passed": matrix["accounting_passed"],
+                    "ambiguous_country_rollups":
+                        matrix["country_concordance"]["ambiguous_unsplit_parents"],
+                    "countries": countries})
         return {"years": sorted(years, key=lambda x: (x["edition"], x["year"])),
                 "measurement": "gross direct deliveries to foreign final demand",
                 "not_equivalent_to_oecd_tiva_ffd_dva": True}
