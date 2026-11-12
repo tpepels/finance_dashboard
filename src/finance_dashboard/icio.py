@@ -665,8 +665,27 @@ def read_icio_evidence(evidence_root: Path, *, include_residuals: bool = False) 
     comparison = read_2022_release_comparison(evidence_root, verified_newer_sha256=(
         primary.get("matrix_sha256") if primary.get("original_source_hash_verified") else None))
     from .oecd_icio_access import read_publisher_access
+    from .icio_editions import read_edition_archives
     return {**primary, "status": status, "historical_matrices": historical, "historical_coverage": coverage,
-            "release_comparison": comparison, "publisher_acquisition": read_publisher_access(evidence_root)}
+            "release_comparison": comparison, "publisher_acquisition": read_publisher_access(evidence_root),
+            "additional_editions": read_edition_archives(evidence_root)}
+
+
+def import_original_archive(archive: Path, root: Path, readme: Path | None = None) -> dict:
+    """Single canonical ICIO import entry point for browser and command line."""
+    if archive.name in PUBLISHER_ARCHIVES:
+        if readme is None or not readme.is_file():
+            raise ValueError("icio_publisher_readme_required")
+        files = store_icio_publisher_archive(archive, readme, root)
+        years = sorted(year for year, record in PUBLISHER_MATRICES.items()
+                       if record["archive"] == archive.name)
+        return {"filename": archive.name, "status": "verified_publisher_regular_original",
+                "edition": "2025", "table": "regular", "years": years,
+                "bundle_count": len(files),
+                "original_source_hash_verified": True,
+                "scientific_analysis_certified": False}
+    from .icio_editions import register_edition_archive
+    return register_edition_archive(archive, root)
 
 
 def main():
