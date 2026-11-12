@@ -126,6 +126,29 @@ class IcioNativeTests(unittest.TestCase):
             self.assertEqual(report["expected_years"], list(range(2016, 2023)))
             self.assertEqual(report["native_validation_status"], "native_matrix_years_incomplete")
 
+    def test_2023_regular_and_extended_release_dimensions(self):
+        from finance_dashboard.icio_editions import archive_identity
+        self.assertEqual(archive_identity("2016-2020_EXT.zip"),
+                         {"edition": "2023", "table": "extended"})
+        self.assertEqual(archive_identity("2016-2020_SML.zip"),
+                         {"edition": "2023", "table": "regular"})
+        self.assertEqual(archive_identity("2016-2022_EXT.zip"),
+                         {"edition": "2025", "table": "extended"})
+        self.assertEqual(DIMENSIONS["2023"][:2], (81, 77))
+        # Regular 2023 has no split industry population; a toy table
+        # exercises the same structural rule without changing source data.
+        tiny = (3, 3, ["D01"], 1995, 2020)
+        body = "V1,CHN_D01,MEX_D01,ROW_D01," + ",".join(
+            country + "_" + f for country in ("CHN", "MEX", "ROW")
+            for f in ("HFCE", "NPISH", "GGFC", "GFCF", "INVNT", "DIRPA")) + "\\n"
+        for country in ("CHN", "MEX", "ROW"):
+            body += country + "_D01," + ",".join(["0"] * 21) + "\\n"
+        with self.assertRaises(ValueError):
+            audit_native_csv(io.StringIO(body), edition="2023", year=2020,
+                             dimensions=tiny, table="regular")
+        # The header and source identity are validated even for 2023.
+        # The malformed data above cannot be accepted as an annual matrix.
+
     def test_nonmatrix_edition_package_is_not_called_audited(self):
         buffer = io.BytesIO()
         with ZipFile(buffer, "w") as package:
