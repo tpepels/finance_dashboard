@@ -149,6 +149,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
     mapping = common_2018_concordance(industry_codes)
     column_sums = [Decimal(0)] * expected_nodes
     countries: dict[str, dict[str, Decimal]] = {}
+    sector_countries: dict[str, dict[str, dict[str, Decimal]]] = {}
     def totals(country: str):
         return countries.setdefault(country, {"gross_output": Decimal(0),
             "direct_foreign_final_demand": Decimal(0), "direct_domestic_final_demand": Decimal(0),
@@ -186,6 +187,13 @@ def audit_native_csv(stream, *, edition: str, year: int,
         t["gross_output"] += output
         t["direct_foreign_final_demand"] += foreign
         t["direct_domestic_final_demand"] += final - foreign
+        sector_group = mapping["mapping"].get(sector)
+        if sector_group:
+            group = sector_countries.setdefault(area, {}).setdefault(
+                sector_group, {"gross_output": Decimal(0),
+                               "direct_foreign_final_demand": Decimal(0)})
+            group["gross_output"] += output
+            group["direct_foreign_final_demand"] += foreign
         if output_column:
             residual = intermediate + final - output
             bound = Decimal(5).scaleb(-numeric_scale - 1) * (len(fds) + expected_nodes + 1)
@@ -225,6 +233,26 @@ def audit_native_csv(stream, *, edition: str, year: int,
         bucket = merged.setdefault(target, {k: Decimal(0) for k in amounts})
         for key, value in amounts.items():
             bucket[key] += value
+    # Industry aggregates are exact many-to-one sums only. The schema
+    # reports excluded 2025 sectors; it never allocates D86T89 into 2018
+    # D86T88. CN/MX split-country nodes may only be combined unambiguously.
+    common_industries: dict[str, dict[str, dict[str, Decimal]]] = {}
+    for area, groups in sector_countries.items():
+        if area in ("CHN", "MEX") and area in fd_areas:
+            continue
+        target = canonical_country(area)
+        if target in conflicts:
+            continue
+        merged_sectors = common_industries.setdefault(target, {})
+        for sector, amounts in groups.items():
+            group = merged_sectors.setdefault(sector, {key: Decimal(0) for key in amounts})
+            for key, val in amounts.items():
+                group[key] += val
+    common_industries_public = {
+        area: {sector: {key + "_usd_million": _simple_text(val)
+                        for key, val in values.items()}
+               for sector, values in sorted(groups.items())}
+        for area, groups in sorted(common_industries.items())}
     series = {}
     for area in sorted(merged):
         t = merged[area]
@@ -253,7 +281,9 @@ def audit_native_csv(stream, *, edition: str, year: int,
             "max_row_residual": _simple_text(max_row) if output_column else None,
             "max_column_residual": _simple_text(max_col) if has_accounts else None,
             "source_precision_decimals": numeric_scale,
-            "country_direct_flows": series, "units": "current_USD_million",
+            "country_direct_flows": series,
+            "common_2018_sector_direct_flows": common_industries_public,
+            "units": "current_USD_million",
             "tiva_equivalent": False, "first_publication_verified": False}
 
 
