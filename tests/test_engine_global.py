@@ -49,6 +49,46 @@ class GlobalEngineTests(unittest.TestCase):
         self.assertEqual(bundle.transforms[0]["name"], "native_icio_direct_final_demand")
 
 
+    def test_g06_leontief_matches_original_year_and_preserves_signed_discrepancy(self):
+        points = {role: [] for role in G06.inputs}
+        points["share:PT"] = annual(2021, [30.0, 33.0])
+        native = {"years": [{
+            "edition": "2025", "year": 2022, "source": "2016-2022_EXT.zip",
+            "source_sha256": "d" * 64, "accounting_passed": None,
+            "structure_verified": True,
+            "countries": {"PRT": {"direct_foreign_final_demand_usd_million": "3000"}},
+            "tiva_reconstruction": {
+                "method": "ICIO_Leontief_FFD_DVA_v1", "max_relative_residual": 1e-12,
+                "selected_country_values": {
+                    "PRT": {"status": "reconstructed_unreconciled",
+                            "ffd_dva_usd_million": 12000,
+                            "value_added_usd_million": 36000,
+                            "share_pct": 100 / 3}}}}],
+            "not_equivalent_to_oecd_tiva_ffd_dva": True}
+        results = G06.compute(points, {}, {"icio_native_direct": native}).values
+        self.assertEqual(results["history"]["PT"], [["2021-01-01", 30.0], ["2022-01-01", 33.0]])
+        row = results["native_icio_value_added"][0]["countries"]["PT"]
+        self.assertAlmostEqual(row["signed_difference_pp"], (100 / 3) - 33.0)
+        self.assertEqual(row["share_comparison"], "outside_0_001pp")
+        self.assertNotEqual(row["share_pct"], results["economies"][0]["latest"])
+
+    def test_g06_reconstruction_does_not_splice_old_editions_into_published_data(self):
+        points = {role: [] for role in G06.inputs}
+        points["share:US"] = annual(2021, [30.0])
+        native = {"years": [{
+            "edition": "2021", "year": 2021, "source": "ICIO2021_2015-2018.zip",
+            "source_sha256": "a" * 64, "accounting_passed": None,
+            "structure_verified": True, "countries": {},
+            "tiva_reconstruction": {
+                "selected_country_values": {"USA": {
+                    "status": "reconstructed_unreconciled", "share_pct": 25.0}}}}]}
+        result = G06.compute(points, {}, {"icio_native_direct": native})
+        self.assertEqual(result.values["history"]["US"], [["2021-01-01", 30.0]])
+        self.assertEqual(result.values["native_icio_value_added"][0]["countries"]["US"]["share_comparison"],
+                         "not_current_edition")
+        self.assertIn("native_icio_leontief_ffd_dva", [t["name"] for t in result.transforms])
+
+
 
 if __name__ == "__main__":
     unittest.main()
