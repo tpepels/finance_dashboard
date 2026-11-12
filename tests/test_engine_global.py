@@ -43,7 +43,7 @@ class GlobalEngineTests(unittest.TestCase):
             "countries": {"PRT": {"direct_foreign_final_demand_usd_million": "8000"}}}],
             "not_equivalent_to_oecd_tiva_ffd_dva": True}
         bundle = G06.compute(points, {}, {"icio_native_direct": original})
-        self.assertEqual(bundle.values["history"]["PT"], [["2021", 32.5], ["2022", 33.1]])
+        self.assertEqual(bundle.values["history"]["PT"], [["2021-01-01", 32.5], ["2022-01-01", 33.1]])
         self.assertIs(bundle.values["native_icio_direct"], original)
         self.assertNotIn("direct_foreign_final_demand_usd_million", bundle.values["history"])
         self.assertEqual(bundle.transforms[0]["name"], "native_icio_direct_final_demand")
