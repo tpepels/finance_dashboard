@@ -70,7 +70,7 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
 
 def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 series_ids: set[str] | None = None, progress=None,
-                stopped=None) -> int:
+                stopped=None, skip_complete_pinned: bool = False) -> int:
     """Canonical macro refresh uses the same task execution contract as markets."""
     client = ProviderRouter()
     try:
@@ -88,6 +88,35 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
             chosen = [sid for sid in client.supported_ids()
                       if (series_ids is None or sid in series_ids)
                       and (providers is None or client.definitions[sid]["provider"] in providers)]
+            # A frozen publisher edition does not release more observations
+            # every day. Skip already complete versions in *scheduled* cycles;
+            # explicit/manual refresh still rechecks them on request.
+            # This also avoids repeatedly hammering data-origin redirects for
+            # the immutable TiVA and Swinkels archives.
+            if skip_complete_pinned and not full and chosen:
+                from .source_coverage import PUBLICATION_BOUNDS
+                from .database import ObservationVersion
+                now = datetime.now(timezone.utc).date()
+                known = {sid: PUBLICATION_BOUNDS[sid] for sid in chosen
+                         if sid in PUBLICATION_BOUNDS
+                         and PUBLICATION_BOUNDS[sid]["released"] <= now
+                         and now < PUBLICATION_BOUNDS[sid].get("expires", now + timedelta(days=1))}
+                if known:
+                    with Session(engine) as session:
+                        latest = dict(session.execute(
+                            select(ObservationVersion.series_id, func.max(ObservationVersion.period))
+                            .where(ObservationVersion.series_id.in_(known))
+                            .group_by(ObservationVersion.series_id)).all())
+                    due = [sid for sid in chosen
+                           if sid not in known or latest.get(sid) is None
+                           or latest[sid] < known[sid]["through"]]
+                    skipped = len(chosen) - len(due)
+                    if skipped:
+                        record_event("macro", "stage_finished", action="pinned_release_reuse",
+                                     status="complete", skipped=skipped)
+                    chosen = due
+            if not chosen:
+                return 0
             # A publisher quota may be smaller than its catalogue. Restarting
             # at the same ID every day would starve the tail indefinitely.
             # Rotate completed attempts, including failures: otherwise a
