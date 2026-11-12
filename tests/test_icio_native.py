@@ -66,6 +66,7 @@ class IcioNativeTests(unittest.TestCase):
         self.assertEqual(parsed["industry_nodes"], 7)
         self.assertEqual(parsed["country_direct_flows"]["CHN"]["gross_output_usd_million"], "6")
         self.assertEqual(parsed["country_direct_flows"]["MEX"]["source_value_added_usd_million"], "4")
+        self.assertEqual(parsed["common_2018_sector_direct_flows"]["CHN"]["D01T03"]["gross_output_usd_million"], "6")
         self.assertFalse(parsed["tiva_equivalent"])
 
     def test_source_account_discrepancy_is_never_balanced_silently(self):
@@ -111,6 +112,19 @@ class IcioNativeTests(unittest.TestCase):
         self.assertEqual(report["annual_matrix_count"], 1)
         self.assertEqual(report["native_validation_status"], "native_accounts_verified")
         self.assertEqual(report["annual_matrices"][0]["year"], 2021)
+
+    def test_incomplete_archive_years_are_not_certified(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory() as root:
+            package = Path(root) / "2016-2022_EXT.zip"
+            with ZipFile(package, "w") as file:
+                file.writestr("2021.csv", tiny_extended())
+            with ZipFile(package) as file:
+                report = audit_archive_native(file, "2025", dimensions=TINY)
+            self.assertEqual(report["observed_years"], [2021])
+            self.assertEqual(report["expected_years"], list(range(2016, 2023)))
+            self.assertEqual(report["native_validation_status"], "native_matrix_years_incomplete")
 
     def test_nonmatrix_edition_package_is_not_called_audited(self):
         buffer = io.BytesIO()
