@@ -80,10 +80,18 @@ def inspect_archive(path: Path) -> dict:
     # econA/Rdata packages remain distinct source evidence, not matrix claims.
     with ZipFile(path) as z:
         native = audit_archive_native(z, identity["edition"], table=identity["table"])
-    return {**identity, **native, "filename": path.name, "archive_sha256": digest.hexdigest(),
+        if native["annual_matrix_count"] or native["rejected_matrices"]:
+            auxiliary = {"status": "no_auxiliary_parse_needed", "numeric_reports": []}
+        else:
+            from .icio_auxiliary import inspect_auxiliary_zip
+            auxiliary = inspect_auxiliary_zip(z, staging_parent=path.parent)
+    return {**identity, **native, "auxiliary_numeric": auxiliary,
+            "filename": path.name, "archive_sha256": digest.hexdigest(),
             "archive_bytes": path.stat().st_size, "members": members,
             "member_count": len(members), "uncompressed_bytes": total,
-            "status": (native["native_validation_status"] if native["annual_matrix_count"] else
+            "status": (native["native_validation_status"]
+                       if native["annual_matrix_count"] or native["rejected_matrices"] else
+                       auxiliary["status"] if auxiliary["status"] != "no_rdata_members" else
                        "original_archived_dimensions_unverified"),
             "source_authenticity_verified": False,
             "industry_accounts_validated": native["native_validation_status"] == "native_accounts_verified",
@@ -183,6 +191,8 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                 "status", "archive_sha256", "member_count", "source_authenticity_verified",
                 "industry_accounts_validated", "tiva_comparability_certified")},
                 "bundle_digest": bundle.name,
+                "auxiliary_numeric": record.get("auxiliary_numeric", {
+                    "status": "not_evaluated", "numeric_reports": []}),
                 "native_validation_status": record.get("native_validation_status", "not_evaluated"),
                 "annual_matrix_count": record.get("annual_matrix_count", 0),
                 "annual_matrices": record.get("annual_matrices", []),
