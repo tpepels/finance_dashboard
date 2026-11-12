@@ -112,6 +112,10 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
         selected = {"USA", "DEU", "FRA", "PRT", "JPN", "CHN", "IND"}
         years = []
         for archive in read_edition_archives(Path(evidence_root)):
+            if archive.get("native_validation_status") not in (
+                    "native_accounts_verified",
+                    "native_structure_verified_accounting_unavailable"):
+                continue  # Incomplete archive years or failed original accounts
             for matrix in archive.get("annual_matrices", []):
                 # Source accounts for other countries remain directly
                 # observable when only a CHN/MEX parent-split rollup is
@@ -123,6 +127,9 @@ def load_artifact(name: str, *, evidence_root: Path, holdings_root: Path):
                 years.append({"edition": archive["edition"], "year": matrix["year"],
                     "source": archive["filename"], "source_sha256": archive["archive_sha256"],
                     "accounting_passed": matrix["accounting_passed"],
+                    "structure_verified": matrix["structure_verified"],
+                    "accounting_basis": ("publisher_rows_verified" if matrix["accounting_passed"] is True
+                        else "source_structure_only_accounts_not_published"),
                     "ambiguous_country_rollups":
                         matrix["country_concordance"]["ambiguous_unsplit_parents"],
                     "countries": countries})
