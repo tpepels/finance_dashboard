@@ -56,7 +56,14 @@ class IcioNativeTests(unittest.TestCase):
         self.assertEqual(result["mapping"]["D02"], "D01T03")
         self.assertEqual(result["mapping"]["D69T75"], "D69T82")
         self.assertIn("D86T89", result["excluded"])
+        self.assertIn("D86T88", result["incomplete_targets"])
+        self.assertIn("D24", result["complete_targets"])
+        self.assertIn("D30", result["complete_targets"])
+        self.assertIn("D69T82", result["complete_targets"])
         self.assertNotIn("D86T88", common_2018_concordance(SECTORS_2021)["excluded"])
+        self.assertIn("D86T88", common_2018_concordance(SECTORS_2021)["complete_targets"])
+        self.assertIn("D01T03", common_2018_concordance(["D01"])["incomplete_targets"])
+        self.assertIn("D24", common_2018_concordance(["D241"])["incomplete_targets"])
 
     def test_valid_source_accounts_audit_and_country_aggregation(self):
         parsed = audit_native_csv(io.StringIO(tiny_extended()), edition="2025",
@@ -66,7 +73,8 @@ class IcioNativeTests(unittest.TestCase):
         self.assertEqual(parsed["industry_nodes"], 7)
         self.assertEqual(parsed["country_direct_flows"]["CHN"]["gross_output_usd_million"], "6")
         self.assertEqual(parsed["country_direct_flows"]["MEX"]["source_value_added_usd_million"], "4")
-        self.assertEqual(parsed["common_2018_sector_direct_flows"]["CHN"]["D01T03"]["gross_output_usd_million"], "6")
+        self.assertIn("D01T03", parsed["industry_concordance"]["incomplete_targets"])
+        self.assertNotIn("D01T03", parsed["common_2018_sector_direct_flows"].get("CHN", {}))
         self.assertFalse(parsed["tiva_equivalent"])
 
     def test_source_account_discrepancy_is_never_balanced_silently(self):
