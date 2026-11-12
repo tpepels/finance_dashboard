@@ -350,6 +350,66 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(row["unobserved_internal_periods"],1)
         self.assertEqual(row["additional_revisions"],0)
 
+    def test_verified_euklems_2025_coverage_is_current_only_through_2021(self):
+        from finance_dashboard.source_coverage import PUBLICATION_BOUNDS
+        self.assertEqual(len([sid for sid in PUBLICATION_BOUNDS
+                              if sid.startswith("labour.") and ".euklems_" in sid]), 32)
+        current = "labour.pt.euklems_value_added"
+        gap = "labour.us.euklems_labour_compensation"
+        self.add_macro(current, when=date(2021, 1, 1))
+        self.add_macro(gap, when=date(2020, 1, 1))
+        rows={row["id"]: row for row in build_coverage(
+            self.engine, self.catalog, self.registry, asof=date(2026,11,12))["items"]}
+        self.assertEqual(rows[current]["state"], "available")
+        self.assertTrue(rows[current]["complete_for_pinned_release"])
+        self.assertEqual(rows[current]["published_through"], "2021-01-01")
+        self.assertIsNone(rows[current]["published_release_date"])
+        self.assertEqual(rows[current]["publisher_release_verified_as_of"], "2026-11-12")
+        self.assertEqual(rows[gap]["state"], "stale")
+        self.assertFalse(rows[gap]["complete_for_pinned_release"])
+
+    def test_bis_total_credit_release_guard_expires_on_next_scheduled_release(self):
+        from finance_dashboard.source_coverage import PUBLICATION_BOUNDS
+        self.assertEqual(len([sid for sid in PUBLICATION_BOUNDS
+                              if sid.startswith("credit.") and
+                              sid.endswith(("_gdp_bis", "_stock_bis"))]), 20)
+        sid = "credit.pt.private_nonfinancial_stock_bis"
+        self.add_macro(sid, when=date(2026,1,1))
+        november = {row["id"]: row for row in build_coverage(
+            self.engine,self.catalog,self.registry,asof=date(2026,11,12))["items"]}
+        self.assertEqual(november[sid]["state"], "available")
+        self.assertEqual(november[sid]["published_release_date"], "2026-09-14")
+        december = {row["id"]: row for row in build_coverage(
+            self.engine,self.catalog,self.registry,asof=date(2026,12,7))["items"]}
+        self.assertEqual(december[sid]["state"], "stale")
+        self.assertIsNone(december[sid]["published_through"])
+
+    def test_fed_financial_accounts_and_fdic_actual_release_windows(self):
+        from finance_dashboard.source_coverage import (
+            _FED_Z1_SERIES, _FED_DISTRIBUTIONAL_SERIES, PUBLICATION_BOUNDS
+        )
+        self.assertEqual(len(_FED_Z1_SERIES) + len(_FED_DISTRIBUTIONAL_SERIES), 27)
+        ids = ("funding.us.broker_assets", "wealth.us.top1_share",
+               "bank.us.fdic_total_assets")
+        for sid in ids:
+            self.add_macro(sid, when=date(2026,4,1))
+        november={row["id"]: row for row in build_coverage(
+            self.engine,self.catalog,self.registry,asof=date(2026,11,12))["items"]}
+        for sid in ids:
+            self.assertEqual(november[sid]["state"], "available")
+            self.assertTrue(november[sid]["scheduled_download_unnecessary_for_pinned_release"])
+            self.assertEqual(november[sid]["published_through"], "2026-04-01")
+        self.assertEqual(november[ids[0]]["published_release_date"], "2026-09-11")
+        self.assertEqual(november[ids[1]]["published_release_date"], "2026-09-18")
+        self.assertEqual(november[ids[2]]["published_release_date"], "2026-08-25")
+        november_end={row["id"]: row for row in build_coverage(
+            self.engine,self.catalog,self.registry,asof=date(2026,11,21))["items"]}
+        self.assertEqual(november_end[ids[2]]["state"], "stale")
+        december={row["id"]: row for row in build_coverage(
+            self.engine,self.catalog,self.registry,asof=date(2026,12,10))["items"]}
+        self.assertEqual(december[ids[0]]["state"], "stale")
+        self.assertEqual(december[ids[1]]["state"], "stale")
+
     def test_irregular_published_snapshots_do_not_claim_calendar_gaps(self):
         sid = "concentration.global.msci_acwi_published_top10"
         self.add_macro(sid, when=date(2019, 1, 1))
