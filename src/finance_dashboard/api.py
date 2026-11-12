@@ -166,7 +166,10 @@ def create_app(engine=None) -> FastAPI:
             record_event("system", "collector_failed", level="error",
                          stage="api", reason="internal_error")
             raise
-        if response.status_code >= 500:
+        # Acceptance may return 503 with Retry-After while re-evaluating
+        # evidence. This is an expected wait, not a failed source collector.
+        if response.status_code >= 500 and not (
+                response.status_code == 503 and response.headers.get("Retry-After")):
             record_event("system", "collector_failed", level="error",
                          stage="api", reason="http_5xx",
                          http_status=response.status_code)
@@ -777,6 +780,14 @@ def create_app(engine=None) -> FastAPI:
                 ).first()
                 result[-1]["last_success"] = success.ended_at.isoformat() if success and success.ended_at else None
         return {"items": result}
+
+    # Shared API, production data mount and canonical original evidence store.
+    from .original_uploads import OriginalImportManager, install_original_uploads
+    from .diagnostics_api import install_diagnostics
+    app.state.original_imports = OriginalImportManager()
+    install_original_uploads(app, app.state.original_imports)
+    install_diagnostics(app, db=db, catalog=catalog, market_registry=market_registry,
+                        maintenance=maintenance, importer=app.state.original_imports)
 
     # Existing API routes always take priority over bundled Vite assets.
     mount_built_dashboard(app)
