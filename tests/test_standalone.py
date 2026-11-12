@@ -112,7 +112,8 @@ class StandaloneContainerTests(TestCase):
     def test_one_background_refresh_thread_with_no_market_containers(self):
         started = threading.Event()
         calls = []
-        def fake_refresh(_engine, *, stopped):
+        def fake_refresh(_engine, *, stopped, skip_complete_pinned):
+            self.assertTrue(skip_complete_pinned)
             # The scheduler passes a cooperative stop token to each source
             # collector. The previous mock omitted this required keyword,
             # causing a swallowed TypeError and a false startup timeout.
