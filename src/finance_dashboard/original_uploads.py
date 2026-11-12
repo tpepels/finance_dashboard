@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 
 from .developer_logs import record_event
 from .icio import PUBLISHER_ARCHIVES, README_SHA256, import_original_archive
-from .icio_editions import archive_identity, read_edition_archives, reassess_registered_archive
+from .icio_editions import archive_identity, reassess_registered_archive
 
 MAX_UPLOAD = 2 * 1024 ** 3
 README = "ReadMe_ICIO_small.xlsx"
@@ -147,7 +147,25 @@ class OriginalImportManager:
         No upload, database migration or overwrite of the original manifests.
         Uses the same single importer queue/lock as new archive registration.
         """
-        archives = read_edition_archives(self.evidence)
+        with self.lock:
+            if self.active:
+                raise RuntimeError("Original import already running")
+        # Reading and rehashing several GB of originals belongs to the
+        # background job, never on this UI request's synchronous path.
+        archives = []
+        base = self.evidence / "icio" / "other-editions"
+        if base.is_dir() and not base.is_symlink():
+            for manifest in sorted(base.glob("*/*/audit.json")):
+                if manifest.is_symlink() or manifest.parent.is_symlink() or manifest.parent.parent.is_symlink():
+                    continue
+                try:
+                    row = json.loads(manifest.read_text())
+                    sha = row["archive_sha256"]
+                    if not isinstance(sha, str) or not re.fullmatch("[0-9a-f]{64}", sha):
+                        continue
+                    archives.append({"archive_sha256": sha, "filename": row["filename"]})
+                except (OSError, ValueError, KeyError, TypeError):
+                    continue
         shas = sorted(set(row["archive_sha256"] for row in archives))
         if not shas:
             raise ValueError("No previously registered edition archives to reassess")
