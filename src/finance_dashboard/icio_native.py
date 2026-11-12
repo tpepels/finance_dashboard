@@ -272,11 +272,40 @@ def native_year_members(zip_file: ZipFile, edition: str) -> list[tuple[int, str]
     return sorted(result)
 
 
+def expected_archive_years(filename: str, edition: str) -> list[int] | None:
+    """Edition-specific mandatory annual members; None for auxiliary packages."""
+    base = filename.rsplit("/", 1)[-1]
+    if edition == "2025":
+        match = re.fullmatch(r"(19[9][5-9]|20[0-2][0-9])-(19[9][5-9]|20[0-2][0-9])_EXT(?: \([0-9]+\))?\.zip", base)
+        if match:
+            low, high = map(int, match.groups())
+            if 1995 <= low <= high <= 2022 and high - low <= 7:
+                return list(range(low, high + 1))
+    if edition == "2021":
+        match = re.fullmatch(r"ICIO2021_(\d{4})-(\d{4})\.zip", base)
+        if match:
+            low, high = map(int, match.groups())
+            if 1995 <= low <= high <= 2018 and high - low <= 5:
+                return list(range(low, high + 1))
+    if edition == "2018":
+        match = re.fullmatch(r"ICIO2018_(\d{4})\.zip", base)
+        if match:
+            year = int(match.group(1))
+            if 1995 <= year <= 2015:
+                return [year]
+    return None
+
+
 def audit_archive_native(zip_file: ZipFile, edition: str,
                          *, dimensions: tuple | None = None) -> dict:
     # Rdata and supplemental econA/B/VB/Z archives are valid source evidence,
     # but cannot be called audited matrices without a CSV member.
     members = native_year_members(zip_file, edition)
+    mandatory = expected_archive_years(getattr(zip_file, "filename", "") or "", edition)
+    found = [year for year, _ in members]
+    # Exact year coverage is required for edition comparison; absent years
+    # never count as verified native original matrices.
+    complete = mandatory is None or found == mandatory
     results = []
     for year, path in members:
         with zip_file.open(path) as original:
@@ -285,7 +314,9 @@ def audit_archive_native(zip_file: ZipFile, edition: str,
         audit["original_member_sha256"] = None  # ZIP hash covers exact original bytes
         results.append(audit)
     return {"annual_matrices": results, "annual_matrix_count": len(results),
-            "native_validation_status": ("native_accounts_verified" if results
+            "expected_years": mandatory, "observed_years": found,
+            "native_validation_status": ("native_matrix_years_incomplete" if not complete
+                else "native_accounts_verified" if results
                 and all(a["accounting_passed"] is True and a["country_concordance"]["valid"]
                         for a in results)
                 else "native_accounts_unresolved" if results else "no_native_csv_matrices"),
