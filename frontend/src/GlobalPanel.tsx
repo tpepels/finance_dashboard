@@ -6,7 +6,11 @@ import { Section, spanOf, useBundles, yearDate, type Bundle } from './analysisSh
 
 type Line = [string, number][];
 type G05Values = { economies: ExternalRow[]; history: Record<string, { current_account_gdp: Line; net_position_gdp: Line }> };
-type G06Values = { economies: { area: string; first: number; first_year: string; latest: number; latest_year: string }[]; history: Record<string, Line> };
+type NativeIcioYear = { edition: string; year: number; source: string; accounting_passed: boolean | null;
+  countries: Record<string, { direct_foreign_final_demand_usd_million: string }> };
+type G06Values = { economies: { area: string; first: number; first_year: string; latest: number; latest_year: string }[];
+  history: Record<string, Line>; native_icio_direct?: { years: NativeIcioYear[];
+    not_equivalent_to_oecd_tiva_ffd_dva: boolean } };
 
 type G01Values = { latest: { date: string; accession: string; top10_pct: number | null; issuers: { name: string; pct: number }[] } | null;
   top_share_history: Line; published_top10: Line; constituent_count: Line };
@@ -147,6 +151,24 @@ function External({ bundle, theme, recessions }: { bundle: Bundle<G05Values>; th
 function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>; theme: Theme; recessions: Recession[] }) {
   const data = bundle.values as G06Values;
   const first = data.economies[0]?.first_year ?? '', latest = data.economies[0]?.latest_year ?? '';
+  const nativeYears = data.native_icio_direct?.years ?? [];
+  const verifiedNative = nativeYears.filter(record => record.accounting_passed === true);
+  const nativeAreas = [{ area: 'US', country: 'USA' }, { area: 'DE', country: 'DEU' },
+    { area: 'FR', country: 'FRA' }, { area: 'PT', country: 'PRT' },
+    { area: 'JP', country: 'JPN' }, { area: 'CN', country: 'CHN' }, { area: 'IN', country: 'IND' }];
+  const nativeSources = Array.from(new Set(verifiedNative.map(x => x.edition + ' / ' + x.source)));
+  const nativePanels = nativeAreas.map(({ area, country }) => {
+    const lines = nativeSources.map((source, i) => ({
+      name: 'ICIO ' + source, slot: i,
+      data: verifiedNative.filter(r => r.edition + ' / ' + r.source === source &&
+        r.countries[country]?.direct_foreign_final_demand_usd_million != null)
+        .map(r => [yearDate(String(r.year)),
+          Number(r.countries[country].direct_foreign_final_demand_usd_million)] as [string, number])
+        .sort((a, b) => a[0].localeCompare(b[0])),
+    })).filter(line => line.data.length);
+    return { area, lines };
+  }).filter(row => row.lines.length);
+
   const panels = useMemo(() => data.economies.map(r => ({ area: r.area, span: spanOf([data.history[r.area]], FALLBACK),
     option: timeChart({ theme, recessions, compact: true, nonUS: r.area !== 'US', unit: '% of value added', format: v => v.toFixed(0),
       series: [{ name: entityName(r.area), entity: r.area, data: data.history[r.area] }] }) })), [data, theme, recessions]);
@@ -162,6 +184,22 @@ function SupplyChains({ bundle, theme, recessions }: { bundle: Bundle<G06Values>
     <div className="decision-multiples">
       {panels.map(p => <TimePanel key={p.area} title={entityName(p.area)} option={p.option} height={220} group="g06" compact presets={false} span={p.span}/>)}
     </div>
+    {nativeYears.length > 0 && <details className="research-native-icio" aria-label="Additional ICIO original calculations">
+      <summary>Independent ICIO original-matrix diagnostics ({nativeYears.length} year records)</summary>
+      <p className="decision-caption">Direct sales of goods and services to foreign final-demand purchasers,
+        in current USD millions. This excludes indirect domestic value added embodied in foreign production
+        and is <strong>not</strong> OECD's published FFD_DVA TiVA indicator. Different editions retain separate
+        histories; only native matrices passing the original accounting audit appear in the charts.
+        {nativeYears.length - verifiedNative.length} year records are excluded because their accounting is incomplete or failed.</p>
+      {nativePanels.length > 0 && <div className="decision-multiples">
+        {nativePanels.map(row => <TimePanel key={row.area} title={entityName(row.area) + ' · direct foreign final demand'}
+          height={220} compact presets={false} span={spanOf(row.lines.map(l => l.data), FALLBACK)}
+          option={timeChart({ theme, recessions, nonUS: row.area !== 'US',
+            unit: 'USD millions, current prices',
+            format: v => v.toLocaleString(undefined, { maximumFractionDigits: 0 }),
+            series: row.lines })}/>)}
+      </div>}
+    </details>}
   </>;
 }
 
