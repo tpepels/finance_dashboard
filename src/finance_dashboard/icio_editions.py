@@ -116,7 +116,8 @@ def read_edition_archives(root: Path) -> list[dict]:
     for parent in sorted(base.iterdir()):
         if parent.is_symlink() or not parent.is_dir():
             raise ValueError("icio_edition_archive_directory_invalid")
-        for bundle in sorted(p for p in parent.iterdir() if p.is_dir()):
+        for bundle in sorted(p for p in parent.iterdir() if p.is_dir() and
+                             re.fullmatch(r"[0-9a-f]{64}", p.name)):
             if bundle.is_symlink():
                 raise ValueError("icio_edition_archive_directory_invalid")
             record = json.loads((bundle / "audit.json").read_text())
