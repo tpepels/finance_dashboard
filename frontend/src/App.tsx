@@ -89,6 +89,9 @@ export default function App() {
     const focus = () => {
       const element = document.getElementById(targetId);
       if (!element) return false;
+      // Navigation focus is advisory. Never steal the cursor from an editor
+      // that has become active while a lazily mounted workspace is loading.
+      if (document.activeElement?.matches('input, textarea, select, [contenteditable="true"]')) return true;
       if (hash === '#source-coverage' && element instanceof HTMLDetailsElement) element.open = true;
       if (!element.hasAttribute('tabindex')) element.tabIndex = -1;
       element.focus({ preventScroll: true });
