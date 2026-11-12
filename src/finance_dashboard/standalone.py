@@ -9,6 +9,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import json
 import logging
+import math
 import os
 from os import environ
 from pathlib import Path
@@ -80,7 +81,10 @@ def _schedule_due(interval_seconds: int) -> float:
                 raise ValueError("schedule_invalid_schema")
             if not float("-inf") < float(due) < float("inf"):
                 raise ValueError("schedule_invalid_time")
-            if now - due <= interval_seconds * 14 and due - now <= interval_seconds * 14:
+            # Long-dormant installations are overdue, not reset to another
+            # 24-hour delay. Reject only impossible epoch dates or absurdly
+            # distant future deadlines.
+            if 1609459200 <= due and due - now <= interval_seconds * 14:
                 return float(due)
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         log.warning("Refresh schedule state unreadable; using safe initial interval")
@@ -112,7 +116,10 @@ def _save_schedule_due(due: float) -> None:
         log.warning("Could not persist refresh deadline; keeping scheduler operational")
     finally:
         if temporary is not None:
-            temporary.unlink(missing_ok=True)
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                log.warning("Could not remove temporary schedule metadata")
 
 
 def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
@@ -127,7 +134,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
         # Restarting Docker must not reset the clock indefinitely. A due
         # deadline is persisted before the initial wait and updated after
         # each cycle. An overdue refresh begins immediately.
-        initial_wait = max(0.0, _schedule_due(interval_seconds) - time.time())
+        initial_wait = max(0, math.ceil(_schedule_due(interval_seconds) - time.time()))
         if initial_wait > 0 and stopped.wait(initial_wait):
             return
     while not stopped.is_set():
