@@ -151,8 +151,10 @@ def inspect_auxiliary_zip(z: ZipFile, *, staging_parent: Path) -> dict:
             try:
                 child = subprocess.run(
                     [sys.executable, "-m", "finance_dashboard.icio_auxiliary", str(path)],
-                    capture_output=True, text=True, check=False,
-                    timeout=MAX_SUBPROCESS_SECONDS, env=os.environ.copy(),
+                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                    text=True, check=False, timeout=MAX_SUBPROCESS_SECONDS,
+                    env={**os.environ, "OPENBLAS_NUM_THREADS": "1",
+                         "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"},
                 )
                 if child.returncode != 0 or len(child.stdout) > 2_000_000:
                     raise ValueError("icio_rdata_worker_failed")
