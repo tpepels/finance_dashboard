@@ -106,6 +106,7 @@ def _original_method_summary(root) -> dict:
                     "derived_reassessment_present": addon is not None,
                     "native_years": [{
                         "year": y.get("year"),
+                        "original_member_sha256": y.get("original_member_sha256"),
                         "accounting_passed": y.get("accounting_passed"),
                         "industry_bridge_exclusions": y.get("industry_concordance", {}).get("excluded", []),
                         "incomplete_common_sectors": y.get("industry_concordance", {}).get("incomplete_targets", []),
@@ -124,6 +125,24 @@ def _original_method_summary(root) -> dict:
                 # A corrupt method record is a diagnostic finding in its own
                 # right, not grounds to abort the complete support bundle.
                 result["archives"].append({"status": "original_method_metadata_unreadable"})
+    # Match annual source-content identities, not only ZIP container hashes.
+    # Advisory inventory: original archive bytes are deliberately not reread
+    # within this diagnostic endpoint.
+    from .icio_editions import _annotate_source_year_collisions
+    inventory = [{
+        "filename": row.get("filename"), "edition": row.get("edition"),
+        "table": row.get("table"), "archive_sha256": row.get("archive_sha256"),
+        "expected_years": row.get("expected_years"),
+        "annual_matrices": row.get("native_years", []),
+    } for row in result["archives"] if row.get("archive_sha256")]
+    _annotate_source_year_collisions(inventory)
+    indexed = {row["archive_sha256"]: row for row in inventory}
+    for row in result["archives"]:
+        identity = indexed.get(row.get("archive_sha256"))
+        if identity is not None:
+            row["conflicting_years"] = identity["conflicting_years"]
+            row["equivalent_annual_years"] = identity["equivalent_annual_years"]
+            row["suppressed_equivalent_years"] = identity["suppressed_equivalent_years"]
     return result
 
 
