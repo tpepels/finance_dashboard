@@ -206,7 +206,7 @@ def _guard(request: Request, marker: str | None):
             raise HTTPException(403, "Cross-origin upload rejected")
 
 
-def install_original_uploads(app: FastAPI, importer: OriginalImportManager):
+def install_original_uploads(app: FastAPI, importer: OriginalImportManager, *, persistent: bool = True):
     @app.get("/api/originals")
     def originals():
         return importer.public_status()
@@ -267,7 +267,10 @@ def install_original_uploads(app: FastAPI, importer: OriginalImportManager):
                      x_gcm_action: str | None = Header(default=None)):
         _guard(request, x_gcm_action)
         try:
-            return importer.submit(selection.filenames, app.state.acceptance.invalidate)
+            # In-memory SQLite is a single-process test fixture. Background
+            # acceptance threads must not outlive the ephemeral test connection.
+            callback = app.state.acceptance.invalidate if persistent else (lambda: None)
+            return importer.submit(selection.filenames, callback)
         except RuntimeError:
             raise HTTPException(409, "Original import already running") from None
         except ValueError as exc:
