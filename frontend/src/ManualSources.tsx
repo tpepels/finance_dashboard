@@ -17,9 +17,10 @@ type ManualResult = {
 type ManualJob = {
   id: string; dataset:string; method?:'upload'|'publisher'; status:string; sources:ManualResult[];
   phase?:string; downloaded?:Record<string,{bytes:number;final_url:string}>;
+  retry_at_unix?:number|null;
   error_code?:string|null; origin_verified?:boolean; finished_at?:string|null;
 };
-type ManualStatus = {datasets:ManualSource[];active:boolean;queued?:number;jobs:ManualJob[]};
+type ManualStatus = {datasets:ManualSource[];active:boolean;queued?:number;deferred?:number;jobs:ManualJob[]};
 
 const actionHeader = 'dashboard';
 const terminal = new Set(['complete','partial','failed','interrupted']);
@@ -158,8 +159,9 @@ export default function ManualSources() {
       <button type="button" disabled={busy} onClick={()=>void fetchPublishers()}>
         Fetch missing sources
       </button>
-      {status && (status.active || !!status.queued) && <small role="status">
-        {status.queued ?? 0} queued; import worker {status.active?'running':'idle'}
+      {status && (status.active || !!status.queued || !!status.deferred) && <small role="status">
+        {status.queued ?? 0} queued · {status.deferred ?? 0} waiting for publisher limits
+        · import worker {status.active?'running':'idle'}
       </small>}
     </header>
     {error && <p role="alert">{error}</p>}
@@ -209,12 +211,15 @@ export default function ManualSources() {
         {ready && <button type="button" disabled={busy}
           onClick={()=>{void retry(source.id);}}>Import staged files</button>}
         {recent && <div className="manual-source-outcome" role="status">
-          <strong>{recent.status === 'downloading' ? 'Downloading publisher files' :
+          <strong>{recent.status === 'deferred' ? 'Waiting for publisher rate limit' :
+            recent.status === 'downloading' ? 'Downloading publisher files' :
             recent.status === 'complete' ? 'Imported' :
             recent.status === 'partial' ? 'Partially imported' :
             recent.status === 'failed' ? 'Import failed' : 'Import '+recent.status}</strong>
           {recent.method && <small> · {recent.method === 'publisher' ? 'publisher HTTPS' : 'manual upload'}</small>}
           {recent.error_code && <small> · {recent.error_code}</small>}
+          {recent.status === 'deferred' && recent.retry_at_unix &&
+            <small> · automatic retry {new Date(recent.retry_at_unix * 1000).toLocaleString()}</small>}
           {recent.status === 'downloading' && <small> · {Object.keys(recent.downloaded ?? {}).length} downloaded</small>}
           {(recent.status === 'failed' || recent.status === 'interrupted') && recent.method === 'publisher'
             && <button type="button" disabled={busy} onClick={()=>void fetchPublishers(source.id)}>Retry publisher download</button>}
