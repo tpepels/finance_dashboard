@@ -52,6 +52,51 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
     self._change(job_id, completed=0, total=len(targets),
                  stage="Repair actionable source histories",
                  current_item="Select stale and failed histories")
+
+    # MSCI regional valuation adapters intentionally read only verified local
+    # originals; refreshing those six series without first acquiring newer
+    # original PDFs cannot repair the age gap. Use the existing publisher-
+    # governed Wayback collector, not another download or synthetic fallback.
+    msci_index_by_id = {
+        "eafe": "EAFE", "europe": "EUROPE", "japan": "JAPAN",
+        "us": "USA", "world": "WORLD", "em": "EM", "acwi": "ACWI",
+    }
+    msci_indexes = {
+        msci_index_by_id[sid.split(".")[1]]
+        for sid in targets
+        if sid.startswith("valuation.") and ".msci_" in sid
+        and sid.split(".")[1] in msci_index_by_id
+    }
+    msci_result = None
+    if msci_indexes and not cancelled.is_set():
+        from .msci_regional_factsheets import collect as collect_msci, MsciFactsheetError
+        from .source_policy_types import PolicyDeferred, PolicyViolation
+        from .service import safe_source_failure_code
+        from .developer_logs import record_event
+        self._change(job_id, stage="Acquire original MSCI factsheets",
+                     current_item=", ".join(sorted(msci_indexes)))
+        try:
+            msci_result = collect_msci(
+                Path(os.environ.get("FINANCE_SOURCE_EVIDENCE_DIR",
+                                    "/data/source-evidence")),
+                indexes=msci_indexes, stopped=cancelled,
+                log=lambda summary: record_event(
+                    "macro", "stage_finished", action="repair_msci_factsheets",
+                    status="running", summary_size=len(summary)))
+            msci_result["status"] = (
+                "partial" if msci_result.get("cdx_failed") or
+                msci_result.get("capture_failed") or
+                msci_result.get("cancelled") else "complete")
+        except (PolicyDeferred, PolicyViolation, httpx.HTTPError,
+                MsciFactsheetError, OSError, ValueError) as exc:
+            msci_result = {"status": "deferred" if isinstance(exc, PolicyDeferred)
+                           else "blocked" if isinstance(exc, PolicyViolation)
+                           else "failed",
+                           "reason": safe_source_failure_code(exc)}
+    if cancelled.is_set():
+        raise MaintenanceBlocked("cancelled")
+    self._change(job_id, stage="Refresh verified source histories",
+                 current_item="Reconcile newly available publisher observations")
     failed = refresh_all(
         self.engine, full=False, series_ids=targets,
         skip_complete_pinned=True, stopped=cancelled,
@@ -67,6 +112,7 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
         "resolved_issues": repaired, "failed_sources": failed,
         "unavailable_source_mappings": unconfigured,
         "remaining_series_ids": remaining,
+        "msci_original_acquisition": msci_result,
         "note": ("Failed/deferred publisher requests stay visible. "
                  "A series is resolved only when the stored source coverage "
                  "or publisher-verified release bound establishes it, not "
