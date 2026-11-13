@@ -5,7 +5,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from finance_dashboard.source_policy_types import PolicyDeferred
+from finance_dashboard.source_policy_types import PolicyDeferred, PolicyViolation
 from finance_dashboard.worker import RefreshTask, execute_refresh_tasks
 
 
@@ -51,6 +51,24 @@ class PublisherQuotaTests(unittest.TestCase):
         self.assertFalse(any(
             "provider" in call.kwargs or "sources_not_attempted" in call.kwargs
             for call in log.call_args_list))
+
+
+    def test_publisher_policy_access_failure_records_controlled_reason_without_secrets(self):
+        def blocked():
+            raise PolicyViolation("unclassified", "publisher_rule_missing")
+        task = RefreshTask(
+            "macro", "returns.swinkels.au.sovereign_10y_modelled_local",
+            blocked, "swinkels", provider_group="SWINKELS_RETURNS")
+        with patch("finance_dashboard.worker.record_event", autospec=True) as logs:
+            failed = execute_refresh_tasks([task])
+        self.assertEqual(failed, 1)
+        event = next(call for call in logs.call_args_list
+                     if call.args[1] == "source_failed")
+        self.assertEqual(event.kwargs["reason"], "source_policy_denied")
+        self.assertEqual(event.kwargs["stage"],
+                         "unclassified:publisher_rule_missing")
+        self.assertNotIn("url", str(event))
+        self.assertNotIn("secret", str(event).lower())
 
 
 if __name__ == "__main__":
