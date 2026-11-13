@@ -26,8 +26,8 @@ describe('integrated data synchronization and source health repair',()=>{
     render(<DataOperations/>);
     expect(screen.getByRole('button',{name:'Sync current data'})).toBeTruthy();
     expect(screen.getByRole('button',{name:'Repair gaps'})).toBeTruthy();
-    expect(screen.queryByRole('button',{name:'Sync history'})).toBeNull();
-    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(screen.getByRole('button',{name:'Sync history'}).closest('details')?.open).toBe(false);
+    expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
     await waitFor(()=>expect(screen.getByRole('button',{
