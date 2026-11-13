@@ -122,3 +122,89 @@ No cross-provider identity has been substituted.
 - Four CI jobs (Python, frontend, browser, release image) must pass at the
   final main revision. No end-to-end production re-ingestion is asserted
   by CI.
+
+## Follow-up — targeted resolution of the remaining 24 (13 Nov 2026)
+
+The earlier 24-issue count is the **pre-follow-up baseline**, not an
+immutable live count. This follow-up explicitly rechecks five publication
+bounds and fixes missing acquisition orchestration, yielding **19 expected
+actionable series** on the same 2026-11-13 data snapshot. These are
+source-health classifications, not fabricated data acquisitions.
+
+**Five publisher-window checks**
+
+- Two Shiller monthly components, earnings and dividends, have no
+  nonmissing observations beyond June 2026 in the published historical
+  series checked on 13 November. July–September share-price and CAPE
+  updates are *not* dividend or earnings updates. They now use a
+  per-series verified 2026-06 cutoff expiring on **8 December 2026**;
+  sources: Robert Shiller data documentation, Finance Toolkit monthly
+  source extract, and independent Shiller earnings release reporting.
+- The BIS selected real residential price indexes for **Germany and
+  Portugal** already have exact 2026-Q2 native observations in the stored
+  history; BIS October 29 selected release includes 2026-Q2. The BIS
+  **US commercial** exact source `Q.US.0.A.0.2.6.0` explicitly
+  lists 2026-Q2 as its last period. These three bounds expire on
+  **26 November 2026**, the next publisher update. Check against the
+  *exact source key* after expiry; nominal and residential indices are
+  not substitutes for the registered real/commercial series.
+
+**Actual collection orchestration repair**
+
+The previous ordinary `Sync current` runs attempted the whole macro
+catalogue. Healthy sources could consume publisher request quotas
+before the stale series were reached. The new canonical operation
+`repair_source_health` is exposed inside the unified Data & Sync UI:
+
+1. Read the full current source-coverage census and select only
+   actionable macro issues (missing/stale/failed), excluding in-cadence
+   but policy-deferred healthy histories.
+2. For affected MSCI regional P/E histories, attempt the *existing*
+   Wayback original-PDF collector, restricted to affected regional
+   indexes. Archive captures remain CDX-digest-verified and conflicts
+   remain blocked. No parallel MSCI scraper or ungoverned HTTP path.
+   Allow cancellation between requests.
+3. Reattempt the selected canonical source adapters through the same
+   managed publisher-rate and immutable original-evidence pipeline.
+   In particular, rerun the failed Swinkels source even if its pinned
+   2022 original is historically complete; do not silently hide the
+   operational error.
+4. Recompute source coverage after refresh and report selected sources,
+   resolved issues, unresolved canonical IDs, publisher refusals and
+   whether MSCI acquisition succeeded.
+5. Retain the original source-health audit CSV with every attempt and
+   classification. A failed or deferred request is never a success.
+
+There is an equivalent single-process, macro-only CLI operation:
+
+```sh
+docker compose exec -T finance-dashboard python -m finance_dashboard.worker \
+  --once --macro-only --health-repair
+```
+
+The option is also available for source-constrained schedules; ordinary
+scheduled refresh now skips complete, named pinned editions until they
+actually need checking, while explicit/manual runs can still force
+revalidation.
+
+**Remaining expected 19** after deploying the preceding bounds, *if
+no publisher acquisition has yet succeeded*: 5 WID world distribution
+histories; 2 OECD NFC net fixed assets; 2 OECD CLI trend-restored
+(histories require actual GDP-dependent source content); 1 EUKLEMS
+US labour compensation; 1 ECB euro-area HICP; 6 MSCI
+EAFE/Europe/Japan trailing or forward P/E; 1 live gold XAU/USD
+spot; and 1 failed Swinkels original-access attempt.
+These are not all scientifically equivalent or automatically
+repairable. In particular, source-access refusals, absent WID 2024–25
+cells, source edition mismatches and unavailable MSCI capture months
+remain explicit unresolved issues when the managed collector cannot
+obtain verified originals.
+
+**Acceptance:** all four mandatory GitHub workflows must pass on the
+final repository commit. Offline tests exercise source-age bounds and
+expiry, selected source IDs, no quota spent on deferred-but-current
+histories, failed pinned-source retry, MSCI originals preceding
+reingestion, truthful before/after counters, UI initiation and
+cancel-safe acquisition. These tests do not constitute a successful
+run on the owner's private database; only the resulting server audit
+can certify the live 19→N count.
