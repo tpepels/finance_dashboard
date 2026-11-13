@@ -42,6 +42,22 @@ BIS_DSR_RELEASE = {
 }
 SOURCE_LAGS = {"D": 10, "W": 22, "M": 95, "Q": 220, "A": 1100}
 
+# These four named series had recent, hashed, full original publisher
+# snapshots in the owner's 2026-11-13 scientific audit, showing no newer
+# registered observation. A fresh full-source receipt may establish the
+# *current source-availability state*, but never falsify the observation
+# age or claim that a subsequent publication did not occur. The short
+# 14-day expiry requires another full publisher check. A download without
+# archived evidence, a partial response, or a failed last attempt cannot
+# qualify. WID world and EUKLEMS US LAB are intentionally excluded:
+# the published release may have newer observations than local retention.
+RECENT_FULL_SOURCE_CHECK_DAYS = {
+    "activity.us.oecd_cli_trend_restored": 14,
+    "activity.jp.oecd_cli_trend_restored": 14,
+    "profit.es.nfc_net_fixed_assets": 14,
+    "profit.pt.nfc_net_fixed_assets": 14,
+}
+
 # Version-pinned official publication bounds, not a claim that the source
 # publishes each calendar year. PWT 11.0 (released 2025-10-07) ends in 2023.
 # Never use this exception for an empty history or an outdated 2022 history.
@@ -427,6 +443,19 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         latest is not None and published_through is not None
         and latest >= published_through
     )
+    full_source_checked_recently = False
+    if (family == "macro" and id in RECENT_FULL_SOURCE_CHECK_DAYS
+            and successful and successful.get("ended_at")
+            and successful.get("evidence_scope") == "full_source_snapshot"
+            and successful.get("evidence_kind") == "response"
+            and successful.get("evidence_bundle_digest")
+            and successful.get("evidence_receipt_name")
+            and latest is not None and lag is not None
+            and lag > SOURCE_LAGS[frequency]
+            and (last is None or last["status"] != "failed")):
+        days_since_check = (asof - successful["ended_at"].date()).days
+        full_source_checked_recently = (
+            0 <= days_since_check < RECENT_FULL_SOURCE_CHECK_DAYS[id])
     if not mapped:
         state = "source_unresolved"
     elif count == 0 and last is not None and last["status"] == "deferred":
@@ -446,10 +475,12 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         # publisher release does not exist. Last-attempt deferral and its code
         # remain visible independently, including in the complete audit CSV.
         state = "available"
-    elif last is not None and last["status"] == "deferred":
-        state = "refresh_deferred_with_data"
     elif last is not None and last["status"] == "failed":
         state = "refresh_failed_with_data"
+    elif full_source_checked_recently:
+        state = "source_checked_no_newer_data"
+    elif last is not None and last["status"] == "deferred":
+        state = "refresh_deferred_with_data"
     elif lag is not None and lag > SOURCE_LAGS[frequency] and not is_complete_for_release:
         state = "stale"
     else:
@@ -490,13 +521,24 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
             oldest, latest, frequency, int(count)) if regular_cadence else None,
         "regular_cadence_assumed": regular_cadence,
         'observation_state': 'missing' if count == 0 else 'stale' if stale else 'current',
-        'freshness_basis': 'missing' if count == 0 else 'pinned_release' if is_complete_for_release else 'calendar_age',
+        'freshness_basis': ('missing' if count == 0
+                            else 'pinned_release' if is_complete_for_release
+                            else 'recent_complete_publisher_snapshot'
+                            if full_source_checked_recently else 'calendar_age'),
+        'source_checked_through_utc': (
+            successful["ended_at"].isoformat() if full_source_checked_recently
+            else None),
         'expected_lag_days': SOURCE_LAGS[frequency],
         'refresh_state': refresh_state,
         'research_questions': used_by,
-        'next_action': _next_action(mapped=mapped, count=count, stale=stale,
-                                    complete=is_complete_for_release, status=refresh_state,
-                                    error=last_error),
+        'next_action': (
+            "Latest complete publisher snapshot has no newer registered observation; "
+            "the observation is old and another full source check is required within "
+            "14 days."
+            if full_source_checked_recently else
+            _next_action(mapped=mapped, count=count, stale=stale,
+                         complete=is_complete_for_release, status=refresh_state,
+                         error=last_error)),
         "last_attempt_utc": last["started_at"].isoformat() if last else None,
         "last_attempt_state": last["status"] if last else "never",
         "last_success_utc": successful["ended_at"].isoformat()
