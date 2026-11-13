@@ -98,8 +98,12 @@ def _original_method_summary(root) -> dict:
                 years = derived.get("annual_matrices", [])
                 result["archives"].append({
                     "filename": row.get("filename"),
-                    "edition": row.get("edition"),
-                    "table": row.get("table"),
+                    "edition": derived.get("edition", row.get("edition")),
+                    "table": derived.get("table", row.get("table")),
+                    "sealed_edition": row.get("edition"),
+                    "sealed_table": row.get("table"),
+                    "source_identity_reconciliation": derived.get("source_identity_reconciliation"),
+                    "header_schema": derived.get("header_schema"),
                     "archive_sha256": sha,
                     "original_registration_status": row.get("status"),
                     "current_native_status": derived.get("native_validation_status", "not_evaluated"),
