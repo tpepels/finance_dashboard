@@ -295,7 +295,9 @@ def reassess_registered_archive(root: Path, archive_sha: str) -> dict:
                     "filename": record["filename"], "edition": native["edition"],
                     "source_identity_reconciliation": reconciliation,
                     "annual_matrix_count": native["annual_matrix_count"],
+                    "rejected_year_count": len(native["rejected_matrices"]),
                     "native_validation_status": native["native_validation_status"],
+                    "header_schema_status": native["header_schema"]["status"],
                     "auxiliary_status": auxiliary["status"]}
     raise ValueError("icio_existing_archive_sha_not_found")
 
