@@ -25,11 +25,9 @@ from .original_uploads import _guard
 from .source_evidence import record_acquisition_receipt
 from .bis import FetchedSeries, ProviderError
 from .catalog import load_documents
-from .database import IngestionRun
 from .service import IngestionService
 from .standalone import maintenance_network_lock
 
-MAX_TOTAL = 250 * 1024 * 1024
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.() -]{0,119}$")
 
 def _definitions() -> dict:
@@ -442,44 +440,6 @@ class ManualSourceManager:
                 "sha256": digest, "import_started": started is not None,
                 "job_id": started}
 
-
-    def stage_file(self, dataset: str, role: str, original: str, body: bytes):
-        spec = source_specs().get(dataset)
-        selected = next((r for r in (spec or {}).get("roles", []) if r["id"] == role), None)
-        if not selected:
-            raise ValueError("Unsupported manual source or file role")
-        if not NAME.fullmatch(original) or not original.lower().endswith(selected["accept"]):
-            raise ValueError("Uploaded filename or extension does not match the selected original")
-        if not body or len(body) > selected["max_bytes"]:
-            raise ValueError("Original file exceeds the permitted bound")
-        folder = self.stage / dataset
-        temp = None
-        with self.lock:
-            if self.active:
-                raise RuntimeError("An import is active; submit this file after it completes")
-            folder.mkdir(parents=True, exist_ok=True)
-            if folder.is_symlink():
-                raise ValueError("Manual upload directory invalid")
-            path = folder / (role + ".bin")
-            if path.is_symlink():
-                raise ValueError("Upload destination is a symlink")
-            try:
-                with NamedTemporaryFile(dir=folder, prefix=".incoming-", delete=False) as out:
-                    temp = Path(out.name)
-                    out.write(body)
-                    out.flush()
-                    os.fsync(out.fileno())
-                os.chmod(temp, 0o600)
-                os.replace(temp, path)
-                temp = None
-            finally:
-                if temp:
-                    temp.unlink(missing_ok=True)
-            started = self._start(dataset)
-        return {"dataset": dataset, "role": role,
-                "sha256": sha256(body).hexdigest(),
-                "import_started": started is not None,
-                "job_id": started}
 
 
 def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, journal=None):
