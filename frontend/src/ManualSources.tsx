@@ -197,7 +197,7 @@ export default function ManualSources() {
               }}/>
           </label>
         </div>)}
-        {!!source.roles.length && <button type="button" disabled={busy}
+        {(!!source.roles.length || source.id === 'oecd-icio') && <button type="button" disabled={busy}
           onClick={()=>void fetchPublishers(source.id)}>Refresh from publisher</button>}
         {!!source.reference_links?.length && <details>
           <summary>{source.existing_importer ? 'OECD original downloads' : 'Additional publisher references'}</summary>
