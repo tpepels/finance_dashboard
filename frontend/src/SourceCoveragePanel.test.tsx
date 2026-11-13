@@ -60,6 +60,32 @@ describe('single-page source completeness panel', () => {
     expect(screen.getByText(/Wait for the publisher budget/)).toBeTruthy();
     expect(screen.getByText(/does not establish the latest publisher release/)).toBeTruthy();
   });
+  it('separates recent complete publisher checks from fresh observation dates', async () => {
+    const sourceChecked = {
+      ...recorded, id: 'activity.us.oecd_cli_trend_restored',
+      name: 'US trend-restored CLI', state: 'source_checked_no_newer_data',
+      observation_state: 'stale',
+      freshness_basis: 'recent_complete_publisher_snapshot',
+      source_checked_through_utc: '2026-11-11T10:52:55Z',
+      latest_source_date: '2026-05-01',
+      next_action: 'Latest complete publisher snapshot has no newer registered observation.',
+    };
+    const data = {...payload, items:[sourceChecked,missing,market]};
+    vi.stubGlobal('fetch', vi.fn(async (url:string) => ({
+      ok:true, json:async () => String(url)==='/api/maintenance'
+        ? {active_job_id:null,jobs:[],operations:[]} : data,
+    })));
+    const user = userEvent.setup();
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/25 sources need attention/));
+    await user.click(screen.getByText(/Source diagnostics/));
+    expect(screen.queryByText('US trend-restored CLI')).toBeNull();
+    await user.selectOptions(screen.getByRole('combobox', {name:'Coverage status'}), 'source_checked');
+    expect(screen.getByText('US trend-restored CLI')).toBeTruthy();
+    expect(screen.getByText(/Publisher original checked recently/)).toBeTruthy();
+    expect(screen.getByText(/Older than expected/)).toBeTruthy();
+  });
+
   it('does not count in-cadence deferred histories as actionable but preserves their attempt', async () => {
     const currentDeferred = {
       ...recorded, id: 'profit.pt.nfc_gross_value_added',
