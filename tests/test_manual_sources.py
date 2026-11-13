@@ -255,6 +255,30 @@ class ManualSourceTests(unittest.TestCase):
                 session, "returns.swinkels.au.sovereign_10y_modelled_local"))
 
 
+    def test_direct_msci_https_originals_have_separate_receipted_provenance(self):
+        from test_msci_regional_factsheets import factsheet, ArchiveTests
+        from finance_dashboard import msci_regional_factsheets as msci
+        methodology, pins = ArchiveTests().methodology(None)
+        pdf = factsheet(index="JAPAN", rows=[
+            ("MSCI Japan", "1.12", "18.25", "15.10", "2.20")])
+        with patch.dict(msci.METHODOLOGY, pins):
+            msci.store_manual_methodology(
+                self.root / "evidence", methodology, publisher_download=True)
+            msci.store_manual_factsheet(
+                self.root / "evidence", "JAPAN",
+                msci._MSCI + msci.FACTSHEET_URLS["JAPAN"][0],
+                pdf, publisher_download=True)
+            summary = msci.read_msci_regional_evidence(self.root / "evidence")
+            self.assertTrue(summary["methodology"]["publisher_origin_verified"])
+            self.assertEqual(summary["documents_parsed"], 1)
+            self.assertEqual(len(summary["document_proofs"]), 1)
+            self.assertTrue(summary["document_proofs"][0]["capture_url"].startswith(
+                "publisher-fetch:sha256:"))
+            self.assertFalse((self.root / "evidence" / msci.ARCHIVE_DIR /
+                              "manual-methodology").exists())
+            self.assertTrue((self.root / "evidence" / msci.ARCHIVE_DIR /
+                             "publisher-methodology").exists())
+
     def test_second_upload_is_accepted_and_queued_while_first_import_runs(self):
         from finance_dashboard import manual_sources
         gate, entered = Event(), Event()
