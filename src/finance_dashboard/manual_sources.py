@@ -611,8 +611,6 @@ def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, j
                 raise HTTPException(422, "Empty original file")
             return manager.commit_uploaded_file(
                 dataset, role, filename, staged, total, digest.hexdigest())
-        except RuntimeError:
-            raise HTTPException(409, "An original import is already running") from None
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
         finally:
@@ -625,8 +623,16 @@ def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, j
         _guard(request, x_gcm_action)
         try:
             return {"job_id": manager.start(dataset)}
-        except RuntimeError:
-            raise HTTPException(409, "An original import is already running") from None
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+
+    @app.post("/api/manual-sources/fetch", status_code=202)
+    def fetch_manual_sources(request: Request, dataset: str | None = None,
+                             x_gcm_action: str | None = Header(default=None)):
+        """Fetch only fixed publisher URLs. No arbitrary URL can be supplied."""
+        _guard(request, x_gcm_action)
+        try:
+            return manager.fetch(dataset)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
 
