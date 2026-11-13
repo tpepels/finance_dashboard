@@ -9,6 +9,7 @@ import json
 import os
 import time
 import unittest
+from threading import Event
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -252,6 +253,115 @@ class ManualSourceTests(unittest.TestCase):
         with Session(self.engine) as session:
             self.assertFalse(current_observations(
                 session, "returns.swinkels.au.sovereign_10y_modelled_local"))
+
+
+    def test_second_upload_is_accepted_and_queued_while_first_import_runs(self):
+        from finance_dashboard import manual_sources
+        gate, entered = Event(), Event()
+        parse = manual_sources._parse_source
+        def controlled(dataset, files):
+            if dataset == "gold-spot":
+                entered.set()
+                if not gate.wait(5):
+                    raise AssertionError("Timed out holding first import")
+            return parse(dataset, files)
+        gold = {"symbol": "XAU", "currency": "USD", "exchangeRate": 1,
+                "price": 4100, "updatedAt": datetime.now(timezone.utc).isoformat()}
+        with patch.object(manual_sources, "_parse_source", side_effect=controlled):
+            try:
+                self.assertTrue(self.upload(
+                    "gold-spot", "json", "gold.json", json.dumps(gold).encode()
+                ).json()["import_started"])
+                self.assertTrue(entered.wait(3), "First import never entered")
+                sheet = workbook({"LAB": [
+                    ["nace_r2_code", "geo_code", "nace_r2_name", "geo_name",
+                     "var", "2020"],
+                    ["TOT", "US", "Total economy", "United States", "LAB", 200.75]]})
+                second = self.upload("euklems-us", "workbook", "US_growth accounts.xlsx", sheet)
+                self.assertEqual(second.status_code, 201, second.text)
+                self.assertTrue(second.json()["import_started"])
+                statuses = self.client.get("/api/manual-sources").json()
+                self.assertIn("queued", [item["status"] for item in statuses["jobs"]])
+            finally:
+                gate.set()
+        self.assertEqual(finished(self.client, "gold-spot")["status"], "complete")
+        self.assertEqual(finished(self.client, "euklems-us")["status"], "complete")
+
+    def test_publisher_fetch_uses_original_parser_and_separate_receipted_origin(self):
+        data, meta = wid_fixtures("WO", legacy=True)
+        payloads = {"data": data.encode(), "metadata": meta.encode()}
+        captured = []
+        def remote(role, destination):
+            raw = payloads[role["id"]]
+            destination.write_bytes(raw)
+            captured.append(role["download_url"])
+            return {"requested_url": role["download_url"],
+                    "final_url": role["download_url"],
+                    "sha256": __import__("hashlib").sha256(raw).hexdigest(),
+                    "bytes": len(raw), "content_type": "text/csv",
+                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat()}
+        with patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
+                   side_effect=remote):
+            result = self.client.post("/api/manual-sources/fetch?dataset=wid-world",
+                                      headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(result.status_code, 202, result.text)
+            self.assertEqual(len(result.json()["jobs"]), 1)
+            job = finished(self.client, "wid-world")
+            self.assertEqual(job["status"], "complete", job)
+            self.assertTrue(job["origin_verified"])
+            self.assertEqual(job["method"], "publisher")
+            self.assertEqual(len(captured), 2)
+            archive = next((self.root / "evidence" / "manual-sources" / "wid-world")
+                           .glob("*/manifest.json"))
+            manifest = json.loads(archive.read_text())
+            self.assertEqual(manifest["kind"], "publisher_fetched_original")
+            self.assertTrue(manifest["publisher_origin_verified"])
+            # A second identical retrieval creates a separate acquisition
+            # receipt without modifying its content-addressed manifest.
+            again = self.client.post("/api/manual-sources/fetch?dataset=wid-world",
+                                      headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(again.status_code, 202)
+            self.assertEqual(finished(self.client, "wid-world")["status"], "complete")
+        receipts = list((self.root / "evidence" / "manual-sources" / "wid-world" /
+                         "retrievals").glob("*.json"))
+        self.assertEqual(len(receipts), 2)
+
+    def test_download_api_disallows_arbitrary_urls_and_requires_dashboard_action(self):
+        self.assertEqual(self.client.post("/api/manual-sources/fetch?dataset=gold-spot").status_code, 403)
+        self.assertEqual(self.client.post(
+            "/api/manual-sources/fetch?dataset=https://169.254.169.254/",
+            headers={"X-GCM-Action": "dashboard"}).status_code, 422)
+
+    def test_oecd_publisher_batch_reuses_pinned_original_importer(self):
+        from finance_dashboard import icio
+        from finance_dashboard import original_uploads
+        from hashlib import sha256
+        readme = b"readme-test-original"
+        archive = b"test-pinned-zip-bytes"
+        def remote(role, destination):
+            raw = readme if role["download_url"].endswith(".xlsx") else archive
+            destination.write_bytes(raw)
+            return {"requested_url": role["download_url"], "final_url": role["download_url"],
+                    "sha256": sha256(raw).hexdigest(), "bytes": len(raw),
+                    "content_type": "application/octet-stream",
+                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat()}
+        with (patch.object(icio, "PUBLISHER_ARCHIVES", {
+                    "1995-2000_SML.zip": {"sha256": sha256(archive).hexdigest(), "bytes": len(archive)}}),
+              patch.object(icio, "README_SHA256", sha256(readme).hexdigest()),
+              patch.object(original_uploads, "README_SHA256", sha256(readme).hexdigest()),
+              patch("finance_dashboard.icio.import_original_archive",
+                    return_value={"status": "accepted", "edition": "2025", "table": "regular"}) as importer,
+              patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
+                    side_effect=remote)):
+            response = self.client.post("/api/manual-sources/fetch?dataset=oecd-icio",
+                                        headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(response.status_code, 202, response.text)
+            job = finished(self.client, "oecd-icio")
+            self.assertEqual(job["status"], "complete", job)
+            self.assertEqual(len(job["sources"]), 1)
+            self.assertTrue(job["origin_verified"])
+            importer.assert_called_once()
+
 
 
 if __name__ == "__main__":
