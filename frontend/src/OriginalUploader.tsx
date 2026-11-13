@@ -34,8 +34,15 @@ export default function OriginalUploader() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const queuedJob = useRef<string | null>(null);
+  const pendingImport = useRef<string[] | null>(null);
   const acceptStatus = (next: Inventory) => {
     setInventory(next);
+    if (!next.active && pendingImport.current?.length) {
+      const selected = pendingImport.current;
+      pendingImport.current = null;
+      queueMicrotask(() => { void importFiles(next, selected).catch(reason =>
+        setError(reason instanceof Error ? reason.message : 'Pending import could not start')); });
+    }
     const latest = next.jobs[0];
     if (!next.active && latest && queuedJob.current === latest.id &&
         ['complete', 'partial', 'failed'].includes(latest.status)) {
@@ -104,7 +111,8 @@ export default function OriginalUploader() {
       return;
     }
     if (data.active) {
-      setActivity('Another original import is running. Files are staged for the next import.');
+      pendingImport.current = [...new Set([...(pendingImport.current ?? []), ...filenames])];
+      setActivity('Originals uploaded. Import will start automatically when the current job finishes.');
       return;
     }
     const response = await fetch('/api/originals/import', {
