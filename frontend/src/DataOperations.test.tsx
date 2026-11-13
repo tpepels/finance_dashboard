@@ -21,12 +21,13 @@ const mockFetch = vi.fn(async (request:string, init?:RequestInit) => {
 beforeEach(()=>{calls.length=0;mockFetch.mockClear();vi.stubGlobal('fetch',mockFetch);});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 
-describe('two-action data synchronization',()=>{
-  it('shows exactly two primary sync buttons without source selectors',async()=>{
+describe('integrated data synchronization and source health repair',()=>{
+  it('shows the three integrated operations without source selectors',async()=>{
     render(<DataOperations/>);
     expect(screen.getByRole('button',{name:'Sync current data'})).toBeTruthy();
     expect(screen.getByRole('button',{name:'Sync history'})).toBeTruthy();
-    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(screen.getByRole('button',{name:'Repair source health'})).toBeTruthy();
+    expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
     await waitFor(()=>expect(screen.getByRole('button',{
@@ -51,6 +52,15 @@ describe('two-action data synchronization',()=>{
     await user.click(button);
     await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
     expect(calls.find(c=>c.method==='POST')?.body).toEqual({action:'sync_history'});
+  });
+  it('submits canonical parameterless source-health repair action',async()=>{
+    const user=userEvent.setup();
+    render(<DataOperations/>);
+    const button=screen.getByRole('button',{name:'Repair source health'});
+    await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
+    await user.click(button);
+    await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
+    expect(calls.find(c=>c.method==='POST')?.body).toEqual({action:'repair_source_health'});
   });
   it('shows running progress and cancellation, disables competing syncs',async()=>{
     const liveFetch=vi.fn(async (_request:string,init?:RequestInit)=>{
