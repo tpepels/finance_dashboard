@@ -218,6 +218,21 @@ PUBLICATION_BOUNDS.update({
     for sid in ("valuation.us.shiller_earnings", "valuation.us.shiller_dividend")
 })
 
+# The ECB's legacy ICP monthly euro-area HICP (2015=100) ended at
+# December 2025. The catalogue already tracks its separately rebased,
+# changing-composition Eurostat 2025=100 replacement as
+# prices.ea.hicp_index_2025 (observed through October 2026 in the user's
+# 2026-11-13 audit). NEVER append the new index levels to the old ECB
+# source key: the denominator, basket and euro-area composition changed.
+PUBLICATION_BOUNDS.update({
+    "prices.ea.hicp_index": {
+        "version": "ECB discontinued HICP ICP 2015=100 series (through Dec 2025)",
+        "verified_as_of": date(2026, 11, 13),
+        "through": date(2025, 12, 1),
+        "url": "https://data.ecb.europa.eu/data/datasets/ICP/ICP.M.U2.N.000000.4.INX",
+    },
+})
+
 # Next 2026-Q2 BIS total-credit update is scheduled for 2026-12-07.
 _BIS_CREDIT_COUNTRIES = ("cn", "de", "jp", "pt", "us")
 _BIS_CREDIT_MEASURES = (
