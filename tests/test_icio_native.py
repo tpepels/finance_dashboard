@@ -186,5 +186,38 @@ class IcioNativeTests(unittest.TestCase):
         self.assertEqual(report["annual_matrices"], [])
 
 
+    def test_source_serialization_bounds_use_each_printed_cell(self):
+        # Independently rounded publisher output may have two decimals while
+        # intermediate cells have three. A single global precision is invalid.
+        categories = ("HFCE", "NPISH", "GGFC", "GFCF", "INVNT", "DIRPA")
+        header = ["V1", "USA_D01", "USA_D02",
+                  *("USA_" + category for category in categories), "OUT"]
+        rows = [
+            header,
+            ["USA_D01", "1.234", "0", "4.2", "0", "0", "0", "0", "0", "5.42"],
+            ["USA_D02", "0", "0", "1", "0", "0", "0", "0", "0", "1"],
+            ["TLS", "0.01", "0", *(["0"] * 6), "0"],
+            ["VA", "4.18", "1", *(["0"] * 6), "0"],
+            ["OUT", "5.42", "1", *(["0"] * 6), "0"],
+        ]
+        text = "\n".join(",".join(row) for row in rows) + "\n"
+        audit = audit_native_csv(io.StringIO(text), edition="2025", year=2022,
+                                 dimensions=(1, 1, ["D01", "D02"], 1995, 2022))
+        self.assertTrue(audit["accounting_passed"])
+        self.assertEqual(audit["row_failures"], 0)
+        self.assertEqual(audit["column_failures"], 0)
+        self.assertGreater(Decimal(audit["max_row_rounding_allowance"]),
+                           Decimal(audit["max_row_residual"]))
+        self.assertGreater(Decimal(audit["max_column_rounding_allowance"]),
+                           Decimal(audit["max_column_residual"]))
+        # Deliberate non-serialization accounting changes still fail closed.
+        modified = text.replace("4.18,1,", "3.18,1,")
+        invalid = audit_native_csv(io.StringIO(modified), edition="2025", year=2022,
+                                   dimensions=(1, 1, ["D01", "D02"], 1995, 2022))
+        self.assertFalse(invalid["accounting_passed"])
+        self.assertGreater(invalid["column_failures"], 0)
+
+
+
 if __name__ == "__main__":
     unittest.main()
