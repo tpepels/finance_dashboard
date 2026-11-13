@@ -85,6 +85,50 @@ class TargetedRefreshTests(unittest.TestCase):
             refresh_all(self.engine, series_ids={sid}, skip_complete_pinned=True)
             service.return_value.refresh.assert_called_once()
 
+    def test_health_repair_avoids_in_cadence_deferred_histories(self):
+        from datetime import date
+        from decimal import Decimal
+        from sqlalchemy.orm import Session
+        from finance_dashboard.database import (
+            SeriesRow, IngestionRun, ObservationVersion, now_utc,
+        )
+        sid = "activity.us.oecd_cli"
+        stale = "activity.jp.oecd_cli"
+        for chosen, day, status in (
+                (sid, date(2026, 10, 1), "deferred"),
+                (stale, date(2025, 1, 1), "deferred")):
+            with Session(self.engine) as session, session.begin():
+                definition = self.series[chosen]
+                session.add(SeriesRow(id=chosen,
+                    provider=definition["provider"],
+                    source_key=definition["source_key"], updated_at=now_utc()))
+                session.add(IngestionRun(
+                    id="run-" + chosen, series_id=chosen,
+                    status=status, started_at=now_utc(),
+                    ended_at=now_utc(), observations_received=1,
+                    versions_added=1, error="source_policy_deferred"))
+                session.add(ObservationVersion(
+                    series_id=chosen, period=day,
+                    value=Decimal("100"), first_seen_at=now_utc(),
+                    ingestion_run_id="run-" + chosen))
+        attempted = []
+        with patch("finance_dashboard.worker.IngestionService") as service:
+            service.return_value.refresh.side_effect = lambda selected, **kwargs: (
+                attempted.append(selected) or {"status": "success"})
+            failed = refresh_all(self.engine, series_ids={sid, stale},
+                                 attention_only=True)
+        self.assertEqual(failed, 0)
+        self.assertEqual(attempted, [stale])
+
+    def test_cli_health_repair_is_macro_only_and_preserves_publisher_policy(self):
+        with patch("finance_dashboard.worker.make_engine", return_value=self.engine), \
+             patch("finance_dashboard.worker.refresh_all", return_value=0) as refresh, \
+             patch("finance_dashboard.worker.refresh_market_all") as markets:
+            code = main(["--once", "--health-repair", "--macro-only"])
+        self.assertEqual(code, 0)
+        self.assertTrue(refresh.call_args.kwargs["attention_only"])
+        markets.assert_not_called()
+
     def test_invalid_id_refuses_network_and_fails_loudly(self):
         with patch("finance_dashboard.worker.IngestionService") as service:
             with self.assertRaisesRegex(ValueError,"Unknown series"):
