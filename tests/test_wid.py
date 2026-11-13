@@ -51,6 +51,73 @@ def fixtures(area="US", *, legacy=False):
     return data, out.getvalue()
 
 
+class WidPublisherSpacingResumeTests(unittest.TestCase):
+    def test_two_governed_requests_resume_across_runs_without_certifying_partial(self):
+        import time
+        from finance_dashboard.source_policy_types import PolicyDeferred
+        data, metadata = fixtures("WO", legacy=True)
+        calls = []
+        def respond(request):
+            url = str(request.url)
+            calls.append(url)
+            if "WID_data_WO.csv" in url:
+                return httpx.Response(200, text=data, headers={"Content-Type": "text/csv"})
+            if calls.count(url) == 1:
+                raise PolicyDeferred("wid", "rolling_window_limit", time.time() + 360)
+            return httpx.Response(200, text=metadata, headers={"Content-Type": "text/csv"})
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+                with self.assertRaises(PolicyDeferred):
+                    wid.WidClient(client, archive_dir=root).fetch(
+                        "inequality.world.pretax_income.top10")
+                staged = list(root.glob("wid-pending/WO/*/manifest.json"))
+                self.assertEqual(len(staged), 1)
+                manifest = json.loads(staged[0].read_text())
+                self.assertIs(manifest["certified"], False)
+                self.assertIsNone(manifest["receipt"])
+                self.assertEqual(list(root.glob("wid/WO/*/manifest.json")), [])
+                self.assertEqual(len(calls), 2)
+
+                second = wid.WidClient(client, archive_dir=root).fetch(
+                    "inequality.world.pretax_income.top10")
+                self.assertEqual(second.observations[date(2024, 1, 1)],
+                                 Decimal("0.46"))
+                self.assertEqual(len(calls), 3)
+                self.assertEqual(sum("WID_data_WO.csv" in x for x in calls), 1)
+                self.assertEqual(len(list(root.glob("wid/WO/*/manifest.json"))), 1)
+                self.assertEqual(list(root.glob("wid-pending/WO/*/manifest.json")), [])
+                # Successful completion removes the temporary stage; a new
+                # source revision must get a fresh original response pair.
+                wid.WidClient(client, archive_dir=root).fetch(
+                    "inequality.world.pretax_income.top10")
+                self.assertEqual(sum("WID_data_WO.csv" in x for x in calls), 2)
+
+    def test_tampered_pending_data_fails_closed_before_any_metadata_request(self):
+        import time
+        from finance_dashboard.source_policy_types import PolicyDeferred
+        data, metadata = fixtures("WO", legacy=True)
+        requests = []
+        def respond(request):
+            requests.append(str(request.url))
+            if "WID_data_WO.csv" in str(request.url):
+                return httpx.Response(200, text=data)
+            raise PolicyDeferred("wid", "rolling_window_limit", time.time() + 360)
+        with TemporaryDirectory() as temp, httpx.Client(
+                transport=httpx.MockTransport(respond)) as client:
+            root = Path(temp)
+            with self.assertRaises(PolicyDeferred):
+                wid.WidClient(client, archive_dir=root).fetch(
+                    "inequality.world.pretax_income.top10")
+            path = next(root.glob("wid-pending/WO/*/data.csv"))
+            path.write_bytes(b"tampered publisher response")
+            with self.assertRaisesRegex(ProviderError, "pending original hash or identity"):
+                wid.WidClient(client, archive_dir=root).fetch(
+                    "inequality.world.pretax_income.top10")
+            self.assertEqual(len(requests), 2)
+            self.assertFalse(list(root.glob("wid/WO/*/manifest.json")))
+
+
 class WidTests(unittest.TestCase):
     def setUp(self):
         self.wid = wid
