@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 
 type Matrix = { year: number; accounting_passed: boolean | null;
+  publisher_account_schema?: string; publisher_account_rows_present?: boolean;
+  max_row_residual?: string | null; max_column_residual?: string | null;
+  max_row_rounding_allowance?: string | null; max_column_rounding_allowance?: string | null;
+  output_vector_mismatches?: number | null;
   industry_nodes: number; row_failures: number | null; column_failures: number | null;
   country_concordance: { valid: boolean; ambiguous_unsplit_parents: string[] };
   industry_concordance: { excluded: string[]; incomplete_targets?: string[]; complete_targets?: string[] };
@@ -111,6 +115,18 @@ export default function IcioEditionEvidence() {
               </td>
               <td>{passed}/{item.annual_matrix_count} passed
                 <small>{item.native_validation_status.replaceAll('_', ' ')}</small>
+                {item.annual_matrices.length > 0 && <small>Audited years:
+                  {item.annual_matrices.map(year => year.year + ' ' +
+                    (year.publisher_account_schema ?? 'unidentified source accounts') +
+                    ' (rows ' + (year.row_failures ?? 'unverified') +
+                    ', columns ' + (year.column_failures ?? 'unverified') +
+                    ', output ' + (year.output_vector_mismatches ?? 'unverified') + ')')
+                    .join('; ')}
+                </small>}
+                {item.annual_matrices.some(year => (year.row_failures ?? 0) > 0 ||
+                  (year.column_failures ?? 0) > 0) && <small>Source accounting residuals are
+                    checked against the original cells' printed precision.
+                    Failed original equations remain unreconciled.</small>}
                 {!!item.rejected_matrices?.length && <small>Rejected years: {item.rejected_matrices.map(x =>
                   String(x.year) + ' (' + x.error_code + ')').join(', ')}</small>}
                 {observed && <small>Observed source header ({observed.year}):
