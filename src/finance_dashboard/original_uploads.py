@@ -216,10 +216,10 @@ class OriginalImportManager:
                     self._save()
             failures = sum(row["status"] == "failed" for row in job["results"])
             rejected = sum(row.get("rejected_year_count", 0) for row in job["results"])
-            accepted = sum(row.get("annual_matrix_count", 0) for row in job["results"])
+            accepted_count = sum(row.get("annual_matrix_count", 0) for row in job["results"])
             with self.lock:
                 job["scientific_assessment"] = {
-                    "accepted_native_years": accepted,
+                    "accepted_native_years": accepted_count,
                     "rejected_native_years": rejected,
                     "unresolved_archives": sum(row.get("header_schema_status") ==
                         "unresolved" for row in job["results"]),
