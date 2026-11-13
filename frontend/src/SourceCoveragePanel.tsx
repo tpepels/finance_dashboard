@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import DataOperations from './DataOperations';
 import DeveloperLogs from './DeveloperLogs';
 import { sourceAuditCsv } from './sourceAudit';
 import { releaseFilenameId, type ReleaseInfo } from './release';
@@ -130,13 +129,12 @@ export default function SourceCoveragePanel() {
         setLogsOpen(false);
       }
     }}>
-    <summary aria-label="Data & sync">
-      <span>Data &amp; sync</span>
+    <summary aria-label="Source coverage and audit">
+      <span>Source coverage and audit</span>
       {report && needsAttention > 0 && <small> · {needsAttention} sources need attention</small>}
       {!report && error && <small> · Status unavailable</small>}
     </summary>
     <div className="research-coverage-detail">
-      <DataOperations/>
       <details className="research-source-diagnostics"
         onToggle={e => {
           setDiagnosticsOpen(e.currentTarget.open);
