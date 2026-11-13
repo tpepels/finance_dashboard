@@ -57,6 +57,14 @@ def read_native_year(stream: TextIO, audit: dict, *, max_nodes: int = MAX_NODES)
     The detailed dimensional, row identity and non-finite checks are repeated
     here rather than trusting a user-editable audit dictionary.
     """
+    # A numerical solve cannot repair failed source accounting or a
+    # country concordance that would double count China/Mexico producers.
+    if audit.get("country_concordance", {}).get("valid") is False:
+        raise NativeValueAddedError("icio_leontief_ambiguous_country_split")
+    if audit.get("row_failures") not in (None, 0):
+        raise NativeValueAddedError("icio_leontief_original_row_accounts_failed")
+    if audit.get("accounting_passed") is False:
+        raise NativeValueAddedError("icio_leontief_original_accounts_failed")
     rows = csv.reader(stream)
     header = next(rows, None)
     n = audit["industry_nodes"]
