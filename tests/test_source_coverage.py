@@ -151,15 +151,14 @@ class SourceCoverageTests(unittest.TestCase):
                 self.assertTrue(rows[sid]["complete_for_pinned_release"])
                 self.assertTrue(rows[sid]["scheduled_download_unnecessary_for_pinned_release"])
                 self.assertIn("Pinned", rows[sid]["published_release"])
-        # A single record short of the immutable end date must still be
-        # reported as incomplete and never claimed as a certified source.
-        self.add_macro("returns.doeswijk_swinkels.global_multiasset.usd.real",
-                       when=date(2022, 11, 1))
-        additional = {item["id"]: item for item in build_coverage(
+    def test_pinned_original_missing_last_month_remains_stale(self):
+        sid = "returns.doeswijk_swinkels.global_multiasset.usd.nominal"
+        self.add_macro(sid, when=date(2022, 11, 1))
+        actual = {item["id"]: item for item in build_coverage(
             self.engine, self.catalog, self.registry,
             asof=date(2026, 11, 13))["items"]}
-        self.assertFalse(additional["returns.doeswijk_swinkels.global_multiasset.usd.real"]
-                         ["complete_for_pinned_release"])
+        self.assertFalse(actual[sid]["complete_for_pinned_release"])
+        self.assertEqual(actual[sid]["state"], "stale")
 
     def test_g17_all_three_source_series_end_at_actual_latest_source_month(self):
         ids = [f"activity.us.industrial_production_diffusion_{span}m"
