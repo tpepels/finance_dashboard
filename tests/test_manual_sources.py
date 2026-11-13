@@ -265,7 +265,7 @@ class ManualSourceTests(unittest.TestCase):
                 if not gate.wait(5):
                     raise AssertionError("Timed out holding first import")
             return parse(dataset, files)
-        gold = {"symbol": "XAU", "currency": "USD", "exchangeRate": 1,
+        gold = {"symbol": "XAU", "name": "Gold", "currency": "USD", "exchangeRate": 1,
                 "price": 4100, "updatedAt": datetime.now(timezone.utc).isoformat()}
         with patch.object(manual_sources, "_parse_source", side_effect=controlled):
             try:
