@@ -233,3 +233,78 @@ P/E histories, one gold spot collection, and one failed Swinkels
 retrieval. All 18 have an explicit canonical repair attempt via
 `repair_source_health`, but successful new publisher acquisition
 cannot be claimed without executing it on the owner's host.
+
+
+### Follow-up forensic improvements: verified original snapshots and resumable MSCI
+
+Original audit release `0.2.0+f21b2f39427f8b7e` includes exact
+source-evidence records (2026-11-13). Four additional old observation
+histories have **recent successful complete original publisher snapshots**:
+
+| Source | Original last observation | Verified retrieved full snapshot | Recorded immutable evidence |
+| --- | --- | --- | --- |
+| US OECD CLI, trend restored | 2026-05 | 2026-11-11 | Full original response, hash/receipt |
+| JP OECD CLI, trend restored | 2026-05 | 2026-11-11 | Full original response, hash/receipt |
+| ES OECD S11 net fixed assets | 2023 | 2026-11-07 | Full original response, hash/receipt |
+| PT OECD S11 net fixed assets | 2023 | 2026-11-07 | Full original response, hash/receipt |
+
+OECD's official CLI methodology explains why the trend-restored
+series can lag the monthly headline: it requires GDP-reference trend
+estimates, which only become available with quarterly national-account
+observations. These four originals were checked *within the previous
+14 days*, and their exact registered queries returned no later source
+observations. The special `source_checked_no_newer_data` state is
+**only** authorized while their successful full original response
+with SHA-256 bundle digest and original receipt is recent. It expires
+after 14 days without an equally valid refreshed full-original check
+and reverts to an actionable warning. Current observation dates remain
+old (`observation_state=stale`), and the audit does **not** claim
+a fixed new published edition or make up 2024/2025 corporate balances.
+
+The source-audit CSV now exports separately:
+`observation_state`, `freshness_basis`,
+`source_checked_through_utc`, `evidence_scope`,
+`evidence_receipt_recorded`, and `evidence_bundle_digest`.
+For missing receipts or partial source windows, or after expiration,
+the alert persists. WID world (2023) and EUKLEMS US compensation
+(2020) are excluded: publisher releases imply newer potential
+reference years, so they still need real original-source checks.
+
+This classifies the old four publisher-lag warnings as **recently
+checked without newer published observations**, yielding **14**
+expected actionable sources on the Nov 13 database, not 18.
+That is not four newly collected years and is not a claim the research
+inputs are uniformly contemporaneous. To see the actual live number,
+deploy and run an updated data audit.
+
+The six MSCI valuation histories have a separate genuine data gap.
+The previous Wayback collector re-fetched all legacy URL listings on
+every run, then tried ancient archived captures first, exhausting the
+registered Internet Archive request limit before reaching current
+regional P/E. The source-health collector now:
+
+- reads and re-verifies previously stored, SHA-256-bundled CDX listings,
+  checking original URL/query identity before reuse;
+- prioritizes never-queried URLs, uses time-limited existing listings,
+  resumes after `PolicyDeferred`/publisher refusals instead of
+  discarding completed collection progress;
+- filters captures earlier than the month following the existing
+  oldest target's last observation and prioritizes recent captures;
+- records excluded old captures separately, never miscounts them as
+  already stored, and retains and verifies each fetched original PDF
+  with its Internet Archive CDX digest.
+
+Existing full-history archival acquisition is unchanged: only the
+health-repair invocation opts into the recent-date filter. Tests cover
+quota resumption, tampered saved CDX listings, recent-first selection,
+and no old unneeded capture downloads.
+
+**Remaining actual publication/acquisition problems** (14):
+WID world 5; MSCI regional trailing/forward P/E 6;
+EUKLEMS US imputed-self-employed LAB 1; indicative Gold API XAU/USD 1;
+Swinkels original source policy access failure 1. There are still
+no live new source bytes in the supplied forensic ZIP, and no connection
+to the owner's private Docker DB in this ChatGPT session.
+The public WID 2025/2026 methodology documents *newer world
+distribution estimates*, so its five 2023 histories cannot
+be declared current by extending lag thresholds.
