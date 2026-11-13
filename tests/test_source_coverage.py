@@ -62,6 +62,41 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(report['summary']['macro']['deferred_attempts_stale_data'], 1)
         self.assertEqual(report['summary']['macro']['needs_attention'], len(self.catalog))
 
+    def test_irregular_world_bank_gini_current_publisher_years_have_expiring_confirmation(self):
+        latest = {"cn": 2022, "fr": 2023, "in": 2023, "pt": 2023}
+        for country, year in latest.items():
+            self.add_macro(f"inequality.{country}.gini_survey_wdi",
+                           when=date(year, 1, 1))
+        verified = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        for country, year in latest.items():
+            sid = f"inequality.{country}.gini_survey_wdi"
+            with self.subTest(series=sid):
+                row = verified[sid]
+                self.assertEqual(row["state"], "available")
+                self.assertTrue(row["complete_for_pinned_release"])
+                self.assertEqual(row["published_through"], f"{year}-01-01")
+                self.assertEqual(row["publisher_release_verified_as_of"], "2026-11-13")
+                self.assertFalse(row["regular_cadence_assumed"])
+                self.assertIsNone(row["unobserved_internal_periods"])
+        # Publisher check has a real expiry. An old verification must never
+        # suppress a missing 2027 publication or claim fresh 2026 metadata.
+        expired = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 12, 13))["items"]}
+        for country in latest:
+            row = expired[f"inequality.{country}.gini_survey_wdi"]
+            self.assertEqual(row["state"], "stale")
+            self.assertFalse(row["complete_for_pinned_release"])
+            self.assertIsNone(row["published_through"])
+        # Having a verified publisher bound does not excuse missing a genuine
+        # country-year in a locally incomplete snapshot.
+        self.add_macro("inequality.us.gini_survey_wdi",
+                       when=date(2021, 1, 1))
+        self.assertFalse(verified.get("inequality.us.gini_survey_wdi", {}).get(
+            "complete_for_pinned_release", False))
+
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
                        when=date(2026, 9, 1), error='source_policy_deferred')
