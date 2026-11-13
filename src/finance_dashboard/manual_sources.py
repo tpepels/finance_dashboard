@@ -11,13 +11,14 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from hashlib import sha256
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Event, Lock, Thread
 from tempfile import NamedTemporaryFile, mkdtemp
 from uuid import uuid4
 import json
 import os
 import re
 import shutil
+import time
 
 from fastapi import FastAPI, HTTPException, Header, Request
 
@@ -262,6 +263,7 @@ class ManualSourceManager:
         self.journal = Path(journal or os.environ.get(
             "FINANCE_MANUAL_IMPORT_JOURNAL", "/data/maintenance/manual-imports.json"))
         self.lock = Lock()
+        self._wake = Event()
         self.active = False
         self._worker: Thread | None = None
         self.jobs: list[dict] = []
@@ -281,7 +283,7 @@ class ManualSourceManager:
         except (OSError, ValueError, TypeError, KeyError):
             pass
         with self.lock:
-            if any(job["status"] == "queued" for job in self.jobs):
+            if any(job["status"] in ("queued", "deferred") for job in self.jobs):
                 self._ensure_worker()
 
     def _save(self):
@@ -330,6 +332,7 @@ class ManualSourceManager:
                              for name, spec in specs.items()],
                 "active": self.active,
                 "queued": sum(job["status"] == "queued" for job in self.jobs),
+                "deferred": sum(job["status"] == "deferred" for job in self.jobs),
                 "jobs": [dict(job) for job in reversed(self.jobs[-80:])],
             }
 
@@ -340,6 +343,8 @@ class ManualSourceManager:
             self._worker = Thread(target=self._drain, daemon=True,
                                   name="gcm-original-import-queue")
             self._worker.start()
+        else:
+            self._wake.set()
 
     def _enqueue(self, dataset: str, method: str) -> str | None:
         """Caller owns self.lock. Uploads are snapshot-linked before queuing."""
@@ -428,23 +433,53 @@ class ManualSourceManager:
         return {"jobs": queued, "skipped": skipped}
 
     def _drain(self):
+        """Process ready jobs and revisit publisher deferrals at their due time.
+
+        Publisher rate budgets remain owned by the shared managed transport.
+        Deferred jobs do not block new uploads or other queued datasets.
+        """
+        from .source_policy_types import PolicyDeferred
+        from .publisher_downloads import PublisherDownloadError
+        from .service import safe_source_failure_code
         while True:
+            waiting = False
             with self.lock:
-                job = next((item for item in self.jobs if item["status"] == "queued"), None)
+                now = time.time()
+                job = next((item for item in self.jobs
+                            if item["status"] == "queued" or
+                            (item["status"] == "deferred" and
+                             float(item.get("retry_at_unix") or 0) <= now)), None)
                 if job is None:
+                    due = [float(item["retry_at_unix"]) for item in self.jobs
+                           if item["status"] == "deferred" and item.get("retry_at_unix")]
+                    if not due:
+                        self.active = False
+                        self._worker = None
+                        return
                     self.active = False
-                    self._worker = None
-                    return
-                self.active = True
-                job["status"] = "downloading" if job["method"] == "publisher" else "running"
-                job["phase"] = "downloading" if job["method"] == "publisher" else "validating"
-                self._save()
+                    waiting = True
+                    timeout = max(.1, min(3600, min(due) - now))
+                    self._wake.clear()
+                else:
+                    self.active = True
+                    job["status"] = "downloading" if job["method"] == "publisher" else "running"
+                    job["phase"] = "downloading" if job["method"] == "publisher" else "validating"
+                    job["retry_at_unix"] = None
+                    self._save()
+            if waiting:
+                self._wake.wait(timeout)
+                continue
             try:
                 with maintenance_network_lock:
                     self._run(job)
+            except PolicyDeferred as exc:
+                with self.lock:
+                    job["status"] = "deferred"
+                    job["phase"] = "waiting_for_publisher_budget"
+                    job["error_code"] = exc.reason
+                    job["retry_at_unix"] = max(float(exc.retry_at), time.time() + 1)
+                    self._save()
             except Exception as exc:
-                from .publisher_downloads import PublisherDownloadError
-                from .service import safe_source_failure_code
                 with self.lock:
                     job["status"] = "failed"
                     job["error_code"] = (exc.code if isinstance(exc, PublisherDownloadError)
@@ -461,11 +496,19 @@ class ManualSourceManager:
         if dataset == "oecd-icio":
             self._run_icio(job, folder)
             return
-        downloads = {}
+        downloads = dict(job.get("downloaded") or {}) if method == "publisher" else {}
         if method == "publisher":
             for role in spec["roles"]:
-                detail = fetch_publisher_file(role, folder / (role["id"] + ".bin"))
-                downloads[role["id"]] = detail
+                role_id = role["id"]
+                path = folder / (role_id + ".bin")
+                recorded = downloads.get(role_id)
+                if (recorded and path.is_file() and not path.is_symlink()
+                        and 0 < path.stat().st_size <= role["max_bytes"]
+                        and sha256(path.read_bytes()).hexdigest() == recorded.get("sha256")):
+                    continue  # verified prior role: do not burn another publisher permit
+                downloads.pop(role_id, None)
+                detail = fetch_publisher_file(role, path)
+                downloads[role_id] = detail
                 with self.lock:
                     job["downloaded"] = dict(downloads)
                     self._save()
