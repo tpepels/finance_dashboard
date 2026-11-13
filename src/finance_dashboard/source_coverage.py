@@ -256,6 +256,11 @@ SAFE_ERROR_CODES = {
     "shiller_workbook_invalid", "shiller_download_invalid", "shiller_header_invalid",
     "shiller_empty", "shiller_window_empty", "fred_window_empty", "fx_identity_mismatch",
     "fx_schema_invalid", "fx_empty", "fx_value_invalid",
+    "gold_spot_invalid_response", "gold_spot_identity_mismatch",
+    "gold_spot_conversion_mismatch", "gold_spot_invalid_timestamp",
+    "gold_spot_future_timestamp", "gold_spot_stale_quote",
+    "gold_spot_before_window", "gold_spot_invalid_price",
+    "gold_spot_source_mapping_mismatch",
 }
 
 
