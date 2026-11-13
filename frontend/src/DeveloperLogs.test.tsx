@@ -6,6 +6,8 @@ import DeveloperLogs from './DeveloperLogs';
 
 const log = {
   schema_version:1, generated_at:'2026-11-03T14:00:00Z',
+  release:{version:'0.2.0',build:'1111222233334444',
+    release_id:'0.2.0+1111222233334444',activated_at:'2026-11-03T13:00:00Z'},
   coverage:{registered:80,with_data:80,needs_attention:1},
   issues:[{family:'macro',id:'valuation.us.cape',state:'stale',
     latest_source_date:'2026-04-01',last_failure_code:'source_invalid'}],
@@ -30,6 +32,7 @@ describe('developer log hidden support console',()=>{
     const user=userEvent.setup();
     render(<DeveloperLogs/>);
     expect(await screen.findByText('80/80 sources with data')).toBeTruthy();
+    expect(screen.getByText('Version 0.2.0+1111222233334444')).toBeTruthy();
     expect(screen.getByText('2 recorded events')).toBeTruthy();
     const output=screen.getByLabelText('Developer event log');
     expect(output.textContent).toContain('sync.started');
@@ -51,6 +54,7 @@ describe('developer log hidden support console',()=>{
     const copied=await navigator.clipboard.readText();
     expect(copied).toContain('sync.started');
     expect(copied).toContain('valuation.us.cape');
+    expect(copied).toContain('Application release: 0.2.0+1111222233334444');
   });
   it('downloads the full report as a text file', async()=>{
     const createObjectURL=vi.fn((_blob:Blob)=>'blob:diagnostics-test');
@@ -67,6 +71,7 @@ describe('developer log hidden support console',()=>{
     await user.click(screen.getByRole('button',{name:'Download .txt'}));
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Version 0.2.0+1111222233334444')).toBeTruthy();
     expect(screen.getByRole('status').textContent).toContain('prepared for download');
   });
   it('reports unavailable diagnostics without displaying fabricated log entries',async()=>{
