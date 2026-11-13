@@ -161,6 +161,28 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertFalse(additional["returns.doeswijk_swinkels.global_multiasset.usd.real"]
                          ["complete_for_pinned_release"])
 
+    def test_g17_all_three_source_series_end_at_actual_latest_source_month(self):
+        ids = [f"activity.us.industrial_production_diffusion_{span}m"
+               for span in (1, 3, 6)]
+        for sid in ids:
+            self.add_macro(sid, when=date(2026, 8, 1))
+        before = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        for sid in ids:
+            self.assertEqual(before[sid]["state"], "available")
+            self.assertEqual(before[sid]["published_through"], "2026-08-01")
+            self.assertTrue(before[sid]["complete_for_pinned_release"])
+        release_date = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 17))["items"]}
+        for sid in ids:
+            self.assertEqual(release_date[sid]["state"], "stale")
+            self.assertIsNone(release_date[sid]["published_through"])
+        # Missing the source endpoint's last observed month is an actual gap.
+        self.add_macro("activity.jp.oecd_cli", when=date(2020, 1, 1))
+        self.assertEqual(before["activity.jp.oecd_cli"]["state"], "stale")
+
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
                        when=date(2026, 9, 1), error='source_policy_deferred')
