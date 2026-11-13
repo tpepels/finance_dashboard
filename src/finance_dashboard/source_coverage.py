@@ -370,7 +370,11 @@ def _summary(items: list[dict]) -> dict:
         and item["observation_state"] == "current" for item in items)
     result["deferred_attempts_stale_data"] = sum(
         item["stored_periods"] > 0 and item["refresh_state"] == "deferred"
-        and item["observation_state"] == "stale" for item in items)
+        and item["observation_state"] == "stale"
+        and item["state"] != "source_checked_no_newer_data" for item in items)
+    result["deferred_attempts_publisher_checked"] = sum(
+        item["stored_periods"] > 0 and item["refresh_state"] == "deferred"
+        and item["state"] == "source_checked_no_newer_data" for item in items)
     result["needs_attention"] = sum(item["state"] in {
         "not_ingested", "collection_disabled", "collection_failed",
         "collection_deferred", "refresh_deferred_with_data",
