@@ -78,7 +78,8 @@ class ManualSourceTests(unittest.TestCase):
             "msci-eafe", "msci-europe", "msci-japan", "oecd-icio"})
         self.assertEqual(len(rows["wid-world"]["series_ids"]), 5)
         self.assertEqual(len(rows["msci-eafe"]["series_ids"]), 2)
-        self.assertEqual(len(rows["oecd-icio"]["reference_links"]), 7)
+        self.assertEqual(len(rows["oecd-icio"]["reference_links"]), 8)
+        self.assertIn("2021, 2018", rows["oecd-icio"]["reference_links"][0]["label"])
         for row in rows.values():
             for role in row["roles"]:
                 self.assertTrue(role["download_url"].startswith("https://"))
