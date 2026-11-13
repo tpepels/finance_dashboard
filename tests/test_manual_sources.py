@@ -326,6 +326,31 @@ class ManualSourceTests(unittest.TestCase):
                          "retrievals").glob("*.json"))
         self.assertEqual(len(receipts), 2)
 
+    def test_running_job_is_replayed_after_restart_from_immutable_spool(self):
+        from finance_dashboard.manual_sources import ManualSourceManager
+        job_id = "0123456789abcdef0123456789abcdef"
+        spool = self.root / "pending" / "_jobs" / job_id
+        spool.mkdir(parents=True)
+        gold = {"symbol": "XAU", "name": "Gold", "currency": "USD",
+                "exchangeRate": 1, "price": 4200,
+                "updatedAt": datetime.now(timezone.utc).isoformat()}
+        (spool / "json.bin").write_bytes(json.dumps(gold).encode())
+        journal = self.root / "manual.json"
+        journal.write_text(json.dumps({"version": 2, "jobs": [
+            {"id": job_id, "dataset": "gold-spot", "method": "upload",
+             "status": "running", "sources": [], "error_code": None,
+             "finished_at": None, "downloaded": {}, "phase": "validating"}]}))
+        resumed = ManualSourceManager(self.engine, stage=self.root / "pending",
+                                      evidence=self.root / "evidence", journal=journal)
+        self.assertEqual(resumed.jobs[0]["id"], job_id)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if resumed.jobs[0]["status"] in ("complete", "failed"):
+                break
+            time.sleep(.02)
+        self.assertEqual(resumed.jobs[0]["status"], "complete", resumed.jobs[0])
+        self.assertFalse(spool.exists())
+
     def test_download_api_disallows_arbitrary_urls_and_requires_dashboard_action(self):
         self.assertEqual(self.client.post("/api/manual-sources/fetch?dataset=gold-spot").status_code, 403)
         self.assertEqual(self.client.post(
