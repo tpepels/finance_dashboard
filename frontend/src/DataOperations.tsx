@@ -22,7 +22,11 @@ type Job = {
   created_at: string; finished_at?: string | null;
   completed?: number; total?: number | null; current_item?: string | null;
   stage?: string; stage_completed?: number | null; stage_total?: number | null;
-  result?: { parts?: Record<string, Part>; mode?: string } | null;
+  result?: { parts?: Record<string, Part>; mode?: string;
+    selected_sources?: number; issues_before?: number; issues_after?: number;
+    resolved_issues?: number; failed_sources?: number;
+    unavailable_source_mappings?: string[]; remaining_series_ids?: string[];
+    note?: string } | null;
   error_code?: string | null;
 };
 type Queue = { active_job_id: string | null; jobs: Job[] };
@@ -30,6 +34,7 @@ type Queue = { active_job_id: string | null; jobs: Job[] };
 const TITLES: Record<string, string> = {
   sync_current: 'Current data',
   sync_history: 'Historical data',
+  repair_source_health: 'Source health repair',
 };
 const FINISHED = new Set(['complete', 'partial', 'failed', 'blocked', 'cancelled', 'interrupted']);
 const HEADERS = { 'Content-Type': 'application/json', 'X-GCM-Action': 'dashboard' };
@@ -113,7 +118,7 @@ export default function DataOperations() {
     return () => { live = false; window.clearInterval(interval); };
   }, []);
 
-  async function sync(action: 'sync_current' | 'sync_history') {
+  async function sync(action: 'sync_current' | 'sync_history' | 'repair_source_health') {
     setError('');
     setSubmitting(true);
     try {
@@ -149,6 +154,8 @@ export default function DataOperations() {
         onClick={() => void sync('sync_current')}>Sync current data</button>
       <button type="button" disabled={disabled} className="data-sync-secondary"
         onClick={() => void sync('sync_history')}>Sync history</button>
+      <button type="button" disabled={disabled} className="data-sync-secondary"
+        onClick={() => void sync('repair_source_health')}>Repair source health</button>
     </div>
     <p className="data-sync-hint">Current updates economic series, markets and exchange rates.
       History checks complete available records, original ALFRED releases and SEC filings.</p>
@@ -194,6 +201,15 @@ export default function DataOperations() {
           </li>)}</ul>
       </details>}
     </div>}
+    {!active && last?.action === 'repair_source_health' && last.result && <p
+      className="data-sync-hint" role="status">
+      Selected {last.result.selected_sources ?? 0} actionable sources;
+      {' '}{last.result.resolved_issues ?? 0} issues resolved in this run;
+      {' '}{last.result.issues_after ?? 'unknown'} issues remain.
+      {last.result.failed_sources != null && last.result.failed_sources > 0
+        ? ' ' + last.result.failed_sources + ' requests failed or were deferred.' : ''}
+      {' '}Preserved original observations are never overwritten.
+    </p>}
     {error && <p role="alert" className="data-sync-error">{error}</p>}
   </section>;
 }
