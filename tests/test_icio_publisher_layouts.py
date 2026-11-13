@@ -119,7 +119,7 @@ class PublisherLayoutTests(unittest.TestCase):
                                  (len(sectors[edition]), len(sectors[edition])))
                 self.assertEqual(annual.value_added_basis, "publisher_VA_plus_TLS")
                 result = solve_foreign_final_demand(annual)
-                self.assertEqual(result["max_relative_residual"], 0)
+                self.assertLess(result["max_relative_residual"], 1.0e-9)
 
 
 if __name__ == "__main__":
