@@ -54,7 +54,7 @@ class SourceHealthRepairTests(unittest.TestCase):
             ("activity.us.oecd_cli", "available"))
         manager = Manager()
         with patch("finance_dashboard.source_coverage.build_coverage",
-                   side_effect=[before, after]), \\
+                   side_effect=[before, after]), \
              patch("finance_dashboard.worker.refresh_all", return_value=1) as refresh:
             result = run_repair_source_health(manager, "job1",
                 "repair_source_health", {}, Event())
@@ -76,7 +76,7 @@ class SourceHealthRepairTests(unittest.TestCase):
         rows = census((sid, "refresh_failed_with_data"))
         manager = Manager()
         with patch("finance_dashboard.source_coverage.build_coverage",
-                   side_effect=[rows, census((sid, "available"))]), \\
+                   side_effect=[rows, census((sid, "available"))]), \
              patch("finance_dashboard.worker.refresh_all", return_value=0) as refresh:
             result = run_repair_source_health(manager, "job", "repair_source_health",
                                               {}, Event())
@@ -101,9 +101,9 @@ class SourceHealthRepairTests(unittest.TestCase):
             sequence.append("ingest")
             return 0
         with patch("finance_dashboard.source_coverage.build_coverage",
-                   side_effect=[before, after]), \\
+                   side_effect=[before, after]), \
              patch("finance_dashboard.msci_regional_factsheets.collect",
-                   side_effect=acquire), \\
+                   side_effect=acquire), \
              patch("finance_dashboard.worker.refresh_all", side_effect=refresh):
             result = run_repair_source_health(manager, "job", "repair_source_health",
                                               {}, Event())
@@ -114,7 +114,7 @@ class SourceHealthRepairTests(unittest.TestCase):
     def test_when_all_data_healthy_does_not_attempt_source_requests(self):
         manager = Manager()
         with patch("finance_dashboard.source_coverage.build_coverage",
-                   return_value=census(("gold.usd.spot", "available"))), \\
+                   return_value=census(("gold.usd.spot", "available"))), \
              patch("finance_dashboard.worker.refresh_all") as refresh:
             result = run_repair_source_health(manager, "job", "repair_source_health",
                                               {}, Event())
