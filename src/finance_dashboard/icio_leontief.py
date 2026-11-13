@@ -73,11 +73,16 @@ def read_native_year(stream: TextIO, audit: dict, *, max_nodes: int = MAX_NODES)
     if len(set(observed_areas)) != audit["source_country_count"]:
         raise NativeValueAddedError("icio_leontief_country_count_mismatch")
     labels = header[n + 1:]
-    has_output = bool(labels and labels[-1] == "OUT")
-    if has_output:
-        labels = labels[:-1]
-    if len(labels) != audit["final_demand_country_count"] * 6:
+    fd_count = audit["final_demand_country_count"] * 6
+    if len(labels) not in (fd_count, fd_count + 1):
         raise NativeValueAddedError("icio_leontief_final_demand_count_invalid")
+    has_output = len(labels) == fd_count + 1
+    if has_output:
+        if labels[-1] != audit.get("output_column_label"):
+            raise NativeValueAddedError("icio_leontief_output_identity_mismatch")
+        labels = labels[:-1]
+    elif audit.get("output_column_label") is not None:
+        raise NativeValueAddedError("icio_leontief_output_identity_mismatch")
     if len(set(header)) != len(header):
         raise NativeValueAddedError("icio_leontief_duplicate_column")
     final_destinations = [label.split("_", 1)[0] for label in labels]
