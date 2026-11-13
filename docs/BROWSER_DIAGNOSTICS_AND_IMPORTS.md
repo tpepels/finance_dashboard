@@ -63,7 +63,15 @@ historical research data.
 
 ## Upload originals from the browser
 
-Go to **Source data → Import original research files**, choose one or more
+The simplified **Data → Manual downloads and uploads** catalogue now links
+each unresolved original-source family, including WID world, MSCI regional
+factsheets and methodology, EU KLEMS US, Swinkels v6, gold XAU/USD and
+OECD ICIO. Uploads validate and import automatically once required files
+are present; the existing ICIO importer remains integrated under its own
+publisher section. See [Manual source imports](MANUAL_SOURCE_IMPORTS.md)
+for supported roles, provenance constraints and API details.
+
+In the **OECD ICIO** source section, choose one or more
 official OECD archives and their ReadMe workbook. Upload begins upon choosing
 files. The browser streams bytes directly into the existing /data volume and
 automatically starts one background registration job. Progress, outcomes and
