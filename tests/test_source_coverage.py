@@ -130,12 +130,12 @@ class SourceCoverageTests(unittest.TestCase):
         for sid in dates:
             self.assertEqual(later[sid]["state"], "stale")
             self.assertIsNone(later[sid]["published_through"])
-        self.add_macro("property.de.real_residential.bis",
-                       when=date(2025, 10, 1))
+        self.add_macro("property.pt.commercial_all.bis",
+                       when=date(2024, 1, 1))
         unverified = {item["id"]: item for item in build_coverage(
             self.engine, self.catalog, self.registry,
             asof=date(2026, 11, 13))["items"]}
-        self.assertEqual(unverified["property.de.real_residential.bis"]["state"], "stale")
+        self.assertEqual(unverified["property.pt.commercial_all.bis"]["state"], "stale")
 
     def test_two_immutable_academic_and_archival_artifacts_are_not_live_series(self):
         source_latest = {
