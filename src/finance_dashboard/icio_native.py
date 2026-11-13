@@ -391,8 +391,13 @@ def audit_native_csv(stream, *, edition: str, year: int,
             if abs(residual) > col_bound:
                 col_failure += 1
                 model = _binary64_sum_model(
-                    column_absolute_sums[j] + abs(trow[j]) +
-                    abs(vrow[j]) + abs(orow[j]), expected_nodes + 3)
+                    column_absolute_sums[j] +
+                    sum((abs(specials[name][j]) for name in
+                         [*global_tax_labels, *country_tax_labels]),
+                        Decimal(0)) +
+                    abs(vrow[j]) + abs(orow[j]),
+                    expected_nodes + len(global_tax_labels) +
+                    len(country_tax_labels) + 2)
                 failure_details.append(_accounting_failure(
                     axis="column", label=label,
                     line=producer_lines.get(label),
