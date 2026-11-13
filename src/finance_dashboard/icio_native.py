@@ -143,6 +143,20 @@ def _simple_text(value: Decimal) -> str:
     return format(value, "f")
 
 
+def _printed_half_quantum(value: Decimal) -> Decimal:
+    """Maximum error from a nonzero cell rounded at its printed last digit.
+
+    Exact structural zero cells contribute no assumed rounding uncertainty.
+    Other values retain the precision recorded in the original CSV, so a
+    source printed to cents and one printed to six decimals have different
+    uncertainty budgets. This is a serialization bound, not an economic
+    or statistical tolerance.
+    """
+    return Decimal(0) if value == 0 else Decimal(5).scaleb(
+        value.as_tuple().exponent - 1)
+
+
+
 def audit_native_csv(stream, *, edition: str, year: int,
                      dimensions: tuple | None = None, table: str = "extended") -> dict:
     """Audit one native matrix with O(columns) memory; never rebalance cells.
@@ -198,6 +212,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
         raise ValueError("icio_native_country_split_dimensions_invalid")
     mapping = common_2018_concordance(list(sector_to_internal.values()))
     column_sums = [Decimal(0)] * expected_nodes
+    column_quantization = [Decimal(0)] * expected_nodes
     countries: dict[str, dict[str, Decimal]] = {}
     sector_countries: dict[str, dict[str, dict[str, Decimal]]] = {}
     def totals(country: str):
@@ -207,6 +222,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
     observed = set()
     row_failure, col_failure, output_mismatch = 0, 0, 0
     max_row = max_col = Decimal(0)
+    max_row_allowance = max_column_allowance = Decimal(0)
     numeric_scale = 0
     specials: dict[str, list[Decimal]] = {}
     node_output: dict[str, Decimal] = {}
@@ -247,11 +263,14 @@ def audit_native_csv(stream, *, edition: str, year: int,
             group["direct_foreign_final_demand"] += foreign
         if output_column:
             residual = intermediate + final - output
-            bound = Decimal(5).scaleb(-numeric_scale - 1) * (len(fds) + expected_nodes + 1)
+            bound = sum((_printed_half_quantum(v) for v in
+                         values[:expected_nodes + len(fds) + 1]), Decimal(0))
             max_row = max(max_row, abs(residual))
+            max_row_allowance = max(max_row_allowance, bound)
             row_failure += abs(residual) > bound
         for j, val in enumerate(values[:expected_nodes]):
             column_sums[j] += val
+            column_quantization[j] += _printed_half_quantum(val)
     if not set(nodes) <= observed:
         raise ValueError("icio_native_missing_industry_rows")
     # Two independently observed publisher accounting layouts:
@@ -290,13 +309,20 @@ def audit_native_csv(stream, *, edition: str, year: int,
         trow = ([sum((specials[name][j] for name in
                       [*global_tax_labels, *country_tax_labels]), Decimal(0))
                  for j in range(len(vrow))])
-        col_bound = Decimal(5).scaleb(-numeric_scale - 1) * (
-            expected_nodes + 2 + len(global_tax_labels) + len(country_tax_labels))
         for j, label in enumerate(nodes):
             residual = column_sums[j] + trow[j] + vrow[j] - orow[j]
+            additional = sum((_printed_half_quantum(specials[name][j])
+                              for name in [*global_tax_labels, *country_tax_labels]),
+                             Decimal(0))
+            col_bound = (column_quantization[j] + additional +
+                         _printed_half_quantum(vrow[j]) +
+                         _printed_half_quantum(orow[j]))
             max_col = max(max_col, abs(residual))
+            max_column_allowance = max(max_column_allowance, col_bound)
             col_failure += abs(residual) > col_bound
-            output_mismatch += abs(node_output[label] - orow[j]) > col_bound
+            vector_bound = (_printed_half_quantum(node_output[label]) +
+                            _printed_half_quantum(orow[j]))
+            output_mismatch += abs(node_output[label] - orow[j]) > vector_bound
             totals(_split(label)[0])["value_added"] += vrow[j] + trow[j]
     # Unknown extra row labels are rejected while known but incomplete source
     # accounts remain explicitly unverified rather than silently imputed.
@@ -368,7 +394,11 @@ def audit_native_csv(stream, *, edition: str, year: int,
             "column_failures": col_failure if has_accounts else None,
             "output_vector_mismatches": output_mismatch if has_accounts else None,
             "max_row_residual": _simple_text(max_row) if output_column else None,
+            "max_row_rounding_allowance": (_simple_text(max_row_allowance)
+                                            if output_column else None),
             "max_column_residual": _simple_text(max_col) if has_accounts else None,
+            "max_column_rounding_allowance": (_simple_text(max_column_allowance)
+                                               if has_accounts else None),
             "source_precision_decimals": numeric_scale,
             "country_direct_flows": series,
             "common_2018_sector_direct_flows": common_industries_public,
