@@ -106,6 +106,25 @@ PUBLICATION_BOUNDS.update({
     } for country in _EUKLEMS_COUNTRIES for measure in _EUKLEMS_MEASURES
 })
 
+# The World Bank's Poverty and Inequality Platform survey Gini histories are
+# irregular household-survey series, NOT observations due every calendar year.
+# Publisher country pages checked 2026-11-13 explicitly show the listed
+# latest years. A 30-day expiration prevents silently carrying an obsolete
+# "latest published" claim into the future. Check the exact publisher series
+# again after expiration; do not invent a missing survey observation.
+_PIP_GINI_LATEST = {"cn": (2022, "CN"), "fr": (2023, "FR"),
+                    "in": (2023, "IN"), "pt": (2023, "PT")}
+PUBLICATION_BOUNDS.update({
+    f"inequality.{country}.gini_survey_wdi": {
+        "version": "World Bank PIP Gini country history, verified 2026-11-13",
+        "verified_as_of": date(2026, 11, 13),
+        "expires": date(2026, 12, 13),
+        "through": date(latest_year, 1, 1),
+        "url": f"https://data.worldbank.org/indicator/SI.POV.GINI?locations={iso}",
+    }
+    for country, (latest_year, iso) in _PIP_GINI_LATEST.items()
+})
+
 # Next 2026-Q2 BIS total-credit update is scheduled for 2026-12-07.
 _BIS_CREDIT_COUNTRIES = ("cn", "de", "jp", "pt", "us")
 _BIS_CREDIT_MEASURES = (
@@ -325,7 +344,8 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
     last_error = last["error"] if last is not None else None
     regular_cadence = provider not in (
         "MSCI_PUBLISHED_TOP10", "MSCI_REGIONAL_FACTSHEETS", "SIBLIS_FREE", "SIBLIS_WORLD_PE",
-        "SIBLIS_WORLD_EARNINGS_YIELD", "GOLD_API_SPOT")
+        "SIBLIS_WORLD_EARNINGS_YIELD", "GOLD_API_SPOT") and not (
+            provider == "WORLD_BANK" and id.endswith(".gini_survey_wdi"))
     stale = lag is not None and lag > SOURCE_LAGS[frequency] and not is_complete_for_release
     refresh_state = last['status'] if last else 'never'
     # This is an engine dependency map, not a claim that every mapped input is
