@@ -139,7 +139,7 @@ class PublisherLayoutTests(unittest.TestCase):
             rows.append([area + "_TAXSUB", *tax, *(["0"] * 12), "0"])
         rows.append(["VALU", *(["4"] * n), *(["0"] * 12), "0"])
         rows.append(["OUTPUT", *(["6"] * n), *(["0"] * 12), "0"])
-        body = "\\n".join(",".join(row) for row in rows) + "\\n"
+        body = "\n".join(",".join(row) for row in rows) + "\n"
         original = DIMENSIONS["2018"]
         with patch.dict(DIMENSIONS, {"2018": (2, 2, original[2], 1995, 2015)}):
             audit = audit_native_csv(io.StringIO(body), edition="2018", year=2015)
@@ -163,8 +163,8 @@ class PublisherLayoutTests(unittest.TestCase):
                 "ffd_dva_usd_million"], 0)
             # An incomplete set of country tax accounts remains unresolved;
             # Leontief must never silently use it as verified publisher VA.
-            without_fra_tax = "\\n".join(row for row in body.strip().splitlines()
-                                           if not row.startswith("FRA_TAXSUB,")) + "\\n"
+            without_fra_tax = "\n".join(row for row in body.strip().splitlines()
+                                           if not row.startswith("FRA_TAXSUB,")) + "\n"
             incomplete = audit_native_csv(io.StringIO(without_fra_tax),
                                           edition="2018", year=2015)
             self.assertFalse(incomplete["publisher_account_rows_present"])
