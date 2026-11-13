@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import csv
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 from hashlib import sha256
 import io
 import re
@@ -143,6 +144,11 @@ def _simple_text(value: Decimal) -> str:
     return format(value, "f")
 
 
+@lru_cache(maxsize=96)
+def _half_quantum_at_exponent(exponent: int) -> Decimal:
+    return Decimal(5).scaleb(exponent - 1)
+
+
 def _printed_half_quantum(value: Decimal) -> Decimal:
     """Maximum error from a nonzero cell rounded at its printed last digit.
 
@@ -152,8 +158,8 @@ def _printed_half_quantum(value: Decimal) -> Decimal:
     uncertainty budgets. This is a serialization bound, not an economic
     or statistical tolerance.
     """
-    return Decimal(0) if value == 0 else Decimal(5).scaleb(
-        value.as_tuple().exponent - 1)
+    return Decimal(0) if value == 0 else _half_quantum_at_exponent(
+        value.as_tuple().exponent)
 
 
 
@@ -240,6 +246,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
         if label not in nodes:
             specials[label] = values
             continue
+        cell_uncertainty = [_printed_half_quantum(value) for value in values]
         area, sector = _split(label)
         t = totals(area)
         intermediate = sum(values[:expected_nodes], Decimal(0))
@@ -263,14 +270,13 @@ def audit_native_csv(stream, *, edition: str, year: int,
             group["direct_foreign_final_demand"] += foreign
         if output_column:
             residual = intermediate + final - output
-            bound = sum((_printed_half_quantum(v) for v in
-                         values[:expected_nodes + len(fds) + 1]), Decimal(0))
+            bound = sum(cell_uncertainty, Decimal(0))
             max_row = max(max_row, abs(residual))
             max_row_allowance = max(max_row_allowance, bound)
             row_failure += abs(residual) > bound
         for j, val in enumerate(values[:expected_nodes]):
             column_sums[j] += val
-            column_quantization[j] += _printed_half_quantum(val)
+            column_quantization[j] += cell_uncertainty[j]
     if not set(nodes) <= observed:
         raise ValueError("icio_native_missing_industry_rows")
     # Two independently observed publisher accounting layouts:
