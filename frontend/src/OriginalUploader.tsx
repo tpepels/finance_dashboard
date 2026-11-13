@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
 type StoredFile = { filename: string; bytes: number; kind: string };
-type Result = { filename: string; status: string; error_code?: string; edition?: string; table?: string };
+type Result = { filename: string; status: string; error_code?: string; edition?: string; table?: string;
+  native_validation_status?: string; annual_matrix_count?: number;
+  rejected_year_count?: number; header_schema_status?: string; source_identity_status?: string };
 type ImportJob = {
   id: string; status: string; mode?: string; completed: number; total: number;
   error_code?: string | null; results: Result[];
+  scientific_assessment?: { accepted_native_years: number; rejected_native_years: number;
+    unresolved_archives: number; note: string };
 };
 type Inventory = { active: boolean; readme_available?: boolean; files: StoredFile[]; jobs: ImportJob[] };
 
@@ -178,10 +182,22 @@ export default function OriginalUploader() {
       <strong>{latest.mode === 'reassess' ? 'Reassessment' : 'Import'}: {latest.status}</strong>
       <span>{latest.completed} of {latest.total} archives processed</span>
       <progress max={latest.total} value={latest.completed}/>
+      {latest.scientific_assessment && <p role="status" className="original-import-activity">
+        Scientific verification: {latest.scientific_assessment.accepted_native_years} native years parsed;
+        {latest.scientific_assessment.rejected_native_years} native years rejected;
+        {latest.scientific_assessment.unresolved_archives} archive layouts unresolved.
+        Processing completion does not establish OECD TiVA agreement.
+      </p>}
       {latest.results.length > 0 && <ul>{latest.results.map(result =>
         <li key={result.filename}>
           <strong>{result.filename}</strong>: {result.status.replaceAll('_', ' ')}
           {result.error_code && <small> · {result.error_code}</small>}
+          {result.native_validation_status && <small> · {result.native_validation_status.replaceAll('_', ' ')}
+            · {result.annual_matrix_count ?? 0} native years accepted
+            · {result.rejected_year_count ?? 0} rejected
+            {result.source_identity_status ? ' · ' +
+              result.source_identity_status.replaceAll('_', ' ') : ''}
+          </small>}
         </li>)}</ul>}
     </div>}
     {inventory.files.some(file => file.kind !== 'readme' &&
