@@ -665,10 +665,10 @@ def collect(root: Path, *, client=None, indexes=None, log=print,
 
 def store_manual_factsheet(root: Path, index: str, original: str,
                            payload: bytes, *, publisher_download: bool = False) -> tuple[str, str]:
-    """Record one owner-supplied original without forging a Wayback capture.
+    """Store a validated original PDF without forging a Wayback capture.
 
-    Only canonical MSCI original URLs and printed PDF identities are accepted.
-    Acquisition provenance explicitly marks the byte source as user supplied.
+    Explicit provenance distinguishes owner uploads from direct HTTPS requests.
+    Canonical URL, printed index identity and date must agree in both modes.
     """
     from .source_evidence import record_acquisition_receipt
     if (index not in BOUND_INDEXES or ORIGINAL_URLS.get(original) != index
