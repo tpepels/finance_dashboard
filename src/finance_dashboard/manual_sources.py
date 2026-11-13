@@ -386,6 +386,38 @@ class ManualSourceManager:
                 with self.lock:
                     self.active = False
 
+    def commit_uploaded_file(self, dataset: str, role: str, original: str,
+                             uploaded: Path, size: int, digest: str):
+        """Atomically accept a size-bounded streamed upload on the same volume.
+
+        Request bytes never accumulate in memory. Neither an import nor a
+        partial request can replace an immutable original source bundle.
+        """
+        spec = source_specs().get(dataset)
+        selected = next((r for r in (spec or {}).get("roles", []) if r["id"] == role), None)
+        if not selected or not NAME.fullmatch(original) or not original.lower().endswith(
+                selected["accept"]):
+            raise ValueError("Uploaded filename or extension does not match the selected original")
+        if not 0 < size <= selected["max_bytes"] or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError("Original file exceeds the permitted bound")
+        folder = self.stage / dataset
+        with self.lock:
+            if self.active:
+                raise RuntimeError("An original import is active")
+            if (folder.is_symlink() or not folder.is_dir()
+                    or uploaded.parent != folder or uploaded.is_symlink()
+                    or not uploaded.is_file() or uploaded.stat().st_size != size):
+                raise ValueError("Manual original staging identity invalid")
+            path = folder / (role + ".bin")
+            if path.is_symlink():
+                raise ValueError("Manual upload destination is a symlink")
+            os.replace(uploaded, path)
+            started = self._start(dataset)
+        return {"dataset": dataset, "role": role,
+                "sha256": digest, "import_started": started is not None,
+                "job_id": started}
+
+
     def stage_file(self, dataset: str, role: str, original: str, body: bytes):
         spec = source_specs().get(dataset)
         selected = next((r for r in (spec or {}).get("roles", []) if r["id"] == role), None)
@@ -450,19 +482,42 @@ def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, j
                 raise HTTPException(422, "Invalid content length") from None
             if size > selected["max_bytes"]:
                 raise HTTPException(413, "Original file too large")
+        # Before reading an upload, reject incorrect file metadata. This does
+        # not trust the filename as evidence of any publisher origin.
+        if not NAME.fullmatch(filename) or not filename.lower().endswith(
+                selected["accept"]):
+            raise HTTPException(422, "Filename does not match the selected source format")
+        folder = manager.stage / dataset
+        folder.mkdir(parents=True, exist_ok=True)
+        if folder.is_symlink():
+            raise HTTPException(422, "Manual upload directory invalid")
         total = 0
-        contents = bytearray()
-        async for chunk in request.stream():
-            total += len(chunk)
-            if total > selected["max_bytes"]:
-                raise HTTPException(413, "Original file too large")
-            contents.extend(chunk)
+        digest = sha256()
+        staged = None
         try:
-            return manager.stage_file(dataset, role, filename, bytes(contents))
+            with NamedTemporaryFile(dir=folder, prefix=".incoming-stream-",
+                                    suffix=".part", delete=False) as out:
+                staged = Path(out.name)
+                os.chmod(staged, 0o600)
+                async for chunk in request.stream():
+                    total += len(chunk)
+                    if total > selected["max_bytes"]:
+                        raise HTTPException(413, "Original file too large")
+                    out.write(chunk)
+                    digest.update(chunk)
+                out.flush()
+                os.fsync(out.fileno())
+            if not total:
+                raise HTTPException(422, "Empty original file")
+            return manager.commit_uploaded_file(
+                dataset, role, filename, staged, total, digest.hexdigest())
         except RuntimeError:
             raise HTTPException(409, "An original import is already running") from None
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
+        finally:
+            if staged is not None:
+                staged.unlink(missing_ok=True)
 
     @app.post("/api/manual-sources/import", status_code=202)
     def import_manual_source(request: Request, dataset: str,
