@@ -18,6 +18,7 @@ from sqlalchemy.engine import Engine
 
 from .standalone import maintenance_network_lock, manual_sync_pending
 from .developer_logs import record_event
+from .runtime_release import release_info, job_in_current_release
 from .maintenance_jobs import PUBLIC_ACTIONS, MaintenanceBlocked, normalize_options
 from .maintenance_handlers import execute_action
 
@@ -74,10 +75,17 @@ class MaintenanceManager:
             pass
 
     def list(self) -> dict:
+        # Prior-release summaries remain in the durable journal, but are not
+        # presented as jobs or errors produced by the current code build.
+        cutoff = release_info()["activated_at"]
         with self._mutex:
+            current = [dict(item) for item in reversed(self._jobs)
+                       if cutoff is None or job_in_current_release(
+                           item.get("created_at"), active_since=cutoff)]
             return {"active_job_id": self._active,
-                    "jobs": [dict(item) for item in reversed(self._jobs[-20:])],
-                    "operations": sorted(PUBLIC_ACTIONS)}
+                    "jobs": current[:20],
+                    "operations": sorted(PUBLIC_ACTIONS),
+                    "release": release_info()}
 
     def _change(self, job_id: str, **changes) -> None:
         with self._mutex:
@@ -96,6 +104,7 @@ class MaintenanceManager:
             if self._active is not None:
                 raise BusyMaintenance("A maintenance operation is already active")
             job = {"id": uuid4().hex, "action": action, "options": options,
+                   "release_id": release_info()["release_id"],
                    "status": "queued", "created_at": now(), "started_at": None,
                    "finished_at": None, "completed": 0, "total": None,
                    "current_item": None, "result": None, "error_code": None}
