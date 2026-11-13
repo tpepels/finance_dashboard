@@ -137,6 +137,12 @@ class ReleaseStateTests(unittest.TestCase):
                     activation = activate_release(activated_at=AT_A)
                     self.assertEqual(activation["release_id"], A["release_id"])
                     record_event("sync", "finished", status="complete", action="sync_history")
+                    legacy = {"id":"pre-release", "action":"sync_current", "status":"complete",
+                              "created_at":"2026-11-12T10:00:00+00:00"}
+                    (root / "maintenance" / "jobs.json").write_text(json.dumps({
+                        "version": 1, "jobs": [legacy]}))
+                    (root / "maintenance" / "original-imports.json").write_text(json.dumps({
+                        "version": 1, "jobs": [{**legacy, "filename":"2011-2015_EXT.zip"}]}))
                     engine = create_engine("sqlite+pysqlite:///:memory:",
                         connect_args={"check_same_thread": False}, poolclass=StaticPool)
                     Base.metadata.create_all(engine)
@@ -154,6 +160,14 @@ class ReleaseStateTests(unittest.TestCase):
                             coverage = client.get("/api/source-coverage")
                             self.assertEqual(coverage.status_code, 200)
                             self.assertEqual(coverage.json()["release"]["release_id"], A["release_id"])
+                            maintenance = client.get("/api/maintenance").json()
+                            imports = client.get("/api/originals").json()
+                            self.assertEqual(maintenance["release"]["release_id"], A["release_id"])
+                            self.assertEqual(imports["release"]["release_id"], A["release_id"])
+                            self.assertEqual(maintenance["jobs"], [])
+                            self.assertEqual(imports["jobs"], [])
+                            self.assertTrue((root / "maintenance" / "jobs.json").is_file())
+                            self.assertTrue((root / "maintenance" / "original-imports.json").is_file())
                             export = client.get("/api/diagnostics/download")
                             self.assertEqual(export.status_code, 200)
                             self.assertIn(A["release_id"], export.headers["content-disposition"])
