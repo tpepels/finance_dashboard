@@ -25,6 +25,42 @@ holdings or raw publisher documents.
 The HTTP middleware no longer misclassifies acceptance-pending HTTP 503 with
 Retry-After as a source collector failure.
 
+## Build versions and automatic diagnostic reset
+
+Every standalone release is labelled `<package version>+<16-character build fingerprint>`
+(for example `0.2.0+38d004b8c7e0bfa1`). The fingerprint is computed
+from the installed backend, compiled frontend, research definitions, migrations,
+dependency lockfile, and startup entrypoint. It changes when deployed application
+content changes, even if the semantic package version remains `0.2.0`.
+It is **not** a claim of an exact Git commit SHA.
+
+On container startup, after validation and database migrations and before the
+server begins serving requests, `finance_dashboard.runtime_release activate`
+compares the new build to `/data/maintenance/active-release.json`.
+A changed build atomically clears only the disposable
+`/data/maintenance/diagnostics.jsonl` event journal, creates a new
+timestamped release marker, and excludes earlier maintenance/import job summaries
+from current-release diagnostic views. A routine restart of the *same* build
+keeps the existing journal and activation timestamp. An existing unversioned
+installation is initialized as a new release once.
+
+The original maintenance job journal and importer job journal are **not
+deleted**; their older records remain available for operational recovery and
+audit. The SQLite ledger, 2025 regular ICIO evidence, sealed historical/extended
+ZIPs, source receipts, original assessments, derived scientific reports,
+backups, and source refresh schedule are never cleared by a version change.
+A source that is stale or failing remains reported as such after deployment,
+because its underlying stored data has not changed.
+
+The live diagnostics API, downloadable ZIP, developer TXT report, original
+import status, maintenance status, and source-audit CSV include the running
+build identifier. Exports embed the release in their filename; ZIPs include a
+dedicated `diagnostics/release.json` plus the build in their README and status.
+Browser downloads already saved to the user's computer cannot be deleted by
+a server upgrade. Newly requested exports use only the current build's
+transient events and visible job summaries, together with the unchanged
+historical research data.
+
 ## Upload originals from the browser
 
 Go to **Source data → Import original research files**, choose one or more
