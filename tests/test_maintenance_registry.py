@@ -20,12 +20,13 @@ class MaintenanceRegistryTests(unittest.TestCase):
     def test_declared_handlers_and_options_cover_all_public_actions(self):
         self.assertEqual(len(ACTION_REGISTRY), 11)
         self.assertEqual(PUBLIC_ACTIONS, frozenset(ACTION_REGISTRY))
+        self.assertEqual(self.normalize("repair_source_health", {}), {})
         for action, spec in ACTION_REGISTRY.items():
             self.assertEqual(spec.action, action)
             self.assertTrue(callable(getattr(maintenance_handlers, spec.handler, None)))
 
     def test_all_sync_and_refresh_options_have_one_canonical_normalizer(self):
-        for action in ("sync_current", "sync_history", "repair_source_health"):
+        for action in ("sync_current", "sync_history"):
             result = self.normalize(action, {})
             self.assertEqual(result["series_ids"], sorted(self.SOURCES))
             self.assertEqual(result["instrument_ids"], sorted(self.MARKETS))
