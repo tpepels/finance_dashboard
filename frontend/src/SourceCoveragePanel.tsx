@@ -24,7 +24,9 @@ interface Coverage {
   asof: string;
   release: ReleaseInfo;
   summary: Record<string, { total: number; with_data: number; without_data: number;
-    needs_attention: number; stale?: number; refresh_failed_with_data?: number }>;
+    needs_attention: number; stale?: number; refresh_failed_with_data?: number;
+    deferred_attempts_with_data?: number; deferred_attempts_current_data?: number;
+    deferred_attempts_stale_data?: number }>;
   items: SourceRow[];
   method: string;
 }
@@ -98,10 +100,19 @@ export default function SourceCoveragePanel() {
   }
   const rows = useMemo(() => (report?.items ?? []).filter(item =>
     (family === 'all' || item.family === family) &&
-    (selection === 'all' || ATTENTION.has(item.state))),
+    (selection === 'all' || (selection === 'deferred'
+      ? item.refresh_state === 'deferred' : ATTENTION.has(item.state)))),
     [report, family, selection]);
   const needsAttention = report
     ? Object.values(report.summary).reduce((count, group) => count + group.needs_attention, 0)
+    : 0;
+  const deferredWithCurrentData = report
+    ? Object.values(report.summary).reduce(
+        (count, group) => count + (group.deferred_attempts_current_data ?? 0), 0)
+    : 0;
+  const deferredWithStaleData = report
+    ? Object.values(report.summary).reduce(
+        (count, group) => count + (group.deferred_attempts_stale_data ?? 0), 0)
     : 0;
   return <details className="research-source-health" ref={ref} id="source-coverage"
     onToggle={event => {
@@ -132,7 +143,10 @@ export default function SourceCoveragePanel() {
             {' '}{report.summary.fx.with_data}/{report.summary.fx.total} FX histories stored.
             {' '}Existing observations are preserved when a refresh fails.</p>
           <p className="research-coverage-method">“Within expected age” checks the source's normal reporting lag; it does not establish the latest publisher release.
-            A refresh can be deferred or fail while previously recorded observations remain usable.</p>
+            A refresh can be deferred or fail while previously recorded observations remain usable.
+            {' '}{deferredWithCurrentData} retained histories are within their expected age even
+            though their last refresh was deferred; these attempts remain in the full audit.
+            {' '}{deferredWithStaleData} deferred histories are also stale and still require attention.</p>
           <button type="button" className="research-export-audit" onClick={exportSourceAudit}>
             Download full source audit (CSV)
           </button>
@@ -147,7 +161,8 @@ export default function SourceCoveragePanel() {
           </label>
           <label>Coverage status
             <select aria-label="Coverage status" value={selection} onChange={e => setSelection(e.target.value)}>
-              <option value="issues">Missing, stale, failed or deferred</option>
+              <option value="issues">Actionable: missing, stale or failed</option>
+              <option value="deferred">All deferred refresh attempts</option>
               <option value="all">All {report.items.length} sources</option>
             </select>
           </label>
