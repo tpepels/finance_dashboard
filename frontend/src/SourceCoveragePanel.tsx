@@ -61,7 +61,10 @@ export default function SourceCoveragePanel() {
           if (!response.ok) throw new Error('Coverage service HTTP ' + response.status);
           return await response.json() as Coverage;
         })
-        .then(data => { if (live) { setReport(data); setError(''); } })
+        .then(data => {
+          if (!data.release?.release_id) throw new Error('Missing report build version');
+          if (live) { setReport(data); setError(''); }
+        })
         .catch(() => { if (live) setError('Source audit unavailable'); });
     };
     const manage = () => {
