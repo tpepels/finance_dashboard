@@ -14,6 +14,8 @@ import os
 
 import httpx
 
+from .source_policy import managed_client
+
 
 class PublisherDownloadError(ValueError):
     def __init__(self, code: str):
@@ -51,7 +53,7 @@ def fetch_publisher_file(role: dict, destination: Path, *, client: httpx.Client 
         raise PublisherDownloadError("publisher_url_invalid")
     own_client = client is None
     if own_client:
-        client = httpx.Client(
+        client = managed_client(
             timeout=httpx.Timeout(connect=15, read=90, write=20, pool=15),
             headers=_BROWSER_HEADERS, follow_redirects=False)
     destination.parent.mkdir(parents=True, exist_ok=True)
