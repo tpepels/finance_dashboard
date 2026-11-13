@@ -58,6 +58,9 @@ def _parse_header(header: list[str]) -> dict:
         "last_node_label": header[len(nodes)] if nodes else None,
         "first_final_demand_label": header[len(nodes) + 1] if fds else None,
         "last_final_demand_label": header[len(nodes) + len(fds)] if fds else None,
+        "observed_source_industry_codes": sorted(sector_codes),
+        "observed_final_demand_categories": sorted({p[1] for p in fds if p}),
+        "observed_extra_country_codes": sorted(areas - final_areas),
     })
     valid_nodes = (len(nodes) == len(node_codes) and
                    len(nodes) == len(set(zip(node_areas, node_codes))) and
