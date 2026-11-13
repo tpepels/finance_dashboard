@@ -283,6 +283,11 @@ class ManualSourceManager:
         except (OSError, ValueError, TypeError, KeyError):
             pass
         with self.lock:
+            # Migrate complete role pairs staged by earlier releases. No click
+            # is needed after a container upgrade or unexpected restart.
+            for dataset, spec in source_specs().items():
+                if spec["roles"] and len(self._staged(dataset, spec["roles"])) == len(spec["roles"]):
+                    self._enqueue(dataset, "upload")
             if any(job["status"] in ("queued", "deferred") for job in self.jobs):
                 self._ensure_worker()
 
