@@ -619,13 +619,15 @@ def collect(root: Path, *, client=None, indexes=None, log=print,
                 elif row["statuscode"] == "200" and "pdf" in row["mimetype"]:
                     summary["cdx_rows_other_url"] += 1
         seen = _stored_captures(root)
-        pending = [row for row in sorted(captures.values(),
-                   key=lambda r: r["timestamp"], reverse=prefer_recent)
-                   if row["timestamp"] + "-" + row["digest"][:12].lower() not in seen
-                   and (capture_not_before is None
-                        or row["timestamp"][:8] >= capture_not_before.strftime("%Y%m%d"))]
-        summary["unique_captures"] = len(captures)
-        summary["already_stored"] = len(captures) - len(pending)
+        eligible = [row for row in sorted(captures.values(),
+                    key=lambda r: r["timestamp"], reverse=prefer_recent)
+                    if capture_not_before is None
+                    or row["timestamp"][:8] >= capture_not_before.strftime("%Y%m%d")]
+        pending = [row for row in eligible
+                   if row["timestamp"] + "-" + row["digest"][:12].lower() not in seen]
+        summary["unique_captures"] = len(eligible)
+        summary["excluded_older_captures"] = len(captures) - len(eligible)
+        summary["already_stored"] = len(eligible) - len(pending)
         for number, row in enumerate(pending, 1):
             if stopped is not None and stopped.is_set():
                 summary["cancelled"] += 1
