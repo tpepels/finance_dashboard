@@ -125,6 +125,46 @@ PUBLICATION_BOUNDS.update({
     for country, (latest_year, iso) in _PIP_GINI_LATEST.items()
 })
 
+# BIS Data Portal exact series pages verified on 2026-11-13. The
+# selected residential real indexes have country-specific end periods. Do
+# not apply the portal's *general* release-calendar quarter to every key.
+# Recheck before the scheduled 26 November selected-residential update.
+_BIS_PROPERTY_SERIES_END = {
+    "property.jp.real_residential.bis": ("JP", date(2025, 10, 1)),
+    "property.world.real_residential.bis": ("XW", date(2026, 1, 1)),
+    "property.us.real_residential.bis": ("US", date(2026, 4, 1)),
+    "property.ea.real_residential.bis": ("XM", date(2026, 4, 1)),
+}
+PUBLICATION_BOUNDS.update({
+    sid: {
+        "version": f"BIS selected residential property prices WS_SPP Q.{area}.R.628",
+        "verified_as_of": date(2026, 11, 13),
+        "expires": date(2026, 11, 26),
+        "through": through,
+        "url": f"https://data.bis.org/topics/RPP/BIS%2CWS_SPP%2C1.0/Q.{area}.R.628",
+    }
+    for sid, (area, through) in _BIS_PROPERTY_SERIES_END.items()
+})
+
+# Immutable primary-source artifacts: a verified *original edition* does
+# not acquire new months. Do not claim the scientific content is the latest
+# live market price or a publisher's current issue. The archived FRED original
+# is a 2025-11-04T20:41Z snapshot, not the current FRED HYOAS series.
+PUBLICATION_BOUNDS.update({
+    "stress.us.high_yield_oas_fred_archive": {
+        "version": "Pinned FRED archived BAMLH0A0HYM2 capture 20251104204105",
+        "verified_as_of": date(2026, 11, 13),
+        "through": date(2025, 11, 3),
+        "url": "https://web.archive.org/web/20251104204105id_/https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAMLH0A0HYM2",
+    },
+    "returns.doeswijk_swinkels.global_multiasset.usd.nominal": {
+        "version": "Pinned Doeswijk-Swinkels GMP JIMF original workbook (SHA-256 a66ce1c1...)",
+        "verified_as_of": date(2026, 11, 13),
+        "through": date(2022, 12, 1),
+        "url": "https://laurensswinkels.com/wp-content/uploads/2025/11/public-data-file-jimf-3.xlsx",
+    },
+})
+
 # Next 2026-Q2 BIS total-credit update is scheduled for 2026-12-07.
 _BIS_CREDIT_COUNTRIES = ("cn", "de", "jp", "pt", "us")
 _BIS_CREDIT_MEASURES = (
