@@ -45,6 +45,7 @@ RUN uv sync --frozen --no-dev --no-editable \
     && python -m compileall -q /app/src /app/tests /app/migrations \
     && python -m finance_dashboard validate \
     && python -m finance_dashboard.runtime_release build --output /app/release.json \
+    && chmod 644 /app/release.json \
     && chmod 755 /app/start.sh
 EXPOSE 8080
 VOLUME /data
