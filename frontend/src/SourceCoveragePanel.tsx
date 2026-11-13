@@ -65,7 +65,7 @@ export default function SourceCoveragePanel() {
           if (!data.release?.release_id) throw new Error('Missing report build version');
           if (live) { setReport(data); setError(''); }
         })
-        .catch(() => { if (live) setError('Source audit unavailable'); });
+        .catch(() => { if (live) { setReport(null); setError('Source audit unavailable'); } });
     };
     const manage = () => {
       if (ref.current) ref.current.open = true;
