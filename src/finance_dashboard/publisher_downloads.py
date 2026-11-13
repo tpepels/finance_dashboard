@@ -41,6 +41,9 @@ def _approved(initial: str, candidate: str) -> bool:
         return False
     if target.hostname == source.hostname:
         return True
+    if (source.hostname == "wid.world" and target.hostname == "www.wid.world"
+            and target.path.startswith("/bulk_download/")):
+        return True
     return (source.hostname == "dataverse.nl"
             and target.hostname == "objectstore.surf.nl"
             and target.path.startswith("/store/10.34894/YWT2IX/"))
