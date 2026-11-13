@@ -84,7 +84,7 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
     for group, count in sorted(suppressed.items()):
         record_event("macro", "stage_finished", level="warning",
                      action="publisher_quota_exhausted", status="deferred",
-                     provider=group, sources_not_attempted=count)
+                     stage=group, failed=count)
         log.warning("%s: %d additional sources left unattempted after source quota exhaustion",
                     group, count)
     return failures
