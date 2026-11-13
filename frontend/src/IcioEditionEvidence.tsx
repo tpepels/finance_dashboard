@@ -9,6 +9,14 @@ type Matrix = { year: number; accounting_passed: boolean | null;
     selected_country_values?: Record<string, { status: string }> };
 };
 type Edition = { filename: string; edition: string; table: string;
+  original_registered_edition?: string;
+  source_identity_reconciliation?: { status: string; sealed_edition?: string;
+    sealed_table?: string; source_structure_reclassified?: boolean };
+  header_schema?: { status: string; headers?: { year: number;
+    error_code?: string; node_columns?: number; industry_count?: number;
+    production_area_count?: number; final_demand_columns?: number;
+    final_demand_area_count?: number; sector_discrepancies?:
+      Record<string, { missing: string[]; unexpected: string[] }> }[] };
   native_validation_status: string; annual_matrix_count: number;
   annual_matrices: Matrix[]; rejected_matrices?: {year: number; error_code: string}[];
   expected_years?: number[]; observed_years?: number[]; source_authenticity_verified: boolean;
@@ -73,9 +81,19 @@ export default function IcioEditionEvidence() {
             const errors = item.annual_matrices.filter(year =>
               year.tiva_reconstruction?.status === 'not_computable');
             const auxiliary = item.auxiliary_numeric;
+            const observed = item.header_schema?.headers?.[0];
+            const sourceIdentity = item.source_identity_reconciliation;
             return <tr key={item.filename + item.edition}>
               <td>{item.filename}</td>
               <td>{item.edition}, {item.table}
+                {sourceIdentity?.source_structure_reclassified && <small role="status">
+                  Originally sealed as {sourceIdentity.sealed_edition}, {sourceIdentity.sealed_table};
+                  classification corrected using the source header.</small>}
+                {sourceIdentity?.status === 'source_schema_conflicts_filename' && <small role="alert">
+                  Published release implied by the filename conflicts with source structure.
+                  No source identity has been certified.</small>}
+                {sourceIdentity?.status === 'source_schema_unresolved' && <small>
+                  Exact source layout unresolved; numeric results are withheld.</small>}
                 {item.source_year_conflict && <small role="status">Conflicting archive versions:
                   {item.conflicting_years?.join(', ')}. Original values withheld.</small>}
                 {!!item.equivalent_annual_years?.length && <small>
@@ -94,7 +112,20 @@ export default function IcioEditionEvidence() {
               <td>{passed}/{item.annual_matrix_count} passed
                 <small>{item.native_validation_status.replaceAll('_', ' ')}</small>
                 {!!item.rejected_matrices?.length && <small>Rejected years: {item.rejected_matrices.map(x =>
-                  String(x.year) + ' (' + x.error_code + ')').join(', ')}</small>}</td>
+                  String(x.year) + ' (' + x.error_code + ')').join(', ')}</small>}
+                {observed && <small>Observed source header ({observed.year}):
+                  {observed.production_area_count ?? '?'} production areas,
+                  {observed.industry_count ?? '?'} industries,
+                  {observed.node_columns ?? '?'} inter-industry columns,
+                  {observed.final_demand_area_count ?? '?'} final-demand areas,
+                  {observed.final_demand_columns ?? '?'} final-demand columns.
+                  {observed.error_code ? ' ' + observed.error_code : ''}
+                  {observed.sector_discrepancies?.[item.edition] &&
+                    ' Unexpected sector labels: ' +
+                    observed.sector_discrepancies[item.edition].unexpected.join(', ') +
+                    '; missing sector labels: ' +
+                    observed.sector_discrepancies[item.edition].missing.join(', ')}
+                </small>}</td>
               <td>{excluded.length ? excluded.join(', ') + ' source sectors excluded' :
                 'No source sectors excluded'}
                 {!!incomplete.length && <small>Incomplete 2018 target groups: {incomplete.join(', ')}
