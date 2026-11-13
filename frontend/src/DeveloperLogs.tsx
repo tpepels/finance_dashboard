@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { eventLine, formatDeveloperLog, type DiagnosticReport } from './developerLog';
+import { releaseFilenameId } from './release';
 
 /** Mounted only when the nested Developer logs disclosure is opened. */
 export default function DeveloperLogs() {
@@ -17,7 +18,8 @@ export default function DeveloperLogs() {
       const payload = await response.json() as DiagnosticReport;
       if (!isCurrent()) return;
       if (payload.schema_version !== 1 || !Array.isArray(payload.events)
-          || !Array.isArray(payload.issues) || !Array.isArray(payload.jobs)) {
+          || !Array.isArray(payload.issues) || !Array.isArray(payload.jobs)
+          || !payload.release?.release_id) {
         throw new Error('Unsupported diagnostics response');
       }
       setData(payload);
@@ -69,6 +71,7 @@ export default function DeveloperLogs() {
     const link = document.createElement('a');
     link.href = url;
     link.download = 'global-capital-monitor-diagnostics-' +
+      releaseFilenameId(data?.release) + '-' +
       (data?.generated_at.slice(0,10) ?? 'latest') + '.txt';
     document.body.appendChild(link);
     link.click();
@@ -95,6 +98,7 @@ export default function DeveloperLogs() {
     </div>
     {error && <p role="alert">{error}</p>}
     {data && <div className="developer-log-overview">
+      <span>Version {data.release.release_id}</span>
       <span>{data.coverage.with_data}/{data.coverage.registered} sources with data</span>
       <span>{data.issues.length} source issues</span>
       <span>{data.jobs.length} recent jobs</span>
