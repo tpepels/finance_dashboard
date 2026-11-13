@@ -382,6 +382,33 @@ class OwnerUploadedMsciTests(unittest.TestCase):
                                     for item in evidence["conflicts"]))
 
 
+class OwnerSuppliedMethodologyTests(unittest.TestCase):
+    def test_exact_pinned_pdf_is_accepted_with_explicit_origin_and_no_wayback_capture(self):
+        original = text_pdf([["MSCI Fundamental Data Methodology"],["Index ratios"]])
+        expected = msci.sha256(original).hexdigest()
+        eafe = factsheet(index="EAFE", rows=[
+            ("MSCI EAFE", "1.23", "16.50", "13.20", "2.25")])
+        with TemporaryDirectory() as temp, mock.patch.dict(
+                msci.METHODOLOGY, {"pdf_sha256": expected}):
+            root = Path(temp)
+            identity, receipt = msci.store_manual_methodology(root, original)
+            self.assertEqual(len(identity), 64)
+            self.assertTrue(receipt.endswith(".json"))
+            method = msci._methodology(root)
+            self.assertIs(method["publisher_origin_verified"], False)
+            self.assertIsNone(method["capture_url"])
+            original_url = next(url for url, i in msci.ORIGINAL_URLS.items()
+                                if i == "EAFE")
+            msci.store_manual_factsheet(root, "EAFE", original_url, eafe)
+            observed = msci.read_msci_regional_evidence(root)
+            self.assertEqual(msci.series_values(observed, "EAFE/PE"),
+                             {date(2026, 9, 1): Decimal("16.50")})
+            pinned = next((root / msci.ARCHIVE_DIR / "manual-methodology")
+                          .glob("*/methodology.pdf"))
+            pinned.write_bytes(b"tampered")
+            with self.assertRaises(msci.MsciFactsheetError):
+                msci.read_msci_regional_evidence(root)
+
 class CompositionGateTests(unittest.TestCase):
     def evidence(self, months=("2026-09-01",)):
         panels = {index: {"bound": True, "composition_months": list(months),
