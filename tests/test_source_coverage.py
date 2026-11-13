@@ -236,6 +236,64 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertFalse(report[old]["complete_for_pinned_release"])
         self.assertEqual(report[new]["state"], "available")
 
+    def test_full_verified_original_receipt_temporarily_closes_four_publisher_gaps(self):
+        sources = {
+            "activity.us.oecd_cli_trend_restored": date(2026, 5, 1),
+            "activity.jp.oecd_cli_trend_restored": date(2026, 5, 1),
+            "profit.es.nfc_net_fixed_assets": date(2023, 1, 1),
+            "profit.pt.nfc_net_fixed_assets": date(2023, 1, 1),
+        }
+        for sid, when in sources.items():
+            self.add_macro(sid, when=when)
+            with Session(self.engine) as session, session.begin():
+                run = session.get(IngestionRun, "run-" + sid)
+                run.evidence_scope = "full_source_snapshot"
+                run.evidence_kind = "response"
+                run.evidence_bundle_digest = "a" * 64
+                run.evidence_receipt_name = "source-proof.json"
+        current = {r["id"]: r for r in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        for sid in sources:
+            with self.subTest(series=sid):
+                row = current[sid]
+                self.assertEqual(row["state"], "source_checked_no_newer_data")
+                self.assertEqual(row["observation_state"], "stale")
+                self.assertEqual(row["freshness_basis"],
+                                 "recent_complete_publisher_snapshot")
+                self.assertFalse(row["complete_for_pinned_release"])
+                self.assertIsNone(row["published_through"])
+                self.assertIsNotNone(row["source_checked_through_utc"])
+        expired = {r["id"]: r for r in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 18))["items"]}
+        for sid in sources:
+            self.assertEqual(expired[sid]["state"], "stale")
+
+    def test_full_source_check_not_an_exemption_for_later_release_or_unproved_original(self):
+        cases = {
+            "labour.us.euklems_labour_compensation": date(2020, 1, 1),
+            "inequality.world.pretax_income.top1": date(2023, 1, 1),
+            "activity.us.oecd_cli_trend_restored": date(2026, 5, 1),
+        }
+        for sid, when in cases.items():
+            self.add_macro(sid, when=when)
+            with Session(self.engine) as session, session.begin():
+                run = session.get(IngestionRun, "run-" + sid)
+                run.evidence_scope = "full_source_snapshot"
+                run.evidence_kind = "response"
+                run.evidence_bundle_digest = "a" * 64
+                # Deliberately missing receipt on the accepted CLI original.
+                run.evidence_receipt_name = (
+                    None if sid == "activity.us.oecd_cli_trend_restored"
+                    else "source-proof.json")
+        rows = {r["id"]: r for r in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        for sid in cases:
+            self.assertNotEqual(rows[sid]["state"], "source_checked_no_newer_data")
+            self.assertEqual(rows[sid]["observation_state"], "stale")
+
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
                        when=date(2026, 9, 1), error='source_policy_deferred')
