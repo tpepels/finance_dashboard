@@ -308,3 +308,33 @@ to the owner's private Docker DB in this ChatGPT session.
 The public WID 2025/2026 methodology documents *newer world
 distribution estimates*, so its five 2023 histories cannot
 be declared current by extending lag thresholds.
+
+
+### Publisher-quota execution repair and refusal forensics
+
+A further production defect was found during this 14-source remediation:
+`execute_refresh_tasks` attempted to pass unsupported
+`provider` and `sources_not_attempted` keyword arguments to the
+bounded developer-event writer after a publisher-wide rate stop.
+That could throw a `TypeError` at the end of a partially deferred
+WID/OECD batch and obscure the actual source-health result. This is
+repaired using the declared `stage` and `failed` event fields,
+with acceptance tests that enforce the logger signature, count skipped
+WID requests, preserve progress, and continue unrelated providers.
+
+For genuinely denied sources such as the recorded Swinkels
+`source_policy_denied`, the worker now logs the application-generated
+policy ID and controlled policy reason in the safe `stage` token,
+while the canonical `reason` remains `source_policy_denied`.
+This does not expose the redirect URL or any source credentials and
+does not weaken hostname, method, HTTP policy or hash validation.
+The next deployed repair attempt can distinguish an unregistered
+redirect host from a required direct-origin acknowledgement or other
+policy refusal without guessing the underlying cause from a generic
+status code. The original publisher denial remains open until the
+next real request succeeds.
+
+Updated implementation and offline tests:
+`src/finance_dashboard/worker.py`,
+`tests/test_worker_publisher_quota.py`,
+`tests/test_refresh_architecture.py`.
