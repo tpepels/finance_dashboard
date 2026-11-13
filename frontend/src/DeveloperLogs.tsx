@@ -25,7 +25,7 @@ export default function DeveloperLogs() {
       setData(payload);
       setError('');
     } catch {
-      if (isCurrent()) setError('Developer diagnostics unavailable');
+      if (isCurrent()) { setData(null); setError('Developer diagnostics unavailable'); }
     } finally {
       if (isCurrent()) setRefreshing(false);
     }
