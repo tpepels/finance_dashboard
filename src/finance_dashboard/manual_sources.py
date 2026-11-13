@@ -236,8 +236,9 @@ class _PreparedManualProvider:
 
 class ManualSourceManager:
     def __init__(self, engine, *, stage: Path | None = None, evidence: Path | None = None,
-                 journal: Path | None = None):
+                 journal: Path | None = None, accepted=None):
         self.engine = engine
+        self.accepted = accepted or (lambda: None)
         self.stage = Path(stage or os.environ.get(
             "FINANCE_MANUAL_SOURCE_DIR", "/data/incoming/manual-sources"))
         self.evidence = Path(evidence or os.environ.get(
@@ -398,6 +399,11 @@ class ManualSourceManager:
                         # Only the replaceable upload staging is removed.
                         for role in spec["roles"]:
                             (self.stage / dataset / (role["id"] + ".bin")).unlink(missing_ok=True)
+                if any(item["status"] == "success" for item in results):
+                    # Same acceptance cache invalidation as automated refresh
+                    # and ICIO original import; the browser independently
+                    # invalidates its own data cache on completion.
+                    self.accepted()
             except Exception as exc:
                 from .service import safe_source_failure_code
                 with self.lock:
@@ -442,8 +448,11 @@ class ManualSourceManager:
 
 
 
-def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, journal=None):
-    manager = ManualSourceManager(engine, stage=stage, evidence=evidence, journal=journal)
+def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, journal=None,
+                           persistent: bool = True):
+    accepted = app.state.acceptance.invalidate if persistent else (lambda: None)
+    manager = ManualSourceManager(engine, stage=stage, evidence=evidence,
+                                  journal=journal, accepted=accepted)
 
     @app.get("/api/manual-sources")
     def get_manual_sources():
