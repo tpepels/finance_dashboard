@@ -1,3 +1,5 @@
+import type { ReleaseInfo } from './release';
+
 /** Safe, structured API view: export only explicitly selected fields. */
 export type DiagnosticEvent = {
   at: string; level: 'info' | 'warning' | 'error'; scope: string; event: string;
@@ -23,7 +25,7 @@ export type DiagnosticJob = {
   }>;
 };
 export type DiagnosticReport = {
-  schema_version: number; generated_at: string;
+  schema_version: number; generated_at: string; release: ReleaseInfo;
   configuration?: {
     fred_mode: string; fred_key_present: boolean; fred_key_format_valid: boolean;
     sec_contact_present: boolean; scheduled_refresh_enabled: boolean;
@@ -47,6 +49,10 @@ export function eventLine(e: DiagnosticEvent): string {
 export function formatDeveloperLog(report: DiagnosticReport): string {
   const lines: string[] = [
     'GLOBAL CAPITAL MONITOR — DEVELOPER DIAGNOSTICS',
+    'Application release: ' + report.release.release_id,
+    'Application version: ' + report.release.version,
+    'Build fingerprint: ' + report.release.build,
+    'Release activated (UTC): ' + (report.release.activated_at ?? 'not recorded'),
     'Generated (UTC): ' + report.generated_at,
     'Coverage: ' + report.coverage.with_data + '/' + report.coverage.registered
       + ' sources stored, ' + report.coverage.needs_attention + ' attention items',
