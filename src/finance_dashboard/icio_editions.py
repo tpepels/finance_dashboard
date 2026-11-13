@@ -440,7 +440,19 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                     "status": "not_evaluated", "numeric_reports": []}),
                 "native_validation_status": record.get("native_validation_status", "not_evaluated"),
                 "annual_matrix_count": record.get("annual_matrix_count", 0),
-                "annual_matrices": record.get("annual_matrices", []),
+                # Regular evidence/browser API responses carry summary plus
+                # worst offending identities, never tens of thousands of
+                # full diagnostic ledger rows. The immutable derived report
+                # and debug ZIP retain EVERY failed equation.
+                "annual_matrices": [{
+                    **{key: value for key, value in annual.items()
+                       if key != "accounting_failure_details"},
+                    "accounting_failure_examples": sorted(
+                        annual.get("accounting_failure_details") or [],
+                        key=lambda entry: -abs(float(
+                            entry.get("signed_residual_usd_million", "0"))),
+                    )[:5],
+                } for annual in record.get("annual_matrices", [])],
                 "rejected_matrices": record.get("rejected_matrices", []),
                 "expected_years": record.get("expected_years"),
                 "observed_years": record.get("observed_years", []),
