@@ -122,5 +122,59 @@ class PublisherLayoutTests(unittest.TestCase):
                 self.assertLess(result["max_relative_residual"], 1.0e-9)
 
 
+    def test_2018_country_tax_and_value_added_accounts_are_verified(self):
+        sectors = SOURCE_BY_EDITION["2018"]
+        producer_areas = ("USA", "FRA")
+        nodes = [area + "_" + sector for area in producer_areas for sector in sectors]
+        categories = ("HFCE", "NPISH", "GGFC", "GFCF", "INVNT", "P33")
+        fd = [area + "_" + category for area in producer_areas for category in categories]
+        rows = [["V1", *nodes, *fd, "TOTAL"]]
+        n = len(nodes)
+        for i, name in enumerate(nodes):
+            inputs = ["1" if i == j else "0" for j in range(n)]
+            demand = ["3" if k == 0 else "2" if k == 6 else "0" for k in range(12)]
+            rows.append([name, *inputs, *demand, "6"])
+        for area in producer_areas:
+            tax = ["1" if node.startswith(area + "_") else "0" for node in nodes]
+            rows.append([area + "_TAXSUB", *tax, *(["0"] * 12), "0"])
+        rows.append(["VALU", *(["4"] * n), *(["0"] * 12), "0"])
+        rows.append(["OUTPUT", *(["6"] * n), *(["0"] * 12), "0"])
+        body = "\\n".join(",".join(row) for row in rows) + "\\n"
+        original = DIMENSIONS["2018"]
+        with patch.dict(DIMENSIONS, {"2018": (2, 2, original[2], 1995, 2015)}):
+            audit = audit_native_csv(io.StringIO(body), edition="2018", year=2015)
+            self.assertEqual(audit["final_demand_categories"], sorted(categories))
+            self.assertEqual(audit["publisher_account_schema"],
+                             "publisher_VALU_country_TAXSUB_OUTPUT")
+            self.assertTrue(audit["publisher_account_rows_present"])
+            self.assertTrue(audit["accounting_passed"])
+            self.assertEqual(audit["row_failures"], 0)
+            self.assertEqual(audit["column_failures"], 0)
+            self.assertEqual(audit["output_vector_mismatches"], 0)
+            self.assertEqual(audit["country_direct_flows"]["USA"][
+                "source_value_added_usd_million"], str(36 * 5))
+            annual = read_native_year(io.StringIO(body), audit)
+            self.assertEqual(annual.value_added_basis,
+                             "publisher_VALU_plus_country_TAXSUB")
+            self.assertTrue((annual.value_added == 5).all())
+            result = solve_foreign_final_demand(annual)
+            self.assertLess(result["max_relative_residual"], 1.e-9)
+            self.assertGreater(result["selected_country_values"]["USA"][
+                "ffd_dva_usd_million"], 0)
+            # An incomplete set of country tax accounts remains unresolved;
+            # Leontief must never silently use it as verified publisher VA.
+            without_fra_tax = "\\n".join(row for row in body.strip().splitlines()
+                                           if not row.startswith("FRA_TAXSUB,")) + "\\n"
+            incomplete = audit_native_csv(io.StringIO(without_fra_tax),
+                                          edition="2018", year=2015)
+            self.assertFalse(incomplete["publisher_account_rows_present"])
+            self.assertIsNone(incomplete["accounting_passed"])
+            from finance_dashboard.icio_leontief import NativeValueAddedError
+            with self.assertRaisesRegex(NativeValueAddedError,
+                                        "unverified_publisher_accounts"):
+                read_native_year(io.StringIO(without_fra_tax), incomplete)
+
+
+
 if __name__ == "__main__":
     unittest.main()
