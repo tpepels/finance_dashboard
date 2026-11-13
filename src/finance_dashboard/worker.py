@@ -120,7 +120,8 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 # in-cadence rows remain visible in the operational audit,
                 # but do not consume scarce publisher requests in repair mode.
                 actionable = {item["id"] for item in census["items"]
-                              if item["family"] == "macro" and item["state"] != "available"}
+                              if item["family"] == "macro" and item["state"] not in (
+                                  "available", "source_checked_no_newer_data")}
                 prior = len(chosen)
                 chosen = [sid for sid in chosen if sid in actionable]
                 record_event("macro", "stage_finished",
