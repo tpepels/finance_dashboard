@@ -504,7 +504,8 @@ def _stored_captures(root: Path) -> set[str]:
     return {path.name for path in base.iterdir()} if base.is_dir() else set()
 
 
-def collect(root: Path, *, client=None, indexes=None, log=print) -> dict:
+def collect(root: Path, *, client=None, indexes=None, log=print,
+            stopped=None) -> dict:
     """Bounded, resumable collection: CDX listings, then each unseen capture once."""
     import httpx
     from .source_policy import managed_client, require_managed_client
@@ -513,6 +514,8 @@ def collect(root: Path, *, client=None, indexes=None, log=print) -> dict:
         timeout=90, follow_redirects=False, headers={"User-Agent": "finance-dashboard-research/0.2 (private research)"})
     summary = Counter()
     try:
+        if stopped is not None and stopped.is_set():
+            return {"cancelled": 1}
         if not (root / ARCHIVE_DIR / "methodology").is_dir():
             status, payload = _get(client, METHODOLOGY["capture_url"], MAXIMUM_PDF_BYTES)
             if status != 200:
@@ -523,6 +526,9 @@ def collect(root: Path, *, client=None, indexes=None, log=print) -> dict:
         for original, index in ORIGINAL_URLS.items():
             if indexes is not None and index not in indexes:
                 continue
+            if stopped is not None and stopped.is_set():
+                summary["cancelled"] += 1
+                return dict(summary)
             try:
                 status, raw = _get(client, cdx_query_url(original), MAXIMUM_CDX_BYTES, raw=False)
             except httpx.HTTPError:
@@ -548,6 +554,9 @@ def collect(root: Path, *, client=None, indexes=None, log=print) -> dict:
         summary["unique_captures"] = len(captures)
         summary["already_stored"] = len(captures) - len(pending)
         for number, row in enumerate(pending, 1):
+            if stopped is not None and stopped.is_set():
+                summary["cancelled"] += 1
+                return dict(summary)
             try:
                 status, payload = _get(client, capture_url(row["timestamp"], row["original"]), MAXIMUM_PDF_BYTES)
             except (httpx.HTTPError, MsciFactsheetError):
