@@ -457,6 +457,7 @@ class ManualSourceTests(unittest.TestCase):
             self.assertEqual(len(job["sources"]), 1)
             self.assertTrue(job["origin_verified"])
             importer.assert_called_once()
+            self.assertTrue(importer.call_args.kwargs["publisher_download"])
 
 
 
