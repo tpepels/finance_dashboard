@@ -75,7 +75,8 @@ class ManualSourceTests(unittest.TestCase):
         rows = {row["id"]: row for row in response.json()["datasets"]}
         self.assertEqual(set(rows), {
             "wid-world", "euklems-us", "swinkels-au", "gold-spot",
-            "msci-eafe", "msci-europe", "msci-japan", "oecd-icio"})
+            "msci-eafe", "msci-europe", "msci-japan", "msci-methodology",
+            "oecd-icio"})
         self.assertEqual(len(rows["wid-world"]["series_ids"]), 5)
         self.assertEqual(len(rows["msci-eafe"]["series_ids"]), 2)
         self.assertEqual(len(rows["oecd-icio"]["reference_links"]), 8)
@@ -166,6 +167,17 @@ class ManualSourceTests(unittest.TestCase):
         job = finished(self.client, "gold-spot")
         self.assertEqual(job["status"], "complete", job)
         self.assertEqual(job["sources"][0]["received"], 1)
+
+    def test_explicit_methodology_upload_rejects_unpinned_pdf(self):
+        from test_msci_regional_factsheets import text_pdf
+        bad = text_pdf([["Other methodology"]])
+        response = self.upload("msci-methodology", "methodology",
+                               "MSCI_Fundamental_Data_Methodology_Mar2021.pdf", bad)
+        self.assertEqual(response.status_code, 201)
+        job = finished(self.client, "msci-methodology")
+        self.assertEqual(job["status"], "failed", job)
+        self.assertFalse(list((self.root/"evidence"/"msci-regional-factsheets")
+                              .glob("manual-methodology/*/manifest.json")))
 
     def test_uploaded_msci_pdf_updates_canonical_pe_and_forward_pe(self):
         from test_msci_regional_factsheets import factsheet, ArchiveTests
