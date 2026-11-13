@@ -251,5 +251,21 @@ class CompositionGateTests(unittest.TestCase):
                       {item["code"] for item in result["checks"][-1]["limitations"]})
 
 
+class OriginalCollectionCancellationTests(unittest.TestCase):
+    def test_cancelled_original_collection_does_not_issue_any_request(self):
+        from threading import Event
+        stopped = Event()
+        stopped.set()
+        requested = []
+        transport = httpx.MockTransport(lambda request: (
+            requested.append(str(request.url)) or httpx.Response(500)))
+        with httpx.Client(transport=transport) as client, TemporaryDirectory() as directory:
+            output = msci.collect(Path(directory), client=client,
+                                  indexes={"EUROPE", "EAFE", "JAPAN"},
+                                  stopped=stopped, log=lambda _: None)
+        self.assertEqual(output, {"cancelled": 1})
+        self.assertEqual(requested, [])
+
+
 if __name__ == "__main__":
     unittest.main()
