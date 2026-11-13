@@ -27,7 +27,7 @@ interface Coverage {
   summary: Record<string, { total: number; with_data: number; without_data: number;
     needs_attention: number; stale?: number; refresh_failed_with_data?: number;
     deferred_attempts_with_data?: number; deferred_attempts_current_data?: number;
-    deferred_attempts_stale_data?: number }>;
+    deferred_attempts_stale_data?: number; deferred_attempts_publisher_checked?: number }>;
   items: SourceRow[];
   method: string;
 }
@@ -119,6 +119,10 @@ export default function SourceCoveragePanel() {
     ? Object.values(report.summary).reduce(
         (count, group) => count + (group.deferred_attempts_stale_data ?? 0), 0)
     : 0;
+  const checkedDeferred = report
+    ? Object.values(report.summary).reduce(
+        (count, group) => count + (group.deferred_attempts_publisher_checked ?? 0), 0)
+    : 0;
   return <details className="research-source-health" ref={ref} id="source-coverage"
     onToggle={event => {
       if (!event.currentTarget.open) {
@@ -151,7 +155,9 @@ export default function SourceCoveragePanel() {
             A refresh can be deferred or fail while previously recorded observations remain usable.
             {' '}{deferredWithCurrentData} retained histories are within their expected age even
             though their last refresh was deferred; these attempts remain in the full audit.
-            {' '}{deferredWithStaleData} deferred histories are also stale and still require attention.</p>
+            {' '}{deferredWithStaleData} deferred histories are also stale and still require attention.
+            {' '}{checkedDeferred} deferred histories have an old observation but a recent
+            verified full publisher check; those checks expire after 14 days.</p>
           <button type="button" className="research-export-audit" onClick={exportSourceAudit}>
             Download full source audit (CSV)
           </button>
