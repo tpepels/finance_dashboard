@@ -23,6 +23,8 @@ const market = {
   latest_source_date: null,
 };
 const payload = {
+  release: {version:'0.2.0',build:'1111222233334444',
+    release_id:'0.2.0+1111222233334444',activated_at:'2026-11-13T10:00:00Z'},
   summary: {
     macro: { total: 53, with_data: 52, without_data: 1, needs_attention: 1 },
     markets: { total: 24, with_data: 0, without_data: 24, needs_attention: 24 },
