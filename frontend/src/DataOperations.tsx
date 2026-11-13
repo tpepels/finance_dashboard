@@ -207,7 +207,7 @@ export default function DataOperations() {
       {' '}{last.result.resolved_issues ?? 0} issues resolved in this run;
       {' '}{last.result.issues_after ?? 'unknown'} issues remain.
       {last.result.failed_sources != null && last.result.failed_sources > 0
-        ? ' ' + last.result.failed_sources + ' requests failed or were deferred.' : ''}
+        ? ' ' + last.result.failed_sources + ' source operations failed, were deferred, or were not attempted after publisher quota exhaustion.' : ''}
       {' '}Preserved original observations are never overwritten.
     </p>}
     {error && <p role="alert" className="data-sync-error">{error}</p>}
