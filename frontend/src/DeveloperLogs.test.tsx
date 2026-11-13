@@ -63,14 +63,17 @@ describe('developer log hidden support console',()=>{
       value:createObjectURL});
     Object.defineProperty(URL,'revokeObjectURL',{configurable:true,
       value:revokeObjectURL});
+    let filename = '';
     const click=vi.spyOn(HTMLAnchorElement.prototype,'click')
-      .mockImplementation(()=>undefined);
+      .mockImplementation(function (this: HTMLAnchorElement) { filename = this.download; });
     const user=userEvent.setup();
     render(<DeveloperLogs/>);
     await screen.findByText('80/80 sources with data');
     await user.click(screen.getByRole('button',{name:'Download .txt'}));
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(1);
+    expect(filename).toContain('0.2.0+1111222233334444');
+    expect(filename).toContain('2026-11-03.txt');
     expect(screen.getByText('Version 0.2.0+1111222233334444')).toBeTruthy();
     expect(screen.getByRole('status').textContent).toContain('prepared for download');
   });
