@@ -189,7 +189,7 @@ def _accounting_failures_csv(summary: dict, release_id: str) -> tuple[str, dict]
     """
     dest = StringIO()
     writer = csv.DictWriter(dest, fieldnames=ACCOUNTING_FAILURE_COLUMNS,
-                            lineterminator="\\r\\n")
+                            lineterminator="\r\n")
     writer.writeheader()
     failures = 0
     missing_years = []
