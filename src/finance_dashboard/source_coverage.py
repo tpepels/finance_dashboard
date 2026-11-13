@@ -211,6 +211,18 @@ def _summary(items: list[dict]) -> dict:
         result[state] = result.get(state, 0) + 1
     result["with_data"] = sum(item["stored_periods"] > 0 for item in items)
     result["without_data"] = result["total"] - result["with_data"]
+    # Preserve attempt-level operational deferrals separately from actionable
+    # observation-health problems. A blocked optional refresh cannot make
+    # in-cadence stored observations stale.
+    result["deferred_attempts_with_data"] = sum(
+        item["stored_periods"] > 0 and item["refresh_state"] == "deferred"
+        for item in items)
+    result["deferred_attempts_current_data"] = sum(
+        item["stored_periods"] > 0 and item["refresh_state"] == "deferred"
+        and item["observation_state"] == "current" for item in items)
+    result["deferred_attempts_stale_data"] = sum(
+        item["stored_periods"] > 0 and item["refresh_state"] == "deferred"
+        and item["observation_state"] == "stale" for item in items)
     result["needs_attention"] = sum(item["state"] in {
         "not_ingested", "collection_disabled", "collection_failed",
         "collection_deferred", "refresh_deferred_with_data",
@@ -228,8 +240,12 @@ def _next_action(*, mapped, count, stale, complete, status, error):
         return 'Access was refused; configure authorized access before retrying.'
     if status == 'deferred' and complete:
         return 'Complete for the pinned release; previous network deferral does not require another download.'
+    if status == 'deferred' and count and not stale:
+        return ('Retained history is within its expected source-age window; '
+                'the last refresh was deferred. Recheck the publisher and retry '
+                'when source-policy availability permits.')
     if status == 'deferred':
-        return 'Wait for the publisher budget or cooldown before the next collection attempt.'
+        return 'Refresh was deferred; the observation is stale or missing. Recheck the publisher and retry when source-policy availability permits.'
     if status == 'failed':
         return 'Review the recorded failure and collector; existing observations are preserved.'
     if not count:
@@ -289,10 +305,14 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         state = "collection_disabled"
     elif count == 0:
         state = "not_ingested"
-    elif last is not None and last["status"] == "deferred" and is_complete_for_release:
-        # A publisher-quota refusal is not an outstanding failure to refresh
-        # an immutable named edition whose retained observations are complete.
-        # Keep the original deferred attempt visible in refresh_state.
+    elif last is not None and last["status"] == "deferred" and (
+            is_complete_for_release or (
+                latest is not None and lag <= SOURCE_LAGS[frequency])):
+        # A deferred attempted refresh does not invalidate existing data
+        # that are still within the explicitly configured reporting window.
+        # This is ONLY source-age classification, not evidence that a newer
+        # publisher release does not exist. Last-attempt deferral and its code
+        # remain visible independently, including in the complete audit CSV.
         state = "available"
     elif last is not None and last["status"] == "deferred":
         state = "refresh_deferred_with_data"
