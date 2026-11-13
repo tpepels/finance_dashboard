@@ -376,11 +376,14 @@ def expected_archive_years(filename: str, edition: str) -> list[int] | None:
 
 
 def audit_archive_native(zip_file: ZipFile, edition: str,
-                         *, dimensions: tuple | None = None, table: str = "extended") -> dict:
+                         *, dimensions: tuple | None = None, table: str = "extended",
+                         original_filename: str | None = None) -> dict:
     # Rdata and supplemental econA/B/VB/Z archives are valid source evidence,
     # but cannot be called audited matrices without a CSV member.
+    from .icio_schema import probe_archive_layout
+    header_probe = probe_archive_layout(zip_file)
     members = native_year_members(zip_file, edition)
-    mandatory = expected_archive_years(getattr(zip_file, "filename", "") or "", edition)
+    mandatory = expected_archive_years(original_filename or getattr(zip_file, "filename", "") or "", edition)
     found = [year for year, _ in members]
     # Exact year coverage is required for edition comparison; absent years
     # never count as verified native original matrices.
@@ -425,6 +428,7 @@ def audit_archive_native(zip_file: ZipFile, edition: str,
             "annual_matrices": results, "annual_matrix_count": len(results),
             "expected_years": mandatory, "observed_years": found,
             "rejected_matrices": rejected,
+            "header_schema": header_probe,
             "native_validation_status": ("native_parser_rejected" if rejected
                 else "native_matrix_years_incomplete" if not complete
                 else "native_accounts_verified" if results
