@@ -206,6 +206,27 @@ class SourceCoverageTests(unittest.TestCase):
             self.assertEqual(expired[sid]["state"], "stale")
             self.assertFalse(expired[sid]["complete_for_pinned_release"])
 
+    def test_discontinued_ecb_hicp_is_complete_without_splicing_new_2025_base(self):
+        old = "prices.ea.hicp_index"
+        new = "prices.ea.hicp_index_2025"
+        self.add_macro(old, when=date(2025, 12, 1))
+        self.add_macro(new, when=date(2026, 10, 1))
+        row = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        self.assertEqual(row[old]["state"], "available")
+        self.assertTrue(row[old]["complete_for_pinned_release"])
+        self.assertEqual(row[old]["published_through"], "2025-12-01")
+        self.assertEqual(row[old]["latest_source_date"], "2025-12-01")
+        self.assertEqual(row[new]["state"], "available")
+        self.assertEqual(row[new]["latest_source_date"], "2026-10-01")
+        self.assertNotEqual(row[old]["published_release"],
+                            row[new]["published_release"])
+        # Unlike the new separate series, an incomplete legacy edition
+        # remains an explicit gap and cannot inherit the new one.
+        self.add_macro("prices.ea.hicp_index_2025", when=date(2026, 9, 1))
+        self.assertEqual(row[old]["latest_source_date"], "2025-12-01")
+
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
                        when=date(2026, 9, 1), error='source_policy_deferred')
