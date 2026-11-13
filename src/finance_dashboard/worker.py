@@ -125,7 +125,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 chosen = [sid for sid in chosen if sid in actionable]
                 record_event("macro", "stage_finished",
                              action="source_health_selection", status="complete",
-                             selected=len(chosen), skipped=prior - len(chosen))
+                             completed=len(chosen), total=prior)
             # A frozen publisher edition does not release more observations
             # every day. Skip already complete versions in *scheduled* cycles;
             # explicit/manual refresh still rechecks them on request.
