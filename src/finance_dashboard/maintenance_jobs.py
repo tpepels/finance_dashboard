@@ -105,6 +105,7 @@ def _sec(options: dict, sources: set[str], markets: set[str]) -> dict:
 ACTIONS = (
     MaintenanceAction("sync_current", frozenset(), "run_sync", _sync),
     MaintenanceAction("sync_history", frozenset(), "run_sync", _sync),
+    MaintenanceAction("repair_source_health", frozenset(), "run_repair_source_health", _empty),
     MaintenanceAction("refresh_sources", frozenset({"series_ids"}), "run_refresh_sources", _sources),
     MaintenanceAction("refresh_markets", frozenset({"instrument_ids", "currencies"}), "run_refresh_markets", _markets),
     MaintenanceAction("check_alfred", frozenset(), "run_alfred", _empty),
