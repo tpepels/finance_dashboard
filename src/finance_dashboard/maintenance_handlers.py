@@ -82,7 +82,7 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
                 indexes=msci_indexes, stopped=cancelled,
                 log=lambda summary: record_event(
                     "macro", "stage_finished", action="repair_msci_factsheets",
-                    status="running", summary_size=len(summary)))
+                    status="running", completed=len(summary)))
             msci_result["status"] = (
                 "partial" if msci_result.get("cdx_failed") or
                 msci_result.get("capture_failed") or
