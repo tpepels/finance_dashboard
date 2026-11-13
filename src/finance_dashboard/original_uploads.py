@@ -198,7 +198,13 @@ class OriginalImportManager:
                     result = reassess_registered_archive(self.evidence, source_sha)
                     row = {"filename": result["filename"],
                            "status": result["status"], "edition": result["edition"],
-                           "archive_sha256": source_sha}
+                           "archive_sha256": source_sha,
+                           "native_validation_status": result["native_validation_status"],
+                           "annual_matrix_count": result["annual_matrix_count"],
+                           "rejected_year_count": result["rejected_year_count"],
+                           "header_schema_status": result["header_schema_status"],
+                           "source_identity_status": result[
+                               "source_identity_reconciliation"]["status"]}
                 except Exception as exc:
                     code = str(exc)
                     if not re.fullmatch(r"icio_[a-z_]{1,90}", code):
@@ -209,7 +215,16 @@ class OriginalImportManager:
                     job["completed"] += 1
                     self._save()
             failures = sum(row["status"] == "failed" for row in job["results"])
+            rejected = sum(row.get("rejected_year_count", 0) for row in job["results"])
+            accepted = sum(row.get("annual_matrix_count", 0) for row in job["results"])
             with self.lock:
+                job["scientific_assessment"] = {
+                    "accepted_native_years": accepted,
+                    "rejected_native_years": rejected,
+                    "unresolved_archives": sum(row.get("header_schema_status") ==
+                        "unresolved" for row in job["results"]),
+                    "note": "Queue completion means processing finished; scientific acceptance is separate.",
+                }
                 job["status"] = "partial" if failures else "complete"
                 job["error_code"] = "original_reassessment_partial" if failures else None
                 job["finished_at"] = datetime.now(timezone.utc).isoformat()
