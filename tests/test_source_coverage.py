@@ -131,7 +131,7 @@ class SourceCoverageTests(unittest.TestCase):
             self.assertEqual(later[sid]["state"], "stale")
             self.assertIsNone(later[sid]["published_through"])
         self.add_macro("property.pt.commercial_all.bis",
-                       when=date(2024, 1, 1))
+                       when=date(2021, 1, 1))
         unverified = {item["id"]: item for item in build_coverage(
             self.engine, self.catalog, self.registry,
             asof=date(2026, 11, 13))["items"]}
