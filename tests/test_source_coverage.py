@@ -270,6 +270,32 @@ class SourceCoverageTests(unittest.TestCase):
         for sid in sources:
             self.assertEqual(expired[sid]["state"], "stale")
 
+    def test_later_quota_deferral_preserves_recent_complete_publisher_check(self):
+        sid = "profit.es.nfc_net_fixed_assets"
+        self.add_macro(sid, status="success", when=date(2023, 1, 1))
+        with Session(self.engine) as session, session.begin():
+            success = session.get(IngestionRun, "run-" + sid)
+            success.evidence_scope = "full_source_snapshot"
+            success.evidence_kind = "response"
+            success.evidence_bundle_digest = "c" * 64
+            success.evidence_receipt_name = "source-proof.json"
+            session.add(IngestionRun(
+                id="later-deferred-stock", series_id=sid,
+                status="deferred", started_at=NOW + timedelta(hours=1),
+                ended_at=NOW + timedelta(hours=1), requested_from=None,
+                observations_received=0, versions_added=0,
+                error="source_policy_deferred"))
+        report = build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))
+        row = next(r for r in report["items"] if r["id"] == sid)
+        self.assertEqual(row["state"], "source_checked_no_newer_data")
+        self.assertEqual(row["refresh_state"], "deferred")
+        self.assertEqual(row["observation_state"], "stale")
+        self.assertEqual(row["last_failure_code"], "source_policy_deferred")
+        self.assertEqual(report["summary"]["macro"]["deferred_attempts_stale_data"], 0)
+        self.assertEqual(report["summary"]["macro"]["deferred_attempts_publisher_checked"], 1)
+
     def test_full_source_check_not_an_exemption_for_later_release_or_unproved_original(self):
         cases = {
             "labour.us.euklems_labour_compensation": date(2020, 1, 1),
