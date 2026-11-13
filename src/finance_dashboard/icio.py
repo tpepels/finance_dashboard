@@ -550,8 +550,9 @@ def _publisher_audit(matrix_path: str, readme_path: str, year: int) -> dict:
                 "The regular table cannot reproduce extended-table TiVA exactly; no Leontief or shock result is certified."]}
 
 
-def store_icio_publisher_archive(archive: Path, readme: Path, evidence_root: Path) -> list[Path]:
-    """Retain one owner-downloaded OECD archive and each of its year matrices."""
+def store_icio_publisher_archive(archive: Path, readme: Path, evidence_root: Path,
+                                 *, publisher_download: bool = False) -> list[Path]:
+    """Retain the original OECD ZIP and verified annual matrices with retrieval provenance."""
     archive, readme = Path(archive), Path(readme)
     expected = PUBLISHER_ARCHIVES.get(archive.name)
     if (expected is None or archive.is_symlink() or readme.is_symlink()
@@ -563,9 +564,12 @@ def store_icio_publisher_archive(archive: Path, readme: Path, evidence_root: Pat
                "members": {PUBLISHER_MATRICES[y]["member"]: PUBLISHER_MATRICES[y]["sha256"] for y in years},
                "matrix_sha256": expected["sha256"]}
     identity = {"publisher": "OECD", "edition": "2025", "update": "January 2026", "table": "regular",
-                "acquisition": "owner_browser_download", "archive": archive.name}
+                "acquisition": ("publisher_https_download" if publisher_download else "owner_browser_download"),
+                "archive": archive.name}
     root = Path(evidence_root) / "icio"
-    stored = [_store_original_bundle(root / f"regular-2025-archive-{archive.stem}", {"archive.zip": archive},
+    archive_label = (f"regular-2025-archive-server-{archive.stem}" if publisher_download
+                     else f"regular-2025-archive-{archive.stem}")
+    stored = [_store_original_bundle(root / archive_label, {"archive.zip": archive},
               listing, identity, {"archive": f"{PUBLISHER_PAGE}#{archive.name}"},
               lambda bundle: _verified_manifest(bundle, identity, {"archive.zip", "audit.json"},
                                                 {"archive": f"{PUBLISHER_PAGE}#{archive.name}"}, expected["sha256"]))]
@@ -671,12 +675,14 @@ def read_icio_evidence(evidence_root: Path, *, include_residuals: bool = False) 
             "additional_editions": read_edition_archives(evidence_root)}
 
 
-def import_original_archive(archive: Path, root: Path, readme: Path | None = None) -> dict:
-    """Single canonical ICIO import entry point for browser and command line."""
+def import_original_archive(archive: Path, root: Path, readme: Path | None = None,
+                            *, publisher_download: bool = False) -> dict:
+    """Canonical ICIO importer for validated uploads and registered HTTPS downloads."""
     if archive.name in PUBLISHER_ARCHIVES:
         if readme is None or not readme.is_file():
             raise ValueError("icio_publisher_readme_required")
-        files = store_icio_publisher_archive(archive, readme, root)
+        files = store_icio_publisher_archive(
+            archive, readme, root, publisher_download=publisher_download)
         years = sorted(year for year, record in PUBLISHER_MATRICES.items()
                        if record["archive"] == archive.name)
         return {"filename": archive.name, "status": "verified_publisher_regular_original",
