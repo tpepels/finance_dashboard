@@ -361,7 +361,11 @@ class ManualSourceManager:
                 return pending["id"]
         job_id = uuid4().hex
         spool = self._job_dir(job_id)
-        spool.mkdir(parents=True, exist_ok=False)
+        jobs_root = spool.parent
+        jobs_root.mkdir(parents=True, exist_ok=True)
+        if jobs_root.is_symlink():
+            raise ValueError("Original job spool must not be a symlink")
+        spool.mkdir(mode=0o700, exist_ok=False)
         try:
             if method == "upload":
                 for role in spec["roles"]:
@@ -493,6 +497,9 @@ class ManualSourceManager:
         dataset, method = job["dataset"], job["method"]
         spec = source_specs()[dataset]
         folder = self._job_dir(job["id"])
+        if (folder.parent.is_symlink() or folder.is_symlink() or
+                not folder.is_dir()):
+            raise ProviderError("Original import spool identity invalid")
         if dataset == "oecd-icio":
             self._run_icio(job, folder)
             return
