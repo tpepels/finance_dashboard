@@ -181,6 +181,25 @@ PUBLICATION_BOUNDS.update({
     } for span in (1, 3, 6)
 })
 
+# Shiller's 2026 monthly rows continue for prices/CAPE, but earnings and
+# dividends are last populated in June 2026 (the July-September 2026 cells
+# are blank, NOT zero). Corroborated on 2026-11-13 against the separately
+# published monthly Shiller values (Finance Toolkit/YCharts), together
+# with Shiller's documentation that earnings/dividends are interpolated
+# from lagged S&P four-quarter statements. Expires before the next quarterly
+# earnings update reported for December 2026. This does not establish
+# observation-level first publication or certify the author's current XLS.
+PUBLICATION_BOUNDS.update({
+    sid: {
+        "version": "Shiller monthly earnings/dividends last populated June 2026",
+        "verified_as_of": date(2026, 11, 13),
+        "expires": date(2026, 12, 8),
+        "through": date(2026, 6, 1),
+        "url": "https://shillerdata.com/",
+    }
+    for sid in ("valuation.us.shiller_earnings", "valuation.us.shiller_dividend")
+})
+
 # Next 2026-Q2 BIS total-credit update is scheduled for 2026-12-07.
 _BIS_CREDIT_COUNTRIES = ("cn", "de", "jp", "pt", "us")
 _BIS_CREDIT_MEASURES = (
