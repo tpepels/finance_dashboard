@@ -99,7 +99,7 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
                  current_item="Reconcile newly available publisher observations")
     failed = refresh_all(
         self.engine, full=False, series_ids=targets,
-        skip_complete_pinned=True, stopped=cancelled,
+        stopped=cancelled,
         progress=lambda done, total, sid: self._progress(job_id, done, total, sid))
     if cancelled.is_set():
         raise MaintenanceBlocked("cancelled")
