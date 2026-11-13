@@ -6,7 +6,8 @@ stderr are exposed. The same short bounded diagnostic journal powers the UI and 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from io import BytesIO
+from io import BytesIO, StringIO
+import csv
 import json
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -109,10 +110,13 @@ def _original_method_summary(root) -> dict:
                     "original_registration_status": row.get("status"),
                     "current_native_status": derived.get("native_validation_status", "not_evaluated"),
                     "derived_reassessment_present": addon is not None,
+                    "derived_method": addon.get("method") if addon else None,
                     "native_years": [{
                         "year": y.get("year"),
                         "original_member_sha256": y.get("original_member_sha256"),
                         "accounting_passed": y.get("accounting_passed"),
+                        "accounting_failure_summary": y.get("accounting_failure_summary"),
+                        "accounting_failure_details": y.get("accounting_failure_details"),
                         "publisher_account_schema": y.get("publisher_account_schema"),
                         "publisher_account_rows_present": y.get("publisher_account_rows_present"),
                         "observed_source_account_row_labels": y.get("observed_source_account_row_labels", []),
@@ -161,6 +165,78 @@ def _original_method_summary(root) -> dict:
     return result
 
 
+ACCOUNTING_FAILURE_COLUMNS = (
+    "release_id", "archive_filename", "archive_sha256", "derived_method",
+    "edition", "table", "year", "original_member_sha256",
+    "axis", "node_label", "csv_line_number", "country", "native_industry_code",
+    "equation", "precision_classification",
+    "signed_residual_usd_million", "absolute_residual_usd_million",
+    "permissible_serialization_error_usd_million",
+    "hypothetical_binary64_error_usd_million",
+    "hypothetical_combined_error_usd_million",
+    "intermediate_usd_million", "final_demand_usd_million",
+    "row_output_usd_million", "net_taxes_usd_million",
+    "value_added_usd_million", "publisher_output_usd_million",
+)
+
+
+def _accounting_failures_csv(summary: dict, release_id: str) -> tuple[str, dict]:
+    """Full failure ledger from immutable derived reports, no originals reread.
+
+    A complete v8+ report includes every failed identity, not just the worst
+    residual or a sampled subset. Earlier versions are explicitly reported
+    as unavailable, never as a scientifically clean pass.
+    """
+    dest = StringIO()
+    writer = csv.DictWriter(dest, fieldnames=ACCOUNTING_FAILURE_COLUMNS,
+                            lineterminator="\\r\\n")
+    writer.writeheader()
+    failures = 0
+    missing_years = []
+    for archive in summary.get("archives", []):
+        for year in archive.get("native_years", []):
+            breakdown = year.get("accounting_failure_summary")
+            details = year.get("accounting_failure_details")
+            expected = sum(year.get(k) or 0 for k in
+                           ("row_failures", "column_failures", "output_vector_mismatches"))
+            if (not isinstance(details, list) or not isinstance(breakdown, dict)
+                    or breakdown.get("total_failed_equations") != len(details)
+                    or len(details) != expected or
+                    breakdown.get("all_failed_equations_recorded") is not True):
+                missing_years.append({"filename": archive.get("filename"),
+                                      "year": year.get("year"),
+                                      "expected_failures": expected,
+                                      "reason": "v8_failure_ledger_unavailable_or_incomplete"})
+                continue
+            for item in details:
+                row = {key: item.get(key) for key in ACCOUNTING_FAILURE_COLUMNS}
+                row.update({
+                    "release_id": release_id,
+                    "archive_filename": archive.get("filename"),
+                    "archive_sha256": archive.get("archive_sha256"),
+                    "derived_method": archive.get("derived_method"),
+                    "edition": archive.get("edition"),
+                    "table": archive.get("table"),
+                    "year": year.get("year"),
+                    "original_member_sha256": year.get("original_member_sha256"),
+                })
+                parts = item.get("source_components_usd_million") or {}
+                for name in ("intermediate", "final_demand", "row_output",
+                             "net_taxes", "value_added", "publisher_output"):
+                    row[name + "_usd_million"] = parts.get(name)
+                writer.writerow(row)
+                failures += 1
+    return dest.getvalue(), {
+        "failure_equations_exported": failures,
+        "annual_matrices_without_complete_failure_ledger": missing_years,
+        "complete_for_exported_matrices": not missing_years,
+        "classification_note":
+            "Serialization bounds enforce the unchanged source-accounting gate. "
+            "Binary64 summation bounds are hypothetical diagnostic models; "
+            "they never certify failed original source accounts."
+    }
+
+
 def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenance, importer):
     from .source_coverage import build_coverage
     from .source_policy import policy_summary
@@ -186,6 +262,9 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
         release = release_info()
         policy = policy_summary()
         operations = maintenance.list()
+        source_audit = _original_method_summary(importer.evidence)
+        failure_csv, failure_manifest = _accounting_failures_csv(
+            source_audit, release["release_id"])
         bundle = BytesIO()
         with ZipFile(bundle, "w", compression=ZIP_DEFLATED) as archive:
             def put(name, data):
@@ -215,7 +294,10 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
             })
             put("diagnostics/original-import.json", importer.public_status())
             put("diagnostics/original-method-audit.json",
-                {**_original_method_summary(importer.evidence), "release": release})
+                {**source_audit, "release": release})
+            put("diagnostics/icio-accounting-failures-manifest.json",
+                {**failure_manifest, "release": release})
+            archive.writestr("diagnostics/icio-accounting-failures.csv", failure_csv)
             archive.writestr("README.txt",
                 "Global Capital Monitor build: " + release["release_id"] + "\\n"
                 "Release activated: " + str(release["activated_at"] or "not recorded") + "\\n"
