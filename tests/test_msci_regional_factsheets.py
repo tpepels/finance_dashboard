@@ -278,14 +278,16 @@ class ArchiveTests(unittest.TestCase):
         payload, pins = self.methodology(None)
         originals = {WORLD_URL: "WORLD", ACWI_URL: "ACWI"}
         calls = []
+        first_name = min(originals).rsplit("/", 1)[-1]
         def handler(request):
+            import time
             url = str(request.url)
             calls.append(url)
-            if "msci-world-index.pdf" in url:
+            if first_name in url:
                 return httpx.Response(200, content=json.dumps([
                     ["timestamp","original","statuscode","mimetype","digest","length"]
                 ]).encode())
-            raise PolicyDeferred("request-budget")
+            raise PolicyDeferred("internet-archive", "request-budget", time.time() + 60)
         with TemporaryDirectory() as temp, mock.patch.dict(msci.METHODOLOGY, pins), \
              mock.patch.dict(msci.ORIGINAL_URLS, originals, clear=True):
             root = Path(temp)
@@ -298,7 +300,7 @@ class ArchiveTests(unittest.TestCase):
             self.assertEqual(first["cdx_missing"], 1)
             self.assertEqual(second["cdx_cache_reused"], 1)
             self.assertEqual(second["cdx_missing"], 1)
-            self.assertEqual(len([u for u in calls if "msci-world-index.pdf" in u]), 1)
+            self.assertEqual(len([u for u in calls if first_name in u]), 1)
 
 
 class CompositionGateTests(unittest.TestCase):
