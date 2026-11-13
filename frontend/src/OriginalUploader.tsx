@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 type StoredFile = { filename: string; bytes: number; kind: string };
 type Result = { filename: string; status: string; error_code?: string; edition?: string; table?: string;
   native_validation_status?: string; annual_matrix_count?: number;
-  rejected_year_count?: number; header_schema_status?: string; source_identity_status?: string };
+  rejected_year_count?: number; rejected_error_codes?: Record<string, number>;
+  header_schema_status?: string; source_identity_status?: string };
 type ImportJob = {
   id: string; status: string; mode?: string; completed: number; total: number;
   error_code?: string | null; results: Result[];
@@ -197,6 +198,9 @@ export default function OriginalUploader() {
             · {result.rejected_year_count ?? 0} rejected
             {result.source_identity_status ? ' · ' +
               result.source_identity_status.replaceAll('_', ' ') : ''}
+            {!!Object.keys(result.rejected_error_codes ?? {}).length &&
+              ' · rejection causes: ' + Object.entries(result.rejected_error_codes ?? {})
+                .map(([code, count]) => code + ' (' + count + ')').join(', ')}
           </small>}
         </li>)}</ul>}
     </div>}
