@@ -166,6 +166,31 @@ class ManualSourceTests(unittest.TestCase):
         self.assertEqual(job["status"], "complete", job)
         self.assertEqual(job["sources"][0]["received"], 1)
 
+    def test_uploaded_msci_pdf_updates_canonical_pe_and_forward_pe(self):
+        from test_msci_regional_factsheets import factsheet, ArchiveTests
+        from finance_dashboard import msci_regional_factsheets as msci
+        methodology, pins = ArchiveTests().methodology(None)
+        body = factsheet(index="EAFE", rows=[
+            ("MSCI EAFE", "1.23", "16.50", "13.20", "2.25"),
+            ("MSCI World", "1.52", "22.69", "17.92", "4.10")])
+        with patch.dict(msci.METHODOLOGY, pins):
+            msci.store_methodology(self.root / "evidence", methodology)
+            posted = self.upload("msci-eafe", "factsheet", "msci-eafe.pdf", body)
+            self.assertEqual(posted.status_code, 201, posted.text)
+            job = finished(self.client, "msci-eafe")
+            self.assertEqual(job["status"], "complete", job)
+            self.assertEqual(len(job["sources"]), 2)
+            self.assertEqual({r["last_period"] for r in job["sources"]},
+                             {"2026-09-01"})
+            with Session(self.engine) as session:
+                trailing = current_observations(
+                    session, "valuation.eafe.msci_trailing_pe")
+                forward = current_observations(
+                    session, "valuation.eafe.msci_forward_pe")
+                self.assertEqual(trailing[-1].period, date(2026, 9, 1))
+                self.assertEqual(forward[-1].period, date(2026, 9, 1))
+            self.assertFalse(job["origin_verified"])
+
     def test_swinkels_does_not_accept_same_title_different_ods(self):
         invalid = self.upload("swinkels-au", "workbook", "returns.ods",
                               b"not the hash-pinned original")
