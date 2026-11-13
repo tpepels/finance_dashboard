@@ -134,6 +134,11 @@ _BIS_PROPERTY_SERIES_END = {
     "property.world.real_residential.bis": ("XW", date(2026, 1, 1)),
     "property.us.real_residential.bis": ("US", date(2026, 4, 1)),
     "property.ea.real_residential.bis": ("XM", date(2026, 4, 1)),
+    # The BIS October 29 selected-residential release covers 2026-Q2.
+    # Local originals already hold these exact real-index keys through Q2.
+    # The November 26 release can revise or extend them.
+    "property.de.real_residential.bis": ("DE", date(2026, 4, 1)),
+    "property.pt.real_residential.bis": ("PT", date(2026, 4, 1)),
 }
 PUBLICATION_BOUNDS.update({
     sid: {
@@ -144,6 +149,19 @@ PUBLICATION_BOUNDS.update({
         "url": f"https://data.bis.org/topics/RPP/BIS%2CWS_SPP%2C1.0/Q.{area}.R.628",
     }
     for sid, (area, through) in _BIS_PROPERTY_SERIES_END.items()
+})
+
+# BIS's official commercial property key is explicitly shown ending at
+# 2026-Q2 as of 2026-11-13; the next monthly commercial update is due
+# 26 November. This is not inferred from the residential or nominal series.
+PUBLICATION_BOUNDS.update({
+    "property.us.commercial_all.bis": {
+        "version": "BIS commercial property prices WS_CPP Q.US.0.A.0.2.6.0",
+        "verified_as_of": date(2026, 11, 13),
+        "expires": date(2026, 11, 26),
+        "through": date(2026, 4, 1),
+        "url": "https://data.bis.org/topics/CPP/BIS%2CWS_CPP%2C1.0/Q.US.0.A.0.2.6.0",
+    },
 })
 
 # Immutable primary-source artifacts: a verified *original edition* does
