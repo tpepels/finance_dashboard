@@ -338,3 +338,39 @@ Updated implementation and offline tests:
 `src/finance_dashboard/worker.py`,
 `tests/test_worker_publisher_quota.py`,
 `tests/test_refresh_architecture.py`.
+
+
+### WID acquisition deadlock fixed in the canonical native adapter
+
+The original WID adapter requests **two separate publisher files**
+(`WID_data_WO.csv` and `WID_metadata_WO.csv`) before validating and
+archiving world shares. Its publisher policy requires a 360-second
+minimum interval between requests, and deliberately returns
+`PolicyDeferred` instead of sleeping inside a refresh. Previously the
+first downloaded CSV was discarded when the second was deferred; the
+next attempt could download the first CSV again and repeat this
+indefinitely. That is a real acquisition deadlock, particularly for
+the five outstanding world shares.
+
+`WidClient` now persists the already successfully received **data
+CSV only when its metadata request is deferred**, in a distinct,
+non-certifying `wid-pending/<area>/<sha256>/` stage. The pending stage
+contains the original URL, byte length, SHA-256, safe original response
+headers, and retrieval timestamp. A subsequent normal invocation
+checks its exact original identity, source area, SHA, size and maximum
+two-day age, and can request only the missing metadata file under the
+**same publisher governor**. It is never counted as an accepted
+historical observation, original-source receipt or completed bundle
+until the full data+metadata original pair passes the existing WID
+variable/percentile/population parser and the immutable archival
+verification. After a successful completed pair, the temporary stage
+is deleted; a future normal refresh obtains new source data rather
+than hiding revisions behind an old cache.
+
+This is one shared native WID collector, not a parallel fallback.
+Tests cover cross-run resume, zero premature source receipts,
+hash-tamper rejection, full original archive, and fresh acquisition
+after successful completion. **The five world observations will not
+change until the owner deploys and executes publisher requests**
+at least as many runs as the governed cooldown requires, and the
+actual publisher bulk content is verified.
