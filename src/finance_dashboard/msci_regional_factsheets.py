@@ -499,14 +499,52 @@ def _get(client, url: str, limit: int, *, raw: bool = True) -> tuple[int, bytes]
     return 200, bytes(payload)
 
 
+def _latest_cdx_listing(root: Path, original: str) -> tuple[bytes, datetime] | None:
+    """Verify retained CDX evidence and use its newest observation as a cache.
+
+    A recent complete listing can avoid consuming a publisher request on each
+    partial repair run. The original URL and query identity must match exactly;
+    corrupted archives fail closed rather than being silently disregarded.
+    """
+    parent = root / ARCHIVE_DIR / "cdx" / sha256(original.encode()).hexdigest()[:16]
+    latest = None
+    for folder in sorted(parent.iterdir()) if parent.is_dir() else []:
+        if not re.fullmatch(r"[0-9a-f]{64}", folder.name):
+            continue
+        manifest, bodies = _read_bundle(folder)
+        if (manifest.get("source") != SOURCE
+                or manifest.get("kind") != "cdx_listing"
+                or manifest.get("original_url") != original
+                or manifest.get("query_url") != cdx_query_url(original)
+                or set(bodies) != {"listing.json"}):
+            raise MsciFactsheetError("cdx_original_identity_invalid")
+        try:
+            observed = datetime.fromisoformat(manifest["retrieved_at_utc"])
+        except (KeyError, ValueError, TypeError) as exc:
+            raise MsciFactsheetError("cdx_retrieval_timestamp_invalid") from exc
+        if observed.tzinfo is None or observed.utcoffset() is None:
+            raise MsciFactsheetError("cdx_retrieval_timestamp_invalid")
+        parse_cdx(bodies["listing.json"])
+        if latest is None or observed > latest[1]:
+            latest = (bodies["listing.json"], observed)
+    return latest
+
+
 def _stored_captures(root: Path) -> set[str]:
     base = root / ARCHIVE_DIR / "documents"
     return {path.name for path in base.iterdir()} if base.is_dir() else set()
 
 
 def collect(root: Path, *, client=None, indexes=None, log=print,
-            stopped=None) -> dict:
-    """Bounded, resumable collection: CDX listings, then each unseen capture once."""
+            stopped=None, prefer_recent: bool = False,
+            capture_not_before: date | None = None) -> dict:
+    """Bounded, resumable original collection.
+
+    The source-health mode first obtains recent captured issues instead of
+    spending its constrained request budget backfilling already irrelevant
+    older PDF vintages. Old captures are still available through the normal
+    full collector; every accepted document retains its CDX digest.
+    """
     import httpx
     from .source_policy import managed_client, require_managed_client
     owned = client is None
@@ -523,22 +561,54 @@ def collect(root: Path, *, client=None, indexes=None, log=print,
             store_methodology(root, payload)
             summary["methodology"] += 1
         captures = {}
-        for original, index in ORIGINAL_URLS.items():
-            if indexes is not None and index not in indexes:
-                continue
+        from .source_policy_types import PolicyDeferred, PolicyViolation
+        from datetime import timedelta
+        # Prefer never-fetched URLs and then the oldest listing; the first
+        # ten source URLs must not starve the others on every scheduled run.
+        known = {
+            original: _latest_cdx_listing(root, original)
+            for original, index in ORIGINAL_URLS.items()
+            if indexes is None or index in indexes
+        }
+        now = datetime.now(timezone.utc)
+        candidates = sorted(known, key=lambda original: (
+            known[original] is not None,
+            known[original][1] if known[original] else datetime.min.replace(tzinfo=timezone.utc),
+            original,
+        ))
+        policy_stopped = False
+        for original in candidates:
             if stopped is not None and stopped.is_set():
                 summary["cancelled"] += 1
                 return dict(summary)
-            try:
-                status, raw = _get(client, cdx_query_url(original), MAXIMUM_CDX_BYTES, raw=False)
-            except httpx.HTTPError:
-                summary["cdx_failed"] += 1
+            cached = known[original]
+            raw = cached[0] if cached is not None else None
+            recently_checked = (cached is not None and
+                timedelta(0) <= now - cached[1] < timedelta(days=7))
+            if recently_checked:
+                summary["cdx_cache_reused"] += 1
+            elif not policy_stopped:
+                try:
+                    status, fresh = _get(client, cdx_query_url(original),
+                                         MAXIMUM_CDX_BYTES, raw=False)
+                except PolicyDeferred:
+                    summary["source_policy_deferred"] += 1
+                    policy_stopped = True
+                except PolicyViolation:
+                    summary["source_policy_blocked"] += 1
+                    policy_stopped = True
+                except httpx.HTTPError:
+                    summary["cdx_failed"] += 1
+                else:
+                    if status == 200:
+                        store_cdx_listing(root, original, fresh)
+                        raw = fresh
+                        summary["cdx_listings"] += 1
+                    else:
+                        summary["cdx_failed"] += 1
+            if raw is None:
+                summary["cdx_missing"] += 1
                 continue
-            if status != 200:
-                summary["cdx_failed"] += 1
-                continue
-            store_cdx_listing(root, original, raw)
-            summary["cdx_listings"] += 1
             for row in parse_cdx(raw):
                 # The CDX lookup can also return near-variants of the URL
                 # (another case or trailing slash); only exact registered
@@ -549,8 +619,11 @@ def collect(root: Path, *, client=None, indexes=None, log=print,
                 elif row["statuscode"] == "200" and "pdf" in row["mimetype"]:
                     summary["cdx_rows_other_url"] += 1
         seen = _stored_captures(root)
-        pending = [row for row in sorted(captures.values(), key=lambda r: r["timestamp"])
-                   if row["timestamp"] + "-" + row["digest"][:12].lower() not in seen]
+        pending = [row for row in sorted(captures.values(),
+                   key=lambda r: r["timestamp"], reverse=prefer_recent)
+                   if row["timestamp"] + "-" + row["digest"][:12].lower() not in seen
+                   and (capture_not_before is None
+                        or row["timestamp"][:8] >= capture_not_before.strftime("%Y%m%d"))]
         summary["unique_captures"] = len(captures)
         summary["already_stored"] = len(captures) - len(pending)
         for number, row in enumerate(pending, 1):
@@ -559,6 +632,12 @@ def collect(root: Path, *, client=None, indexes=None, log=print,
                 return dict(summary)
             try:
                 status, payload = _get(client, capture_url(row["timestamp"], row["original"]), MAXIMUM_PDF_BYTES)
+            except PolicyDeferred:
+                summary["source_policy_deferred"] += 1
+                break
+            except PolicyViolation:
+                summary["source_policy_blocked"] += 1
+                break
             except (httpx.HTTPError, MsciFactsheetError):
                 summary["capture_failed"] += 1
                 continue
