@@ -56,6 +56,9 @@ def fetch_publisher_file(role: dict, destination: Path, *, client: httpx.Client 
             headers=_BROWSER_HEADERS, follow_redirects=False)
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(destination.name + ".part")
+    # A process may have stopped halfway through this immutable job. The
+    # partial file is never accepted and can always be fetched afresh.
+    temporary.unlink(missing_ok=True)
     current = initial
     try:
         for _ in range(5):
