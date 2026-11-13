@@ -80,7 +80,7 @@ def _sanitize(item: object) -> dict | None:
     return out
 
 
-def read_events(*, limit: int = 200) -> list[dict]:
+def read_events(*, limit: int = 200, since: str | None = None) -> list[dict]:
     """Return only validated safe fields, newest at the end."""
     limit = max(1, min(MAX_EVENTS, int(limit)))
     path = _path()
@@ -90,10 +90,22 @@ def read_events(*, limit: int = 200) -> list[dict]:
         lines = path.read_text(encoding="utf-8").splitlines()[-limit:]
     except (OSError, UnicodeError):
         return []
+    cutoff = None
+    if since is not None:
+        try:
+            cutoff = datetime.fromisoformat(since)
+            if cutoff.tzinfo is None:
+                return []
+        except ValueError:
+            return []
     events = []
     for line in lines:
         try:
             item = _sanitize(json.loads(line))
+            if item is not None and cutoff is not None:
+                when = datetime.fromisoformat(item["at"])
+                if when.tzinfo is None or when < cutoff:
+                    continue
         except (ValueError, TypeError):
             continue
         if item is not None:
@@ -145,11 +157,17 @@ def record_event(scope: str, event: str, *, level: str = "info",
                 temp.unlink(missing_ok=True)
 
 
-def recent_jobs(jobs: list[dict]) -> list[dict]:
+def recent_jobs(jobs: list[dict], *, since: str | None = None) -> list[dict]:
     """Drop stored maintenance parameters and any unknown provider payload."""
     output = []
-    for job in jobs[:8]:
+    from .runtime_release import job_in_current_release
+    for job in jobs:
+        if len(output) >= 8:
+            break
         if not isinstance(job, dict):
+            continue
+        if since is not None and not job_in_current_release(
+                job.get("created_at"), active_since=since):
             continue
         entry: dict = {}
         for key in ("id", "action", "status"):
