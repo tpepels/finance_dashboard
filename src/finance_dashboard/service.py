@@ -44,6 +44,16 @@ def safe_source_failure_code(exc: BaseException) -> str:
         # Keep source_invalid as the fallback for unknown validation failures.
         reason = str(exc)
         known_prefixes = (
+            ("Gold spot response malformed", "gold_spot_invalid_response"),
+            ("Gold spot source identity or currency invalid", "gold_spot_identity_mismatch"),
+            ("Gold spot USD exchange conversion unexpected", "gold_spot_conversion_mismatch"),
+            ("Gold spot price lacks valid UTC timestamp", "gold_spot_invalid_timestamp"),
+            ("Gold spot price must have timezone", "gold_spot_invalid_timestamp"),
+            ("Gold spot observation future dated", "gold_spot_future_timestamp"),
+            ("Gold spot observation too old for snapshot", "gold_spot_stale_quote"),
+            ("Gold spot snapshot precedes requested window", "gold_spot_before_window"),
+            ("Invalid indicative gold spot price", "gold_spot_invalid_price"),
+            ("Gold spot catalog identity differs from live API", "gold_spot_source_mapping_mismatch"),
             ("FRED observations list missing", "fred_schema_invalid"),
             ("FRED source has no observations in requested window", "fred_window_empty"),
             ("Cannot identify a unique Shiller ie_data.xls download", "shiller_link_unavailable"),
