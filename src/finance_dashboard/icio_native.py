@@ -135,8 +135,8 @@ def audit_native_csv(stream, *, edition: str, year: int,
     OUT/TLS/VA components. Those cases stay structurally verified only.
     """
     n_areas, n_fd_areas, sectors, start_year, end_year = dimensions or DIMENSIONS[edition]
-    if edition == "2023" and table == "regular" and dimensions is None:
-        n_areas = n_fd_areas  # 77 unsplit countries / 45 sectors
+    if edition in ("2023", "2025") and table == "regular" and dimensions is None:
+        n_areas = n_fd_areas  # Regular matrices have unsplit countries.
     if not start_year <= year <= end_year:
         raise ValueError("icio_native_year_outside_edition")
     rows = csv.reader(stream)
@@ -150,12 +150,23 @@ def audit_native_csv(stream, *, edition: str, year: int,
     node_parts = [_split(label) for label in nodes]
     areas = list(dict.fromkeys(country for country, _ in node_parts))
     industry_codes = list(dict.fromkeys(code for _, code in node_parts))
-    if (len(areas) != n_areas or set(industry_codes) != set(sectors)
-            or len(industry_codes) != len(sectors)
-            or set(node_parts) != {(country, sector) for country in areas for sector in sectors}):
+    if (len(areas) != n_areas or len(industry_codes) != len(sectors)
+            or set(node_parts) != {(country, sector) for country in areas for sector in industry_codes}):
         raise ValueError("icio_native_industry_dimensions_mismatch")
+    if dimensions is None:
+        from .icio_sector_codes import normalize_native_sector_labels
+        sector_to_internal = normalize_native_sector_labels(industry_codes, edition)
+    else:
+        if set(industry_codes) != set(sectors):
+            raise ValueError("icio_native_industry_dimensions_mismatch")
+        sector_to_internal = {sector: sector for sector in industry_codes}
     remainder = header[1 + expected_nodes:]
-    output_column = bool(remainder and remainder[-1] == "OUT")
+    expected_fd_columns = n_fd_areas * 6
+    if len(remainder) not in (expected_fd_columns, expected_fd_columns + 1):
+        raise ValueError("icio_native_final_demand_dimensions_mismatch")
+    output_column = len(remainder) == expected_fd_columns + 1
+    if output_column and "_" in remainder[-1]:
+        raise ValueError("icio_native_output_header_invalid")
     fds = remainder[:-1] if output_column else remainder
     if len(fds) != n_fd_areas * 6:
         raise ValueError("icio_native_final_demand_dimensions_mismatch")
@@ -168,7 +179,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
     expected_splits = set(SPLITS) if n_areas != n_fd_areas else set()
     if set(fd_areas) - set(areas) or set(areas) - set(fd_areas) != expected_splits:
         raise ValueError("icio_native_country_split_dimensions_invalid")
-    mapping = common_2018_concordance(industry_codes)
+    mapping = common_2018_concordance(list(sector_to_internal.values()))
     column_sums = [Decimal(0)] * expected_nodes
     countries: dict[str, dict[str, Decimal]] = {}
     sector_countries: dict[str, dict[str, dict[str, Decimal]]] = {}
@@ -209,7 +220,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
         t["gross_output"] += output
         t["direct_foreign_final_demand"] += foreign
         t["direct_domestic_final_demand"] += final - foreign
-        sector_group = mapping["mapping"].get(sector)
+        sector_group = mapping["mapping"].get(sector_to_internal[sector])
         # Never publish a partial common-sector total as a full industry.
         if sector_group in mapping["complete_targets"]:
             group = sector_countries.setdefault(area, {}).setdefault(
@@ -293,6 +304,8 @@ def audit_native_csv(stream, *, edition: str, year: int,
             "structure_verified": True,
             "source_country_count": n_areas, "final_demand_country_count": n_fd_areas,
             "native_industries": industry_codes,
+            "normalized_industries": list(sector_to_internal.values()),
+            "output_column_label": remainder[-1] if output_column else None,
             "industry_concordance": mapping,
             "country_concordance": {"split_to_parent": SPLITS, "ambiguous_unsplit_parents": conflicts,
                 "valid": not conflicts},
@@ -436,7 +449,8 @@ def audit_archive_native(zip_file: ZipFile, edition: str,
                         for a in results)
                 else "native_structure_verified_accounting_unavailable" if results
                 and all(a["accounting_passed"] is None and a["structure_verified"]
-                        and a["country_concordance"]["valid"] for a in results)
+                        and a["country_concordance"]["valid"]
+                        and a["row_failures"] in (None, 0) for a in results)
                 else "native_accounts_unresolved" if results else "no_native_csv_matrices"),
             "tiva_equivalent": False,
             "method": "edition_native_streaming_audit_v1"}
