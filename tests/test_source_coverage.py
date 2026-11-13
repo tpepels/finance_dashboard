@@ -90,12 +90,15 @@ class SourceCoverageTests(unittest.TestCase):
             self.assertEqual(row["state"], "stale")
             self.assertFalse(row["complete_for_pinned_release"])
             self.assertIsNone(row["published_through"])
-        # Having a verified publisher bound does not excuse missing a genuine
-        # country-year in a locally incomplete snapshot.
+        # The country-specific exception must not leak to the US survey.
         self.add_macro("inequality.us.gini_survey_wdi",
                        when=date(2021, 1, 1))
-        self.assertFalse(verified.get("inequality.us.gini_survey_wdi", {}).get(
-            "complete_for_pinned_release", False))
+        others = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        self.assertFalse(others["inequality.us.gini_survey_wdi"]
+                         ["complete_for_pinned_release"])
+        self.assertEqual(others["inequality.us.gini_survey_wdi"]["state"], "stale")
 
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
