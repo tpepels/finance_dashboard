@@ -8,6 +8,7 @@ values without an edition-specific dimensional/accounting contract.
 from __future__ import annotations
 
 from hashlib import sha256
+from decimal import Decimal
 from functools import lru_cache
 from collections import Counter
 import json
@@ -449,7 +450,7 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                        if key != "accounting_failure_details"},
                     "accounting_failure_examples": sorted(
                         annual.get("accounting_failure_details") or [],
-                        key=lambda entry: -abs(float(
+                        key=lambda entry: -abs(Decimal(
                             entry.get("signed_residual_usd_million", "0"))),
                     )[:5],
                 } for annual in record.get("annual_matrices", [])],
