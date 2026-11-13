@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from .catalog import load_documents
 from .database import make_engine, IngestionRun
 from .service import IngestionService, safe_source_failure_code
-from .source_policy import PolicyDeferred
+from .source_policy import PolicyDeferred, PolicyViolation
 from .refresh_coordinator import reserve_refresh
 from .developer_logs import record_event
 
@@ -76,7 +76,14 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
             failures += 1
             record_event(task.family, "source_failed", level="error",
                          source_id=task.source_id,
-                         reason=safe_source_failure_code(exc))
+                         reason=safe_source_failure_code(exc),
+                         # These identifiers come exclusively from application-
+                         # controlled publisher-policy contracts, never raw
+                         # response text, URLs or credentials. This distinguishes
+                         # missing origin rules from user network acknowledgement
+                         # and transport guards on a failed Swinkels retry.
+                         stage=(f"{exc.policy_id}:{exc.reason}"
+                                if isinstance(exc, PolicyViolation) else None))
             log.error("%s refresh failed: %s (publisher details redacted)",
                       task.family, task.source_id)
         if progress is not None:
