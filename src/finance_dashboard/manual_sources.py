@@ -268,10 +268,15 @@ class ManualSourceManager:
         try:
             saved = json.loads(self.journal.read_text())
             for job in saved.get("jobs", [])[-80:]:
-                # A mid-ingestion crash cannot be assumed safely complete.
-                if job["status"] in ("running", "downloading"):
-                    job["status"] = "interrupted"
+                # Replay an immutable snapshot after a process restart.
+                # Ingestion is content-addressed/idempotent; the interrupted
+                # job keeps its original identity and no new source URL.
                 job.setdefault("method", "upload")
+                if job["status"] in ("running", "downloading"):
+                    job["status"] = ("queued" if re.fullmatch(r"[0-9a-f]{32}", job["id"])
+                                     and not self._job_dir(job["id"]).is_symlink()
+                                     and self._job_dir(job["id"]).is_dir()
+                                     else "interrupted")
                 self.jobs.append(job)
         except (OSError, ValueError, TypeError, KeyError):
             pass
@@ -331,7 +336,7 @@ class ManualSourceManager:
     def _ensure_worker(self):
         # Caller owns self.lock. The worker resets the slot before exiting to
         # avoid losing a job queued during its shutdown boundary.
-        if self._worker is None:
+        if self._worker is None or not self._worker.is_alive():
             self._worker = Thread(target=self._drain, daemon=True,
                                   name="gcm-original-import-queue")
             self._worker.start()
