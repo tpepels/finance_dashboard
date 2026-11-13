@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 from functools import lru_cache
+from collections import Counter
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -301,7 +302,7 @@ def reassess_registered_archive(root: Path, archive_sha: str) -> dict:
                     "source_identity_reconciliation": reconciliation,
                     "annual_matrix_count": native["annual_matrix_count"],
                     "rejected_year_count": len(native["rejected_matrices"]),
-                    "rejected_error_codes": dict(sorted(__import__("collections").Counter(
+                    "rejected_error_codes": dict(sorted(Counter(
                         item["error_code"] for item in native["rejected_matrices"]).items())),
                     "native_validation_status": native["native_validation_status"],
                     "header_schema_status": native["header_schema"]["status"],
