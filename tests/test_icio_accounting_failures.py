@@ -116,6 +116,57 @@ class AccountingFailureLedgerTests(unittest.TestCase):
         self.assertEqual(entries[1]["publisher_output_usd_million"], SHIFTED)
         self.assertEqual(entries[1]["value_added_usd_million"], "1.0000000000")
 
+    def test_no_sampling_or_truncation_of_a_large_failure_ledger(self):
+        from finance_dashboard.icio_native import SECTORS_2021
+        countries = ("USA", "FRA")
+        nodes = [area + "_" + code for area in countries for code in SECTORS_2021]
+        fds = [area + "_" + cat for area in countries for cat in
+               ("HFCE", "NPISH", "GGFC", "GFCF", "INVNT", "DIRPA")]
+        rows = [["V1", *nodes, *fds, "OUT"]]
+        n = len(nodes)
+        for i, node in enumerate(nodes):
+            intermediate = ["1.0000" if j == i else "0" for j in range(n)]
+            rows.append([node, *intermediate, *(["0"] * len(fds)), "2.0000"])
+        rows.append(["TLS", *(["0"] * (n + len(fds) + 1))])
+        rows.append(["VA", *(["1.0000"] * n), *(["0"] * (len(fds) + 1))])
+        rows.append(["OUT", *(["2.0000"] * n), *(["0"] * (len(fds) + 1))])
+        body = StringIO()
+        csv.writer(body).writerows(rows)
+        result = audit_native_csv(StringIO(body.getvalue()), edition="2021",
+                                  year=2018,
+                                  dimensions=(2, 2, SECTORS_2021, 1995, 2018))
+        self.assertEqual(result["row_failures"], n)
+        self.assertEqual(result["column_failures"], 0)
+        self.assertEqual(len(result["accounting_failure_details"]), n)
+        self.assertEqual(len({f["node_label"] for f in
+                              result["accounting_failure_details"]}), n)
+        report = {"archives": [{
+            "filename": "ICIO2021_2015-2018.zip",
+            "edition": "2021", "table": "extended",
+            "native_years": [result],
+        }]}
+        exported, manifest = _accounting_failures_csv(report, "0.2.0+0123456789abcdef")
+        self.assertEqual(len(list(csv.DictReader(StringIO(exported)))), n)
+        self.assertTrue(manifest["complete_for_exported_matrices"])
+        self.assertEqual(manifest["failure_equations_exported"], n)
+
+    def test_output_vector_mismatch_is_separate_and_lossless(self):
+        source = accounted_source(output=EXPECTED)
+        # Preserve internally reconciled row/output-column amounts, but
+        # deliberately substitute a differing official OUTPUT account row.
+        line = source.splitlines()
+        line[-1] = line[-1].replace(EXPECTED, SHIFTED, 1)
+        result = audit_native_csv(StringIO("\n".join(line) + "\n"),
+                                  edition="2025", year=2022,
+                                  dimensions=(2, 2, ["D01"], 1995, 2022))
+        self.assertEqual(result["row_failures"], 0)
+        self.assertEqual(result["column_failures"], 1)
+        self.assertEqual(result["output_vector_mismatches"], 1)
+        axes = [f["axis"] for f in result["accounting_failure_details"]]
+        self.assertEqual(axes, ["column", "output_vector"])
+        self.assertEqual(result["accounting_failure_summary"]
+                         ["total_failed_equations"], 2)
+
     def test_legacy_method_is_declared_incomplete_instead_of_zero_failure(self):
         baseline = inspect()
         baseline.pop("accounting_failure_details")
