@@ -41,7 +41,7 @@ def source_specs() -> dict[str, dict]:
     from .research_returns import (SWINKELS_DATA_URL, SWINKELS_README_URL,
         SWINKELS_METADATA_URL, SWINKELS_ORIGINAL_METADATA_URL)
     from .euklems import euklems_url
-    from .msci_regional_factsheets import FACTSHEET_URLS, _MSCI
+    from .msci_regional_factsheets import FACTSHEET_URLS, METHODOLOGY, _MSCI
     from .provider_parsers import GOLD_API_SPOT_LATEST
     from .oecd_icio_access import PUBLISHER_URLS
     from .msci_regional_factsheets import _GEN3
@@ -82,6 +82,14 @@ def source_specs() -> dict[str, dict]:
             "series_ids": ["gold.usd.spot"],
             "roles": [role("json", "Current XAU spot response", GOLD_API_SPOT_LATEST, ".json", 1_000_000)],
         },
+    }
+    specs["msci-methodology"] = {
+        "title": "MSCI — fundamental data methodology (March 2021)",
+        "description": ("Needed once when the pinned archived methodology is not already present. "
+                        "Only the exact pinned PDF SHA-256 is accepted."),
+        "series_ids": [],
+        "roles": [role("methodology", "March 2021 methodology PDF",
+                       METHODOLOGY["original_url"], ".pdf", 5_000_000)],
     }
     for index in ("EAFE", "EUROPE", "JAPAN"):
         sid = index.lower()
@@ -150,6 +158,12 @@ def _parse_source(dataset: str, files: dict[str, bytes]) -> dict[str, dict]:
         except (ValueError, UnicodeError) as exc:
             raise ProviderError("Gold spot original JSON invalid") from exc
         return {"gold.usd.spot": parse_gold_api_spot(payload)}
+    if dataset == "msci-methodology":
+        from .msci_regional_factsheets import archived_pdf, METHODOLOGY, MsciFactsheetError
+        pdf, _ = archived_pdf(files["methodology"])
+        if sha256(pdf).hexdigest() != METHODOLOGY["pdf_sha256"]:
+            raise MsciFactsheetError("manual_methodology_differs_from_pinned_edition")
+        return {}
     if dataset.startswith("msci-"):
         from .msci_regional_factsheets import parse_factsheet_payload, MsciFactsheetError
         index = dataset[5:].upper()
@@ -333,7 +347,14 @@ class ManualSourceManager:
                         for role in spec["roles"]
                     }
                 values = _parse_source(dataset, files)
-                if dataset.startswith("msci-"):
+                if dataset == "msci-methodology":
+                    from .msci_regional_factsheets import store_manual_methodology
+                    digest, receipt = store_manual_methodology(
+                        self.evidence, files["methodology"])
+                    evidence = {"kind": "local",
+                                "scope": "user_uploaded_publisher_origin_unverified",
+                                "bundle_digest": digest, "receipt_name": receipt}
+                elif dataset.startswith("msci-"):
                     from .msci_regional_factsheets import (
                         store_manual_factsheet, read_msci_regional_evidence, series_values)
                     index = dataset[5:].upper()
