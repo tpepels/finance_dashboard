@@ -350,6 +350,34 @@ class ManualSourceTests(unittest.TestCase):
                          "retrievals").glob("*.json"))
         self.assertEqual(len(receipts), 2)
 
+    def test_rate_deferred_pair_resumes_without_refetching_first_original(self):
+        from finance_dashboard.source_policy_types import PolicyDeferred
+        from hashlib import sha256
+        data, meta = wid_fixtures("WO", legacy=True)
+        payloads = {"data": data.encode(), "metadata": meta.encode()}
+        counts = {"data": 0, "metadata": 0}
+        def fake_download(role, path):
+            name = role["id"]
+            counts[name] += 1
+            if name == "metadata" and counts[name] == 1:
+                raise PolicyDeferred("wid", "publisher_spacing", time.time() + .1)
+            body = payloads[name]
+            path.write_bytes(body)
+            return {"requested_url": role["download_url"],
+                    "final_url": role["download_url"],
+                    "sha256": sha256(body).hexdigest(), "bytes": len(body),
+                    "content_type": "text/csv",
+                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat()}
+        with patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
+                   side_effect=fake_download):
+            reply = self.client.post("/api/manual-sources/fetch?dataset=wid-world",
+                                     headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(reply.status_code, 202, reply.text)
+            result = finished(self.client, "wid-world", duration=6)
+            self.assertEqual(result["status"], "complete", result)
+            self.assertEqual(counts, {"data": 1, "metadata": 2})
+            self.assertEqual(len(result["sources"]), 5)
+
     def test_running_job_is_replayed_after_restart_from_immutable_spool(self):
         from finance_dashboard.manual_sources import ManualSourceManager
         job_id = "0123456789abcdef0123456789abcdef"
