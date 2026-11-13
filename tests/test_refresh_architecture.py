@@ -120,7 +120,10 @@ class RefreshArchitectureTests(unittest.TestCase):
         self.assertEqual(len(events), 2)
         self.assertEqual(events[0][0][1], "source_deferred")
         self.assertEqual(events[1][1]["action"], "publisher_quota_exhausted")
-        self.assertEqual(events[1][1]["sources_not_attempted"], 2)
+        self.assertEqual(events[1][1]["stage"], "OECD_NFC_ACCOUNTS")
+        self.assertEqual(events[1][1]["failed"], 2)
+        self.assertNotIn("provider", events[1][1])
+        self.assertNotIn("sources_not_attempted", events[1][1])
 
     def test_temporary_concurrency_deferral_does_not_skip_other_same_provider(self):
         attempts = []
