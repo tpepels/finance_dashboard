@@ -181,7 +181,7 @@ try {
   for (const hash of ['#theme-monetary_policy', '#supplementary-wisesheets', '#chart-gdp_growth_global']) {
     await page.goto(`${seeded}/${hash}`);
     await shown(page.locator(hash));
-    assert.equal(await page.getByText('Source data & chart explorer', { exact: true }).evaluate(element => element.closest('details').open), true);
+    assert.equal(await page.getByText('Source explorer', { exact: true }).evaluate(element => element.closest('details').open), true);
     if (hash.startsWith('#chart-')) assert.equal(await page.locator(hash).getByRole('button', { name: /^Close/ }).getAttribute('aria-expanded'), 'true');
   }
   await page.goBack(); await shown(page.locator('#supplementary-wisesheets'));
