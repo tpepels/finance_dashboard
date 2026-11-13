@@ -163,6 +163,54 @@ def _printed_half_quantum(value: Decimal) -> Decimal:
 
 
 
+# IEEE-754 binary64 unit roundoff. This is an explanatory numerical
+# *hypothesis*, never an additional source-accounting pass tolerance.
+_BINARY64_EPSILON = Decimal(1) / Decimal(2 ** 53)
+
+
+def _binary64_sum_model(absolute_total: Decimal, terms: int) -> Decimal:
+    """Conservative sequential-summation roundoff model (Higham gamma_n).
+
+    Includes conversion/accumulation operations to compare a publisher's
+    printed residual with plausible binary64 bookkeeping. The publisher's
+    actual arithmetic precision and summation order are not established by
+    this calculation. It must never promote a failed source account.
+    """
+    operations = terms + 2
+    numerator = Decimal(operations) * _BINARY64_EPSILON
+    return absolute_total * numerator / (Decimal(1) - numerator)
+
+
+def _accounting_failure(*, axis: str, label: str, line: int | None,
+                        residual: Decimal, serialization: Decimal,
+                        binary64: Decimal, source_components: dict) -> dict:
+    total = serialization + binary64
+    if abs(residual) <= serialization:
+        classification = "within_source_serialization"
+    elif abs(residual) <= total:
+        classification = "binary64_model_compatible_unverified"
+    else:
+        classification = "exceeds_serialization_and_binary64_model"
+    return {
+        "axis": axis, "node_label": label,
+        "csv_line_number": line,
+        "country": _split(label)[0],
+        "native_industry_code": _split(label)[1],
+        "equation": ("intermediate_plus_final_minus_output" if axis == "row" else
+                     "intermediate_plus_tax_plus_value_added_minus_output"
+                     if axis == "column" else
+                     "row_output_minus_publisher_output"),
+        "signed_residual_usd_million": _simple_text(residual),
+        "absolute_residual_usd_million": _simple_text(abs(residual)),
+        "permissible_serialization_error_usd_million": _simple_text(serialization),
+        "hypothetical_binary64_error_usd_million": _simple_text(binary64),
+        "hypothetical_combined_error_usd_million": _simple_text(total),
+        "precision_classification": classification,
+        "source_components_usd_million":
+            {key: _simple_text(value) for key, value in source_components.items()},
+    }
+
+
 def audit_native_csv(stream, *, edition: str, year: int,
                      dimensions: tuple | None = None, table: str = "extended") -> dict:
     """Audit one native matrix with O(columns) memory; never rebalance cells.
@@ -219,6 +267,9 @@ def audit_native_csv(stream, *, edition: str, year: int,
     mapping = common_2018_concordance(list(sector_to_internal.values()))
     column_sums = [Decimal(0)] * expected_nodes
     column_quantization = [Decimal(0)] * expected_nodes
+    column_absolute_sums = [Decimal(0)] * expected_nodes
+    producer_lines: dict[str, int] = {}
+    failure_details: list[dict] = []
     countries: dict[str, dict[str, Decimal]] = {}
     sector_countries: dict[str, dict[str, dict[str, Decimal]]] = {}
     def totals(country: str):
@@ -232,7 +283,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
     numeric_scale = 0
     specials: dict[str, list[Decimal]] = {}
     node_output: dict[str, Decimal] = {}
-    for row in rows:
+    for csv_line_number, row in enumerate(rows, start=2):
         if len(row) != len(header):
             raise ValueError("icio_native_row_width_invalid")
         label = row[0]
@@ -247,6 +298,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
             specials[label] = values
             continue
         cell_uncertainty = [_printed_half_quantum(value) for value in values]
+        producer_lines[label] = csv_line_number
         area, sector = _split(label)
         t = totals(area)
         intermediate = sum(values[:expected_nodes], Decimal(0))
@@ -273,10 +325,21 @@ def audit_native_csv(stream, *, edition: str, year: int,
             bound = sum(cell_uncertainty, Decimal(0))
             max_row = max(max_row, abs(residual))
             max_row_allowance = max(max_row_allowance, bound)
-            row_failure += abs(residual) > bound
+            if abs(residual) > bound:
+                row_failure += 1
+                model = _binary64_sum_model(
+                    sum((abs(value) for value in values), Decimal(0)),
+                    len(values))
+                failure_details.append(_accounting_failure(
+                    axis="row", label=label, line=csv_line_number,
+                    residual=residual, serialization=bound, binary64=model,
+                    source_components={"intermediate": intermediate,
+                                       "final_demand": final,
+                                       "row_output": output}))
         for j, val in enumerate(values[:expected_nodes]):
             column_sums[j] += val
             column_quantization[j] += cell_uncertainty[j]
+            column_absolute_sums[j] += abs(val)
     if not set(nodes) <= observed:
         raise ValueError("icio_native_missing_industry_rows")
     # Two independently observed publisher accounting layouts:
@@ -325,10 +388,30 @@ def audit_native_csv(stream, *, edition: str, year: int,
                          _printed_half_quantum(orow[j]))
             max_col = max(max_col, abs(residual))
             max_column_allowance = max(max_column_allowance, col_bound)
-            col_failure += abs(residual) > col_bound
+            if abs(residual) > col_bound:
+                col_failure += 1
+                model = _binary64_sum_model(
+                    column_absolute_sums[j] + abs(trow[j]) +
+                    abs(vrow[j]) + abs(orow[j]), expected_nodes + 3)
+                failure_details.append(_accounting_failure(
+                    axis="column", label=label,
+                    line=producer_lines.get(label),
+                    residual=residual, serialization=col_bound, binary64=model,
+                    source_components={"intermediate": column_sums[j],
+                                       "net_taxes": trow[j],
+                                       "value_added": vrow[j],
+                                       "publisher_output": orow[j]}))
             vector_bound = (_printed_half_quantum(node_output[label]) +
                             _printed_half_quantum(orow[j]))
-            output_mismatch += abs(node_output[label] - orow[j]) > vector_bound
+            vector_residual = node_output[label] - orow[j]
+            if abs(vector_residual) > vector_bound:
+                output_mismatch += 1
+                failure_details.append(_accounting_failure(
+                    axis="output_vector", label=label, line=producer_lines.get(label),
+                    residual=vector_residual, serialization=vector_bound,
+                    binary64=Decimal(0), source_components={
+                        "row_output": node_output[label],
+                        "publisher_output": orow[j]}))
             totals(_split(label)[0])["value_added"] += vrow[j] + trow[j]
     # Unknown extra row labels are rejected while known but incomplete source
     # accounts remain explicitly unverified rather than silently imputed.
@@ -381,7 +464,30 @@ def audit_native_csv(stream, *, edition: str, year: int,
             "domestic_final_demand_usd_million": _simple_text(t["direct_domestic_final_demand"]),
             "source_value_added_usd_million": _simple_text(t["value_added"]) if has_accounts else None,
             "direct_foreign_final_demand_to_va_pct": _simple_text(share) if share is not None else None}
+    # Retain every failed source equation with its original row/column
+    # identity and independently derived numeric bounds. Never truncate at
+    # this scientific-evidence boundary: the public API and export can select
+    # bounded views while the immutable method record remains complete.
+    precision_counts = {
+        key: sum(row["precision_classification"] == key for row in failure_details)
+        for key in ("binary64_model_compatible_unverified",
+                    "exceeds_serialization_and_binary64_model",
+                    "within_source_serialization")
+    }
+    if len(failure_details) != row_failure + col_failure + output_mismatch:
+        raise ValueError("icio_native_failure_ledger_inconsistent")
     return {"year": year, "edition": edition, "industry_nodes": expected_nodes,
+            "accounting_failure_details": failure_details,
+            "accounting_failure_summary": {
+                "total_failed_equations": len(failure_details),
+                "row_failures": row_failure,
+                "column_failures": col_failure,
+                "output_vector_mismatches": output_mismatch,
+                "precision_classifications": precision_counts,
+                "all_failed_equations_recorded": True,
+                "source_accounting_gate_unchanged": True,
+                "binary64_model_is_hypothetical": True,
+            },
             "structure_verified": True,
             "source_country_count": n_areas, "final_demand_country_count": n_fd_areas,
             "native_industries": industry_codes,
