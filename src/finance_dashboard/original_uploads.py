@@ -20,6 +20,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .developer_logs import record_event
+from .runtime_release import release_info, job_in_current_release
 from .icio import PUBLISHER_ARCHIVES, README_SHA256, import_original_archive
 from .icio_editions import archive_identity, reassess_registered_archive
 
@@ -88,9 +89,13 @@ class OriginalImportManager:
             return self.active
 
     def public_status(self) -> dict:
+        release = release_info()
         with self.lock:
             jobs = json.loads(json.dumps(self.jobs[-12:]))
             active = self.active
+        if release["activated_at"]:
+            jobs = [job for job in jobs if job_in_current_release(
+                job.get("created_at"), active_since=release["activated_at"])]
         files = []
         if self.root.is_dir() and not self.root.is_symlink():
             for item in sorted(self.root.iterdir()):
@@ -100,7 +105,7 @@ class OriginalImportManager:
                                           "verified_regular" if item.name in PUBLISHER_ARCHIVES else
                                           "edition_archive"})
         return {"active": active, "readme_available": self.pinned_readme() is not None,
-                "files": files, "jobs": list(reversed(jobs))}
+                "files": files, "jobs": list(reversed(jobs)), "release": release}
 
     def _save(self):
         self.journal.parent.mkdir(parents=True, exist_ok=True)
@@ -132,7 +137,9 @@ class OriginalImportManager:
                     raise ValueError("The publisher ReadMe workbook must be uploaded first")
             self.active = True
             job = {"id": uuid4().hex, "status": "queued", "created_at":
-                   datetime.now(timezone.utc).isoformat(), "filenames": list(filenames),
+                   datetime.now(timezone.utc).isoformat(),
+                   "release_id": release_info()["release_id"],
+                   "filenames": list(filenames),
                    "completed": 0, "total": len(filenames), "results": [], "error_code": None}
             self.jobs.append(job)
             self.jobs = self.jobs[-12:]
@@ -175,6 +182,7 @@ class OriginalImportManager:
             self.active = True
             job = {"id": uuid4().hex, "status": "queued", "mode": "reassess",
                    "created_at": datetime.now(timezone.utc).isoformat(),
+                   "release_id": release_info()["release_id"],
                    "filenames": [row["filename"] for row in archives],
                    "archive_shas": shas, "completed": 0, "total": len(shas),
                    "results": [], "error_code": None}
