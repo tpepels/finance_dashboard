@@ -356,7 +356,7 @@ class ManualSourceManager:
         if method == "publisher":
             pending = next((job for job in reversed(self.jobs)
                             if job["dataset"] == dataset and job["method"] == "publisher"
-                            and job["status"] in ("queued", "downloading", "running")), None)
+                            and job["status"] in ("queued", "downloading", "running", "deferred")), None)
             if pending:
                 return pending["id"]
         job_id = uuid4().hex
@@ -580,12 +580,9 @@ class ManualSourceManager:
             shutil.rmtree(folder, ignore_errors=True)
 
     def _run_icio(self, job: dict, folder: Path):
-        """Fetch and import the exact pinned OECD regular 2025 originals.
-
-        Archive failures are isolated: other publisher files can continue. All
-        validation is performed by the pre-existing edition-specific importer.
-        """
+        """Download and import pinned 2025 OECD regular archives independently."""
         from .publisher_downloads import fetch_publisher_file, PublisherDownloadError
+        from .source_policy_types import PolicyDeferred
         from .icio import PUBLISHER_ARCHIVES, README_SHA256, import_original_archive
         from .oecd_icio_access import PUBLISHER_URLS
         from .original_uploads import OriginalImportManager, README
@@ -593,38 +590,52 @@ class ManualSourceManager:
         readme = manager.pinned_readme()
         if readme is None:
             readme = folder / README
-            detail = fetch_publisher_file(
-                {"download_url": PUBLISHER_URLS[README], "max_bytes": 10_000_000}, readme)
-            if sha256(readme.read_bytes()).hexdigest() != README_SHA256:
-                raise ProviderError("OECD publisher ReadMe does not match pinned original")
-            with self.lock:
-                job["downloaded"][README] = detail
-                self._save()
-        successes = 0
+            cached = job["downloaded"].get(README)
+            if (not cached or not readme.is_file() or readme.is_symlink()
+                    or sha256(readme.read_bytes()).hexdigest() != README_SHA256):
+                detail = fetch_publisher_file(
+                    {"download_url": PUBLISHER_URLS[README], "max_bytes": 10_000_000},
+                    readme)
+                if sha256(readme.read_bytes()).hexdigest() != README_SHA256:
+                    raise ProviderError("OECD publisher ReadMe does not match pinned original")
+                with self.lock:
+                    job["downloaded"][README] = detail
+                    self._save()
+        completed = {entry["id"] for entry in job["sources"]}
+        successes = sum(entry["status"] == "success" for entry in job["sources"])
         for filename, pin in PUBLISHER_ARCHIVES.items():
+            if filename in completed:
+                continue
             try:
                 target = folder / filename
-                detail = fetch_publisher_file(
-                    {"download_url": PUBLISHER_URLS[filename],
-                     "max_bytes": min(1_500_000_000, max(pin["bytes"] * 2, 200_000_000))},
-                    target)
-                if detail["sha256"] != pin["sha256"] or detail["bytes"] != pin["bytes"]:
-                    raise ProviderError("OECD archive differs from pinned 2025 edition")
+                prior = job["downloaded"].get(filename)
+                if (not prior or not target.is_file() or target.is_symlink()
+                        or sha256(target.read_bytes()).hexdigest() != pin["sha256"]):
+                    detail = fetch_publisher_file(
+                        {"download_url": PUBLISHER_URLS[filename],
+                         "max_bytes": min(1_500_000_000, max(pin["bytes"] * 2, 200_000_000))},
+                        target)
+                    if detail["sha256"] != pin["sha256"] or detail["bytes"] != pin["bytes"]:
+                        raise ProviderError("OECD archive differs from pinned 2025 edition")
+                    with self.lock:
+                        job["downloaded"][filename] = detail
+                        self._save()
                 with self.lock:
-                    job["downloaded"][filename] = detail
                     job["status"] = "running"
                     job["phase"] = "validating"
                     self._save()
                 result = import_original_archive(target, self.evidence, readme)
                 successes += 1
-                row = {"id": filename, "status": "success", "edition": result.get("edition"),
-                       "table": result.get("table")}
+                row = {"id": filename, "status": "success",
+                       "edition": result.get("edition"), "table": result.get("table")}
                 target.unlink(missing_ok=True)
+            except PolicyDeferred:
+                raise  # Preserve the job; the worker retries at the ledger deadline.
             except Exception as exc:
                 from .service import safe_source_failure_code
-                code = (exc.code if isinstance(exc, PublisherDownloadError)
-                        else safe_source_failure_code(exc))
-                row = {"id": filename, "status": "failed", "error_code": code}
+                row = {"id": filename, "status": "failed",
+                       "error_code": (exc.code if isinstance(exc, PublisherDownloadError)
+                                      else safe_source_failure_code(exc))}
             with self.lock:
                 job["sources"].append(row)
                 job["status"] = "downloading"
@@ -633,8 +644,7 @@ class ManualSourceManager:
         with self.lock:
             job.update(status=("complete" if successes == len(PUBLISHER_ARCHIVES)
                                else "partial" if successes else "failed"),
-                       phase="finished",
-                       origin_verified=bool(successes),
+                       phase="finished", origin_verified=bool(successes),
                        finished_at=datetime.now(timezone.utc).isoformat())
             self._save()
         if successes:
