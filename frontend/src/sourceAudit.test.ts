@@ -18,6 +18,9 @@ describe('exporting local source-coverage evidence',()=>{
     expect(csv).toContain('app_release');
     expect(csv).toContain('0.2.0+1111222233334444');
     expect(csv).toContain('pinned_release_through');
+    expect(csv).toContain('source_checked_through_utc');
+    expect(csv).toContain('evidence_receipt_recorded');
+    expect(csv).toContain('evidence_bundle_digest');
     expect(csv).toContain('"1950-01-01"');
     expect(csv).toContain('"2023-01-01"');
     expect(csv).toContain('"PWT ""Germany"", 11.0"');
