@@ -663,6 +663,83 @@ def collect(root: Path, *, client=None, indexes=None, log=print,
 
 # --- verified reading -------------------------------------------------------------
 
+def store_manual_factsheet(root: Path, index: str, original: str,
+                           payload: bytes) -> tuple[str, str]:
+    """Record one owner-supplied original without forging a Wayback capture.
+
+    Only canonical MSCI original URLs and printed PDF identities are accepted.
+    Acquisition provenance explicitly marks the byte source as user supplied.
+    """
+    from .source_evidence import record_acquisition_receipt
+    if (index not in BOUND_INDEXES or ORIGINAL_URLS.get(original) != index
+            or len(payload) > MAXIMUM_PDF_BYTES):
+        raise MsciFactsheetError("manual_factsheet_source_identity_invalid")
+    facts, text = parse_factsheet_payload(payload)
+    if facts["index"] != index or date.fromisoformat(facts["as_of"]) > date.today():
+        raise MsciFactsheetError("manual_factsheet_printed_index_or_date_invalid")
+    identity = {"publisher": "MSCI", "index": index,
+                "source_kind": "owner_supplied_pdf"}
+    parent = root / ARCHIVE_DIR / "manual-documents" / index
+    files = {"publisher.pdf": payload}
+    manifest = {"schema_version": 1, "source": SOURCE,
+                "kind": "owner_supplied_factsheet",
+                "source_identity": identity, "original_url": original,
+                "as_of": facts["as_of"], "pdf_sha256": facts["pdf_sha256"],
+                "publisher_origin_verified": False,
+                "first_publication_verified": False}
+    folder = _write_bundle(parent, files, manifest)
+    restored, bodies = _read_bundle(folder)
+    if (restored != {**manifest, "files": {"publisher.pdf": sha256(payload).hexdigest()}}
+            or bodies != files):
+        raise MsciFactsheetError("manual_factsheet_original_hash_invalid")
+    receipt = record_acquisition_receipt(
+        folder, identity, acquisition={"mode": "owner_supplied_pdf",
+                                      "publisher_network_request": False})
+    return folder.name, receipt.name
+
+
+def _verified_manual_documents(root: Path) -> list[dict]:
+    """Fold hash-verified user originals into the SAME strict monthly conflicts."""
+    from .source_evidence import verified_receipted_bundles
+    docs = []
+    for index in BOUND_INDEXES:
+        parent = root / ARCHIVE_DIR / "manual-documents" / index
+        if not parent.is_dir():
+            continue
+        identity = {"publisher": "MSCI", "index": index,
+                    "source_kind": "owner_supplied_pdf"}
+        seen = set()
+        for record in verified_receipted_bundles(parent, identity):
+            digest = record["bundle_digest"]
+            if digest in seen:
+                continue
+            seen.add(digest)
+            manifest, files = _read_bundle(record["bundle_path"])
+            original = manifest.get("original_url")
+            if (manifest.get("source_identity") != identity
+                    or manifest.get("source") != SOURCE
+                    or manifest.get("kind") != "owner_supplied_factsheet"
+                    or manifest.get("publisher_origin_verified") is not False
+                    or ORIGINAL_URLS.get(original) != index
+                    or set(files) != {"publisher.pdf"}
+                    or not manifest.get("as_of")):
+                raise MsciFactsheetError("manual_factsheet_original_identity_invalid")
+            facts, _ = parse_factsheet_payload(files["publisher.pdf"])
+            if (facts["index"] != index or facts["as_of"] != manifest["as_of"]
+                    or facts["pdf_sha256"] != manifest["pdf_sha256"]
+                    or date.fromisoformat(facts["as_of"]) > date.today()):
+                raise MsciFactsheetError("manual_factsheet_printed_identity_mismatch")
+            docs.append({**facts,
+                "capture_url": "owner-upload:sha256:" + facts["pdf_sha256"],
+                "original_url": original, "capture_timestamp": None,
+                "cdx_digest": None,
+                "archived_sha256": sha256(files["publisher.pdf"]).hexdigest(),
+                "manifest_sha256": record["manifest_sha256"],
+                "acquired_at_utc": record["observed_at"].isoformat(),
+                "source_kind": "owner_supplied_publisher_origin_unverified"})
+    return docs
+
+
 def _verified_documents(root: Path) -> tuple[list[dict], list[dict]]:
     from .source_reconciliation import _selected_manifest
     documents, rejected = [], []
@@ -740,6 +817,7 @@ def read_msci_regional_evidence(root: Path) -> dict:
 
 def _read_evidence(root: Path) -> dict:
     documents, rejected = _verified_documents(root)
+    documents.extend(_verified_manual_documents(root))
     methodology = _methodology(root)
     values = defaultdict(lambda: defaultdict(dict))      # index -> month -> measure -> {value: [captures]}
     composition = defaultdict(lambda: defaultdict(list))
@@ -805,7 +883,8 @@ def _read_evidence(root: Path) -> dict:
             "rejected_documents": rejected, "conflicts": conflicts, "panels": panels,
             "document_proofs": proofs, "source_sha256": sha256(json.dumps(proofs, sort_keys=True).encode()).hexdigest(),
             "first_publication_verified": False,
-            "scope": "MSCI's own factsheet PDFs as archived raw by the Internet Archive; values exactly as printed."}
+            "scope": ("MSCI printed factsheets, archived originals and explicitly owner-uploaded "
+                      "PDFs. Uploaded publisher origin is unverified; conflicting values are blocked."),}
 
 
 def read_msci_regional_summary(root: Path) -> dict:
