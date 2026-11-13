@@ -25,7 +25,7 @@ from typing import TextIO
 
 import numpy as np
 
-from .icio_native import canonical_country
+from .icio_native import canonical_country, native_account_kind
 
 COUNTRIES = ("USA", "FRA", "PRT", "CHN", "JPN", "DEU", "IND")
 MATH_METHOD = "ICIO_Leontief_FFD_DVA_v1"
@@ -105,7 +105,7 @@ def read_native_year(stream: TextIO, audit: dict, *, max_nodes: int = MAX_NODES)
             raise NativeValueAddedError("icio_leontief_row_shape_invalid")
         label = row[0]
         seen.add(label)
-        if label not in known and label not in ("TLS", "VA", "OUT"):
+        if label not in known and native_account_kind(label) is None:
             raise NativeValueAddedError("icio_leontief_unknown_account_row")
         try:
             arr = np.asarray(row[1:], dtype=np.float64)
@@ -135,17 +135,29 @@ def read_native_year(stream: TextIO, audit: dict, *, max_nodes: int = MAX_NODES)
         raise NativeValueAddedError("icio_leontief_original_accounts_failed")
     residual = None
     basis = "derived_output_less_intermediate_inputs_including_taxes"
-    if has_output and set(extras) == {"TLS", "VA", "OUT"}:
-        publisher_value_added = extras["TLS"][:n] + extras["VA"][:n]
-        residual = float(np.max(np.abs(publisher_value_added - value_added)))
-        # The original source audit is the authority on its four-decimal
-        # residual threshold. Never replace its flags with a float comparison.
+    if extras:
         if source_pass is not True:
             raise NativeValueAddedError("icio_leontief_unverified_publisher_accounts")
+        va_labels = [label for label in extras if native_account_kind(label) == "value_added"]
+        out_labels = [label for label in extras if native_account_kind(label) == "output"]
+        tax_labels = [label for label in extras if native_account_kind(label) in
+                      {"net_product_taxes", "country_product_taxes"}]
+        if len(va_labels) != 1 or len(out_labels) != 1:
+            raise NativeValueAddedError("icio_leontief_partial_account_rows")
+        publisher_value_added = extras[va_labels[0]][:n].copy()
+        for label in tax_labels:
+            publisher_value_added += extras[label][:n]
+        residual = float(np.max(np.abs(publisher_value_added - value_added)))
+        # The original exact-Decimal source audit determines whether its
+        # independently reported accounts reconcile. Do not replace this
+        # decision with an ad-hoc float threshold.
+        if not np.all(np.isfinite(publisher_value_added)):
+            raise NativeValueAddedError("icio_leontief_publisher_accounts_nonfinite")
         value_added = publisher_value_added
-        basis = "publisher_VA_plus_TLS"
-    elif extras and set(extras) != {"TLS", "VA", "OUT"}:
-        raise NativeValueAddedError("icio_leontief_partial_account_rows")
+        basis = ("publisher_VALU_plus_country_TAXSUB" if any(
+            native_account_kind(label) == "country_product_taxes" for label in tax_labels)
+            else "publisher_VA_plus_TLS" if "TLS" in tax_labels
+            else "publisher_value_added_without_product_tax_breakdown")
     return AnnualNative(
         countries=observed_areas, nodes=node_names, z=z,
         final_by_country=final, output=out, value_added=value_added,
