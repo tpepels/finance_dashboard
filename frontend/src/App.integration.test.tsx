@@ -161,7 +161,7 @@ describe('dashboard shell', () => {
     expect(screen.queryByText('Original source appendix loaded')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Source data' }));
-    await user.click(screen.getByText('Source data & chart explorer'));
+    await user.click(screen.getByText('Source explorer'));
     expect(await screen.findByText('Original source appendix loaded')).toBeTruthy();
   });
 
