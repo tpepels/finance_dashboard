@@ -174,13 +174,13 @@ def register_edition_archive(path: Path, root: Path) -> dict:
             "archive_sha256": record["archive_sha256"], "bundle_digest": bundle.name}
 
 
-DERIVED_METHOD = "native_leontief_rdata_v7"
+DERIVED_METHOD = "native_leontief_rdata_v8"
 
 
 def _derived_folder(root: Path, original_sha: str, method: str = DERIVED_METHOD) -> Path:
     if not re.fullmatch(r"[0-9a-f]{64}", original_sha):
         raise ValueError("icio_derived_source_hash_invalid")
-    if method not in {"native_leontief_rdata_v3", "native_leontief_rdata_v4", "native_leontief_rdata_v5", "native_leontief_rdata_v6", DERIVED_METHOD}:
+    if method not in {"native_leontief_rdata_v3", "native_leontief_rdata_v4", "native_leontief_rdata_v5", "native_leontief_rdata_v6", "native_leontief_rdata_v7", DERIVED_METHOD}:
         raise ValueError("icio_derived_method_invalid")
     return Path(root) / "icio" / "native-method-reports" / original_sha / method
 
@@ -193,7 +193,7 @@ def _read_native_derived(root: Path, original_sha: str, *,
     if not folder.is_dir() and allow_legacy:
         # Earlier immutable reports remain verifiable until each archive
         # receives the new, source-vocabulary-aware processing pass.
-        for legacy in ("native_leontief_rdata_v6", "native_leontief_rdata_v5", "native_leontief_rdata_v4", "native_leontief_rdata_v3"):
+        for legacy in ("native_leontief_rdata_v7", "native_leontief_rdata_v6", "native_leontief_rdata_v5", "native_leontief_rdata_v4", "native_leontief_rdata_v3"):
             candidate = _derived_folder(root, original_sha, legacy)
             if candidate.is_dir():
                 method = legacy
