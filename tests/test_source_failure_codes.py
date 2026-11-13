@@ -53,6 +53,36 @@ class SourceFailureCodeTests(unittest.TestCase):
         self.assertEqual(safe_source_failure_code(ValueError(secret)),
                          "fred_schema_invalid")
 
+    def test_gold_spot_errors_are_actionable_and_do_not_expose_responses(self):
+        from finance_dashboard.source_coverage import SAFE_ERROR_CODES
+        from finance_dashboard.provider_parsers import parse_gold_api_spot
+        examples = [
+            ("Gold spot response malformed", "gold_spot_invalid_response"),
+            ("Gold spot source identity or currency invalid", "gold_spot_identity_mismatch"),
+            ("Gold spot USD exchange conversion unexpected", "gold_spot_conversion_mismatch"),
+            ("Gold spot price lacks valid UTC timestamp", "gold_spot_invalid_timestamp"),
+            ("Gold spot price must have timezone", "gold_spot_invalid_timestamp"),
+            ("Gold spot observation future dated", "gold_spot_future_timestamp"),
+            ("Gold spot observation too old for snapshot", "gold_spot_stale_quote"),
+            ("Gold spot snapshot precedes requested window", "gold_spot_before_window"),
+            ("Invalid indicative gold spot price", "gold_spot_invalid_price"),
+            ("Gold spot catalog identity differs from live API", "gold_spot_source_mapping_mismatch"),
+        ]
+        for message, category in examples:
+            with self.subTest(category=category):
+                self.assertEqual(safe_source_failure_code(ValueError(
+                    message + " api_key=PRIVATE")), category)
+                self.assertIn(category, SAFE_ERROR_CODES)
+        # Current documented payload remains strictly parsed; a syntactically
+        # valid HTTP 200 JSON body with the wrong currency cannot be accepted.
+        with self.assertRaises(ValueError) as ctx:
+            parse_gold_api_spot({
+                "symbol": "XAU", "name": "Gold", "currency": "EUR",
+                "price": 3900, "updatedAt": "2026-11-13T10:01:53Z",
+            })
+        self.assertEqual(safe_source_failure_code(ctx.exception),
+                         "gold_spot_identity_mismatch")
+
     def test_network_failure_and_unparseable_response_have_fixed_codes(self):
         self.assertEqual(safe_source_failure_code(httpx.ConnectTimeout("Bearer SECRET")),
                          "source_transport_failed")
