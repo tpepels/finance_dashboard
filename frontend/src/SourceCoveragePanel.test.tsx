@@ -215,8 +215,8 @@ describe('single-page source completeness panel', () => {
     const user = userEvent.setup();
     render(<SourceCoveragePanel/>);
     await user.click(await screen.findByText(/25 sources need attention/));
-    expect(screen.getByRole('button',{name:'Sync current data'})).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Sync history'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Sync current data'})).toBeNull();
+    expect(screen.queryByRole('button',{name:'Sync history'})).toBeNull();
     expect(screen.queryByRole('table',{name:/Source observations/})).toBeNull();
     await user.click(screen.getByText(/Source diagnostics/));
     expect(screen.getByRole('table', { name: /Source observations/ })).toBeTruthy();
