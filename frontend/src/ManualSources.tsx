@@ -30,7 +30,6 @@ export default function ManualSources() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [showAll, setShowAll] = useState(true);
   const [processing, setProcessing] = useState<string|null>(null);
   const [complete, setComplete] = useState<string|null>(null);
   useEffect(() => {
@@ -138,13 +137,9 @@ export default function ManualSources() {
     </header>
     {error && <p role="alert">{error}</p>}
     {message && <p role="status">{message}</p>}
-    <label className="manual-source-filter"><input type="checkbox" checked={showAll}
-      onChange={e=>setShowAll(e.target.checked)}/> Show all manual sources
-    </label>
     {!status && !error && <p role="status">Loading manual source catalogue…</p>}
     <div className="manual-source-list">
-    {status?.datasets.filter(source => showAll || source.roles.length > 0 &&
-      Object.keys(source.staged).length < source.roles.length).map(source=>{
+    {status?.datasets.map(source=>{
       const recent = status.jobs.find(job=>job.dataset===source.id);
       const ready = source.roles.length > 0 &&
         source.roles.every(role=>source.staged[role.id]);
