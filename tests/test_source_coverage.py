@@ -100,6 +100,67 @@ class SourceCoverageTests(unittest.TestCase):
                          ["complete_for_pinned_release"])
         self.assertEqual(others["inequality.us.gini_survey_wdi"]["state"], "stale")
 
+    def test_exact_bis_series_end_dates_and_expiration_preserve_missing_gap(self):
+        dates = {
+            "property.jp.real_residential.bis": date(2025, 10, 1),
+            "property.world.real_residential.bis": date(2026, 1, 1),
+            "property.us.real_residential.bis": date(2026, 4, 1),
+            "property.ea.real_residential.bis": date(2026, 4, 1),
+        }
+        for sid, d in dates.items():
+            self.add_macro(sid, when=d)
+        current = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        for sid, d in dates.items():
+            with self.subTest(series=sid):
+                self.assertEqual(current[sid]["state"], "available")
+                self.assertTrue(current[sid]["complete_for_pinned_release"])
+                self.assertEqual(current[sid]["published_through"], d.isoformat())
+                self.assertEqual(current[sid]["publisher_release_verified_as_of"],
+                                 "2026-11-13")
+        # Both missing country-specific verification and the next publisher
+        # update close the exception rather than extending it indefinitely.
+        later = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 26))["items"]}
+        for sid in dates:
+            self.assertEqual(later[sid]["state"], "stale")
+            self.assertIsNone(later[sid]["published_through"])
+        self.add_macro("property.de.real_residential.bis",
+                       when=date(2025, 10, 1))
+        unverified = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        self.assertEqual(unverified["property.de.real_residential.bis"]["state"], "stale")
+
+    def test_two_immutable_academic_and_archival_artifacts_are_not_live_series(self):
+        source_latest = {
+            "stress.us.high_yield_oas_fred_archive": date(2025, 11, 3),
+            "returns.doeswijk_swinkels.global_multiasset.usd.nominal": date(2022, 12, 1),
+        }
+        for sid, day in source_latest.items():
+            self.add_macro(sid, when=day)
+        rows = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        for sid, day in source_latest.items():
+            with self.subTest(series=sid):
+                self.assertEqual(rows[sid]["state"], "available")
+                self.assertEqual(rows[sid]["published_through"], day.isoformat())
+                self.assertTrue(rows[sid]["complete_for_pinned_release"])
+                self.assertTrue(rows[sid]["scheduled_download_unnecessary_for_pinned_release"])
+                self.assertIn("Pinned", rows[sid]["published_release"])
+        # A single record short of the immutable end date must still be
+        # reported as incomplete and never claimed as a certified source.
+        self.add_macro("returns.doeswijk_swinkels.global_multiasset.usd.real",
+                       when=date(2022, 11, 1))
+        additional = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        self.assertFalse(additional["returns.doeswijk_swinkels.global_multiasset.usd.real"]
+                         ["complete_for_pinned_release"])
+
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
                        when=date(2026, 9, 1), error='source_policy_deferred')
