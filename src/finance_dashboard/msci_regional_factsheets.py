@@ -698,6 +698,61 @@ def store_manual_factsheet(root: Path, index: str, original: str,
     return folder.name, receipt.name
 
 
+def store_manual_methodology(root: Path, payload: bytes) -> tuple[str, str]:
+    """Allow the exact pinned original PDF when archived Wayback gzip is absent."""
+    pdf, _encoding = archived_pdf(payload)
+    if sha256(pdf).hexdigest() != METHODOLOGY["pdf_sha256"]:
+        raise MsciFactsheetError("manual_methodology_differs_from_pinned_edition")
+    identity = {"publisher": "MSCI", "source_kind": "owner_supplied_methodology",
+                "edition": "March 2021"}
+    manifest = {"schema_version": 1, "source": SOURCE,
+                "kind": "owner_supplied_methodology",
+                "source_identity": identity,
+                "original_url": METHODOLOGY["original_url"],
+                "publisher_origin_verified": False,
+                "pdf_sha256": METHODOLOGY["pdf_sha256"]}
+    folder = _write_bundle(
+        root / ARCHIVE_DIR / "manual-methodology",
+        {"methodology.pdf": pdf}, manifest)
+    stored, files = _read_bundle(folder)
+    if (stored != {**manifest, "files": {"methodology.pdf": sha256(pdf).hexdigest()}}
+            or files != {"methodology.pdf": pdf}):
+        raise MsciFactsheetError("manual_methodology_archive_identity_invalid")
+    receipt = record_acquisition_receipt(
+        folder, identity, acquisition={"mode": "owner_supplied_methodology_pdf",
+                                      "publisher_network_request": False})
+    return folder.name, receipt.name
+
+
+def _manual_methodology(root: Path) -> dict:
+    from .source_evidence import verified_receipted_bundles
+    identity = {"publisher": "MSCI", "source_kind": "owner_supplied_methodology",
+                "edition": "March 2021"}
+    parent = root / ARCHIVE_DIR / "manual-methodology"
+    records = verified_receipted_bundles(parent, identity)
+    seen = set()
+    for record in records:
+        if record["bundle_digest"] in seen:
+            continue
+        seen.add(record["bundle_digest"])
+        manifest, files = _read_bundle(record["bundle_path"])
+        if (manifest.get("source_identity") != identity
+                or manifest.get("kind") != "owner_supplied_methodology"
+                or manifest.get("original_url") != METHODOLOGY["original_url"]
+                or manifest.get("publisher_origin_verified") is not False
+                or manifest.get("pdf_sha256") != METHODOLOGY["pdf_sha256"]
+                or set(files) != {"methodology.pdf"}
+                or sha256(files["methodology.pdf"]).hexdigest() != METHODOLOGY["pdf_sha256"]):
+            raise MsciFactsheetError("manual_methodology_original_invalid")
+    if len(seen) != 1:
+        raise MsciFactsheetError("manual_methodology_edition_ambiguous")
+    return {"original_url": METHODOLOGY["original_url"],
+            "capture_url": None, "pdf_sha256": METHODOLOGY["pdf_sha256"],
+            "edition": "March 2021", "definitions": METHODOLOGY["definitions"],
+            "publisher_origin_verified": False,
+            "provenance": "owner_supplied_exact_sha256_pinned_methodology"}
+
+
 def _verified_manual_documents(root: Path) -> list[dict]:
     """Fold hash-verified user originals into the SAME strict monthly conflicts."""
     from .source_evidence import verified_receipted_bundles
@@ -775,8 +830,10 @@ def _verified_documents(root: Path) -> tuple[list[dict], list[dict]]:
 def _methodology(root: Path) -> dict:
     parent = root / ARCHIVE_DIR / "methodology"
     bundles = [p for p in parent.iterdir() if re.fullmatch(r"[0-9a-f]{64}", p.name)] if parent.is_dir() else []
+    if not bundles:
+        return _manual_methodology(root)
     if len(bundles) != 1:
-        raise MsciFactsheetError("methodology_missing")
+        raise MsciFactsheetError("methodology_ambiguous")
     _, bodies = _read_bundle(bundles[0])
     pdf, _ = archived_pdf(bodies["archived.bin"])
     if sha256(pdf).hexdigest() != METHODOLOGY["pdf_sha256"]:
