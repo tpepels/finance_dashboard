@@ -33,7 +33,10 @@ D19 D20 D21 D22 D23 D241 D242 D25 D26 D27 D28 D29 D301 D302 D31T33
 D35 D36T39 D41T43 D45T47 D49 D50 D51 D52 D53 D55T56 D58T60
 D61 D62T63 D64T66 D68 D69T75 D77T82 D84 D85 D86T89 D90T93
 D94T96 D97T98""".split()
-FINAL_USE = {"HFCE", "NPISH", "GGFC", "GFCF", "INVNT", "DIRPA", "DPABR"}
+# Historical OECD CSV releases use alternative SNA final-demand labels.
+# Each country must still have exactly six distinct, uniform categories.
+FINAL_USE = {"HFCE", "NPISH", "NPS", "GGFC", "GFCF", "INVNT",
+             "INV", "DIRPA", "DPABR", "P33", "DISC", "FD"}
 SPLITS = {"CN1": "CHN", "CN2": "CHN", "MX1": "MEX", "MX2": "MEX"}
 DIMENSIONS = {
     "2018": (69, 65, SECTORS_2018, 1995, 2015),
@@ -113,6 +116,19 @@ def _split(label: str) -> tuple[str, str]:
     return area, code
 
 
+def native_account_kind(label: str) -> str | None:
+    """Explicit OECD factor-input and output-account row grammar."""
+    if label in {"VA", "VALU", "VALUE_ADDED"}:
+        return "value_added"
+    if label in {"OUT", "OUTPUT"}:
+        return "output"
+    if label == "TLS":
+        return "net_product_taxes"
+    if re.fullmatch(r"[A-Z0-9]{3}_TAXSUB", label):
+        return "country_product_taxes"
+    return None
+
+
 def _number(text: str) -> Decimal:
     try:
         value = Decimal(text)
@@ -172,9 +188,10 @@ def audit_native_csv(stream, *, edition: str, year: int,
         raise ValueError("icio_native_final_demand_dimensions_mismatch")
     fd_parts = [_split(label) for label in fds]
     fd_areas = list(dict.fromkeys(area for area, _ in fd_parts))
+    fd_code_sets = [{cat for a, cat in fd_parts if a == area} for area in fd_areas]
     if (len(fd_areas) != n_fd_areas or any(cat not in FINAL_USE for _, cat in fd_parts)
             or any(sum(x == area for x, _ in fd_parts) != 6 for area in fd_areas)
-            or any(len({cat for a, cat in fd_parts if a == area}) != 6 for area in fd_areas)):
+            or any(len(codes) != 6 or codes != fd_code_sets[0] for codes in fd_code_sets)):
         raise ValueError("icio_native_final_demand_labels_invalid")
     expected_splits = set(SPLITS) if n_areas != n_fd_areas else set()
     if set(fd_areas) - set(areas) or set(areas) - set(fd_areas) != expected_splits:
@@ -200,7 +217,7 @@ def audit_native_csv(stream, *, edition: str, year: int,
         if label in observed:
             raise ValueError("icio_native_duplicate_row")
         observed.add(label)
-        if label not in nodes and label not in {"TLS", "VA", "OUT"}:
+        if label not in nodes and native_account_kind(label) is None:
             raise ValueError("icio_native_unrecognized_account_row")
         values = [_number(cell) for cell in row[1:]]
         numeric_scale = max(numeric_scale, max(-v.as_tuple().exponent for v in values))
@@ -237,20 +254,52 @@ def audit_native_csv(stream, *, edition: str, year: int,
             column_sums[j] += val
     if not set(nodes) <= observed:
         raise ValueError("icio_native_missing_industry_rows")
-    # Source product accounts must not be deduced from X-Z and then called a
-    # source accounting verification. If absent, retain explicit unknown.
-    has_accounts = output_column and set(specials) == {"TLS", "VA", "OUT"}
+    # Two independently observed publisher accounting layouts:
+    # (1) VA + TLS = OUT - column_sum(Z)
+    # (2) VALU + sum(country_TAXSUB) = OUTPUT - column_sum(Z).
+    # No source accounts are inferred from the balancing residual.
+    value_labels = [label for label in specials
+                    if native_account_kind(label) == "value_added"]
+    output_labels = [label for label in specials
+                     if native_account_kind(label) == "output"]
+    global_tax_labels = [label for label in specials
+                         if native_account_kind(label) == "net_product_taxes"]
+    country_tax_labels = [label for label in specials
+                          if native_account_kind(label) == "country_product_taxes"]
+    accounts_complete = (len(value_labels) == 1 and len(output_labels) == 1
+                         and not (global_tax_labels and country_tax_labels)
+                         and (len(global_tax_labels) == 1 or
+                              set(country_tax_labels) ==
+                              {area + "_TAXSUB" for area in fd_areas}
+                              or not country_tax_labels)
+                         and (not country_tax_labels or
+                              len(country_tax_labels) == n_fd_areas))
+    # A missing tax account is allowed only if the source has no tax rows;
+    # it cannot be called independently tax-inclusive without a tax identity.
+    has_accounts = accounts_complete and (
+        bool(global_tax_labels) or bool(country_tax_labels)
+        or value_labels[0] in {"VALU", "VALUE_ADDED"})
+    account_schema = ("publisher_VA_TLS_OUT" if has_accounts and global_tax_labels else
+                      "publisher_VALU_country_TAXSUB_OUTPUT"
+                      if has_accounts and country_tax_labels else
+                      "publisher_value_added_output_without_explicit_tax"
+                      if has_accounts else "incomplete_or_absent")
     if has_accounts:
-        trow, vrow, orow = (specials[key] for key in ("TLS", "VA", "OUT"))
-        col_bound = Decimal(5).scaleb(-numeric_scale - 1) * (expected_nodes + 3)
+        vrow = specials[value_labels[0]]
+        orow = specials[output_labels[0]]
+        trow = ([sum((specials[name][j] for name in
+                      [*global_tax_labels, *country_tax_labels]), Decimal(0))
+                 for j in range(len(vrow))])
+        col_bound = Decimal(5).scaleb(-numeric_scale - 1) * (
+            expected_nodes + 2 + len(global_tax_labels) + len(country_tax_labels))
         for j, label in enumerate(nodes):
             residual = column_sums[j] + trow[j] + vrow[j] - orow[j]
             max_col = max(max_col, abs(residual))
             col_failure += abs(residual) > col_bound
-            output_mismatch += node_output[label] != orow[j]
-            totals(_split(label)[0])["value_added"] += vrow[j]
-    elif specials and not set(specials) <= {"TLS", "VA", "OUT"}:
-        raise ValueError("icio_native_unknown_special_accounts")
+            output_mismatch += abs(node_output[label] - orow[j]) > col_bound
+            totals(_split(label)[0])["value_added"] += vrow[j] + trow[j]
+    # Unknown extra row labels are rejected while known but incomplete source
+    # accounts remain explicitly unverified rather than silently imputed.
     # If split and unsplit country rows both contain production, the parent
     # must not be summed twice or silently ignored.
     conflicts = sorted(area for area, splits in (("CHN", ("CN1", "CN2")),
@@ -310,6 +359,9 @@ def audit_native_csv(stream, *, edition: str, year: int,
             "country_concordance": {"split_to_parent": SPLITS, "ambiguous_unsplit_parents": conflicts,
                 "valid": not conflicts},
             "publisher_account_rows_present": has_accounts,
+            "publisher_account_schema": account_schema,
+            "observed_source_account_row_labels": sorted(specials),
+            "final_demand_categories": sorted(fd_code_sets[0]),
             "accounting_passed": (row_failure == col_failure == output_mismatch == 0)
                                 if has_accounts else None,
             "row_failures": row_failure if output_column else None,
