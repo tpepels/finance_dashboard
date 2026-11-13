@@ -38,7 +38,7 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(report['summary']['macro']['deferred_attempts_with_data'], 1)
         self.assertEqual(report['summary']['macro']['deferred_attempts_current_data'], 1)
         self.assertEqual(report['summary']['macro']['deferred_attempts_stale_data'], 0)
-        self.assertEqual(report['summary']['macro']['needs_attention'], 1)
+        self.assertEqual(report['summary']['macro']['needs_attention'], len(self.catalog) - 1)
         self.assertIn('C01', rows['activity.us.oecd_cli']['research_questions'])
         self.assertIn('deferred', rows['activity.us.oecd_cli']['next_action'].lower())
         self.assertEqual(rows['activity.jp.oecd_cli']['observation_state'], 'stale')
@@ -60,7 +60,7 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(report['summary']['macro']['deferred_attempts_with_data'], 1)
         self.assertEqual(report['summary']['macro']['deferred_attempts_current_data'], 0)
         self.assertEqual(report['summary']['macro']['deferred_attempts_stale_data'], 1)
-        self.assertEqual(report['summary']['macro']['needs_attention'], 1)
+        self.assertEqual(report['summary']['macro']['needs_attention'], len(self.catalog))
 
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
@@ -72,7 +72,7 @@ class SourceCoverageTests(unittest.TestCase):
         rows = {row['id']: row for row in report['items']}
         self.assertEqual(rows['activity.us.oecd_cli']['state'], 'available')
         self.assertEqual(rows['activity.jp.oecd_cli']['state'], 'refresh_failed_with_data')
-        self.assertEqual(report['summary']['macro']['needs_attention'], 1)
+        self.assertEqual(report['summary']['macro']['needs_attention'], len(self.catalog) - 1)
 
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:",
