@@ -265,7 +265,8 @@ def main(argv: list[str] | None = None) -> int:
                                   series_ids=selected,
                                   attention_only=args.health_repair,
                                   skip_complete_pinned=not args.once and not args.full)
-        if not args.macro_only and providers is None and selected is None:
+        if (not args.macro_only and not args.health_repair
+                and providers is None and selected is None):
             errors += refresh_market_all(engine)
         return errors
 
