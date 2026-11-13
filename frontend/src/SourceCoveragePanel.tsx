@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DataOperations from './DataOperations';
 import DeveloperLogs from './DeveloperLogs';
 import { sourceAuditCsv } from './sourceAudit';
+import { releaseFilenameId, type ReleaseInfo } from './release';
 
 interface SourceRow {
   family: 'macro' | 'markets' | 'fx';
@@ -21,6 +22,7 @@ interface SourceRow {
 }
 interface Coverage {
   asof: string;
+  release: ReleaseInfo;
   summary: Record<string, { total: number; with_data: number; without_data: number;
     needs_attention: number; stale?: number; refresh_failed_with_data?: number }>;
   items: SourceRow[];
@@ -80,11 +82,12 @@ export default function SourceCoveragePanel() {
   }, []);
   function exportSourceAudit() {
     if (!report) return;
-    const csv = sourceAuditCsv(report.items);
+    const csv = sourceAuditCsv(report.items, report.release.release_id);
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'global-capital-monitor-source-audit-' + report.asof + '.csv';
+    link.download = 'global-capital-monitor-source-audit-' +
+      releaseFilenameId(report.release) + '-' + report.asof + '.csv';
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -120,6 +123,7 @@ export default function SourceCoveragePanel() {
         {diagnosticsOpen && <div className="research-source-diagnostics-body">
         {error && <p role="alert">{error}</p>}
         {report && <>
+          <p>Report version: {report.release.release_id}. Source observations persist across releases.</p>
           <p>{report.summary.macro.with_data}/{report.summary.macro.total} economic,
             {' '}{report.summary.markets.with_data}/{report.summary.markets.total} market,
             {' '}{report.summary.fx.with_data}/{report.summary.fx.total} FX histories stored.
