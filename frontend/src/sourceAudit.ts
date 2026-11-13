@@ -44,9 +44,9 @@ function cell(value: unknown): string {
   const safe = /^[\s]*[=+\-@]/.test(str) ? "'" + str : str;
   return '"' + safe.replace(/"/g, '""') + '"';
 }
-export function sourceAuditCsv(items: SourceAuditRow[]): string {
+export function sourceAuditCsv(items: SourceAuditRow[], releaseId: string): string {
   return [
-    COLUMNS.map(([, name]) => cell(name)).join(','),
-    ...items.map(item => COLUMNS.map(([key]) => cell(item[key])).join(',')),
+    [cell('app_release'), ...COLUMNS.map(([, name]) => cell(name))].join(','),
+    ...items.map(item => [cell(releaseId), ...COLUMNS.map(([key]) => cell(item[key]))].join(',')),
   ].join('\r\n') + '\r\n';
 }
