@@ -123,7 +123,7 @@ describe('one manual original-source importer on simplified Data page',()=>{
     render(<ManualSources/>);
     await user.click(await screen.findByRole('button',{name:'Fetch missing sources'}));
     await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch'));
-    expect(screen.getByText(/1 publisher source job\(s\) queued/)).toBeTruthy();
+    expect(await screen.findByText(/1 publisher source job\(s\) queued/)).toBeTruthy();
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 
