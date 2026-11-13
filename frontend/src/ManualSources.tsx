@@ -143,8 +143,13 @@ export default function ManualSources() {
       const recent = status.jobs.find(job=>job.dataset===source.id);
       const ready = source.roles.length > 0 &&
         source.roles.every(role=>source.staged[role.id]);
-      return <section className="manual-source-entry" key={source.id}>
-        <h4>{source.title}</h4>
+      return <details className="manual-source-entry" key={source.id}>
+        <summary><strong>{source.title}</strong>
+          <small>{recent ? recent.status.replaceAll('_',' ') :
+            Object.keys(source.staged).length ? 'Files uploaded' :
+            source.existing_importer ? 'ZIP / XLSX originals' : 'Download / upload'}</small>
+        </summary>
+        <div className="manual-source-entry-content">
         <p>{source.description}</p>
         {source.roles.map(role=><div className="manual-source-file" key={role.id}>
           <div className="manual-source-file-name">
@@ -188,7 +193,8 @@ export default function ManualSources() {
           {recent.status === 'complete' && <small>Upload origin unverified; stored
             observations and original bytes remain available for the source audit.</small>}
         </div>}
-      </section>;
+        </div>
+      </details>;
     })}
     </div>
     {complete && <p className="manual-source-note">Import finished. Source coverage has been refreshed.</p>}
