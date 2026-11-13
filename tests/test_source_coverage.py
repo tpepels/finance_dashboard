@@ -181,7 +181,10 @@ class SourceCoverageTests(unittest.TestCase):
             self.assertIsNone(release_date[sid]["published_through"])
         # Missing the source endpoint's last observed month is an actual gap.
         self.add_macro("activity.jp.oecd_cli", when=date(2020, 1, 1))
-        self.assertEqual(before["activity.jp.oecd_cli"]["state"], "stale")
+        independent = {x["id"]: x for x in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        self.assertEqual(independent["activity.jp.oecd_cli"]["state"], "stale")
 
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
