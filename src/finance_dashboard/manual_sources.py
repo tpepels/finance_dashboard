@@ -249,6 +249,8 @@ class _PreparedManualProvider:
 
 
 class ManualSourceManager:
+    """Durable FIFO import queue; uploads never wait for ongoing research work."""
+
     def __init__(self, engine, *, stage: Path | None = None, evidence: Path | None = None,
                  journal: Path | None = None, accepted=None):
         self.engine = engine
@@ -261,33 +263,44 @@ class ManualSourceManager:
             "FINANCE_MANUAL_IMPORT_JOURNAL", "/data/maintenance/manual-imports.json"))
         self.lock = Lock()
         self.active = False
+        self._worker: Thread | None = None
         self.jobs: list[dict] = []
         try:
             saved = json.loads(self.journal.read_text())
-            for job in saved.get("jobs", [])[-20:]:
-                if job["status"] in ("queued", "running"):
+            for job in saved.get("jobs", [])[-80:]:
+                # A mid-ingestion crash cannot be assumed safely complete.
+                if job["status"] in ("running", "downloading"):
                     job["status"] = "interrupted"
+                job.setdefault("method", "upload")
                 self.jobs.append(job)
         except (OSError, ValueError, TypeError, KeyError):
             pass
+        with self.lock:
+            if any(job["status"] == "queued" for job in self.jobs):
+                self._ensure_worker()
 
     def _save(self):
         self.journal.parent.mkdir(parents=True, exist_ok=True)
-        temp = None
+        temporary = None
         try:
             with NamedTemporaryFile(mode="w", encoding="utf-8",
                                     prefix=".manual-jobs-", dir=self.journal.parent,
-                                    delete=False) as file:
-                temp = Path(file.name)
-                json.dump({"version": 1, "jobs": self.jobs[-20:]}, file)
-                file.flush()
-                os.fsync(file.fileno())
-            os.chmod(temp, 0o600)
-            os.replace(temp, self.journal)
-            temp = None
+                                    delete=False) as out:
+                temporary = Path(out.name)
+                json.dump({"version": 2, "jobs": self.jobs[-80:]}, out)
+                out.flush()
+                os.fsync(out.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, self.journal)
+            temporary = None
         finally:
-            if temp is not None:
-                temp.unlink(missing_ok=True)
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+
+    def _job_dir(self, job_id: str) -> Path:
+        if not re.fullmatch(r"[0-9a-f]{32}", job_id):
+            raise ValueError("Invalid import job identifier")
+        return self.stage / "_jobs" / job_id
 
     def _staged(self, dataset, roles):
         folder = self.stage / dataset
@@ -306,136 +319,218 @@ class ManualSourceManager:
     def status(self):
         specs = source_specs()
         with self.lock:
-            jobs = [dict(job) for job in reversed(self.jobs[-20:])]
-            active = self.active
-            datasets = [
-                {**spec, "id": name,
-                 "staged": self._staged(name, spec["roles"])}
-                for name, spec in specs.items()
-            ]
-        return {"datasets": datasets, "active": active, "jobs": jobs}
+            return {
+                "datasets": [{**spec, "id": name,
+                              "staged": self._staged(name, spec["roles"])}
+                             for name, spec in specs.items()],
+                "active": self.active,
+                "queued": sum(job["status"] == "queued" for job in self.jobs),
+                "jobs": [dict(job) for job in reversed(self.jobs[-80:])],
+            }
 
-    def _start(self, dataset):
+    def _ensure_worker(self):
+        # Caller owns self.lock. The worker resets the slot before exiting to
+        # avoid losing a job queued during its shutdown boundary.
+        if self._worker is None:
+            self._worker = Thread(target=self._drain, daemon=True,
+                                  name="gcm-original-import-queue")
+            self._worker.start()
+
+    def _enqueue(self, dataset: str, method: str) -> str | None:
+        """Caller owns self.lock. Uploads are snapshot-linked before queuing."""
         spec = source_specs()[dataset]
-        if self.active:
+        if not spec["roles"]:
+            raise ValueError("This source uses its dedicated importer")
+        if method == "upload" and len(self._staged(dataset, spec["roles"])) != len(spec["roles"]):
             return None
-        if not spec["roles"] or len(self._staged(dataset, spec["roles"])) != len(spec["roles"]):
-            return None
-        self.active = True
-        job = {"id": uuid4().hex, "dataset": dataset, "status": "queued",
-               "created_at": datetime.now(timezone.utc).isoformat(),
-               "finished_at": None, "sources": [], "error_code": None}
-        self.jobs.append(job)
-        self.jobs = self.jobs[-20:]
-        self._save()
-        Thread(target=self._run, args=(job["id"], dataset),
-               daemon=True, name="gcm-manual-original-import").start()
-        return job["id"]
+        if method == "publisher":
+            pending = next((job for job in reversed(self.jobs)
+                            if job["dataset"] == dataset and job["method"] == "publisher"
+                            and job["status"] in ("queued", "downloading", "running")), None)
+            if pending:
+                return pending["id"]
+        job_id = uuid4().hex
+        spool = self._job_dir(job_id)
+        spool.mkdir(parents=True, exist_ok=False)
+        try:
+            if method == "upload":
+                for role in spec["roles"]:
+                    path = self.stage / dataset / (role["id"] + ".bin")
+                    if path.is_symlink() or not path.is_file():
+                        raise ProviderError("Original upload staging changed")
+                    os.link(path, spool / (role["id"] + ".bin"))
+            job = {"id": job_id, "dataset": dataset, "method": method,
+                   "status": "queued", "created_at": datetime.now(timezone.utc).isoformat(),
+                   "finished_at": None, "sources": [], "error_code": None,
+                   "downloaded": {}, "phase": "waiting"}
+            self.jobs.append(job)
+            try:
+                self._save()
+            except Exception:
+                self.jobs.pop()
+                raise
+            if method == "upload":
+                # The queued job owns immutable file links. New uploads can be
+                # accepted immediately, even for the same dataset.
+                for role in spec["roles"]:
+                    (self.stage / dataset / (role["id"] + ".bin")).unlink(missing_ok=True)
+            self._ensure_worker()
+            return job_id
+        except Exception:
+            shutil.rmtree(spool, ignore_errors=True)
+            raise
 
-    def start(self, dataset):
+    def start(self, dataset: str) -> str:
         if dataset not in source_specs() or not source_specs()[dataset]["roles"]:
             raise ValueError("Unknown manual source")
         with self.lock:
-            if self.active:
-                raise RuntimeError("An original import is in progress")
-            token = self._start(dataset)
-            if token is None:
+            token = self._enqueue(dataset, "upload")
+            if token is not None:
+                return token
+            # Retry a retained failed/interrupted immutable upload snapshot.
+            old = next((job for job in reversed(self.jobs)
+                        if job["dataset"] == dataset and job["method"] == "upload"
+                        and job["status"] in ("failed", "partial", "interrupted")
+                        and self._job_dir(job["id"]).is_dir()), None)
+            if old is None:
                 raise ValueError("Required original files not yet uploaded")
-            return token
+            old.update(status="queued", phase="waiting", error_code=None,
+                       finished_at=None, sources=[])
+            self._save()
+            self._ensure_worker()
+            return old["id"]
 
-    def _run(self, job_id, dataset):
-        with maintenance_network_lock:
+    def fetch(self, dataset: str | None = None):
+        specs = source_specs()
+        if dataset is not None and (dataset not in specs or not specs[dataset]["roles"]):
+            raise ValueError("Unknown publisher download source")
+        queued, skipped = [], {}
+        with self.lock:
+            for name, spec in specs.items():
+                if dataset is not None and name != dataset:
+                    continue
+                if not spec["roles"]:
+                    skipped[name] = "dedicated_original_importer"
+                    continue
+                if dataset is None and any(
+                        job["dataset"] == name and job["status"] == "complete"
+                        for job in self.jobs):
+                    skipped[name] = "already_imported"
+                    continue
+                token = self._enqueue(name, "publisher")
+                if token is not None:
+                    queued.append({"dataset": name, "job_id": token})
+        return {"jobs": queued, "skipped": skipped}
+
+    def _drain(self):
+        while True:
             with self.lock:
-                row = next(job for job in self.jobs if job["id"] == job_id)
-                row["status"] = "running"
+                job = next((item for item in self.jobs if item["status"] == "queued"), None)
+                if job is None:
+                    self.active = False
+                    self._worker = None
+                    return
+                self.active = True
+                job["status"] = "downloading" if job["method"] == "publisher" else "running"
+                job["phase"] = "downloading" if job["method"] == "publisher" else "validating"
                 self._save()
             try:
-                spec = source_specs()[dataset]
-                with self.lock:
-                    staged = self._staged(dataset, spec["roles"])
-                    if len(staged) != len(spec["roles"]):
-                        raise ProviderError("Manual original source pair incomplete")
-                    files = {
-                        role["id"]: (self.stage / dataset / (role["id"] + ".bin")).read_bytes()
-                        for role in spec["roles"]
-                    }
-                values = _parse_source(dataset, files)
-                if dataset == "msci-methodology":
-                    from .msci_regional_factsheets import store_manual_methodology
-                    digest, receipt = store_manual_methodology(
-                        self.evidence, files["methodology"])
-                    evidence = {"kind": "local",
-                                "scope": "user_uploaded_publisher_origin_unverified",
-                                "bundle_digest": digest, "receipt_name": receipt}
-                elif dataset.startswith("msci-"):
-                    from .msci_regional_factsheets import (
-                        store_manual_factsheet, read_msci_regional_evidence, series_values)
-                    index = dataset[5:].upper()
-                    original = spec["roles"][0]["download_url"]
-                    digest, receipt = store_manual_factsheet(
-                        self.evidence, index, original, files["factsheet"])
-                    evidence = {"kind": "local",
-                                "scope": "user_uploaded_publisher_origin_unverified",
-                                "bundle_digest": digest, "receipt_name": receipt}
-                    full = read_msci_regional_evidence(self.evidence)
-                    values = {sid: series_values(full, _definitions()[sid]["source_key"])
-                              for sid in spec["series_ids"]}
-                else:
-                    digest, receipt = _archive(self.evidence, dataset, files, spec["roles"])
-                    evidence = {"kind": "local",
-                                "scope": "user_uploaded_publisher_origin_unverified",
-                                "bundle_digest": digest, "receipt_name": receipt}
-                ids = sorted(spec["series_ids"])
-                provider = _PreparedManualProvider(values, evidence, _definitions())
-                ingest = IngestionService(self.engine, provider)
-                results = []
-                for sid in ids:
-                    try:
-                        result = ingest.refresh(sid, full=True)
-                        results.append({"id": sid, "status": "success",
-                                        "received": result["received"],
-                                        "versions_added": result["versions_added"],
-                                        "last_period": (max(values[sid]).isoformat()
-                                                        if values.get(sid) else None)})
-                    except Exception:
-                        results.append({"id": sid, "status": "failed",
-                                        "error_code": "manual_source_ingestion_failed"})
-                state = "complete" if all(r["status"] == "success" for r in results) else "partial"
-                with self.lock:
-                    row["sources"] = results
-                    row["status"] = state
-                    row["archive_sha256"] = digest
-                    row["origin_verified"] = False
-                    row["finished_at"] = datetime.now(timezone.utc).isoformat()
-                    self._save()
-                    if state == "complete":
-                        # The verified original remains in /data/source-evidence.
-                        # Only the replaceable upload staging is removed.
-                        for role in spec["roles"]:
-                            (self.stage / dataset / (role["id"] + ".bin")).unlink(missing_ok=True)
-                if any(item["status"] == "success" for item in results):
-                    # Same acceptance cache invalidation as automated refresh
-                    # and ICIO original import; the browser independently
-                    # invalidates its own data cache on completion.
-                    self.accepted()
+                with maintenance_network_lock:
+                    self._run(job)
             except Exception as exc:
+                from .publisher_downloads import PublisherDownloadError
                 from .service import safe_source_failure_code
                 with self.lock:
-                    row["status"] = "failed"
-                    row["error_code"] = safe_source_failure_code(exc)
-                    row["finished_at"] = datetime.now(timezone.utc).isoformat()
+                    job["status"] = "failed"
+                    job["error_code"] = (exc.code if isinstance(exc, PublisherDownloadError)
+                                         else safe_source_failure_code(exc))
+                    job["finished_at"] = datetime.now(timezone.utc).isoformat()
+                    job["phase"] = "failed"
                     self._save()
-            finally:
+
+    def _run(self, job: dict):
+        from .publisher_downloads import fetch_publisher_file
+        dataset, method = job["dataset"], job["method"]
+        spec = source_specs()[dataset]
+        folder = self._job_dir(job["id"])
+        downloads = {}
+        if method == "publisher":
+            for role in spec["roles"]:
+                detail = fetch_publisher_file(role, folder / (role["id"] + ".bin"))
+                downloads[role["id"]] = detail
                 with self.lock:
-                    self.active = False
+                    job["downloaded"] = dict(downloads)
+                    self._save()
+        with self.lock:
+            job["status"] = "running"
+            job["phase"] = "validating"
+            self._save()
+        files = {}
+        for role in spec["roles"]:
+            path = folder / (role["id"] + ".bin")
+            if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= role["max_bytes"]:
+                raise ProviderError("Queued original source file invalid")
+            files[role["id"]] = path.read_bytes()
+        values = _parse_source(dataset, files)
+        if dataset == "msci-methodology":
+            from .msci_regional_factsheets import store_manual_methodology
+            digest, receipt = store_manual_methodology(
+                self.evidence, files["methodology"], publisher_download=bool(downloads))
+            evidence = {"kind": "local",
+                        "scope": ("publisher_https_source" if downloads else
+                                  "user_uploaded_publisher_origin_unverified"),
+                        "bundle_digest": digest, "receipt_name": receipt}
+        elif dataset.startswith("msci-"):
+            from .msci_regional_factsheets import (
+                store_manual_factsheet, read_msci_regional_evidence, series_values)
+            index = dataset[5:].upper()
+            original = spec["roles"][0]["download_url"]
+            digest, receipt = store_manual_factsheet(
+                self.evidence, index, original, files["factsheet"],
+                publisher_download=bool(downloads))
+            evidence = {"kind": "local",
+                        "scope": ("publisher_https_source" if downloads else
+                                  "user_uploaded_publisher_origin_unverified"),
+                        "bundle_digest": digest, "receipt_name": receipt}
+            full = read_msci_regional_evidence(self.evidence)
+            values = {sid: series_values(full, _definitions()[sid]["source_key"])
+                      for sid in spec["series_ids"]}
+        else:
+            digest, receipt = _archive(self.evidence, dataset, files, spec["roles"],
+                                       downloads=downloads or None)
+            evidence = {"kind": "local",
+                        "scope": ("publisher_https_source" if downloads else
+                                  "user_uploaded_publisher_origin_unverified"),
+                        "bundle_digest": digest, "receipt_name": receipt}
+        provider = _PreparedManualProvider(values, evidence, _definitions())
+        ingest = IngestionService(self.engine, provider)
+        results = []
+        for sid in sorted(spec["series_ids"]):
+            try:
+                result = ingest.refresh(sid, full=True)
+                results.append({"id": sid, "status": "success",
+                                "received": result["received"],
+                                "versions_added": result["versions_added"],
+                                "last_period": (max(values[sid]).isoformat()
+                                                if values.get(sid) else None)})
+            except Exception:
+                results.append({"id": sid, "status": "failed",
+                                "error_code": "manual_source_ingestion_failed"})
+        state = "complete" if all(x["status"] == "success" for x in results) else "partial"
+        with self.lock:
+            job.update(sources=results, status=state, archive_sha256=digest,
+                       origin_verified=bool(downloads),
+                       finished_at=datetime.now(timezone.utc).isoformat(),
+                       phase="finished")
+            self._save()
+        if any(item["status"] == "success" for item in results):
+            self.accepted()
+        if state == "complete":
+            shutil.rmtree(folder, ignore_errors=True)
 
     def commit_uploaded_file(self, dataset: str, role: str, original: str,
                              uploaded: Path, size: int, digest: str):
-        """Atomically accept a size-bounded streamed upload on the same volume.
-
-        Request bytes never accumulate in memory. Neither an import nor a
-        partial request can replace an immutable original source bundle.
-        """
+        """Commit a bounded streamed upload without blocking other queue work."""
         spec = source_specs().get(dataset)
         selected = next((r for r in (spec or {}).get("roles", []) if r["id"] == role), None)
         if not selected or not NAME.fullmatch(original) or not original.lower().endswith(
@@ -445,21 +540,18 @@ class ManualSourceManager:
             raise ValueError("Original file exceeds the permitted bound")
         folder = self.stage / dataset
         with self.lock:
-            if self.active:
-                raise RuntimeError("An original import is active")
             if (folder.is_symlink() or not folder.is_dir()
                     or uploaded.parent != folder or uploaded.is_symlink()
                     or not uploaded.is_file() or uploaded.stat().st_size != size):
                 raise ValueError("Manual original staging identity invalid")
-            path = folder / (role + ".bin")
-            if path.is_symlink():
+            destination = folder / (role + ".bin")
+            if destination.is_symlink():
                 raise ValueError("Manual upload destination is a symlink")
-            os.replace(uploaded, path)
-            started = self._start(dataset)
+            os.replace(uploaded, destination)
+            started = self._enqueue(dataset, "upload")
         return {"dataset": dataset, "role": role,
                 "sha256": digest, "import_started": started is not None,
                 "job_id": started}
-
 
 
 def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, journal=None,
