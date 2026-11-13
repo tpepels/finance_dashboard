@@ -378,6 +378,25 @@ class ManualSourceTests(unittest.TestCase):
             self.assertEqual(counts, {"data": 1, "metadata": 2})
             self.assertEqual(len(result["sources"]), 5)
 
+    def test_complete_staged_files_from_prior_release_are_imported_on_startup(self):
+        from finance_dashboard.manual_sources import ManualSourceManager
+        data, meta = wid_fixtures("WO", legacy=True)
+        folder = self.root / "pending" / "wid-world"
+        folder.mkdir(parents=True)
+        (folder / "data.bin").write_bytes(data.encode())
+        (folder / "metadata.bin").write_bytes(meta.encode())
+        restored = ManualSourceManager(self.engine, stage=self.root / "pending",
+                                       evidence=self.root / "evidence",
+                                       journal=self.root / "recovered-jobs.json")
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if restored.jobs and restored.jobs[0]["status"] in ("complete", "failed"):
+                break
+            time.sleep(.02)
+        self.assertEqual(restored.jobs[0]["status"], "complete", restored.jobs[0])
+        self.assertFalse((folder / "data.bin").exists())
+        self.assertFalse((folder / "metadata.bin").exists())
+
     def test_running_job_is_replayed_after_restart_from_immutable_spool(self):
         from finance_dashboard.manual_sources import ManualSourceManager
         job_id = "0123456789abcdef0123456789abcdef"
