@@ -179,6 +179,41 @@ class ManualSourceTests(unittest.TestCase):
         self.assertFalse(list((self.root/"evidence"/"msci-regional-factsheets")
                               .glob("manual-methodology/*/manifest.json")))
 
+    def test_manual_methodology_then_factsheet_on_clean_install_without_wayback(self):
+        from test_msci_regional_factsheets import factsheet, text_pdf
+        from finance_dashboard import msci_regional_factsheets as msci
+        methodology = text_pdf([
+            ["MSCI Fundamental Data Methodology", "March 2021"]])
+        pdf = factsheet(index="JAPAN", rows=[
+            ("MSCI Japan", "1.12", "18.25", "15.10", "2.20")])
+        with patch.dict(msci.METHODOLOGY, {
+                "pdf_sha256": msci.sha256(methodology).hexdigest()}):
+            method_upload = self.upload(
+                "msci-methodology", "methodology",
+                "MSCI_Fundamental_Data_Methodology_Mar2021.pdf",
+                methodology)
+            self.assertEqual(method_upload.status_code, 201, method_upload.text)
+            imported = finished(self.client, "msci-methodology")
+            self.assertEqual(imported["status"], "complete", imported)
+            self.assertEqual(imported["sources"], [])
+            self.assertFalse(imported["origin_verified"])
+            factsheet_upload = self.upload(
+                "msci-japan", "factsheet", "msci-japan-index-net.pdf", pdf)
+            self.assertEqual(factsheet_upload.status_code, 201, factsheet_upload.text)
+            imported_pdf = finished(self.client, "msci-japan")
+            self.assertEqual(imported_pdf["status"], "complete", imported_pdf)
+            self.assertEqual(len(imported_pdf["sources"]), 2)
+            self.assertEqual({r["last_period"] for r in imported_pdf["sources"]},
+                             {"2026-09-01"})
+            with Session(self.engine) as session:
+                self.assertEqual(
+                    current_observations(session, "valuation.japan.msci_trailing_pe")[-1].period,
+                    date(2026, 9, 1))
+            self.assertFalse(list((self.root/"evidence"/"msci-regional-factsheets")
+                              .glob("methodology/*/archived.bin")))
+            self.assertTrue(list((self.root/"evidence"/"msci-regional-factsheets")
+                             .glob("manual-methodology/*/methodology.pdf")))
+
     def test_uploaded_msci_pdf_updates_canonical_pe_and_forward_pe(self):
         from test_msci_regional_factsheets import factsheet, ArchiveTests
         from finance_dashboard import msci_regional_factsheets as msci
