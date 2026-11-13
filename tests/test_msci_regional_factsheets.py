@@ -222,6 +222,85 @@ class ArchiveTests(unittest.TestCase):
             self.assertEqual(summary["panels"]["WORLD"]["latest_composition"]["constituent_count"], 1604)
 
 
+    def test_source_health_prioritizes_new_captures_and_reuses_verified_cdx(self):
+        old_pdf = factsheet(asof="AUG 31, 2024")
+        new_pdf = factsheet(asof="SEP 30, 2026")
+        payload, pins = self.methodology(None)
+        urls = [original for original, index in msci.ORIGINAL_URLS.items()
+                if index == "WORLD"]
+        header = ["timestamp", "original", "statuscode", "mimetype", "digest", "length"]
+        visits = []
+        with TemporaryDirectory() as temp, mock.patch.dict(msci.METHODOLOGY, pins):
+            root = Path(temp)
+            msci.store_methodology(root, payload)
+            for original in urls:
+                body = [header]
+                if original == WORLD_URL:
+                    body.extend([
+                        ["20240918000000", original, "200", "application/pdf",
+                         msci.cdx_digest(old_pdf), str(len(old_pdf))],
+                        ["20261016000000", original, "200", "application/pdf",
+                         msci.cdx_digest(new_pdf), str(len(new_pdf))],
+                    ])
+                msci.store_cdx_listing(root, original, json.dumps(body).encode())
+
+            def handler(request):
+                url = str(request.url)
+                visits.append(url)
+                if url == msci.capture_url("20261016000000", WORLD_URL):
+                    return httpx.Response(200, content=new_pdf)
+                if url == msci.capture_url("20240918000000", WORLD_URL):
+                    return httpx.Response(500)
+                return httpx.Response(503)
+
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                report = msci.collect(root, client=client, indexes={"WORLD"},
+                                      prefer_recent=True,
+                                      capture_not_before=date(2026, 9, 1),
+                                      log=lambda _: None)
+            self.assertEqual(report["stored_parsed"], 1)
+            self.assertEqual(report["cdx_cache_reused"], len(urls))
+            self.assertEqual(report["excluded_older_captures"], 1)
+            self.assertEqual(report["unique_captures"], 1)
+            self.assertEqual(report["already_stored"], 0)
+            self.assertEqual(visits, [msci.capture_url("20261016000000", WORLD_URL)])
+
+            # Any tampered or swapped archived listing must not be silently
+            # trusted as the basis for acquisition.
+            parent = root / msci.ARCHIVE_DIR / "cdx" / msci.sha256(WORLD_URL.encode()).hexdigest()[:16]
+            folder = next(parent.iterdir())
+            (folder / "listing.json").write_bytes(b"[]")
+            with self.assertRaisesRegex(msci.MsciFactsheetError, "bundle_file_hash_mismatch"):
+                msci._latest_cdx_listing(root, WORLD_URL)
+
+    def test_cdx_request_policy_stop_preserves_cached_progress_for_next_run(self):
+        from finance_dashboard.source_policy_types import PolicyDeferred
+        payload, pins = self.methodology(None)
+        originals = {WORLD_URL: "WORLD", ACWI_URL: "ACWI"}
+        calls = []
+        def handler(request):
+            url = str(request.url)
+            calls.append(url)
+            if "msci-world-index.pdf" in url:
+                return httpx.Response(200, content=json.dumps([
+                    ["timestamp","original","statuscode","mimetype","digest","length"]
+                ]).encode())
+            raise PolicyDeferred("request-budget")
+        with TemporaryDirectory() as temp, mock.patch.dict(msci.METHODOLOGY, pins), \
+             mock.patch.dict(msci.ORIGINAL_URLS, originals, clear=True):
+            root = Path(temp)
+            msci.store_methodology(root, payload)
+            with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+                first = msci.collect(root, client=client, log=lambda _: None)
+                second = msci.collect(root, client=client, log=lambda _: None)
+            self.assertEqual(first["source_policy_deferred"], 1)
+            self.assertEqual(first["cdx_listings"], 1)
+            self.assertEqual(first["cdx_missing"], 1)
+            self.assertEqual(second["cdx_cache_reused"], 1)
+            self.assertEqual(second["cdx_missing"], 1)
+            self.assertEqual(len([u for u in calls if "msci-world-index.pdf" in u]), 1)
+
+
 class CompositionGateTests(unittest.TestCase):
     def evidence(self, months=("2026-09-01",)):
         panels = {index: {"bound": True, "composition_months": list(months),
