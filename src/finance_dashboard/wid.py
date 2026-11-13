@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import io
@@ -22,6 +22,7 @@ import httpx
 
 from .bis import FetchedSeries, ProviderError
 from .source_policy import require_managed_client
+from .source_policy_types import PolicyDeferred
 from .source_evidence import record_acquisition_receipt
 
 WID_ROOT = "https://wid.world/bulk_download"
@@ -219,6 +220,122 @@ def _archive_bundle(root: Path, area: str, data: httpx.Response,
             shutil.rmtree(temporary)
 
 
+# A publisher policy may defer the second original of the data/metadata
+# pair for many minutes. Until both are validated, the first response MUST
+# remain quarantined, not published as a certified WID source receipt. A
+# bounded, hash-verifiable staging file lets later scheduled runs resume.
+_PENDING_LIMIT = 250_000_000
+_PENDING_MAX_AGE = timedelta(days=2)
+
+
+def _pending_root(root: Path, area: str) -> Path:
+    if area not in {reference for reference, _, _ in WID_SERIES.values()}:
+        raise ProviderError("WID staging area unregistered")
+    return Path(root) / "wid-pending" / area
+
+
+def _stage_pending_data(root: Path, area: str, response: httpx.Response) -> None:
+    """Persist non-certifying data original after metadata is policy deferred."""
+    url = f"{WID_ROOT}/WID_data_{area}.csv"
+    body = response.content
+    if (response.status_code != 200 or str(response.request.url) != url
+            or not body or len(body) > _PENDING_LIMIT):
+        raise ProviderError("WID pending original identity or size mismatch")
+    digest = sha256(body).hexdigest()
+    parent = _pending_root(root, area)
+    folder = parent / digest
+    temporary = None
+    try:
+        parent.mkdir(parents=True, exist_ok=True)
+        if folder.exists():
+            _read_pending_data(root, area, folder)
+            return
+        temporary = Path(tempfile.mkdtemp(prefix=".wid-pending-", dir=parent))
+        with (temporary / "data.csv").open("wb") as stream:
+            stream.write(body)
+            stream.flush()
+            os.fsync(stream.fileno())
+        manifest = {
+            "schema_version": 1, "kind": "unvalidated_wid_data_pending_metadata",
+            "publisher": "WID.world", "area": area,
+            "original_url": url, "sha256": digest, "bytes": len(body),
+            "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
+            "headers": {key: response.headers[key] for key in
+                        ("content-type", "etag", "last-modified")
+                        if key in response.headers},
+            "certified": False, "receipt": None,
+        }
+        with (temporary / "manifest.json").open("w", encoding="utf-8") as stream:
+            json.dump(manifest, stream, sort_keys=True)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.rename(temporary, folder)
+            temporary = None
+        except FileExistsError:
+            _read_pending_data(root, area, folder)
+    except OSError as exc:
+        raise ProviderError("WID pending data could not be staged") from exc
+    finally:
+        if temporary is not None and temporary.exists():
+            shutil.rmtree(temporary, ignore_errors=True)
+
+
+def _read_pending_data(root: Path, area: str, folder: Path) -> tuple[httpx.Response, datetime]:
+    url = f"{WID_ROOT}/WID_data_{area}.csv"
+    try:
+        if folder.is_symlink() or not folder.is_dir():
+            raise ValueError("pending path")
+        document = folder / "manifest.json"
+        payload = folder / "data.csv"
+        if document.is_symlink() or payload.is_symlink():
+            raise ValueError("pending symlink")
+        manifest = json.loads(document.read_text(encoding="utf-8"))
+        if (manifest.get("schema_version") != 1
+                or manifest.get("kind") != "unvalidated_wid_data_pending_metadata"
+                or manifest.get("publisher") != "WID.world"
+                or manifest.get("area") != area
+                or manifest.get("original_url") != url
+                or manifest.get("sha256") != folder.name
+                or manifest.get("certified") is not False
+                or manifest.get("receipt") is not None
+                or type(manifest.get("bytes")) is not int
+                or not 0 < manifest["bytes"] <= _PENDING_LIMIT):
+            raise ValueError("pending identity")
+        if payload.stat().st_size != manifest["bytes"]:
+            raise ValueError("pending length")
+        body = payload.read_bytes()
+        if sha256(body).hexdigest() != manifest["sha256"]:
+            raise ValueError("pending hash")
+        headers = manifest.get("headers")
+        if (not isinstance(headers, dict) or any(key not in (
+                "content-type", "etag", "last-modified") or
+                not isinstance(value, str) or len(value) > 1000
+                for key, value in headers.items())):
+            raise ValueError("pending response headers")
+        retrieved_at = datetime.fromisoformat(manifest["retrieved_at_utc"])
+        if retrieved_at.tzinfo is None or retrieved_at.utcoffset() is None:
+            raise ValueError("pending retrieval time")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise ProviderError("WID pending original hash or identity invalid") from exc
+    return (httpx.Response(200, content=body, headers=headers,
+                           request=httpx.Request("GET", url)), retrieved_at)
+
+
+def _resumable_pending_data(root: Path, area: str) -> httpx.Response | None:
+    parent = _pending_root(root, area)
+    latest = None
+    for folder in sorted(parent.iterdir()) if parent.is_dir() else []:
+        if not folder.is_dir() or folder.name.startswith("."):
+            continue
+        response, retrieved = _read_pending_data(root, area, folder)
+        age = datetime.now(timezone.utc) - retrieved.astimezone(timezone.utc)
+        if timedelta(0) <= age < _PENDING_MAX_AGE:
+            if latest is None or retrieved > latest[1]:
+                latest = response, retrieved
+    return latest[0] if latest else None
+
+
 class WidClient:
     """One original CSV and metadata pair per area per collector lifetime.
 
@@ -238,11 +355,23 @@ class WidClient:
         data_url = f"{WID_ROOT}/WID_data_{area}.csv"
         metadata_url = f"{WID_ROOT}/WID_metadata_{area}.csv"
         if area not in self._areas:
+            data = (_resumable_pending_data(self.archive_dir, area)
+                    if self.archive_dir is not None else None)
             try:
-                data = self.client.get(data_url, follow_redirects=False)
-                data.raise_for_status()
-                metadata = self.client.get(metadata_url, follow_redirects=False)
-                metadata.raise_for_status()
+                if data is None:
+                    data = self.client.get(data_url, follow_redirects=False)
+                    data.raise_for_status()
+                try:
+                    metadata = self.client.get(metadata_url, follow_redirects=False)
+                    metadata.raise_for_status()
+                except PolicyDeferred:
+                    # The managed rate ledger did not emit the metadata GET.
+                    # Persist only the first original so that a later normal
+                    # run can request metadata under the same publisher rules.
+                    # This staging is not an accepted/receipted source pair.
+                    if self.archive_dir is not None:
+                        _stage_pending_data(self.archive_dir, area, data)
+                    raise
             except httpx.HTTPError as exc:
                 raise ProviderError("WID original data or metadata request failed") from exc
             if (data.status_code != 200 or metadata.status_code != 200
@@ -258,6 +387,12 @@ class WidClient:
             if self.archive_dir is not None:
                 archived = _archive_bundle(self.archive_dir, area, data, metadata, bundle)
                 record_acquisition_receipt(archived, {"publisher": "WID.world", "area": area})
+                # The full validated original pair now has its own immutable
+                # archive. Clear only temporary non-certifying staging, so
+                # the next normal refresh can detect genuine source revisions.
+                pending = _pending_root(self.archive_dir, area)
+                if pending.exists():
+                    shutil.rmtree(pending)
             self._areas[area] = bundle
         values = self._areas[area].observations[(variable, percentile)]
         observations = {day: value for day, value in values.items()
