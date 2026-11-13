@@ -123,6 +123,24 @@ describe('single-page source completeness panel', () => {
     expect(screen.getByText(/requested_period_subset · archived receipt/)).toBeTruthy();
   });
 
+  it('downloads version-stamped source audit CSV', async () => {
+    const user = userEvent.setup();
+    const url = vi.fn(() => 'blob:release-csv');
+    Object.defineProperty(URL, 'createObjectURL', {configurable:true, value:url});
+    Object.defineProperty(URL, 'revokeObjectURL', {configurable:true, value:vi.fn()});
+    let filename = '';
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(function (this: HTMLAnchorElement) { filename = this.download; });
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/25 sources need attention/));
+    await user.click(screen.getByText(/Source diagnostics/));
+    await user.click(screen.getByRole('button', {name: 'Download full source audit (CSV)'}));
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(filename).toContain('0.2.0+1111222233334444');
+    expect(filename).toContain('2026-11-03.csv');
+    expect(url).toHaveBeenCalledTimes(1);
+  });
+
   it('offers original dates, precise failure status and all families on request', async () => {
     const user = userEvent.setup();
     render(<SourceCoveragePanel/>);
