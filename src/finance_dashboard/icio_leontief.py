@@ -62,7 +62,9 @@ def read_native_year(stream: TextIO, audit: dict, *, max_nodes: int = MAX_NODES)
     n = audit["industry_nodes"]
     if not isinstance(n, int) or n < 2 or n > max_nodes:
         raise NativeValueAddedError("icio_leontief_invalid_node_count")
-    if not header or not header[0] or len(header[0]) > 128:
+    # Historical OECD CSVs have a blank index-column heading. This does not
+    # weaken the independently checked producer and final-demand identities.
+    if not header or header[0] not in ("", "V1"):
         raise NativeValueAddedError("icio_leontief_header_invalid")
     node_names = header[1:n + 1]
     if len(set(node_names)) != n:
