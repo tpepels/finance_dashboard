@@ -2,7 +2,7 @@
 
 The simplified **Data** page has one update area with two primary actions
 (**Sync current data** and **Repair gaps**), a compact expandable
-**Manual downloads and uploads** source catalogue, and collapsed
+**Publisher downloads and manual fallback** source catalogue, and collapsed
 **Source coverage and audit**, **Scientific evidence and advanced monitoring**,
 and **Source explorer** sections. The historical sync remains available
 inside the advanced disclosure next to the update controls.
@@ -13,14 +13,37 @@ SQLite observation versions and the existing immutable evidence directory.
 There is no second ingestion database, no generic CSV field mapper and no
 checkbox/confirmation after an accepted upload.
 
-## Download and upload
+## Automatic download and import
 
-Open **Data → Manual downloads and uploads**, expand the source and select
-its publisher download link. Upload the corresponding file next to it.
-For paired originals, upload both files; once all required roles exist,
-validation and ingestion start automatically. The per-source row displays
-the real result, period and number of new/revised observations. A failed
-or interrupted import can be repeated from already staged files.
+Open **Data → Publisher downloads and manual fallback**, then select
+**Fetch missing sources** once. The server queues every source not already
+successfully imported, downloads the registered publisher originals over HTTPS,
+validates them with the existing source-specific parsers and ingests accepted
+observations into the canonical database. No extra approval or checkbox is
+required. Individual source rows also have **Refresh from publisher** to request
+new originals even when a previous import succeeded.
+
+Publisher access uses the same managed HTTP transport, durable rate ledger,
+cooldowns and fixed URL allowlist as the other collection paths. A valid
+deferred permit automatically resumes at the publisher's next allowed time;
+for example, the WID data/metadata pair may require waiting between requests.
+Already received role bytes are verified locally and not fetched again on
+resumption. The Data page shows queued, active, deferred, failed and completed
+jobs, along with the automatic retry time.
+
+Manual upload remains a fallback for a publisher that returns an HTML challenge,
+requires interactive authentication, is inaccessible to the server, or supplies
+only a human download page. Choose the official link and upload the original
+next to its source. Upload inputs stay enabled while other imports run; once a
+source's complete required role set exists it becomes an immutable, persisted
+queue job immediately. A restart resumes queued and interrupted jobs from their
+retained snapshots.
+
+The 2025 **OECD ICIO regular** original ReadMe and five pinned ZIP archives are
+also attempted directly. The full edition-aware original importer remains
+available for historical/extended archives, publisher-access failures and
+reassessment. Full accounting and source-health acceptance still require the
+original scientific checks; downloading a file alone does not certify its data.
 
 | Source family | Download link shown | Required upload | Canonical effect |
 | --- | --- | --- | --- |
@@ -42,7 +65,7 @@ functionality was retired.
 
 ## Provenance, acceptance and limits
 
-- The browser can certify **which bytes were uploaded**, their original
+- For owner uploads, the browser can certify **which bytes were uploaded**, their original
   publisher-shaped identity and their validated numeric values; it cannot
   prove the user obtained the bytes from the official publisher. Every upload
   archive and linked ingestion record states
@@ -65,6 +88,8 @@ functionality was retired.
 - The API accepts a fixed list of dataset/role names, same-origin guarded
   binary streams, bounded payloads and safe filename suffixes. Upload bytes
   are written directly to a private temporary file and atomically staged.
+  Server-acquired bytes have separate publisher HTTPS manifests and receipts;
+  a user upload is never relabelled as a publisher network request.
   Staged partial files are **never** classified as published observations.
 - Import jobs run under the existing maintenance network lock, so they do
   not race a concurrent refresh. A successful file import uses the same
@@ -77,15 +102,18 @@ functionality was retired.
 ## API and validation
 
 `GET /api/manual-sources` lists the supported source downloads, exact
-roles, staged-file inventory and recent jobs. `POST
+roles, staged-file inventory, persistent queued/deferred jobs and retry deadlines.
+`POST /api/manual-sources/fetch` queues missing registered publisher sources;
+`POST /api/manual-sources/fetch?dataset=wid-world` retries one publisher
+source. Both endpoints forbid arbitrary URLs. `POST
 /api/manual-sources/upload?dataset=...&role=...&filename=...` streams an
 exact original file; validated uploads automatically start the canonical
 ingest when the role set is complete. `POST
 /api/manual-sources/import?dataset=...` explicitly retries a complete
 staged set after an interrupted/failed job.
 
-The existing `/api/originals` ICIO endpoints are unchanged. Neither
-endpoint accepts a user-supplied URL or source mapping.
+The existing `/api/originals` ICIO endpoints remain available. Neither
+fetch nor upload accepts a user-supplied URL or generic source mapping.
 
 CI acceptance includes backend original ingestion, file-size/filename/
 same-origin restrictions, WID five-series auto-import, EU KLEMS blank-year
@@ -93,7 +121,7 @@ preservation, gold USD timestamp validation, pinned Swinkels and MSCI
 methodology integrity, MSCI capture/owner-upload conflict resolution,
 and frontend link/upload/job rendering.
 
-**Deployment is required.** GitHub CI exercises synthetic or pinned
+**Deployment is required.** Repository tests exercise synthetic or pinned
 fixtures in isolation and does not import files into the owner's private
 Docker database. The live source-health audit must be rerun after actual
 uploads before any of the previously unresolved sources can be certified.
