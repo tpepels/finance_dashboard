@@ -208,3 +208,28 @@ reingestion, truthful before/after counters, UI initiation and
 cancel-safe acquisition. These tests do not constitute a successful
 run on the owner's private database; only the resulting server audit
 can certify the live 19→N count.
+
+### Additional confirmed resolution: discontinued ECB HICP edition
+
+The nominally stale `prices.ea.hicp_index` (ECB source
+`ICP.M.U2.N.000000.4.INX`, **2015=100**) officially ends
+**December 2025**. The 2026 rebasing also changed the euro-area
+composition. The user's source audit ALREADY records the separate,
+registered new `prices.ea.hicp_index_2025`
+(Eurostat source `prc_hicp_minr/M.I25.TOTAL.EA`, **2025=100**)
+through **October 2026**, state `available`. The old exact
+edition is now publisher-complete; no old/new index levels are ever
+spliced or given false common units. The new Eurostat original remains
+independent. Source: https://data.ecb.europa.eu/data/datasets/ICP/ICP.M.U2.N.000000.4.INX
+and https://data.ecb.europa.eu/data/concepts/hicp .
+
+This reduces the remaining expected actionable issues from 19 to
+**18**, assuming an unchanged November 13 database and publication
+windows. The actual post-deployment number must be read from a fresh
+source audit. The remaining 18 are: five WID world histories,
+two OECD non-financial-corporation net fixed assets, two OECD CLI
+trend-restored, one EUKLEMS US labour-compensation, six MSCI regional
+P/E histories, one gold spot collection, and one failed Swinkels
+retrieval. All 18 have an explicit canonical repair attempt via
+`repair_source_health`, but successful new publisher acquisition
+cannot be claimed without executing it on the owner's host.
