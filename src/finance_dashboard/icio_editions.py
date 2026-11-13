@@ -285,8 +285,11 @@ def reassess_registered_archive(root: Path, archive_sha: str) -> dict:
             _verify_edition_bundle(bundle, record)
             from .icio_schema import probe_archive_layout
             with ZipFile(bundle / "archive.zip") as z:
-                if z.testzip() is not None:
-                    raise ValueError("icio_derived_original_crc_invalid")
+                # The canonical sealed bundle's full original-byte SHA-256
+                # was reverified immediately above. Registration already
+                # checked every member CRC; rereading all compressed members
+                # for an identical CRC scan would duplicate substantial IO.
+                # Reading a member still checks that member's ZIP CRC.
                 probe = probe_archive_layout(z)
                 reconciliation = _effective_archive_identity(record["filename"], record, probe)
                 native = audit_archive_native(z, reconciliation["edition"],
