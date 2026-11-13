@@ -197,8 +197,7 @@ def _archive(root: Path, dataset: str, files: dict[str, bytes], roles: list[dict
             raise ProviderError("Publisher download receipt hash mismatch")
         manifest["download_evidence"] = {
             key: {field: downloads[key][field] for field in (
-                "requested_url", "final_url", "sha256", "bytes", "content_type",
-                "retrieved_at_utc")} for key in sorted(downloads)}
+                "requested_url", "sha256", "bytes")} for key in sorted(downloads)}
     temporary = None
     try:
         parent.mkdir(parents=True, exist_ok=True)
@@ -225,7 +224,8 @@ def _archive(root: Path, dataset: str, files: dict[str, bytes], roles: list[dict
         receipt = record_acquisition_receipt(
             folder, manifest["source_identity"],
             acquisition={"mode": ("publisher_https_verified_endpoint" if downloads else
-                                   "owner_supplied_unverified_publisher_origin")})
+                                   "owner_supplied_unverified_publisher_origin"),
+                         **({"downloads": downloads} if downloads else {})})
         return folder.name, receipt.name
     finally:
         if temporary and temporary.exists():
