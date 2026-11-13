@@ -101,3 +101,45 @@ python -m finance_dashboard.icio_release_diagnostics \
 A fresh original OECD TiVA pair was also acquired through the existing capture path. Both bodies remain byte-identical to the prior originals (`fe2e53c3…` levels / `5050b1aa…` shares); the 588 observations, nine existing identity failures and 46 disjoint serialization intervals reproduce unchanged. A fresh transport retrieval does not establish common release or historical first publication.
 
 The same comparison can be acquired with `--root /path/to/source-evidence`. It uses the existing immutable original/audit/manifest/receipt boundary. `read_icio_evidence(root).release_comparison` then reports compact old/new accounting outcomes, numeric change counts and the largest failed row/column decompositions. Each read verifies the retained older original and ReadMe against pinned hashes, verifies the exact original-pair/method audit digest, and requires the current original already verified by the canonical ICIO reader. It does not repeat full matrix accounting or trust an editable diagnostic JSON, and it does not replace the failed current-release status.
+
+## 13 November 2026 — historical/extended CSV importer reassessment
+
+The owner-supplied 29-archive collection was reassessed on the media server
+at 11:29 UTC before the source-account-aware v7 parser was deployed. That run
+processed 29/29 archives with **43 native annual matrices parsed, 35 rejected**
+and **11 archive layouts unresolved**. Parsed matrices must not be counted as
+scientifically certified. No original CSV bytes were included in that diagnostic
+text export; the original sealed ZIPs remain on the server.
+
+The subsequent v7 implementation addresses the independently documented
+historical ICIO CSV shapes:
+
+- 2018 and 2021 numeric sector codes and 2023/2025 lettered sector codes are
+  mapped independently to the application's internal analytical vocabulary.
+- Historical final-demand categories, including P33, are accepted only within
+  a complete six-category-per-country source layout. The actual category codes,
+  original sector labels and output-column identities are retained in diagnostics.
+- Publisher VA/TLS/OUT and historical country_TAXSUB/VALU/OUTPUT rows are
+  separately accounted. Tax components are added to value added only when the
+  full original source-account identity is present and arithmetically consistent.
+- Rounding uncertainty is computed from each original nonzero printed cell's
+  last digit, not from the most precise cell in the matrix. Signed residuals,
+  serialization allowances and per-year failure counts remain visible.
+- Invalid split-country concordances, failed row accounts or unverified partial
+  source accounts block Leontief publication. Reconstructed values remain
+  supplementary and distinct from official published TiVA observations.
+- Older immutable derived reports (v3–v6) remain accessible until source
+  rereassessment creates a v7 report; original ZIPs and sealed receipts are
+  unchanged. The reassessment UI now distinguishes processing completion from
+  per-year scientific validation, including exact rejection codes.
+
+The numerical gates, published TiVA reconciliation and auxiliary RData economic
+identity checks **remain open** until a post-v7 reassessment of the 29 stored
+archives is run and inspected. This record does not claim that the prior
+35 rejection cases, 43 account cases or published TiVA differences have been
+resolved without processing their actual source bytes.
+
+The same diagnostic snapshot reports 426 total source series, 110 requiring
+attention (28 stale, 80 deferred with retained data, one collection failure,
+one failed refresh with retained data) and no local backup manifests.
+These broader source-coverage issues are independent of ICIO validation.
