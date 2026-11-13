@@ -636,7 +636,8 @@ class ManualSourceManager:
                     job["status"] = "running"
                     job["phase"] = "validating"
                     self._save()
-                result = import_original_archive(target, self.evidence, readme)
+                result = import_original_archive(
+                    target, self.evidence, readme, publisher_download=True)
                 successes += 1
                 row = {"id": filename, "status": "success",
                        "edition": result.get("edition"), "table": result.get("table")}
