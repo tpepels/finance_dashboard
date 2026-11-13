@@ -60,6 +60,50 @@ describe('single-page source completeness panel', () => {
     expect(screen.getByText(/Wait for the publisher budget/)).toBeTruthy();
     expect(screen.getByText(/does not establish the latest publisher release/)).toBeTruthy();
   });
+  it('does not count in-cadence deferred histories as actionable but preserves their attempt', async () => {
+    const currentDeferred = {
+      ...recorded, id: 'profit.pt.nfc_gross_value_added',
+      name: 'Portugal NFC value added', state: 'available',
+      refresh_state: 'deferred', last_attempt_state: 'deferred',
+      last_failure_code: 'source_policy_deferred',
+      observation_state: 'current',
+      next_action: 'Retained history is within its expected source-age window; last refresh deferred.',
+    };
+    const staleDeferred = {
+      ...recorded, id: 'inequality.world.pretax_income.top1',
+      name: 'World top one percent', state: 'refresh_deferred_with_data',
+      refresh_state: 'deferred', last_attempt_state: 'deferred',
+      observation_state: 'stale', next_action: 'Stale data, retry.',
+    };
+    const data = {
+      ...payload,
+      summary: {
+        macro: {total: 53, with_data: 52, without_data: 1, needs_attention: 1,
+          deferred_attempts_with_data: 2, deferred_attempts_current_data: 1,
+          deferred_attempts_stale_data: 1},
+        markets: {total: 24, with_data: 24, without_data: 0, needs_attention: 0},
+        fx: {total: 3, with_data: 3, without_data: 0, needs_attention: 0},
+      },
+      items: [currentDeferred, staleDeferred],
+    };
+    vi.stubGlobal('fetch', vi.fn(async (url:string) => ({
+      ok: true, json: async () => String(url) === '/api/maintenance'
+        ? {active_job_id:null,jobs:[],operations:[]} : data,
+    })));
+    const user = userEvent.setup();
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/1 sources need attention/));
+    await user.click(screen.getByText(/Source diagnostics/));
+    expect(screen.getByText(/1 retained histories are within their expected age/)).toBeTruthy();
+    expect(screen.getByText(/1 deferred histories are also stale/)).toBeTruthy();
+    expect(screen.getByText('World top one percent')).toBeTruthy();
+    expect(screen.queryByText('Portugal NFC value added')).toBeNull();
+    await user.selectOptions(screen.getByRole('combobox', {name:'Coverage status'}), 'deferred');
+    expect(screen.getByText('Portugal NFC value added')).toBeTruthy();
+    expect(screen.getByText('World top one percent')).toBeTruthy();
+    expect(screen.getAllByText('Refresh deferred').length).toBe(2);
+  });
+
   it('shows only concise missing-data counts before opening technical detail', async () => {
     render(<SourceCoveragePanel/>);
     expect(await screen.findByText(/25 sources need attention/)).toBeTruthy();
