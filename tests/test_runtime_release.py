@@ -178,6 +178,16 @@ class ReleaseStateTests(unittest.TestCase):
                                 self.assertIn(A["release_id"], archive.read("README.txt").decode())
                                 self.assertEqual(json.loads(archive.read(
                                     "diagnostics/status.json"))["release_id"], A["release_id"])
+                                self.assertIn("diagnostics/icio-accounting-failures.csv",
+                                              archive.namelist())
+                                failure_manifest = json.loads(archive.read(
+                                    "diagnostics/icio-accounting-failures-manifest.json"))
+                                self.assertTrue(failure_manifest["complete_for_exported_matrices"])
+                                self.assertEqual(failure_manifest["failure_equations_exported"], 0)
+                                self.assertIn(A["release_id"], archive.read(
+                                    "diagnostics/icio-accounting-failures-manifest.json").decode())
+                                self.assertIn("signed_residual_usd_million", archive.read(
+                                    "diagnostics/icio-accounting-failures.csv").decode())
                     finally:
                         engine.dispose()
                 finally:
