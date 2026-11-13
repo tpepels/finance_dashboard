@@ -92,7 +92,8 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
 
 def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 series_ids: set[str] | None = None, progress=None,
-                stopped=None, skip_complete_pinned: bool = False) -> int:
+                stopped=None, skip_complete_pinned: bool = False,
+                attention_only: bool = False) -> int:
     """Canonical macro refresh uses the same task execution contract as markets."""
     client = ProviderRouter()
     try:
@@ -110,6 +111,21 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
             chosen = [sid for sid in client.supported_ids()
                       if (series_ids is None or sid in series_ids)
                       and (providers is None or client.definitions[sid]["provider"] in providers)]
+            if attention_only and chosen:
+                from .source_coverage import build_coverage
+                from .market import instruments
+                census = build_coverage(engine, list(client.definitions.values()),
+                                        instruments())
+                # Attempt only actual gaps. Source-policy-deferred but
+                # in-cadence rows remain visible in the operational audit,
+                # but do not consume scarce publisher requests in repair mode.
+                actionable = {item["id"] for item in census["items"]
+                              if item["family"] == "macro" and item["state"] != "available"}
+                prior = len(chosen)
+                chosen = [sid for sid in chosen if sid in actionable]
+                record_event("macro", "stage_finished",
+                             action="source_health_selection", status="complete",
+                             selected=len(chosen), skipped=prior - len(chosen))
             # A frozen publisher edition does not release more observations
             # every day. Skip already complete versions in *scheduled* cycles;
             # explicit/manual refresh still rechecks them on request.
@@ -220,9 +236,11 @@ def main(argv: list[str] | None = None) -> int:
                         action="append", help="Limit refresh to named provider (repeatable)")
     parser.add_argument("--series", action="append",
                         help="Refresh exactly this canonical macro series (repeatable)")
+    parser.add_argument("--health-repair", action="store_true",
+                        help="Only refresh macro sources with actionable missing, stale or failed data")
     parser.add_argument("--interval-seconds", type=int, default=int(os.getenv("REFRESH_INTERVAL_SECONDS", "86400")))
     args = parser.parse_args(argv)
-    if args.market_only and (args.macro_only or args.provider or args.series):
+    if args.market_only and (args.macro_only or args.provider or args.series or args.health_repair):
         parser.error("--market-only cannot be combined with --macro-only, --provider or --series")
     if args.series:
         known = {row["id"]: row for row in load_documents()[0]["series"]
@@ -244,7 +262,9 @@ def main(argv: list[str] | None = None) -> int:
         errors = 0
         if not args.market_only:
             errors += refresh_all(engine, full=args.full, providers=providers,
-                                  series_ids=selected)
+                                  series_ids=selected,
+                                  attention_only=args.health_repair,
+                                  skip_complete_pinned=not args.once and not args.full)
         if not args.macro_only and providers is None and selected is None:
             errors += refresh_market_all(engine)
         return errors
