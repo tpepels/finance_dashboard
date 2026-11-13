@@ -40,6 +40,8 @@ const fakeFetch=vi.fn(async (request:string,options?:RequestInit)=>{
     ok:true,status:200,json:async()=>structuredClone(payload)};
   if(String(request).startsWith('/api/manual-sources/import')) return {
     ok:true,status:202,json:async()=>({job_id:'import-1'})};
+  if(String(request).startsWith('/api/manual-sources/fetch')) return {
+    ok:true,status:202,json:async()=>({jobs:[{dataset:'wid-world',job_id:'job1'}],skipped:{}})};
   throw new Error('Unexpected request: '+request);
 });
 
@@ -115,4 +117,32 @@ describe('one manual original-source importer on simplified Data page',()=>{
     await user.upload(picker,new File(['a'.repeat(300001)],'WID_data_WO.csv'));
     expect(screen.getByRole('alert').textContent).toContain('exceeds');
   });
+
+  it('queues all missing publisher downloads with one action and no import confirmation',async()=>{
+    const user=userEvent.setup();
+    render(<ManualSources/>);
+    await user.click(await screen.findByRole('button',{name:'Fetch missing sources'}));
+    await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch'));
+    expect(screen.getByText(/1 publisher source job\(s\) queued/)).toBeTruthy();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('allows other source uploads while the background import queue is active',async()=>{
+    const user=userEvent.setup();
+    payload.active=true;
+    render(<ManualSources/>);
+    await user.click(await screen.findByText('WID.world — world income and wealth'));
+    const picker=screen.getByLabelText('Upload WID world observations') as HTMLInputElement;
+    expect(picker.disabled).toBe(false);
+  });
+
+  it('exposes per-source publisher retry alongside the OECD canonical manual importer',async()=>{
+    const user=userEvent.setup();
+    render(<ManualSources/>);
+    await user.click(await screen.findByText('OECD — ICIO original archives'));
+    await user.click(screen.getByRole('button',{name:'Refresh from publisher'}));
+    await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch?dataset=oecd-icio'));
+    expect(screen.getByText('OECD canonical uploader')).toBeTruthy();
+  });
+
 });
