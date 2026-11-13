@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
 from .developer_logs import read_events
+from .runtime_release import release_info
 
 
 def _console(events: list[dict]) -> list[dict]:
@@ -165,20 +166,24 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
     from .source_policy import policy_summary
 
     def snapshot():
-        events = read_events(limit=400)
+        release = release_info()
+        events = read_events(limit=400, since=release["activated_at"])
         coverage = build_coverage(db, catalog["series"], market_registry)
         status = _status(events, coverage, app.state.acceptance.loading, importer.running())
+        status["release_id"] = release["release_id"]
         return status, events, coverage
 
     @app.get("/api/diagnostics")
     def diagnostics():
         status, events, coverage = snapshot()
-        return {"status": status, "console": _console(events),
+        return {"status": status, "release": release_info(),
+                "console": _console(events),
                 "source_summary": coverage.get("summary", {})}
 
     @app.get("/api/diagnostics/download")
     def download_debug_zip():
         status, events, coverage = snapshot()
+        release = release_info()
         policy = policy_summary()
         operations = maintenance.list()
         bundle = BytesIO()
@@ -186,10 +191,13 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
             def put(name, data):
                 archive.writestr(name, json.dumps(data, sort_keys=True, indent=2,
                                                  default=str) + "\n")
+            put("diagnostics/release.json", {
+                **release, "reset_policy": "current_deployed_build_only",
+                "immutable_evidence_preserved": True})
             put("diagnostics/status.json", status)
             put("diagnostics/console.json", _console(events))
             put("diagnostics/events.json", events)
-            put("diagnostics/source-coverage.json", coverage)
+            put("diagnostics/source-coverage.json", {**coverage, "release": release})
             # No source URLs or credentials; the publisher registry exposes
             # publisher names and quota/cooldown metadata only.
             put("diagnostics/publisher-policy.json", {
@@ -207,12 +215,17 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
             })
             put("diagnostics/original-import.json", importer.public_status())
             put("diagnostics/original-method-audit.json",
-                _original_method_summary(importer.evidence))
+                {**_original_method_summary(importer.evidence), "release": release})
             archive.writestr("README.txt",
+                "Global Capital Monitor build: " + release["release_id"] + "\\n"
+                "Release activated: " + str(release["activated_at"] or "not recorded") + "\\n"
+                "Only current-build diagnostic events and job summaries are shown. "
+                "Original evidence, research history, and backups are retained.\\n"
                 "Redacted diagnostic bundle. No secrets, raw HTTP responses, source files, "
                 "portfolio holdings, database contents, or raw process stderr are included.\\n")
         bundle.seek(0)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         return StreamingResponse(iter([bundle.getvalue()]), media_type="application/zip",
-            headers={"Content-Disposition": 'attachment; filename="finance-debug-' + stamp + '.zip"',
+            headers={"Content-Disposition": 'attachment; filename="finance-debug-' +
+                     release["release_id"] + '-' + stamp + '.zip"',
                      "Cache-Control": "no-store"})
