@@ -19,6 +19,7 @@ interface SourceRow {
   evidence_bundle_digest?: string | null; evidence_receipt_recorded?: boolean;
   observation_state?: string; refresh_state?: string; research_questions?: string[];
   next_action?: string; freshness_basis?: string; expected_lag_days?: number | null;
+  source_checked_through_utc?: string | null;
 }
 interface Coverage {
   asof: string;
@@ -38,6 +39,7 @@ const LABELS: Record<string,string> = {
   collection_failed: 'Last import failed; no stored data',
   collection_deferred: 'Source policy deferred collection; no stored data',
   refresh_deferred_with_data: 'Source policy deferred refresh; previous observations retained',
+  source_checked_no_newer_data: 'Publisher original checked recently; no newer value published',
   refresh_failed_with_data: 'Last refresh failed; previous observations retained',
   source_unresolved: 'Source mapping unresolved',
 };
@@ -101,7 +103,10 @@ export default function SourceCoveragePanel() {
   const rows = useMemo(() => (report?.items ?? []).filter(item =>
     (family === 'all' || item.family === family) &&
     (selection === 'all' || (selection === 'deferred'
-      ? item.refresh_state === 'deferred' : ATTENTION.has(item.state)))),
+      ? item.refresh_state === 'deferred'
+      : selection === 'source_checked'
+      ? item.state === 'source_checked_no_newer_data'
+      : ATTENTION.has(item.state)))),
     [report, family, selection]);
   const needsAttention = report
     ? Object.values(report.summary).reduce((count, group) => count + group.needs_attention, 0)
@@ -163,6 +168,7 @@ export default function SourceCoveragePanel() {
             <select aria-label="Coverage status" value={selection} onChange={e => setSelection(e.target.value)}>
               <option value="issues">Actionable: missing, stale or failed</option>
               <option value="deferred">All deferred refresh attempts</option>
+              <option value="source_checked">Publisher checked; no newer original data</option>
               <option value="all">All {report.items.length} sources</option>
             </select>
           </label>
