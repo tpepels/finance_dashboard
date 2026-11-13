@@ -153,12 +153,16 @@ export default function DataOperations() {
       <button type="button" disabled={disabled} className="data-sync-primary"
         onClick={() => void sync('sync_current')}>Sync current data</button>
       <button type="button" disabled={disabled} className="data-sync-secondary"
-        onClick={() => void sync('sync_history')}>Sync history</button>
-      <button type="button" disabled={disabled} className="data-sync-secondary"
-        onClick={() => void sync('repair_source_health')}>Repair source health</button>
+        onClick={() => void sync('repair_source_health')}>Repair gaps</button>
     </div>
-    <p className="data-sync-hint">Current updates economic series, markets and exchange rates.
-      History checks complete available records, original ALFRED releases and SEC filings.</p>
+    <p className="data-sync-hint">Update current economic, market and FX data.
+      Repair gaps retries unavailable or stale original sources.</p>
+    <details className="data-sync-advanced">
+      <summary>Historical sync</summary>
+      <p className="data-sync-hint">Full historical collection also checks ALFRED releases and SEC filings.</p>
+      <button type="button" disabled={disabled} className="data-sync-secondary"
+        onClick={() => void sync('sync_history')}>Sync history</button>
+    </details>
     {active && <div className="data-sync-progress" role="status">
       <strong>{TITLES[active.action] ?? 'Data'} · {description(active.status)}</strong>
       {active.total != null && <progress aria-label="Sync progress"
