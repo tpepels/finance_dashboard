@@ -339,7 +339,7 @@ class ManualSourceManager:
     def _enqueue(self, dataset: str, method: str) -> str | None:
         """Caller owns self.lock. Uploads are snapshot-linked before queuing."""
         spec = source_specs()[dataset]
-        if not spec["roles"]:
+        if not spec["roles"] and (dataset != "oecd-icio" or method != "publisher"):
             raise ValueError("This source uses its dedicated importer")
         if method == "upload" and len(self._staged(dataset, spec["roles"])) != len(spec["roles"]):
             return None
@@ -402,14 +402,14 @@ class ManualSourceManager:
 
     def fetch(self, dataset: str | None = None):
         specs = source_specs()
-        if dataset is not None and (dataset not in specs or not specs[dataset]["roles"]):
+        if dataset is not None and dataset not in specs:
             raise ValueError("Unknown publisher download source")
         queued, skipped = [], {}
         with self.lock:
             for name, spec in specs.items():
                 if dataset is not None and name != dataset:
                     continue
-                if not spec["roles"]:
+                if not spec["roles"] and name != "oecd-icio":
                     skipped[name] = "dedicated_original_importer"
                     continue
                 if dataset is None and any(
@@ -453,6 +453,9 @@ class ManualSourceManager:
         dataset, method = job["dataset"], job["method"]
         spec = source_specs()[dataset]
         folder = self._job_dir(job["id"])
+        if dataset == "oecd-icio":
+            self._run_icio(job, folder)
+            return
         downloads = {}
         if method == "publisher":
             for role in spec["roles"]:
@@ -526,6 +529,69 @@ class ManualSourceManager:
         if any(item["status"] == "success" for item in results):
             self.accepted()
         if state == "complete":
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def _run_icio(self, job: dict, folder: Path):
+        """Fetch and import the exact pinned OECD regular 2025 originals.
+
+        Archive failures are isolated: other publisher files can continue. All
+        validation is performed by the pre-existing edition-specific importer.
+        """
+        from .publisher_downloads import fetch_publisher_file, PublisherDownloadError
+        from .icio import PUBLISHER_ARCHIVES, README_SHA256, import_original_archive
+        from .oecd_icio_access import PUBLISHER_URLS
+        from .original_uploads import OriginalImportManager, README
+        manager = OriginalImportManager(evidence=self.evidence)
+        readme = manager.pinned_readme()
+        if readme is None:
+            readme = folder / README
+            detail = fetch_publisher_file(
+                {"download_url": PUBLISHER_URLS[README], "max_bytes": 10_000_000}, readme)
+            if sha256(readme.read_bytes()).hexdigest() != README_SHA256:
+                raise ProviderError("OECD publisher ReadMe does not match pinned original")
+            with self.lock:
+                job["downloaded"][README] = detail
+                self._save()
+        successes = 0
+        for filename, pin in PUBLISHER_ARCHIVES.items():
+            try:
+                target = folder / filename
+                detail = fetch_publisher_file(
+                    {"download_url": PUBLISHER_URLS[filename],
+                     "max_bytes": min(1_500_000_000, max(pin["bytes"] * 2, 200_000_000))},
+                    target)
+                if detail["sha256"] != pin["sha256"] or detail["bytes"] != pin["bytes"]:
+                    raise ProviderError("OECD archive differs from pinned 2025 edition")
+                with self.lock:
+                    job["downloaded"][filename] = detail
+                    job["status"] = "running"
+                    job["phase"] = "validating"
+                    self._save()
+                result = import_original_archive(target, self.evidence, readme)
+                successes += 1
+                row = {"id": filename, "status": "success", "edition": result.get("edition"),
+                       "table": result.get("table")}
+                target.unlink(missing_ok=True)
+            except Exception as exc:
+                from .service import safe_source_failure_code
+                code = (exc.code if isinstance(exc, PublisherDownloadError)
+                        else safe_source_failure_code(exc))
+                row = {"id": filename, "status": "failed", "error_code": code}
+            with self.lock:
+                job["sources"].append(row)
+                job["status"] = "downloading"
+                job["phase"] = "downloading"
+                self._save()
+        with self.lock:
+            job.update(status=("complete" if successes == len(PUBLISHER_ARCHIVES)
+                               else "partial" if successes else "failed"),
+                       phase="finished",
+                       origin_verified=bool(successes),
+                       finished_at=datetime.now(timezone.utc).isoformat())
+            self._save()
+        if successes:
+            self.accepted()
+        if successes == len(PUBLISHER_ARCHIVES):
             shutil.rmtree(folder, ignore_errors=True)
 
     def commit_uploaded_file(self, dataset: str, role: str, original: str,
