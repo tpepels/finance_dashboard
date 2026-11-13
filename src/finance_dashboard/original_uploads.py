@@ -202,6 +202,7 @@ class OriginalImportManager:
                            "native_validation_status": result["native_validation_status"],
                            "annual_matrix_count": result["annual_matrix_count"],
                            "rejected_year_count": result["rejected_year_count"],
+                           "rejected_error_codes": result["rejected_error_codes"],
                            "header_schema_status": result["header_schema_status"],
                            "source_identity_status": result[
                                "source_identity_reconciliation"]["status"]}
