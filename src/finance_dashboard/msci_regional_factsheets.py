@@ -743,6 +743,8 @@ def _manual_methodology(root: Path) -> dict:
                     "owner_supplied_methodology"), "edition": "March 2021"}
         parent = root / ARCHIVE_DIR / (
             "publisher-methodology" if downloaded else "manual-methodology")
+        if not parent.exists() and not parent.is_symlink():
+            continue
         records = verified_receipted_bundles(parent, identity)
         seen = set()
         for record in records:
