@@ -40,6 +40,7 @@ from .engine.cache import BundleCache
 from .icio import read_icio_evidence
 from .maintenance import MaintenanceManager, BusyMaintenance
 from .developer_logs import read_events, recent_jobs, record_event
+from .runtime_release import release_info
 from .database import MarketIngestionRun, FxIngestionRun
 from .standalone import mount_built_dashboard, standalone_lifespan
 
@@ -140,7 +141,7 @@ def create_app(engine=None) -> FastAPI:
         finally:
             bundles.close()
 
-    app = FastAPI(title="Global Capital Monitor", version="0.2.0",
+    app = FastAPI(title="Global Capital Monitor", version=release_info()["version"],
                   lifespan=lifespan)
     catalog, chart_catalog = load_documents()
     errors = validate(catalog, chart_catalog)
@@ -313,8 +314,10 @@ def create_app(engine=None) -> FastAPI:
         fred_mode = ("authenticated_api" if fred_key else
                      "public_csv" if environ.get("FRED_PUBLIC_CSV_FALLBACK") == "1"
                      else "public_table")
+        release = release_info()
         return {
             "schema_version": 1,
+            "release": release,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "configuration": {
                 "fred_mode": fred_mode,
@@ -331,9 +334,9 @@ def create_app(engine=None) -> FastAPI:
                 "needs_attention": len(issues),
             },
             "issues": issues,
-            "jobs": recent_jobs(maintenance.list()["jobs"]),
-            "events": read_events(limit=400),
-            "retention": "Latest 400 structured events; latest 8 job summaries",
+            "jobs": recent_jobs(maintenance.list()["jobs"], since=release["activated_at"]),
+            "events": read_events(limit=400, since=release["activated_at"]),
+            "retention": "Current release only: latest 400 structured events; latest 8 jobs",
         }
 
     @app.get("/api/source-policy")
@@ -344,7 +347,8 @@ def create_app(engine=None) -> FastAPI:
     @app.get("/api/source-coverage")
     def source_coverage():
         """Complete safe inventory of all mapped macro, market and ECB FX histories."""
-        return build_coverage(db, catalog["series"], market_registry)
+        return {**build_coverage(db, catalog["series"], market_registry),
+                "release": release_info()}
 
     @app.get("/api/research-corpus")
     def source_research_corpus():
