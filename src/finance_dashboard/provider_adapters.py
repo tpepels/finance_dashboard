@@ -580,7 +580,13 @@ def fetch_gold_api_spot(self, series_id, start, item, key):
     if key != "price/XAU:price:updatedAt:USD":
         raise SourceUnavailable("Gold spot catalog identity differs from live API")
     response = self._get(GOLD_API_SPOT_LATEST)
-    observations = parse_gold_api_spot(response.json(), start)
+    # A 200 HTML challenge or malformed API payload must be a diagnosable
+    # provider response, never an opaque provider_failed. Do not log the body.
+    try:
+        original = response.json()
+    except (ValueError, UnicodeError) as exc:
+        raise ProviderError("Gold spot response malformed") from exc
+    observations = parse_gold_api_spot(original, start)
     return FetchedSeries(series_id, GOLD_API_SPOT_LATEST, None, observations)
 
 
