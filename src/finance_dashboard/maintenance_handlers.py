@@ -37,7 +37,8 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
     def census():
         report = build_coverage(self.engine, definitions, instruments())
         actionable = sorted(item["id"] for item in report["items"]
-                            if item["family"] == "macro" and item["state"] != "available")
+                            if item["family"] == "macro" and item["state"] not in (
+                                "available", "source_checked_no_newer_data"))
         return report, actionable
     before, issues = census()
     targets = set(issues) & supported
