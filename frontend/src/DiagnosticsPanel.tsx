@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ReleaseInfo } from './release';
 
 type DiagnosticLine = { time: string; level: string; message: string };
 type Diagnostics = {
+  release: ReleaseInfo;
   status: {
+    release_id: string;
     colour: 'green' | 'orange' | 'red';
     label: string;
     recent_errors: number;
@@ -66,7 +69,10 @@ export default function DiagnosticsPanel() {
     {open && <div id="diagnostics-console" className="diagnostics-console" role="dialog"
        aria-label="System diagnostics">
       <div className="diagnostics-head">
-        <div><strong>System diagnostics</strong><small>{label}</small></div>
+        <div><strong>System diagnostics</strong><small>{label}</small>
+          {report && <small>Build {report.release.release_id} · activated {
+            report.release.activated_at ?? 'not recorded'}</small>}
+        </div>
         <button type="button" onClick={() => { setOpen(false); button.current?.focus(); }}
           aria-label="Close diagnostics">×</button>
       </div>
@@ -82,7 +88,8 @@ export default function DiagnosticsPanel() {
           report.console.map(row => row.time + '  ' + row.level.toUpperCase() + '  ' + row.message).join('\n'))}
       </pre>
       <div className="diagnostics-foot">
-        <small>Redacted application events; source payloads and credentials excluded.</small>
+        <small>Current build only. Earlier transient logs are reset on deployment;
+          immutable source evidence is retained.</small>
         <a href="/api/diagnostics/download" className="diagnostics-download" download>
           Download debug ZIP
         </a>
