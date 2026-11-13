@@ -106,6 +106,9 @@ class SourceCoverageTests(unittest.TestCase):
             "property.world.real_residential.bis": date(2026, 1, 1),
             "property.us.real_residential.bis": date(2026, 4, 1),
             "property.ea.real_residential.bis": date(2026, 4, 1),
+            "property.de.real_residential.bis": date(2026, 4, 1),
+            "property.pt.real_residential.bis": date(2026, 4, 1),
+            "property.us.commercial_all.bis": date(2026, 4, 1),
         }
         for sid, d in dates.items():
             self.add_macro(sid, when=d)
@@ -184,6 +187,24 @@ class SourceCoverageTests(unittest.TestCase):
             self.engine, self.catalog, self.registry,
             asof=date(2026, 11, 13))["items"]}
         self.assertEqual(independent["activity.jp.oecd_cli"]["state"], "stale")
+
+    def test_two_shiller_components_remain_current_to_last_published_nonmissing_month(self):
+        ids = ("valuation.us.shiller_earnings", "valuation.us.shiller_dividend")
+        for sid in ids:
+            self.add_macro(sid, when=date(2026, 6, 1))
+        verified = {r["id"]: r for r in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 13))["items"]}
+        for sid in ids:
+            self.assertEqual(verified[sid]["state"], "available")
+            self.assertTrue(verified[sid]["complete_for_pinned_release"])
+            self.assertEqual(verified[sid]["published_through"], "2026-06-01")
+        expired = {r["id"]: r for r in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 12, 8))["items"]}
+        for sid in ids:
+            self.assertEqual(expired[sid]["state"], "stale")
+            self.assertFalse(expired[sid]["complete_for_pinned_release"])
 
     def test_deferred_current_not_same_as_failed_current(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
