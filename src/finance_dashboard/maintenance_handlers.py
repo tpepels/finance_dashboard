@@ -14,6 +14,67 @@ def run_sync(self, job_id, action, options, cancelled):
                       options=options, cancelled=cancelled)
 
 
+def run_repair_source_health(self, job_id, action, options, cancelled):
+    """Target only actionable macro gaps using the canonical publisher clients.
+
+    This operation is intentionally distinct from a full historical sync.
+    It retains research evidence, quotes no synthetic replacements, and
+    never re-requests already-current histories simply because an earlier
+    optional refresh was policy-deferred.
+    """
+    from .catalog import load_documents
+    from .market import instruments
+    from .provider_registry import get_provider
+    from .source_coverage import build_coverage
+    from .worker import refresh_all
+
+    definitions = load_documents()[0]["series"]
+    supported = {
+        item["id"] for item in definitions if item["status"] == "mapped"
+        and (spec := get_provider(item["provider"])) is not None
+        and spec.acquisition != "unsupported"
+    }
+    def census():
+        report = build_coverage(self.engine, definitions, instruments())
+        actionable = sorted(item["id"] for item in report["items"]
+                            if item["family"] == "macro" and item["state"] != "available")
+        return report, actionable
+    before, issues = census()
+    targets = set(issues) & supported
+    unconfigured = sorted(set(issues) - targets)
+    if cancelled.is_set():
+        raise MaintenanceBlocked("cancelled")
+    if not targets:
+        return {"status": "skipped" if not issues else "blocked",
+                "selected_sources": 0, "issues_before": len(issues),
+                "issues_after": len(issues), "unavailable_source_mappings": unconfigured,
+                "note": "No actionable mapped collectors available; retained observations are unchanged."}
+    self._change(job_id, completed=0, total=len(targets),
+                 stage="Repair actionable source histories",
+                 current_item="Select stale and failed histories")
+    failed = refresh_all(
+        self.engine, full=False, series_ids=targets,
+        skip_complete_pinned=True, stopped=cancelled,
+        progress=lambda done, total, sid: self._progress(job_id, done, total, sid))
+    if cancelled.is_set():
+        raise MaintenanceBlocked("cancelled")
+    after, remaining = census()
+    repaired = len(set(issues) - set(remaining))
+    result = {
+        "status": "complete" if not remaining and not failed else "partial",
+        "selected_sources": len(targets),
+        "issues_before": len(issues), "issues_after": len(remaining),
+        "resolved_issues": repaired, "failed_sources": failed,
+        "unavailable_source_mappings": unconfigured,
+        "remaining_series_ids": remaining,
+        "note": ("Failed/deferred publisher requests stay visible. "
+                 "A series is resolved only when the stored source coverage "
+                 "or publisher-verified release bound establishes it, not "
+                 "merely because a request was submitted."),
+    }
+    return result
+
+
 def run_refresh_sources(self, job_id, action, options, cancelled):
     from .worker import refresh_all
     ids = options["series_ids"]
