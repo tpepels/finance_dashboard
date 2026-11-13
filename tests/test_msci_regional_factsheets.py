@@ -303,6 +303,85 @@ class ArchiveTests(unittest.TestCase):
             self.assertEqual(len([u for u in calls if first_name in u]), 1)
 
 
+class OwnerUploadedMsciTests(unittest.TestCase):
+    def _original(self):
+        return factsheet(index="EAFE", rows=[
+            ("MSCI EAFE", "1.23", "16.50", "13.20", "2.25"),
+            ("MSCI World", "1.52", "22.69", "17.92", "4.10"),
+        ])
+
+    def test_direct_pdf_enters_existing_original_evidence_without_forged_wayback_identity(self):
+        payload = self._original()
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = ArchiveTests()
+            methodology, pins = fixture.methodology(root)
+            with mock.patch.dict(msci.METHODOLOGY, pins):
+                msci.store_methodology(root, methodology)
+                canonical = next(url for url, index in msci.ORIGINAL_URLS.items()
+                                 if index == "EAFE")
+                digest, receipt = msci.store_manual_factsheet(
+                    root, "EAFE", canonical, payload)
+                self.assertEqual(len(digest), 64)
+                self.assertTrue(receipt.endswith(".json"))
+                evidence = msci.read_msci_regional_evidence(root)
+                self.assertEqual(msci.series_values(evidence, "EAFE/PE"),
+                                 {date(2026, 9, 1): Decimal("16.50")})
+                self.assertEqual(msci.series_values(evidence, "EAFE/PE_FWD"),
+                                 {date(2026, 9, 1): Decimal("13.20")})
+                proof = next(row for row in evidence["document_proofs"]
+                             if row["index"] == "EAFE")
+                self.assertIsNone(proof["capture_timestamp"])
+                self.assertIsNone(proof["cdx_digest"])
+                self.assertTrue(proof["capture_url"].startswith("owner-upload:sha256:"))
+                self.assertFalse(evidence["first_publication_verified"])
+                manual = next((root / msci.ARCHIVE_DIR / "manual-documents" / "EAFE")
+                              .glob("*/manifest.json"))
+                self.assertFalse(json.loads(manual.read_text())["publisher_origin_verified"])
+                # Same original re-upload creates another receipt, not a
+                # duplicate printed observation, fabricated index month or
+                # overwritten archive.
+                msci.store_manual_factsheet(root, "EAFE", canonical, payload)
+                self.assertEqual(len(msci.read_msci_regional_evidence(root)
+                                     ["document_proofs"]), 1)
+                (manual.parent / "publisher.pdf").write_bytes(b"tampered")
+                with self.assertRaises(msci.MsciFactsheetError):
+                    msci.read_msci_regional_evidence(root)
+
+    def test_wrong_printed_index_is_rejected_without_receipt_or_evidence(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            canonical = next(url for url, index in msci.ORIGINAL_URLS.items()
+                             if index == "EAFE")
+            with self.assertRaises(msci.MsciFactsheetError):
+                msci.store_manual_factsheet(root, "EAFE", canonical, factsheet())
+            self.assertFalse(list((root / msci.ARCHIVE_DIR).glob(
+                "manual-documents/EAFE/retrievals/*.json")))
+
+    def test_direct_pdf_and_archive_conflicting_prints_block_same_index_month(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            fixture = ArchiveTests()
+            methodology, pins = fixture.methodology(root)
+            canonical = next(url for url, index in msci.ORIGINAL_URLS.items()
+                             if index == "EAFE")
+            with mock.patch.dict(msci.METHODOLOGY, pins):
+                msci.store_methodology(root, methodology)
+                msci.store_manual_factsheet(root, "EAFE", canonical, self._original())
+                # The archive's own document prints a different EAFE value
+                # for the same month, so neither is automatically selected.
+                historical = factsheet(index="EAFE", rows=[
+                    ("MSCI EAFE", "1.23", "16.70", "13.20", "2.25")])
+                msci.store_capture(root, row("20261016000000", canonical, historical),
+                                   historical)
+                evidence = msci.read_msci_regional_evidence(root)
+                self.assertEqual(msci.series_values(evidence, "EAFE/PE"), {})
+                self.assertEqual(msci.series_values(evidence, "EAFE/PE_FWD"),
+                                 {date(2026, 9, 1): Decimal("13.20")})
+                self.assertTrue(any(item["index"] == "EAFE" and item["measure"] == "pe"
+                                    for item in evidence["conflicts"]))
+
+
 class CompositionGateTests(unittest.TestCase):
     def evidence(self, months=("2026-09-01",)):
         panels = {index: {"bound": True, "composition_months": list(months),
