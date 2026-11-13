@@ -140,7 +140,8 @@ def job_in_current_release(created_at: object, *, active_since: str | None = Non
     try:
         when = datetime.fromisoformat(created_at)
         cutoff = datetime.fromisoformat(since)
-        return when >= cutoff and when.tzinfo is not None and cutoff.tzinfo is not None
+        return (when.tzinfo is not None and cutoff.tzinfo is not None
+                and when >= cutoff)
     except ValueError:
         return False
 
