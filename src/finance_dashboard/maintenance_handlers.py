@@ -68,6 +68,25 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
         and sid.split(".")[1] in msci_index_by_id
     }
     msci_result = None
+    # A captured issue earlier than the last retained month cannot improve
+    # an already-stale series. Only the targeted health repair bounds capture
+    # dates; the existing general archival collector retains its full history.
+    from datetime import date as _date
+    msci_last_months = [
+        _date.fromisoformat(item["latest_source_date"])
+        for item in before["items"]
+        if item["family"] == "macro"
+        and item["id"] in targets
+        and item["id"].startswith("valuation.")
+        and ".msci_" in item["id"]
+        and item.get("latest_source_date")
+    ]
+    msci_not_before = None
+    if msci_indexes and msci_last_months:
+        last = min(msci_last_months)
+        msci_not_before = (
+            _date(last.year + 1, 1, 1) if last.month == 12
+            else _date(last.year, last.month + 1, 1))
     if msci_indexes and not cancelled.is_set():
         from .msci_regional_factsheets import collect as collect_msci, MsciFactsheetError
         from .source_policy_types import PolicyDeferred, PolicyViolation
@@ -80,13 +99,15 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
                 Path(os.environ.get("FINANCE_SOURCE_EVIDENCE_DIR",
                                     "/data/source-evidence")),
                 indexes=msci_indexes, stopped=cancelled,
+                prefer_recent=True, capture_not_before=msci_not_before,
                 log=lambda summary: record_event(
                     "macro", "stage_finished", action="repair_msci_factsheets",
                     status="running", completed=len(summary)))
             msci_result["status"] = (
-                "partial" if msci_result.get("cdx_failed") or
-                msci_result.get("capture_failed") or
-                msci_result.get("cancelled") else "complete")
+                "partial" if any(msci_result.get(key, 0) for key in (
+                    "cdx_failed", "cdx_missing", "capture_failed",
+                    "source_policy_deferred", "source_policy_blocked",
+                    "cancelled")) else "complete")
         except (PolicyDeferred, PolicyViolation, httpx.HTTPError,
                 MsciFactsheetError, OSError, ValueError) as exc:
             msci_result = {"status": "deferred" if isinstance(exc, PolicyDeferred)
