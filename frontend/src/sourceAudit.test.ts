@@ -13,8 +13,10 @@ const sample: SourceAuditRow = {
 };
 describe('exporting local source-coverage evidence',()=>{
   it('exports original source periods, release completeness and revisions',()=>{
-    const csv=sourceAuditCsv([sample]);
+    const csv=sourceAuditCsv([sample], '0.2.0+1111222233334444');
     expect(csv).toContain('canonical_id');
+    expect(csv).toContain('app_release');
+    expect(csv).toContain('0.2.0+1111222233334444');
     expect(csv).toContain('pinned_release_through');
     expect(csv).toContain('"1950-01-01"');
     expect(csv).toContain('"2023-01-01"');
@@ -22,12 +24,12 @@ describe('exporting local source-coverage evidence',()=>{
     expect(csv.split('\r\n')).toHaveLength(3);
   });
   it('prevents CSV injection from malicious names',()=>{
-    const csv=sourceAuditCsv([{...sample,name:'=HYPERLINK("https://bad")'}]);
+    const csv=sourceAuditCsv([{...sample,name:'=HYPERLINK("https://bad")'}], '0.2.0+1111222233334444');
     expect(csv).toContain("'=HYPERLINK");
     expect(csv).not.toContain('"=HYPERLINK');
   });
   it('has one row per supplied source rather than inferring history',()=>{
     const items=Array.from({length:80},(_,i)=>({...sample,id:'source-'+i}));
-    expect(sourceAuditCsv(items).trim().split('\r\n')).toHaveLength(81);
+    expect(sourceAuditCsv(items, '0.2.0+1111222233334444').trim().split('\r\n')).toHaveLength(81);
   });
 });
