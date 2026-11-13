@@ -29,6 +29,8 @@ export default function DiagnosticsPanel() {
         const res = await fetch('/api/diagnostics', { cache: 'no-store' });
         if (!res.ok) throw new Error('Diagnostic API unavailable (' + res.status + ')');
         const next = await res.json() as Diagnostics;
+        if (!next.release?.release_id || next.status?.release_id !== next.release.release_id)
+          throw new Error('Diagnostic API returned an invalid build version');
         if (live) { setReport(next); setFailure(''); }
       } catch (error) {
         if (live) setFailure(error instanceof Error ? error.message : 'Diagnostics unavailable');
