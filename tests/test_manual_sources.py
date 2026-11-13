@@ -152,6 +152,8 @@ class ManualSourceTests(unittest.TestCase):
         # Import success is not source completeness; the 2021 cell is blank.
 
     def test_gold_manual_json_strictly_validates_usd_and_timestamp(self):
+        invalidated = []
+        self.client.app.state.manual_sources.accepted = lambda: invalidated.append("current")
         payload = {"symbol": "XAU", "name": "Gold", "currency": "USD",
                    "exchangeRate": 1, "price": 4120.5,
                    "updatedAt": datetime.now(timezone.utc).isoformat()}
@@ -159,6 +161,7 @@ class ManualSourceTests(unittest.TestCase):
                                json.dumps({**payload, "currency": "EUR"}).encode())
         self.assertEqual(rejected.status_code, 201)
         self.assertEqual(finished(self.client, "gold-spot")["status"], "failed")
+        self.assertEqual(invalidated, [])
         with Session(self.engine) as session:
             self.assertEqual(current_observations(session, "gold.usd.spot"), [])
         accepted = self.upload("gold-spot", "json", "gold.json",
@@ -167,6 +170,7 @@ class ManualSourceTests(unittest.TestCase):
         job = finished(self.client, "gold-spot")
         self.assertEqual(job["status"], "complete", job)
         self.assertEqual(job["sources"][0]["received"], 1)
+        self.assertEqual(invalidated, ["current"])
 
     def test_explicit_methodology_upload_rejects_unpinned_pdf(self):
         from test_msci_regional_factsheets import text_pdf
