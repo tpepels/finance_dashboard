@@ -19,6 +19,12 @@ export interface SourceAuditRow {
   last_attempt_state: string;
   last_failure_code: string | null;
   last_success_utc?: string | null;
+  observation_state?: string;
+  freshness_basis?: string;
+  source_checked_through_utc?: string | null;
+  evidence_scope?: string | null;
+  evidence_receipt_recorded?: boolean;
+  evidence_bundle_digest?: string | null;
 }
 const COLUMNS: [keyof SourceAuditRow, string][] = [
   ['family', 'family'], ['id', 'canonical_id'], ['name', 'name'],
@@ -36,6 +42,12 @@ const COLUMNS: [keyof SourceAuditRow, string][] = [
   ['last_attempt_state', 'last_attempt_state'],
   ['last_failure_code', 'last_failure_code'],
   ['last_success_utc', 'last_success_utc'],
+  ['observation_state', 'observation_state'],
+  ['freshness_basis', 'freshness_basis'],
+  ['source_checked_through_utc', 'source_checked_through_utc'],
+  ['evidence_scope', 'evidence_scope'],
+  ['evidence_receipt_recorded', 'evidence_receipt_recorded'],
+  ['evidence_bundle_digest', 'evidence_bundle_digest'],
 ];
 function cell(value: unknown): string {
   if (value == null) return '';
