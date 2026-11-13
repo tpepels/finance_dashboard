@@ -33,7 +33,7 @@ export default function DiagnosticsPanel() {
           throw new Error('Diagnostic API returned an invalid build version');
         if (live) { setReport(next); setFailure(''); }
       } catch (error) {
-        if (live) setFailure(error instanceof Error ? error.message : 'Diagnostics unavailable');
+        if (live) { setReport(null); setFailure(error instanceof Error ? error.message : 'Diagnostics unavailable'); }
       }
     };
     void refresh();
