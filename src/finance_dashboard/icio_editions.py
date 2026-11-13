@@ -46,10 +46,12 @@ def _effective_archive_identity(filename: str, recorded: dict, probe: dict) -> d
     """
     expected = archive_identity(filename)
     ambiguous = bool(re.fullmatch(
-        r"(?:1995-2000|2001-2005|2006-2010|2011-2015)_EXT(?: \\([0-9]+\\))?\\.zip",
+        r"(?:1995-2000|2001-2005|2006-2010|2011-2015)_EXT(?: \([0-9]+\))?\.zip",
         filename))
     candidate = probe.get("candidate") if probe.get("status") == "recognized" else None
-    if candidate and (ambiguous or candidate == expected):
+    if candidate and (ambiguous or candidate == expected or
+                      (candidate["edition"] == expected["edition"] and
+                       expected["table"] == "edition_specific_unresolved")):
         effective = candidate
         status = "source_structure_confirmed"
     else:
@@ -182,11 +184,12 @@ def _derived_folder(root: Path, original_sha: str, method: str = DERIVED_METHOD)
     return Path(root) / "icio" / "native-method-reports" / original_sha / method
 
 
-def _read_native_derived(root: Path, original_sha: str) -> dict | None:
+def _read_native_derived(root: Path, original_sha: str, *,
+                         allow_legacy: bool = True) -> dict | None:
     from .source_capture import canonical_bytes
     method = DERIVED_METHOD
     folder = _derived_folder(root, original_sha)
-    if not folder.is_dir():
+    if not folder.is_dir() and allow_legacy:
         # Existing reports remain usable until each sealed archive is reassessed.
         method = "native_leontief_rdata_v3"
         folder = _derived_folder(root, original_sha, method)
@@ -225,7 +228,7 @@ def _store_native_derived(root: Path, original_sha: str, native: dict,
     digest = sha256(body).hexdigest()
     folder = _derived_folder(root, original_sha)
     folder.mkdir(parents=True, exist_ok=True)
-    previous = _read_native_derived(root, original_sha)
+    previous = _read_native_derived(root, original_sha, allow_legacy=False)
     if previous is not None:
         if previous != record:
             raise ValueError("icio_derived_method_result_conflict")
@@ -243,7 +246,7 @@ def _store_native_derived(root: Path, original_sha: str, native: dict,
         os.chmod(temporary, 0o600)
         os.link(temporary, folder / (digest + ".json"))
     except FileExistsError:
-        if _read_native_derived(root, original_sha) != record:
+        if _read_native_derived(root, original_sha, allow_legacy=False) != record:
             raise ValueError("icio_derived_method_result_conflict") from None
     finally:
         if temporary is not None:
