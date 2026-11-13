@@ -1,6 +1,20 @@
 import { useEffect, useState } from 'react';
 
+type AccountingFailure = {
+  axis: 'row' | 'column' | 'output_vector'; node_label: string;
+  csv_line_number: number | null;
+  signed_residual_usd_million: string;
+  permissible_serialization_error_usd_million: string;
+  hypothetical_binary64_error_usd_million: string;
+  precision_classification: string;
+};
 type Matrix = { year: number; accounting_passed: boolean | null;
+  accounting_failure_summary?: {
+    total_failed_equations: number;
+    all_failed_equations_recorded: boolean;
+    precision_classifications: Record<string, number>;
+  };
+  accounting_failure_examples?: AccountingFailure[];
   publisher_account_schema?: string; publisher_account_rows_present?: boolean;
   max_row_residual?: string | null; max_column_residual?: string | null;
   max_row_rounding_allowance?: string | null; max_column_rounding_allowance?: string | null;
@@ -127,6 +141,41 @@ export default function IcioEditionEvidence() {
                   (year.column_failures ?? 0) > 0) && <small>Source accounting residuals are
                     checked against the original cells' printed precision.
                     Failed original equations remain unreconciled.</small>}
+                {item.annual_matrices.some(year =>
+                  (year.accounting_failure_summary?.total_failed_equations ?? 0) > 0) &&
+                  <details className="icio-failure-details">
+                    <summary>Inspect failed original equations by year</summary>
+                    <p>These are failures of the original serialization accounting gate.
+                      Binary64 bounds are hypothetical numerical explanations and never
+                      turn a failed source equation into a verified one.</p>
+                    {item.annual_matrices.filter(year =>
+                      (year.accounting_failure_summary?.total_failed_equations ?? 0) > 0)
+                      .map(year => <div key={year.year}>
+                      <strong>{year.year} · {year.accounting_failure_summary?.total_failed_equations} failed equations</strong>
+                      <small>{year.accounting_failure_summary?.precision_classifications
+                        .binary64_model_compatible_unverified ?? 0} compatible with a
+                        hypothetical binary64 summation bound;
+                        {' '}{year.accounting_failure_summary?.precision_classifications
+                          .exceeds_serialization_and_binary64_model ?? 0} exceed both numeric models.</small>
+                      <small>Worst five failures (USD million), signed residual;
+                        permissible source-serialization error;
+                        hypothetical binary64 rounding error:</small>
+                      <ul>{(year.accounting_failure_examples ?? []).map((failure, i) =>
+                        <li key={failure.axis + failure.node_label + i}>
+                          {failure.axis} {failure.node_label}
+                          {failure.csv_line_number != null ? ' (CSV line ' +
+                            failure.csv_line_number + ')' : ''}:
+                          {' '}{failure.signed_residual_usd_million};
+                          {' '}{failure.permissible_serialization_error_usd_million};
+                          {' '}{failure.hypothetical_binary64_error_usd_million}
+                          {' '}[{failure.precision_classification.replaceAll('_', ' ')}]
+                        </li>)}</ul>
+                    </div>)}
+                    <small>Download debug ZIP from Status for every failed
+                      row and column, original source identity, signed residual,
+                      full equation components and calculated numeric bounds:
+                      diagnostics/icio-accounting-failures.csv.</small>
+                  </details>}
                 {!!item.rejected_matrices?.length && <small>Rejected years: {item.rejected_matrices.map(x =>
                   String(x.year) + ' (' + x.error_code + ')').join(', ')}</small>}
                 {observed && <small>Observed source header ({observed.year}):
