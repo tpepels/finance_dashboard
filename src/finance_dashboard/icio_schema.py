@@ -12,26 +12,34 @@ import re
 from zipfile import ZipFile
 
 from .icio_native import DIMENSIONS, FINAL_USE
+from .icio_sector_codes import SOURCE_BY_EDITION
 
 _YEAR = re.compile(r"(?:ICIO2018_|ICIO2021_)?(19\d{2}|20\d{2})(?:_SML)?\.csv", re.I)
-_LABEL = re.compile(r"([A-Z0-9]{3})_([A-Z0-9]+)")
+_LABEL = re.compile(r"([A-Z0-9]{3})_([A-Z0-9_]+)")
 MAX_HEADER_BYTES = 750_000
 
 
 def _parse_header(header: list[str]) -> dict:
-    """Describe observed source labels without trusting a declared edition."""
-    result = {"header_columns": len(header), "candidates": []}
+    """Classify raw publisher labels, including C17_18 and J62_63.
+
+    Each source release has its own *complete* vocabulary. A trailing column
+    that is not a six-component final-demand label is reported separately as a
+    candidate output column, never counted as an additional FD destination.
+    Numeric verification of this column belongs to the streaming source audit.
+    """
+    result = {"header_columns": len(header), "candidates": [],
+              "last_header_label": header[-1] if header else None}
     if len(header) != len(set(header)) or len(header) < 2:
         return {**result, "error_code": "icio_probe_header_invalid"}
     labels = header[1:]
-    output = bool(labels and labels[-1] == "OUT")
-    if output:
-        labels = labels[:-1]
     parsed = [(_LABEL.fullmatch(label).groups() if _LABEL.fullmatch(label) else None)
               for label in labels]
     fd_start = next((i for i, part in enumerate(parsed)
                      if part and part[1] in FINAL_USE), len(parsed))
-    nodes, fds = parsed[:fd_start], parsed[fd_start:]
+    nodes, after_nodes = parsed[:fd_start], parsed[fd_start:]
+    extra = bool(after_nodes and (after_nodes[-1] is None or
+                 after_nodes[-1][1] not in FINAL_USE))
+    fds = after_nodes[:-1] if extra else after_nodes
     node_codes = [part[1] for part in nodes if part]
     node_areas = [part[0] for part in nodes if part]
     fd_areas = [part[0] for part in fds if part]
@@ -44,40 +52,42 @@ def _parse_header(header: list[str]) -> dict:
         "production_area_count": len(areas),
         "final_demand_columns": len(fds),
         "final_demand_area_count": len(final_areas),
-        "has_output_column": output,
+        "has_output_column": extra,
+        "output_column_label": header[-1] if extra else None,
         "first_node_label": header[1] if nodes else None,
         "last_node_label": header[len(nodes)] if nodes else None,
         "first_final_demand_label": header[len(nodes) + 1] if fds else None,
+        "last_final_demand_label": header[len(nodes) + len(fds)] if fds else None,
     })
-    valid_nodes = (len(nodes) == len(node_codes) and len(nodes) == len(set(zip(node_areas, node_codes)))
-                   and len(nodes) == len(areas) * len(sector_codes))
-    valid_fd = (len(fds) == len(fd_areas) and bool(fds) and
+    valid_nodes = (len(nodes) == len(node_codes) and
+                   len(nodes) == len(set(zip(node_areas, node_codes))) and
+                   len(nodes) == len(areas) * len(sector_codes))
+    valid_fd = (bool(fds) and len(fds) == len(fd_areas) and
                 len(fds) == len(final_areas) * 6 and
                 all(part is not None and part[1] in FINAL_USE for part in fds) and
-                all({part[1] for part in fds if part[0] == area}.__len__() == 6
+                all(len({part[1] for part in fds if part[0] == area}) == 6
                     for area in final_areas))
     result["full_node_cartesian_product"] = valid_nodes
     result["six_final_demand_components_per_area"] = valid_fd
-    # Shape checks are necessary but not sufficient for scientific identity.
-    # Require exact published sector vocabulary and country split structure.
+    # Publisher authenticity requires sealed-source verification separately.
+    # These shape and code checks only certify a specific numerical layout.
     for edition, (ng, nf, sectors, _first, _last) in DIMENSIONS.items():
-        for table in (("extended", "regular") if edition == "2023" else
-                      ("extended", "regular") if edition == "2025" else ("extended",)):
+        vocab = (set(SOURCE_BY_EDITION[edition]), set(sectors))
+        for table in (("extended", "regular") if edition in ("2023", "2025")
+                      else ("extended",)):
             expected_ng = nf if table == "regular" else ng
             if (valid_nodes and valid_fd and len(areas) == expected_ng and
-                    len(final_areas) == nf and sector_codes == set(sectors) and
+                    len(final_areas) == nf and sector_codes in vocab and
                     len(nodes) == expected_ng * len(sectors) and
-                    len(fds) == nf * 6 and
-                    final_areas <= areas and
+                    len(fds) == nf * 6 and final_areas <= areas and
                     (areas - final_areas == {"CN1", "CN2", "MX1", "MX2"}
                      if table == "extended" else areas == final_areas)):
                 result["candidates"].append({"edition": edition, "table": table})
     if not result["candidates"]:
-        # Show the degree of disagreement without publishing raw values.
         result["sector_discrepancies"] = {
-            edition: {"missing": sorted(set(sectors) - sector_codes)[:12],
-                      "unexpected": sorted(sector_codes - set(sectors))[:12]}
-            for edition, (_, _, sectors, _, _) in DIMENSIONS.items()
+            edition: {"missing": sorted(set(SOURCE_BY_EDITION[edition]) - sector_codes)[:12],
+                      "unexpected": sorted(sector_codes - set(SOURCE_BY_EDITION[edition]))[:12]}
+            for edition in DIMENSIONS
         }
         result["error_code"] = "icio_probe_unrecognized_schema"
     return result
