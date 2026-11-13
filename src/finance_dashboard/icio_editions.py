@@ -36,6 +36,37 @@ def archive_identity(filename: str) -> dict:
     raise ValueError("icio_archive_edition_not_registered")
 
 
+def _effective_archive_identity(filename: str, recorded: dict, probe: dict) -> dict:
+    """Choose a processing identity without altering the sealed original.
+
+    The 1995-2015 EXT archive names occur in BOTH 2023 and 2025.
+    All other recognised basename patterns specify their own edition.
+    Header classification must be unique, internally consistent, and have
+    the published dimensions and industry vocabulary.
+    """
+    expected = archive_identity(filename)
+    ambiguous = bool(re.fullmatch(
+        r"(?:1995-2000|2001-2005|2006-2010|2011-2015)_EXT(?: \\([0-9]+\\))?\\.zip",
+        filename))
+    candidate = probe.get("candidate") if probe.get("status") == "recognized" else None
+    if candidate and (ambiguous or candidate == expected):
+        effective = candidate
+        status = "source_structure_confirmed"
+    else:
+        effective = expected
+        status = ("source_schema_conflicts_filename" if candidate else
+                  "source_schema_unresolved" if probe.get("headers") else
+                  "no_matrix_schema_available")
+    return {"edition": effective["edition"], "table": effective["table"],
+            "sealed_edition": recorded.get("edition"),
+            "sealed_table": recorded.get("table"),
+            "status": status,
+            "candidate": candidate,
+            "source_structure_reclassified": bool(candidate and
+                (effective["edition"] != recorded.get("edition") or
+                 effective["table"] != recorded.get("table")))}
+
+
 def inspect_archive(path: Path) -> dict:
     identity = archive_identity(path.name)
     if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= MAX_ARCHIVE_BYTES:
@@ -78,8 +109,14 @@ def inspect_archive(path: Path) -> dict:
     from .icio_native import audit_archive_native
     # Validate every available annual member within this edition. Supplemental
     # econA/Rdata packages remain distinct source evidence, not matrix claims.
+    from .icio_schema import probe_archive_layout
     with ZipFile(path) as z:
-        native = audit_archive_native(z, identity["edition"], table=identity["table"])
+        probe = probe_archive_layout(z)
+        reconciliation = _effective_archive_identity(path.name, identity, probe)
+        identity = {"edition": reconciliation["edition"], "table": reconciliation["table"]}
+        native = audit_archive_native(z, identity["edition"], table=identity["table"],
+                                      original_filename=path.name)
+        native["source_identity_reconciliation"] = reconciliation
         if native["annual_matrix_count"] or native["rejected_matrices"]:
             auxiliary = {"status": "no_auxiliary_parse_needed", "numeric_reports": []}
         else:
@@ -134,18 +171,25 @@ def register_edition_archive(path: Path, root: Path) -> dict:
             "archive_sha256": record["archive_sha256"], "bundle_digest": bundle.name}
 
 
-DERIVED_METHOD = "native_leontief_rdata_v3"
+DERIVED_METHOD = "native_leontief_rdata_v4"
 
 
-def _derived_folder(root: Path, original_sha: str) -> Path:
+def _derived_folder(root: Path, original_sha: str, method: str = DERIVED_METHOD) -> Path:
     if not re.fullmatch(r"[0-9a-f]{64}", original_sha):
         raise ValueError("icio_derived_source_hash_invalid")
-    return Path(root) / "icio" / "native-method-reports" / original_sha / DERIVED_METHOD
+    if method not in {"native_leontief_rdata_v3", DERIVED_METHOD}:
+        raise ValueError("icio_derived_method_invalid")
+    return Path(root) / "icio" / "native-method-reports" / original_sha / method
 
 
 def _read_native_derived(root: Path, original_sha: str) -> dict | None:
     from .source_capture import canonical_bytes
+    method = DERIVED_METHOD
     folder = _derived_folder(root, original_sha)
+    if not folder.is_dir():
+        # Existing reports remain usable until each sealed archive is reassessed.
+        method = "native_leontief_rdata_v3"
+        folder = _derived_folder(root, original_sha, method)
     if not folder.is_dir():
         return None
     results = []
@@ -159,7 +203,7 @@ def _read_native_derived(root: Path, original_sha: str) -> dict | None:
         result = json.loads(body)
         if (result.get("schema_version") != 1 or
                 result.get("source_archive_sha256") != original_sha or
-                result.get("method") != DERIVED_METHOD or
+                result.get("method") != method or
                 not isinstance(result.get("native"), dict) or
                 canonical_bytes(result) != body):
             raise ValueError("icio_derived_evidence_identity_mismatch")
@@ -230,17 +274,23 @@ def reassess_registered_archive(root: Path, archive_sha: str) -> dict:
             if record["archive_sha256"] != archive_sha:
                 continue
             _verify_edition_bundle(bundle, record)
+            from .icio_schema import probe_archive_layout
             with ZipFile(bundle / "archive.zip") as z:
                 if z.testzip() is not None:
                     raise ValueError("icio_derived_original_crc_invalid")
-                native = audit_archive_native(z, record["edition"], table=record["table"])
+                probe = probe_archive_layout(z)
+                reconciliation = _effective_archive_identity(record["filename"], record, probe)
+                native = audit_archive_native(z, reconciliation["edition"],
+                    table=reconciliation["table"], original_filename=record["filename"])
+                native["source_identity_reconciliation"] = reconciliation
                 auxiliary = (inspect_auxiliary_zip(z, staging_parent=base)
                              if not native["annual_matrix_count"] and
                              not native["rejected_matrices"] else
                              {"status": "no_auxiliary_parse_needed", "numeric_reports": []})
             _store_native_derived(root, archive_sha, native, auxiliary)
             return {"status": "reassessed_verified_original", "archive_sha256": archive_sha,
-                    "filename": record["filename"], "edition": record["edition"],
+                    "filename": record["filename"], "edition": native["edition"],
+                    "source_identity_reconciliation": reconciliation,
                     "annual_matrix_count": native["annual_matrix_count"],
                     "native_validation_status": native["native_validation_status"],
                     "auxiliary_status": auxiliary["status"]}
@@ -377,7 +427,13 @@ def read_edition_archives(root: Path, *, archive_sha: str | None = None) -> list
                 "annual_matrices": record.get("annual_matrices", []),
                 "rejected_matrices": record.get("rejected_matrices", []),
                 "expected_years": record.get("expected_years"),
-                "observed_years": record.get("observed_years", [])})
+                "observed_years": record.get("observed_years", []),
+                "source_identity_reconciliation": record.get(
+                    "source_identity_reconciliation"),
+                "header_schema": record.get("header_schema"),
+                "original_registered_edition": (
+                    record.get("source_identity_reconciliation") or {}).get(
+                        "sealed_edition", record.get("edition"))})
     if archive_sha is None:
         _annotate_source_year_collisions(output)
     return output
