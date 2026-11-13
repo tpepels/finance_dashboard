@@ -143,3 +143,75 @@ The same diagnostic snapshot reports 426 total source series, 110 requiring
 attention (28 stale, 80 deferred with retained data, one collection failure,
 one failed refresh with retained data) and no local backup manifests.
 These broader source-coverage issues are independent of ICIO validation.
+
+## 13 November 2026 — exact failed-equation audit (method v8)
+
+The owner's **pre-v8** exported report (release
+`0.2.0+655443eddce67070`) verifies **78/78 annual CSV layouts parsed**
+across 29 sealed archives, with 24/78 year accounts passing and 54/78 failing.
+That export contains only per-year maxima and failure counts; it does not
+contain the original industry-level failing rows. The following aggregate
+failure counts are descriptive of that older export, not reverified new results:
+
+| Source edition | Failed row equations | Failed column equations |
+| --- | ---: | ---: |
+| 2018 | 19,186 | 480 |
+| 2023 | 36 | 20 |
+| 2025 extended | 4,778 | 369 |
+| **Total** | **24,000** | **869** |
+
+The 2018 residuals are generally around 0.00001 million USD (on the order
+of ten USD); 2023 shows fractions of a million; 2025 extended sometimes
+shows hundreds of millions. These magnitudes do not establish cause or
+publisher responsibility. In particular, an apparent binary64 rounding
+explanation must not turn an already-failed publisher accounting equation
+into a verified one.
+
+**v8 is a non-mutating diagnostic upgrade**, leaving the original v7
+accounting decision and numerical thresholds unchanged. For **every**
+publisher row equation `sum(Z row) + sum(Y row) - row OUT` that exceeds
+its source-cell serialization bound, the new immutable derived record
+preserves the exact source-country/sector label, original CSV line number,
+signed residual, the three source component sums, and the permissible
+serialization error calculated from the half-last-printed-digit of each
+nonzero cell. For a failed **column** equation the record preserves the
+same identities, `sum(Z column) + source taxes + VA - publisher OUT`,
+the four economic components, signed residual, and source-serialization
+allowance. Independently failed row/output-vector identities receive
+their own records and are not collapsed into the other failures.
+
+For triage only, each failed equation now also contains a separate
+*binary64 sequential-summation model* bound
+`gamma_n * sum(abs(terms))`, with
+`gamma_n = ((n+2) * 2^-53) / (1 - (n+2) * 2^-53)`.
+This is a mathematical upper bound for a hypothetical double-precision
+calculation, **not evidence that the publisher used that algorithm**.
+Each failure is classified as
+`binary64_model_compatible_unverified` or
+`exceeds_serialization_and_binary64_model`. Both remain failed
+for source accounting, research certification, and Leontief acceptance;
+no source cell, official TiVA observation, tolerance, source release,
+or sealed original is changed.
+
+The regular evidence-browser API shows failure counts and at most the
+five largest signed residuals per annual matrix, so it never transmits
+the full ~25,000-record failure ledger to the browser. After v8
+reassessment, the redacted debug ZIP includes:
+
+- `diagnostics/original-method-audit.json`: complete v8 year-level
+  source accounting summary and the original numerical failure records
+- `diagnostics/icio-accounting-failures.csv`: **every** failed row,
+  column, and output-vector equation with release/ZIP/member provenance
+  and all numerical bounds and source component sums
+- `diagnostics/icio-accounting-failures-manifest.json`: record count,
+  complete-ledger flag, and an explicit list of old/unreassessed years
+  for which the complete details are still unavailable.
+
+The ZIP is generated on demand from v8 content-addressed derived
+reports; it never rereads or alters publisher source data. The
+application version is included in the CSV and all other reports.
+**Historical scientific certification remains open** until these
+records are generated on the user's original 29 archives and the
+equation-level discrepancies are independently reviewed. Method v7
+records remain preserved and readable; they are never silently
+advertised as complete v8 failure ledgers.
