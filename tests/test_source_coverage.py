@@ -32,11 +32,47 @@ class SourceCoverageTests(unittest.TestCase):
         rows = {r['id']: r for r in report['items']}
         self.assertEqual(rows['activity.us.oecd_cli']['observation_state'], 'current')
         self.assertEqual(rows['activity.us.oecd_cli']['refresh_state'], 'deferred')
+        self.assertEqual(rows['activity.us.oecd_cli']['state'], 'available')
+        self.assertEqual(rows['activity.us.oecd_cli']['last_failure_code'],
+                         'source_policy_deferred')
+        self.assertEqual(report['summary']['macro']['deferred_attempts_with_data'], 1)
+        self.assertEqual(report['summary']['macro']['deferred_attempts_current_data'], 1)
+        self.assertEqual(report['summary']['macro']['deferred_attempts_stale_data'], 0)
+        self.assertEqual(report['summary']['macro']['needs_attention'], 1)
         self.assertIn('C01', rows['activity.us.oecd_cli']['research_questions'])
-        self.assertIn('budget', rows['activity.us.oecd_cli']['next_action'].lower())
+        self.assertIn('deferred', rows['activity.us.oecd_cli']['next_action'].lower())
         self.assertEqual(rows['activity.jp.oecd_cli']['observation_state'], 'stale')
         self.assertEqual(rows['activity.jp.oecd_cli']['refresh_state'], 'success')
         self.assertEqual(rows['gold.usd.spot']['observation_state'], 'missing')
+
+    def test_stale_deferred_history_still_requires_attention(self):
+        self.add_macro('activity.us.oecd_cli', status='deferred',
+                       when=date(2022, 1, 1), error='source_policy_deferred')
+        report = build_coverage(self.engine, self.catalog, self.registry,
+                                asof=date(2026, 11, 13))
+        item = next(row for row in report['items']
+                    if row['id'] == 'activity.us.oecd_cli')
+        self.assertEqual(item['state'], 'refresh_deferred_with_data')
+        self.assertEqual(item['observation_state'], 'stale')
+        self.assertEqual(item['refresh_state'], 'deferred')
+        self.assertEqual(item['last_failure_code'], 'source_policy_deferred')
+        self.assertIn('stale', item['next_action'].lower())
+        self.assertEqual(report['summary']['macro']['deferred_attempts_with_data'], 1)
+        self.assertEqual(report['summary']['macro']['deferred_attempts_current_data'], 0)
+        self.assertEqual(report['summary']['macro']['deferred_attempts_stale_data'], 1)
+        self.assertEqual(report['summary']['macro']['needs_attention'], 1)
+
+    def test_deferred_current_not_same_as_failed_current(self):
+        self.add_macro('activity.us.oecd_cli', status='deferred',
+                       when=date(2026, 9, 1), error='source_policy_deferred')
+        self.add_macro('activity.jp.oecd_cli', status='failed',
+                       when=date(2026, 9, 1), error='source_transport_failed')
+        report = build_coverage(self.engine, self.catalog, self.registry,
+                                asof=date(2026, 11, 13))
+        rows = {row['id']: row for row in report['items']}
+        self.assertEqual(rows['activity.us.oecd_cli']['state'], 'available')
+        self.assertEqual(rows['activity.jp.oecd_cli']['state'], 'refresh_failed_with_data')
+        self.assertEqual(report['summary']['macro']['needs_attention'], 1)
 
     def setUp(self):
         self.engine = create_engine("sqlite+pysqlite:///:memory:",
