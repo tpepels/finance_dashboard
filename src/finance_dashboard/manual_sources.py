@@ -109,8 +109,12 @@ def source_specs() -> dict[str, dict]:
         "series_ids": [],
         "roles": [],
         "existing_importer": True,
-        "reference_links": [{"label": filename, "url": url}
-                            for filename, url in PUBLISHER_URLS.items()],
+        "reference_links": [
+            {"label": "All OECD ICIO editions: 2025 regular/extended, 2023, 2021, 2018",
+             "url": "https://www.oecd.org/en/data/datasets/inter-country-input-output-tables.html"},
+            *[{"label": "2025 regular / " + filename, "url": url}
+              for filename, url in PUBLISHER_URLS.items()],
+        ],
     }
     return specs
 
