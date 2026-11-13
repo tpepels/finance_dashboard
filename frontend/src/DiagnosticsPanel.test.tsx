@@ -11,7 +11,10 @@ describe('header diagnostics console', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       json: async () => ({
+        release: {version:'0.2.0',build:'1111222233334444',
+          release_id:'0.2.0+1111222233334444',activated_at:'2026-11-12T10:00:00Z'},
         status: { colour: 'orange', label: 'Data needs attention', recent_errors: 0,
+          release_id: '0.2.0+1111222233334444',
           sources_needing_attention: 8, assessment_running: false, import_running: false },
         console: [{ time: '2026-11-12T14:00:00Z', level: 'warning',
                     message: 'macro source_deferred source_policy_deferred' }],
@@ -25,6 +28,7 @@ describe('header diagnostics console', () => {
     await user.click(button);
     expect(screen.getByRole('dialog', { name: 'System diagnostics' })).toBeTruthy();
     expect(screen.getByText(/Sources requiring attention: 8/)).toBeTruthy();
+    expect(screen.getByText(/Build 0.2.0\+1111222233334444/)).toBeTruthy();
     expect(screen.getByLabelText('Recent structured application log').textContent).toContain('source_policy_deferred');
     expect(screen.getByRole('link', { name: 'Download debug ZIP' }).getAttribute('href'))
       .toBe('/api/diagnostics/download');
