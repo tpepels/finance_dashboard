@@ -165,6 +165,22 @@ PUBLICATION_BOUNDS.update({
     },
 })
 
+# Fed G.17 direct original diff_sa.txt was checked against the current
+# published October 16 release on 2026-11-13: all three source blocks end
+# in August 2026. Empty September/October cells are absent, not zeros.
+# The official next monthly release is 2026-11-17 at 09:15 ET.
+# These are time-bounded *publisher document* bounds, not an exemption
+# for an unverified or missing local source history.
+PUBLICATION_BOUNDS.update({
+    f"activity.us.industrial_production_diffusion_{span}m": {
+        "version": "Federal Reserve G.17 October 16 2026 diffusion source",
+        "verified_as_of": date(2026, 11, 13),
+        "expires": date(2026, 11, 17),
+        "through": date(2026, 8, 1),
+        "url": "https://www.federalreserve.gov/Releases/G17/Current/ipdisk/diff_sa.txt",
+    } for span in (1, 3, 6)
+})
+
 # Next 2026-Q2 BIS total-credit update is scheduled for 2026-12-07.
 _BIS_CREDIT_COUNTRIES = ("cn", "de", "jp", "pt", "us")
 _BIS_CREDIT_MEASURES = (
