@@ -26,6 +26,7 @@ const LABELS:Record<string,string>={
   research_evidence_gap:'Incomplete research evidence',
   research_evidence_caveat:'Research evidence caveat',
   research_acceptance_state:'Scientific acceptance not complete',
+  supplemental_source_pending:'Optional country comparison awaiting verified original',
   analysis_implementation_missing:'Missing analysis computation',
   unmapped_limitation_register:'Unmapped method limitation',
   limitation_assessment_failure:'Assessment integrity problem',
