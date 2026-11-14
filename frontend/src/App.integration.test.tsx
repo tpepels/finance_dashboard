@@ -20,6 +20,21 @@ const fetchMock = vi.fn(async (input: string) => {
   const path = String(input);
   const json = (body: unknown) => new Response(JSON.stringify(body));
   if (path === '/api/maintenance') return json({ active_job_id: null, jobs: [], operations: ['sync_current', 'sync_history'] });
+  if (path === '/api/data/overview') return json({
+    asof: '2026-11-14', release: {release_id: 'test'},
+    groups: [
+      {id:'macro',label:'Economic data',total:53,with_data:1,attention:52},
+      {id:'markets',label:'Market prices',total:24,with_data:0,attention:24},
+      {id:'fx',label:'Exchange rates',total:3,with_data:0,attention:3},
+    ],
+    sources: {total:80,with_data:1,needs_attention:79},
+    acquisition: {queued:0,deferred:0,running:false,active_sources:0,
+      successful_sources:0,problem_sources:0,manual_files_needed:0,
+      files_requiring_upload:[],recent_jobs:[]},
+    sync: {active:null,last:null},
+    original_import: {running:false,jobs_with_issues:0},
+  });
+  if (path === '/api/data/debug-console') return json({status:{},acquisition:{jobs:[]},source_coverage:{summary:{}}});
   if (path === '/api/source-coverage') return json({ summary: {
     macro: { total: 53, with_data: 1, without_data: 52, needs_attention: 52 },
     markets: { total: 24, with_data: 0, without_data: 24, needs_attention: 24 },
@@ -140,9 +155,11 @@ describe('dashboard shell', () => {
     history.replaceState({}, '', '/' + hash);
     render(<App/>);
     const appendix = await screen.findByText('Original source appendix loaded');
-    expect(appendix.closest('details')?.open).toBe(true);
+    // Deep links still resolve, without wrapping the human Data page in disclosures.
+    expect(appendix).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Source health' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
-    expect(document.activeElement?.id).toBe(hash.slice(1));
+    await waitFor(() => expect(document.activeElement?.id).toBe(hash.slice(1)));
   });
 
   it('has a persistent dark appearance switch and no development-phase heading', async () => {
@@ -155,20 +172,25 @@ describe('dashboard shell', () => {
     expect(document.querySelector('.research-app')?.textContent).not.toMatch(/\bphase\s+[0-9]+\b/i);
   });
 
-  it('keeps original source data explorer closed until explicitly requested', async () => {
+  it('keeps advanced source explorer out of the human view, available from developer console', async () => {
     const user = userEvent.setup();
     render(<App/>);
     expect(screen.queryByText('Original source appendix loaded')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Source data' }));
-    await user.click(screen.getByText('Source explorer'));
+    expect(await screen.findByRole('heading', { name: 'Source health' })).toBeTruthy();
+    expect(screen.queryByText('Original source appendix loaded')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Open debug console' }));
+    await user.click(await screen.findByRole('link', { name: 'Open source explorer' }));
     expect(await screen.findByText('Original source appendix loaded')).toBeTruthy();
   });
 
   it('opens source coverage when directly loaded from a fresh deep link', async () => {
     history.replaceState({}, '', '/#source-coverage');
     render(<App/>);
-    await waitFor(() => expect((document.getElementById('source-coverage') as HTMLDetailsElement | null)?.open).toBe(true));
+    const coverage = await screen.findByRole('heading', { name: 'Source health' });
+    expect(coverage.closest('#source-coverage')).toBeTruthy();
+    await waitFor(() => expect(document.activeElement?.id).toBe('source-coverage'));
     expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
   });
 
@@ -176,7 +198,13 @@ describe('dashboard shell', () => {
     const user = userEvent.setup();
     render(<App/>);
     await user.click(screen.getByRole('button', { name: 'Data & sync' }));
+    expect(await screen.findByRole('button', { name: 'Start automatic downloads' })).toBeTruthy();
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Download agent debug ZIP' })).toBeTruthy();
+    // Manual tools remain available only after explicitly opening the agent console.
+    await user.click(screen.getByRole('button', { name: 'Open debug console' }));
     expect(await screen.findByRole('button', { name: 'Sync current data' })).toBeTruthy();
+    await user.click(screen.getByText('Historical sync'));
     expect(screen.getByRole('button', { name: 'Sync history' })).toBeTruthy();
   });
 
