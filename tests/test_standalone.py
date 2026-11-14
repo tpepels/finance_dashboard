@@ -156,6 +156,34 @@ class StandaloneContainerTests(TestCase):
                          if c.args[1]=="collector_failed")
             self.assertEqual(failure.kwargs["stage"],"macro")
 
+    def test_internal_crash_is_retried_with_backoff_and_success_restores_daily_cadence(self):
+        from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
+        class TwoCycles:
+            seconds = None
+            def __init__(self): self.seconds = []
+            def is_set(self): return False
+            def wait(self, seconds):
+                self.seconds.append(seconds)
+                return len(self.seconds) == 2
+        stop = TwoCycles()
+        seen = []
+        def collect(*args, **kwargs):
+            seen.append(1)
+            if len(seen)==1:
+                raise RuntimeError("redacted collection error")
+            return 0
+        with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_REFRESH_ON_START="1",
+                      FINANCE_VINTAGE_REFRESH="0", FINANCE_SEC_HOLDINGS_REFRESH="0",
+                      FINANCE_AUTO_BACKUP="0"),
+              patch("finance_dashboard.worker.refresh_all", side_effect=collect),
+              patch("finance_dashboard.data_change_bus.publish_change")):
+            refresh_loop(None,stop,interval_seconds=86400,
+                         include_markets=False,refresh_wisesheets=False)
+        self.assertEqual(seen,[1,1])
+        self.assertEqual(stop.seconds,[900,86400])
+        self.assertEqual(scheduled_refresh_status()["last_refresh_outcome"],"complete")
+        self.assertIsNone(scheduled_refresh_status()["last_error_code"])
+
     def test_active_failure_is_observable_before_optional_maintenance_finishes(self):
         from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
         class Halt:
