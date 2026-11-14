@@ -261,6 +261,7 @@ export default function DataHub(){
         <h3>Advanced source operations</h3>
         <p>Historical synchronization, source repair, OECD edition uploads and
           reassessment are retained here for developer use.</p>
+        <a href="#source-library">Open source explorer</a>
         <Suspense fallback={<p role="status">Loading maintenance tools…</p>}>
           <AdvancedDataOperations/>
           <AdvancedOriginalUploader/>
