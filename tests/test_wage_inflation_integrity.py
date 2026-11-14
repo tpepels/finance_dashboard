@@ -64,6 +64,40 @@ class WageInflationIntegrityTests(unittest.TestCase):
             out["housing"]["de"]["real_yoy"][0][1],
             out["housing"]["ea"]["real_yoy"][0][1] if out["housing"]["ea"]["real_yoy"] else None)
 
+    def test_partial_percentile_years_and_cross_country_ratio_consistency_are_visible(self):
+        data=wage_distribution({
+            "p10":[(date(2023,1,1),400),(date(2024,1,1),450)],
+            "p50":[(date(2023,1,1),800)],
+            "p90":[(date(2023,1,1),1500),(date(2024,1,1),1800)],
+            "oecd:de:p90_p10":[(date(2023,1,1),3.),(date(2024,1,1),4.)],
+            "oecd:de:p90_p50":[(date(2023,1,1),1.5),(date(2024,1,1),1.5)],
+            "oecd:de:p50_p10":[(date(2023,1,1),2.),(date(2024,1,1),2.)],
+        })
+        self.assertEqual(data["us"]["matched_years"],1)
+        self.assertEqual(data["us"]["unmatched_percentile_years"]["p50"],["2024-01-01"])
+        germany=next(row for row in data["oecd"] if row["area"]=="DE")
+        check=germany["decile_ratio_consistency"]
+        self.assertEqual(check["compared_years"],2)
+        self.assertEqual(check["outside_3_percent_years"],["2024-01-01"])
+        self.assertAlmostEqual(check["max_relative_error_pct"],25.0)
+
+    def test_calendar_gaps_withhold_bootstrap_and_show_robustness(self):
+        months=range(16*12)
+        observed={2000*12+i:sin(i/7.)+i/100. for i in months}
+        comparison={t:v*.8+sin(i/11.) for i,(t,v) in enumerate(observed.items())}
+        continuous=_analysis(observed,comparison)
+        self.assertTrue(continuous["robustness"]["contiguous"])
+        self.assertIsNotNone(continuous["block_bootstrap_95pct_ci"])
+        observed.pop(2000*12+45)
+        gapped=_analysis(observed,comparison)
+        self.assertFalse(gapped["robustness"]["contiguous"])
+        self.assertEqual(gapped["robustness"]["unobserved_periods_between_matches"],1)
+        self.assertIsNone(gapped["block_bootstrap_95pct_ci"])
+        self.assertEqual(gapped["bootstrap_withheld_reason"],"missing_calendar_periods")
+        self.assertEqual(gapped["robustness"]["nonoverlapping_year_end"]["n"],16)
+        self.assertIsNotNone(gapped["robustness"]["nonoverlapping_year_end"]["pearson"])
+        self.assertGreater(gapped["robustness"]["trimmed_5pct_each_margin"]["n"],100)
+
     def test_serial_dependence_bootstrap_is_deterministic_and_withheld_for_small_n(self):
         from finance_dashboard.inflation_research import _block_bootstrap_ci
         values=[(sin(t/7.)+t/100., sin(t/7.+.3)+t/100.) for t in range(144)]

@@ -18,6 +18,7 @@ export type WageResearchValues={
   real_federal_minimum_hourly_1982_84_usd:Line;
   real_federal_minimum_unit:string;
   matched_years:number;first_year:number|null;latest_year:number|null;
+  unmatched_percentile_years:Record<'p10'|'p50'|'p90',string[]>;
   real_median_reconciliation:{compared_years:number;outside_2_percent_years:string[];not_a_scientific_identity:boolean};
   mean_wage_observed:false;p99_wage_observed:false;
   federal_minimum_to_weekly_median_computable:false;
@@ -27,6 +28,10 @@ export type WageResearchValues={
   measures:Record<'p90_p10'|'p90_p50'|'p50_p10'|'minimum_median',Line>;
   latest:Record<'p90_p10'|'p90_p50'|'p50_p10'|'minimum_median',Latest>;
   minimum_median_unit:string;median_wage_level_available:false;percentile_levels_available:false;
+  decile_ratio_consistency:{
+   compared_years:number;outside_3_percent_years:string[];
+   max_relative_error_pct:number|null;source_rounding_tolerance_pct:number;
+  };
  }[];
  limitations:string[];research_follow_ups:string[];
 };
@@ -80,6 +85,14 @@ export default function WageResearchPanel({bundle,theme,recessions}:{
       {data.us.first_year&&' ('+data.us.first_year+'–'+data.us.latest_year+')'}.
       No unobserved percentile, occupational distribution or executive share is inferred.
     </p>
+    {Object.values(data.us.unmatched_percentile_years).some(years=>years.length>0)&&
+      <details className="decision-limits-fold"><summary>Unmatched percentile source years</summary>
+       <p className="decision-caption">These years are withheld from the joint wage comparison,
+        rather than filled or represented as missing earners.</p>
+       <ul className="decision-limits">{(Object.keys(qNames) as (keyof typeof qNames)[])
+         .map(q=><li key={q}>{qNames[q]} absent:
+          {' '}{data.us.unmatched_percentile_years[q].join(', ')||'none'}</li>)}</ul>
+      </details>}
     <div className="decision-multiples">
       {charts.map((c,i)=><TimePanel key={c.title} title={c.title} option={c.option}
         height={270} compact={i>1} presets={false} group="l08-worker-earnings" span={c.span}
@@ -88,14 +101,21 @@ export default function WageResearchPanel({bundle,theme,recessions}:{
     <h4 className="decision-subhead">OECD full-time earnings dispersion and minimum-to-median wages</h4>
     <p className="decision-caption">Published annual ratios and percentages. Country coverage is source-specific.
       A published minimum/median percentage is not the same thing as an absolute median wage,
-      and no European wage amount is reconstructed from it.</p>
+      and no European wage amount is reconstructed from it. Decile identity is checked as
+      P90/P10 ≈ (P90/P50) × (P50/P10), with 3% relative tolerance for publisher rounding
+      and source differences; failed years remain visible rather than silently adjusted.</p>
     <div style={{overflowX:'auto'}}>
       <table aria-label="OECD earnings distribution latest periods" className="research-native-table">
         <thead><tr><th>Country</th><th>P90 / P10</th><th>P90 / P50</th><th>P50 / P10</th>
-          <th>Minimum / median</th></tr></thead>
+          <th>Minimum / median</th><th>Decile identity check</th></tr></thead>
         <tbody>{data.oecd.map(c=><tr key={c.area}><th scope="row">{c.name}</th>
           <td>{fmt(c.latest.p90_p10)}</td><td>{fmt(c.latest.p90_p50)}</td>
           <td>{fmt(c.latest.p50_p10)}</td><td>{fmt(c.latest.minimum_median,true)}</td>
+          <td>{c.decile_ratio_consistency.compared_years===0?'Not testable':
+           c.decile_ratio_consistency.outside_3_percent_years.length>0
+            ?'Inconsistent in '+c.decile_ratio_consistency.outside_3_percent_years.length+
+              ' / '+c.decile_ratio_consistency.compared_years+' years'
+            :'Within 3% ('+c.decile_ratio_consistency.compared_years+' years)'}</td>
         </tr>)}</tbody>
       </table>
     </div>

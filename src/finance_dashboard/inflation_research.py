@@ -157,11 +157,50 @@ def _joined(asset, inflation, *, lag=0):
     return [(t,asset[t],inflation[t+lag]) for t in keys]
 
 
+def _robustness(pairs, *, quarter:bool):
+    """Source-calendar sensitivity without filling missing observations.
+
+    Sample every calendar year-end to remove overlapping 12-month changes
+    (four quarters for housing). Separately report pairwise 5% trimming as a
+    sensitivity test, not as a replacement for economic inflation shocks.
+    """
+    frequency=4 if quarter else 12
+    missing=sum(max(0,following[0]-previous[0]-1)
+                for previous,following in zip(pairs,pairs[1:]))
+    nonoverlap=[(a,b) for t,a,b in pairs if t%frequency==frequency-1]
+    nonoverlap_r=_pearson_pairs(nonoverlap)
+    trimmed=[]
+    if len(pairs)>=36:
+        xs=sorted(a for _,a,_ in pairs)
+        ys=sorted(b for _,_,b in pairs)
+        low=int((len(pairs)-1)*.05)
+        high=int((len(pairs)-1)*.95)
+        trimmed=[(a,b) for _,a,b in pairs
+                 if xs[low]<=a<=xs[high] and ys[low]<=b<=ys[high]]
+    trimmed_r=_pearson_pairs(trimmed)
+    return {
+        "unobserved_periods_between_matches":missing,
+        "contiguous":missing==0,
+        "nonoverlapping_year_end":{"n":len(nonoverlap),
+            "pearson":round(nonoverlap_r,4) if nonoverlap_r is not None else None},
+        "trimmed_5pct_each_margin":{"n":len(trimmed),
+            "pearson":round(trimmed_r,4) if trimmed_r is not None else None},
+    }
+
+
 def _analysis(asset, inflation, quarter:bool=False):
     pairs=_joined(asset,inflation)
     values=[(a,b) for _,a,b in pairs]
     coefficient=_pearson_pairs(values)
     valid=coefficient is not None
+    robustness=_robustness(pairs,quarter=quarter)
+    block_ci=(_block_bootstrap_ci(values,4 if quarter else 12)
+              if robustness["contiguous"] else None)
+    bootstrap_withheld_reason=(
+        None if block_ci is not None else
+        "missing_calendar_periods" if not robustness["contiguous"] else
+        "insufficient_or_degenerate_matched_observations"
+    )
     lag_limit=8 if quarter else 12
     lagged=[]
     for lag in range(-lag_limit,lag_limit+1):
@@ -194,8 +233,10 @@ def _analysis(asset, inflation, quarter:bool=False):
         "pearson":round(coefficient,4) if valid else None,
         "spearman":round(_rank_correlation(values),4) if valid else None,
         "illustrative_independent_sample_95pct_ci":_ci(coefficient,len(pairs)),
-        "block_bootstrap_95pct_ci":_block_bootstrap_ci(values,4 if quarter else 12),
+        "block_bootstrap_95pct_ci":block_ci,
+        "bootstrap_withheld_reason":bootstrap_withheld_reason,
         "confidence_method":"circular_moving_block_bootstrap",
+        "robustness":robustness,
         "rolling":rolling,
         "lead_lag":lagged,
         "regimes":[regime(1970,1979),regime(1980,1999),
@@ -205,7 +246,7 @@ def _analysis(asset, inflation, quarter:bool=False):
                     "inflation_pct":round(b,4)} for t,a,b in pairs],
         "unverified_due_to_insufficient_coverage":not valid,
         "lag_definition":"positive lag k: correlate asset yoy[t] with consumer yoy[t+k]; not a causal test",
-        "confidence_interval_note":"Moving-block bootstrap interval retains 12-month (or 4-quarter) observation dependence; descriptive only. Fisher-z i.i.d. interval is separately marked as naive and is not robust to overlapping annual changes.",
+        "confidence_interval_note":"Moving-block bootstrap uses a continuous calendar of matched overlapping 12-month (or 4-quarter) changes; it is withheld across gaps. Calendar year-end nonoverlapping and symmetric 5% marginal trimming are distinct sensitivity checks. The Fisher-z i.i.d. interval is illustrative only.",
     }
 
 
@@ -308,6 +349,8 @@ def inflation_assets(points:dict, *,today:date|None=None)->dict:
         "limitations":[
             "Monthly rolling and contemporaneous 12-month changes overlap and are serially dependent; naïve Fisher confidence intervals overstate precision.",
             "Lag correlations are observational and are not evidence of exogenous shocks, causal pass-through, or market timing.",
+            "Moving-block uncertainty requires uninterrupted matched calendar observations; historical gaps withhold its interval rather than treating distant observations as adjacent.",
+            "Annual year-end nonoverlapping correlations are lower-frequency sensitivity checks; trimming the outer 5% of each margin can remove genuine price shocks and is never the headline estimate.",
             "World Bank named commodity benchmarks are not a diversified commodity total-return basket.",
             "Swinkels US sovereign monthly returns are hypothetical yield-modelled returns ending at the pinned source observation, not an investable bond fund.",
             "Gold is a monthly average; MSCI ACWI is a daily net total return index converted at month-end FX; mixed conventions can affect correlations.",

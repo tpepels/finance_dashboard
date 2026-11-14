@@ -61,6 +61,9 @@ def wage_distribution(points:dict) -> dict:
     wages = {q:_clean(points.get(q, [])) for q in ("p10","p50","p90")}
     cpi = _annual_cpi(points.get("us_cpi", []))
     years = sorted(set.intersection(*(set(v) for v in wages.values()))) if all(wages.values()) else []
+    all_years=sorted(set().union(*(set(v) for v in wages.values())))
+    excluded={q:[d.isoformat() for d in all_years if d not in wages[q]]
+              for q in wages}
     if years:
         valid = [d for d in years if wages["p10"][d] <= wages["p50"][d] <= wages["p90"][d]]
         if len(valid) != len(years):
@@ -104,6 +107,7 @@ def wage_distribution(points:dict) -> dict:
         "real_federal_minimum_hourly_1982_84_usd":_history(real_minimum_hourly),
         "real_federal_minimum_unit":"1982-84 purchasing-power USD per hour",
         "matched_years":len(years),
+        "unmatched_percentile_years":excluded,
         "first_year":years[0].year if years else None,
         "latest_year":years[-1].year if years else None,
         "mean_wage_observed":False,
@@ -118,12 +122,27 @@ def wage_distribution(points:dict) -> dict:
         # and do not justify reconstructing any absolute wage percentile.
         latest={kind:({"year":max(v).year,"value":v[max(v)]} if v else None)
                 for kind,v in values.items()}
+        deciles=("p90_p10","p90_p50","p50_p10")
+        comparable=sorted(set.intersection(*(set(values[k]) for k in deciles)))
+                   if all(values[k] for k in deciles) else [])
+        errors={d:abs(values["p90_p10"][d]-
+                      values["p90_p50"][d]*values["p50_p10"][d])/
+                      values["p90_p10"][d]
+                for d in comparable}
         countries.append({
             "area":area.upper(), "name":name,
             "population":"OECD full-time employees; national earnings definition, see original",
             "measures":{kind:_history(v) for kind,v in values.items()},
             "latest":latest,
             "minimum_median_unit":"percent_of_median_full_time_earnings",
+            "decile_ratio_consistency":{
+                "compared_years":len(comparable),
+                "outside_3_percent_years":[d.isoformat() for d in comparable
+                                           if errors[d]>.03],
+                "max_relative_error_pct":round(100*max(errors.values()),3)
+                                         if errors else None,
+                "source_rounding_tolerance_pct":3,
+            },
             "median_wage_level_available":False,
             "percentile_levels_available":False,
         })
@@ -132,6 +151,7 @@ def wage_distribution(points:dict) -> dict:
         "limitations":[
             "Wage percentiles are employee earnings, not average compensation of all persons engaged.",
             "CPS weekly US levels and OECD ratios have different sampling and earnings definitions; no absolute cross-country wage comparisons.",
+            "Matched US percentile histories exclude dates with a missing percentile, and OECD published ratio consistency is separately audited with a 3% relative tolerance; disagreements are displayed, not corrected.",
             "Annual CPI real purchasing power and output-price-deflated factor compensation must remain distinct.",
             "A US federal statutory minimum is not every worker's effective minimum; no 40-hour conversion is assumed.",
             "Mean earnings, P99 compensation, low-pay incidence and occupation decomposition require distinct publisher evidence.",

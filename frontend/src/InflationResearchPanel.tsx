@@ -11,6 +11,12 @@ type Correlations={
  pearson:number|null;spearman:number|null;
  illustrative_independent_sample_95pct_ci:[number,number]|null;
  block_bootstrap_95pct_ci:[number,number]|null;confidence_method:string;
+ bootstrap_withheld_reason:string|null;
+ robustness:{
+  contiguous:boolean;unobserved_periods_between_matches:number;
+  nonoverlapping_year_end:{n:number;pearson:number|null};
+  trimmed_5pct_each_margin:{n:number;pearson:number|null};
+ };
  rolling:Record<'3y'|'5y'|'10y',Line>;
  lead_lag:Lead[];regimes:Period[];
  scatter:{period:string;asset_change_pct:number;inflation_pct:number}[];
@@ -97,10 +103,21 @@ function FullStatistics({c,theme,recessions,group,title}:{
     {c.block_bootstrap_95pct_ci
       ?' Moving-block 95% bootstrap interval '+c.block_bootstrap_95pct_ci.map(v=>num(v)).join(' to ')+
        ' (serial-dependence-aware descriptive estimate, not causal uncertainty).'
-      :' Moving-block interval withheld: insufficient or degenerate matched observations.'}
+      :' Moving-block interval withheld: '+(c.bootstrap_withheld_reason==='missing_calendar_periods'
+         ?'historical calendar gaps.'
+         :'insufficient or degenerate matched observations.')}
     {c.illustrative_independent_sample_95pct_ci&&
       ' Naïve i.i.d. Fisher interval '+c.illustrative_independent_sample_95pct_ci.map(v=>num(v)).join(' to ')+
       ' (comparison only, not robust to overlapping annual changes).'}
+   </p>
+   <p className="decision-caption">Coverage: {c.robustness.contiguous
+      ?'continuous matched observation calendar'
+      :c.robustness.unobserved_periods_between_matches+' unobserved calendar periods between matched observations'}.
+      Nonoverlapping calendar year-end changes: Pearson {num(c.robustness.nonoverlapping_year_end.pearson)}
+      {' '}(n={c.robustness.nonoverlapping_year_end.n}).
+      Trimming the outer 5% of both change distributions: Pearson {num(c.robustness.trimmed_5pct_each_margin.pearson)}
+      {' '}(n={c.robustness.trimmed_5pct_each_margin.n}); this deliberately excludes extreme observations,
+      including potentially genuine inflation shocks, and cannot replace the headline association.
    </p>
    <Scatter rows={c.scatter}/>
    {shown.length>0&&<TimePanel title={title+' — rolling correlations'}
