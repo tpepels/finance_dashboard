@@ -307,7 +307,7 @@ export default function DataHub(){
           {repair.details?.issues_after!==undefined&&repair.details.issues_after>0?
             'Source-health repair is incomplete; inspect Diagnostics for the remaining series.':
             reason(repair.error_code)}
-        </small>
+        </small>}
       </div>}
     </section>
 
