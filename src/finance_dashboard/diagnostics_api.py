@@ -286,8 +286,16 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             status.update(colour="orange", label="Source health snapshot not yet available")
         if health.get("error"):
             status.update(colour="orange", label="Cached source-health refresh unavailable")
+        updates = app.state.data_change_coordinator.status()
+        acceptance = app.state.acceptance.peek()
         return {"status": status, "release": release,
-                "console": _console(events), "source_summary": summaries}
+                "console": _console(events), "source_summary": summaries,
+                "data_changes": {
+                    "state": updates["state"],
+                    "events_reconciled": updates["events_reconciled"],
+                    "research_evaluated_at": acceptance.evaluated_at.isoformat()
+                                             if acceptance else None,
+                }}
 
     @app.get("/api/data/debug-console")
     def data_debug_console():
