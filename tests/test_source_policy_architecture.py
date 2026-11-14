@@ -88,6 +88,9 @@ class PolicyArchitectureTests(unittest.TestCase):
         allowed_scheduled_sleep = allowed_local_smokes | {
             "src/finance_dashboard/stan_verification.py",
             "src/finance_dashboard/worker.py",
+            # This is a durable maintenance-queue orchestration wait, not
+            # publisher pacing. HTTP cooldown remains in source_policy.
+            "src/finance_dashboard/collection_workflow.py",
         }
         violations = []
         sources = sorted([
