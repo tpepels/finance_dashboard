@@ -192,9 +192,10 @@ export default function InflationResearchPanel({bundle,theme,recessions}:{
    })}
    <h4 className="decision-subhead">Residential property inflation — quarterly BIS selected indices</h4>
    <p className="decision-caption">BIS selected property prices are not monthly investment total returns.
-     US nominal housing is paired only with US CPI and euro-area housing with euro-area HICP.
-     Germany, Portugal and Japan are displayed nominally until appropriate country CPI originals
-     are registered; neither US CPI nor euro-area HICP is silently substituted.</p>
+     US nominal housing is paired with US CPI, euro-area housing with euro-area HICP,
+     and Germany and Portugal use their respective national HICP originals. Japanese
+     housing remains nominal-only until a compatible Japan CPI source is validated;
+     no country's inflation index is substituted from another geography.</p>
    <table className="research-native-table" aria-label="Quarterly housing inflation correlation coverage">
      <thead><tr><th>Geography</th><th>Consumer match</th><th>Pearson</th><th>Matched quarters</th></tr></thead>
      <tbody>{Object.entries(data.housing).map(([code,row])=><tr key={code}>
