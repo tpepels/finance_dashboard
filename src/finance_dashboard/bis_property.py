@@ -23,6 +23,11 @@ PROPERTY_SOURCES: dict[str, tuple[str, str, str]] = {
     "property.pt.real_residential.bis": ("SPP", "Q.PT.R.628", "Q"),
     "property.ea.real_residential.bis": ("SPP", "Q.XM.R.628", "Q"),
     "property.world.real_residential.bis": ("SPP", "Q.XW.R.628", "Q"),
+    "property.us.nominal_residential.bis": ("SPP", "Q.US.N.628", "Q"),
+    "property.de.nominal_residential.bis": ("SPP", "Q.DE.N.628", "Q"),
+    "property.pt.nominal_residential.bis": ("SPP", "Q.PT.N.628", "Q"),
+    "property.jp.nominal_residential.bis": ("SPP", "Q.JP.N.628", "Q"),
+    "property.ea.nominal_residential.bis": ("SPP", "Q.XM.N.628", "Q"),
     "property.us.commercial_all.bis": ("CPP", "Q.US.0.A.0.2.6.0", "Q"),
     "property.pt.commercial_all.bis": ("CPP", "A.PT.0.A.0.1.6.0", "A"),
 }
