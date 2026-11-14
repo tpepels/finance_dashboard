@@ -69,7 +69,9 @@ class CollectionWorkflow:
         self.path = path or _path("FINANCE_DATA_COLLECTION_STATE", "data-collection.json")
         self.lock = Lock()
         self._repair_worker: Thread | None = None
+        self._repair_worker_for: str | None = None
         self._repair_monitor: Thread | None = None
+        self._repair_monitor_for: str | None = None
         saved = _read_json(self.path)
         self.current = saved if saved and saved.get("schema_version") == 1 else None
         if self.current and self.current.get("phase") == "starting":
@@ -103,8 +105,10 @@ class CollectionWorkflow:
 
     def _ensure_repair_worker(self):
         """Deferred repair remains durable while unrelated maintenance is busy."""
-        if self._repair_worker is None or not self._repair_worker.is_alive():
-            current_id = self.current["id"]
+        current_id = self.current["id"]
+        if (self._repair_worker is None or not self._repair_worker.is_alive()
+                or self._repair_worker_for != current_id):
+            self._repair_worker_for = current_id
             self._repair_worker = Thread(
                 target=self._retry_repair, args=(current_id,),
                 daemon=True, name="gcm-collection-repair")
@@ -146,13 +150,15 @@ class CollectionWorkflow:
         if (not record or not record.get("maintenance_job_id")
                 or record.get("repair_final")):
             return
-        if self._repair_monitor is not None and self._repair_monitor.is_alive():
-            return
         ident, job_id = record["id"], record["maintenance_job_id"]
+        if (self._repair_monitor is not None and self._repair_monitor.is_alive()
+                and self._repair_monitor_for == ident):
+            return
         # A mocked or expired maintenance reference is not observable; avoid
         # starting a monitor that can never complete.
         if not any(j.get("id") == job_id for j in self.maintenance.list()["jobs"]):
             return
+        self._repair_monitor_for = ident
         self._repair_monitor = Thread(
             target=self._observe_repair, args=(ident, job_id),
             name="gcm-collection-repair-outcome", daemon=True)
