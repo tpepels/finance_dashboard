@@ -122,6 +122,14 @@ def install_data_hub(app: FastAPI, *, db, catalog, market_registry,
         valid_sources=valid_sources, valid_markets=valid_markets)
     app.state.source_health_cache = SourceHealthCache(
         lambda: build_coverage(db, catalog["series"], market_registry))
+    # Committed ingestion and accepted original files fan out to both
+    # downstream assessments. A coalesced queue prevents 426 independent
+    # expensive scientific evaluations during a bulk refresh.
+    from .data_change_bus import DataChangeCoordinator, subscribe
+    app.state.data_change_coordinator = DataChangeCoordinator(
+        app.state.acceptance, app.state.source_health_cache)
+    subscribe(db, app.state.data_change_coordinator)
+    app.state.manual_sources.accepted = app.state.data_change_coordinator.changed
 
     @app.get("/api/data/collection")
     def collection_status():
@@ -138,7 +146,14 @@ def install_data_hub(app: FastAPI, *, db, catalog, market_registry,
     @app.get("/api/data/health")
     def data_health(refresh: bool = False):
         """Cached coverage snapshot, refreshed by an independent worker."""
-        return app.state.source_health_cache.status(refresh=refresh)
+        return {**app.state.source_health_cache.status(refresh=refresh),
+                "downstream_updates": app.state.data_change_coordinator.status(),
+                "scientific_assessment": {
+                    "running": app.state.acceptance.loading,
+                    "evaluated_at": (
+                        app.state.acceptance.peek().evaluated_at.isoformat()
+                        if app.state.acceptance.peek() else None),
+                }}
 
     @app.get("/api/data/overview")
     def data_overview():
