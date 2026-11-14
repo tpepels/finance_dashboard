@@ -38,7 +38,7 @@ Replace `1000` with the actual IDs just printed. The data directory must be writ
 
 ```bash
 rtk docker compose config --quiet
-rtk docker compose up -d --build --wait --wait-timeout 120
+sh ./deploy.sh
 rtk docker compose ps
 rtk proxy curl -fsS http://127.0.0.1:5052/api/health
 ```
@@ -63,7 +63,7 @@ Create `/srv/finance-dashboard` with ownership matching the chosen IDs **before*
 rtk proxy sudo install -d -o 1000 -g 1000 -m 0750 /srv/finance-dashboard
 rtk proxy chmod 600 .env
 rtk docker compose config --quiet
-rtk docker compose up -d --build --wait --wait-timeout 120
+sh ./deploy.sh
 rtk proxy curl -fsS http://127.0.0.1:5052/api/health
 ```
 
