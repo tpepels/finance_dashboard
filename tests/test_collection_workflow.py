@@ -175,7 +175,9 @@ class CollectionWorkflowTests(unittest.TestCase):
         with manual.lock:
             manual.jobs[0]["status"] = "complete"
         self.assertEqual(manager.status()["state"], "needs_attention")
-        self.assertTrue(wait_for(lambda: bool(manager.current.get("repair_final")),
+        self.assertTrue(wait_for(lambda: bool(manager.current.get("repair_final"))
+                                 and manager._repair_monitor is not None
+                                 and not manager._repair_monitor.is_alive(),
                                  timeout=4))
 
     def test_busy_maintenance_waits_and_then_runs_repair_without_second_click(self):
@@ -205,7 +207,9 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertEqual(manager.status()["id"], run["id"])
         self.assertEqual(manager.status()["repair"]["total"], 17)
         maintenance.jobs[0]["status"] = "complete"
-        self.assertTrue(wait_for(lambda: bool(manager.current.get("repair_final")),
+        self.assertTrue(wait_for(lambda: bool(manager.current.get("repair_final"))
+                                 and manager._repair_monitor is not None
+                                 and not manager._repair_monitor.is_alive(),
                                  timeout=4))
 
     def test_old_release_repair_is_not_misreported_as_interrupted_after_new_check(self):
