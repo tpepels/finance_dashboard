@@ -205,7 +205,7 @@ def assess_limitations(*, coverage: dict, document: dict,
     if snapshot is not None:
         try:
             questions, p2_findings = _phase2_findings(snapshot, document)
-        except (UnmappedLimitation, KeyError, TypeError, ValueError) as error:
+        except (UnmappedLimitation, KeyError, TypeError, ValueError, AttributeError) as error:
             # Do not suppress the bug or allow an optional audit to destroy
             # the diagnostic ZIP needed to investigate it.
             reason = "acceptance_limitation_register_invalid:" + type(error).__name__
@@ -223,6 +223,7 @@ def assess_limitations(*, coverage: dict, document: dict,
                 "state": "failed", "evaluated_at": snapshot.evaluated_at.isoformat(),
                 "question_count": len(question_ids), "evaluated_questions": 0,
                 "reason": reason,
+                "source_evidence_revalidated_by_this_audit": False,
             }
         else:
             findings.extend(p2_findings)
@@ -307,6 +308,7 @@ def assess_limitations(*, coverage: dict, document: dict,
     severity = {key: sum(f["severity"] == key for f in findings)
                 for key in ("high", "medium", "information")}
     statuses = dict(sorted(Counter(f["status"] for f in findings).items()))
+    research_states = dict(sorted(Counter(q["state"] for q in questions).items()))
     registered = {a for a in methods if a not in question_ids}
     return {
         "schema_version": 1,
@@ -329,7 +331,8 @@ def assess_limitations(*, coverage: dict, document: dict,
         "counts": {"total": len(findings), "by_category": categories,
                    "by_severity": severity, "by_status": statuses,
                    "research_questions": len(question_ids),
-                   "research_questions_evaluated": assessment["evaluated_questions"]},
+                   "research_questions_evaluated": assessment["evaluated_questions"],
+                   "research_by_state": research_states},
         "questions": questions,
         "findings": findings,
     }
