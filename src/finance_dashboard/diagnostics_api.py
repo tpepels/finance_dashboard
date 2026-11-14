@@ -367,15 +367,15 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
                 {**failure_manifest, "release": release})
             archive.writestr("diagnostics/icio-accounting-failures.csv", failure_csv)
             archive.writestr("README.txt",
-                "Global Capital Monitor build: " + release["release_id"] + "\\n"
-                "Release activated: " + str(release["activated_at"] or "not recorded") + "\\n"
+                "Global Capital Monitor build: " + release["release_id"] + "\n"
+                "Release activated: " + str(release["activated_at"] or "not recorded") + "\n"
                 "Only current-build diagnostic events and job summaries are shown. "
-                "Original evidence, research history, and backups are retained.\\n"
+                "Original evidence, research history, and backups are retained.\n"
                 "Redacted diagnostic bundle with full source status, per-role publisher "
                 "attempts, original hashes, manual fallback links, accounting residuals, "
                 "source audit CSV and maintenance outcomes. Browser cookies, credentials, "
                 "signed redirect parameters, raw HTTP bodies, portfolio holdings and "
-                "database contents are excluded.\\n")
+                "database contents are excluded.\n")
         return bundle.getvalue()
 
     from .diagnostic_exports import DiagnosticExportManager
