@@ -194,6 +194,24 @@ class MarketPersistenceTests(unittest.TestCase):
             self.assertEqual(len(current_market_prices(session,"vwce.de")),3)
             self.assertEqual(session.scalar(select(func.count()).select_from(MarketPriceVersion)),4)
 
+    def test_successful_market_and_fx_commits_notify_downstream_reconciliation(self):
+        # Commit notification also fires for an unchanged source check; failed
+        # fetches must not claim a new accepted result.
+        with patch("finance_dashboard.data_change_bus.publish_change") as published:
+            self.assertEqual(self.service.refresh_instrument("vwce.de")["versions_added"], 5)
+            self.assertEqual(self.service.refresh_instrument("vwce.de")["versions_added"], 0)
+            self.assertEqual(self.service.refresh_fx("USD")["versions_added"], 2)
+            self.assertEqual(self.service.refresh_fx("USD")["versions_added"], 0)
+            self.assertEqual(
+                [call.args[1] for call in published.call_args_list],
+                ["market_ingested", "market_ingested", "fx_ingested", "fx_ingested"])
+            self.assertTrue(all(call.args[0] is self.engine
+                                for call in published.call_args_list))
+            self.yahoo.fail = True
+            with self.assertRaises(MarketDataError):
+                self.service.refresh_instrument("vwce.de")
+            self.assertEqual(published.call_count, 4)
+
     def test_market_api_registry_query_and_status(self):
         self.service.refresh_instrument("vwce.de")
         with TestClient(create_app(self.engine)) as client:
