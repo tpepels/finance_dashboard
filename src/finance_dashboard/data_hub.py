@@ -136,9 +136,9 @@ def install_data_hub(app: FastAPI, *, db, catalog, market_registry,
         return app.state.collection_workflow.start(profile)
 
     @app.get("/api/data/health")
-    def data_health():
+    def data_health(refresh: bool = False):
         """Cached coverage snapshot, refreshed by an independent worker."""
-        return app.state.source_health_cache.status()
+        return app.state.source_health_cache.status(refresh=refresh)
 
     @app.get("/api/data/overview")
     def data_overview():
