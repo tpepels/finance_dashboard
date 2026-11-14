@@ -15,6 +15,7 @@ from os import environ
 from pathlib import Path
 import tempfile
 import time
+from datetime import datetime, timezone
 from threading import Event, Lock, Thread
 from typing import AsyncIterator
 
@@ -31,6 +32,28 @@ maintenance_network_lock = Lock()
 # Manual browser sync preempts scheduled refresh between provider requests.
 # The shared lock still prevents concurrent writes.
 manual_sync_pending = Event()
+
+_schedule_lock = Lock()
+_schedule_progress = {
+    "refresh_running": False, "refresh_state": "not_started",
+    "next_refresh_at": None, "last_refresh_finished_at": None,
+}
+
+
+def _record_schedule(**updates) -> None:
+    with _schedule_lock:
+        _schedule_progress.update(updates)
+
+
+def scheduled_refresh_status() -> dict:
+    """Observed in-process scheduler transitions; no SQL or network access."""
+    with _schedule_lock:
+        return dict(_schedule_progress)
+
+
+def _utc_time(timestamp: float) -> str:
+    return datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
+
 
 class _ScheduledStop:
     def __init__(self, stopped):
@@ -131,19 +154,31 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
     scheduled_stop = _ScheduledStop(stopped)
     # Restored/verified releases can warm acceptance without immediately
     # reacquiring the entire corpus. Normal daily updates remain enabled.
+    _record_schedule(refresh_running=False, refresh_state="starting",
+                     next_refresh_at=None)
     if not enabled('FINANCE_REFRESH_ON_START', '1'):
         # Restarting Docker must not reset the clock indefinitely. A due
         # deadline is persisted before the initial wait and updated after
         # each cycle. An overdue refresh begins immediately.
-        initial_wait = max(0, math.ceil(_schedule_due(interval_seconds) - time.time()))
+        due = _schedule_due(interval_seconds)
+        initial_wait = max(0, math.ceil(due - time.time()))
+        _record_schedule(refresh_running=False, refresh_state="waiting",
+                         next_refresh_at=_utc_time(due))
         if initial_wait > 0 and stopped.wait(initial_wait):
+            _record_schedule(refresh_running=False, refresh_state="stopped",
+                             next_refresh_at=None)
             return
     while not stopped.is_set():
         if manual_sync_pending.is_set():
+            _record_schedule(refresh_running=False,
+                             refresh_state="waiting_for_manual_collection",
+                             next_refresh_at=None)
             if stopped.wait(interval_seconds):
                 break
             continue
         with maintenance_network_lock:
+            _record_schedule(refresh_running=True, refresh_state="collecting",
+                             next_refresh_at=None)
             cycle_failed = False
             record_event("system", "started", action="scheduled_refresh",
                          status="running")
@@ -240,7 +275,11 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                          action="scheduled_refresh",
                          status=("interrupted" if interrupted else
                                  "partial" if cycle_failed else "complete"))
-            _save_schedule_due(time.time() + interval_seconds)
+            next_due = time.time() + interval_seconds
+            _save_schedule_due(next_due)
+            _record_schedule(refresh_running=False, refresh_state="waiting",
+                             next_refresh_at=_utc_time(next_due),
+                             last_refresh_finished_at=_utc_time(time.time()))
         # A complete scheduled cycle can also update vintage, SEC or other
         # original evidence outside IngestionService.refresh. Notify one
         # downstream reconciliation for those native archive changes.
@@ -265,11 +304,15 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                              reason="original_source_schedule_failed")
         if stopped.wait(interval_seconds):
             break
+    _record_schedule(refresh_running=False, refresh_state="stopped",
+                     next_refresh_at=None)
 
 
 @asynccontextmanager
 async def standalone_lifespan(app: FastAPI, *, engine: Engine) -> AsyncIterator[None]:
     if not enabled("FINANCE_AUTO_REFRESH"):
+        _record_schedule(refresh_running=False, refresh_state="disabled",
+                         next_refresh_at=None)
         yield
         return
     interval_seconds = refresh_interval()
