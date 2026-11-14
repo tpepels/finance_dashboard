@@ -32,6 +32,14 @@ describe('anchored Status pop-up positioning',()=>{
     expect(pos.top).toBe(192);
     expect(pos.maxHeight).toBe(590);
   });
+  it('uses a scrollable viewport overlay when neither side can fit controls',()=>{
+    const pos=placeDiagnosticsPopup(
+      {left:220,right:260,top:42,bottom:88},{height:500},
+      {width:320,height:120});
+    expect(pos.top).toBe(12);
+    expect(pos.maxHeight).toBe(96);
+    expect(pos.width).toBe(296);
+  });
   it('keeps a tall panel bounded in a short viewport',()=>{
     const pos=placeDiagnosticsPopup(
       {left:200,right:260,top:20,bottom:56},{height:1200},
