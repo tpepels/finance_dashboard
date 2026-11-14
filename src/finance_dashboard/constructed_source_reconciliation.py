@@ -112,11 +112,16 @@ def constructed_source(root, definition, select_manifest, original_file, *, allo
                        'source_population': 'Non-financial corporations (S11), national accounts',
                        'source_price_basis': 'current_prices'}
         elif provider == 'EUROSTAT_HICP':
-            if definition['source_key'] != 'prc_hicp_minr/M.I25.TOTAL.EA' or definition['frequency'] != 'M' or definition['unit'] != 'index': _error()
-            values = _eurostat_hicp(raw[0], sources[0]['url'])
+            key = definition['source_key']
+            area = {'prc_hicp_minr/M.I25.TOTAL.EA': 'EA',
+                    'prc_hicp_minr/M.I25.TOTAL.DE': 'DE',
+                    'prc_hicp_minr/M.I25.TOTAL.PT': 'PT'}.get(key)
+            if area is None or definition['frequency'] != 'M' or definition['unit'] != 'index': _error()
+            values = _eurostat_hicp(raw[0], sources[0]['url'], expected_geo=area)
             details = {'source_native_unit': 'index_2025_100', 'source_index_base': '2025=100',
                        'source_classification': 'ECOICOP ver.2 TOTAL',
-                       'source_population': 'Euro area changing composition (EA21 from 2026)'}
+                       'source_population': {'EA':'Euro area changing composition (EA21 from 2026)',
+                                             'DE':'Germany', 'PT':'Portugal'}[area]}
         elif provider == 'EUROSTAT_NFC_PROFIT_GVA':
             if definition['source_key'] != 'nasa_10_ki/EU27_2020/S11/B2G_B3G_RAT_S11' or definition['frequency'] != 'A' or definition['unit'] != 'percent': _error()
             values = _eurostat(raw[0], sources[0]['url'], 'S11', 'B2G_B3G_RAT_S11',
