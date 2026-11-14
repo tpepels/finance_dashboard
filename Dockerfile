@@ -38,6 +38,10 @@ COPY tests/ /app/tests/
 COPY alembic.ini /app/alembic.ini
 COPY start.sh /app/start.sh
 COPY --from=frontend-build /build/frontend/dist/ /app/site/
+# Explicit per-build nonce is injected by deploy.sh. Keep this late in the
+# Dockerfile so repeated releases reuse Python/npm dependency build caches.
+ARG FINANCE_BUILD_NONCE=source
+ENV FINANCE_BUILD_NONCE=${FINANCE_BUILD_NONCE}
 # Fast, deterministic runtime build. The complete Python suite and repeated
 # original-source integrity/identity verification run separately with
 # python -m finance_dashboard stan overnight; no tests contact the publisher at build time.
