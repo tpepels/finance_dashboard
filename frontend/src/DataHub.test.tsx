@@ -23,7 +23,8 @@ const makeRun=()=>({
   repair:{status:'running',completed:6,total:17,current_item:null,error_code:null} as {
     status:string;completed:number;total:number;current_item:string|null;error_code:string|null;
     details?:{issues_before?:number;issues_after?:number;resolved_issues?:number;
-      failed_sources?:number}}|null,
+      failed_sources?:number};
+    origin?:'collection_session'|'latest_independent_check'|'previous_build_unavailable'}|null,
   startup_error:null,
 });
 const makeHealth=()=>({
@@ -37,6 +38,12 @@ const makeHealth=()=>({
     attention_items:[] as {id:string;name:string;provider:string;state:string;
       latest_source_date:string|null;published_through:string|null;
       next_action:string;research_questions:string[];}[]},
+  automation:{scheduled_refresh_enabled:true,interval_seconds:86400,
+    automatic_post_ingestion_updates:true},
+  downstream_updates:{state:'complete',last_change_at:'2026-11-14T11:30:00Z',
+    last_reconciled_at:'2026-11-14T11:35:00Z',
+    events_seen:9,events_reconciled:9,batches:1,error:null as string|null},
+  scientific_assessment:{running:false,evaluated_at:'2026-11-14T11:36:00Z'},
 });
 const makeExport=()=>({
   state:'idle',ready:false,id:null as string|null,prepared_at:null as string|null,
@@ -93,6 +100,28 @@ describe('durable Data Collection page',()=>{
     expect(screen.queryByText('Source explorer')).toBeNull();
     expect(screen.queryByText('Advanced source operations')).toBeNull();
     expect(calls.some(item=>item.url==='/api/data/overview')).toBe(false);
+  });
+
+  it('automatically reports post-ingestion reconciliation without requiring a repair click',async()=>{
+    const view=render(<DataHub/>);
+    expect(await screen.findByText('Automatic source refresh enabled')).toBeTruthy();
+    expect(screen.getByText(/Last ingestion-triggered reconciliation/)).toBeTruthy();
+    expect(screen.getByText(/Research evidence last evaluated/)).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Repair gaps'})).toBeNull();
+    expect(calls.some(item=>item.method==='POST')).toBe(false);
+    expect(screen.getByText('Manual source check (optional)')).toBeTruthy();
+    view.unmount();
+  });
+
+  it('shows latest independent repair instead of false old-session interruption',async()=>{
+    run.repair={status:'partial',completed:6,total:6,current_item:null,
+      origin:'latest_independent_check',error_code:'source_gaps_remaining',
+      details:{issues_before:6,issues_after:6,resolved_issues:0,failed_sources:0}};
+    render(<DataHub/>);
+    expect(await screen.findByText('Most recent independent source check')).toBeTruthy();
+    expect(screen.getByText(/This repair occurred after the source-download session/)).toBeTruthy();
+    expect(screen.getByText(/6 still require attention/)).toBeTruthy();
+    expect(screen.queryByText('Source-health repair interrupted')).toBeNull();
   });
 
   it('shows the exact ten stale histories in Data Collection without mounting Source Explorer',async()=>{
@@ -158,14 +187,17 @@ describe('durable Data Collection page',()=>{
       sources:[],manual_files:[],repair:null,started_at:null};
     const user=userEvent.setup();
     render(<DataHub/>);
-    const button=await screen.findByRole('button',{name:'Start automatic downloads'});
+    expect(await screen.findByText('Automatic source refresh enabled')).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Start automatic downloads'})).toBeNull();
+    await user.click(screen.getByText('Manual source check (optional)'));
+    const button=await screen.findByRole('button',{name:'Check sources now'});
     await user.click(button);
     await waitFor(()=>expect(calls.some(item=>item.url==='/api/data/collection/start'
       && item.method==='POST')).toBe(true));
     const request=calls.find(item=>item.url==='/api/data/collection/start')!;
     expect(JSON.parse(request.body||'{}').browser).toHaveProperty('language');
     expect(await screen.findByText(/continues if you leave this page/)).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Collection running'}).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button',{name:'Source check running'}).hasAttribute('disabled')).toBe(true);
   });
 
   it('restores last-known status immediately when returning even if the server is delayed',async()=>{
