@@ -409,6 +409,19 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             # across releases to avoid apparently empty troubleshooting ZIPs.
             put("diagnostics/collection-run.json",
                 app.state.collection_workflow.status())
+            put("diagnostics/downstream-reconciliation.json", {
+                "coordinator": app.state.data_change_coordinator.status(),
+                "scientific_assessment": {
+                    "running": app.state.acceptance.loading,
+                    "evaluated_at": (
+                        app.state.acceptance.peek().evaluated_at.isoformat()
+                        if app.state.acceptance.peek() else None),
+                },
+                "source_health": app.state.source_health_cache.status(schedule=False),
+                "note": "Post-commit source changes trigger a debounced source-health "
+                        "scan and scientific acceptance. Current state is operational, "
+                        "not proof of a new publisher release.",
+            })
             put("diagnostics/original-import.json", importer.public_status())
             put("diagnostics/original-method-audit.json",
                 {**source_audit, "release": release})
