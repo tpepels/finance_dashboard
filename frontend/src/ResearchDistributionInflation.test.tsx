@@ -33,6 +33,7 @@ describe('distribution and inflation research presentation',()=>{
         real_federal_minimum_hourly_1982_84_usd:[['2024-01-01',3.6]],
         real_federal_minimum_unit:'1982-84 purchasing-power USD per hour',
         matched_years:2,first_year:2024,latest_year:2025,
+        unmatched_percentile_years:{p10:[],p50:['2023-01-01'],p90:[]},
         real_median_reconciliation:{compared_years:2,outside_2_percent_years:[],not_a_scientific_identity:true},
         mean_wage_observed:false,p99_wage_observed:false,federal_minimum_to_weekly_median_computable:false,
       },
@@ -42,6 +43,8 @@ describe('distribution and inflation research presentation',()=>{
         latest:{p90_p10:{year:2024,value:3.2},p90_p50:{year:2024,value:1.9},
           p50_p10:{year:2024,value:1.7},minimum_median:{year:2024,value:59}},
         minimum_median_unit:'percent_of_median_full_time_earnings',
+        decile_ratio_consistency:{compared_years:2,outside_3_percent_years:['2024-01-01'],
+          max_relative_error_pct:5.2,source_rounding_tolerance_pct:3},
         median_wage_level_available:false,percentile_levels_available:false,
       }],
       limitations:['Mean wages require a separate original with matched population.'],
@@ -55,6 +58,8 @@ describe('distribution and inflation research presentation',()=>{
     expect(screen.getByRole('table',{name:'OECD earnings distribution latest periods'})).toBeTruthy();
     expect(screen.getByText(/59\.0% \(2024\)/)).toBeTruthy();
     expect(screen.getByText(/Mean wages require a separate original/)).toBeTruthy();
+    expect(screen.getByText(/Unmatched percentile source years/)).toBeTruthy();
+    expect(screen.getByText(/Inconsistent in 1 \/ 2 years/)).toBeTruthy();
   });
 
   it('shows USD/EUR sovereign correlations, confidence caveats, and matched national housing',()=>{
@@ -65,6 +70,10 @@ describe('distribution and inflation research presentation',()=>{
       illustrative_independent_sample_95pct_ci:[.1,.5] as [number,number],
       block_bootstrap_95pct_ci:[-.1,.58] as [number,number],
       confidence_method:'circular_moving_block_bootstrap',
+      bootstrap_withheld_reason:null,
+      robustness:{contiguous:true,unobserved_periods_between_matches:0,
+        nonoverlapping_year_end:{n:4,pearson:null},
+        trimmed_5pct_each_margin:{n:42,pearson:.22}},
       rolling:{'3y':[],'5y':[],'10y':[]},
       lead_lag:[],regimes:[],
       scatter:[],unverified_due_to_insufficient_coverage:false,
@@ -105,6 +114,7 @@ describe('distribution and inflation research presentation',()=>{
     expect(screen.getByRole('table',{name:'Asset consumer inflation correlations'}).textContent)
       .toContain('unhedged EUR');
     expect(screen.getAllByText(/Moving-block 95% bootstrap interval/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Nonoverlapping calendar year-end changes/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Validated Japan CPI original unavailable/)).toBeTruthy();
   });
 });
