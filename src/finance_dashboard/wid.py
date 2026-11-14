@@ -165,18 +165,27 @@ def parse_wid_bundle(data_text: str, metadata_text: str, *, area: str) -> WidBun
 
 
 
-def parse_piketty_original(data_text: str, metadata_text: str, *, area: str) -> dict:
-    """Select optional WID original measures independently of baseline shares.
+def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
+                           strict: bool = True) -> dict:
+    """Validate independently addressable optional WID source identities.
 
-    The original data+metadata pair is already archived and hash-checked by
-    WidClient. A new series never becomes valid merely because some other WID
-    variable was present in the same area file. These are exact WID codes,
-    percentile, age, population and native units; missing stays unavailable.
+    strict=True rejects any contradictory selected original. strict=False
+    quarantines only the conflicting variable and its percentiles while
+    retaining independently valid values from the same hash-verified bulk
+    pair. It NEVER substitutes missing or invalid observations.
     """
     keys = {(variable, percentile) for region, variable, percentile
             in WID_PIKETTY_SERIES.values() if region == area}
+    if not keys:
+        raise ProviderError("Unregistered WID research reference area")
     allowed = {variable for variable, _ in keys}
-    meta = {}
+    metadata, invalid = {}, set()
+
+    def reject(variable: str, detail: str) -> None:
+        if strict:
+            raise ProviderError(detail)
+        invalid.add(variable)
+
     reader = _reader(metadata_text, {"country", "variable", "age", "pop", "unit",
                                     "source", "method"})
     try:
@@ -186,27 +195,35 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str) -> 
             variable = row.get("variable")
             if variable not in allowed:
                 continue
-            if variable in meta:
-                raise ProviderError("WID duplicate research variable metadata")
+            if variable in metadata or variable in invalid:
+                reject(variable, "WID duplicate research variable metadata")
+                continue
             age, population = (("992", "j") if variable[0] in ("s", "a")
                                else ("999", "i"))
             unit = (row.get("unit") or "").strip()
             if (row.get("age") != age or row.get("pop") != population
                     or not unit or not (row.get("source") or "").strip()
                     or not (row.get("method") or "").strip()):
-                raise ProviderError("WID research age, population or original method mismatch")
+                reject(variable, "WID research age, population or original method mismatch")
+                continue
             if variable[0] == "s" and unit != "share":
-                raise ProviderError("WID wealth-share research unit mismatch")
+                reject(variable, "WID wealth-share research unit mismatch")
+                continue
             if variable[0] == "w" and unit not in ("share", "ratio"):
-                raise ProviderError("WID wealth-income research unit mismatch")
+                reject(variable, "WID wealth-income research unit mismatch")
+                continue
             if variable[0] in ("m", "a") and unit in ("share", "ratio"):
-                raise ProviderError("WID real-income monetary research unit mismatch")
-            meta[variable] = dict(row)
-        # Compare income/wealth totals only in the same original monetary
-        # currency and price-reference unit; no implicit FX or CPI conversion.
-        macro_units = {r["unit"] for v, r in meta.items() if v.startswith("m")}
-        if len(macro_units) > 1:
-            raise ProviderError("WID monetary total units differ within reference area")
+                reject(variable, "WID real-income monetary research unit mismatch")
+                continue
+            metadata[variable] = dict(row)
+        # No cross-currency arithmetic is allowed between original national
+        # macro monetary amounts unless their exact WID units agree.
+        macro = {r["unit"] for v, r in metadata.items() if v.startswith("m")
+                 and v not in invalid}
+        if len(macro) > 1:
+            if strict:
+                raise ProviderError("WID monetary total units differ within reference area")
+            invalid.update(v for v in metadata if v.startswith("m"))
         observations = {key: {} for key in keys}
         reader = _reader(data_text, {"country", "variable", "percentile",
                                      "year", "value", "age", "pop"})
@@ -217,32 +234,43 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str) -> 
             if key not in keys:
                 continue
             variable = key[0]
-            if variable not in meta:
-                raise ProviderError("WID research observation lacks exact metadata")
+            if variable in invalid:
+                continue
+            if variable not in metadata:
+                reject(variable, "WID research observation lacks exact metadata")
+                continue
             age, population = (("992", "j") if variable[0] in ("s", "a")
                                else ("999", "i"))
             if row.get("age") != age or row.get("pop") != population:
-                raise ProviderError("WID research observation population mismatch")
+                reject(variable, "WID research observation population mismatch")
+                continue
             year = row.get("year") or ""
             if len(year) != 4 or not year.isdigit() or int(year) > date.today().year:
-                raise ProviderError("WID research invalid observation year")
+                reject(variable, "WID research invalid observation year")
+                continue
             raw = row.get("value")
             if raw in (None, "", "NA", "N/A", "NaN"):
                 continue
             try:
                 value = Decimal(raw)
-            except InvalidOperation as exc:
-                raise ProviderError("WID research invalid numeric value") from exc
+            except InvalidOperation:
+                reject(variable, "WID research invalid numeric value")
+                continue
             if not value.is_finite():
-                raise ProviderError("WID research nonfinite value")
+                reject(variable, "WID research nonfinite value")
+                continue
             period = date(int(year), 1, 1)
             if period in observations[key]:
-                raise ProviderError("WID research duplicate annual observation")
+                reject(variable, "WID research duplicate annual observation")
+                continue
             observations[key][period] = value
     except (csv.Error, ValueError, TypeError) as exc:
         if isinstance(exc, ProviderError):
             raise
         raise ProviderError("Malformed WID research original") from exc
+    for key in keys:
+        if key[0] in invalid:
+            observations[key] = {}
     return observations
 
 
@@ -518,13 +546,13 @@ class WidClient:
             self._raw_pairs[area] = (data_text, metadata_text)
             if series_id in WID_PIKETTY_SERIES:
                 self._piketty[area] = parse_piketty_original(
-                    data_text, metadata_text, area=area)
+                    data_text, metadata_text, area=area, strict=False)
         if series_id in WID_PIKETTY_SERIES:
             if area not in self._piketty:
                 # Reuse the same already-validated original pair in memory.
                 data_text, metadata_text = self._raw_pairs[area]
                 self._piketty[area] = parse_piketty_original(
-                    data_text, metadata_text, area=area)
+                    data_text, metadata_text, area=area, strict=False)
             values = self._piketty[area].get((variable, percentile), {})
         else:
             values = self._areas[area].observations[(variable, percentile)]
