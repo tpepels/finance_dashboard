@@ -80,10 +80,13 @@ class LimitationAssessmentTests(unittest.TestCase):
         missing = next(f for f in findings if f["source_ids"] == ["macro.missing"] and
                        f["provenance"] == "source_coverage")
         self.assertEqual(missing["severity"], "high")
-        self.assertTrue(any(f["category"] == "potentially_outdated_hardcoded_statement" and
-                            f["analysis_ids"] == ["G06"] and
-                            f["evidence"]["automatic_outdatedness_confirmed"] is False
-                            for f in findings))
+        # Phase 0 replaced G06's unqualified current-date claim with a
+        # source-bound historic reference. It must no longer be flagged as
+        # an outstanding hardcoded-date assertion.
+        self.assertFalse(any(f["category"] == "potentially_outdated_hardcoded_statement"
+                             and f["analysis_ids"] == ["G06"] for f in findings))
+        self.assertTrue(any(f["category"] == "documented_method_constraint"
+                            and f["analysis_ids"] == ["G06"] for f in findings))
         self.assertTrue(any(f["category"] == "source_accounting_integrity"
                             and f["evidence"]["failure_equations_exported"] == 19
                             for f in findings))
