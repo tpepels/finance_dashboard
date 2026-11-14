@@ -12,6 +12,14 @@ from statistics import pstdev
 from typing import Iterable
 
 TRANSFORMS: dict[str, str] = {
+    "annual_mean_complete_months": "calendar-year mean of CPI observations only if all twelve monthly values are explicitly observed; no interpolation or incomplete-year substitute",
+    "matched_percentile_ratios": "observed CPS annual P90/P50/P10 earnings: P90/P10, P90/P50, P50/P10 on exact shared years; verify P10 <= P50 <= P90",
+    "cpi_purchasing_power": "real weekly earnings in 1982-84 dollars = nominal CPS weekly USD * 100 / matched full-year average CPI-U NSA",
+    "monthly_yoy_no_fill": "nominal twelve-month change = 100*(level[t]/level[t-12]-1) on exact observed months only; CPI-U and HICP use original annual basket changes",
+    "month_end_returns_and_fx": "unhedged EUR USD-quoted asset value = observed source USD index / ECB USD-per-EUR reference quote on the corresponding completed trading month",
+    "cpi_deflation": "CPI-real 12-month price/return change = 100*((1+nominal_yoy/100)/(1+CPI_yoy/100)-1), with matched month and currency",
+    "rolling_and_lagged_correlation": "Pearson and tied-rank Spearman on exact monthly/quarterly pairs; rolling 36/60/120 complete observations and lead/lag comparisons with positive lag meaning asset leads later CPI; no causal identification",
+    "quarterly_housing_no_fill": "BIS nominal selected property indices retained quarterly; 4-quarter price change; CPI quarterly average exists only when all three source months exist; no cross-country CPI substitution",
     "month_end": "last observation in each calendar month; the observed date is retained",
     "complete_months": "drop the current calendar month, whose last value is not yet a month-end",
     "contiguous_tail": "longest run of consecutive months ending at the latest month; a missing month ends the run",
