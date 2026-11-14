@@ -130,6 +130,12 @@ class OriginalUploadApiTests(unittest.TestCase):
                         self.assertEqual(zip_result.status_code, 200)
                         with ZipFile(io.BytesIO(zip_result.content)) as zipfile:
                             self.assertIn("diagnostics/events.json", zipfile.namelist())
+                            self.assertIn("diagnostics/scheduler.json", zipfile.namelist())
+                            scheduler = json.loads(zipfile.read("diagnostics/scheduler.json"))
+                            self.assertFalse(scheduler["scheduled_refresh_enabled"])
+                            self.assertEqual(scheduler["refresh_state"], "disabled")
+                            self.assertIsNone(scheduler["next_refresh_at"])
+                            self.assertEqual(scheduler["scope"], "observed_in_process_state")
                             self.assertIn("diagnostics/original-method-audit.json", zipfile.namelist())
                             original_diagnostics = json.loads(zipfile.read("diagnostics/original-method-audit.json"))
                             self.assertFalse(original_diagnostics["source_archive_bytes_reverified"])
@@ -143,9 +149,11 @@ class OriginalUploadApiTests(unittest.TestCase):
                         for _ in range(200):
                             status = api.get("/api/originals").json()
                             job = status["jobs"][0]
-                            if job["status"] in ("complete", "partial", "failed"):
+                            if (job["status"] in ("complete", "partial", "failed")
+                                    and not status["active"]):
                                 break
                             time.sleep(.02)
+                        self.assertFalse(status["active"], status)
                         self.assertEqual(job["status"], "complete", job)
                         self.assertEqual(job["results"][0]["status"],
                                          "original_archived_dimensions_unverified")
@@ -161,9 +169,11 @@ class OriginalUploadApiTests(unittest.TestCase):
                         for _ in range(200):
                             current = api.get("/api/originals").json()
                             reopened = current["jobs"][0]
-                            if reopened["status"] in ("complete", "partial", "failed"):
+                            if (reopened["status"] in ("complete", "partial", "failed")
+                                    and not current["active"]):
                                 break
                             time.sleep(.02)
+                        self.assertFalse(current["active"], current)
                         self.assertEqual(reopened["mode"], "reassess")
                         self.assertEqual(reopened["status"], "complete", reopened)
                         after = api.get("/api/source-evidence/icio")
