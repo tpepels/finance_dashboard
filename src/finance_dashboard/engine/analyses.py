@@ -1818,10 +1818,12 @@ L08 = AnalysisDefinition("L08", {
     "p50_publisher_real":"labour.us.cps_weekly_p50_real",
     "us_federal_min":"labour.us.federal_minimum_hourly",
     "us_cpi":"prices.us.cpi_all_items_nsa",
+    "oews_mean":"labour.us.oews_all_mean_hourly",
+    "oews_median":"labour.us.oews_all_median_hourly",
     **{f"oecd:{area}:{measure}":f"labour.{area}.oecd_{measure}"
        for area in ("us","de","fr","pt","jp")
        for measure in ("p90_p10","p90_p50","p50_p10","minimum_median")},
-}, _l08)
+}, _l08, optional_inputs=("oews_mean", "oews_median"))
 
 
 def _c07(points: dict, view: dict) -> Computed:

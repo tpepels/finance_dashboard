@@ -7373,6 +7373,38 @@
       "revision_policy": "revisable",
       "rights": "review_required",
       "notes": "Kaitz-style minimum-to-median; not absolute median pay or all worker groups. No nationwide statutory floor means published absence, not a fabricated zero."
+    },
+    {
+      "id": "labour.us.oews_all_mean_hourly",
+      "name": "US OEWS hourly mean — all covered nonfarm jobs",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "BLS_OEWS",
+      "source_key": "NATIONAL/ALL_OCCUPATIONS/H_MEAN",
+      "source_url": "https://www.bls.gov/oes/tables.htm",
+      "geography": "US",
+      "frequency": "A",
+      "unit": "usd",
+      "measurement": "BLS OEWS all-occupations national estimated mean hourly wage, May reference year, including covered full-time and part-time nonfarm wage and salary employees.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Exact BLS all-occupations SOC 00-0000 national workbook row, published annually with original May reference year. OEWS includes covered full- and part-time nonfarm employees, excludes self-employment, and is not the CPS full-time weekly population. Publisher snapshots may undergo methodological changes."
+    },
+    {
+      "id": "labour.us.oews_all_median_hourly",
+      "name": "US OEWS hourly median — all covered nonfarm jobs",
+      "theme": "labour_capital",
+      "status": "mapped",
+      "provider": "BLS_OEWS",
+      "source_key": "NATIONAL/ALL_OCCUPATIONS/H_MEDIAN",
+      "source_url": "https://www.bls.gov/oes/tables.htm",
+      "geography": "US",
+      "frequency": "A",
+      "unit": "usd",
+      "measurement": "BLS OEWS all-occupations national estimated median hourly wage, same May source-year and survey population as OEWS mean.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Exact BLS all-occupations SOC 00-0000 national workbook row, published annually with original May reference year. OEWS includes covered full- and part-time nonfarm employees, excludes self-employment, and is not the CPS full-time weekly population. Publisher snapshots may undergo methodological changes."
     }
   ]
 }

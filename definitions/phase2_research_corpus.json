@@ -249,6 +249,11 @@
       "id": "S49",
       "label": "OECD original Trade in Value Added (TiVA) publisher methods and variables",
       "url": "https://www.oecd.org/en/data/datasets/trade-in-value-added.html"
+    },
+    {
+      "id": "S50",
+      "label": "US BLS Occupational Employment and Wage Statistics (OEWS) national annual estimates and definitions",
+      "url": "https://www.bls.gov/oes/tables.htm"
     }
   ],
   "analyses": [
@@ -1024,11 +1029,15 @@
             "role": "de_hicp",
             "description": "Germany national monthly 2025-base HICP matched to BIS Germany quarterly property prices.",
             "requirement_class": "supplemental",
-            "series_ids": ["prices.de.hicp_index_2025"],
+            "series_ids": [
+              "prices.de.hicp_index_2025"
+            ],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": ["DE"],
+              "geography": [
+                "DE"
+              ],
               "population": "Germany resident consumers",
               "concept": "Germany HICP 2025=100 all-items level"
             },
@@ -1040,11 +1049,15 @@
             "role": "pt_hicp",
             "description": "Portugal national monthly 2025-base HICP matched to BIS Portugal quarterly property prices.",
             "requirement_class": "supplemental",
-            "series_ids": ["prices.pt.hicp_index_2025"],
+            "series_ids": [
+              "prices.pt.hicp_index_2025"
+            ],
             "expected": {
               "frequency": "M",
               "unit": "index",
-              "geography": ["PT"],
+              "geography": [
+                "PT"
+              ],
               "population": "Portugal resident consumers",
               "concept": "Portugal HICP 2025=100 all-items level"
             },
@@ -4551,9 +4564,10 @@
       "title": "How have typical wages, earnings deciles and statutory minimum-to-median ratios changed relative to aggregate pay?",
       "primary_method_sources": [
         "S29",
-        "S30"
+        "S30",
+        "S50"
       ],
-      "outstanding_evidence": "CPS full-time worker annual weekly P10/P50/P90 and published real P50 must be independently ingested; OECD full-time earnings ratios and minimum-to-median by country require governed original SDMX validation. Comparable mean CPS earnings, P99, low-pay incidence and sector/occupation breakdowns are not yet supplied by verified originals and must be marked unavailable.",
+      "outstanding_evidence": "CPS full-time worker annual weekly P10/P50/P90 and published real P50 must be independently ingested; OECD full-time earnings ratios and minimum-to-median by country require governed original SDMX validation. Comparable mean CPS earnings, P99, low-pay incidence and sector/occupation breakdowns are not yet supplied by verified originals and must be marked unavailable. BLS OEWS same-survey mean/median hourly original series are supplemental and remain withheld from presentation until separately accepted; they cannot be paired with CPS weekly medians.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -4696,6 +4710,27 @@
               ],
               "population": "OECD full-time employee national minimum to median population",
               "concept": "OECD selected MEDIAN operation of minimum-relative-to-average series"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "us_oews_matched_hourly_mean_median",
+            "requirement_class": "supplemental",
+            "description": "BLS national OEWS SOC 00-0000 mean and median hourly wages, same original national May-year workbook, including covered full/part-time nonfarm wage/salary employees; not CPS weekly, benefit-inclusive compensation or exclusively full-time.",
+            "series_ids": [
+              "labour.us.oews_all_mean_hourly",
+              "labour.us.oews_all_median_hourly"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "usd",
+              "geography": [
+                "US"
+              ],
+              "population": "OEWS all-occupations full- and part-time nonfarm wage and salary employment; excludes self-employed",
+              "concept": "Same-source same-survey-year mean and median nominal hourly straight-time wages"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
