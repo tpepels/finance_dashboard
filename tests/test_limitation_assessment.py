@@ -101,6 +101,29 @@ class LimitationAssessmentTests(unittest.TestCase):
         self.assertTrue(any(f["provenance"] == "registered_method_limitation"
                             for f in report["findings"]))
 
+    def test_missing_compute_definition_is_reported_as_implementation_gap(self):
+        document = {"analyses": [{"id": "Z99", "title": "Unimplemented question"}]}
+        report = assess_limitations(coverage={"items": []}, document=document)
+        missing = [row for row in report["findings"]
+                   if row["category"] == "analysis_implementation_missing"]
+        self.assertEqual(len(missing), 1)
+        self.assertEqual(missing[0]["analysis_ids"], ["Z99"])
+        self.assertEqual(missing[0]["severity"], "high")
+
+    def test_unregistered_phase2_code_survives_as_a_reported_audit_failure(self):
+        snapshot = AcceptanceSnapshot(datetime(2026, 11, 14, tzinfo=timezone.utc), {
+            "C01": {"state": "conditional", "limitations": [{
+                "code": "this_code_is_not_registered"}], "blocking_roles": [],
+                "requirements": []},
+        })
+        report = assess_limitations(coverage=self._coverage(), document=DOC,
+                                    snapshot=snapshot)
+        self.assertEqual(report["scientific_acceptance"]["state"], "failed")
+        self.assertTrue(any(row["category"] == "limitation_assessment_failure"
+                            for row in report["findings"]))
+        self.assertTrue(any(row["provenance"] == "source_coverage"
+                            for row in report["findings"]))
+
     def test_method_register_does_not_mutate_or_promote_scientific_acceptance(self):
         snap = self._snapshot()
         data = dict(snap.analyses)
