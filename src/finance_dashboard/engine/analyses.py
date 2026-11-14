@@ -1808,6 +1808,13 @@ def _l08(points: dict, view: dict) -> Computed:
                     produces=["us.dispersion"], no_fill=True),
             applied("cpi_purchasing_power", applied_to=["p10", "p50", "p90", "us_cpi"],
                     produces=["us.real_weekly_1982_84_usd"]),
+            applied("matched_oews_hourly_mean_median",
+                    applied_to=["oews_mean", "oews_median"],
+                    produces=["oews.nominal_hourly_usd","oews.mean_to_median_ratio"],
+                    same_survey="BLS_OEWS_SOC_00-0000_MAY", no_fill=True),
+            applied("oews_may_cpi_deflation",
+                    applied_to=["oews_mean", "oews_median", "us_cpi"],
+                    produces=["oews.real_hourly_1982_84_usd"], no_fill=True),
         ])
 
 

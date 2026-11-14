@@ -64,6 +64,38 @@ class WageInflationIntegrityTests(unittest.TestCase):
             out["housing"]["de"]["real_yoy"][0][1],
             out["housing"]["ea"]["real_yoy"][0][1] if out["housing"]["ea"]["real_yoy"] else None)
 
+    def test_matched_oews_mean_and_median_never_mix_with_cps_weekly_wages(self):
+        cpi=[(date(year,month,1),100+(year-2024)*10)
+             for year in (2024,2025) for month in range(1,13)]
+        result=wage_distribution({
+            "p50":[(date(2024,1,1),1000)],
+            "p10":[(date(2024,1,1),500)],
+            "p90":[(date(2024,1,1),2000)],
+            "oews_mean":[(date(2024,5,1),30),(date(2025,5,1),33)],
+            "oews_median":[(date(2024,5,1),20),(date(2025,5,1),22)],
+            "us_cpi":cpi,
+        })
+        self.assertEqual(result["oews"]["matched_years"],2)
+        self.assertEqual(result["oews"]["mean_to_median_ratio"],
+                         [["2024-05-01",1.5],["2025-05-01",1.5]])
+        self.assertEqual(result["oews"]["mean_minus_median_hourly_usd"],
+                         [["2024-05-01",10.0],["2025-05-01",11.0]])
+        self.assertAlmostEqual(
+            dict(result["oews"]["real_hourly_1982_84_usd"]["mean"])["2025-05-01"],30)
+        self.assertFalse(result["oews"]["comparable_to_cps_weekly"])
+        self.assertFalse(result["us"]["mean_wage_observed"])
+        self.assertEqual(result["us"]["matched_years"],1)
+
+    def test_oews_partial_supplement_withholds_unmatched_year(self):
+        result=wage_distribution({
+            "oews_mean":[(date(2023,5,1),31),(date(2024,5,1),32)],
+            "oews_median":[(date(2024,5,1),24)],
+        })
+        self.assertEqual(result["oews"]["matched_years"],1)
+        self.assertEqual(result["oews"]["withheld_source_years"]["median"],
+                         ["2023-05-01"])
+        self.assertEqual(result["oews"]["real_index"]["mean"],[])
+
     def test_partial_percentile_years_and_cross_country_ratio_consistency_are_visible(self):
         data=wage_distribution({
             "p10":[(date(2023,1,1),400),(date(2024,1,1),450)],

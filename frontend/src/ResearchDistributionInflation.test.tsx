@@ -37,6 +37,22 @@ describe('distribution and inflation research presentation',()=>{
         real_median_reconciliation:{compared_years:2,outside_2_percent_years:[],not_a_scientific_identity:true},
         mean_wage_observed:false,p99_wage_observed:false,federal_minimum_to_weekly_median_computable:false,
       },
+      oews:{
+        population:'US OEWS all-occupations wage and salary nonfarm employees',
+        reference_period:'May of source year',
+        unit:'nominal USD/hour and CPI-U May 1982-84 purchasing-power USD/hour',
+        matched_years:2,first_year:2024,latest_year:2025,
+        nominal_hourly_usd:{mean:[['2024-05-01',32.66],['2025-05-01',33.54]],
+                            median:[['2024-05-01',23.8],['2025-05-01',24.51]]},
+        mean_to_median_ratio:[['2024-05-01',1.37],['2025-05-01',1.37]],
+        mean_minus_median_hourly_usd:[['2024-05-01',8.86],['2025-05-01',9.03]],
+        real_hourly_1982_84_usd:{mean:line,median:line},
+        real_index:{mean:line,median:line},
+        withheld_source_years:{mean:[],median:[],may_cpi:[]},
+        comparable_to_cps_weekly:false,
+        comparable_to_nonfarm_business_productivity:false,
+        no_top_income_share_or_causal_attribution:true,
+      },
       oecd:[{
         area:'PT',name:'Portugal',population:'OECD full-time',
         measures:{p90_p10:line,p90_p50:line,p50_p10:line,minimum_median:line},
@@ -58,6 +74,7 @@ describe('distribution and inflation research presentation',()=>{
     expect(screen.getByRole('table',{name:'OECD earnings distribution latest periods'})).toBeTruthy();
     expect(screen.getByText(/59\.0% \(2024\)/)).toBeTruthy();
     expect(screen.getByText(/Mean wages require a separate original/)).toBeTruthy();
+    expect(screen.getByRole('table',{name:'Matched original OEWS hourly mean and median years'})).toBeTruthy();
     expect(screen.getByText(/Unmatched percentile source years/)).toBeTruthy();
     expect(screen.getByText(/Inconsistent in 1 \/ 2 years/)).toBeTruthy();
   });

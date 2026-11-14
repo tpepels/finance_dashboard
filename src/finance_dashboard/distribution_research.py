@@ -89,6 +89,49 @@ def wage_distribution(points:dict) -> dict:
         d.isoformat() for d, ratio in real_comparison.items()
         if not .98 <= ratio <= 1.02
     ]
+    # This separate employer-establishment survey is the only observed
+    # mean/median pair in this panel. Both figures must originate from
+    # the identical OEWS all-occupations row for the identical May year.
+    oews_means=_clean(points.get("oews_mean",[]))
+    oews_medians=_clean(points.get("oews_median",[]))
+    shared=sorted(set(oews_means)&set(oews_medians))
+    missing_mean=sorted(set(oews_medians)-set(oews_means))
+    missing_median=sorted(set(oews_means)-set(oews_medians))
+    may_cpi=_clean(points.get("us_cpi",[]))
+    oews_real={key:{
+        d:100*source[d]/may_cpi[date(d.year,5,1)]
+        for d in shared if date(d.year,5,1) in may_cpi
+    } for key,source in (("mean",oews_means),("median",oews_medians))}
+    oews={
+        "population":"US OEWS all-occupations (SOC 00-0000) covered nonfarm wage and salary employment, full-time and part-time; excludes self-employed",
+        "reference_period":"May of source year",
+        "unit":"nominal USD/hour and CPI-U May 1982-84 purchasing-power USD/hour",
+        "matched_years":len(shared),
+        "first_year":shared[0].year if shared else None,
+        "latest_year":shared[-1].year if shared else None,
+        "nominal_hourly_usd":{
+            "mean":_history({d:oews_means[d] for d in shared}),
+            "median":_history({d:oews_medians[d] for d in shared}),
+        },
+        "mean_to_median_ratio":_history({
+            d:oews_means[d]/oews_medians[d] for d in shared
+        }),
+        "mean_minus_median_hourly_usd":_history({
+            d:oews_means[d]-oews_medians[d] for d in shared
+        }),
+        "real_hourly_1982_84_usd":{key:_history(values)
+                                  for key,values in oews_real.items()},
+        "real_index":{key:_index(values) for key,values in oews_real.items()},
+        "withheld_source_years":{
+            "mean":[d.isoformat() for d in missing_mean],
+            "median":[d.isoformat() for d in missing_median],
+            "may_cpi":[d.isoformat() for d in shared
+                       if date(d.year,5,1) not in may_cpi],
+        },
+        "comparable_to_cps_weekly":False,
+        "comparable_to_nonfarm_business_productivity":False,
+        "no_top_income_share_or_causal_attribution":True,
+    }
     us = {
         "population":"US CPS full-time wage and salary employees aged 16+; excludes self-employed; nominal usual weekly gross earnings",
         "nominal_weekly_usd":{q:_history(nominal[q]) for q in nominal},
@@ -147,14 +190,16 @@ def wage_distribution(points:dict) -> dict:
             "percentile_levels_available":False,
         })
     return {
-        "us":us, "oecd":countries,
+        "us":us, "oecd":countries, "oews":oews,
         "limitations":[
             "Wage percentiles are employee earnings, not average compensation of all persons engaged.",
             "CPS weekly US levels and OECD ratios have different sampling and earnings definitions; no absolute cross-country wage comparisons.",
             "Matched US percentile histories exclude dates with a missing percentile, and OECD published ratio consistency is separately audited with a 3% relative tolerance; disagreements are displayed, not corrected.",
             "Annual CPI real purchasing power and output-price-deflated factor compensation must remain distinct.",
             "A US federal statutory minimum is not every worker's effective minimum; no 40-hour conversion is assumed.",
-            "Mean earnings, P99 compensation, low-pay incidence and occupation decomposition require distinct publisher evidence.",
+            "Mean earnings within CPS, P99 compensation, low-pay incidence and occupation decomposition require distinct publisher evidence.",
+            "OEWS employer-based mean and median hourly wages are paired only with each other in the same May all-occupations survey year; never divide an OEWS mean by a CPS weekly median.",
+            "OEWS annual estimates incorporate multiple survey panels and can change in coverage and occupation classifications; compare years descriptively rather than treating occupational reweighting as causal evidence.",
         ],
         "research_follow_ups":[
             "How did real P10/P50/P90 purchasing power diverge?",
