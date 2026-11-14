@@ -797,6 +797,7 @@ def create_app(engine=None) -> FastAPI:
                      maintenance=maintenance, valid_sources=supported,
                      valid_markets=set(market_registry))
     install_diagnostics(app, db=db, catalog=catalog, market_registry=market_registry,
+                        research_document=research_sources,
                         maintenance=maintenance, importer=app.state.original_imports)
 
     # Existing API routes always take priority over bundled Vite assets.
