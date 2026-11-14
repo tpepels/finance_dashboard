@@ -24,19 +24,24 @@ afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 describe('integrated data synchronization and source health repair',()=>{
   it('shows the three integrated operations without source selectors',async()=>{
     render(<DataOperations/>);
-    expect(screen.getByRole('button',{name:'Sync current data'})).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Repair gaps'})).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Sync history'}).closest('details')?.open).toBe(false);
+    const user=userEvent.setup();
+    expect(screen.getByText('Manual maintenance (optional)')).toBeTruthy();
+    expect(screen.getByText('Manual maintenance (optional)').closest('details')?.open).toBe(false);
+    await user.click(screen.getByText('Manual maintenance (optional)'));
+    expect(screen.getByRole('button',{name:'Check current sources now'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Recheck unresolved gaps'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Recheck historical sources'})).toBeTruthy();
     expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
     await waitFor(()=>expect(screen.getByRole('button',{
-      name:'Sync current data'}).hasAttribute('disabled')).toBe(false));
+      name:'Check current sources now'}).hasAttribute('disabled')).toBe(false));
   });
   it('refreshes all current sources through one backend operation',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    const button=screen.getByRole('button',{name:'Sync current data'});
+    await user.click(screen.getByText('Manual maintenance (optional)'));
+    const button=screen.getByRole('button',{name:'Check current sources now'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
     await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
@@ -47,8 +52,8 @@ describe('integrated data synchronization and source health repair',()=>{
   it('starts history backfill without date or provider selections',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    await user.click(screen.getByText('Historical sync'));
-    const button=screen.getByRole('button',{name:'Sync history'});
+    await user.click(screen.getByText('Manual maintenance (optional)'));
+    const button=screen.getByRole('button',{name:'Recheck historical sources'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
     await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
@@ -57,7 +62,8 @@ describe('integrated data synchronization and source health repair',()=>{
   it('submits canonical parameterless source-health repair action',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    const button=screen.getByRole('button',{name:'Repair gaps'});
+    await user.click(screen.getByText('Manual maintenance (optional)'));
+    const button=screen.getByRole('button',{name:'Recheck unresolved gaps'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
     await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
@@ -78,8 +84,8 @@ describe('integrated data synchronization and source health repair',()=>{
     render(<DataOperations/>);
     expect(await screen.findByText(/Markets and exchange rates/)).toBeTruthy();
     expect(screen.getByText(/15 \/ 27/)).toBeTruthy();
-    await user.click(screen.getByText('Historical sync'));
-    expect(screen.getByRole('button',{name:'Sync history'}).hasAttribute('disabled')).toBe(true);
+    await user.click(screen.getByText('Manual maintenance (optional)'));
+    expect(screen.getByRole('button',{name:'Recheck historical sources'}).hasAttribute('disabled')).toBe(true);
     await user.click(screen.getByRole('button',{name:'Cancel'}));
     expect(liveFetch.mock.calls.some(([url,init])=>
       String(url).endsWith('/job1/cancel') && init?.method==='POST')).toBe(true);
