@@ -1866,7 +1866,7 @@ C07 = AnalysisDefinition("C07", {
     "copper":"prices.commodity.copper_usd",
     **{f"housing:{country}":f"property.{country}.nominal_residential.bis"
        for country in ("us","de","pt","jp","ea")},
-}, _c07)
+}, _c07, optional_inputs=("de_hicp", "pt_hicp"))
 
 
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06, "C07": C07,
