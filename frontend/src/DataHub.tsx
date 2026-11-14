@@ -380,6 +380,8 @@ export default function DataHub(){
         <small>Snapshot calculated {formatWhen(snapshot?.calculated_at)}.
           Data availability does not guarantee the latest publisher revision.
           {health.value?.state==='refreshing'?' Refreshing in background…':''}</small>
+        <p><a href="#diagnostics">Assess all source, research and methodological limitations</a>
+          {' '}in Diagnostics, including limitations not visible in source availability counts.</p>
         {Boolean(snapshot?.attention_items?.length)&&<details className="data-collection-attention">
           <summary>{snapshot?.attention_items?.length} series need attention — show exact sources</summary>
           <p>These sources have stale or missing observations, failed collection,
