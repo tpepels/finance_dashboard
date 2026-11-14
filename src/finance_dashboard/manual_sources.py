@@ -179,22 +179,32 @@ def _archive(root: Path, dataset: str, files: dict[str, bytes], roles: list[dict
              *, downloads: dict | None = None) -> tuple[str, str]:
     """Retain original bytes, distinguishing uploaded and publisher-fetched origins."""
     hashes = {role["id"]: sha256(files[role["id"]]).hexdigest() for role in roles}
+    download_keys = set(downloads or ())
+    source_roles = {role["id"] for role in roles}
+    if not download_keys <= source_roles:
+        raise ProviderError("Unknown publisher acquisition role")
+    fully_publisher = bool(download_keys) and download_keys == source_roles
+    mixed = bool(download_keys) and not fully_publisher
+    origin = ("mixed_upload_and_publisher_https" if mixed else
+              "publisher_https" if fully_publisher else "user_upload")
     fingerprint = sha256(json.dumps(
-        {"hashes": hashes, "mode": "publisher_https"} if downloads else hashes,
+        {"hashes": hashes, "mode": origin} if download_keys else hashes,
         sort_keys=True).encode()).hexdigest()
     parent = root / "manual-sources" / dataset
     folder = parent / fingerprint
-    origin = "publisher_https" if downloads else "user_upload"
     manifest = {"schema_version": 1,
-                "kind": "publisher_fetched_original" if downloads else "owner_uploaded_original",
+                "kind": ("mixed_original" if mixed else
+                         "publisher_fetched_original" if fully_publisher else
+                         "owner_uploaded_original"),
                 "source_identity": {"dataset": dataset, "acquisition": origin},
                 "files": hashes,
+                "role_acquisitions": {role: ("publisher_https" if role in download_keys
+                                             else "user_upload") for role in sorted(source_roles)},
                 "source_urls": {role["id"]: role["download_url"] for role in roles},
-                "publisher_origin_verified": bool(downloads),
+                "publisher_origin_verified": fully_publisher,
                 "first_publication_verified": False}
     if downloads:
-        if set(downloads) != set(hashes) or any(
-                downloads[key]["sha256"] != hashes[key] for key in hashes):
+        if any(downloads[key]["sha256"] != hashes[key] for key in download_keys):
             raise ProviderError("Publisher download receipt hash mismatch")
         manifest["download_evidence"] = {
             key: {field: downloads[key][field] for field in (
@@ -224,7 +234,8 @@ def _archive(root: Path, dataset: str, files: dict[str, bytes], roles: list[dict
                 raise ProviderError("Manual source archive hash mismatch")
         receipt = record_acquisition_receipt(
             folder, manifest["source_identity"],
-            acquisition={"mode": ("publisher_https_verified_endpoint" if downloads else
+            acquisition={"mode": ("mixed_verified_and_uploaded" if mixed else
+                                   "publisher_https_verified_endpoint" if fully_publisher else
                                    "owner_supplied_unverified_publisher_origin"),
                          **({"downloads": downloads} if downloads else {})})
         return folder.name, receipt.name
