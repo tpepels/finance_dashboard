@@ -233,7 +233,8 @@ def _accounting_failures_csv(summary: dict, release_id: str) -> tuple[str, dict]
     }
 
 
-def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenance, importer):
+def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
+                        research_document, maintenance, importer):
     from .source_coverage import build_coverage
     from .source_policy import policy_summary
 
