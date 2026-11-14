@@ -59,8 +59,10 @@ def _shares(points, area):
             "latest_year": max(output["top10"], default=None),
             "derived_middle40": True,
             "source_variables": (
-                ["sptinc992j", "p99p100", "p90p100", "p0p50"] if concept == "income"
-                else ["shweal992j", "p99p100", "p90p100", "p0p50"]),
+                [("sptincj992" if area == "WORLD" else "sptinc992j"),
+                 "p99p100", "p90p100", "p0p50"] if concept == "income"
+                else [("shwealj992" if area == "WORLD" else "shweal992j"),
+                      "p99p100", "p90p100", "p0p50"]),
             "excluded_inconsistent_years": rejects,
         }
         anomalies[concept] = rejects

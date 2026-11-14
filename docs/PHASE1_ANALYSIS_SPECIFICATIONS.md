@@ -869,3 +869,56 @@ completed without certified source and an accepted method.
 periods, required contiguous compounding, month/quarter alignment,
 lag sign, no lookahead, correlations including monotonic/counterexample
 and sample-size tests, all frontend/mobile/bundle/export tests green.
+
+
+## Phase 3 addendum — Piketty research within L07 (source-gated)
+
+Five updating research sections are implemented as **supplemental scientific
+originals of L07**, preserving the 35 owner-approved headline identities.
+No separate Piketty database, parallel import pipeline, publisher bypass or
+second research API is created.
+
+1. **Concentration.** WID original pretax national income shares and net
+   personal wealth shares use the exact source-defined equal-split adult
+   groups and population. The top 1%, top 10% and bottom 50% retain
+   distinct income and wealth rankings. Middle 40% is a labelled residual;
+   negative net wealth at the bottom is legitimate.
+2. **Growth distribution.** WID original *real* pretax average income per
+   adult in the same geographic group and publisher reference unit is
+   indexed on matched years. The annual change attribution is computed
+   from the original means for disjoint bottom 50%, middle 40% and top 10%
+   using fixed population proportions only after a 2.5% identity check.
+   Missing consecutive years, conflicting group originals and unknown
+   original reference units withhold the decomposition. There is no GDP
+   substitution or assumed publication vintage.
+3. **Wealth relative to income.** Original WID national, private and public
+   net wealth divided by net national income is shown as a ratio of an
+   annual wealth stock to an annual net-income flow. The source fraction is
+   multiplied by 100 for display. A source-defined component residual
+   remains visible; GDP is never silently used as the denominator.
+4. **Capital and growth.** WID original net capital-income flow divided
+   by mean adjacent annual net national wealth stocks is a descriptive
+   accounting yield. It is compared with source-defined real net national
+   income growth on complete consecutive years in the same original
+   reference currency and prices. Capital share is independently displayed
+   as context and is not a stock return. The accounting yield excludes
+   capital gains; a positive yield/growth gap does not establish an
+   inequality mechanism or a forecast.
+5. **Wealth composition and transmission.** The source-defined housing
+   and business/non-financial asset stocks are individually normalized
+   by national net wealth in matched years; the signed remainder is
+   explicitly unclassified, never assigned to financial wealth. No
+   comparable, source-accepted inheritance/bequest flow exists in the
+   current corpus, so intergenerational transmission is **withheld**,
+   with a visible missing-original explanation.
+
+The published *World Inequality Report 2026* world top-10 income and
+wealth percentages for 2025 are a separately labelled, fixed published
+benchmark. They are not silently spliced into the mutable WID originals.
+Source: https://wid.world/document/world-inequality-report-2026/
+
+All 90 new WID scalar-source definitions use the existing same-origin
+official CSV plus metadata acquisition and immutable evidence gate.
+Scientific acceptance is role-specific and supplemental: a missing
+Piketty original cannot invalidate the established core L07 results, and
+a stored but unaccepted new original cannot enter an output.
