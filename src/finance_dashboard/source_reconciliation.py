@@ -266,7 +266,8 @@ def _wid_source(root, area):
                 # publisher data/metadata pair, never a second acquisition
                 # route. Malformed supplemental metadata cannot revoke the
                 # independently verified existing L07 source histories.
-                research = parse_piketty_original(body, metadata, area=area)
+                research = parse_piketty_original(
+                    body, metadata, area=area, strict=False)
             except ProviderError:
                 research = {}
             base_values.update({
