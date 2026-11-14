@@ -149,6 +149,15 @@ class AcceptanceCache:
         with self._lock:
             return self._loading
 
+    def peek(self) -> AcceptanceSnapshot | None:
+        """Read last evaluated snapshot for diagnostics without starting work.
+
+        This is advisory evidence, not acceptance authorization: callers must
+        label the snapshot timestamp and cannot use this to serve new analyses.
+        """
+        with self._lock:
+            return self._value
+
     def warm(self) -> None:
         with self._lock:
             if self._loading:
