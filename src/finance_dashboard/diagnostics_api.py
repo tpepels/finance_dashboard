@@ -12,7 +12,6 @@ import json
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
 
 from .developer_logs import read_events
 from .runtime_release import release_info
@@ -272,8 +271,7 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
             "note": "Credentials, raw source responses and portfolio holdings are excluded.",
         }
 
-    @app.get("/api/diagnostics/download")
-    def download_debug_zip():
+    def _build_debug_zip_bytes() -> bytes:
         status, events, coverage = snapshot()
         release = release_info()
         policy = policy_summary()
@@ -362,9 +360,45 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
                 "source audit CSV and maintenance outcomes. Browser cookies, credentials, "
                 "signed redirect parameters, raw HTTP bodies, portfolio holdings and "
                 "database contents are excluded.\\n")
-        bundle.seek(0)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-        return StreamingResponse(iter([bundle.getvalue()]), media_type="application/zip",
-            headers={"Content-Disposition": 'attachment; filename="finance-debug-' +
-                     release["release_id"] + '-' + stamp + '.zip"',
-                     "Cache-Control": "no-store"})
+        return bundle.getvalue()
+
+    from .diagnostic_exports import DiagnosticExportManager
+    from .original_uploads import _guard
+    from fastapi import Header, Request
+    from fastapi.responses import FileResponse, JSONResponse
+    exports = DiagnosticExportManager(_build_debug_zip_bytes)
+    app.state.diagnostic_exports = exports
+
+    @app.get("/api/diagnostics/export-status")
+    def diagnostic_export_status():
+        """Always cheap: no source scans, SQL, or ZIP compression."""
+        return exports.status()
+
+    @app.post("/api/diagnostics/prepare", status_code=202)
+    def prepare_diagnostics(request: Request,
+                            x_gcm_action: str | None = Header(default=None)):
+        _guard(request, x_gcm_action)
+        return exports.prepare()
+
+    def send_prepared_export():
+        path = exports.ready_file()
+        if path is None:
+            return JSONResponse(
+                status_code=202, content={"state": exports.status()["state"],
+                                          "detail": "Diagnostic export is not ready"},
+                headers={"Cache-Control": "no-store", "Retry-After": "5"})
+        stamp = exports.status()["prepared_at"] or ""
+        slug = stamp.replace("-", "").replace(":", "")[:15]
+        return FileResponse(
+            path, media_type="application/zip",
+            filename="finance-debug-" + release_info()["release_id"] + "-" + slug + ".zip",
+            headers={"Cache-Control": "no-store"})
+
+    @app.get("/api/diagnostics/export-file")
+    def download_prepared_export():
+        return send_prepared_export()
+
+    @app.get("/api/diagnostics/download")
+    def download_debug_zip():
+        """Compatibility URL: return a cached file, never build synchronously."""
+        return send_prepared_export()
