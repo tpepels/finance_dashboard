@@ -233,6 +233,12 @@ class IngestionService:
                 run.observations_received = len(fetched.observations)
                 run.versions_added = added
                 session.get(SeriesRow, series_id).updated_at = now_utc()
+            # Only post-commit events are safe: dependent research and source
+            # health assessments must never observe provisional observations.
+            # A successful publisher check with zero new versions can change
+            # source freshness evidence, so publish those commits too.
+            from .data_change_bus import publish_change
+            publish_change(self.engine, "series_ingested")
             return {"id": run_id, "series_id": series_id, "status": "success", "received": len(fetched.observations), "versions_added": added}
         except Exception as exc:
             # A failed transaction leaves *all* earlier observations untouched.
