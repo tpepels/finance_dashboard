@@ -57,7 +57,7 @@ def _utc() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-_TERMINAL = {"complete", "partial", "failed", "interrupted", "manual_required", "skipped"}
+_RESOLVED = {"complete", "skipped"}
 _ACTIVE = {"queued", "downloading", "running", "deferred", "waiting", "cancelling"}
 
 
@@ -263,7 +263,7 @@ class CollectionWorkflow:
                     })
         counts = {
             "total": len(sources),
-            "finished": sum(row["status"] in _TERMINAL for row in sources),
+            "finished": sum(row["status"] in _RESOLVED for row in sources),
             "completed": sum(row["status"] == "complete" for row in sources),
             "skipped": sum(row["status"] == "skipped" for row in sources),
             "active": sum(row["status"] in _ACTIVE for row in sources),
