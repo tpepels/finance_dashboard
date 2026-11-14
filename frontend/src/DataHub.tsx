@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import './DataHub.css';
+
+const AdvancedDataOperations=lazy(()=>import('./DataOperations'));
+const AdvancedOriginalUploader=lazy(()=>import('./OriginalUploader'));
 
 type Group = { id:string;label:string;total:number;with_data:number;attention:number };
 type ManualFile = {
@@ -249,6 +252,15 @@ export default function DataHub(){
       <div><strong>Developer console</strong><small>Source records, acquisition attempts, errors,
         accounting diagnostics and research evidence are also in the ZIP.</small></div>
       <pre tabIndex={0}>{debugData}</pre>
+      <div className="data-hub-advanced-tools">
+        <h3>Advanced source operations</h3>
+        <p>Historical synchronization, source repair, OECD edition uploads and
+          reassessment are retained here for developer use.</p>
+        <Suspense fallback={<p role="status">Loading maintenance tools…</p>}>
+          <AdvancedDataOperations/>
+          <AdvancedOriginalUploader/>
+        </Suspense>
+      </div>
     </section>}
   </div>;
 }
