@@ -976,7 +976,7 @@
         "S12",
         "S38"
       ],
-      "outstanding_evidence": "US CPI, euro HICP, ECB FX, MSCI ACWI net total returns, pinned Swinkels hypothetical sovereign returns and World Bank commodity benchmarks must be validated in the same current-source evidence regime. Nominal residential housing is quarterly. German/Portuguese/Japanese CPI comparators, PPI, broad source-defined commodity total-return baskets and causal shock instruments are not supplied and remain explicitly withheld.",
+      "outstanding_evidence": "US CPI, euro HICP, ECB FX, MSCI ACWI net total returns, pinned Swinkels hypothetical sovereign returns and World Bank commodity benchmarks must be validated in the same current-source evidence regime. Nominal residential housing is quarterly. Japanese CPI comparator, PPI, broad source-defined commodity total-return baskets and causal shock instruments are not supplied and remain explicitly withheld.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -1015,6 +1015,36 @@
               ],
               "population": "Euro area varying membership",
               "concept": "HICP index"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "de_hicp",
+            "description": "Germany national monthly 2025-base HICP matched to BIS Germany quarterly property prices.",
+            "series_ids": ["prices.de.hicp_index_2025"],
+            "expected": {
+              "frequency": "M",
+              "unit": "index",
+              "geography": ["DE"],
+              "population": "Germany resident consumers",
+              "concept": "Germany HICP 2025=100 all-items level"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "pt_hicp",
+            "description": "Portugal national monthly 2025-base HICP matched to BIS Portugal quarterly property prices.",
+            "series_ids": ["prices.pt.hicp_index_2025"],
+            "expected": {
+              "frequency": "M",
+              "unit": "index",
+              "geography": ["PT"],
+              "population": "Portugal resident consumers",
+              "concept": "Portugal HICP 2025=100 all-items level"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
