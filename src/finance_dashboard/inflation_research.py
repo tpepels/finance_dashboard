@@ -311,7 +311,7 @@ def inflation_assets(points:dict, *,today:date|None=None)->dict:
             "World Bank named commodity benchmarks are not a diversified commodity total-return basket.",
             "Swinkels US sovereign monthly returns are hypothetical yield-modelled returns ending at the pinned source observation, not an investable bond fund.",
             "Gold is a monthly average; MSCI ACWI is a daily net total return index converted at month-end FX; mixed conventions can affect correlations.",
-            "BIS country property price coverage and definitions differ; DE/PT/JP consumer matching is withheld until national CPI series are validated.",
+            "BIS country property price coverage and definitions differ; Germany/Portugal use matching original national HICP, Japan is withheld until a contemporary national CPI series is validated.",
             "EUR investor results use euro-area HICP and ECB USD/EUR reference values; returns are not hedged and do not reflect taxes or costs.",
         ],
     }
