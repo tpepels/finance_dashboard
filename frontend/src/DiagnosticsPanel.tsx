@@ -72,13 +72,12 @@ export default function DiagnosticsPanel() {
   const panel=useRef<HTMLDivElement>(null);
   const closeButton=useRef<HTMLButtonElement>(null);
   const lastResearchVersion=useRef<string|null>(null);
-  const pollingInFlight=useRef(false);
-
   useEffect(()=>{
     let live=true;
+    let inFlight=false;
     const refresh=async()=>{
-      if(pollingInFlight.current)return;
-      pollingInFlight.current=true;
+      if(inFlight)return;
+      inFlight=true;
       try{
         const res=await fetch('/api/diagnostics',{cache:'no-store'});
         if(!res.ok)throw new Error('Diagnostic API unavailable (HTTP '+res.status+')');
@@ -102,7 +101,7 @@ export default function DiagnosticsPanel() {
           setReport(null);
           setFailure(error instanceof Error?error.message:'Diagnostics unavailable');
         }
-      }finally{pollingInFlight.current=false;}
+      }finally{inFlight=false;}
     };
     void refresh();
     const interval=window.setInterval(()=>void refresh(),open?15000:60000);
