@@ -359,7 +359,11 @@ def fetch_eurostat_nfc_profit_gva(self, series_id, start, item, key):
 
 
 EUROSTAT_HICP_URL = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_minr"
-EUROSTAT_HICP_SERIES = {"prc_hicp_minr/M.I25.TOTAL.EA": {"freq": "M", "unit": "I25", "coicop18": "TOTAL", "geo": "EA"}}
+EUROSTAT_HICP_SERIES = {
+    f"prc_hicp_minr/M.I25.TOTAL.{geo}": {
+        "freq": "M", "unit": "I25", "coicop18": "TOTAL", "geo": geo}
+    for geo in ("EA", "DE", "PT")
+}
 
 
 def parse_eurostat_hicp(payload: dict, expected: dict) -> dict:
