@@ -62,13 +62,13 @@ class DiagnosticExportManager:
         with self.lock:
             return self._status_unlocked()
 
-    def prepare(self) -> dict:
+    def prepare(self, *, force: bool = False) -> dict:
         with self.lock:
             if self.record and self.record["state"] == "preparing":
                 return self._status_unlocked()
-            if self.record and self.record["state"] == "ready" and self._has_file():
-                prepared = self.record.get("prepared_unix", 0)
-                if time.time() - prepared < self.lifetime:
+            if not force and self.record and self.record["state"] == "ready" and self._has_file():
+                prepared = self.record.get("prepared_unix")
+                if isinstance(prepared, (int, float)) and time.time() - prepared < self.lifetime:
                     return self._status_unlocked()
             self.record = {
                 "schema_version": 1, "id": uuid4().hex,
