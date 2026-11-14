@@ -113,18 +113,20 @@ class OriginalUploadApiTests(unittest.TestCase):
                         inv = api.get("/api/originals").json()
                         self.assertEqual(inv["files"][0]["filename"], name)
                         self.assertEqual(api.get("/api/diagnostics").status_code, 200)
-                        zip_result = api.get("/api/diagnostics/download")
-                        self.assertIn(zip_result.status_code, (200, 202))
-                        if zip_result.status_code == 202:
-                            deadline = time.monotonic() + 15
-                            prepared = None
-                            while time.monotonic() < deadline:
-                                prepared = api.get("/api/diagnostics/export-status").json()
-                                if prepared["state"] != "preparing":
-                                    break
-                                time.sleep(.05)
-                            self.assertEqual(prepared["state"], "ready", prepared)
-                            zip_result = api.get("/api/diagnostics/export-file")
+                        # The compatibility GET never schedules a ZIP.
+                        # Explicit preparation runs off the HTTP request path.
+                        prepare = api.post("/api/diagnostics/prepare",
+                            headers={"X-GCM-Action": "dashboard"})
+                        self.assertEqual(prepare.status_code, 202, prepare.text)
+                        deadline = time.monotonic() + 15
+                        prepared = None
+                        while time.monotonic() < deadline:
+                            prepared = api.get("/api/diagnostics/export-status").json()
+                            if prepared["state"] != "preparing":
+                                break
+                            time.sleep(.05)
+                        self.assertEqual(prepared["state"], "ready", prepared)
+                        zip_result = api.get("/api/diagnostics/export-file")
                         self.assertEqual(zip_result.status_code, 200)
                         with ZipFile(io.BytesIO(zip_result.content)) as zipfile:
                             self.assertIn("diagnostics/events.json", zipfile.namelist())
