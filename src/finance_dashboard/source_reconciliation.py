@@ -481,8 +481,16 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
             continue
         try:
             values, evidence = _wid_source(root, area)
-            originals.update(values)
-            proof.update({sid: evidence for sid in ids})
+            # A registered optional WID measure may be absent in an original
+            # country snapshot. Reject that source *alone*, never treat an
+            # empty original as a proof or call min/max on an empty history.
+            for sid in ids:
+                source_values = values.get(sid) or {}
+                if not source_values:
+                    failures[sid] = "source_empty"
+                else:
+                    originals[sid] = source_values
+                    proof[sid] = evidence
         except EvidenceError as exc:
             failures.update({sid: exc.code for sid in ids})
     if set(stored) & set(TIVA_SERIES):
