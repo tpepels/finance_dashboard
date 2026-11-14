@@ -87,7 +87,7 @@ describe('dashboard shell', () => {
     expect(screen.getByRole('link', { name: 'Skip to content' }).getAttribute('href')).toBe('#main-content');
     expect(screen.getByRole('heading', { name: 'Dashboard', level: 2 })).toBeTruthy();
     expect(document.querySelectorAll('.dashboard-topic')).toHaveLength(8);
-    expect(document.querySelectorAll('.dashboard-questions a')).toHaveLength(37);
+    expect(document.querySelectorAll('.dashboard-questions a')).toHaveLength(39);
     expect(screen.queryByRole('navigation')).toBeNull();
     await screen.findByText('C01 is not computed: research state is incomplete.');
     const initialReads = fetchMock.mock.calls.map(([url]) => String(url)).filter(url => url.startsWith('/api/analysis/'));
