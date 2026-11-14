@@ -42,7 +42,8 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertEqual([], validate_research_corpus(
             self.document, self.series["series"]))
         self.assertEqual(len(self.document["analyses"]), corpus_counts.ANALYSES)
-        self.assertEqual(len(self.document["original_sources"]), 49)
+        self.assertEqual(len(self.document["original_sources"]), 50)
+        self.assertIn("S50", {row["id"] for row in self.document["original_sources"]})
         self.assertEqual(len({r["id"] for r in self.document["analyses"]}), corpus_counts.ANALYSES)
 
     def test_every_question_has_requirements_instead_of_editable_certificates(self):
@@ -268,7 +269,7 @@ class ResearchCorpusTests(unittest.TestCase):
         }]}
         report = research_corpus_report(self.document, observed)
         self.assertEqual(report["analysis_count"], corpus_counts.ANALYSES)
-        self.assertEqual(report["method_source_count"], 49)
+        self.assertEqual(report["method_source_count"], 50)
         self.assertEqual(report["fully_validated_analysis_count"], 0)
         recession = next(x for x in report["analyses"] if x["id"] == "C02")
         self.assertEqual(recession["source_references_with_observations"], 1)

@@ -279,8 +279,11 @@ def validate_research_corpus(
             errors.append(f"{identifier}: source URL must be HTTPS")
         if not str(source.get("label", "")).strip():
             errors.append(f"{identifier}: missing source identification")
-    if source_ids != {f"S{i:02d}" for i in range(1, 50)}:
-        errors.append("corpus: expected S01 through S49 source register")
+    # The original S01-S49 charter is immutable, but registered
+    # publisher additions may extend the sequential source inventory.
+    expected = {f"S{i:02d}" for i in range(1, max(49, len(source_ids)) + 1)}
+    if source_ids != expected:
+        errors.append("corpus: original source IDs must form a complete S01+ sequence")
 
     registry = {item["id"]: item for item in known_series if isinstance(item, dict)
                 and isinstance(item.get("id"), str)}
