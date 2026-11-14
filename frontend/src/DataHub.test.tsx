@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import DataHub from './DataHub';
 
 const makeRun=()=>({
-  id:'run-001',state:'running',running:true,started_at:'2026-11-14T11:19:00Z',
+  id:'run-001' as string|null,state:'running',running:true,started_at:'2026-11-14T11:19:00Z' as string|null,
   counts:{total:3,finished:1,completed:1,skipped:0,active:2,failed:0,manual_required:0},
   sources:[
     {dataset:'wid-world',label:'WID.world',status:'complete',job_id:'a',
@@ -17,7 +17,8 @@ const makeRun=()=>({
   ],
   manual_files:[] as {job_id:string;dataset:string;source:string;role:string;
     name:string;url:string;reason:string;accept:string;max_bytes:number}[],
-  repair:{status:'running',completed:6,total:17,current_item:null,error_code:null},
+  repair:{status:'running',completed:6,total:17,current_item:null,error_code:null} as {
+    status:string;completed:number;total:number;current_item:string|null;error_code:string|null}|null,
   startup_error:null,
 });
 const makeHealth=()=>({
@@ -30,7 +31,8 @@ const makeHealth=()=>({
     sources:{total:426,with_data:426,needs_attention:12}},
 });
 const makeExport=()=>({
-  state:'idle',ready:false,id:null,prepared_at:null,size_bytes:null,error:null,
+  state:'idle',ready:false,id:null as string|null,prepared_at:null as string|null,
+  size_bytes:null as number|null,error:null as string|null,
 });
 
 let run=makeRun();
@@ -72,8 +74,9 @@ describe('durable Data Collection page',()=>{
     expect(screen.getByRole('cell',{name:'OECD ICIO'})).toBeTruthy();
     expect(screen.getByRole('progressbar',{name:'Source downloads'}).getAttribute('aria-valuenow')).toBe('1');
     expect(screen.getByRole('progressbar',{name:'Source-health repair'}).getAttribute('aria-valuenow')).toBe('6');
-    expect(screen.getByText(/426.*series have retained data/)).toBeTruthy();
-    expect(screen.getByText(/12.*need attention/)).toBeTruthy();
+    expect(screen.getByText('426 / 426')).toBeTruthy();
+    expect(screen.getByText(/series have retained data/)).toBeTruthy();
+    expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getAllByRole('table')).toHaveLength(1);
     expect(screen.queryByRole('link',{name:'Open source explorer'})).toBeNull();
     expect(screen.queryByText('Source explorer')).toBeNull();
@@ -105,7 +108,7 @@ describe('durable Data Collection page',()=>{
     vi.stubGlobal('fetch',vi.fn(()=>new Promise(()=>{})));
     const second=render(<DataHub/>);
     expect(screen.getByRole('cell',{name:'WID.world'})).toBeTruthy();
-    expect(screen.getByText(/426.*series have retained data/)).toBeTruthy();
+    expect(screen.getByText('426 / 426')).toBeTruthy();
     second.unmount();
   });
 
