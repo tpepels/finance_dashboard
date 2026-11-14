@@ -116,8 +116,13 @@ describe('durable Data Collection page',()=>{
     const user=userEvent.setup();
     render(<DataHub/>);
     const disclosure=await screen.findByText('10 series need attention — show exact sources');
-    expect(screen.queryByRole('table',{name:'Sources requiring attention'})).toBeNull();
+    // Closed <details> keeps its children in the DOM. jsdom's accessible-role
+    // queries can still find the nested table, so assert disclosure state.
+    const details=disclosure.closest('details') as HTMLDetailsElement|null;
+    expect(details).not.toBeNull();
+    expect(details?.open).toBe(false);
     await user.click(disclosure);
+    expect(details?.open).toBe(true);
     expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
     expect(screen.getByText('US labour compensation')).toBeTruthy();
     expect(screen.getAllByText('Check publisher release')).toHaveLength(5);
