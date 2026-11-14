@@ -20,20 +20,24 @@ const fetchMock = vi.fn(async (input: string) => {
   const path = String(input);
   const json = (body: unknown) => new Response(JSON.stringify(body));
   if (path === '/api/maintenance') return json({ active_job_id: null, jobs: [], operations: ['sync_current', 'sync_history'] });
-  if (path === '/api/data/overview') return json({
-    asof: '2026-11-14', release: {release_id: 'test'},
-    groups: [
-      {id:'macro',label:'Economic data',total:53,with_data:1,attention:52},
-      {id:'markets',label:'Market prices',total:24,with_data:0,attention:24},
-      {id:'fx',label:'Exchange rates',total:3,with_data:0,attention:3},
+  if (path === '/api/data/collection') return json({
+    id:'run-1',state:'running',running:true,started_at:'2026-11-14T11:19:00Z',
+    counts:{total:2,finished:1,completed:1,skipped:0,active:1,failed:0,manual_required:0},
+    sources:[
+      {dataset:'wid-world',label:'WID.world',status:'complete',job_id:'job-a',completed_files:2,attempted_files:2,completed_sources:5},
+      {dataset:'oecd-icio',label:'OECD ICIO',status:'downloading',job_id:'job-b',completed_files:1,attempted_files:1,completed_sources:0},
     ],
-    sources: {total:80,with_data:1,needs_attention:79},
-    acquisition: {queued:0,deferred:0,running:false,active_sources:0,
-      successful_sources:0,problem_sources:0,manual_files_needed:0,
-      files_requiring_upload:[],recent_jobs:[]},
-    sync: {active:null,last:null},
-    original_import: {running:false,jobs_with_issues:0},
+    manual_files:[],repair:{status:'running',completed:6,total:17},startup_error:null,
   });
+  if (path === '/api/data/health') return json({state:'ready',snapshot:{
+    asof:'2026-11-14',calculated_at:'2026-11-14T11:34:00Z',
+    groups:[{id:'macro',label:'Economic data',total:53,with_data:1,attention:52}],
+    sources:{total:80,with_data:1,needs_attention:79},
+  }});
+  if (path === '/api/diagnostics/export-status') return json({
+    state:'idle',ready:false,id:null,prepared_at:null,size_bytes:null,error:null,
+  });
+  if (path === '/api/originals') return json({active:false,files:[],jobs:[]});
   if (path === '/api/data/debug-console') return json({status:{},acquisition:{jobs:[]},source_coverage:{summary:{}}});
   if (path === '/api/source-coverage') return json({ summary: {
     macro: { total: 53, with_data: 1, without_data: 52, needs_attention: 52 },
@@ -69,7 +73,7 @@ beforeEach(() => {
     constructor(callback: (entries: { isIntersecting: boolean }[]) => void) { observers.push(callback); }
     observe() {} disconnect() {}
   });
-  localStorage.clear();
+  localStorage.clear();sessionStorage.clear();
   history.replaceState({}, '', '/');
 });
 afterEach(() => { cleanup(); fetchMock.mockClear(); });
@@ -155,9 +159,9 @@ describe('dashboard shell', () => {
     history.replaceState({}, '', '/' + hash);
     render(<App/>);
     const appendix = await screen.findByText('Original source appendix loaded');
-    // Deep links still resolve, without wrapping the human Data page in disclosures.
-    expect(appendix).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Source health' })).toBeTruthy();
+    // Deep links open the independent research explorer, not Data Collection.
+    expect(appendix.closest('#source-explorer')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Data Collection' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
     await waitFor(() => expect(document.activeElement?.id).toBe(hash.slice(1)));
   });
@@ -172,40 +176,41 @@ describe('dashboard shell', () => {
     expect(document.querySelector('.research-app')?.textContent).not.toMatch(/\bphase\s+[0-9]+\b/i);
   });
 
-  it('keeps advanced source explorer out of the human view, available from developer console', async () => {
+  it('never embeds Source Explorer inside Data Collection; both have independent routes', async () => {
     const user = userEvent.setup();
     render(<App/>);
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('link', { name: 'Data collection' }));
+    expect(await screen.findByRole('heading', { name: 'Data Collection' })).toBeTruthy();
     expect(screen.queryByText('Original source appendix loaded')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));
-    await user.click(screen.getByRole('link', { name: 'Source data' }));
-    expect(await screen.findByRole('heading', { name: 'Source health' })).toBeTruthy();
-    expect(screen.queryByText('Original source appendix loaded')).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Open debug console' }));
-    await user.click(await screen.findByRole('link', { name: 'Open source explorer' }));
+    await user.click(screen.getByRole('link', { name: 'Source Explorer' }));
     expect(await screen.findByText('Original source appendix loaded')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Data Collection' })).toBeNull();
   });
 
   it('opens source coverage when directly loaded from a fresh deep link', async () => {
     history.replaceState({}, '', '/#source-coverage');
     render(<App/>);
-    const coverage = await screen.findByRole('heading', { name: 'Source health' });
+    const coverage = await screen.findByRole('heading', { name: 'Data availability' });
     expect(coverage.closest('#source-coverage')).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.id).toBe('source-coverage'));
     expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
   });
 
-  it('opens dashboard data maintenance directly from the utility bar', async () => {
+  it('opens collection through the utility bar and keeps maintenance on Diagnostics', async () => {
     const user = userEvent.setup();
     render(<App/>);
     await user.click(screen.getByRole('button', { name: 'Data & sync' }));
-    expect(await screen.findByRole('button', { name: 'Start automatic downloads' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Collection running' })).toBeTruthy();
     expect(screen.getAllByRole('table')).toHaveLength(1);
-    expect(screen.getByRole('link', { name: 'Download agent debug ZIP' })).toBeTruthy();
-    // Manual tools remain available only after explicitly opening the agent console.
-    await user.click(screen.getByRole('button', { name: 'Open debug console' }));
+    expect(screen.getByRole('button', { name: 'Prepare diagnostic ZIP' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Sync history' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    await user.click(screen.getByRole('link', { name: 'Diagnostics' }));
+    expect(await screen.findByRole('heading', { name: 'Diagnostics & administration' })).toBeTruthy();
     expect(await screen.findByRole('button', { name: 'Sync current data' })).toBeTruthy();
-    await user.click(screen.getByText('Historical sync'));
-    expect(screen.getByRole('button', { name: 'Sync history' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Data Collection' })).toBeNull();
   });
 
   it('closes navigation after selection and restores the menu control on Escape', async () => {
