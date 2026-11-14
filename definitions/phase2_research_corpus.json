@@ -4537,8 +4537,7 @@
             "series_ids": [
               "piketty.us.net_capital_income",
               "piketty.us.net_national_wealth",
-              "piketty.us.net_national_income",
-              "piketty.us.factor_capital_share"
+              "piketty.us.net_national_income"
             ],
             "expected": {
               "frequency": "A",
@@ -4547,6 +4546,26 @@
                 "US"
               ],
               "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_share_US",
+            "description": "WID US factor-price share of national income; mixed-income allocation follows original methodology. Context only, not a stock yield.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.us.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "US"
+              ],
+              "population": "WID original macro factor-price capital share",
               "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
             },
             "temporal_requirement": "latest_revised",
@@ -4650,8 +4669,7 @@
             "series_ids": [
               "piketty.fr.net_capital_income",
               "piketty.fr.net_national_wealth",
-              "piketty.fr.net_national_income",
-              "piketty.fr.factor_capital_share"
+              "piketty.fr.net_national_income"
             ],
             "expected": {
               "frequency": "A",
@@ -4660,6 +4678,26 @@
                 "FR"
               ],
               "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_share_FR",
+            "description": "WID FR factor-price share of national income; mixed-income allocation follows original methodology. Context only, not a stock yield.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.fr.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "FR"
+              ],
+              "population": "WID original macro factor-price capital share",
               "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
             },
             "temporal_requirement": "latest_revised",
@@ -4763,8 +4801,7 @@
             "series_ids": [
               "piketty.pt.net_capital_income",
               "piketty.pt.net_national_wealth",
-              "piketty.pt.net_national_income",
-              "piketty.pt.factor_capital_share"
+              "piketty.pt.net_national_income"
             ],
             "expected": {
               "frequency": "A",
@@ -4773,6 +4810,26 @@
                 "PT"
               ],
               "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_share_PT",
+            "description": "WID PT factor-price share of national income; mixed-income allocation follows original methodology. Context only, not a stock yield.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.pt.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "PT"
+              ],
+              "population": "WID original macro factor-price capital share",
               "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
             },
             "temporal_requirement": "latest_revised",
@@ -4876,8 +4933,7 @@
             "series_ids": [
               "piketty.cn.net_capital_income",
               "piketty.cn.net_national_wealth",
-              "piketty.cn.net_national_income",
-              "piketty.cn.factor_capital_share"
+              "piketty.cn.net_national_income"
             ],
             "expected": {
               "frequency": "A",
@@ -4886,6 +4942,26 @@
                 "CN"
               ],
               "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_share_CN",
+            "description": "WID CN factor-price share of national income; mixed-income allocation follows original methodology. Context only, not a stock yield.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.cn.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "CN"
+              ],
+              "population": "WID original macro factor-price capital share",
               "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
             },
             "temporal_requirement": "latest_revised",
@@ -4989,8 +5065,7 @@
             "series_ids": [
               "piketty.in.net_capital_income",
               "piketty.in.net_national_wealth",
-              "piketty.in.net_national_income",
-              "piketty.in.factor_capital_share"
+              "piketty.in.net_national_income"
             ],
             "expected": {
               "frequency": "A",
@@ -4999,6 +5074,26 @@
                 "IN"
               ],
               "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_share_IN",
+            "description": "WID IN factor-price share of national income; mixed-income allocation follows original methodology. Context only, not a stock yield.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.in.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "IN"
+              ],
+              "population": "WID original macro factor-price capital share",
               "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
             },
             "temporal_requirement": "latest_revised",
@@ -5102,8 +5197,7 @@
             "series_ids": [
               "piketty.world.net_capital_income",
               "piketty.world.net_national_wealth",
-              "piketty.world.net_national_income",
-              "piketty.world.factor_capital_share"
+              "piketty.world.net_national_income"
             ],
             "expected": {
               "frequency": "A",
@@ -5112,6 +5206,26 @@
                 "WORLD"
               ],
               "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_share_WO",
+            "description": "WID WO factor-price share of national income; mixed-income allocation follows original methodology. Context only, not a stock yield.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.world.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "WORLD"
+              ],
+              "population": "WID original macro factor-price capital share",
               "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
             },
             "temporal_requirement": "latest_revised",
