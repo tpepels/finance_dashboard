@@ -240,6 +240,11 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                          status=("interrupted" if interrupted else
                                  "partial" if cycle_failed else "complete"))
             _save_schedule_due(time.time() + interval_seconds)
+        # A complete scheduled cycle can also update vintage, SEC or other
+        # original evidence outside IngestionService.refresh. Notify one
+        # downstream reconciliation for those native archive changes.
+        from .data_change_bus import publish_change
+        publish_change(engine, "scheduled_cycle_finished")
         if stopped.wait(interval_seconds):
             break
 
