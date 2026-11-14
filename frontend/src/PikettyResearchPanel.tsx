@@ -34,7 +34,6 @@ const GROUP:Record<string,string>={bottom50:'Bottom 50%',middle40:'Middle 40%',
 const order=['bottom50','middle40','top10','top1'];
 const toPlot=(rows:Line):Line=>(rows??[]).map(([date,value])=>[
  date.length===4?date+'-01-01':date,value]);
-const latest=(rows:Line)=>rows?.length?rows[rows.length-1]:null;
 const fmt=(value:number|null|undefined,unit='%')=>
  value===null||value===undefined||!Number.isFinite(value)?'—':
  value.toFixed(Math.abs(value)<10?1:0)+unit;

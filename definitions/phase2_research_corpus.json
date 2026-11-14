@@ -5135,7 +5135,7 @@
               "frequency": "A",
               "unit": "ratio",
               "geography": [
-                "WORLD"
+                "WO"
               ],
               "population": "Equal-split adults 20+; net personal wealth shares",
               "concept": "WID original same-population net personal wealth top1/top10/bottom50 shares, Published world. Never borrow US Federal Reserve DFA households."
@@ -5159,7 +5159,7 @@
               "frequency": "A",
               "unit": "wid_real_currency",
               "geography": [
-                "WORLD"
+                "WO"
               ],
               "population": "Equal-split adults 20+; pre-tax national income levels in consistent reference-year prices",
               "concept": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution."
@@ -5181,7 +5181,7 @@
               "frequency": "A",
               "unit": "ratio",
               "geography": [
-                "WORLD"
+                "WO"
               ],
               "population": "National macro wealth-to-net-national-income accounts",
               "concept": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator."
@@ -5203,7 +5203,7 @@
               "frequency": "A",
               "unit": "wid_real_currency",
               "geography": [
-                "WORLD"
+                "WO"
               ],
               "population": "National macro totals; WID factor-price capital-share context is not a stock return",
               "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
@@ -5223,7 +5223,7 @@
               "frequency": "A",
               "unit": "ratio",
               "geography": [
-                "WORLD"
+                "WO"
               ],
               "population": "WID original macro factor-price capital share",
               "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
@@ -5245,7 +5245,7 @@
               "frequency": "A",
               "unit": "wid_real_currency",
               "geography": [
-                "WORLD"
+                "WO"
               ],
               "population": "National macro market-value assets",
               "concept": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category."
@@ -5332,20 +5332,7 @@
           }
         ]
       },
-      "context_series_ids": [
-        "inequality.cn.net_personal_wealth.bottom50",
-        "inequality.cn.net_personal_wealth.top10",
-        "inequality.fr.net_personal_wealth.bottom50",
-        "inequality.fr.net_personal_wealth.top10",
-        "inequality.in.net_personal_wealth.bottom50",
-        "inequality.in.net_personal_wealth.top10",
-        "inequality.pt.net_personal_wealth.bottom50",
-        "inequality.pt.net_personal_wealth.top10",
-        "inequality.us.net_personal_wealth.bottom50",
-        "inequality.us.net_personal_wealth.top10",
-        "inequality.world.net_personal_wealth.bottom50",
-        "inequality.world.net_personal_wealth.top10"
-      ],
+      "context_series_ids": [],
       "context_artifact_ids": [],
       "evidence_tier": "descriptive",
       "decision_informed": "Global inequality context; research interest, no direct portfolio decision.",
