@@ -18,7 +18,9 @@ const makeRun=()=>({
   manual_files:[] as {job_id:string;dataset:string;source:string;role:string;
     name:string;url:string;reason:string;accept:string;max_bytes:number}[],
   repair:{status:'running',completed:6,total:17,current_item:null,error_code:null} as {
-    status:string;completed:number;total:number;current_item:string|null;error_code:string|null}|null,
+    status:string;completed:number;total:number;current_item:string|null;error_code:string|null;
+    details?:{issues_before?:number;issues_after?:number;resolved_issues?:number;
+      failed_sources?:number}}|null,
   startup_error:null,
 });
 const makeHealth=()=>({
@@ -82,6 +84,18 @@ describe('durable Data Collection page',()=>{
     expect(screen.queryByText('Source explorer')).toBeNull();
     expect(screen.queryByText('Advanced source operations')).toBeNull();
     expect(calls.some(item=>item.url==='/api/data/overview')).toBe(false);
+  });
+
+  it('shows the difference between 12 attempted repairs and zero resolved gaps',async()=>{
+    run.repair={status:'partial',completed:12,total:12,current_item:null,
+      error_code:'provider_failed',details:{issues_before:12,issues_after:12,
+        resolved_issues:0,failed_sources:3}};
+    render(<DataHub/>);
+    expect(await screen.findByText('12 / 12 checked')).toBeTruthy();
+    expect(screen.getByText(/0 source gaps resolved/)).toBeTruthy();
+    expect(screen.getByText(/12 still require attention/)).toBeTruthy();
+    expect(screen.getByText(/3 provider requests failed/)).toBeTruthy();
+    expect(screen.getByText(/Source-health repair is incomplete/)).toBeTruthy();
   });
 
   it('starts one server-owned collection using the browser language profile',async()=>{
