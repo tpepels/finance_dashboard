@@ -256,6 +256,25 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
                 "console": _console(events),
                 "source_summary": coverage.get("summary", {})}
 
+    @app.get("/api/data/debug-console")
+    def data_debug_console():
+        """Full redacted current-state console, separate from human Data view."""
+        status, events, coverage = snapshot()
+        from .data_hub import human_overview
+        manual = app.state.manual_sources.status()
+        original = importer.public_status()
+        operations = maintenance.list()
+        return {
+            "release": release_info(), "status": status,
+            "human_overview": human_overview(coverage, manual, operations, original),
+            "events": events, "source_coverage": coverage,
+            "acquisition": manual,
+            "original_import": original,
+            "maintenance": operations,
+            "publisher_policy": policy_summary(),
+            "note": "Credentials, raw source responses and portfolio holdings are excluded.",
+        }
+
     @app.get("/api/diagnostics/download")
     def download_debug_zip():
         status, events, coverage = snapshot()
@@ -263,6 +282,10 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
         policy = policy_summary()
         operations = maintenance.list()
         source_audit = _original_method_summary(importer.evidence)
+        from .data_hub import human_overview
+        manual = app.state.manual_sources.status()
+        overview = human_overview(coverage, manual, operations,
+                                  importer.public_status())
         failure_csv, failure_manifest = _accounting_failures_csv(
             source_audit, release["release_id"])
         bundle = BytesIO()
@@ -291,6 +314,26 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
                           "created_at": j.get("created_at"), "finished_at": j.get("finished_at"),
                           "error_code": j.get("error_code")}
                          for j in operations["jobs"]],
+            })
+            put("diagnostics/data-overview.json", overview)
+            put("diagnostics/manual-fallback-links.json",
+                overview["acquisition"]["files_requiring_upload"])
+            put("diagnostics/publisher-download-queue.json", {
+                "datasets": manual["datasets"],
+                "jobs": manual["jobs"],
+                "queued": manual["queued"],
+                "deferred": manual["deferred"],
+                "active": manual["active"],
+                "note": "Downloaded bytes are represented by SHA-256 receipts, not included.",
+            })
+            put("diagnostics/maintenance-complete.json", {
+                "active_job_id": operations["active_job_id"],
+                "jobs": [{
+                    key: job.get(key) for key in (
+                        "id", "action", "status", "created_at", "started_at",
+                        "finished_at", "completed", "total", "current_item",
+                        "stage", "error_code", "result")
+                } for job in operations["jobs"]],
             })
             put("diagnostics/original-import.json", importer.public_status())
             put("diagnostics/original-method-audit.json",
