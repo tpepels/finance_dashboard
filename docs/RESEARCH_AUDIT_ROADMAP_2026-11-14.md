@@ -54,7 +54,13 @@ worker-distribution view; preserve existing apples-to-apples aggregate identity.
 **L02 — division of company value added.** Compensation, net operating surplus,
 depreciation and net production taxes are partitioned as aggregate shares of
 company gross value added. Calling this chart the *typical worker's pay–profit
-gap* would be incorrect. Do not replace aggregate employee compensation
+gap* would be incorrect. **There are also two misleading chart labels**:
+the frontend labels total employee compensation `Wages and salaries`
+even though this national-accounts measure includes employer social
+contributions, and labels net operating surplus `Net profit` even
+though it is not equivalent to corporate after-tax net income.
+Change the labels and source explanations before making further
+interpretative claims. Do not replace aggregate employee compensation
 in the national-accounts identity with a median wage. Link a worker-distribution
 study with compatible populations, dates and deflators.
 
@@ -346,6 +352,9 @@ are versioned, and keyboard/mobile/automated regression tests pass.
 - Check WID 2025 publication and why the exact world series still
   end in 2023; audit metadata and data quality, not only HTTP success.
 - Bind the three hardcoded period statements to actual source metadata.
+- Correct L02's misleading `Wages and salaries` / `Net profit` labels to
+  compensation of employees / net operating surplus and explain why
+  those accounting measures differ from typical wages and after-tax profit.
 - Reconcile the 11 conditional research questions with remaining
   unaccepted roles; no conditional result silently promoted.
 
