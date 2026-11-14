@@ -56,16 +56,22 @@ def _recent_import(job: dict, dataset: str) -> bool:
         return False
     return time.time() - imported < interval
 
-def _retry_transient_publisher_http(job: dict, role: str, code: str) -> int | None:
-    """Retry temporary publisher failures twice before asking for a manual file.
+_AGENT_DOWNLOAD_ERRORS = {
+    "publisher_url_invalid", "publisher_file_too_large",
+    "oecd_readme_identity_mismatch", "oecd_archive_identity_mismatch",
+}
 
-    The policy transport records server backpressure and enforces its own
-    publisher-specific cooldown. This additional bounded delay ensures that
-    a 429 or a transient 5xx does not become an immediate human task.
+def _retry_transient_publisher_http(job: dict, role: str, code: str) -> int | None:
+    """Retry temporary publisher failures twice before manual intervention.
+
+    The managed transport enforces publisher-specific cooldowns, including
+    longer Retry-After values; this bounded retry adds network resilience.
     """
-    if code not in {"publisher_http_429", "publisher_http_500",
+    if code not in {"publisher_http_408", "publisher_http_425",
+                    "publisher_http_429", "publisher_http_500",
                     "publisher_http_502", "publisher_http_503",
-                    "publisher_http_504"}:
+                    "publisher_http_504", "publisher_timeout",
+                    "publisher_network_error"}:
         return None
     previous = sum(attempt.get("role") == role and attempt.get("outcome") == code
                    for attempt in job.get("attempts", []))
@@ -676,10 +682,13 @@ class ManualSourceManager:
                         raise PolicyDeferred("publisher-http", result_code,
                                              time.time() + retry_delay)
             if failed:
+                agent_codes = sorted(set(failed.values()) & _AGENT_DOWNLOAD_ERRORS)
                 with self.lock:
-                    job["status"] = "manual_required"
-                    job["phase"] = "waiting_for_manual_files"
-                    job["error_code"] = "publisher_files_unavailable"
+                    job["status"] = "failed" if agent_codes else "manual_required"
+                    job["phase"] = ("source_contract_failed" if agent_codes
+                                    else "waiting_for_manual_files")
+                    job["error_code"] = (agent_codes[0] if agent_codes
+                                         else "publisher_files_unavailable")
                     job["finished_at"] = datetime.now(timezone.utc).isoformat()
                     self._save()
                 return
@@ -898,14 +907,18 @@ class ManualSourceManager:
                         self._save()
             succeeded = sum(s["status"] == "success" for s in job["sources"])
             total = len(PUBLISHER_ARCHIVES)
+            agent_codes = sorted(set(failures.values()) & _AGENT_DOWNLOAD_ERRORS)
             with self.lock:
                 job["failed_roles"] = dict(failures)
                 job.update(
-                    status=("manual_required" if failures else
+                    status=("partial" if succeeded else "failed") if agent_codes else
+                           ("manual_required" if failures else
                             "complete" if succeeded == total else
                             "partial" if succeeded else "failed"),
-                    phase=("waiting_for_manual_files" if failures else "finished"),
-                    error_code="publisher_files_unavailable" if failures else None,
+                    phase=("source_contract_failed" if agent_codes else
+                           "waiting_for_manual_files" if failures else "finished"),
+                    error_code=(agent_codes[0] if agent_codes else
+                                "publisher_files_unavailable" if failures else None),
                     origin_verified=(succeeded == total and not job.get("manual_supplied")
                                      and README in job["downloaded"]),
                     finished_at=datetime.now(timezone.utc).isoformat())
