@@ -33,7 +33,10 @@ const makeHealth=()=>({
       {id:'markets',label:'Market prices',total:24,with_data:24,attention:0},
       {id:'fx',label:'Exchange rates',total:3,with_data:3,attention:0},
     ],
-    sources:{total:426,with_data:426,needs_attention:12}},
+    sources:{total:426,with_data:426,needs_attention:12},
+    attention_items:[] as {id:string;name:string;provider:string;state:string;
+      latest_source_date:string|null;published_through:string|null;
+      next_action:string;research_questions:string[];}[]},
 });
 const makeExport=()=>({
   state:'idle',ready:false,id:null as string|null,prepared_at:null as string|null,
@@ -87,6 +90,39 @@ describe('durable Data Collection page',()=>{
     expect(screen.queryByText('Source explorer')).toBeNull();
     expect(screen.queryByText('Advanced source operations')).toBeNull();
     expect(calls.some(item=>item.url==='/api/data/overview')).toBe(false);
+  });
+
+  it('shows the exact ten stale histories in Data Collection without mounting Source Explorer',async()=>{
+    health.snapshot.sources.needs_attention=10;
+    health.snapshot.groups[0].attention=10;
+    health.snapshot.attention_items=[
+      ...Array.from({length:5},(_,i)=>({
+        id:'inequality.world.pretax_income.'+i,name:'World inequality '+i,
+        provider:'WID',state:'stale',latest_source_date:'2023-01-01',
+        published_through:null,next_action:'Check publisher release',
+        research_questions:i===0?['L07']:[],
+      })),
+      {id:'labour.us.euklems_labour_compensation',name:'US labour compensation',
+        provider:'EUKLEMS',state:'stale',latest_source_date:'2020-01-01',
+        published_through:'2021-01-01',next_action:'Check current workbook',
+        research_questions:['L01']},
+      ...Array.from({length:4},(_,i)=>({
+        id:'valuation.europe.msci_'+i,name:'Europe valuation '+i,
+        provider:'MSCI_REGIONAL_FACTSHEETS',state:'stale',
+        latest_source_date:'2026-08-01',published_through:null,
+        next_action:'Check latest factsheet',research_questions:[],
+      })),
+    ];
+    const user=userEvent.setup();
+    render(<DataHub/>);
+    const disclosure=await screen.findByText('10 series need attention — show exact sources');
+    expect(screen.queryByRole('table',{name:'Sources requiring attention'})).toBeNull();
+    await user.click(disclosure);
+    expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
+    expect(screen.getByText('US labour compensation')).toBeTruthy();
+    expect(screen.getAllByText('Check publisher release')).toHaveLength(5);
+    expect(screen.getAllByText('2026-08')).toHaveLength(4);
+    expect(screen.queryByText('Original source appendix loaded')).toBeNull();
   });
 
   it('labels an expired retry as awaiting the queue, not as a future appointment',async()=>{
