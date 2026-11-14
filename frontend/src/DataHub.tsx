@@ -27,6 +27,12 @@ type Health = {
     asof:string;calculated_at:string;groups:{id:string;label:string;total:number;
       with_data:number;attention:number}[];
     sources:{total:number;with_data:number;needs_attention:number};
+    attention_items?:{
+      id:string;name:string;provider:string;state:string;
+      latest_source_date:string|null;published_through:string|null;
+      last_attempt_state?:string|null;last_failure_code?:string|null;
+      next_action?:string|null;research_questions?:string[];
+    }[];
   }|null; error?:string|null;
 };
 type ExportStatus = {
@@ -374,6 +380,26 @@ export default function DataHub(){
         <small>Snapshot calculated {formatWhen(snapshot?.calculated_at)}.
           Data availability does not guarantee the latest publisher revision.
           {health.value?.state==='refreshing'?' Refreshing in background…':''}</small>
+        {Boolean(snapshot?.attention_items?.length)&&<details className="data-collection-attention">
+          <summary>{snapshot?.attention_items?.length} series need attention — show exact sources</summary>
+          <p>These series have observations, but their last source period is old or
+            the last collection requires investigation. A recent download does not
+            establish that newer source observations exist.</p>
+          <div className="data-collection-table-scroll">
+            <table aria-label="Sources requiring attention">
+              <thead><tr><th>Source series</th><th>Last observation</th><th>What remains</th></tr></thead>
+              <tbody>{snapshot?.attention_items?.map(item=><tr key={item.id}>
+                <td><strong>{item.name}</strong><small>{item.id}</small></td>
+                <td>{item.latest_source_date?.slice(0,7)??'None'}</td>
+                <td>{item.next_action??'Investigate source history'}
+                  {item.last_failure_code&&<small className="data-collection-alert">
+                    {' '}Last error: {reason(item.last_failure_code)}
+                  </small>}
+                </td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </details>}
         {(health.problem||health.value?.error)&&<p className="data-collection-alert">
           Availability refresh failed; showing the last retained snapshot.</p>}
       </div>:<p>{health.value?.state==='refreshing'?'Calculating data availability…':
