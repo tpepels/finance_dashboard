@@ -1143,14 +1143,70 @@ def _l07(points: dict, view: dict) -> Computed:
         economies.append({"area": area, "then_year": str(then.year), "latest_year": str(days[-1].year),
                           "top1_then": 100 * top[then], "top1_latest": 100 * top[days[-1]],
                           "bottom50_then": 100 * bottom[then], "bottom50_latest": 100 * bottom[days[-1]]})
-    return Computed(values={"economies": economies, "history": history}, estimates=None, comparison=["top1", "bottom50"],
-                    transforms=[applied("percent_to_fraction", applied_to=["top1", "bottom50"], direction="fraction to percent")])
+    from ..piketty_research import AREAS as PIKETTY_AREAS, piketty_findings
+    research = {}
+    for country in PIKETTY_AREAS:
+        for concept in ("income", "wealth"):
+            for group in ("top1", "top10", "bottom50"):
+                key = (f"top1:{country}" if concept == "income" and group == "top1"
+                       else f"bottom50:{country}" if concept == "income" and group == "bottom50"
+                       else f"piketty:{country}:{concept}:{group}")
+                research[f"piketty:{country}:{concept}:{group}"] = points.get(key, [])
+        for group in ("all", "bottom50", "middle40", "top10", "top1"):
+            research[f"piketty:{country}:income_avg:{group}"] = points.get(
+                f"piketty_avg:{country}:{group}", [])
+        for kind in ("national", "private", "public"):
+            research[f"piketty:{country}:ratio:{kind}"] = points.get(
+                f"piketty_ratio:{country}:{kind}", [])
+        for measure in ("factor_capital_share", "net_national_income",
+                        "net_national_wealth", "net_capital_income",
+                        "national_housing_assets", "national_business_assets"):
+            research[f"piketty:{country}:macro:{measure}"] = points.get(
+                f"piketty_macro:{country}:{measure}", [])
+    # The existing L07 top1/bottom50 results remain the primary accepted
+    # research question; each Piketty supplement is independently gated.
+    return Computed(
+        values={"economies": economies, "history": history,
+                "piketty": piketty_findings(research)},
+        estimates=None,
+        comparison=["top1", "bottom50", "piketty_concentration",
+                    "piketty_income_growth", "piketty_wealth_to_income",
+                    "piketty_accounting_return_growth", "piketty_wealth_transmission"],
+        transforms=[
+            applied("percent_to_fraction", applied_to=["top1", "bottom50"],
+                    direction="fraction to percent"),
+            applied("wid_piketty_five_findings",
+                    applied_to=["WID same-vintage income and wealth shares",
+                                "source-defined real per-adult averages",
+                                "national wealth/net income ratios",
+                                "net capital income and matched national wealth stock",
+                                "housing and business asset stocks"],
+                    produces=["piketty.areas"]),
+        ])
 
+
+_L07_PIKETTY_INPUTS = {
+    **{f"piketty:{a}:income:top10": f"inequality.{a.lower()}.pretax_income.top10"
+       for a in INEQUALITY_AREAS},
+    **{f"piketty:{a}:wealth:{group}":
+       f"inequality.{a.lower()}.net_personal_wealth.{group}"
+       for a in INEQUALITY_AREAS for group in ("top1", "top10", "bottom50")},
+    **{f"piketty_avg:{a}:{group}": f"piketty.{a.lower()}.real_pretax_average.{group}"
+       for a in INEQUALITY_AREAS
+       for group in ("all", "bottom50", "middle40", "top10", "top1")},
+    **{f"piketty_ratio:{a}:{kind}": f"piketty.{a.lower()}.wealth_to_income.{kind}"
+       for a in INEQUALITY_AREAS for kind in ("national", "private", "public")},
+    **{f"piketty_macro:{a}:{metric}": f"piketty.{a.lower()}.{metric}"
+       for a in INEQUALITY_AREAS for metric in (
+           "factor_capital_share", "net_national_income", "net_national_wealth",
+           "net_capital_income", "national_housing_assets", "national_business_assets")},
+}
 
 L07 = AnalysisDefinition("L07", {
     **{f"top1:{a}": f"inequality.{a.lower()}.pretax_income.top1" for a in INEQUALITY_AREAS},
     **{f"bottom50:{a}": f"inequality.{a.lower()}.pretax_income.bottom50" for a in INEQUALITY_AREAS},
-}, _l07)
+    **_L07_PIKETTY_INPUTS,
+}, _l07, optional_inputs=tuple(_L07_PIKETTY_INPUTS))
 
 def pearson(x: list[float], y: list[float]) -> float | None:
     if len(x) < 3 or len(x) != len(y):
