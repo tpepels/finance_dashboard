@@ -202,6 +202,7 @@ def _phase2_findings(snapshot, document: dict) -> tuple[list[dict], list[dict]]:
 
 def assess_limitations(*, coverage: dict, document: dict,
                        snapshot=None, accounting: dict | None = None,
+                       icio_dependencies: dict | None = None,
                        release: dict | None = None) -> dict:
     """Build the complete observable register without running analyses or downloads.
 
@@ -338,20 +339,52 @@ def assess_limitations(*, coverage: dict, document: dict,
         failures = int(accounting.get("failure_equations_exported") or 0)
         incomplete = accounting.get("annual_matrices_without_complete_failure_ledger") or []
         if failures or incomplete:
+            # Archive-level failed equations do not identify an analytic
+            # consumer. The separate dependency audit checks the pinned
+            # source-member SHA; only its *exact* failing matches may be
+            # attributed to L04. G06 reads a different published TiVA source.
+            dependencies = icio_dependencies if isinstance(icio_dependencies, dict) else {}
+            counts = dependencies.get("counts") or {}
+            matching_failures = int(counts.get("failing_exact_consumer_matrices") or 0)
+            other_failures = int(counts.get("failing_other_matrices") or 0)
+            matching_origins = int(counts.get("consumer_exact_hash_match") or 0)
+            consumer_matched = matching_failures > 0
+            linked = ["L04"] if consumer_matched and "L04" in question_ids else []
+            if not dependencies:
+                scope = "not_evaluated"
+            elif consumer_matched:
+                scope = "failing_exact_consumer_hash"
+            else:
+                scope = "no_failing_exact_consumer_hash_in_archive_inventory"
             findings.append(_finding(
                 id="scientific-integrity:icio-accounting",
                 category="source_accounting_integrity",
                 severity="high", status="needs_evidence",
-                title="OECD ICIO native accounting failures require reconciliation",
+                title=("OECD ICIO source-accounting failures in archived matrices"
+                       if not consumer_matched else
+                       "OECD ICIO accounting failures affect an exact L04 consumer source"),
                 detail=(f"{failures} failure equations exported; "
-                        f"{len(incomplete)} annual matrices have incomplete failure ledgers."),
-                next_action=("Inspect the exact accounting failures in "
-                             "diagnostics/icio-accounting-failures.csv; reconcile "
-                             "against original matrix definitions before scientific acceptance."),
-                analysis_ids=["G06"] if "G06" in question_ids else [],
-                provenance="icio_accounting_manifest",
+                        f"{len(incomplete)} annual matrices have incomplete failure ledgers. "
+                        + ("Source-consumer identity not assessed in this report."
+                           if not dependencies else
+                           f"{matching_failures} failed exact-consumer matrices; "
+                           f"{other_failures} failed other-edition matrices. "
+                           "Nonmatching archives cannot be attributed to G06 or L04; "
+                           "unmatched consumer originals are not independently validated.")),
+                next_action=("Inspect diagnostics/icio-accounting-failures.csv alongside "
+                             "diagnostics/icio-consumer-dependencies.json. Reconcile original "
+                             "archive definitions and verify consumer member SHA before "
+                             "granting any source-accounting scientific acceptance."),
+                analysis_ids=linked,
+                provenance="icio_accounting_manifest_and_consumer_scope",
                 evidence={"failure_equations_exported": failures,
-                          "incomplete_annual_ledgers": len(incomplete)},
+                          "incomplete_annual_ledgers": len(incomplete),
+                          "consumer_scope_state": scope,
+                          "failed_exact_consumer_matrices": matching_failures,
+                          "failed_other_matrices": other_failures,
+                          "exact_consumer_origin_matches": matching_origins,
+                          "complete_publisher_reader_audit":
+                              dependencies.get("complete_publisher_reader_audit") is True},
             ))
     findings.sort(key=lambda item: (
         {"high": 0, "medium": 1, "information": 2}.get(item["severity"], 3),

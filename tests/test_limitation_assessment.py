@@ -99,6 +99,51 @@ class LimitationAssessmentTests(unittest.TestCase):
                             f["analysis_ids"] == ["G06"] for f in findings))
         self.assertEqual(report["counts"]["total"], len(findings))
 
+
+    def test_other_edition_icio_failures_do_not_falsely_block_g06(self):
+        report=assess_limitations(
+            coverage={"items":[]},document=DOC,
+            accounting={"failure_equations_exported":24869,
+                        "annual_matrices_without_complete_failure_ledger":[]},
+            icio_dependencies={
+                "verification_scope":"other_edition_audit_metadata_only",
+                "complete_publisher_reader_audit":False,
+                "counts":{"consumer_exact_hash_match":0,
+                          "failing_exact_consumer_matrices":0,
+                          "failing_other_matrices":54,
+                          "other_edition_not_directly_consumed":78,
+                          "unresolved_source_identity":0},
+                "consumers":{"G06":{"is_direct_icio_matrix_consumer":False}},
+            })
+        finding=next(item for item in report["findings"]
+                     if item["category"]=="source_accounting_integrity")
+        self.assertEqual(finding["analysis_ids"],[])
+        self.assertEqual(finding["severity"],"high")
+        self.assertEqual(finding["status"],"needs_evidence")
+        self.assertEqual(finding["evidence"]["failed_other_matrices"],54)
+        self.assertEqual(finding["evidence"]["failed_exact_consumer_matrices"],0)
+        self.assertEqual(finding["evidence"]["consumer_scope_state"],
+                         "no_failing_exact_consumer_hash_in_archive_inventory")
+        self.assertFalse(finding["evidence"]["complete_publisher_reader_audit"])
+
+    def test_icio_only_attributes_exact_failed_pinned_consumer_to_l04(self):
+        doc={"analyses":[{"id":"G06","title":"TiVA"},
+                         {"id":"L04","title":"Sector returns"}]}
+        report=assess_limitations(
+            coverage={"items":[]},document=doc,
+            accounting={"failure_equations_exported":12,
+                        "annual_matrices_without_complete_failure_ledger":[]},
+            icio_dependencies={"complete_publisher_reader_audit":False,
+                 "counts":{"failing_exact_consumer_matrices":1,
+                           "failing_other_matrices":2,
+                           "consumer_exact_hash_match":1}})
+        finding=next(item for item in report["findings"]
+                     if item["category"]=="source_accounting_integrity")
+        self.assertEqual(finding["analysis_ids"],["L04"])
+        self.assertEqual(finding["evidence"]["consumer_scope_state"],
+                         "failing_exact_consumer_hash")
+        self.assertNotIn("G06",finding["analysis_ids"])
+
     def test_no_acceptance_snapshot_is_unknown_not_research_complete(self):
         report = assess_limitations(coverage=self._coverage(), document=DOC)
         self.assertEqual(report["scientific_acceptance"]["state"], "unavailable")

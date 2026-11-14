@@ -285,12 +285,13 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         status["release_id"] = release["release_id"]
         return status, events, coverage
 
-    def limitation_assessment(coverage: dict, accounting: dict | None = None) -> dict:
+    def limitation_assessment(coverage: dict, accounting: dict | None = None,
+                              dependencies: dict | None = None) -> dict:
         from .limitation_assessment import assess_limitations
         return assess_limitations(
             coverage=coverage, document=research_document,
             snapshot=app.state.acceptance.peek(), accounting=accounting,
-            release=release_info())
+            icio_dependencies=dependencies, release=release_info())
 
     @app.get("/api/diagnostics/limitation-assessment")
     def diagnostic_limitation_assessment():
@@ -303,7 +304,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         _, _, coverage = snapshot()
         original = _original_method_summary(importer.evidence)
         _, manifest = _accounting_failures_csv(original, release_info()["release_id"])
-        return limitation_assessment(coverage, manifest)
+        from .icio_dependency_audit import classify_icio_dependencies
+        return limitation_assessment(coverage, manifest, classify_icio_dependencies(original))
 
     @app.get("/api/diagnostics")
     def diagnostics():
@@ -382,7 +384,7 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             source_audit, release["release_id"])
         from .icio_dependency_audit import classify_icio_dependencies
         dependencies = classify_icio_dependencies(source_audit)
-        limits = limitation_assessment(coverage, failure_manifest)
+        limits = limitation_assessment(coverage, failure_manifest, dependencies)
         bundle = BytesIO()
         with ZipFile(bundle, "w", compression=ZIP_DEFLATED) as archive:
             def put(name, data):
