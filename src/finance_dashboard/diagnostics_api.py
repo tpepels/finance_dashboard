@@ -400,7 +400,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         policy = policy_summary()
         operations = maintenance.list()
         source_audit = _original_method_summary(importer.evidence)
-        from .data_hub import human_overview
+        from .data_hub import human_overview, automation_status
+        scheduler = automation_status()
         manual = app.state.manual_sources.status()
         overview = human_overview(coverage, manual, operations,
                                   importer.public_status())
@@ -418,6 +419,13 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                 **release, "reset_policy": "current_deployed_build_only",
                 "immutable_evidence_preserved": True})
             put("diagnostics/status.json", status)
+            put("diagnostics/scheduler.json", {
+                **scheduler,
+                "scope": "observed_in_process_state",
+                "note": ("A configured refresh flag does not establish that a cycle "
+                         "ran. A missing or unobserved next deadline is not an "
+                         "estimate of the next ingestion time."),
+            })
             put("diagnostics/console.json", _console(events))
             put("diagnostics/events.json", events)
             put("diagnostics/source-coverage.json", {**coverage, "release": release})

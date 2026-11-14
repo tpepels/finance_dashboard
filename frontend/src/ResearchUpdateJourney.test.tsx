@@ -80,6 +80,32 @@ describe('research update waiting-state journey',()=>{
     expect(screen.getByText('Action required')).toBeTruthy();
   });
 
+  it('does not recommend waiting when the configured automatic scheduler has not started',()=>{
+    const missingWorker=missing({
+      automation:{scheduled_refresh_enabled:true,interval_seconds:86400,
+        refresh_running:false,refresh_state:'not_started',next_refresh_at:null},
+    });
+    const model=describeResearchUpdate(missingWorker,{running:false});
+    expect(model.heading).toBe('Automatic source scheduler has not started');
+    expect(model.tone).toBe('attention');
+    expect(model.stages[0].state).toBe('attention');
+    expect(model.action).toContain('waiting alone may not start collection');
+    const stopped=describeResearchUpdate({...missingWorker,automation:{
+      ...missingWorker.automation!,refresh_state:'stopped',
+    }},{running:false});
+    expect(stopped.heading).toBe('Automatic source refresh is stopped');
+  });
+
+  it('reports a scheduled worker paused for manual collection distinctly',()=>{
+    const paused=missing({automation:{scheduled_refresh_enabled:true,
+      interval_seconds:86400,refresh_running:false,
+      refresh_state:'waiting_for_manual_collection',next_refresh_at:null}});
+    const model=describeResearchUpdate(paused,{running:false});
+    expect(model.heading).toBe('Automatic source checks are waiting for manual collection');
+    expect(model.action).toContain('next cycle');
+    expect(model.stages[0].state).toBe('waiting');
+  });
+
   it('distinguishes failed source acquisition and manual files from a passive wait',()=>{
     const trouble=missing();
     trouble.snapshot!.attention_items![0].last_attempt_state='failed';

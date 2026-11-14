@@ -56,6 +56,7 @@ export function describeResearchUpdate(
     item.last_attempt_state==='failed'||item.state==='collection_failed').length;
   const manual=collection?.manual_files_count??collection?.manual_files?.length??0;
   const config=health?.automation?.scheduled_refresh_enabled;
+  const schedulerState=health?.automation?.refresh_state;
   const interval=health?.automation?.interval_seconds;
   const scheduled=health?.automation?.refresh_running===true;
   const downloading=Boolean(scheduled||collection?.running);
@@ -92,11 +93,26 @@ export function describeResearchUpdate(
     explanation=missing+' registered source histor'+(missing===1?'y has':'ies have')+' no stored observations. Automatic source refresh is disabled.';
     action='Open Manual source check and choose Check sources now. Some publisher sources may still need separate evidence.';
     tone='attention';
+  }else if(hasData && missing>0 && config===true && !downloading &&
+    (schedulerState==='not_started'||schedulerState==='stopped')){
+    heading=schedulerState==='stopped'
+      ?'Automatic source refresh is stopped'
+      :'Automatic source scheduler has not started';
+    explanation=missing+' registered source histories are missing observations, but the server has not confirmed an active source-refresh schedule.';
+    action='Automatic refresh is configured, but the scheduler reports '+schedulerState+
+      '. Inspect server startup and scheduler settings; waiting alone may not start collection.';
+    tone='attention';
   }else if(hasData && missing>0 && failed>0 && !downloading){
     heading='Some source collection attempts failed';
     explanation=missing+' source histories have no observations; '+failed+' source'+(failed===1?' has':'s have')+' a recorded collection failure.';
     action='Review the source errors below. Automatic retries may be policy-limited; waiting alone may not resolve these failures.';
     tone='attention';
+  }else if(hasData && missing>0 && config===true &&
+    schedulerState==='waiting_for_manual_collection' && !downloading){
+    heading='Automatic source checks are waiting for manual collection';
+    explanation=missing+' source histories still need ingestion. The scheduled worker has yielded to a manual source operation.';
+    action='Check the active source operation below. The scheduler resumes on its next cycle when the manual-operation pause clears.';
+    tone='waiting';
   }else if(hasData && missing>0){
     heading=downloading?'Collecting missing original source histories':'Waiting for initial source downloads';
     explanation=missing+' registered source histor'+(missing===1?'y has':'ies have')+' no stored observations.'+
@@ -139,7 +155,8 @@ export function describeResearchUpdate(
 
   const sourcesState:StepState=!hasData?'waiting':
     downloading?'running':
-    manual>0||failed>0||config===false&&missing>0?'attention':
+    manual>0||failed>0||config===false&&missing>0||
+      missing>0&&config===true&&(schedulerState==='not_started'||schedulerState==='stopped')?'attention':
     missing>0||attention>0?'waiting':'complete';
   const healthState:StepState=!hasData?'waiting':
     healthChecking?'running':hasError?'attention':
@@ -169,7 +186,7 @@ export function describeResearchUpdate(
     heading,explanation,action,tone,stages,
     source:{total,missing,withData,withoutAttention,needsReviewWithData,attention},
     never,failed,manual,config,interval,
-    nextRun,scientificChecking,downloading,hasData,
+    nextRun,scientificChecking,downloading,hasData,schedulerState,
   };
 }
 
