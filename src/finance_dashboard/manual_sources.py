@@ -278,6 +278,7 @@ class ManualSourceManager:
         self.active = False
         self._worker: Thread | None = None
         self.jobs: list[dict] = []
+        self.browser_profiles: dict[str, dict] = {}
         try:
             saved = json.loads(self.journal.read_text())
             for job in saved.get("jobs", [])[-80:]:
@@ -392,7 +393,8 @@ class ManualSourceManager:
             job = {"id": job_id, "dataset": dataset, "method": method,
                    "status": "queued", "created_at": datetime.now(timezone.utc).isoformat(),
                    "finished_at": None, "sources": [], "error_code": None,
-                   "downloaded": {}, "phase": "waiting"}
+                   "downloaded": {}, "failed_roles": {}, "manual_supplied": [],
+                   "phase": "waiting"}
             self.jobs.append(job)
             try:
                 self._save()
@@ -430,7 +432,7 @@ class ManualSourceManager:
             self._ensure_worker()
             return old["id"]
 
-    def fetch(self, dataset: str | None = None):
+    def fetch(self, dataset: str | None = None, browser: dict | None = None):
         specs = source_specs()
         if dataset is not None and dataset not in specs:
             raise ValueError("Unknown publisher download source")
@@ -449,6 +451,9 @@ class ManualSourceManager:
                     continue
                 token = self._enqueue(name, "publisher")
                 if token is not None:
+                    if browser and token not in self.browser_profiles:
+                        from .publisher_downloads import safe_browser_profile
+                        self.browser_profiles[token] = safe_browser_profile(browser)
                     queued.append({"dataset": name, "job_id": token})
         return {"jobs": queued, "skipped": skipped}
 
@@ -519,8 +524,10 @@ class ManualSourceManager:
         if dataset == "oecd-icio":
             self._run_icio(job, folder)
             return
-        downloads = dict(job.get("downloaded") or {}) if method == "publisher" else {}
+        from .publisher_downloads import PublisherDownloadError
+        downloads = dict(job.get("downloaded") or {}) if method in ("publisher", "hybrid") else {}
         if method == "publisher":
+            failed = {}
             for role in spec["roles"]:
                 role_id = role["id"]
                 path = folder / (role_id + ".bin")
@@ -528,13 +535,26 @@ class ManualSourceManager:
                 if (recorded and path.is_file() and not path.is_symlink()
                         and 0 < path.stat().st_size <= role["max_bytes"]
                         and sha256(path.read_bytes()).hexdigest() == recorded.get("sha256")):
-                    continue  # verified prior role: do not burn another publisher permit
+                    continue
                 downloads.pop(role_id, None)
-                detail = fetch_publisher_file(role, path)
-                downloads[role_id] = detail
+                try:
+                    detail = fetch_publisher_file(
+                        role, path, browser=self.browser_profiles.get(job["id"]))
+                    downloads[role_id] = detail
+                except PublisherDownloadError as exc:
+                    failed[role_id] = exc.code
                 with self.lock:
                     job["downloaded"] = dict(downloads)
+                    job["failed_roles"] = dict(failed)
                     self._save()
+            if failed:
+                with self.lock:
+                    job["status"] = "manual_required"
+                    job["phase"] = "waiting_for_manual_files"
+                    job["error_code"] = "publisher_files_unavailable"
+                    job["finished_at"] = datetime.now(timezone.utc).isoformat()
+                    self._save()
+                return
         with self.lock:
             job["status"] = "running"
             job["phase"] = "validating"
@@ -545,14 +565,30 @@ class ManualSourceManager:
             if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= role["max_bytes"]:
                 raise ProviderError("Queued original source file invalid")
             files[role["id"]] = path.read_bytes()
-        values = _parse_source(dataset, files)
+        try:
+            values = _parse_source(dataset, files)
+        except Exception:
+            if method == "publisher":
+                with self.lock:
+                    job["failed_roles"] = {role["id"]: "publisher_file_validation_failed"
+                                           for role in spec["roles"]}
+                    job["status"] = "manual_required"
+                    job["phase"] = "waiting_for_valid_originals"
+                    job["error_code"] = "publisher_original_invalid"
+                    job["finished_at"] = datetime.now(timezone.utc).isoformat()
+                    self._save()
+                return
+            raise
+        verified_download = bool(downloads) and len(downloads) == len(spec["roles"])
+        provenance_scope = ("publisher_https_source" if verified_download else
+                            "mixed_user_upload_and_publisher_https" if downloads else
+                            "user_uploaded_publisher_origin_unverified")
         if dataset == "msci-methodology":
             from .msci_regional_factsheets import store_manual_methodology
             digest, receipt = store_manual_methodology(
-                self.evidence, files["methodology"], publisher_download=bool(downloads))
+                self.evidence, files["methodology"], publisher_download=verified_download)
             evidence = {"kind": "local",
-                        "scope": ("publisher_https_source" if downloads else
-                                  "user_uploaded_publisher_origin_unverified"),
+                        "scope": provenance_scope,
                         "bundle_digest": digest, "receipt_name": receipt}
         elif dataset.startswith("msci-"):
             from .msci_regional_factsheets import (
@@ -561,10 +597,9 @@ class ManualSourceManager:
             original = spec["roles"][0]["download_url"]
             digest, receipt = store_manual_factsheet(
                 self.evidence, index, original, files["factsheet"],
-                publisher_download=bool(downloads))
+                publisher_download=verified_download)
             evidence = {"kind": "local",
-                        "scope": ("publisher_https_source" if downloads else
-                                  "user_uploaded_publisher_origin_unverified"),
+                        "scope": provenance_scope,
                         "bundle_digest": digest, "receipt_name": receipt}
             full = read_msci_regional_evidence(self.evidence)
             values = {sid: series_values(full, _definitions()[sid]["source_key"])
@@ -573,8 +608,7 @@ class ManualSourceManager:
             digest, receipt = _archive(self.evidence, dataset, files, spec["roles"],
                                        downloads=downloads or None)
             evidence = {"kind": "local",
-                        "scope": ("publisher_https_source" if downloads else
-                                  "user_uploaded_publisher_origin_unverified"),
+                        "scope": provenance_scope,
                         "bundle_digest": digest, "receipt_name": receipt}
         provider = _PreparedManualProvider(values, evidence, _definitions())
         ingest = IngestionService(self.engine, provider)
@@ -593,7 +627,7 @@ class ManualSourceManager:
         state = "complete" if all(x["status"] == "success" for x in results) else "partial"
         with self.lock:
             job.update(sources=results, status=state, archive_sha256=digest,
-                       origin_verified=bool(downloads),
+                       origin_verified=verified_download,
                        finished_at=datetime.now(timezone.utc).isoformat(),
                        phase="finished")
             self._save()
