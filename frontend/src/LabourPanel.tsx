@@ -61,7 +61,7 @@ function PayProductivity({ bundle, theme, recessions }: { bundle: Bundle<L01Valu
   </>;
 }
 
-const SPLIT_LABELS = { compensation: 'Wages and salaries', net_operating_surplus: 'Net profit', depreciation: 'Depreciation',
+const SPLIT_LABELS = { compensation: 'Compensation of employees', net_operating_surplus: 'Net operating surplus', depreciation: 'Depreciation', 
   net_production_taxes: 'Production taxes (net)', remainder: 'Unallocated remainder' };
 
 /** L02's lead graphic, shared with the overview. */
@@ -77,9 +77,10 @@ function ValueAddedSplit({ bundle, theme, recessions }: { bundle: Bundle<L02Valu
   return <>
     <div className="decision-hero">
       <SplitLead bundle={bundle} theme={theme}/>
-      <p className="decision-caption">Gross value added of non-financial corporations (OECD), latest year: wages, net operating surplus (profit
-        after depreciation), depreciation and net production taxes. A falling wage share leaves more for profits, which feeds earnings
-        growth assumptions.</p>
+      <p className="decision-caption">Gross value added of non-financial corporations (OECD): total compensation of employees (including employers' social contributions),
+        net operating surplus (not after-tax corporate net income), depreciation and net production taxes. This is an aggregate
+        factor-income accounting split, not median worker pay or disposable corporate profit. A lower labour share can coexist
+        with very different changes in typical wages, which require separate distributional earnings data.</p>
     </div>
     <h4 className="decision-subhead">Labour share of company value added</h4>
     <Grid panels={panels}/>
