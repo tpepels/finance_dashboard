@@ -10,6 +10,7 @@ type Correlations={
  n:number;first:string|null;last:string|null;frequency:'M'|'Q';
  pearson:number|null;spearman:number|null;
  illustrative_independent_sample_95pct_ci:[number,number]|null;
+ block_bootstrap_95pct_ci:[number,number]|null;confidence_method:string;
  rolling:Record<'3y'|'5y'|'10y',Line>;
  lead_lag:Lead[];regimes:Period[];
  scatter:{period:string;asset_change_pct:number;inflation_pct:number}[];
@@ -31,7 +32,8 @@ const TITLES:Record<string,string>={
  gas:'US natural gas, USD price',
  maize:'Maize, USD price',
  copper:'Copper, USD price',
- us_treasury_hypothetical_total_return_usd:'US 10-year yield-modelled sovereign return',
+ us_treasury_hypothetical_total_return_usd:'US 10-year yield-modelled sovereign return, USD',
+ us_treasury_hypothetical_total_return_eur:'US 10-year modelled sovereign return, unhedged EUR',
  equity_total_return_eur:'World equities, unhedged EUR net total return',
  gold_eur:'Gold, EUR monthly price',
  brent_eur:'Brent crude, EUR price',
@@ -92,9 +94,13 @@ function FullStatistics({c,theme,recessions,group,title}:{
    <p className="decision-caption">{title}: {c.n} matched annual-change observations,
     {c.first??'unknown'}–{c.last??'unknown'} ({c.frequency}).
     Pearson {num(c.pearson)}, Spearman {num(c.spearman)}.
+    {c.block_bootstrap_95pct_ci
+      ?' Moving-block 95% bootstrap interval '+c.block_bootstrap_95pct_ci.map(v=>num(v)).join(' to ')+
+       ' (serial-dependence-aware descriptive estimate, not causal uncertainty).'
+      :' Moving-block interval withheld: insufficient or degenerate matched observations.'}
     {c.illustrative_independent_sample_95pct_ci&&
       ' Naïve i.i.d. Fisher interval '+c.illustrative_independent_sample_95pct_ci.map(v=>num(v)).join(' to ')+
-      ' (not a serial-dependence-robust confidence bound).'}
+      ' (comparison only, not robust to overlapping annual changes).'}
    </p>
    <Scatter rows={c.scatter}/>
    {shown.length>0&&<TimePanel title={title+' — rolling correlations'}
