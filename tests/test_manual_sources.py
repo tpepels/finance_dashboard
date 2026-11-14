@@ -611,8 +611,24 @@ class ManualSourceTests(unittest.TestCase):
     def test_single_debug_zip_contains_complete_source_and_queue_evidence(self):
         from zipfile import ZipFile
         from io import BytesIO
-        response = self.client.get("/api/diagnostics/download")
+        # Archive preparation must not scan source evidence on the HTTP path.
+        self.assertEqual(self.client.get("/api/diagnostics/download").status_code, 202)
+        before = time.monotonic()
+        preparation = self.client.post("/api/diagnostics/prepare",
+                                       headers={"X-GCM-Action": "dashboard"})
+        self.assertEqual(preparation.status_code, 202, preparation.text)
+        self.assertLess(time.monotonic() - before, 2)
+        deadline = time.monotonic() + 15
+        ready = None
+        while time.monotonic() < deadline:
+            ready = self.client.get("/api/diagnostics/export-status").json()
+            if ready["state"] != "preparing":
+                break
+            time.sleep(.05)
+        self.assertEqual(ready["state"], "ready", ready)
+        response = self.client.get("/api/diagnostics/export-file")
         self.assertEqual(response.status_code, 200, response.text[:200])
+        self.assertEqual(self.client.get("/api/diagnostics/download").status_code, 200)
         with ZipFile(BytesIO(response.content)) as archive:
             names = set(archive.namelist())
             self.assertTrue({
@@ -643,7 +659,10 @@ class ManualSourceTests(unittest.TestCase):
                 "user_agent": "Mozilla/5.0 Chrome/157.0", "language": "en-US"}},
                 headers={"X-GCM-Action": "dashboard"})
             self.assertEqual(response.status_code, 202, response.text)
-            self.assertEqual(response.json()["source_repair"]["id"], "repair-job")
+            self.assertTrue(response.json()["id"])
+            self.assertEqual(response.json()["counts"]["total"], len(source_specs()))
+            self.assertEqual(self.client.get("/api/data/collection").json()["id"],
+                             response.json()["id"])
             self.assertEqual(fetch.call_args.kwargs["browser"]["language"], "en-US")
             self.assertEqual(submit.call_args.args[0], "repair_source_health")
 
