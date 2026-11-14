@@ -92,8 +92,8 @@ export default function DiagnosticsPanel() {
       <div className="diagnostics-foot">
         <small>Current build only. Earlier transient logs are reset on deployment;
           immutable source evidence is retained.</small>
-        <a href="/api/diagnostics/download" className="diagnostics-download" download>
-          Download debug ZIP
+        <a href="#diagnostics" className="diagnostics-download">
+          Open diagnostics &amp; administration
         </a>
       </div>
     </div>}
