@@ -60,6 +60,19 @@ def _utc() -> str:
 _RESOLVED = {"complete", "skipped"}
 _ACTIVE = {"queued", "downloading", "running", "deferred", "waiting", "cancelling"}
 
+_REPAIR_DETAILS = ("selected_sources", "issues_before", "issues_after",
+                   "resolved_issues", "failed_sources",
+                   "remaining_series_ids", "unavailable_source_mappings")
+
+
+def _repair_details(job: dict) -> dict:
+    """Public, bounded repair results; never expose original responses."""
+    result = job.get("result")
+    if not isinstance(result, dict):
+        return {}
+    return {field: result[field] for field in _REPAIR_DETAILS
+            if field in result}
+
 
 class CollectionWorkflow:
     def __init__(self, manual, maintenance, *, valid_sources: set[str],
@@ -181,9 +194,11 @@ class CollectionWorkflow:
                     if (self.current and self.current.get("id") == collection_id
                             and persisted and persisted.get("id") == collection_id):
                         self.current["repair_final"] = {
-                            key: job.get(key) for key in (
+                            **{key: job.get(key) for key in (
                                 "status", "completed", "total", "stage",
-                                "current_item", "error_code")}
+                                "current_item", "error_code")},
+                            "details": _repair_details(job),
+                        }
                         _write_json(self.path, self.current)
                 return
             # A release transition discards old operational summaries. A
@@ -343,8 +358,12 @@ class CollectionWorkflow:
         return {"id": record["id"], "state": state, "running": running,
                 "started_at": record["started_at"], "release": release_info(),
                 "counts": counts, "sources": sources, "manual_files": manual_files,
-                "repair": {key: repair.get(key) for key in
-                           ("status", "completed", "total", "stage", "current_item", "error_code")},
+                "repair": {
+                    **{key: repair.get(key) for key in (
+                        "status", "completed", "total", "stage",
+                        "current_item", "error_code")},
+                    "details": repair.get("details") or _repair_details(repair),
+                },
                 "startup_error": record.get("startup_error")}
 
 
