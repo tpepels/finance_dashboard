@@ -92,7 +92,9 @@ def role_resolution(role, counts, registry, *, external_coverage=None, artifact_
 
 
 def readiness_decision(analysis, requirements, acceptance, panels):
-    missing = [role["role"] for role in requirements
+    required = [role for role in requirements
+                if role.get("requirement_class") != "supplemental"]
+    missing = [role["role"] for role in required
                if role["state"] not in ("unavailable_with_fallback", "user_input")
                and any(check["state"] != "passed" for check in role["checks"]
                        if check["id"] in {"source_binding", "stored_history", "original_source_values", "native_dimensions"})]
@@ -124,7 +126,7 @@ def readiness_decision(analysis, requirements, acceptance, panels):
     if failures:
         reasons.append({"code": "original_scientific_failure", "count": len(failures)})
     open_gates = {}
-    for role in requirements:
+    for role in required:
         if role["state"] in ("accepted", "unavailable_with_fallback", "user_input"):
             continue
         for check in role["checks"]:
@@ -136,8 +138,13 @@ def readiness_decision(analysis, requirements, acceptance, panels):
         reasons.append({"code": "original_comparison_open",
                         "roles": acceptance["comparison"].get("uncovered_roles", [])})
     return {"id": analysis["id"], "decision": decision,
-        "original": {"decision": original, "scalar_bound_roles": sum(bool(r["series_ids"]) for r in requirements),
-                     "required_roles": len(requirements), "missing_or_partial_roles": missing,
+        "original": {"decision": original, "scalar_bound_roles": sum(bool(r["series_ids"]) for r in required),
+                     "required_roles": len(required),
+                     "supplemental_unaccepted_roles": sorted(
+                         r["role"] for r in requirements
+                         if r.get("requirement_class") == "supplemental"
+                         and r["state"] not in ("accepted", "unavailable_with_fallback")),
+                     "missing_or_partial_roles": missing,
                      "missing_scalar_roles": [r["role"] for r in requirements if r["role"] in missing and r["input_type"] == "scalar_history"],
                      "missing_structured_roles": [r["role"] for r in requirements if r["role"] in missing and r["input_type"] != "scalar_history"],
                      "accepted": acceptance["accepted"]},
