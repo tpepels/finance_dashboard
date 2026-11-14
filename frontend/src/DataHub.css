@@ -4,6 +4,20 @@
 .data-collection-heading p{font-size:13px;color:#64747b;line-height:1.5;margin:0}
 .data-collection-primary{padding:11px 18px;border-radius:5px;background:#214e5c;border:1px solid #214e5c;color:#fff;font-size:13px;font-weight:700;white-space:nowrap}
 .data-collection-primary:disabled{opacity:.65;cursor:not-allowed}
+.data-collection-auto{border-bottom:1px solid #dce5e5;padding:6px 0 18px;display:grid;gap:7px}
+.data-collection-auto strong{font-size:14px}
+.data-collection-auto p{font-size:13px;color:#5c7178;line-height:1.55;margin:0;max-width:76ch}
+.data-collection-auto small{font-size:12px;color:#60757c;line-height:1.5}
+.data-collection-advanced-actions{padding:0 0 8px;font-size:13px}
+.data-collection-advanced-actions summary,
+.data-collection-section>details>summary{cursor:pointer;font-weight:600;font-size:13px;color:inherit}
+.data-collection-advanced-actions p{font-size:12px;color:#5d7178;line-height:1.5;max-width:78ch}
+.data-collection-advanced-actions button{margin-top:6px}
+.data-collection-section>details>.data-collection-table-scroll{margin-top:13px}
+html[data-theme='dark'] .data-collection-auto{border-color:#42565d}
+html[data-theme='dark'] .data-collection-auto p,
+html[data-theme='dark'] .data-collection-auto small,
+html[data-theme='dark'] .data-collection-advanced-actions p{color:#b0c1c6}
 .data-collection-run,.data-collection-section{border:1px solid #d9e2e1;border-radius:7px;background:#fff;padding:20px 22px}
 .data-collection-run{display:grid;gap:21px}
 .data-collection-statusline{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
