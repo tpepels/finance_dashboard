@@ -17,7 +17,7 @@ class ProviderRegistryTests(unittest.TestCase):
         mapped = {row["provider"] for row in load_documents()[0]["series"]
                   if row["status"] == "mapped"}
         self.assertFalse(mapped - PROVIDER_CODES)
-        self.assertEqual(len(PROVIDER_CODES), 44)
+        self.assertEqual(len(PROVIDER_CODES), 45)
         for code, registration in PROVIDER_REGISTRY.items():
             self.assertTrue(callable(getattr(provider_adapters, registration.handler, None)))
             self.assertIn(registration.acquisition,
@@ -31,6 +31,7 @@ class ProviderRegistryTests(unittest.TestCase):
         from finance_dashboard.remaining_sources import MSCI_LEVELS_URL
         from finance_dashboard import euklems
         roots = {"OECD_CLI": (OECD_CLI_ROOT, "oecd-sdmx"),
+                 "OECD_EARNINGS": (provider_adapters.OECD_EARNINGS_ROOT, "oecd-sdmx"),
                  "OECD_NFC_ACCOUNTS": (provider_adapters.OECD_TABLE14_ROOT, "oecd-sdmx"),
                  "MSCI_NETR": (MSCI_LEVELS_URL, "msci-restricted-api"),
                  "EUKLEMS": (euklems.EUKLEMS_ROOT, "euklems-dropbox")}
