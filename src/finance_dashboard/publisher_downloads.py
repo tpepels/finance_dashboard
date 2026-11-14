@@ -31,6 +31,44 @@ _BROWSER_HEADERS = {
 }
 _REDIRECTS = {301, 302, 303, 307, 308}
 
+def safe_browser_profile(profile: dict | None) -> dict:
+    """Use explicit non-secret browser hints; never collect cookies or tokens."""
+    if not isinstance(profile, dict):
+        return {}
+    result = {}
+    for key, limit in (("user_agent", 350), ("language", 100), ("platform", 50)):
+        value = profile.get(key)
+        if (isinstance(value, str) and 0 < len(value) <= limit
+                and all(32 <= ord(ch) <= 126 for ch in value)):
+            result[key] = value
+    return result
+
+
+def browser_headers(profile: dict | None, url: str) -> dict:
+    hints = safe_browser_profile(profile)
+    headers = dict(_BROWSER_HEADERS)
+    if hints.get("user_agent", "").startswith("Mozilla/5.0"):
+        headers["User-Agent"] = hints["user_agent"]
+    if "language" in hints:
+        headers["Accept-Language"] = hints["language"]
+    headers["Upgrade-Insecure-Requests"] = "1"
+    headers["Sec-Fetch-Dest"] = "document"
+    headers["Sec-Fetch-Mode"] = "navigate"
+    headers["Sec-Fetch-Site"] = "none"
+    # Fixed publisher-owned landing pages are used only when the host is
+    # canonical. Never forward the user's dashboard URL as Referer.
+    from urllib.parse import urlsplit
+    host = urlsplit(url).hostname
+    referers = {
+        "webfs-sti.oecd.org": "https://www.oecd.org/en/data/datasets/inter-country-input-output-tables.html",
+        "dl.dropboxusercontent.com": "https://euklems-intanprod-llee.luiss.it/download/",
+        "www.msci.com": "https://www.msci.com/our-solutions/indexes",
+    }
+    if host in referers:
+        headers["Referer"] = referers[host]
+    return headers
+
+
 
 def _approved(initial: str, candidate: str) -> bool:
     source, target = urlsplit(initial), urlsplit(candidate)
@@ -49,7 +87,8 @@ def _approved(initial: str, candidate: str) -> bool:
             and target.path.startswith("/store/10.34894/YWT2IX/"))
 
 
-def fetch_publisher_file(role: dict, destination: Path, *, client: httpx.Client | None = None) -> dict:
+def fetch_publisher_file(role: dict, destination: Path, *, client: httpx.Client | None = None,
+                         browser: dict | None = None) -> dict:
     """Stream one registered publisher original to a private bounded staging file."""
     initial = role["download_url"]
     if not _approved(initial, initial):
@@ -58,7 +97,7 @@ def fetch_publisher_file(role: dict, destination: Path, *, client: httpx.Client 
     if own_client:
         client = managed_client(
             timeout=httpx.Timeout(connect=15, read=90, write=20, pool=15),
-            headers=_BROWSER_HEADERS, follow_redirects=False)
+            headers=browser_headers(browser, initial), follow_redirects=False)
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(destination.name + ".part")
     # A process may have stopped halfway through this immutable job. The
