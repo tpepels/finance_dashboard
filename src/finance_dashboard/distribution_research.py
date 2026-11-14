@@ -123,8 +123,8 @@ def wage_distribution(points:dict) -> dict:
         latest={kind:({"year":max(v).year,"value":v[max(v)]} if v else None)
                 for kind,v in values.items()}
         deciles=("p90_p10","p90_p50","p50_p10")
-        comparable=sorted(set.intersection(*(set(values[k]) for k in deciles)))
-                   if all(values[k] for k in deciles) else [])
+        comparable=(sorted(set.intersection(*(set(values[k]) for k in deciles)))
+                    if all(values[k] for k in deciles) else [])
         errors={d:abs(values["p90_p10"][d]-
                       values["p90_p50"][d]*values["p50_p10"][d])/
                       values["p90_p10"][d]
