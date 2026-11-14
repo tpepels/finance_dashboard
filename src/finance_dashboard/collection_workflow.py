@@ -69,6 +69,7 @@ class CollectionWorkflow:
         self.path = path or _path("FINANCE_DATA_COLLECTION_STATE", "data-collection.json")
         self.lock = Lock()
         self._repair_worker: Thread | None = None
+        self._repair_monitor: Thread | None = None
         saved = _read_json(self.path)
         self.current = saved if saved and saved.get("schema_version") == 1 else None
         if self.current and self.current.get("phase") == "starting":
@@ -97,6 +98,8 @@ class CollectionWorkflow:
                 and not self.current.get("maintenance_job_id")
                 and self.current.get("phase") == "started"):
             self._ensure_repair_worker()
+        elif self.current and self.current.get("maintenance_job_id"):
+            self._ensure_repair_monitor()
 
     def _ensure_repair_worker(self):
         """Deferred repair remains durable while unrelated maintenance is busy."""
@@ -135,7 +138,50 @@ class CollectionWorkflow:
                     self.current["maintenance_job_id"] = job["id"]
                     self.current["maintenance_initial"] = job["status"]
                     _write_json(self.path, self.current)
+                    self._ensure_repair_monitor()
             return
+
+    def _ensure_repair_monitor(self):
+        record = self.current
+        if (not record or not record.get("maintenance_job_id")
+                or record.get("repair_final")):
+            return
+        if self._repair_monitor is not None and self._repair_monitor.is_alive():
+            return
+        ident, job_id = record["id"], record["maintenance_job_id"]
+        # A mocked or expired maintenance reference is not observable; avoid
+        # starting a monitor that can never complete.
+        if not any(j.get("id") == job_id for j in self.maintenance.list()["jobs"]):
+            return
+        self._repair_monitor = Thread(
+            target=self._observe_repair, args=(ident, job_id),
+            name="gcm-collection-repair-outcome", daemon=True)
+        self._repair_monitor.start()
+
+    def _observe_repair(self, collection_id: str, job_id: str):
+        terminal = {"complete", "partial", "failed", "blocked", "cancelled", "interrupted"}
+        while True:
+            with self.lock:
+                if not self.current or self.current.get("id") != collection_id:
+                    return
+                if self.current.get("repair_final"):
+                    return
+            job = next((item for item in self.maintenance.list()["jobs"]
+                        if item.get("id") == job_id), None)
+            if job and job.get("status") in terminal:
+                with self.lock:
+                    if self.current and self.current.get("id") == collection_id:
+                        self.current["repair_final"] = {
+                            key: job.get(key) for key in (
+                                "status", "completed", "total", "stage",
+                                "current_item", "error_code")}
+                        _write_json(self.path, self.current)
+                return
+            # A release transition discards old operational summaries. A
+            # completed result already sealed in this record is retained.
+            if job is None:
+                return
+            time.sleep(2)
 
     def start(self, browser: dict | None = None) -> dict:
         from .manual_sources import source_specs
@@ -156,7 +202,7 @@ class CollectionWorkflow:
                      "job_id": None, "initial": "queued"}
                     for name, spec in specs.items()],
                 "maintenance_job_id": None, "maintenance_initial": "queued",
-                "startup_error": None,
+                "repair_final": None, "startup_error": None,
             }
             self.current = record
             _write_json(self.path, record)
@@ -204,9 +250,11 @@ class CollectionWorkflow:
                         row["initial"] = "skipped"
                         row["reason"] = "collection_start_failed"
             _write_json(self.path, record)
-            if (record["phase"] == "started" and
-                    record["maintenance_initial"] == "waiting"):
-                self._ensure_repair_worker()
+            if record["phase"] == "started":
+                if record["maintenance_initial"] == "waiting":
+                    self._ensure_repair_worker()
+                elif record.get("maintenance_job_id"):
+                    self._ensure_repair_monitor()
             return self._status_unlocked()
 
     def status(self) -> dict:
@@ -229,7 +277,8 @@ class CollectionWorkflow:
         repair = next((item for item in operation["jobs"]
                        if item.get("id") == record["maintenance_job_id"]), None)
         if repair is None and record["maintenance_job_id"]:
-            repair = {"status": "interrupted", "completed": 0, "total": None}
+            repair = record.get("repair_final") or {
+                "status": "interrupted", "completed": 0, "total": None}
         elif repair is None:
             repair = {"status": record["maintenance_initial"], "completed": 0, "total": None}
 
