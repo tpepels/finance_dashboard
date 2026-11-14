@@ -31,6 +31,21 @@ from .standalone import maintenance_network_lock
 
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.() -]{0,119}$")
 
+def _retry_transient_publisher_http(job: dict, role: str, code: str) -> int | None:
+    """Retry temporary publisher failures twice before asking for a manual file.
+
+    The policy transport records server backpressure and enforces its own
+    publisher-specific cooldown. This additional bounded delay ensures that
+    a 429 or a transient 5xx does not become an immediate human task.
+    """
+    if code not in {"publisher_http_429", "publisher_http_500",
+                    "publisher_http_502", "publisher_http_503",
+                    "publisher_http_504"}:
+        return None
+    previous = sum(attempt.get("role") == role and attempt.get("outcome") == code
+                   for attempt in job.get("attempts", []))
+    return 60 * (2 ** previous) if previous < 2 else None
+
 def _definitions() -> dict:
     return {row["id"]: row for row in load_documents()[0]["series"]}
 
@@ -582,6 +597,7 @@ class ManualSourceManager:
             self._run_icio(job, folder)
             return
         from .publisher_downloads import PublisherDownloadError
+        from .source_policy_types import PolicyDeferred
         downloads = dict(job.get("downloaded") or {}) if method in ("publisher", "hybrid") else {}
         if method == "publisher":
             from .source_policy import managed_client
@@ -605,13 +621,17 @@ class ManualSourceManager:
                     with self.lock:
                         job["current_role"] = role_id
                         self._save()
+                    retry_delay = None
                     try:
                         detail = fetch_publisher_file(
                             role, path, client=network, browser=profile)
                         downloads[role_id] = detail
                         result_code = "downloaded"
                     except PublisherDownloadError as exc:
-                        failed[role_id] = exc.code
+                        retry_delay = _retry_transient_publisher_http(
+                            job, role_id, exc.code)
+                        if retry_delay is None:
+                            failed[role_id] = exc.code
                         result_code = exc.code
                     with self.lock:
                         job["downloaded"] = dict(downloads)
@@ -623,6 +643,9 @@ class ManualSourceManager:
                         })
                         job["current_role"] = None
                         self._save()
+                    if retry_delay is not None:
+                        raise PolicyDeferred("publisher-http", result_code,
+                                             time.time() + retry_delay)
             if failed:
                 with self.lock:
                     job["status"] = "manual_required"
