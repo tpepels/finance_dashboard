@@ -3,6 +3,7 @@ import { breakGaps, entityName, timeChart, type Point, type Recession, type Them
 import { Dumbbells, PairBars, StackedShares, VariantSpread, type Variant } from './heroes';
 import TimePanel from './TimePanel';
 import WageResearchPanel,{type WageResearchValues} from './WageResearchPanel';
+import PikettyResearchPanel,{type PikettyValues} from './PikettyResearchPanel';
 import { Section, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
@@ -14,7 +15,7 @@ type L03Values = { economies: { area: string; first: number; first_year: string;
 type L05Values = { groups: { key: string; label: string; first: number | null; latest: number | null }[]; first_date: string | null;
   latest_date: string | null; history: Record<string, Line> };
 type L07Values = { economies: { area: string; then_year: string; latest_year: string; top1_then: number; top1_latest: number;
-  bottom50_then: number; bottom50_latest: number }[]; history: Record<string, { top1: Line; bottom50: Line }> };
+  bottom50_then: number; bottom50_latest: number }[]; history: Record<string, { top1: Line; bottom50: Line }>; piketty?: PikettyValues };
 
 type Spread = { min: number; max: number; variants: Variant[] } | null;
 type Method = 'io' | 'klems_io' | 'klems' | 'sea';
@@ -144,6 +145,8 @@ function Inequality({ bundle, theme, recessions }: { bundle: Bundle<L07Values>; 
     </div>
     <h4 className="decision-subhead">Top 1% (red) and bottom 50% (blue) shares of pre-tax income</h4>
     <Grid panels={panels}/>
+    {data.piketty&&<PikettyResearchPanel piketty={data.piketty} bundle={bundle}
+      theme={theme} recessions={recessions}/>}
   </>;
 }
 
