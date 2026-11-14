@@ -119,6 +119,33 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertNotEqual(new_run["id"], started["id"])
         self.assertEqual(manual.fetch_calls, 2)
 
+    def test_busy_maintenance_waits_and_then_runs_repair_without_second_click(self):
+        from finance_dashboard.maintenance import BusyMaintenance
+        class OccupiedMaintenance(StubMaintenance):
+            busy = True
+            def submit(self, action, options, *, valid_sources, valid_markets):
+                if self.busy:
+                    raise BusyMaintenance("unrelated maintenance is running")
+                return super().submit(action, options,
+                                      valid_sources=valid_sources,
+                                      valid_markets=valid_markets)
+        manual = StubManual()
+        maintenance = OccupiedMaintenance()
+        with patch("finance_dashboard.manual_sources.source_specs", return_value=SPECS):
+            manager = CollectionWorkflow(manual, maintenance,
+                                         path=self.root / "collection.json",
+                                         valid_sources=set(), valid_markets=set())
+            run = manager.start()
+        self.assertEqual(run["repair"]["status"], "waiting")
+        self.assertTrue(run["running"])
+        self.assertEqual(maintenance.calls, 0)
+        maintenance.busy = False
+        self.assertTrue(wait_for(
+            lambda: manager.status()["repair"]["status"] == "running", timeout=5))
+        self.assertEqual(maintenance.calls, 1)
+        self.assertEqual(manager.status()["id"], run["id"])
+        self.assertEqual(manager.status()["repair"]["total"], 17)
+
     def test_restart_after_interrupted_collection_start_does_not_leave_phantom_progress(self):
         from finance_dashboard.collection_workflow import _write_json
         path = self.root / "collection.json"
