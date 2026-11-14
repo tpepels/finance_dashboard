@@ -31,6 +31,31 @@ from .standalone import maintenance_network_lock
 
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.() -]{0,119}$")
 
+# Static, pinned originals should only be acquired once. Frequently revised
+# public source files need fresh bytes even after a successful earlier import.
+_REFRESH_SECONDS = {
+    "gold-spot": 3600,
+    "wid-world": 7 * 86400,
+    "euklems-us": 30 * 86400,
+    "msci-eafe": 7 * 86400,
+    "msci-europe": 7 * 86400,
+    "msci-japan": 7 * 86400,
+}
+
+def _recent_import(job: dict, dataset: str) -> bool:
+    """Whether a successful import is still fresh for global collection."""
+    if job.get("status") != "complete":
+        return False
+    interval = _REFRESH_SECONDS.get(dataset)
+    if interval is None:
+        return True
+    stamp = job.get("finished_at") or job.get("created_at")
+    try:
+        imported = datetime.fromisoformat(stamp).timestamp()
+    except (ValueError, TypeError):
+        return False
+    return time.time() - imported < interval
+
 def _retry_transient_publisher_http(job: dict, role: str, code: str) -> int | None:
     """Retry temporary publisher failures twice before asking for a manual file.
 
@@ -338,14 +363,19 @@ class ManualSourceManager:
         """
         retained = []
         completed = 0
-        # Errors and incomplete imports must remain available to the operator
-        # and diagnostic export until resolved, however old they are.
-        terminal = {"complete"}
+        # Retain one successful acquisition per source beyond the history
+        # window. Otherwise a restart forgets an old pinned OECD import and
+        # may download the entire edition again.
+        last_success = {}
+        for job in jobs:
+            if job.get("status") == "complete":
+                last_success[job["dataset"]] = job["id"]
         for job in reversed(jobs):
-            if job.get("status") in terminal:
-                if completed >= 80:
+            if job.get("status") == "complete":
+                if completed >= 80 and last_success.get(job["dataset"]) != job["id"]:
                     continue
                 completed += 1
+            # Errors and incomplete imports remain visible until resolved.
             retained.append(job)
         return list(reversed(retained))
 
@@ -505,18 +535,15 @@ class ManualSourceManager:
                 if not spec["roles"] and name != "oecd-icio":
                     skipped[name] = "dedicated_original_importer"
                     continue
-                if dataset is None and any(
-                        job["dataset"] == name and job["status"] == "complete"
-                        for job in self.jobs):
-                    skipped[name] = "already_imported"
-                    continue
+                latest = next((job for job in reversed(self.jobs)
+                               if job["dataset"] == name), None)
                 # Keep the existing partial spool and stable manual links. A
-                # second click must not hide an outstanding human upload behind
-                # a new publisher job for the same source.
-                if dataset is None and any(
-                        job["dataset"] == name and job["status"] == "manual_required"
-                        for job in self.jobs):
+                # second click must not hide an outstanding human upload.
+                if dataset is None and latest and latest["status"] == "manual_required":
                     skipped[name] = "manual_upload_pending"
+                    continue
+                if dataset is None and latest and _recent_import(latest, name):
+                    skipped[name] = "already_current_or_pinned"
                     continue
                 token = self._enqueue(name, "publisher")
                 if token is not None:
