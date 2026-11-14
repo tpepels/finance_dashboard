@@ -15,10 +15,9 @@ sh finance_dashboard/deploy.sh
 # This runs the build and deploy together with a distinct numeric version.
 ```
 
-Before replacing the running container, retain its image and a complete verified stopped-data recovery copy as described in the runbook. Then:
+Before replacing the running container, retain its image and a complete verified stopped-data recovery copy as described in the runbook. The deployment script performs the build and recreates the service only if the build succeeds. Afterward inspect the running service:
 
 ```bash
-rtk docker compose up -d --no-deps --wait --wait-timeout 120 finance-dashboard
 rtk docker compose ps finance-dashboard
 rtk docker compose logs --tail=100 finance-dashboard
 ```
