@@ -1,0 +1,41 @@
+.data-hub{display:grid;gap:26px;margin:12px 0 45px;color:inherit}
+.data-hub-header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:20px 0 24px;border-bottom:1px solid #d6dddc}
+.data-hub-header h2{font-size:27px;margin:0 0 7px;letter-spacing:-.035em}
+.data-hub-header p{font-size:13px;color:#68777d;line-height:1.55;margin:0;max-width:680px}
+.data-hub-primary{padding:12px 20px;background:#214e5c;color:#fff;border:1px solid #214e5c;border-radius:5px;font-size:13px;font-weight:700;white-space:nowrap}
+.data-hub-primary:hover:not(:disabled){background:#143b49}
+.data-hub-section{border:1px solid #d9e2e1;border-radius:7px;background:#fff;padding:20px 22px}
+.data-hub-section-title{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-bottom:13px}
+.data-hub-section-title h3{font-size:17px;letter-spacing:-.02em;margin:0}
+.data-hub-section-title span{color:#687c82;font-size:12px}
+.data-hub-table-scroll{overflow:auto}
+.data-hub th,.data-hub td{padding:12px 12px;border-bottom:1px solid #e9eeec;font-size:13px;white-space:normal;vertical-align:middle}
+.data-hub th{background:#f1f5f3;color:#415d66;font-weight:700;text-align:left;white-space:nowrap}
+.data-hub tr:last-child>td,.data-hub tr:last-child>th{border-bottom:0}
+.data-hub .data-hub-total th,.data-hub .data-hub-total td{font-weight:700;background:#f7f9f8}
+.data-hub-summary{font-size:13px;line-height:1.55;color:#3f555c;margin:16px 0 0}
+.data-hub-meta{font-size:11px;line-height:1.55;color:#74848a;margin:8px 0 0}
+.data-hub-upload{display:inline-flex;position:relative;align-items:center;white-space:nowrap;cursor:pointer;border:1px solid #bfd0d0;background:#f5f9f8;color:#245667;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:680}
+.data-hub-upload input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.data-hub-upload:focus-within{outline:3px solid #8caeb2;outline-offset:2px}
+.data-hub-upload:has(input:disabled){opacity:.5}
+.data-hub-error,.data-hub-notice{margin:0;font-size:12px;line-height:1.55}
+.data-hub-error{color:#a53b3b}.data-hub-notice{color:#47715a}
+.data-hub-debug-actions{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;padding-top:3px;border-top:1px solid #d7dfde;font-size:12px}
+.data-hub-debug-actions span{color:#6b7e84;margin-right:auto}
+.data-hub-debug-actions a,.data-hub-debug-actions button{border:1px solid #cddbd9;border-radius:4px;padding:9px 11px;background:transparent;color:#315e70;text-decoration:none;font-size:12px}
+.data-hub-debug-actions a:hover,.data-hub-debug-actions button:hover{background:#eef4f2}
+.data-hub-console{border:1px solid #bccbcc;border-radius:6px;overflow:hidden}
+.data-hub-console>div{display:flex;justify-content:space-between;gap:20px;padding:12px 15px;background:#e7eeed;font-size:12px}
+.data-hub-console small{color:#576c74}
+.data-hub-console pre{background:#101d23;color:#d9e6e4;font-size:11px;line-height:1.5;padding:18px;margin:0;max-height:65vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+html[data-theme='dark'] .data-hub-header{border-color:#39535a}
+html[data-theme='dark'] .data-hub-header p,html[data-theme='dark'] .data-hub-meta,html[data-theme='dark'] .data-hub-section-title span{color:#a0b3b8}
+html[data-theme='dark'] .data-hub-section{background:#1e3036;border-color:#43575e}
+html[data-theme='dark'] .data-hub th,html[data-theme='dark'] .data-hub .data-hub-total th,html[data-theme='dark'] .data-hub .data-hub-total td{background:#293f45;color:#d0dfe2}
+html[data-theme='dark'] .data-hub td{color:#d2dee0;border-color:#354c52}
+html[data-theme='dark'] .data-hub-summary,html[data-theme='dark'] .data-hub-debug-actions span{color:#b3c5c9}
+html[data-theme='dark'] .data-hub-debug-actions{border-color:#40565a}
+html[data-theme='dark'] .data-hub-debug-actions a,html[data-theme='dark'] .data-hub-debug-actions button{color:#a7d6e4;border-color:#4b6971}
+html[data-theme='dark'] .data-hub-console>div{background:#30474e}
+@media(max-width:700px){.data-hub-header,.data-hub-section-title{flex-direction:column;align-items:stretch}.data-hub-primary{width:100%}.data-hub-section{padding:14px 10px}.data-hub-table-scroll{overflow-x:auto}.data-hub th,.data-hub td{min-width:95px;padding:10px 8px;font-size:12px}}
