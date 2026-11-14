@@ -448,6 +448,31 @@ class ManualSourceTests(unittest.TestCase):
         self.assertNotIn("user_agent", safe_browser_profile(invalid))
         self.assertEqual(safe_browser_profile(invalid), {"language": "en-US"})
 
+    def test_single_debug_zip_contains_complete_source_and_queue_evidence(self):
+        from zipfile import ZipFile
+        from io import BytesIO
+        response = self.client.get("/api/diagnostics/download")
+        self.assertEqual(response.status_code, 200, response.text[:200])
+        with ZipFile(BytesIO(response.content)) as archive:
+            names = set(archive.namelist())
+            self.assertTrue({
+                "diagnostics/source-coverage.json",
+                "diagnostics/source-audit.csv",
+                "diagnostics/publisher-download-queue.json",
+                "diagnostics/manual-fallback-links.json",
+                "diagnostics/maintenance-complete.json",
+                "diagnostics/icio-accounting-failures.csv",
+                "diagnostics/original-method-audit.json",
+            }.issubset(names))
+            self.assertIn("release_id",
+                json.loads(archive.read("diagnostics/data-overview.json"))["release"])
+            self.assertIn("jobs",
+                json.loads(archive.read("diagnostics/publisher-download-queue.json")))
+        console = self.client.get("/api/data/debug-console")
+        self.assertEqual(console.status_code, 200)
+        self.assertIn("source_coverage", console.json())
+        self.assertIn("acquisition", console.json())
+
     def test_data_hub_start_one_action_submits_source_repair_and_original_batch(self):
         manager = self.client.app.state.manual_sources
         from finance_dashboard.maintenance import MaintenanceManager
