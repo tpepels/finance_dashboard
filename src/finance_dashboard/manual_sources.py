@@ -338,7 +338,9 @@ class ManualSourceManager:
         """
         retained = []
         completed = 0
-        terminal = {"complete", "partial", "failed", "interrupted"}
+        # Errors and incomplete imports must remain available to the operator
+        # and diagnostic export until resolved, however old they are.
+        terminal = {"complete"}
         for job in reversed(jobs):
             if job.get("status") in terminal:
                 if completed >= 80:
