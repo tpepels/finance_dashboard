@@ -37,12 +37,20 @@ class IngestionEvidenceTests(unittest.TestCase):
                 with httpx.Client(transport=httpx.MockTransport(respond)) as client:
                     gateway = SourceAcquisition(ProviderRouter(client), root / "evidence")
                     service = IngestionService(engine, gateway)
-                    first = service.refresh("bond.us.nominal_10y",
-                                            today=date(2025, 1, 1))
-                    second = service.refresh("bond.us.nominal_10y",
-                                             today=date(2025, 1, 1))
+                    with patch("finance_dashboard.data_change_bus.publish_change") as changed:
+                        first = service.refresh("bond.us.nominal_10y",
+                                                today=date(2025, 1, 1))
+                        second = service.refresh("bond.us.nominal_10y",
+                                                 today=date(2025, 1, 1))
                     self.assertEqual(first["versions_added"], 1)
                     self.assertEqual(second["versions_added"], 0)
+                    # Both commits, including a publisher check with no
+                    # newly published observation, trigger downstream evidence
+                    # assessment. Failed transactions must not publish.
+                    self.assertEqual(changed.call_count, 2)
+                    for args, _ in changed.call_args_list:
+                        self.assertIs(args[0], engine)
+                        self.assertEqual(args[1], "series_ingested")
                 with Session(engine) as session:
                     runs = session.scalars(select(IngestionRun).order_by(
                         IngestionRun.started_at, IngestionRun.id)).all()
