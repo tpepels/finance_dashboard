@@ -7,7 +7,8 @@ import unittest
 import httpx
 
 from finance_dashboard.publisher_downloads import (
-    PublisherDownloadError, _approved, fetch_publisher_file)
+    PublisherDownloadError, _approved, fetch_publisher_file,
+    browser_headers, safe_browser_profile)
 
 
 class PublisherDownloadTests(unittest.TestCase):
@@ -22,6 +23,20 @@ class PublisherDownloadTests(unittest.TestCase):
         client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=False)
         self.addCleanup(client.close)
         return client
+
+    def test_live_browser_headers_are_sanitized_and_no_cookies_are_forwarded(self):
+        profile = {"user_agent": "Mozilla/5.0 Chrome/157.0 Safari/537.36",
+                   "language": "en-GB,en", "platform": "Linux x86_64",
+                   "cookie": "secret", "authorization": "secret"}
+        headers = browser_headers(profile, self.url)
+        self.assertEqual(headers["User-Agent"], profile["user_agent"])
+        self.assertEqual(headers["Accept-Language"], "en-GB,en")
+        self.assertNotIn("Cookie", headers)
+        self.assertNotIn("Authorization", headers)
+        self.assertNotIn("cookie", headers)
+        bad = {"user_agent": "Mozilla/5.0\\r\\nInjected: secret",
+               "language": "en-US"}
+        self.assertNotIn("user_agent", safe_browser_profile(bad))
 
     def test_streams_and_hashes_publisher_bytes(self):
         raw = b"variable;year;value\nexample;2020;3.5\n"
