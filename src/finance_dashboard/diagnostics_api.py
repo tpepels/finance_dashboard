@@ -247,10 +247,26 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
 
     @app.get("/api/diagnostics")
     def diagnostics():
-        status, events, coverage = snapshot()
-        return {"status": status, "release": release_info(),
-                "console": _console(events),
-                "source_summary": coverage.get("summary", {})}
+        """Cheap status lamp; never recompute entire database coverage."""
+        release = release_info()
+        events = read_events(limit=400, since=release["activated_at"])
+        health = app.state.source_health_cache.status()
+        cached = health.get("snapshot") or {}
+        summaries = {
+            row["id"]: {
+                "total": row["total"], "with_data": row["with_data"],
+                "needs_attention": row["attention"],
+            } for row in cached.get("groups", [])
+        }
+        status = _status(events, {"summary": summaries},
+                         app.state.acceptance.loading, importer.running())
+        status["release_id"] = release["release_id"]
+        if not cached or health.get("state") == "unavailable":
+            status.update(colour="orange", label="Source health being calculated")
+        if health.get("error"):
+            status.update(colour="orange", label="Cached source-health refresh unavailable")
+        return {"status": status, "release": release,
+                "console": _console(events), "source_summary": summaries}
 
     @app.get("/api/data/debug-console")
     def data_debug_console():
