@@ -792,6 +792,10 @@ def create_app(engine=None) -> FastAPI:
     install_original_uploads(app, app.state.original_imports, persistent=persistent)
     from .manual_sources import install_manual_sources
     app.state.manual_sources = install_manual_sources(app, db, persistent=persistent)
+    from .data_hub import install_data_hub
+    install_data_hub(app, db=db, catalog=catalog, market_registry=market_registry,
+                     maintenance=maintenance, valid_sources=supported,
+                     valid_markets=set(market_registry))
     install_diagnostics(app, db=db, catalog=catalog, market_registry=market_registry,
                         maintenance=maintenance, importer=app.state.original_imports)
 
