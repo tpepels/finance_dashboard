@@ -19,8 +19,11 @@ const PANELS = {
 const Workbench = lazy(() => import('./Workbench'));
 const SavedViews = lazy(() => import('./SavedViews'));
 const SourceWorkspace = lazy(() => import('./SourceWorkspace'));
+const SourceExplorer = lazy(() => import('./SourceExplorer'));
+const DiagnosticsWorkspace = lazy(() => import('./DiagnosticsWorkspace'));
 const PRIMARY = [['overview', 'Dashboard'], ['workbench', 'Find a question'], ['saved-figures', 'Saved figures'],
-  ['research-sources', 'Source data']];
+  ['research-sources', 'Data collection'], ['source-explorer', 'Source Explorer'],
+  ['diagnostics', 'Diagnostics']];
 
 function initialTheme(): Theme {
   try {
@@ -83,7 +86,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', escape);
   }, [menuOpen]);
   useEffect(() => {
-    if (hash === '#source-coverage') window.dispatchEvent(new Event('gcm-open-data-manager'));
+    // The Data Collection page owns its own server-backed lifecycle.
     if (hash === '#portfolio-holdings') window.dispatchEvent(new Event('gcm-open-portfolio-holdings'));
     const targetId = hash === '#source-coverage' ? 'source-coverage'
       : isSourceExplorerHash(hash) ? hash.slice(1)
@@ -96,7 +99,7 @@ export default function App() {
       // Navigation focus is advisory. Never steal the cursor from an editor
       // that has become active while a lazily mounted workspace is loading.
       if (document.activeElement?.matches('input, textarea, select, [contenteditable="true"]')) return true;
-      if (hash === '#source-coverage' && element instanceof HTMLDetailsElement) element.open = true;
+      // Section deep links focus their own headings; no disclosure is forced open.
       if (!element.hasAttribute('tabindex')) element.tabIndex = -1;
       element.focus({ preventScroll: true });
       if (typeof element.scrollIntoView === 'function') element.scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -192,8 +195,16 @@ export default function App() {
           <Suspense fallback={null}><Panel key={selected.view} theme={theme} dataVersion={dataVersion}/></Suspense>
         </div>
       </ResearchSelection.Provider>}
-      {selected.view === 'research-sources' && <Suspense fallback={<p role="status" className="workspace-loading">Opening source data…</p>}>
-        <SourceWorkspace theme={theme} dataVersion={dataVersion} hash={hash}/>
+      {selected.view === 'research-sources' && <Suspense fallback={<p role="status" className="workspace-loading">Opening data collection…</p>}>
+        <SourceWorkspace/>
+      </Suspense>}
+      {selected.view === 'source-explorer' && <section id="source-explorer" tabIndex={-1}>
+        <Suspense fallback={<p role="status" className="workspace-loading">Opening source research…</p>}>
+          <SourceExplorer theme={theme} dataVersion={dataVersion}/>
+        </Suspense>
+      </section>}
+      {selected.view === 'diagnostics' && <Suspense fallback={<p role="status" className="workspace-loading">Opening diagnostics…</p>}>
+        <DiagnosticsWorkspace/>
       </Suspense>}
     </main>
     <footer className="research-footer"><span>Global Capital Monitor · Local economic research</span>
