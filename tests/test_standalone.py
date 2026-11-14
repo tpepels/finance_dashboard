@@ -58,6 +58,75 @@ class StandaloneContainerTests(TestCase):
         self.assertFalse(collected.is_set())
         self.assertEqual(stop.seconds, 86400)
 
+    def test_operator_sees_a_real_scheduled_wait_not_an_invented_countdown(self):
+        from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
+        from finance_dashboard.data_hub import automation_status
+
+        class Halt:
+            waiting_state = None
+
+            def is_set(self):
+                return False
+
+            def wait(self, seconds):
+                self.seconds = seconds
+                self.waiting_state = scheduled_refresh_status()
+                return True
+
+        with tempfile.TemporaryDirectory() as directory:
+            stop = Halt()
+            with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_REFRESH_ON_START="0",
+                          FINANCE_REFRESH_SCHEDULE_PATH=str(Path(directory) / "schedule.json"),
+                          REFRESH_INTERVAL_SECONDS="86400"),
+                  patch("finance_dashboard.standalone.time.time",
+                        return_value=1800000000.0),
+                  patch("finance_dashboard.worker.refresh_all") as refresh):
+                refresh_loop(None, stop, interval_seconds=86400,
+                             include_markets=False, refresh_wisesheets=False)
+                refresh.assert_not_called()
+                self.assertEqual(stop.waiting_state["refresh_state"], "waiting")
+                self.assertFalse(stop.waiting_state["refresh_running"])
+                self.assertEqual(
+                    stop.waiting_state["next_refresh_at"],
+                    "2027-01-16T08:00:00+00:00",
+                )
+                # Post-shutdown telemetry cannot assert that the worker is running.
+                self.assertEqual(scheduled_refresh_status()["refresh_state"], "stopped")
+                self.assertFalse(automation_status()["refresh_running"])
+            with environ(FINANCE_AUTO_REFRESH="0"):
+                self.assertEqual(automation_status()["refresh_state"], "disabled")
+                self.assertIsNone(automation_status()["next_refresh_at"])
+
+    def test_scheduled_refresh_records_active_collection_then_completion(self):
+        from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
+        from finance_dashboard.data_hub import automation_status
+
+        class Halt:
+            def is_set(self):
+                return False
+
+            def wait(self, seconds):
+                return True
+
+        witnessed = []
+
+        def collect(*args, **kwargs):
+            witnessed.append(scheduled_refresh_status())
+            return 0
+
+        with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_REFRESH_ON_START="1",
+                      FINANCE_VINTAGE_REFRESH="0", FINANCE_SEC_HOLDINGS_REFRESH="0",
+                      FINANCE_AUTO_BACKUP="0"),
+              patch("finance_dashboard.worker.refresh_all", side_effect=collect),
+              patch("finance_dashboard.data_change_bus.publish_change")):
+            refresh_loop(None, Halt(), interval_seconds=86400,
+                         include_markets=False, refresh_wisesheets=False)
+            self.assertEqual(len(witnessed), 1)
+            self.assertEqual(witnessed[0]["refresh_state"], "collecting")
+            self.assertTrue(witnessed[0]["refresh_running"])
+            self.assertFalse(automation_status()["refresh_running"])
+            self.assertIsNotNone(automation_status()["last_refresh_finished_at"])
+
     def test_deferred_schedule_survives_restarts_without_another_full_interval(self):
         import json
         from unittest.mock import patch
