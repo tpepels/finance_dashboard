@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import DataOperations from './DataOperations';
 import OriginalUploader from './OriginalUploader';
+import LimitationAssessment from './LimitationAssessment';
 
 /** Explicit developer view: no heavy diagnostic reads until requested. */
 export default function DiagnosticsWorkspace(){
@@ -30,6 +31,7 @@ export default function DiagnosticsWorkspace(){
       style={{maxHeight:'65vh',overflow:'auto',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>
       {busy?'Loading diagnostics…':content}
     </pre>}
+    <LimitationAssessment/>
     <DataOperations/>
     <OriginalUploader/>
   </section>;
