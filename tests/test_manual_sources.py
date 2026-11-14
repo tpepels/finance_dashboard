@@ -531,6 +531,9 @@ class ManualSourceTests(unittest.TestCase):
                    return_value={"wid-world": source_specs()["wid-world"]}):
             repeat = manager.fetch()
         self.assertEqual(repeat["skipped"]["wid-world"], "manual_upload_pending")
+        targeted = manager.fetch("wid-world")
+        self.assertEqual(targeted["jobs"], [])
+        self.assertEqual(targeted["skipped"]["wid-world"], "manual_upload_pending")
         self.assertEqual(len([job for job in manager.jobs
                               if job["dataset"] == "wid-world"]), 1)
         overview = self.client.get("/api/data/overview").json()
