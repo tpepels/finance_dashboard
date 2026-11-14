@@ -130,19 +130,43 @@ class AcceptanceCache:
         self._loaded_at = 0.0
         self._loading = False
         self._error: str | None = None
+        self._generation = 0
+        self._conflict_retries = 0
         self._lock = threading.Lock()
 
     def _run(self) -> None:
+        with self._lock:
+            generation = self._generation
         try:
             value, error = self._loader(), None
         except Exception as exc:  # any evaluation failure is reported, never cached as a value
             value, error = None, type(exc).__name__
         with self._lock:
-            self._loading = False
-            if value is not None:
-                self._value, self._loaded_at, self._error = value, self._clock(), None
+            # If evidence changed while the long evaluation ran, discard its
+            # result and immediately re-evaluate the newer generation. A
+            # one-off cross-process AcceptedInputsChanged can also be retried,
+            # but cap retries to avoid spinning against permanently unstable
+            # external evidence.
+            changed = generation != self._generation
+            conflict = error == "AcceptedInputsChanged" and self._conflict_retries < 2
+            if conflict and not changed:
+                self._conflict_retries += 1
+            elif changed:
+                self._conflict_retries = 0
+            if changed or conflict:
+                self._value, self._error = None, None
+                self._loading = True
+                again = True
             else:
-                self._error = error or "no snapshot"
+                self._loading = False
+                self._conflict_retries = 0
+                if value is not None:
+                    self._value, self._loaded_at, self._error = value, self._clock(), None
+                else:
+                    self._error = error or "no snapshot"
+                again = False
+        if again:
+            self._spawn(self._run)  # outside lock, preserving synchronous test spawns
 
     @property
     def loading(self) -> bool:
@@ -170,8 +194,13 @@ class AcceptanceCache:
         self.warm()
 
     def invalidate(self) -> None:
-        """Known changed inputs must not use the previous assessment."""
+        """Known changed inputs must not use the previous assessment.
+
+        Generation tracking prevents a concurrent long evaluation from
+        publishing a snapshot built before the latest ingestion.
+        """
         with self._lock:
+            self._generation += 1
             self._value = None
             self._error = None
         self.warm()
