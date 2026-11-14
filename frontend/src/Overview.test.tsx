@@ -34,7 +34,7 @@ describe('Overview', () => {
     render(<Overview theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByText(/1 of 1 economies in expansion/)).toBeTruthy());
     expect(document.querySelectorAll('.dashboard-topic')).toHaveLength(8);
-    expect(document.querySelectorAll('.dashboard-questions a')).toHaveLength(37);
+    expect(document.querySelectorAll('.dashboard-questions a')).toHaveLength(39);
     expect(screen.getByRole('heading', { name: 'Growth & inflation' })).toBeTruthy();
     expect(screen.getByText('In 2026-10 the US CAPE was 40.7.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Open M01: full analysis' }).getAttribute('href')).toBe('#q-M01');
