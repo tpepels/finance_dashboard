@@ -70,6 +70,28 @@ class CollectionWorkflow:
         self.lock = Lock()
         saved = _read_json(self.path)
         self.current = saved if saved and saved.get("schema_version") == 1 else None
+        if self.current and self.current.get("phase") == "starting":
+            # An interrupted orchestration cannot remain 'starting' forever
+            # across restarts. Recover jobs that were queued before the crash.
+            with self.manual.lock:
+                recent = list(reversed(self.manual.jobs))
+            for entry in self.current.get("entries", []):
+                if entry.get("job_id"):
+                    continue
+                job = next((item for item in recent
+                            if item.get("dataset") == entry.get("dataset")
+                            and item.get("created_at", "") >=
+                                self.current.get("started_at", "~")), None)
+                if job:
+                    entry["job_id"] = job["id"]
+                else:
+                    entry["initial"] = "skipped"
+                    entry["reason"] = "collection_start_interrupted"
+            self.current["phase"] = "failed"
+            self.current["startup_error"] = "collection_start_interrupted"
+            if not self.current.get("maintenance_job_id"):
+                self.current["maintenance_initial"] = "interrupted"
+            _write_json(self.path, self.current)
 
     def start(self, browser: dict | None = None) -> dict:
         from .manual_sources import source_specs
@@ -122,8 +144,21 @@ class CollectionWorkflow:
             except Exception:
                 record["phase"] = "failed"
                 record["startup_error"] = "collection_start_failed"
-                # Already queued jobs continue independently if startup partially
-                # succeeds; their IDs remain attached to the durable record.
+                if not record.get("maintenance_job_id"):
+                    record["maintenance_initial"] = "failed"
+                with self.manual.lock:
+                    recent = list(reversed(self.manual.jobs))
+                for row in record["entries"]:
+                    if row.get("job_id"):
+                        continue
+                    job = next((item for item in recent
+                                if item.get("dataset") == row["dataset"]
+                                and item.get("created_at", "") >= record["started_at"]), None)
+                    if job:
+                        row["job_id"] = job["id"]
+                    else:
+                        row["initial"] = "skipped"
+                        row["reason"] = "collection_start_failed"
             _write_json(self.path, record)
             return self._status_unlocked()
 
@@ -191,10 +226,11 @@ class CollectionWorkflow:
         }
         repair_running = repair["status"] in _ACTIVE
         running = (record["phase"] == "starting" or counts["active"] > 0 or repair_running)
-        state = ("running" if running else "needs_attention" if
-                 counts["failed"] or counts["manual_required"] or
-                 repair["status"] in ("failed", "partial", "blocked", "interrupted") else
-                 "complete" if record["phase"] != "failed" else "failed")
+        state = ("running" if running else
+                 "failed" if record.get("startup_error") else
+                 "needs_attention" if (counts["failed"] or counts["manual_required"] or
+                     repair["status"] in ("failed", "partial", "blocked", "interrupted"))
+                 else "complete")
         return {"id": record["id"], "state": state, "running": running,
                 "started_at": record["started_at"], "release": release_info(),
                 "counts": counts, "sources": sources, "manual_files": manual_files,
