@@ -15,16 +15,16 @@ from .catalog import DEFAULT_ROOT
 from .comparative_corpus import CHECK_IDS
 from .research_readiness import ARTIFACT_IDS, INPUT_TYPES, role_resolution, readiness_decision, resolution_summary
 
-FAMILIES = {"C": 5, "M": 3, "F": 7, "V": 4, "L": 6, "G": 5, "P": 7}
-# Exact owner-approved first-class IDs (35 + P06/P07 since the 2026-11-06
-# Phase 1 revision): per-family totals alone do not
-# detect a wrong replacement within a family.
+FAMILIES = {"C": 6, "M": 3, "F": 7, "V": 4, "L": 7, "G": 5, "P": 7}
+# Owner-approved baseline (35 + P06/P07 from November 6) and the
+# November 14 research expansion (L08/C07). Keep exact membership strict:
+# family totals alone do not catch a wrong replacement.
 APPROVED_ANALYSIS_IDS = frozenset((
-    "C01", "C02", "C03", "C05", "C06",
+    "C01", "C02", "C03", "C05", "C06", "C07",
     "M01", "M02", "M04",
     "F01", "F02", "F03", "F04", "F05", "F06", "F07",
     "V01", "V02", "V03", "V05",
-    "L01", "L02", "L03", "L04", "L05", "L07",
+    "L01", "L02", "L03", "L04", "L05", "L07", "L08",
     "G01", "G02", "G03", "G05", "G06",
     "P01", "P02", "P03", "P04", "P05", "P06", "P07",
 ))  # P06/P07: EUR investor decision layer, Phase 1 revision 2026-11-06
