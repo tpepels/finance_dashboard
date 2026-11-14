@@ -109,6 +109,18 @@ describe('research update waiting-state journey',()=>{
     expect(screen.getByText(/deferred or failed attempts/)).toBeTruthy();
   });
 
+  it('does not label vintage or backup maintenance as active macro collection',()=>{
+    const checking=missing({automation:{
+      scheduled_refresh_enabled:true,interval_seconds:86400,
+      refresh_running:true,refresh_state:'collecting',refresh_stage:'vintage',
+      last_error_code:null,next_refresh_at:null,
+    }});
+    const model=describeResearchUpdate(checking,null);
+    expect(model.heading).toBe('Source collection stage finished; other maintenance is running');
+    expect(model.tone).toBe('waiting');
+    expect(model.stages[0].state).toBe('waiting');
+  });
+
   it('does not recommend waiting when the configured automatic scheduler has not started',()=>{
     const missingWorker=missing({
       automation:{scheduled_refresh_enabled:true,interval_seconds:86400,
