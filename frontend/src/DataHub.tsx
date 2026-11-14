@@ -45,6 +45,7 @@ const fmt=(value:number)=>value.toLocaleString();
 export default function DataHub(){
   const [overview,setOverview]=useState<Overview|null>(null);
   const [error,setError]=useState('');
+  const [loadError,setLoadError]=useState('');
   const [notice,setNotice]=useState('');
   const [starting,setStarting]=useState(false);
   const [uploading,setUploading]=useState<Record<string,string>>({});
@@ -78,8 +79,8 @@ export default function DataHub(){
             window.dispatchEvent(new Event('gcm-data-updated'));
           seen.current.set(job.dataset,job.status);
         }
-        setOverview(data);setError('');
-      }catch(e){if(mounted)setError(e instanceof Error?e.message:'Unable to read Data status');}
+        setOverview(data);setLoadError('');
+      }catch(e){if(mounted)setLoadError(e instanceof Error?e.message:'Unable to read Data status');}
     };
     void load();
     const interval=window.setInterval(()=>void load(),5000);
@@ -243,7 +244,7 @@ export default function DataHub(){
       </div>
     </section>}
 
-    {error&&<p className="data-hub-error" role="alert">{error}</p>}
+    {(error||loadError)&&<p className="data-hub-error" role="alert">{error||loadError}</p>}
     {notice&&<p className="data-hub-notice" role="status">{notice}</p>}
     <div className="data-hub-debug-actions">
       <span>Need an agent to investigate? Export the complete redacted diagnostic bundle.</span>
