@@ -378,6 +378,70 @@ class ManualSourceTests(unittest.TestCase):
             self.assertEqual(counts, {"data": 1, "metadata": 2})
             self.assertEqual(len(result["sources"]), 5)
 
+    def test_transient_http_429_retries_without_turning_into_manual_fallback(self):
+        from finance_dashboard.publisher_downloads import PublisherDownloadError
+        from hashlib import sha256
+        data, meta = wid_fixtures("WO", legacy=True)
+        payloads = {"data": data.encode(), "metadata": meta.encode()}
+        calls = {"data": 0, "metadata": 0}
+        def remote(role, destination, browser=None, client=None):
+            key = role["id"]
+            calls[key] += 1
+            if key == "metadata" and calls[key] == 1:
+                raise PublisherDownloadError("publisher_http_429")
+            raw = payloads[key]
+            destination.write_bytes(raw)
+            return {"requested_url": role["download_url"],
+                    "final_url": role["download_url"],
+                    "sha256": sha256(raw).hexdigest(), "bytes": len(raw),
+                    "content_type": "text/csv",
+                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat()}
+        with (patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
+                    side_effect=remote),
+              patch("finance_dashboard.manual_sources._retry_transient_publisher_http",
+                    return_value=.05)):
+            response = self.client.post("/api/manual-sources/fetch?dataset=wid-world",
+                                        headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(response.status_code, 202, response.text)
+            result = finished(self.client, "wid-world", duration=6)
+        self.assertEqual(result["status"], "complete", result)
+        self.assertEqual(calls, {"data": 1, "metadata": 2})
+        self.assertEqual(result["failed_roles"], {})
+        self.assertTrue(any(a["outcome"] == "publisher_http_429"
+                            for a in result["attempts"]))
+
+    def test_unfinished_manual_upload_survives_more_than_80_later_jobs(self):
+        from finance_dashboard.manual_sources import ManualSourceManager
+        manager = self.client.app.state.manual_sources
+        pending_id = "00000000000000000000000000000001"
+        job = {"id": pending_id, "dataset": "wid-world",
+               "method": "publisher", "status": "manual_required",
+               "failed_roles": {"metadata": "publisher_http_403"},
+               "downloaded": {}, "manual_supplied": [], "sources": [],
+               "attempts": [], "created_at": datetime.now(timezone.utc).isoformat()}
+        folder = manager._job_dir(pending_id)
+        folder.mkdir(parents=True)
+        with manager.lock:
+            manager.jobs = [job] + [
+                {"id": f"{i+100:032x}", "dataset": "gold-spot",
+                 "method": "publisher", "status": "complete", "sources": [],
+                 "created_at": datetime.now(timezone.utc).isoformat()}
+                for i in range(100)]
+            manager._save()
+            visible = manager._retained_jobs(manager.jobs)
+        self.assertEqual(len(visible), 81)
+        self.assertEqual(visible[0]["id"], pending_id)
+        restored = ManualSourceManager(self.engine, stage=manager.stage,
+                                       evidence=manager.evidence,
+                                       journal=manager.journal)
+        status = restored.status()
+        self.assertEqual(len(status["jobs"]), 81)
+        self.assertTrue(any(item["id"] == pending_id and
+                            item["failed_roles"]["metadata"] == "publisher_http_403"
+                            for item in status["jobs"]))
+        self.assertEqual(sum(item["status"] == "manual_required"
+                             for item in status["jobs"]), 1)
+
     def test_complete_staged_files_from_prior_release_are_imported_on_startup(self):
         from finance_dashboard.manual_sources import ManualSourceManager
         data, meta = wid_fixtures("WO", legacy=True)
