@@ -555,6 +555,22 @@ class ManualSourceTests(unittest.TestCase):
                          {"data": "publisher_https", "metadata": "user_upload"})
         self.assertEqual(len(result["sources"]), 5)
 
+    def test_transient_publisher_backoff_has_two_retries_then_manual_fallback(self):
+        from finance_dashboard.manual_sources import _retry_transient_publisher_http
+        job = {"attempts": []}
+        self.assertEqual(_retry_transient_publisher_http(
+            job, "metadata", "publisher_http_429"), 60)
+        job["attempts"].append({"role": "metadata", "outcome": "publisher_http_429"})
+        self.assertEqual(_retry_transient_publisher_http(
+            job, "metadata", "publisher_http_429"), 120)
+        job["attempts"].append({"role": "metadata", "outcome": "publisher_http_429"})
+        self.assertIsNone(_retry_transient_publisher_http(
+            job, "metadata", "publisher_http_429"))
+        self.assertIsNone(_retry_transient_publisher_http(
+            job, "metadata", "publisher_http_403"))
+        self.assertEqual(_retry_transient_publisher_http(
+            job, "data", "publisher_network_error"), 60)
+
     def test_non_uploadable_publisher_error_routes_to_agent_not_manual_queue(self):
         from finance_dashboard.publisher_downloads import PublisherDownloadError
         from hashlib import sha256
