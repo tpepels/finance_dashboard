@@ -380,6 +380,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                                   importer.public_status())
         failure_csv, failure_manifest = _accounting_failures_csv(
             source_audit, release["release_id"])
+        from .icio_dependency_audit import classify_icio_dependencies
+        dependencies = classify_icio_dependencies(source_audit)
         limits = limitation_assessment(coverage, failure_manifest)
         bundle = BytesIO()
         with ZipFile(bundle, "w", compression=ZIP_DEFLATED) as archive:
@@ -393,6 +395,7 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             put("diagnostics/console.json", _console(events))
             put("diagnostics/events.json", events)
             put("diagnostics/source-coverage.json", {**coverage, "release": release})
+            put("diagnostics/icio-consumer-dependencies.json", dependencies)
             put("diagnostics/limitation-assessment.json", limits)
             put("diagnostics/research-limitation-matrix.json", {
                 "scientific_acceptance": limits["scientific_acceptance"],
