@@ -725,6 +725,21 @@ def fetch_oecd_cli(self, series_id, start, item, key):
                          parse_oecd_cli_csv(response.text, *exact, start=start))
 
 
+def fetch_oecd_earnings(self, series_id, start, item, key):
+    """Exact OECD annual full-time earnings ratios, using governed SDMX."""
+    exact = OECD_EARNINGS_SERIES.get(series_id)
+    if exact is None or key != oecd_earnings_key(*exact):
+        raise SourceUnavailable("OECD earnings ratio/median source identity changed")
+    flow, area, operation = exact
+    response = self._get(
+        f"{OECD_EARNINGS_ROOT}/{key}",
+        params={"format": "csvfile"},
+        headers={"Accept": "text/csv"})
+    values = parse_oecd_earnings_csv(response.text, flow, area, operation,
+                                     start=start)
+    return FetchedSeries(series_id, str(response.request.url), None, values)
+
+
 def fetch_imf_bop_iip(self, series_id, start, item, key):
     """Validate and fetch native data for IMF_BOP_IIP."""
     provider = item["provider"]
