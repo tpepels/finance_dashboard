@@ -274,7 +274,10 @@ def inflation_assets(points:dict, *,today:date|None=None)->dict:
                       "real_yoy":{t:100*((1+changes[t]/100)/(1+hicp_yoy[t]/100)-1)
                                    for t in changes if t in hicp_yoy and hicp_yoy[t]>-100}}
     housing={}
-    for country,denominator in (("us",cpi),("ea",hicp),("de",None),("pt",None),("jp",None)):
+    de_hicp=_calendar_map(points.get("de_hicp",[]))
+    pt_hicp=_calendar_map(points.get("pt_hicp",[]))
+    for country,denominator in (("us",cpi),("ea",hicp),("de",de_hicp),
+                                ("pt",pt_hicp),("jp",None)):
         source=_quarterly_change(points.get(f"housing:{country}",[]))
         yoy=_annual_change(source,4)
         inflation=_annual_change(_quarter_averages(denominator),4) if denominator else {}
