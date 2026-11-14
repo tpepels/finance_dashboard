@@ -110,7 +110,7 @@ def calculate_build(*, package_dir: Path | None = None,
             with path.open("rb") as stream:
                 for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                     digest.update(chunk)
-    for name in ("pyproject.toml", "uv.lock", "start.sh", "alembic.ini"):
+    for name in ("pyproject.toml", "uv.lock", "start.sh", "deploy.sh", "alembic.ini"):
         path = app / name
         if path.is_file() and not path.is_symlink():
             digest.update((name + "\0").encode())
