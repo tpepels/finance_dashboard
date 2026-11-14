@@ -50,6 +50,81 @@ class ReleaseStateTests(unittest.TestCase):
             self.assertNotEqual(second["release_id"],
                                 calculate_build(package_dir=pkg, application_root=root)["release_id"])
 
+    def test_numeric_version_increases_for_every_distinct_image_but_not_restart(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state = root / "maintenance" / "active-release.json"
+            events = root / "maintenance" / "events.jsonl"
+            first_image = {"version": "0.2.0", "build": "aaaaaaaaaaaaaaaa",
+                           "release_id": "0.2.0+aaaaaaaaaaaaaaaa"}
+            next_image = {"version": "0.2.0", "build": "bbbbbbbbbbbbbbbb",
+                          "release_id": "0.2.0+bbbbbbbbbbbbbbbb"}
+            third_image = {"version": "0.2.0", "build": "cccccccccccccccc",
+                           "release_id": "0.2.0+cccccccccccccccc"}
+            with patch("finance_dashboard.runtime_release._state_path", return_value=state):
+                with patch("finance_dashboard.runtime_release.build_info",
+                           return_value=first_image):
+                    first = activate_release(state_path=state, diagnostics_path=events,
+                                             activated_at=AT_A)
+                    self.assertEqual(first["version"], "0.2.1")
+                    self.assertEqual(first["release_id"], "0.2.1+aaaaaaaaaaaaaaaa")
+                    self.assertEqual(first["build_number"], 1)
+                    self.assertEqual(release_info()["release_id"], first["release_id"])
+                    events.write_text("keep-if-restarted")
+                    restart = activate_release(state_path=state, diagnostics_path=events,
+                                               activated_at=AT_B)
+                    self.assertFalse(restart["changed"])
+                    self.assertEqual(restart["version"], "0.2.1")
+                    self.assertEqual(events.read_text(), "keep-if-restarted")
+                with patch("finance_dashboard.runtime_release.build_info",
+                           return_value=next_image):
+                    second = activate_release(state_path=state, diagnostics_path=events,
+                                              activated_at=AT_B)
+                    self.assertEqual(second["version"], "0.2.2")
+                    self.assertEqual(second["build_number"], 2)
+                    self.assertEqual(events.read_text(), "")
+                    self.assertEqual(release_info()["release_id"], "0.2.2+bbbbbbbbbbbbbbbb")
+                with patch("finance_dashboard.runtime_release.build_info",
+                           return_value=third_image):
+                    third = activate_release(state_path=state, diagnostics_path=events,
+                                             activated_at="2026-11-13T12:00:00+00:00")
+                    self.assertEqual(third["version"], "0.2.3")
+                    self.assertEqual(third["build_number"], 3)
+            saved = json.loads(state.read_text())
+            self.assertEqual(saved["build_number"], 3)
+            self.assertEqual(saved["version"], "0.2.3")
+            self.assertEqual(saved["image_build"], "cccccccccccccccc")
+
+    def test_legacy_release_migrates_to_numbered_release_without_resetting_data(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state = root / "active-release.json"
+            events = root / "events.jsonl"
+            activate_release(identity=A, state_path=state, diagnostics_path=events,
+                             activated_at=AT_A)
+            with patch("finance_dashboard.runtime_release.build_info", return_value=B):
+                updated = activate_release(state_path=state, diagnostics_path=events,
+                                           activated_at=AT_B)
+            self.assertEqual(updated["version"], "0.2.1")
+            self.assertEqual(updated["build_number"], 1)
+
+    def test_deliberate_rebuild_of_identical_sources_uses_build_nonce(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            pkg = root / "pkg"
+            pkg.mkdir()
+            (pkg / "module.py").write_text("enabled = True")
+            with patch.dict(os.environ, {"FINANCE_BUILD_NONCE": "build-a"}):
+                first = calculate_build(package_dir=pkg, application_root=root)
+                self.assertEqual(first, calculate_build(package_dir=pkg, application_root=root))
+            with patch.dict(os.environ, {"FINANCE_BUILD_NONCE": "build-b"}):
+                second = calculate_build(package_dir=pkg, application_root=root)
+            self.assertNotEqual(first["build"], second["build"])
+            self.assertEqual(first["version"], second["version"])
+            with patch.dict(os.environ, {"FINANCE_BUILD_NONCE": "not-a-valid-nonce!"}):
+                with self.assertRaisesRegex(ValueError, "invalid_build_nonce"):
+                    calculate_build(package_dir=pkg, application_root=root)
+
     def test_first_activation_clears_legacy_events_but_not_scientific_evidence(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -136,7 +211,8 @@ class ReleaseStateTests(unittest.TestCase):
                 build_info.cache_clear()
                 try:
                     activation = activate_release(activated_at=AT_A)
-                    self.assertEqual(activation["release_id"], A["release_id"])
+                    self.assertEqual(activation["version"], "0.2.1")
+                    expected_release_id = activation["release_id"]
                     record_event("sync", "finished", status="complete", action="sync_history")
                     legacy = {"id":"pre-release", "action":"sync_current", "status":"complete",
                               "created_at":"2026-11-12T10:00:00+00:00"}
@@ -151,8 +227,8 @@ class ReleaseStateTests(unittest.TestCase):
                         with TestClient(create_app(engine)) as client:
                             status = client.get("/api/diagnostics")
                             self.assertEqual(status.status_code, 200)
-                            self.assertEqual(status.json()["release"]["release_id"], A["release_id"])
-                            self.assertEqual(status.json()["status"]["release_id"], A["release_id"])
+                            self.assertEqual(status.json()["release"]["release_id"], expected_release_id)
+                            self.assertEqual(status.json()["status"]["release_id"], expected_release_id)
                             self.assertEqual(status.json()["console"][-1]["level"], "info")
                             developer = client.get("/api/developer-log")
                             self.assertEqual(developer.status_code, 200)
@@ -160,11 +236,11 @@ class ReleaseStateTests(unittest.TestCase):
                             self.assertEqual(developer.json()["events"][-1]["event"], "finished")
                             coverage = client.get("/api/source-coverage")
                             self.assertEqual(coverage.status_code, 200)
-                            self.assertEqual(coverage.json()["release"]["release_id"], A["release_id"])
+                            self.assertEqual(coverage.json()["release"]["release_id"], expected_release_id)
                             maintenance = client.get("/api/maintenance").json()
                             imports = client.get("/api/originals").json()
-                            self.assertEqual(maintenance["release"]["release_id"], A["release_id"])
-                            self.assertEqual(imports["release"]["release_id"], A["release_id"])
+                            self.assertEqual(maintenance["release"]["release_id"], expected_release_id)
+                            self.assertEqual(imports["release"]["release_id"], expected_release_id)
                             self.assertEqual(maintenance["jobs"], [])
                             self.assertEqual(imports["jobs"], [])
                             self.assertTrue((root / "maintenance" / "jobs.json").is_file())
@@ -183,21 +259,21 @@ class ReleaseStateTests(unittest.TestCase):
                             self.assertEqual(state["state"], "ready", state)
                             export = client.get("/api/diagnostics/export-file")
                             self.assertEqual(export.status_code, 200)
-                            self.assertIn(A["release_id"], export.headers["content-disposition"])
+                            self.assertIn(expected_release_id, export.headers["content-disposition"])
                             with ZipFile(BytesIO(export.content)) as archive:
                                 meta = json.loads(archive.read("diagnostics/release.json"))
-                                self.assertEqual(meta["release_id"], A["release_id"])
+                                self.assertEqual(meta["release_id"], expected_release_id)
                                 self.assertTrue(meta["immutable_evidence_preserved"])
-                                self.assertIn(A["release_id"], archive.read("README.txt").decode())
+                                self.assertIn(expected_release_id, archive.read("README.txt").decode())
                                 self.assertEqual(json.loads(archive.read(
-                                    "diagnostics/status.json"))["release_id"], A["release_id"])
+                                    "diagnostics/status.json"))["release_id"], expected_release_id)
                                 self.assertIn("diagnostics/icio-accounting-failures.csv",
                                               archive.namelist())
                                 failure_manifest = json.loads(archive.read(
                                     "diagnostics/icio-accounting-failures-manifest.json"))
                                 self.assertTrue(failure_manifest["complete_for_exported_matrices"])
                                 self.assertEqual(failure_manifest["failure_equations_exported"], 0)
-                                self.assertIn(A["release_id"], archive.read(
+                                self.assertIn(expected_release_id, archive.read(
                                     "diagnostics/icio-accounting-failures-manifest.json").decode())
                                 self.assertIn("signed_residual_usd_million", archive.read(
                                     "diagnostics/icio-accounting-failures.csv").decode())
