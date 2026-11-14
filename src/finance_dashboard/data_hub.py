@@ -161,7 +161,7 @@ def install_data_hub(app: FastAPI, *, db, catalog, market_registry,
                 "scientific_assessment": {
                     "running": app.state.acceptance.loading,
                     "evaluated_at": evaluated.evaluated_at.isoformat() if evaluated else None,
-                }}}
+                }}
 
     @app.get("/api/data/overview")
     def data_overview():
