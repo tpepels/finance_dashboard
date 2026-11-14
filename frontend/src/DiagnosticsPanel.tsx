@@ -165,11 +165,13 @@ export default function DiagnosticsPanel() {
   const label=failure?'Status unavailable':report?.status.label||'Checking status';
   const status=report?.status;
   const providers=report?.source_health?.attention_providers??[];
-  const errors=(status?.recent_errors??0)+(status?.unresolved_source_failures??0);
+  const recentErrors=status?.recent_errors??0;
+  const unresolvedFailures=status?.unresolved_source_failures??0;
   const activity=[
     status?.import_running?'Original import running':null,
     status?.assessment_running?'Research assessment running':null,
     report?.data_changes?.state==='pending'?'Reconciling imported evidence':null,
+    report?.source_health?.state==='refreshing'?'Updating source-health snapshot':null,
   ].filter((item):item is string=>Boolean(item));
   const events=report?.console.slice(-12).reverse()??[];
 
@@ -212,7 +214,7 @@ export default function DiagnosticsPanel() {
           {report&&<div className="diagnostics-metrics" aria-label="System health overview">
             <div><strong>{status?.sources_with_data??'—'} / {status?.sources_total??'—'}</strong><span>Histories stored</span></div>
             <div><strong>{status?.sources_needing_attention??'—'}</strong><span>Need source review</span></div>
-            <div><strong>{errors}</strong><span>Failures / errors</span></div>
+            <div><strong>{recentErrors}</strong><span>Errors (24h)</span></div>
           </div>}
           {report&&<section className="diagnostics-block" aria-label="Source recency">
             <div className="diagnostics-block-heading">
@@ -243,6 +245,10 @@ export default function DiagnosticsPanel() {
             <p className="diagnostics-evaluated">
               Research last evaluated: {localTime(report.data_changes?.research_evaluated_at)}
             </p>
+            {unresolvedFailures>0&&<p className="diagnostics-warnings">
+              {unresolvedFailures} unresolved source-collection failures.</p>}
+            {report?.data_changes?.state==='failed'&&<p className="diagnostics-warnings">
+              Downstream reconciliation failed; see Diagnostics for details.</p>}
             {(status?.warnings_last_24h??0)>0&&<p className="diagnostics-warnings">
               {status?.warnings_last_24h} warnings recorded in the last 24 hours.</p>}
           </section>}
