@@ -39,3 +39,10 @@ html[data-theme='dark'] .data-hub-debug-actions{border-color:#40565a}
 html[data-theme='dark'] .data-hub-debug-actions a,html[data-theme='dark'] .data-hub-debug-actions button{color:#a7d6e4;border-color:#4b6971}
 html[data-theme='dark'] .data-hub-console>div{background:#30474e}
 @media(max-width:700px){.data-hub-header,.data-hub-section-title{flex-direction:column;align-items:stretch}.data-hub-primary{width:100%}.data-hub-section{padding:14px 10px}.data-hub-table-scroll{overflow-x:auto}.data-hub th,.data-hub td{min-width:95px;padding:10px 8px;font-size:12px}}
+
+.data-hub-advanced-tools{padding:18px;border-top:1px solid #ced9d8;background:#f6f8f7;display:grid;gap:18px}
+.data-hub-advanced-tools h3{font-size:15px;margin:0}
+.data-hub-advanced-tools>p{font-size:12px;color:#64777e;margin:-8px 0 0}
+.data-hub-advanced-tools .data-sync,.data-hub-advanced-tools .original-uploader{border:1px solid #d7e0df;background:#fff;padding:14px;margin:0}
+html[data-theme='dark'] .data-hub-advanced-tools{background:#253b43;border-color:#425c64}
+html[data-theme='dark'] .data-hub-advanced-tools .data-sync,html[data-theme='dark'] .data-hub-advanced-tools .original-uploader{background:#23363d;border-color:#476067}
