@@ -1853,6 +1853,8 @@ def _c07(points: dict, view: dict) -> Computed:
 C07 = AnalysisDefinition("C07", {
     "us_cpi":"prices.us.cpi_all_items_nsa",
     "ea_hicp":"prices.ea.hicp_index_2025",
+    "de_hicp":"prices.de.hicp_index_2025",
+    "pt_hicp":"prices.pt.hicp_index_2025",
     "equity_usd":"equity.world.msci_acwi_netr_usd",
     "gold_usd":"gold.usd.monthly_average",
     "usd_per_eur":"fx.usd_per_eur.ecb",
