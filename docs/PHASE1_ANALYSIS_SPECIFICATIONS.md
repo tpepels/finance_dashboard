@@ -781,3 +781,91 @@ For each stable analysis ID, the Phase 1 charter must support a methods audit: (
 - Country/sector imputation, industry classification, seasonal adjustment, currency convention, accounting changes, source-revision dates and valid predictive horizon must be specified for real-world empirical acceptance in subsequent phases; Phase 1 specifies the rule instead of claiming present verification.
 - Forecasting/equity-return correlations, classifying recessions and testing causal theories require independent research evaluation. Descriptive time-series and referenced papers do not substitute for actual out-of-time test evidence.
 - Final Phase 1 acceptance also requires the user to sign off on the **complete ideal product**, including these analyses and the [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md), before any implementation gap review is allowed.
+
+
+## L08 — Worker earnings distribution, median, minimum and productivity
+
+**Decision:** Determine whether changes in aggregate compensation and profits also
+describe the actual P10, P50 and P90 employee, with explicit economic
+population and measurement boundaries.
+
+**Originals:** BLS CPS annual full-time usual nominal weekly earnings of wage
+and salary workers 16+ at P10, P50 and P90, annual real P50, 12 complete
+months of BLS CPI-U NSA for purchasing-power conversion, federal hourly
+statutory minimum, and OECD full-time employee original earnings
+decile ratios plus statutory minimum/median ratios for US, DE, FR, PT and
+JP. Source-code/flow/unit/population verified by canonical provider contracts.
+
+**Transformations:** Use exact annual joins, no filled years. Calculate
+P90/P10, P90/P50, P50/P10 from native US CPS annual weekly levels;
+divide each observed annual level by the complete calendar-year CPI mean.
+Validate P10 ≤ P50 ≤ P90. Compare the CPI-adjusted median with BLS's
+separately published real median as a cross-source diagnostic. The OECD
+data are ratios, not absolute levels. Do not compare US federal hourly minimum
+with CPS weekly earnings as if units were identical.
+
+**Output:** Historical P10/P50/P90 nominal and real amounts and indexes;
+wage-dispersion history; OECD ratio histories (including selected native
+minimum/median); source/period lineage, missing-data declarations and
+quantile/mean/sector scope warnings. Link to L01 mean factor compensation
+and L02 corporate GVA split without altering either denominator.
+
+**Withheld:** Absolute European percentile wages, adjusted mean/median
+levels, P99, low-pay incidence, occupational composition or official
+cross-country levels when a matching published source isn't present. Their
+unavailable state must not be interpreted as a zero.
+
+**Acceptance:** Exact BLS and OECD source identities; matching population,
+frequency and quote units; CPI 12-month completeness; decile monotonicity;
+no implied weekly federal-minimum equivalence; no imputed median/mean; event
+integration, frontend tests, native original data and source citations.
+
+
+## C07 — Consumer price versus asset inflation correlations and lead lags
+
+**Decision:** Test observed relationships among consumer inflation, asset
+price appreciation, commodity prices and investor real returns while keeping
+observational correlations separate from causal claims.
+
+**Originals:** BLS monthly CPI-U NSA, euro area HICP (2025 index base),
+MSCI ACWI USD daily net-total-return level, ECB USD/EUR daily reference FX,
+World Bank Pink Sheet monthly average USD gold, Brent, US natural gas, maize
+and copper prices, Swinkels original US 10-year yield-modelled monthly
+simple-return history, and BIS published nominal residential quarterly
+selected indices for US, DE, PT, JP and euro area.
+
+**Transformations:** Monthly 12-month change in CPI and prices/total-return
+indexes; compounded exactly 12 contiguous monthly modelled bond returns;
+ECB FX conversion at observed last trading-day month-end (USD per EUR);
+real returns from ratios of nominal and matched CPI/HICP gross changes.
+Property stays in source quarter, using 4-quarter year-on-year changes and
+a complete three-month CPI quarterly mean. DE/PT/JP property/CPI
+comparisons remain withheld until appropriate nationally matched CPI
+originals are registered.
+
+**Statistics:** Simultaneous Pearson and tied-rank Spearman correlations,
+36/60/120-month rolling correlations, positive and negative lead-lags
+through 12 months (8 quarters for housing), calendar-year regime
+comparisons, observed sample counts and periods, pairwise missingness
+and density. Minimum n=12, no interpolation. Positive lag k is the
+correlation between asset change at t and consumer inflation at t+k.
+Fisher-z 95% bands, if shown, are explicitly i.i.d.-illustrative;
+serial correlation, overlapping changes and multiple tests invalidate
+a formal naive confidence claim.
+
+**Presentation:** Comparison of nominal with CPI-real returns, separate
+historical equity total return vs price-only commodity indices, investor
+EUR/USD perspective, property quarterly lines and no-imputation source
+coverage. C06 annual WEO growth/stagflation is a different question.
+
+**Withheld:** Structural/causal commodity pass-through, PPI, broad
+investable commodity index, exogenous policy identification, cross-country
+property deflation without national CPI, valuation-controlled regression,
+confidence intervals robust to autocorrelation and asset price index data
+not supported by published originals. Must not claim those analyses were
+completed without certified source and an accepted method.
+
+**Acceptance:** All original source codes, frequency, currency, missing
+periods, required contiguous compounding, month/quarter alignment,
+lag sign, no lookahead, correlations including monotonic/counterexample
+and sample-size tests, all frontend/mobile/bundle/export tests green.
