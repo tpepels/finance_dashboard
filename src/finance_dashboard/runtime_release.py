@@ -22,6 +22,39 @@ from tempfile import NamedTemporaryFile
 
 _RELEASE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,100}$")
 _MAX_STATE_BYTES = 4096
+_BUILD_NONCE = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
+_SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+
+def _numbered_version(base: str, sequence: int) -> str:
+    """Increment the numeric patch version for every distinct deployed build."""
+    match = _SEMVER.fullmatch(base)
+    if match is None or sequence < 0:
+        raise ValueError("automatic_release_requires_three_part_version")
+    major, minor, patch = (int(value) for value in match.groups())
+    return f"{major}.{minor}.{patch + sequence}"
+
+
+def _previous_build(state: dict | None) -> str | None:
+    if state is None:
+        return None
+    return state.get("image_build") or state["release_id"].rsplit("+", 1)[-1]
+
+
+def _next_build_sequence(base: str, previous: dict | None) -> int:
+    if previous is None:
+        return 1
+    number = previous.get("build_number")
+    if (isinstance(number, int) and not isinstance(number, bool)
+            and number >= 0 and previous.get("base_version") == base):
+        return number + 1
+    # Migrate existing 0.2.0+<hash> releases without resetting their
+    # versions or requiring any manual source-file version edit.
+    previous_version = previous.get("version") or previous["release_id"].split("+", 1)[0]
+    current, older = _SEMVER.fullmatch(base), _SEMVER.fullmatch(previous_version)
+    if current and older and current.group(1, 2) == older.group(1, 2):
+        return max(0, int(older.group(3)) - int(current.group(3))) + 1
+    return 1
 
 
 def _version() -> str:
@@ -68,6 +101,13 @@ def calculate_build(*, package_dir: Path | None = None,
             with path.open("rb") as stream:
                 for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                     digest.update(chunk)
+    # A caller-supplied nonce makes two deliberate builds of identical source
+    # bytes distinct. Ordinary source edits remain distinct without a nonce.
+    # The deployment script always supplies one; restarts never change it.
+    nonce = os.environ.get("FINANCE_BUILD_NONCE", "source")
+    if not _BUILD_NONCE.fullmatch(nonce):
+        raise ValueError("invalid_build_nonce")
+    digest.update(b"image-build-nonce\0" + nonce.encode("ascii"))
     build = digest.hexdigest()[:16]
     package_version = _version()
     return {"version": package_version, "build": build,
@@ -125,9 +165,18 @@ def release_info() -> dict:
     """Every exported diagnostic references one explicit installed build."""
     build = build_info()
     state = _read_state(_state_path())
-    return {**build, "activated_at": (
-        state["activated_at"] if state and state["release_id"] == build["release_id"]
-        else None)}
+    # The immutable image manifest carries the original package baseline and
+    # content fingerprint. The active deployment ledger adds the monotonic
+    # numeric release version, preserved on restarts.
+    if (state and _previous_build(state) == build["build"]
+            and state.get("base_version", build["version"]) == build["version"]):
+        return {
+            **build,
+            "version": state.get("version", build["version"]),
+            "release_id": state["release_id"],
+            "activated_at": state["activated_at"],
+        }
+    return {**build, "activated_at": None}
 
 
 def job_in_current_release(created_at: object, *, active_since: str | None = None) -> bool:
@@ -182,7 +231,28 @@ def activate_release(*, identity: dict | None = None,
     state = state_path or _state_path()
     events = diagnostics_path or _path()
     previous = _read_state(state)
-    if previous is not None and previous["release_id"] == release["release_id"]:
+    if identity is None:
+        # Active release state is stored on /data. Increment exactly once per
+        # NEW image fingerprint, not on a process/container restart.
+        if (previous is not None and _previous_build(previous) == release["build"]
+                and previous.get("base_version", release["version"]) == release["version"]):
+            return {
+                **release,
+                "version": previous.get("version", release["version"]),
+                "release_id": previous["release_id"],
+                "build_number": previous.get("build_number", 0),
+                "activated_at": previous["activated_at"],
+                "changed": False,
+            }
+        sequence = _next_build_sequence(release["version"], previous)
+        release = {
+            **release,
+            "base_version": release["version"],
+            "version": _numbered_version(release["version"], sequence),
+            "build_number": sequence,
+        }
+        release["release_id"] = release["version"] + "+" + release["build"]
+    elif previous is not None and previous["release_id"] == release["release_id"]:
         return {**release, "activated_at": previous["activated_at"], "changed": False}
     timestamp = activated_at or datetime.now(timezone.utc).isoformat()
     dt = datetime.fromisoformat(timestamp)
@@ -193,6 +263,13 @@ def activate_release(*, identity: dict | None = None,
     _write_private(events, b"")
     marker = {"schema_version": 1, "release_id": release["release_id"],
               "activated_at": timestamp}
+    if identity is None:
+        marker.update({
+            "base_version": release["base_version"],
+            "version": release["version"],
+            "image_build": release["build"],
+            "build_number": release["build_number"],
+        })
     _write_private(state, (json.dumps(marker, sort_keys=True) + "\n").encode())
     return {**release, "activated_at": timestamp, "changed": True}
 
