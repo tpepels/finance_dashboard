@@ -43,22 +43,61 @@ def _status(events: list[dict], coverage: dict, accepting: bool, importing: bool
     failures = [e for e in recent
                 if e["level"] == "error"
                 and not (e.get("stage") == "api" and e.get("http_status") == 503)]
+    warnings = sum(e["level"] == "warning" for e in recent)
     summaries = coverage.get("summary", {})
-    attention = sum(group.get("needs_attention", 0) for group in summaries.values()
-                    if isinstance(group, dict))
+    groups = [group for group in summaries.values() if isinstance(group, dict)]
+    attention = sum(group.get("needs_attention", 0) for group in groups)
+    total = sum(group.get("total", 0) for group in groups)
+    with_data = sum(group.get("with_data", 0) for group in groups)
     unresolved_failures = sum(group.get("collection_failed", 0) +
                               group.get("refresh_failed_with_data", 0)
-                              for group in summaries.values() if isinstance(group, dict))
+                              for group in groups)
     if failures or unresolved_failures:
-        colour, label = "red", "Errors require inspection"
-    elif accepting or importing or attention or any(e["level"] == "warning" for e in recent):
-        colour, label = "orange", "Data or research needs attention"
+        colour, label = "red", "Source or processing failures"
+    elif attention:
+        colour, label = "orange", f"{attention} source histories need review"
+    elif warnings:
+        colour, label = "orange", "Recent source warnings"
+    elif accepting or importing:
+        colour, label = "orange", "Background updates in progress"
     else:
         colour, label = "green", "No current diagnostic issues"
     return {"colour": colour, "label": label, "recent_errors": len(failures),
+            "warnings_last_24h": warnings, "sources_total": total,
+            "sources_with_data": with_data,
             "sources_needing_attention": attention, "unresolved_source_failures": unresolved_failures,
             "assessment_running": accepting,
             "import_running": importing, "generated_at": now.isoformat()}
+
+
+def _attention_publishers(items: list[dict]) -> list[dict]:
+    """Group cached source issues for the status pop-up; no extra SQL/network.
+
+    Each group retains the publisher and oldest stored observation. A healthy
+    ingestion attempt can still leave a source stale; the summary does not
+    mislabel it as a failed download or imply a manual retry is required.
+    """
+    providers: dict[str, dict] = {}
+    for item in items[:1000]:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("provider") or "Other")
+        group = providers.setdefault(key, {
+            "provider": key, "count": 0, "oldest_observation": None,
+            "stale": 0, "failed": 0,
+        })
+        group["count"] += 1
+        if item.get("state") == "stale":
+            group["stale"] += 1
+        if item.get("last_attempt_state") == "failed":
+            group["failed"] += 1
+        observed = item.get("latest_source_date")
+        if isinstance(observed, str) and (
+                group["oldest_observation"] is None
+                or observed < group["oldest_observation"]):
+            group["oldest_observation"] = observed[:10]
+    return sorted(providers.values(),
+                  key=lambda x: (-x["count"], x["provider"]))[:8]
 
 
 def _original_method_summary(root) -> dict:
@@ -283,13 +322,20 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                          app.state.acceptance.loading, importer.running())
         status["release_id"] = release["release_id"]
         if not cached or health.get("state") == "unavailable":
-            status.update(colour="orange", label="Source health snapshot not yet available")
+            status.update(colour="orange", label="Source health not evaluated")
         if health.get("error"):
-            status.update(colour="orange", label="Cached source-health refresh unavailable")
+            status.update(colour="orange", label="Source-health check unavailable")
         updates = app.state.data_change_coordinator.status()
         acceptance = app.state.acceptance.peek()
         return {"status": status, "release": release,
                 "console": _console(events), "source_summary": summaries,
+                "source_health": {
+                    "state": health.get("state"),
+                    "checked_at": cached.get("calculated_at"),
+                    "error": health.get("error"),
+                    "attention_providers": _attention_publishers(
+                        cached.get("attention_items") or []),
+                },
                 "data_changes": {
                     "state": updates["state"],
                     "events_reconciled": updates["events_reconciled"],
