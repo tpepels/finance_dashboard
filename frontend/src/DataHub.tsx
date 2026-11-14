@@ -200,6 +200,9 @@ export default function DataHub(){
           'No automatic download currently running.'}
         {' '}{state?.successful_sources??0} source families imported;
         {' '}{failed.length} files need manual download.
+        {(state?.problem_sources??0)>0&&' '+state?.problem_sources+' source import jobs need agent investigation.'}
+        {(overview.original_import?.jobs_with_issues??0)>0&&' '+
+          overview.original_import?.jobs_with_issues+' historical import jobs have unresolved issues.'}
       </p>}
       {latest&&!overview?.sync.active&&<p className="data-hub-meta">
         Last source repair: {latest.status}{latest.finished_at?
