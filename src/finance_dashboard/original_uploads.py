@@ -382,7 +382,10 @@ def install_original_uploads(app: FastAPI, importer: OriginalImportManager, *, p
                            x_gcm_action: str | None = Header(default=None)):
         _guard(request, x_gcm_action)
         try:
-            callback = app.state.acceptance.invalidate if persistent else (lambda: None)
+            callback = (app.state.data_change_coordinator.changed
+                        if persistent and hasattr(app.state, "data_change_coordinator")
+                        else app.state.acceptance.invalidate if persistent
+                        else (lambda: None))
             return importer.submit_reassess(callback)
         except RuntimeError:
             raise HTTPException(409, "Original import or reassessment already running") from None
@@ -396,7 +399,10 @@ def install_original_uploads(app: FastAPI, importer: OriginalImportManager, *, p
         try:
             # In-memory SQLite is a single-process test fixture. Background
             # acceptance threads must not outlive the ephemeral test connection.
-            callback = app.state.acceptance.invalidate if persistent else (lambda: None)
+            callback = (app.state.data_change_coordinator.changed
+                        if persistent and hasattr(app.state, "data_change_coordinator")
+                        else app.state.acceptance.invalidate if persistent
+                        else (lambda: None))
             return importer.submit(selection.filenames, callback)
         except RuntimeError:
             raise HTTPException(409, "Original import already running") from None
