@@ -657,6 +657,7 @@ class ManualSourceTests(unittest.TestCase):
                 "diagnostics/manual-fallback-links.json",
                 "diagnostics/maintenance-complete.json",
                 "diagnostics/collection-run.json",
+                "diagnostics/downstream-reconciliation.json",
                 "diagnostics/limitation-assessment.json",
                 "diagnostics/limitation-assessment.csv",
                 "diagnostics/research-limitation-matrix.json",
@@ -670,6 +671,10 @@ class ManualSourceTests(unittest.TestCase):
             collected = json.loads(archive.read("diagnostics/collection-run.json"))
             self.assertIn("repair", collected)
             self.assertIn("counts", collected)
+            downstream = json.loads(archive.read("diagnostics/downstream-reconciliation.json"))
+            self.assertIn("coordinator", downstream)
+            self.assertIn("scientific_assessment", downstream)
+            self.assertIn("source_health", downstream)
             limits = json.loads(archive.read("diagnostics/limitation-assessment.json"))
             self.assertEqual(limits["schema_version"], 1)
             self.assertEqual(limits["counts"]["total"], len(limits["findings"]))
