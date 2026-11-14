@@ -350,6 +350,20 @@ class ManualSourceManager:
                 out[role["id"]] = {"bytes": size}
         return out
 
+    @staticmethod
+    def _public_job(job: dict) -> dict:
+        """Never expose redirect query tokens, cookies or client fingerprints."""
+        from urllib.parse import urlsplit
+        row = dict(job)
+        row["downloaded"] = {}
+        for role, record in job.get("downloaded", {}).items():
+            parsed = urlsplit(record.get("final_url", ""))
+            row["downloaded"][role] = {
+                key: record.get(key) for key in (
+                    "sha256", "bytes", "content_type", "retrieved_at_utc")}
+            row["downloaded"][role]["final_host"] = parsed.hostname
+        return row
+
     def status(self):
         specs = source_specs()
         with self.lock:
@@ -360,7 +374,7 @@ class ManualSourceManager:
                 "active": self.active,
                 "queued": sum(job["status"] == "queued" for job in self.jobs),
                 "deferred": sum(job["status"] == "deferred" for job in self.jobs),
-                "jobs": [dict(job) for job in reversed(self.jobs[-80:])],
+                "jobs": [self._public_job(job) for job in reversed(self.jobs[-80:])],
             }
 
     def _ensure_worker(self):
@@ -404,7 +418,7 @@ class ManualSourceManager:
                    "status": "queued", "created_at": datetime.now(timezone.utc).isoformat(),
                    "finished_at": None, "sources": [], "error_code": None,
                    "downloaded": {}, "failed_roles": {}, "manual_supplied": [],
-                   "phase": "waiting"}
+                   "attempts": [], "phase": "waiting"}
             self.jobs.append(job)
             try:
                 self._save()
@@ -513,6 +527,11 @@ class ManualSourceManager:
                     job["phase"] = "waiting_for_publisher_budget"
                     job["error_code"] = exc.reason
                     job["retry_at_unix"] = max(float(exc.retry_at), time.time() + 1)
+                    job.setdefault("attempts", []).append({
+                        "role": job.get("current_role"), "outcome": "policy_deferred",
+                        "reason": exc.reason, "retry_at_unix": job["retry_at_unix"],
+                        "at_utc": datetime.now(timezone.utc).isoformat(),
+                    })
                     self._save()
             except Exception as exc:
                 with self.lock:
@@ -547,15 +566,26 @@ class ManualSourceManager:
                         and sha256(path.read_bytes()).hexdigest() == recorded.get("sha256")):
                     continue
                 downloads.pop(role_id, None)
+                with self.lock:
+                    job["current_role"] = role_id
+                    self._save()
                 try:
                     detail = fetch_publisher_file(
                         role, path, browser=self.browser_profiles.get(job["id"]))
                     downloads[role_id] = detail
+                    result_code = "downloaded"
                 except PublisherDownloadError as exc:
                     failed[role_id] = exc.code
+                    result_code = exc.code
                 with self.lock:
                     job["downloaded"] = dict(downloads)
                     job["failed_roles"] = dict(failed)
+                    job.setdefault("attempts", []).append({
+                        "role": role_id, "outcome": result_code,
+                        "at_utc": datetime.now(timezone.utc).isoformat(),
+                        "browser_hints_used": bool(self.browser_profiles.get(job["id"])),
+                    })
+                    job["current_role"] = None
                     self._save()
             if failed:
                 with self.lock:
