@@ -129,6 +129,8 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
     repaired = len(set(issues) - set(remaining))
     result = {
         "status": "complete" if not remaining and not failed else "partial",
+        "reason": ("source_gaps_remaining" if remaining else
+                   "provider_failed" if failed else None),
         "selected_sources": len(targets),
         "issues_before": len(issues), "issues_after": len(remaining),
         "resolved_issues": repaired, "failed_sources": failed,
