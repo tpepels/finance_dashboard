@@ -493,7 +493,6 @@ class WidClient:
         self.archive_dir = Path(archive_dir) if archive_dir is not None else None
         self._areas: dict[str, WidBundle] = {}
         self._piketty: dict[str, dict] = {}
-        self._raw_pairs: dict[str, tuple[str, str]] = {}
 
     def fetch(self, series_id: str, start: date | None = None) -> FetchedSeries:
         selected = WID_ALL_SERIES.get(series_id)
@@ -543,16 +542,12 @@ class WidClient:
                 if pending.exists():
                     shutil.rmtree(pending)
             self._areas[area] = bundle
-            self._raw_pairs[area] = (data_text, metadata_text)
-            if series_id in WID_PIKETTY_SERIES:
-                self._piketty[area] = parse_piketty_original(
-                    data_text, metadata_text, area=area, strict=False)
+            # Select each registered optional WID measure once from the same
+            # validated publisher pair. Retain only compact parsed values;
+            # never retain six entire 250 MB country CSV texts in RAM.
+            self._piketty[area] = parse_piketty_original(
+                data_text, metadata_text, area=area, strict=False)
         if series_id in WID_PIKETTY_SERIES:
-            if area not in self._piketty:
-                # Reuse the same already-validated original pair in memory.
-                data_text, metadata_text = self._raw_pairs[area]
-                self._piketty[area] = parse_piketty_original(
-                    data_text, metadata_text, area=area, strict=False)
             values = self._piketty[area].get((variable, percentile), {})
         else:
             values = self._areas[area].observations[(variable, percentile)]
