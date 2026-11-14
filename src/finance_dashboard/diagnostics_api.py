@@ -61,7 +61,7 @@ def _status(events: list[dict], coverage: dict, accepting: bool, importing: bool
     elif accepting or importing:
         colour, label = "orange", "Background updates in progress"
     else:
-        colour, label = "green", "No current diagnostic issues"
+        colour, label = "green", "No source or runtime alerts"
     return {"colour": colour, "label": label, "recent_errors": len(failures),
             "warnings_last_24h": warnings, "sources_total": total,
             "sources_with_data": with_data,
