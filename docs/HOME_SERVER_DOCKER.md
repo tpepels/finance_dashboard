@@ -10,7 +10,9 @@ From the existing Compose project's directory:
 
 ```bash
 rtk docker compose config --quiet
-rtk docker compose build finance-dashboard
+# When the repository is checked out as ./finance_dashboard:
+sh finance_dashboard/deploy.sh
+# This runs the build and deploy together with a distinct numeric version.
 ```
 
 Before replacing the running container, retain its image and a complete verified stopped-data recovery copy as described in the runbook. Then:
