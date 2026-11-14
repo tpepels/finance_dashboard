@@ -34,7 +34,11 @@ class EngineTransformTests(unittest.TestCase):
         self.assertAlmostEqual(levels[1][1], 55.0)
 
     def test_every_transform_has_a_formula_and_unknown_names_fail(self):
-        self.assertEqual(set(TRANSFORMS), {"month_end", "complete_months", "contiguous_tail", "monthly_return",
+        self.assertEqual(set(TRANSFORMS), {"annual_mean_complete_months", "matched_percentile_ratios",
+                                           "cpi_purchasing_power", "monthly_yoy_no_fill",
+                                           "month_end_returns_and_fx", "cpi_deflation",
+                                           "rolling_and_lagged_correlation", "quarterly_housing_no_fill",
+                                           "month_end", "complete_months", "contiguous_tail", "monthly_return",
                                            "return_summary", "own_history", "index_100",
                                            "overlapping_window_percentiles", "fx_translation", "hedge_carry",
                                            "real_deflation", "earnings_yield", "valuation_residual_range",
