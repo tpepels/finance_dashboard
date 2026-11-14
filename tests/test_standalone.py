@@ -122,6 +122,44 @@ class StandaloneContainerTests(TestCase):
             self.assertEqual(json.loads(state.read_text())["next_due_unix"],
                              1800000000.0 + 86400)
 
+    def test_scheduled_cycle_queues_due_original_sources_without_user_action(self):
+        from finance_dashboard.standalone import refresh_loop
+        from unittest.mock import Mock
+        class OneCycle:
+            def is_set(self): return False
+            def wait(self, seconds): return True
+
+        original = Mock()
+        original.fetch.return_value = {
+            "jobs": [{"dataset": "wid-world", "job_id": "queued"}],
+            "skipped": {"swinkels-au": "already_current_or_pinned"},
+        }
+        with (environ(FINANCE_REFRESH_ON_START="1", FINANCE_VINTAGE_REFRESH="0",
+                      FINANCE_SEC_HOLDINGS_REFRESH="0", FINANCE_AUTO_BACKUP="0"),
+              patch("finance_dashboard.worker.refresh_all", return_value=0),
+              patch("finance_dashboard.data_change_bus.publish_change") as published):
+            refresh_loop(None, OneCycle(), interval_seconds=86400,
+                         include_markets=False, refresh_wisesheets=False,
+                         original_sources=original)
+        original.fetch.assert_called_once_with()
+        published.assert_called_once_with(None, "scheduled_cycle_finished")
+
+    def test_scheduled_original_fetch_error_does_not_kill_refresh_loop(self):
+        from finance_dashboard.standalone import refresh_loop
+        from unittest.mock import Mock
+        class OneCycle:
+            def is_set(self): return False
+            def wait(self, seconds): return True
+        original = Mock()
+        original.fetch.side_effect = RuntimeError("publisher error with credentials")
+        with (environ(FINANCE_REFRESH_ON_START="1", FINANCE_VINTAGE_REFRESH="0",
+                      FINANCE_SEC_HOLDINGS_REFRESH="0", FINANCE_AUTO_BACKUP="0"),
+              patch("finance_dashboard.worker.refresh_all", return_value=0)):
+            refresh_loop(None, OneCycle(), interval_seconds=86400,
+                         include_markets=False, refresh_wisesheets=False,
+                         original_sources=original)
+        original.fetch.assert_called_once_with()
+
     def test_offline_startup_serves_health_without_running_scheduled_publishers(self):
         publisher_work = threading.Event()
         with tempfile.TemporaryDirectory() as tmp:
