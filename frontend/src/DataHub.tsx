@@ -133,13 +133,20 @@ export default function DataHub(){
   const run=collection.value;
   const observed=useRef(new Map<string,string>());
   const observedRun=useRef<string|null>(null);
+  const observedRepair=useRef<string|null>(null);
   useEffect(()=>{
     if(!run?.id)return;
     if(observedRun.current!==run.id){
       observedRun.current=run.id;
       observed.current.clear();
+      observedRepair.current=null;
     }
-    let changed=false;
+    const repairStatus=run.repair?.status??null;
+    const terminalRepair=new Set(['complete','partial','failed','blocked','cancelled','interrupted']);
+    let changed=Boolean(observedRepair.current &&
+      observedRepair.current!==repairStatus && repairStatus &&
+      terminalRepair.has(repairStatus));
+    observedRepair.current=repairStatus;
     for(const source of run.sources){
       const previous=observed.current.get(source.dataset);
       if(previous&&previous!==source.status&&TERMINAL.has(source.status)&&
