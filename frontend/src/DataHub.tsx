@@ -19,7 +19,8 @@ type Collection = {
     current_item?:string|null;error_code?:string|null;
     details?:{selected_sources?:number;issues_before?:number;
       issues_after?:number;resolved_issues?:number;failed_sources?:number;
-      remaining_series_ids?:string[]}}|null;
+      remaining_series_ids?:string[]};
+    origin?:'collection_session'|'latest_independent_check'|'previous_build_unavailable'}|null;
   startup_error:string|null;
 };
 type Health = {
@@ -34,6 +35,12 @@ type Health = {
       next_action?:string|null;research_questions?:string[];
     }[];
   }|null; error?:string|null;
+  automation?:{scheduled_refresh_enabled:boolean;interval_seconds:number;
+    automatic_post_ingestion_updates:boolean};
+  downstream_updates?:{state:string;last_change_at?:string|null;
+    last_reconciled_at?:string|null;events_seen:number;events_reconciled:number;
+    batches:number;error?:string|null};
+  scientific_assessment?:{running:boolean;evaluated_at:string|null};
 };
 type ExportStatus = {
   state:string;ready:boolean;id:string|null;prepared_at?:string|null;
@@ -180,6 +187,9 @@ export default function DataHub(){
   const repairPercent=repairTotal?Math.min(100,(repair?.completed??0)/repairTotal*100):0;
   const sourceList=run?.sources??[];
   const summary=snapshot?.sources;
+  const autoEnabled=health.value?.automation?.scheduled_refresh_enabled;
+  const changes=health.value?.downstream_updates;
+  const assessment=health.value?.scientific_assessment;
 
   async function start(){
     setStarting(true);setNotification('');setError('');
@@ -261,11 +271,30 @@ export default function DataHub(){
     <header className="data-collection-heading">
       <div>
         <h2>Data Collection</h2>
-        <p>Automatic downloads, recovery requests and data availability.</p>
+        <p>Sources are refreshed on their configured schedule. Newly imported evidence
+          automatically updates availability and scientific assessments.</p>
       </div>
-      <button type="button" className="data-collection-primary" disabled={starting||active}
-        onClick={()=>void start()}>{starting?'Starting…':active?'Collection running':'Start automatic downloads'}</button>
     </header>
+
+    <section className="data-collection-auto" aria-label="Automatic reconciliation" role="status">
+      <strong>{autoEnabled===false?'Scheduled source refresh is disabled':
+        autoEnabled===true?'Automatic source refresh enabled':
+        'Checking automatic refresh configuration'}</strong>
+      <p>{autoEnabled===false?
+        'Newly imported data still triggers downstream assessments, but periodic source downloads are disabled in the server configuration.':
+        'Source updates run without a manual repair action. A refresh checks publisher data; accepted imports update the database, source-health snapshot and research assessment.'}
+        {autoEnabled&&health.value?.automation?.interval_seconds?
+          ' Scheduled interval: '+Math.round(health.value.automation.interval_seconds/3600)+' hours.':''}
+      </p>
+      {changes?.state==='pending'&&<small>New evidence received; refreshing source health and scientific acceptance automatically.</small>}
+      {changes?.state==='complete'&&changes.last_reconciled_at&&
+        <small>Last ingestion-triggered reconciliation: {formatWhen(changes.last_reconciled_at)}.</small>}
+      {changes?.state==='failed'&&<small className="data-collection-alert">
+        Downstream reconciliation failed; see Diagnostics.</small>}
+      {assessment?.running&&<small>Scientific acceptance is being recalculated in the background.</small>}
+      {assessment?.evaluated_at&&!assessment.running&&<small>
+        Research evidence last evaluated {formatWhen(assessment.evaluated_at)}.</small>}
+    </section>
 
     <section aria-label="Current collection" className="data-collection-run" aria-live="polite">
       <div className="data-collection-statusline">
@@ -274,7 +303,7 @@ export default function DataHub(){
            run?.state==='needs_attention'?'Completed with attention needed':
            run?.state==='complete'?'Collection completed':
            run?.state==='failed'?'Collection failed':
-           run?.id?'Last collection status: '+run.state:'No collection started'}
+           run?.id?'Last source check: '+run.state:'No source check history yet'}
         </span>
         <small>{run?.started_at?'Started '+formatWhen(run.started_at):
           'No previous run recorded'}</small>
@@ -291,18 +320,24 @@ export default function DataHub(){
         <small>{run.counts.completed} imported · {run.counts.skipped} retained ·
           {' '}{run.counts.active} in progress · {run.counts.manual_required} manual ·
           {' '}{run.counts.failed} require investigation</small>
-      </div>:<p className="data-collection-placeholder">Start a collection to download registered sources and repair missing history. Progress continues on the server if you navigate away.</p>}
+      </div>:<p className="data-collection-placeholder">No manual source check has been recorded. Scheduled ingestion runs independently.</p>}
       {run?.id&&repair&&<div className="data-collection-progress-group">
         <div className="data-collection-progress-header">
-          <strong>Source-health repair</strong>
-          <span>{repairTotal?(repair.completed??0)+' / '+repairTotal+' checked':repair.status}</span>
+          <strong>{repair.origin==='latest_independent_check'?'Most recent independent source check':
+            'Source-health check'}</strong>
+          <span>{repairTotal?(repair.completed??0)+' / '+repairTotal+' checked':
+            repair.status==='previous_build'?'Earlier build result unavailable':repair.status}</span>
         </div>
         {repairTotal>0&&<div className="data-progress" role="progressbar"
           aria-label="Source-health repair" aria-valuemin={0} aria-valuemax={repairTotal}
           aria-valuenow={repair.completed??0}>
           <span style={{width:repairPercent+'%'}}/>
         </div>}
-        {repair.current_item&&<small>Working on {repair.current_item}</small>}
+        {repair.origin==='latest_independent_check'&&<small>
+          This repair occurred after the source-download session shown above.</small>}
+        {repair.status==='previous_build'&&<small>
+          The earlier repair summary was not retained in this session. This does not mean the source downloads failed.</small>}
+        {repair.current_item&&<small>Working on {repair.current_item}</small>
         {repair.details?.issues_after!==undefined&&<small>
           {repair.details.resolved_issues??Math.max(0,(repair.details.issues_before??0)-repair.details.issues_after)}
           {' '}source gaps resolved · {repair.details.issues_after} still require attention
@@ -311,14 +346,15 @@ export default function DataHub(){
         </small>}
         {repair.error_code&&<small className="data-collection-alert">
           {repair.details?.issues_after!==undefined&&repair.details.issues_after>0?
-            'Source-health repair is incomplete; inspect Diagnostics for the remaining series.':
+            'The publisher check finished, but these source histories remain older than expected. New observations will be ingested on the normal schedule when available.':
             reason(repair.error_code)}
         </small>}
       </div>}
     </section>
 
     {run?.id&&<section className="data-collection-section">
-      <h3>Source downloads</h3>
+      <details open={active||undefined}>
+        <summary>Source download history ({finished} of {total} resolved)</summary>
       <div className="data-collection-table-scroll">
         <table aria-label="Source download progress">
           <thead><tr><th>Source</th><th>Status</th><th>Details</th></tr></thead>
@@ -339,6 +375,7 @@ export default function DataHub(){
           </tr>)}</tbody>
         </table>
       </div>
+      </details>
     </section>}
 
     {files.length>0&&<section className="data-collection-section" aria-labelledby="manual-files">
