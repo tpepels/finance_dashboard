@@ -637,7 +637,7 @@ class ManualSourceManager:
             shutil.rmtree(folder, ignore_errors=True)
 
     def _run_icio(self, job: dict, folder: Path):
-        """Download and import pinned 2025 OECD regular archives independently."""
+        """Try every registered OECD original; report only files needing a human."""
         from .publisher_downloads import fetch_publisher_file, PublisherDownloadError
         from .source_policy_types import PolicyDeferred
         from .icio import PUBLISHER_ARCHIVES, README_SHA256, import_original_archive
@@ -645,69 +645,109 @@ class ManualSourceManager:
         from .original_uploads import OriginalImportManager, README
         manager = OriginalImportManager(evidence=self.evidence)
         readme = manager.pinned_readme()
+        failures = dict(job.get("failed_roles") or {})
         if readme is None:
             readme = folder / README
             cached = job["downloaded"].get(README)
-            if (not cached or not readme.is_file() or readme.is_symlink()
-                    or sha256(readme.read_bytes()).hexdigest() != README_SHA256):
-                detail = fetch_publisher_file(
-                    {"download_url": PUBLISHER_URLS[README], "max_bytes": 10_000_000},
-                    readme)
-                if sha256(readme.read_bytes()).hexdigest() != README_SHA256:
-                    raise ProviderError("OECD publisher ReadMe does not match pinned original")
-                with self.lock:
-                    job["downloaded"][README] = detail
-                    self._save()
-        completed = {entry["id"] for entry in job["sources"]}
-        successes = sum(entry["status"] == "success" for entry in job["sources"])
+            supplied = README in job.get("manual_supplied", [])
+            if not ((cached or supplied) and readme.is_file()
+                    and not readme.is_symlink()
+                    and sha256(readme.read_bytes()).hexdigest() == README_SHA256):
+                try:
+                    detail = fetch_publisher_file(
+                        {"download_url": PUBLISHER_URLS[README], "max_bytes": 10_000_000},
+                        readme, browser=self.browser_profiles.get(job["id"]))
+                    if sha256(readme.read_bytes()).hexdigest() != README_SHA256:
+                        raise PublisherDownloadError("oecd_readme_identity_mismatch")
+                    with self.lock:
+                        job["downloaded"][README] = detail
+                        failures.pop(README, None)
+                        job["failed_roles"] = dict(failures)
+                        self._save()
+                except PublisherDownloadError as exc:
+                    failures[README] = exc.code
+                    readme = None
+                    with self.lock:
+                        job["failed_roles"] = dict(failures)
+                        self._save()
+        completed = {entry["id"] for entry in job["sources"] if entry["status"] == "success"}
+        failures = {k: v for k, v in failures.items()
+                    if k not in completed and k not in job.get("manual_supplied", [])}
         for filename, pin in PUBLISHER_ARCHIVES.items():
             if filename in completed:
                 continue
             try:
                 target = folder / filename
                 prior = job["downloaded"].get(filename)
-                if (not prior or not target.is_file() or target.is_symlink()
-                        or sha256(target.read_bytes()).hexdigest() != pin["sha256"]):
+                supplied = filename in job.get("manual_supplied", [])
+                if not ((prior or supplied) and target.is_file()
+                        and not target.is_symlink()
+                        and target.stat().st_size == pin["bytes"]
+                        and sha256(target.read_bytes()).hexdigest() == pin["sha256"]):
                     detail = fetch_publisher_file(
                         {"download_url": PUBLISHER_URLS[filename],
                          "max_bytes": min(1_500_000_000, max(pin["bytes"] * 2, 200_000_000))},
-                        target)
+                        target, browser=self.browser_profiles.get(job["id"]))
                     if detail["sha256"] != pin["sha256"] or detail["bytes"] != pin["bytes"]:
-                        raise ProviderError("OECD archive differs from pinned 2025 edition")
+                        raise PublisherDownloadError("oecd_archive_identity_mismatch")
                     with self.lock:
                         job["downloaded"][filename] = detail
+                        failures.pop(filename, None)
+                        job["failed_roles"] = dict(failures)
                         self._save()
+                if readme is None:
+                    # ZIP is already available. Only the missing ReadMe must
+                    # be uploaded; do not fetch this archive a second time.
+                    continue
                 with self.lock:
                     job["status"] = "running"
                     job["phase"] = "validating"
                     self._save()
                 result = import_original_archive(
-                    target, self.evidence, readme, publisher_download=True)
-                successes += 1
+                    target, self.evidence, readme,
+                    publisher_download=filename not in job.get("manual_supplied", []))
                 row = {"id": filename, "status": "success",
                        "edition": result.get("edition"), "table": result.get("table")}
                 target.unlink(missing_ok=True)
+                with self.lock:
+                    job["sources"] = [s for s in job["sources"] if s["id"] != filename] + [row]
+                    failures.pop(filename, None)
+                    self._save()
             except PolicyDeferred:
-                raise  # Preserve the job; the worker retries at the ledger deadline.
+                raise
+            except PublisherDownloadError as exc:
+                failures[filename] = exc.code
+                with self.lock:
+                    job["failed_roles"] = dict(failures)
+                    self._save()
             except Exception as exc:
                 from .service import safe_source_failure_code
                 row = {"id": filename, "status": "failed",
-                       "error_code": (exc.code if isinstance(exc, PublisherDownloadError)
-                                      else safe_source_failure_code(exc))}
-            with self.lock:
-                job["sources"].append(row)
-                job["status"] = "downloading"
-                job["phase"] = "downloading"
-                self._save()
+                       "error_code": safe_source_failure_code(exc)}
+                with self.lock:
+                    job["sources"] = [s for s in job["sources"] if s["id"] != filename] + [row]
+                    self._save()
+            finally:
+                with self.lock:
+                    job["status"] = "downloading"
+                    job["phase"] = "downloading"
+                    self._save()
+        succeeded = sum(s["status"] == "success" for s in job["sources"])
+        total = len(PUBLISHER_ARCHIVES)
         with self.lock:
-            job.update(status=("complete" if successes == len(PUBLISHER_ARCHIVES)
-                               else "partial" if successes else "failed"),
-                       phase="finished", origin_verified=bool(successes),
-                       finished_at=datetime.now(timezone.utc).isoformat())
+            job["failed_roles"] = dict(failures)
+            job.update(
+                status=("manual_required" if failures else
+                        "complete" if succeeded == total else
+                        "partial" if succeeded else "failed"),
+                phase=("waiting_for_manual_files" if failures else "finished"),
+                error_code="publisher_files_unavailable" if failures else None,
+                origin_verified=(succeeded == total and not job.get("manual_supplied")),
+                finished_at=datetime.now(timezone.utc).isoformat())
             self._save()
-        if successes:
+        if succeeded:
             self.accepted()
-        if successes == len(PUBLISHER_ARCHIVES):
+        if succeeded == total:
             shutil.rmtree(folder, ignore_errors=True)
 
     def commit_fallback_file(self, job_id: str, role_id: str, original: str,
