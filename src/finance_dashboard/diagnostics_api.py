@@ -360,6 +360,11 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
                         "stage", "error_code", "result")
                 } for job in operations["jobs"]],
             })
+            # The maintenance endpoint intentionally filters to the current
+            # release. Preserve the separate server-owned collection outcome
+            # across releases to avoid apparently empty troubleshooting ZIPs.
+            put("diagnostics/collection-run.json",
+                app.state.collection_workflow.status())
             put("diagnostics/original-import.json", importer.public_status())
             put("diagnostics/original-method-audit.json",
                 {**source_audit, "release": release})
@@ -369,7 +374,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
             archive.writestr("README.txt",
                 "Global Capital Monitor build: " + release["release_id"] + "\n"
                 "Release activated: " + str(release["activated_at"] or "not recorded") + "\n"
-                "Only current-build diagnostic events and job summaries are shown. "
+                "Current-build diagnostic events and maintenance jobs are shown. "
+                "The latest collection-run snapshot is also retained across builds. "
                 "Original evidence, research history, and backups are retained.\n"
                 "Redacted diagnostic bundle with full source status, per-role publisher "
                 "attempts, original hashes, manual fallback links, accounting residuals, "
