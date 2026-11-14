@@ -1845,7 +1845,8 @@ def _c07(points: dict, view: dict) -> Computed:
                     produces=["assets.correlation"], windows=[36,60,120],
                     lags=list(range(-12,13))),
             applied("quarterly_housing_no_fill",
-                    applied_to=[f"housing:{c}" for c in ("us","ea","de","pt","jp")],
+                    applied_to=[f"housing:{c}" for c in ("us","ea","de","pt","jp")]
+                               + ["us_cpi","ea_hicp","de_hicp","pt_hicp"],
                     produces=["housing"], months=3),
         ])
 
