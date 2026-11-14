@@ -802,7 +802,8 @@ class ManualSourceManager:
                             "partial" if succeeded else "failed"),
                     phase=("waiting_for_manual_files" if failures else "finished"),
                     error_code="publisher_files_unavailable" if failures else None,
-                    origin_verified=(succeeded == total and not job.get("manual_supplied")),
+                    origin_verified=(succeeded == total and not job.get("manual_supplied")
+                                     and README in job["downloaded"]),
                     finished_at=datetime.now(timezone.utc).isoformat())
                 self._save()
             if succeeded:
