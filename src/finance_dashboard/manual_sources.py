@@ -774,13 +774,25 @@ class ManualSourceManager:
                             job["downloaded"][README] = detail
                             failures.pop(README, None)
                             job["failed_roles"] = dict(failures)
+                            job.setdefault("attempts", []).append({
+                                "role": README, "outcome": "downloaded",
+                                "at_utc": datetime.now(timezone.utc).isoformat()})
                             self._save()
                     except PublisherDownloadError as exc:
-                        failures[README] = exc.code
+                        retry_delay = _retry_transient_publisher_http(
+                            job, README, exc.code)
+                        if retry_delay is None:
+                            failures[README] = exc.code
                         readme = None
                         with self.lock:
                             job["failed_roles"] = dict(failures)
+                            job.setdefault("attempts", []).append({
+                                "role": README, "outcome": exc.code,
+                                "at_utc": datetime.now(timezone.utc).isoformat()})
                             self._save()
+                        if retry_delay is not None:
+                            raise PolicyDeferred("publisher-http", exc.code,
+                                                 time.time() + retry_delay)
             completed = {entry["id"] for entry in job["sources"] if entry["status"] == "success"}
             failures = {k: v for k, v in failures.items()
                         if k not in completed and k not in job.get("manual_supplied", [])}
@@ -805,6 +817,9 @@ class ManualSourceManager:
                             job["downloaded"][filename] = detail
                             failures.pop(filename, None)
                             job["failed_roles"] = dict(failures)
+                            job.setdefault("attempts", []).append({
+                                "role": filename, "outcome": "downloaded",
+                                "at_utc": datetime.now(timezone.utc).isoformat()})
                             self._save()
                     if readme is None:
                         # ZIP is already available. Only the missing ReadMe must
@@ -827,10 +842,19 @@ class ManualSourceManager:
                 except PolicyDeferred:
                     raise
                 except PublisherDownloadError as exc:
-                    failures[filename] = exc.code
+                    retry_delay = _retry_transient_publisher_http(
+                        job, filename, exc.code)
+                    if retry_delay is None:
+                        failures[filename] = exc.code
                     with self.lock:
                         job["failed_roles"] = dict(failures)
+                        job.setdefault("attempts", []).append({
+                            "role": filename, "outcome": exc.code,
+                            "at_utc": datetime.now(timezone.utc).isoformat()})
                         self._save()
+                    if retry_delay is not None:
+                        raise PolicyDeferred("publisher-http", exc.code,
+                                             time.time() + retry_delay)
                 except Exception as exc:
                     from .service import safe_source_failure_code
                     row = {"id": filename, "status": "failed",
