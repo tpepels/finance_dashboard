@@ -347,7 +347,7 @@ export default function DataHub(){
           This repair occurred after the source-download session shown above.</small>}
         {repair.status==='previous_build'&&<small>
           The earlier repair summary was not retained in this session. This does not mean the source downloads failed.</small>}
-        {repair.current_item&&<small>Working on {repair.current_item}</small>
+        {repair.current_item&&<small>Working on {repair.current_item}</small>}
         {repair.details?.issues_after!==undefined&&<small>
           {repair.details.resolved_issues??Math.max(0,(repair.details.issues_before??0)-repair.details.issues_after)}
           {' '}source gaps resolved · {repair.details.issues_after} still require attention
