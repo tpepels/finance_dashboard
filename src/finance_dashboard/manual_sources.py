@@ -556,14 +556,16 @@ class ManualSourceManager:
         from .publisher_downloads import PublisherDownloadError
         downloads = dict(job.get("downloaded") or {}) if method in ("publisher", "hybrid") else {}
         if method == "publisher":
-            failed = {}
             from .source_policy import managed_client
             from .publisher_downloads import browser_headers
             import httpx
+            failed = {}
             profile = self.browser_profiles.get(job["id"])
-            with managed_client(headers=browser_headers(profile, spec["roles"][0]["download_url"]),
-                                timeout=httpx.Timeout(connect=15, read=90, write=20, pool=15),
-                                follow_redirects=False) as network:
+            with managed_client(
+                    headers=browser_headers(profile, spec["roles"][0]["download_url"]),
+                    timeout=httpx.Timeout(connect=15, read=90, write=20, pool=15),
+                    follow_redirects=False) as network:
+                for role in spec["roles"]:
                     role_id = role["id"]
                     path = folder / (role_id + ".bin")
                     recorded = downloads.get(role_id)
@@ -577,7 +579,7 @@ class ManualSourceManager:
                         self._save()
                     try:
                         detail = fetch_publisher_file(
-                            role, path, browser=self.browser_profiles.get(job["id"]))
+                            role, path, client=network, browser=profile)
                         downloads[role_id] = detail
                         result_code = "downloaded"
                     except PublisherDownloadError as exc:
@@ -589,39 +591,10 @@ class ManualSourceManager:
                         job.setdefault("attempts", []).append({
                             "role": role_id, "outcome": result_code,
                             "at_utc": datetime.now(timezone.utc).isoformat(),
-                            "browser_hints_used": bool(self.browser_profiles.get(job["id"])),
+                            "browser_hints_used": bool(profile),
                         })
                         job["current_role"] = None
                         self._save()
-                role_id = role["id"]
-                path = folder / (role_id + ".bin")
-                recorded = downloads.get(role_id)
-                if (recorded and path.is_file() and not path.is_symlink()
-                        and 0 < path.stat().st_size <= role["max_bytes"]
-                        and sha256(path.read_bytes()).hexdigest() == recorded.get("sha256")):
-                    continue
-                downloads.pop(role_id, None)
-                with self.lock:
-                    job["current_role"] = role_id
-                    self._save()
-                try:
-                    detail = fetch_publisher_file(
-                            role, path, client=network, browser=profile)
-                    downloads[role_id] = detail
-                    result_code = "downloaded"
-                except PublisherDownloadError as exc:
-                    failed[role_id] = exc.code
-                    result_code = exc.code
-                with self.lock:
-                    job["downloaded"] = dict(downloads)
-                    job["failed_roles"] = dict(failed)
-                    job.setdefault("attempts", []).append({
-                        "role": role_id, "outcome": result_code,
-                        "at_utc": datetime.now(timezone.utc).isoformat(),
-                        "browser_hints_used": bool(self.browser_profiles.get(job["id"])),
-                    })
-                    job["current_role"] = None
-                    self._save()
             if failed:
                 with self.lock:
                     job["status"] = "manual_required"
