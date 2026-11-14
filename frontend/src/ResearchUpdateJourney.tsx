@@ -66,7 +66,10 @@ export function describeResearchUpdate(
     && health?.automation?.last_refresh_outcome!=='complete';
   const interval=health?.automation?.interval_seconds;
   const scheduled=health?.automation?.refresh_running===true;
-  const downloading=Boolean(scheduled||collection?.running);
+  const macroRunning=scheduled&&(!health?.automation?.refresh_stage||
+    health.automation.refresh_stage==='macro');
+  const postMacroWork=scheduled&&!macroRunning;
+  const downloading=Boolean(macroRunning||collection?.running);
   const reconciliation=health?.downstream_updates?.state;
   const healthChecking=health?.state==='refreshing';
   const scientificChecking=health?.scientific_assessment?.running===true;
@@ -130,6 +133,14 @@ export function describeResearchUpdate(
     heading='Automatic source checks are waiting for manual collection';
     explanation=missing+' source histories still need ingestion. The scheduled worker has yielded to a manual source operation.';
     action='Check the active source operation below. The scheduler resumes on its next cycle when the manual-operation pause clears.';
+    tone='waiting';
+  }else if(hasData && missing>0 && postMacroWork){
+    heading='Source collection stage finished; other maintenance is running';
+    const stage=health?.automation?.refresh_stage??'other';
+    explanation=missing+' histories are still missing observations. The scheduled worker is now in its '+
+      stage+' stage; it is no longer executing the macro source-collection task list.';
+    action='Review completed source attempts and errors in Diagnostics. The remaining '+
+      'source histories will require a later source check or a separate verified import.';
     tone='waiting';
   }else if(hasData && missing>0){
     heading=downloading?'Collecting missing original source histories':'Waiting for initial source downloads';
