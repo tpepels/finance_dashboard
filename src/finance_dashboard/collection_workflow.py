@@ -261,7 +261,7 @@ class SourceHealthCache:
             # Recompute after a collection completes, but always off the
             # HTTP path. Manual requests cannot spawn unbounded workers.
             due = (refresh and now - self.last_attempt >= 5) or age > 60
-            if not self.running and now - self.last_attempt >= 30 and due:
+            if not self.running and now - self.last_attempt >= (5 if refresh else 30) and due:
                 self.running = True
                 self.last_attempt = now
                 Thread(target=self._rebuild, name="gcm-data-health", daemon=True).start()
