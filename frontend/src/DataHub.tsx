@@ -146,7 +146,12 @@ export default function DataHub(){
         !TERMINAL.has(previous))changed=true;
       observed.current.set(source.dataset,source.status);
     }
-    if(changed)window.dispatchEvent(new Event('gcm-data-updated'));
+    if(changed){
+      window.dispatchEvent(new Event('gcm-data-updated'));
+      // Trigger a fresh availability calculation after ingestion; the API
+      // returns immediately while its dedicated worker does the database scan.
+      void fetch('/api/data/health?refresh=true',{cache:'no-store'}).catch(()=>{});
+    }
   },[run]);
   const snapshot=health.value?.snapshot;
   const files=run?.manual_files??[];
