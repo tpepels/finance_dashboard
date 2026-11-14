@@ -18,6 +18,12 @@ export function placeDiagnosticsPopup(
   const left=Math.max(edge,Math.min(anchor.right-width,viewport.width-edge-width));
   const below=Math.max(0,viewport.height-anchor.bottom-gap-edge);
   const above=Math.max(0,anchor.top-gap-edge);
+  // If neither side can show even the heading and actions, use a bounded
+  // viewport overlay instead of clipping the status panel to a tiny strip.
+  if(Math.max(below,above)<Math.min(160,viewport.height-2*edge)){
+    return {left,top:edge,width:Math.round(width),
+      maxHeight:Math.max(0,viewport.height-2*edge),side:'below'};
+  }
   const side: 'above'|'below' =
     below < Math.min(panel.height,340) && above > below ? 'above' : 'below';
   const maxHeight=Math.max(0,Math.floor(side==='above'?above:below));
