@@ -385,8 +385,9 @@ def _oecd_nfc(raw, url, definition):
         _error('source_value_invalid')
     return values
 
-def _eurostat_hicp(raw, url):
-    expected = {'freq': 'M', 'unit': 'I25', 'coicop18': 'TOTAL', 'geo': 'EA'}
+def _eurostat_hicp(raw, url, *, expected_geo='EA'):
+    if expected_geo not in ('EA', 'DE', 'PT'): _error('source_identity_invalid')
+    expected = {'freq': 'M', 'unit': 'I25', 'coicop18': 'TOTAL', 'geo': expected_geo}
     _url(url, 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_minr', expected)
     payload = _json(raw)
     names = ['freq', 'unit', 'coicop18', 'geo', 'time']
