@@ -386,6 +386,21 @@ class SourceHealthCache:
         self.running = False
         self.last_attempt = 0.0
         self.last_error: str | None = None
+        self._dirty = False
+
+    def mark_dirty(self) -> None:
+        """Request a post-commit coverage scan, including while one runs.
+
+        Marking data dirty is cheap and never performs SQL on ingestion or
+        HTTP paths. A mid-scan update schedules another scan after completion.
+        """
+        with self.lock:
+            if self.running:
+                self._dirty = True
+                return
+            self.running = True
+            self.last_attempt = time.time()
+        Thread(target=self._rebuild, name="gcm-data-health", daemon=True).start()
 
     def status(self, *, refresh: bool = False, schedule: bool = True) -> dict:
         with self.lock:
@@ -443,4 +458,11 @@ class SourceHealthCache:
                 self.last_error = "source_coverage_unavailable"
         finally:
             with self.lock:
-                self.running = False
+                again = self._dirty
+                self._dirty = False
+                self.running = again
+                if again:
+                    self.last_attempt = time.time()
+            if again:
+                Thread(target=self._rebuild, name="gcm-data-health",
+                       daemon=True).start()
