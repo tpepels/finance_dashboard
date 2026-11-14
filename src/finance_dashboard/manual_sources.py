@@ -206,11 +206,13 @@ def _archive(root: Path, dataset: str, files: dict[str, bytes], roles: list[dict
                          "owner_uploaded_original"),
                 "source_identity": {"dataset": dataset, "acquisition": origin},
                 "files": hashes,
-                "role_acquisitions": {role: ("publisher_https" if role in download_keys
-                                             else "user_upload") for role in sorted(source_roles)},
                 "source_urls": {role["id"]: role["download_url"] for role in roles},
                 "publisher_origin_verified": fully_publisher,
                 "first_publication_verified": False}
+    if mixed:
+        manifest["role_acquisitions"] = {
+            role: ("publisher_https" if role in download_keys else "user_upload")
+            for role in sorted(source_roles)}
     if downloads:
         if any(downloads[key]["sha256"] != hashes[key] for key in download_keys):
             raise ProviderError("Publisher download receipt hash mismatch")
