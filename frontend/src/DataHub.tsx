@@ -373,8 +373,10 @@ export default function DataHub(){
         {exporter.value?.state==='ready'&&<small>
           Prepared {formatWhen(exporter.value.prepared_at)} ·
           {' '}{Math.round((exporter.value.size_bytes??0)/1048576*10)/10} MB</small>}
-        {exporter.value?.state==='failed'&&<small className="data-collection-alert">
-          Preparation failed. You can retry.</small>}
+        {(exporter.value?.state==='failed'||exporter.value?.state==='interrupted')&&
+          <small className="data-collection-alert">
+            Preparation {exporter.value?.state==='interrupted'?'was interrupted':'failed'}.
+            {' '}You can retry.</small>}
       </div>
       <div className="data-collection-export-actions">
         <button type="button" onClick={()=>void prepareExport()}
