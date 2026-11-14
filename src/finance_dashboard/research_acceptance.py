@@ -672,11 +672,13 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
             or ((source or {}).get("original_artifact_evidence") or {}).get("role_resolved") is True)
     # A holdings role is one dated snapshot per fund, not a period panel; its
     # own gates are the original comparison for that input.
-    covered = {role["role"] for role in requirements if effective_ids(role)
+    required = [role for role in requirements
+                if role.get("requirement_class") != "supplemental"]
+    covered = {role["role"] for role in required if effective_ids(role)
         and set(effective_ids(role)).issubset(panel_ids)} | {
-        role["role"] for role in requirements if holdings_resolved(role)}
+        role["role"] for role in required if holdings_resolved(role)}
     # Owner-supplied parameters are not publisher data and join no comparison bundle.
-    uncovered = sorted(role["role"] for role in requirements
+    uncovered = sorted(role["role"] for role in required
                        if role["role"] not in covered and role["state"] != "user_input")
     comparison = _gate("original_comparison", "passed" if not uncovered else "incomplete",
         "original_native_input_bundle_verified" if not uncovered else "complete_original_comparison_outstanding",
@@ -684,7 +686,7 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
         covered_roles=sorted(covered), uncovered_roles=uncovered,
         scope="Original native input bundle only; temporal transformations and methodological alignment belong to Phase 3.")
     checks = [{"state": "passed" if r["state"] in RESOLVED_ROLE_STATES else r["state"]}
-              for r in requirements] + [comparison]
+              for r in required] + [comparison]
     if scientific_failures:
         checks.append({"state": "failed"})
     state = _state(checks)
@@ -692,13 +694,17 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
     if state == "accepted" and (descoped or any(
             r["state"] == "unavailable_with_fallback"
             or (r.get("holdings_evaluation") or {}).get("conditional")
-            or (r.get("artifact_evaluation") or {}).get("conditional") for r in requirements)):
+            or (r.get("artifact_evaluation") or {}).get("conditional") for r in required)):
         state = "conditional"
     if analysis.get("phase2_scope") == "deferred_extension":
         state = "deferred"
     result = {"contract_version": 1, "specification": analysis["comparison_contract"]["specification"],
-        "state": state, "accepted": state == "accepted", "required_input_roles": len(requirements),
-        "accepted_input_roles": sum(r["accepted"] for r in requirements),
+        "state": state, "accepted": state == "accepted", "required_input_roles": len(required),
+        "supplemental_input_roles": len(requirements)-len(required),
+        "supplemental_unaccepted_roles": sorted(r["role"] for r in requirements
+                                              if r.get("requirement_class") == "supplemental"
+                                              and not r["accepted"]),
+        "accepted_input_roles": sum(r["accepted"] for r in required),
         "phase2_resolved": state in ("accepted", "conditional"),
         "evidence_tier": analysis.get("evidence_tier"),
         "decision_informed": analysis.get("decision_informed"),
@@ -708,8 +714,8 @@ def analysis_acceptance(analysis: dict, registry: dict, counts: dict, panels: li
                                        "detail": analysis.get("deferral_reason")}]
                                      if state == "deferred" else []),
         "requirements": requirements, "comparison": comparison, "scientific_failures": scientific_failures,
-        "blocking_roles": [r["role"] for r in requirements if not r["accepted"]],
-        "interpretation": "Original analysis acceptance requires every role and original comparison gate. Bounded native alternatives remain separately labelled."}
+        "blocking_roles": [r["role"] for r in required if not r["accepted"]],
+        "interpretation": "Required original roles and comparison gates determine acceptance. Supplemental original histories may enrich outputs only after independent validation; unavailable supplemental observations remain withheld."}
     fallbacks = analysis.get("fallback_options", [])
     if analysis["id"] == "G06":
         result["source_investigations"] = {key: matrix[key] for key in ("publisher_acquisition", "release_comparison") if key in matrix}
