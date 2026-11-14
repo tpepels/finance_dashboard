@@ -170,7 +170,9 @@ class CollectionWorkflow:
                         if item.get("id") == job_id), None)
             if job and job.get("status") in terminal:
                 with self.lock:
-                    if self.current and self.current.get("id") == collection_id:
+                    persisted = _read_json(self.path)
+                    if (self.current and self.current.get("id") == collection_id
+                            and persisted and persisted.get("id") == collection_id):
                         self.current["repair_final"] = {
                             key: job.get(key) for key in (
                                 "status", "completed", "total", "stage",
