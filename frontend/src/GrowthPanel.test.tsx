@@ -56,7 +56,7 @@ describe('GrowthPanel', () => {
 
   it('answers growth and inflation questions with graphics, never a table', async () => {
     const urls = stubFetch();
-    const { container } = render(<GrowthPanel theme="light" dataVersion={0}/>);
+    render(<GrowthPanel theme="light" dataVersion={0}/>);
     await waitFor(() => expect(screen.getByRole('img', { name: /cycle phase by economy/i })).toBeTruthy());
     expect(screen.getByRole('img', { name: /latest year within/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /inflation and growth by year/i })).toBeTruthy();
@@ -64,7 +64,8 @@ describe('GrowthPanel', () => {
     expect(screen.getByRole('img', { name: /signals around each recession/i })).toBeTruthy();
     expect(screen.getByRole('img', { name: /months to regain/i })).toBeTruthy();
     expect(screen.getByText(/242 of 244 quarterly vintages/)).toBeTruthy();
-    expect(container.querySelector('table')).toBeNull();
+    // The new C07 empirical research appropriately uses a numeric evidence table.
+    expect(screen.getByRole('table',{name:'Asset consumer inflation correlations'})).toBeTruthy();
     expect(urls.filter(u => u.startsWith('/api/analysis/')).sort()).toEqual(['/api/analysis/C01', '/api/analysis/C02', '/api/analysis/C03', '/api/analysis/C05', '/api/analysis/C06', '/api/analysis/C07']);
     expect(screen.getAllByText('Export for AI')).toHaveLength(6);
   });
