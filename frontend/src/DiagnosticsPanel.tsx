@@ -14,6 +14,9 @@ type Diagnostics = {
     import_running: boolean;
   };
   console: DiagnosticLine[];
+  data_changes?:{
+    state:string;events_reconciled:number;research_evaluated_at:string|null;
+  };
 };
 
 export default function DiagnosticsPanel() {
@@ -22,6 +25,7 @@ export default function DiagnosticsPanel() {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const consoleRef = useRef<HTMLPreElement>(null);
+  const lastResearchVersion = useRef<string|null>(null);
   useEffect(() => {
     let live = true;
     const refresh = async () => {
@@ -31,7 +35,24 @@ export default function DiagnosticsPanel() {
         const next = await res.json() as Diagnostics;
         if (!next.release?.release_id || next.status?.release_id !== next.release.release_id)
           throw new Error('Diagnostic API returned an invalid build version');
-        if (live) { setReport(next); setFailure(''); }
+        if (live) {
+          // An open research page must reflect background publisher imports
+          // even when the user never opens Data Collection. Only trigger after
+          // reconciliation and the corresponding scientific assessment finish.
+          // The first poll establishes the baseline; subsequent revisions
+          // announce an update to every research workspace.
+          const changed = next.data_changes;
+          const version = changed&&changed.state==='complete' &&
+            !next.status.assessment_running && changed.research_evaluated_at
+              ? changed.events_reconciled+':'+changed.research_evaluated_at
+              : null;
+          if(version){
+            if(lastResearchVersion.current&&lastResearchVersion.current!==version)
+              window.dispatchEvent(new Event('gcm-data-updated'));
+            lastResearchVersion.current=version;
+          }
+          setReport(next);setFailure('');
+        }
       } catch (error) {
         if (live) { setReport(null); setFailure(error instanceof Error ? error.message : 'Diagnostics unavailable'); }
       }
