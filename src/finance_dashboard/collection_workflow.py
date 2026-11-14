@@ -84,7 +84,8 @@ class CollectionWorkflow:
                     continue
                 job = next((item for item in recent
                             if item.get("dataset") == entry.get("dataset")
-                            and item.get("created_at", "") >=
+                            and isinstance(item.get("created_at"), str)
+                            and item["created_at"] >=
                                 self.current.get("started_at", "~")), None)
                 if job:
                     entry["job_id"] = job["id"]
@@ -251,7 +252,8 @@ class CollectionWorkflow:
                         continue
                     job = next((item for item in recent
                                 if item.get("dataset") == row["dataset"]
-                                and item.get("created_at", "") >= record["started_at"]), None)
+                                and isinstance(item.get("created_at"), str)
+                                and item["created_at"] >= record["started_at"]), None)
                     if job:
                         row["job_id"] = job["id"]
                     else:
