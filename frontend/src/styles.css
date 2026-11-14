@@ -1116,11 +1116,6 @@ html[data-theme="dark"] .diagnostics-warnings {color:#e5b575;}
 .original-staged-files { margin: 14px 0; font-size: 13px; }
 .original-staged-files small { opacity: .75; }
 .original-import-note { font-size: 12px; max-width: 75ch; line-height: 1.5; opacity: .75; }
-@media (max-width: 600px) {
-  .diagnostics-console { position: fixed; left: 4vw; right: 4vw; top: 70px; width: 92vw; }
-  .diagnostics-light-label { display: none; }
-  .diagnostics-foot { align-items: flex-start; flex-direction: column; }
-}
 
 
 /* One Data page: current data controls, compact manual imports, advanced audit. */
