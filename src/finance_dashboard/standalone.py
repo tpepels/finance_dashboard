@@ -186,7 +186,8 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                              refresh_total=None, refresh_current_source=None,
                              refresh_started_at=_utc_time(time.time()),
                              last_error_code=None, last_error_stage=None,
-                             last_error_at=None, next_refresh_at=None)
+                             last_error_at=None, last_refresh_outcome=None,
+                             next_refresh_at=None)
             cycle_failed = False
             def macro_progress(completed, total, source_id):
                 # Completed tasks include policy deferrals. This is task
