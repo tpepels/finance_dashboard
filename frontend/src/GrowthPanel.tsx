@@ -3,6 +3,7 @@ import { entityName, timeChart, type Recession, type Theme, type TimeSeries } fr
 import { ChangeBars, GrowthInflationBars, GrowthStrip, PhaseBoard, RecoveryBars, SignalTimeline, Thermometers, type Alarm, type ChangeItem,
   type ClockRow, type RecoveryEpisode, type SignalEpisode, type StripRow } from './heroes';
 import TimePanel from './TimePanel';
+import InflationResearchPanel,{type InflationResearchValues} from './InflationResearchPanel';
 import { Section, monthDate, percentAxis, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
@@ -191,12 +192,13 @@ function Shocks({ bundle, theme, recessions }: { bundle: Bundle<C06Values>; them
 
 /** Growth, inflation and commodities: where the cycle stands, whether economies converge, and price shocks. */
 export default function GrowthPanel({ theme, dataVersion }: { theme: Theme; dataVersion: number }) {
-  const { bundles, recessions, error } = useBundles(['C01', 'C02', 'C03', 'C05', 'C06'], dataVersion);
+  const { bundles, recessions, error } = useBundles(['C01', 'C02', 'C03', 'C05', 'C06', 'C07'], dataVersion);
   const c01 = bundles.C01 as Bundle<C01Values> | undefined;
   const c02 = bundles.C02 as Bundle<C02Values> | undefined;
   const c03 = bundles.C03 as Bundle<C03Values> | undefined;
   const c05 = bundles.C05 as Bundle<C05Values> | undefined;
   const c06 = bundles.C06 as Bundle<C06Values> | undefined;
+  const c07 = bundles.C07 as Bundle<InflationResearchValues> | undefined;
   return <div className="decision-container" id="growth">
     <header className="decision-intro">
       <h2>Growth, inflation and commodities</h2>
@@ -210,5 +212,6 @@ export default function GrowthPanel({ theme, dataVersion }: { theme: Theme; data
     {c05 && <Section bundle={c05}><Persistence bundle={c05} theme={theme} recessions={recessions}/></Section>}
     {c03 && <Section bundle={c03}><Convergence bundle={c03} theme={theme} recessions={recessions}/></Section>}
     {c06 && <Section bundle={c06}><Shocks bundle={c06} theme={theme} recessions={recessions}/></Section>}
+    {c07 && <Section bundle={c07}><InflationResearchPanel bundle={c07} theme={theme} recessions={recessions}/></Section>}
   </div>;
 }
