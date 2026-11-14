@@ -78,6 +78,22 @@ def _phase2_findings(snapshot, document: dict) -> tuple[list[dict], list[dict]]:
                 limit["code"] for limit in state["limitations"]
             }),
         })
+        if state["state"] != "accepted":
+            findings.append(_finding(
+                id=f"research:{aid}:acceptance_state",
+                category="research_acceptance_state",
+                severity="medium" if state["state"] == "conditional" else "high",
+                status="needs_review" if state["state"] == "conditional" else "needs_evidence",
+                title=f"{aid}: research state is {state['state']}",
+                detail=("This question's original-method scientific acceptance is not "
+                        "unconditionally accepted; its evidence gates and limitations "
+                        "must be examined before interpreting results."),
+                next_action=("Inspect the question's original roles, verified alternative "
+                             "scope and open gates. Reassess after new evidence arrives."),
+                analysis_ids=[aid], provenance="phase2_acceptance",
+                evidence={"state": state["state"],
+                          "open_gates": list(state["open_gates"])},
+            ))
         seen: set[tuple[str, str | None]] = set()
         # Analysis-level and per-role limitations can overlap. De-duplicate
         # by exact (code, detail) while retaining affected source identities.
@@ -215,6 +231,28 @@ def assess_limitations(*, coverage: dict, document: dict,
                 "question_count": len(question_ids), "evaluated_questions": evaluated,
                 "reason": None if evaluated == len(question_ids) else "research_questions_not_all_checked",
             }
+    for aid in sorted(question_ids):
+        if aid not in DEFINITIONS:
+            findings.append(_finding(
+                id=f"implementation:{aid}:missing_engine",
+                category="analysis_implementation_missing",
+                severity="high", status="needs_review",
+                title=f"{aid}: research question has no computing engine",
+                detail="The research catalogue declares the question, but the engine "
+                       "definition is missing. Its fallback computation returns no values.",
+                next_action="Implement the canonical analysis definition and integrate its acceptance and tests.",
+                analysis_ids=[aid], provenance="engine_definitions",
+            ))
+    for aid in sorted(set(methods) - set(question_ids)):
+        findings.append(_finding(
+            id=f"implementation:{aid}:orphaned_method_limits",
+            category="unmapped_limitation_register",
+            severity="medium", status="needs_review",
+            title=f"{aid}: registered method constraints have no research question",
+            detail="Method-limit text exists without a matching analysis in the research corpus.",
+            next_action="Reconcile the method register with the actual research catalogue.",
+            analysis_ids=[aid], provenance="registered_method_limitation",
+        ))
     # The method register is explicit application code, and always inspectable
     # even before the first/next scientific acceptance has finished.
     for aid in sorted(question_ids):
