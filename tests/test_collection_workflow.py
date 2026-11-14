@@ -206,6 +206,47 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertTrue(wait_for(lambda: bool(manager.current.get("repair_final")),
                                  timeout=4))
 
+    def test_old_release_repair_is_not_misreported_as_interrupted_after_new_check(self):
+        from finance_dashboard.collection_workflow import _write_json
+        path = self.root / "cross-build.json"
+        _write_json(path, {
+            "schema_version": 1, "id": "previous-collection",
+            "release": "0.2.0+old1234567890123",
+            "started_at": "2026-11-14T12:37:08+00:00",
+            "phase": "started", "entries": [
+                {"dataset": "wid-world", "label": "WID.world",
+                 "job_id": None, "initial": "skipped",
+                 "manual_roles": SPECS["wid-world"]["roles"]}],
+            "maintenance_job_id": "old-repair", "maintenance_initial": "queued",
+            "repair_final": None, "startup_error": None})
+        maintenance = StubMaintenance()
+        maintenance.jobs = [{
+            "id": "new-repair", "action": "repair_source_health",
+            "status": "partial", "completed": 6, "total": 6,
+            "error_code": "source_gaps_remaining",
+            "result": {"issues_before": 6, "issues_after": 6,
+                       "resolved_issues": 0, "failed_sources": 0},
+        }]
+        with patch("finance_dashboard.collection_workflow.release_info",
+                   return_value={"release_id": "0.2.1+new1234567890123"}):
+            manager = CollectionWorkflow(
+                StubManual(), maintenance, path=path,
+                valid_sources=set(), valid_markets=set())
+            status = manager.status()
+        self.assertEqual(status["repair"]["origin"], "latest_independent_check")
+        self.assertEqual(status["repair"]["status"], "partial")
+        self.assertEqual(status["repair"]["completed"], 6)
+        self.assertEqual(status["repair"]["details"]["issues_after"], 6)
+        self.assertNotEqual(status["repair"]["status"], "interrupted")
+
+        maintenance.jobs = []
+        with patch("finance_dashboard.collection_workflow.release_info",
+                   return_value={"release_id": "0.2.1+new1234567890123"}):
+            unavailable = manager.status()
+        self.assertEqual(unavailable["repair"]["status"], "previous_build")
+        self.assertEqual(unavailable["state"], "complete")
+        self.assertEqual(unavailable["repair"]["origin"], "previous_build_unavailable")
+
     def test_restart_after_interrupted_collection_start_does_not_leave_phantom_progress(self):
         from finance_dashboard.collection_workflow import _write_json
         path = self.root / "collection.json"
