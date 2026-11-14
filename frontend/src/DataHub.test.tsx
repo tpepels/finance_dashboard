@@ -102,6 +102,55 @@ describe('durable Data Collection page',()=>{
     expect(calls.some(item=>item.url==='/api/data/overview')).toBe(false);
   });
 
+  it('shows 36 never-ingested sources and the scheduled waiting pipeline',async()=>{
+    run.running=false;
+    run.state='complete';
+    health.snapshot.sources={total:462,with_data:426,needs_attention:42};
+    health.snapshot.attention_items=[
+      ...Array.from({length:36},(_,i)=>({
+        id:'new-original-'+i,name:'New original '+i,provider:'BLS_OEWS',
+        state:'not_ingested',latest_source_date:null,published_through:null,
+        next_action:'Collect original history',research_questions:['L08'],
+      })),
+      ...Array.from({length:6},(_,i)=>({
+        id:'older-original-'+i,name:'Old source '+i,provider:'WID',
+        state:'stale',latest_source_date:'2023-01-01',published_through:null,
+        next_action:'Check publisher release',research_questions:['L07'],
+      })),
+    ];
+    Object.assign(health.automation,{
+      refresh_running:false,refresh_state:'waiting',
+      next_refresh_at:'2026-11-15T19:52:00Z',
+    });
+    render(<DataHub/>);
+    expect(await screen.findByRole('heading',{
+      name:'Waiting for initial source downloads',
+    })).toBeTruthy();
+    expect(screen.getByText('426 / 462 histories stored')).toBeTruthy();
+    expect(screen.getByText('420 no attention')).toBeTruthy();
+    expect(screen.getByText('6 review')).toBeTruthy();
+    expect(screen.getByText('36 not ingested')).toBeTruthy();
+    expect(screen.getByText(/Next scheduled source check/)).toBeTruthy();
+    expect(screen.getByRole('list',{name:'Update steps'}).children).toHaveLength(3);
+    expect(screen.getByRole('img',{name:/36 histories without observations/})).toBeTruthy();
+    expect(screen.queryByText('Action required')).toBeNull();
+  });
+
+  it('shows an actionable manual source check when automatic refresh is disabled',async()=>{
+    run.running=false;
+    run.state='complete';
+    health.snapshot.sources={total:462,with_data:426,needs_attention:36};
+    health.automation.scheduled_refresh_enabled=false;
+    render(<DataHub/>);
+    expect(await screen.findByRole('heading',{
+      name:'Source collection needs a manual start',
+    })).toBeTruthy();
+    expect(screen.getByText('Action required')).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Check sources now'})).toBeTruthy();
+    const details=screen.getByText('Manual source check (optional)').closest('details');
+    expect(details?.hasAttribute('open')).toBe(true);
+  });
+
   it('automatically reports post-ingestion reconciliation without requiring a repair click',async()=>{
     const view=render(<DataHub/>);
     expect(await screen.findByText('Automatic source refresh enabled')).toBeTruthy();

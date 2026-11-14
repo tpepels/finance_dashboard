@@ -56,6 +56,50 @@ describe('header diagnostics console', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('shows a compact waiting explanation in the status popup',async()=>{
+    vi.stubGlobal('fetch',vi.fn(async()=>({
+      ok:true,json:async()=>({
+        release:{version:'0.2.5',build:'ddddffff99998888',
+          release_id:'0.2.5+ddddffff99998888',activated_at:'2026-11-14T19:52:00Z'},
+        status:{colour:'orange',label:'42 source histories need review',
+          recent_errors:0,sources_total:462,sources_with_data:426,
+          sources_needing_attention:42,assessment_running:false,import_running:false,
+          release_id:'0.2.5+ddddffff99998888'},
+        source_health:{state:'ready',checked_at:'2026-11-14T19:56:00Z',
+          attention_providers:[]},
+        console:[],
+        update_progress:{
+          health:{
+            state:'ready',
+            snapshot:{calculated_at:'2026-11-14T19:56:00Z',
+              sources:{total:462,with_data:426,needs_attention:42},
+              attention_items:Array.from({length:36},(_,i)=>({
+                id:'new-'+i,state:'not_ingested',latest_source_date:null,
+                last_attempt_state:'never',
+              }))},
+            automation:{scheduled_refresh_enabled:true,interval_seconds:86400,
+              refresh_running:false,refresh_state:'waiting',
+              next_refresh_at:'2026-11-15T19:52:00Z'},
+            downstream_updates:{state:'complete'},
+            scientific_assessment:{running:false,evaluated_at:null},
+          },
+          collection:{running:false,manual_files_count:0},
+        },
+      }),
+    })));
+    const user=userEvent.setup();
+    render(<DiagnosticsPanel/>);
+    await user.click(await screen.findByRole('button',{name:/System health:/}));
+    expect(await screen.findByRole('heading',{
+      name:'Waiting for initial source downloads',
+    })).toBeTruthy();
+    expect(screen.getByText('426 / 462 histories stored')).toBeTruthy();
+    expect(screen.getByRole('list',{name:'Update steps'})).toBeTruthy();
+    expect(screen.getByText(/36 have never had a collection attempt/)).toBeTruthy();
+    expect(screen.getByRole('link',{name:'Open Data Collection for exact source status'})
+      .getAttribute('href')).toBe('#data-management');
+  });
+
   it('automatically notifies visible research after scheduled acceptance finishes', async () => {
     const release={version:'0.2.2',build:'ccccdddd11112222',
       release_id:'0.2.2+ccccdddd11112222',activated_at:'2026-11-14T12:00:00Z'};
