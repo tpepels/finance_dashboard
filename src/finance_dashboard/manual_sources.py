@@ -473,6 +473,14 @@ class ManualSourceManager:
                         for job in self.jobs):
                     skipped[name] = "already_imported"
                     continue
+                # Keep the existing partial spool and stable manual links. A
+                # second click must not hide an outstanding human upload behind
+                # a new publisher job for the same source.
+                if dataset is None and any(
+                        job["dataset"] == name and job["status"] == "manual_required"
+                        for job in self.jobs):
+                    skipped[name] = "manual_upload_pending"
+                    continue
                 token = self._enqueue(name, "publisher")
                 if token is not None:
                     if browser and token not in self.browser_profiles:
@@ -845,7 +853,10 @@ class ManualSourceManager:
                     uploaded.parent != folder or uploaded.is_symlink()
                     or not uploaded.is_file() or uploaded.stat().st_size != size):
                 raise ValueError("Manual fallback staging invalid")
-            destination = folder / (role_id + ".bin")
+            # OECD's canonical importer reads original filenames directly;
+            # other source parsers read role-named binary staging files.
+            destination = folder / (role_id if job["dataset"] == "oecd-icio"
+                                    else role_id + ".bin")
             if destination.is_symlink():
                 raise ValueError("Manual fallback destination invalid")
             os.replace(uploaded, destination)
