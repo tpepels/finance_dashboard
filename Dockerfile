@@ -37,6 +37,7 @@ COPY migrations/ /app/migrations/
 COPY tests/ /app/tests/
 COPY alembic.ini /app/alembic.ini
 COPY start.sh /app/start.sh
+COPY deploy.sh /app/deploy.sh
 COPY --from=frontend-build /build/frontend/dist/ /app/site/
 # Explicit per-build nonce is injected by deploy.sh. Keep this late in the
 # Dockerfile so repeated releases reuse Python/npm dependency build caches.
