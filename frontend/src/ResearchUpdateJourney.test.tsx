@@ -80,6 +80,35 @@ describe('research update waiting-state journey',()=>{
     expect(screen.getByText('Action required')).toBeTruthy();
   });
 
+  it('shows an internal scheduled collector error even while other work keeps the scheduler busy',()=>{
+    const failed=missing({automation:{
+      scheduled_refresh_enabled:true,interval_seconds:86400,
+      refresh_running:true,refresh_state:'source_collection_failed',
+      refresh_stage:'vintage',refresh_completed:0,refresh_total:null,
+      last_error_code:'internal_error',last_error_stage:'macro',
+      last_error_at:'2026-11-14T21:50:58Z',next_refresh_at:null,
+    }});
+    const model=describeResearchUpdate(failed,null);
+    expect(model.heading).toBe('Scheduled source collection failed');
+    expect(model.tone).toBe('attention');
+    expect(model.stages[0].state).toBe('attention');
+    expect(model.action).toContain('did not resolve');
+    render(<ResearchUpdateJourney health={failed}/>);
+    expect(screen.getByText('Action required')).toBeTruthy();
+    expect(screen.queryByText('Source collection active')).toBeNull();
+  });
+
+  it('shows counted task processing without asserting downloads succeeded',()=>{
+    const running=missing({automation:{
+      scheduled_refresh_enabled:true,interval_seconds:86400,
+      refresh_running:true,refresh_state:'collecting',
+      refresh_completed:5,refresh_total:250,refresh_stage:'macro',
+    }});
+    render(<ResearchUpdateJourney health={running}/>);
+    expect(screen.getByText(/Macro tasks processed: 5 \/ 250/)).toBeTruthy();
+    expect(screen.getByText(/deferred or failed attempts/)).toBeTruthy();
+  });
+
   it('does not recommend waiting when the configured automatic scheduler has not started',()=>{
     const missingWorker=missing({
       automation:{scheduled_refresh_enabled:true,interval_seconds:86400,

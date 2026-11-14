@@ -15,6 +15,11 @@ export type JourneyHealth = {
     automatic_post_ingestion_updates?:boolean;
     refresh_running?:boolean;refresh_state?:string;
     next_refresh_at?:string|null;last_refresh_finished_at?:string|null;
+    refresh_started_at?:string|null;refresh_stage?:string|null;
+    refresh_completed?:number;refresh_total?:number|null;
+    refresh_current_source?:string|null;
+    last_refresh_outcome?:string|null;last_error_code?:string|null;
+    last_error_stage?:string|null;last_error_at?:string|null;
   };
   downstream_updates?:{
     state:string;last_change_at?:string|null;last_reconciled_at?:string|null;
@@ -57,6 +62,8 @@ export function describeResearchUpdate(
   const manual=collection?.manual_files_count??collection?.manual_files?.length??0;
   const config=health?.automation?.scheduled_refresh_enabled;
   const schedulerState=health?.automation?.refresh_state;
+  const collectorFailed=health?.automation?.last_error_code==='internal_error'
+    && health?.automation?.last_refresh_outcome!=='complete';
   const interval=health?.automation?.interval_seconds;
   const scheduled=health?.automation?.refresh_running===true;
   const downloading=Boolean(scheduled||collection?.running);
@@ -82,6 +89,17 @@ export function describeResearchUpdate(
     heading='Research update requires investigation';
     explanation='The downstream evidence reconciliation failed. New analysis results cannot be treated as current.';
     action='Inspect Diagnostics for the failed reconciliation; the system cannot confirm automatic completion.';
+    tone='attention';
+  }else if(hasData && collectorFailed){
+    heading='Scheduled source collection failed';
+    const stage=health?.automation?.last_error_stage||'macro';
+    const when=showDate(health?.automation?.last_error_at);
+    explanation=missing+' registered histories still have no observations. The scheduled '+
+      stage+' collection stage aborted with an internal error'+(when?' at '+when:'')+'.'+
+      (scheduled?' Other scheduled maintenance may still be running.':'');
+    action='This refresh attempt did not resolve the missing sources. Inspect the '+
+      'diagnostic scheduler and events, then correct the failed stage. '+
+      'You can retry the source check after the error is resolved.';
     tone='attention';
   }else if(hasData && manual>0){
     heading='Manual source files are required';
@@ -154,6 +172,7 @@ export function describeResearchUpdate(
   }
 
   const sourcesState:StepState=!hasData?'waiting':
+    collectorFailed?'attention':
     downloading?'running':
     manual>0||failed>0||config===false&&missing>0||
       missing>0&&config===true&&(schedulerState==='not_started'||schedulerState==='stopped')?'attention':
@@ -167,7 +186,8 @@ export function describeResearchUpdate(
     evaluated?'complete':'waiting';
   const stages:Stage[]=[
     {name:'Collect original data',state:sourcesState,
-      explanation:downloading?'Source collection active':
+      explanation:collectorFailed?'Collection failed':
+        downloading?'Source collection active':
         missing>0?missing+' histories without data':
         attention>0?attention+' histories need review':'Histories available'},
     {name:'Check source health',state:healthState,
@@ -186,7 +206,7 @@ export function describeResearchUpdate(
     heading,explanation,action,tone,stages,
     source:{total,missing,withData,withoutAttention,needsReviewWithData,attention},
     never,failed,manual,config,interval,
-    nextRun,scientificChecking,downloading,hasData,schedulerState,
+    nextRun,scientificChecking,downloading,hasData,schedulerState,collectorFailed,
   };
 }
 
@@ -206,6 +226,13 @@ export default function ResearchUpdateJourney({health,collection,compact=false,
         <p>{data.explanation}</p>
       </div>
     </div>
+    {health?.automation?.refresh_running===true &&
+      health.automation.refresh_total!=null&&
+      health.automation.refresh_total>0 &&
+      <p className="research-journey-task-count" role="status">
+        Macro tasks processed: {health.automation.refresh_completed??0} / {health.automation.refresh_total}.
+        {' '}This includes deferred or failed attempts, not necessarily ingested observations.
+      </p>}
     {data.hasData&&<div className="research-journey-coverage">
       <div className="research-journey-coverage-label">
         <strong>Source availability</strong>

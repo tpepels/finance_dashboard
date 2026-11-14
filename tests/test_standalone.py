@@ -127,6 +127,58 @@ class StandaloneContainerTests(TestCase):
             self.assertFalse(automation_status()["refresh_running"])
             self.assertIsNotNone(automation_status()["last_refresh_finished_at"])
 
+    def test_failed_macro_refresh_reports_safe_error_instead_of_an_ongoing_download(self):
+        from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
+        from finance_dashboard.data_hub import automation_status
+        class Halt:
+            def is_set(self): return False
+            def wait(self, seconds):
+                self.snapshot = scheduled_refresh_status()
+                return True
+        stop = Halt()
+        with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_REFRESH_ON_START="1",
+                      FINANCE_VINTAGE_REFRESH="0", FINANCE_SEC_HOLDINGS_REFRESH="0",
+                      FINANCE_AUTO_BACKUP="0"),
+              patch("finance_dashboard.worker.refresh_all",
+                    side_effect=RuntimeError("secret-url?api_key=must-not-appear")),
+              patch("finance_dashboard.data_change_bus.publish_change"),
+              patch("finance_dashboard.standalone.record_event") as events):
+            refresh_loop(None, stop, interval_seconds=86400,
+                         include_markets=False, refresh_wisesheets=False)
+            self.assertFalse(stop.snapshot["refresh_running"])
+            self.assertEqual(stop.snapshot["last_refresh_outcome"], "partial")
+            self.assertEqual(stop.snapshot["last_error_code"], "internal_error")
+            self.assertEqual(stop.snapshot["last_error_stage"], "macro")
+            self.assertEqual(stop.snapshot["refresh_state"], "waiting")
+            self.assertEqual(automation_status()["last_error_code"], "internal_error")
+            self.assertNotIn("must-not-appear", str(events.call_args_list))
+            failure=next(c for c in events.call_args_list
+                         if c.args[1]=="collector_failed")
+            self.assertEqual(failure.kwargs["stage"],"macro")
+
+    def test_active_failure_is_observable_before_optional_maintenance_finishes(self):
+        from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
+        class Halt:
+            def is_set(self): return False
+            def wait(self, seconds): return True
+        observed=[]
+        def vintage():
+            observed.append(scheduled_refresh_status())
+            return {"errors":[], "status":"skipped"}
+        with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_REFRESH_ON_START="1",
+                      FINANCE_VINTAGE_REFRESH="1", FINANCE_SEC_HOLDINGS_REFRESH="0",
+                      FINANCE_AUTO_BACKUP="0"),
+              patch("finance_dashboard.worker.refresh_all",
+                    side_effect=ValueError("hidden credential")),
+              patch("finance_dashboard.vintage.capture_previous_month",side_effect=vintage),
+              patch("finance_dashboard.data_change_bus.publish_change")):
+            refresh_loop(None,Halt(),interval_seconds=86400,
+                         include_markets=False,refresh_wisesheets=False)
+        self.assertEqual(observed[0]["refresh_state"],"source_collection_failed")
+        self.assertTrue(observed[0]["refresh_running"])
+        self.assertEqual(observed[0]["last_error_code"],"internal_error")
+        self.assertEqual(observed[0]["refresh_stage"],"vintage")
+
     def test_deferred_schedule_survives_restarts_without_another_full_interval(self):
         import json
         from unittest.mock import patch

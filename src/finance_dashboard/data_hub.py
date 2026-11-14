@@ -29,6 +29,15 @@ def automation_status() -> dict:
         "refresh_state": raw["refresh_state"] if enabled else "disabled",
         "next_refresh_at": raw["next_refresh_at"] if enabled else None,
         "last_refresh_finished_at": raw["last_refresh_finished_at"] if enabled else None,
+        "refresh_started_at": raw["refresh_started_at"] if enabled else None,
+        "refresh_stage": raw["refresh_stage"] if enabled else None,
+        "refresh_completed": raw["refresh_completed"] if enabled else 0,
+        "refresh_total": raw["refresh_total"] if enabled else None,
+        "refresh_current_source": raw["refresh_current_source"] if enabled else None,
+        "last_refresh_outcome": raw["last_refresh_outcome"] if enabled else None,
+        "last_error_code": raw["last_error_code"] if enabled else None,
+        "last_error_stage": raw["last_error_stage"] if enabled else None,
+        "last_error_at": raw["last_error_at"] if enabled else None,
     }
 
 
