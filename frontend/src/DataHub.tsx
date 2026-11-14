@@ -382,8 +382,8 @@ export default function DataHub(){
           {health.value?.state==='refreshing'?' Refreshing in background…':''}</small>
         {Boolean(snapshot?.attention_items?.length)&&<details className="data-collection-attention">
           <summary>{snapshot?.attention_items?.length} series need attention — show exact sources</summary>
-          <p>These series have observations, but their last source period is old or
-            the last collection requires investigation. A recent download does not
+          <p>These sources have stale or missing observations, failed collection,
+            or unresolved source evidence. A successful download alone does not
             establish that newer source observations exist.</p>
           <div className="data-collection-table-scroll">
             <table aria-label="Sources requiring attention">
