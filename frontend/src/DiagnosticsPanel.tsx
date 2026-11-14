@@ -44,6 +44,8 @@ function ageLabel(value?:string|null):string {
 function summary(report:Diagnostics|null,failure:string):string {
   if(failure)return 'Status information is temporarily unavailable. Automatic retry remains enabled.';
   if(!report)return 'Reading source health and processing state.';
+  if(report.data_changes?.state==='failed')
+    return 'A post-ingestion assessment could not finish. Review Diagnostics for the cause before relying on newly imported evidence.';
   const status=report.status;
   if(status.recent_errors>0||Number(status.unresolved_source_failures||0)>0)
     return 'Collection or processing failures were detected. Inspect Diagnostics for the exact cause.';
@@ -57,7 +59,7 @@ function summary(report:Diagnostics|null,failure:string):string {
     return 'Source warnings were recorded during the last 24 hours. Review the event details if necessary.';
   if(status.assessment_running||status.import_running)
     return 'Imports or scientific reassessment are running in the background.';
-  return 'No current collection failures or stale histories were reported by the latest check.';
+  return 'The latest source check reports no failures or stale histories. Research-method limitations are assessed separately.';
 }
 
 export default function DiagnosticsPanel() {
