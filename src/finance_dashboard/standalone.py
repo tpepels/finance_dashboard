@@ -37,6 +37,10 @@ _schedule_lock = Lock()
 _schedule_progress = {
     "refresh_running": False, "refresh_state": "not_started",
     "next_refresh_at": None, "last_refresh_finished_at": None,
+    "refresh_stage": None, "refresh_completed": 0, "refresh_total": None,
+    "refresh_current_source": None, "refresh_started_at": None,
+    "last_refresh_outcome": None, "last_error_code": None,
+    "last_error_stage": None, "last_error_at": None,
 }
 
 
@@ -178,8 +182,17 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
             continue
         with maintenance_network_lock:
             _record_schedule(refresh_running=True, refresh_state="collecting",
-                             next_refresh_at=None)
+                             refresh_stage="macro", refresh_completed=0,
+                             refresh_total=None, refresh_current_source=None,
+                             refresh_started_at=_utc_time(time.time()),
+                             last_error_code=None, last_error_stage=None,
+                             last_error_at=None, next_refresh_at=None)
             cycle_failed = False
+            def macro_progress(completed, total, source_id):
+                # Completed tasks include policy deferrals. This is task
+                # progress, never a fabricated count of successful imports.
+                _record_schedule(refresh_stage="macro", refresh_completed=completed,
+                                 refresh_total=total, refresh_current_source=source_id)
             record_event("system", "started", action="scheduled_refresh",
                          status="running")
             if refresh_wisesheets:
@@ -193,7 +206,8 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
             try:
                 macro_failures = refresh_all(
-                    engine, stopped=scheduled_stop, skip_complete_pinned=True)
+                    engine, stopped=scheduled_stop, skip_complete_pinned=True,
+                    progress=macro_progress)
                 if macro_failures:
                     cycle_failed = True
                     record_event("macro", "stage_finished", level="warning",
@@ -202,6 +216,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     log.warning("%d macro sources failed; retained last successful observations",
                                 macro_failures)
                 if include_markets and not scheduled_stop.is_set():
+                    _record_schedule(refresh_stage="markets")
                     market_failures = refresh_market_all(engine, stopped=scheduled_stop)
                     if market_failures:
                         cycle_failed = True
@@ -212,12 +227,19 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                                     market_failures)
             except Exception:
                 cycle_failed = True
+                _record_schedule(refresh_state="source_collection_failed",
+                                 refresh_stage="macro",
+                                 last_error_code="internal_error",
+                                 last_error_stage="macro",
+                                 last_error_at=_utc_time(time.time()))
                 record_event("system", "collector_failed", level="error",
-                             action="scheduled_refresh", reason="internal_error")
+                             action="scheduled_refresh", reason="internal_error",
+                             stage="macro")
                 # A malformed provider response must not terminate the API or
                 # silently kill refresh. Do not log URLs containing API keys.
                 log.error("Background refresh cycle aborted (error redacted); preserving previous data")
             if enabled("FINANCE_VINTAGE_REFRESH", "1") and not scheduled_stop.is_set():
+                _record_schedule(refresh_stage="vintage")
                 try:
                     from .vintage import capture_previous_month
                     outcome = capture_previous_month()
@@ -237,6 +259,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("ALFRED month-end capture failed; source API credentials redacted")
             if enabled("FINANCE_SEC_HOLDINGS_REFRESH", "0") and not scheduled_stop.is_set():
+                _record_schedule(refresh_stage="sec")
                 try:
                     from .sec_holdings_sync import collect_if_due
                     result=collect_if_due()
@@ -253,6 +276,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("SEC N-PORT collection failed; preserving verified historical filings")
             if enabled("FINANCE_AUTO_BACKUP", "1") and not scheduled_stop.is_set():
+                _record_schedule(refresh_stage="backup")
                 try:
                     from .backup import backup_local, source_database_path
                     backup_local(
@@ -278,7 +302,10 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
             next_due = time.time() + interval_seconds
             _save_schedule_due(next_due)
             _record_schedule(refresh_running=False, refresh_state="waiting",
+                             refresh_stage=None, refresh_current_source=None,
                              next_refresh_at=_utc_time(next_due),
+                             last_refresh_outcome=("interrupted" if interrupted else
+                                                    "partial" if cycle_failed else "complete"),
                              last_refresh_finished_at=_utc_time(time.time()))
         # A complete scheduled cycle can also update vintage, SEC or other
         # original evidence outside IngestionService.refresh. Notify one
@@ -305,6 +332,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
         if stopped.wait(interval_seconds):
             break
     _record_schedule(refresh_running=False, refresh_state="stopped",
+                     refresh_stage=None, refresh_current_source=None,
                      next_refresh_at=None)
 
 
