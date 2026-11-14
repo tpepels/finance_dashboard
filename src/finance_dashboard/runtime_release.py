@@ -35,6 +35,22 @@ def _numbered_version(base: str, sequence: int) -> str:
     return f"{major}.{minor}.{patch + sequence}"
 
 
+def _next_numeric_release(base: str, sequence: int, previous: dict | None) -> str:
+    """Never regress the displayed version, including on source rollback."""
+    candidate = _numbered_version(base, sequence)
+    if previous is None:
+        return candidate
+    previous_version = previous.get("version") or previous["release_id"].split("+", 1)[0]
+    previous_match = _SEMVER.fullmatch(previous_version)
+    if previous_match is None:
+        return candidate
+    old = tuple(int(part) for part in previous_match.groups())
+    fresh = tuple(int(part) for part in _SEMVER.fullmatch(candidate).groups())
+    if fresh <= old:
+        return f"{old[0]}.{old[1]}.{old[2] + 1}"
+    return candidate
+
+
 def _previous_build(state: dict | None) -> str | None:
     if state is None:
         return None
@@ -248,7 +264,7 @@ def activate_release(*, identity: dict | None = None,
         release = {
             **release,
             "base_version": release["version"],
-            "version": _numbered_version(release["version"], sequence),
+            "version": _next_numeric_release(release["version"], sequence, previous),
             "build_number": sequence,
         }
         release["release_id"] = release["version"] + "+" + release["build"]
