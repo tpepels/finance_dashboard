@@ -109,7 +109,8 @@ describe('LabourPanel', () => {
         'capital_vs_growth','composition','inheritance'],limitations:['No causal inference'],
     };
     const base=(bundles.L07 as {values:{economies:unknown[];history:Record<string,unknown>}});
-    const withPiketty={...bundles,L07:bundle('L07',{...base.values,piketty})};
+    const withPiketty:Record<string,unknown>={...bundles,
+      L07:bundle('L07',{...base.values,piketty})};
     vi.stubGlobal('fetch',vi.fn((url:string)=>{
       const id=url.split('/').pop() as string;
       return Promise.resolve(new Response(JSON.stringify(
