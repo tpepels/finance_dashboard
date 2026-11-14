@@ -1793,10 +1793,83 @@ G03 = AnalysisDefinition("G03", {"eu27_profit_share": "profit.eu27.nonfinancial_
                                        "oecd_corporate_gross_surplus_context": ("oecd_surplus_gdp", "oecd_coverage", "oecd_members"),
                                        "msci_acwi_aggregate_earnings": ("acwi_mkt_cap", "acwi_pe")})
 
-DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06,
+def _l08(points: dict, view: dict) -> Computed:
+    """Distribution of employee earnings, kept distinct from mean compensation."""
+    from ..distribution_research import wage_distribution
+    values = wage_distribution(points)
+    return Computed(
+        values=values, estimates=None,
+        comparison=["us.cps_distribution", "oecd.earnings_dispersion",
+                    "oecd.minimum_to_median"],
+        transforms=[
+            applied("annual_mean_complete_months", applied_to=["us_cpi"],
+                    produces=["us.cpi_annual_averages"], months=12),
+            applied("matched_percentile_ratios", applied_to=["p10", "p50", "p90"],
+                    produces=["us.dispersion"], no_fill=True),
+            applied("cpi_purchasing_power", applied_to=["p10", "p50", "p90", "us_cpi"],
+                    produces=["us.real_weekly_1982_84_usd"]),
+        ])
+
+
+L08 = AnalysisDefinition("L08", {
+    "p10":"labour.us.cps_weekly_p10_nominal",
+    "p50":"labour.us.cps_weekly_p50_nominal",
+    "p90":"labour.us.cps_weekly_p90_nominal",
+    "p50_publisher_real":"labour.us.cps_weekly_p50_real",
+    "us_federal_min":"labour.us.federal_minimum_hourly",
+    "us_cpi":"prices.us.cpi_all_items_nsa",
+    **{f"oecd:{area}:{measure}":f"labour.{area}.oecd_{measure}"
+       for area in ("us","de","fr","pt","jp")
+       for measure in ("p90_p10","p90_p50","p50_p10","minimum_median")},
+}, _l08)
+
+
+def _c07(points: dict, view: dict) -> Computed:
+    """Observed nominal, real, rolling and lagged asset/CPI relationships."""
+    from ..inflation_research import inflation_assets
+    values = inflation_assets(points, today=view_today(view))
+    return Computed(
+        values=values, estimates=None,
+        comparison=["monthly_inflation_and_assets", "quarterly_housing",
+                    "rolling_correlation", "lagged_correlation", "regimes"],
+        transforms=[
+            applied("monthly_yoy_no_fill", applied_to=["us_cpi", "ea_hicp",
+                    "equity_usd", "gold_usd", "brent", "gas", "maize", "copper"],
+                    produces=["assets.nominal_yoy"], months=12),
+            applied("month_end_returns_and_fx", applied_to=["equity_usd",
+                    "usd_per_eur"], produces=["assets.equity_total_return_eur"]),
+            applied("cpi_deflation", applied_to=["assets", "consumer_inflation"],
+                    produces=["assets.real_yoy"]),
+            applied("rolling_and_lagged_correlation",
+                    applied_to=["assets", "consumer_inflation"],
+                    produces=["assets.correlation"], windows=[36,60,120],
+                    lags=list(range(-12,13))),
+            applied("quarterly_housing_no_fill",
+                    applied_to=[f"housing:{c}" for c in ("us","ea","de","pt","jp")],
+                    produces=["housing"], months=3),
+        ])
+
+
+C07 = AnalysisDefinition("C07", {
+    "us_cpi":"prices.us.cpi_all_items_nsa",
+    "ea_hicp":"prices.ea.hicp_index_2025",
+    "equity_usd":"equity.world.msci_acwi_netr_usd",
+    "gold_usd":"gold.usd.monthly_average",
+    "usd_per_eur":"fx.usd_per_eur.ecb",
+    "us_bond_returns":"returns.swinkels.us.sovereign_10y_modelled_local",
+    "brent":"prices.commodity.brent_usd",
+    "gas":"prices.commodity.natural_gas_us_usd",
+    "maize":"prices.commodity.maize_usd",
+    "copper":"prices.commodity.copper_usd",
+    **{f"housing:{country}":f"property.{country}.nominal_residential.bis"
+       for country in ("us","de","pt","jp","ea")},
+}, _c07)
+
+
+DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06, "C07": C07,
                                               "M01": M01, "M02": M02, "M04": M04, "F01": F01, "F02": F02, "F04": F04,
                                               "F05": F05, "F06": F06, "F07": F07, "V01": V01, "V02": V02, "V03": V03,
                                               "V05": V05, "G05": G05, "G06": G06, "L01": L01, "L02": L02,
-                                              "L03": L03, "L05": L05, "L07": L07, "P02": P02, "P03": P03,
+                                              "L03": L03, "L05": L05, "L07": L07, "L08": L08, "P02": P02, "P03": P03,
                                               "G01": G01, "G02": G02, "L04": L04, "P01": P01,
                                               "P04": P04, "P05": P05, "C02": C02, "C05": C05, "G03": G03}
