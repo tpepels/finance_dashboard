@@ -68,6 +68,7 @@ class CollectionWorkflow:
         self.valid_sources, self.valid_markets = valid_sources, valid_markets
         self.path = path or _path("FINANCE_DATA_COLLECTION_STATE", "data-collection.json")
         self.lock = Lock()
+        self._repair_worker: Thread | None = None
         saved = _read_json(self.path)
         self.current = saved if saved and saved.get("schema_version") == 1 else None
         if self.current and self.current.get("phase") == "starting":
@@ -92,6 +93,49 @@ class CollectionWorkflow:
             if not self.current.get("maintenance_job_id"):
                 self.current["maintenance_initial"] = "interrupted"
             _write_json(self.path, self.current)
+        if (self.current and self.current.get("maintenance_initial") == "waiting"
+                and not self.current.get("maintenance_job_id")
+                and self.current.get("phase") == "started"):
+            self._ensure_repair_worker()
+
+    def _ensure_repair_worker(self):
+        """Deferred repair remains durable while unrelated maintenance is busy."""
+        if self._repair_worker is None or not self._repair_worker.is_alive():
+            current_id = self.current["id"]
+            self._repair_worker = Thread(
+                target=self._retry_repair, args=(current_id,),
+                daemon=True, name="gcm-collection-repair")
+            self._repair_worker.start()
+
+    def _retry_repair(self, collection_id: str):
+        from .maintenance import BusyMaintenance
+        while True:
+            with self.lock:
+                record = self.current
+                if (record is None or record["id"] != collection_id
+                        or record.get("maintenance_job_id")
+                        or record.get("phase") != "started"):
+                    return
+            try:
+                job = self.maintenance.submit(
+                    "repair_source_health", {},
+                    valid_sources=self.valid_sources, valid_markets=self.valid_markets)
+            except BusyMaintenance:
+                time.sleep(2)
+                continue
+            except Exception:
+                with self.lock:
+                    if self.current and self.current["id"] == collection_id:
+                        self.current["startup_error"] = "source_repair_submission_failed"
+                        self.current["maintenance_initial"] = "failed"
+                        _write_json(self.path, self.current)
+                return
+            with self.lock:
+                if self.current and self.current["id"] == collection_id:
+                    self.current["maintenance_job_id"] = job["id"]
+                    self.current["maintenance_initial"] = job["status"]
+                    _write_json(self.path, self.current)
+            return
 
     def start(self, browser: dict | None = None) -> dict:
         from .manual_sources import source_specs
@@ -139,7 +183,7 @@ class CollectionWorkflow:
                     record["maintenance_job_id"] = job["id"]
                     record["maintenance_initial"] = job["status"]
                 except BusyMaintenance:
-                    record["maintenance_initial"] = "already_running"
+                    record["maintenance_initial"] = "waiting"
                 record["phase"] = "started"
             except Exception:
                 record["phase"] = "failed"
@@ -160,6 +204,9 @@ class CollectionWorkflow:
                         row["initial"] = "skipped"
                         row["reason"] = "collection_start_failed"
             _write_json(self.path, record)
+            if (record["phase"] == "started" and
+                    record["maintenance_initial"] == "waiting"):
+                self._ensure_repair_worker()
             return self._status_unlocked()
 
     def status(self) -> dict:
