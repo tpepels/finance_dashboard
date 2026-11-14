@@ -685,7 +685,7 @@ class ManualSourceTests(unittest.TestCase):
             limitation_api = self.client.get("/api/diagnostics/limitation-assessment")
             self.assertEqual(limitation_api.status_code, 200, limitation_api.text)
             self.assertIn("scientific_acceptance", limitation_api.json())
-            self.assertEqual(limitation_api.json()["counts"]["research_questions"], 37)
+            self.assertEqual(limitation_api.json()["counts"]["research_questions"], 39)
         console = self.client.get("/api/data/debug-console")
         self.assertEqual(console.status_code, 200)
         self.assertIn("source_coverage", console.json())
