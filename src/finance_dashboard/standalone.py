@@ -172,6 +172,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
             _record_schedule(refresh_running=False, refresh_state="stopped",
                              next_refresh_at=None)
             return
+    consecutive_core_errors = 0
     while not stopped.is_set():
         if manual_sync_pending.is_set():
             _record_schedule(refresh_running=False,
@@ -189,6 +190,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                              last_error_at=None, last_refresh_outcome=None,
                              next_refresh_at=None)
             cycle_failed = False
+            core_crashed = False
             def macro_progress(completed, total, source_id):
                 # Completed tasks include policy deferrals. This is task
                 # progress, never a fabricated count of successful imports.
@@ -228,14 +230,16 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                                     market_failures)
             except Exception:
                 cycle_failed = True
+                core_crashed = True
+                failed_stage = scheduled_refresh_status().get("refresh_stage") or "macro"
                 _record_schedule(refresh_state="source_collection_failed",
-                                 refresh_stage="macro",
+                                 refresh_stage=failed_stage,
                                  last_error_code="internal_error",
-                                 last_error_stage="macro",
+                                 last_error_stage=failed_stage,
                                  last_error_at=_utc_time(time.time()))
                 record_event("system", "collector_failed", level="error",
                              action="scheduled_refresh", reason="internal_error",
-                             stage="macro")
+                             stage=failed_stage)
                 # A malformed provider response must not terminate the API or
                 # silently kill refresh. Do not log URLs containing API keys.
                 log.error("Background refresh cycle aborted (error redacted); preserving previous data")
@@ -300,7 +304,18 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                          action="scheduled_refresh",
                          status=("interrupted" if interrupted else
                                  "partial" if cycle_failed else "complete"))
-            next_due = time.time() + interval_seconds
+            if core_crashed:
+                # A planner/collector exception leaves source histories
+                # unattempted. Retry sooner than the normal daily cadence,
+                # with bounded exponential backoff; publisher HTTP retries
+                # still obey the existing durable rate/cooldown policy.
+                consecutive_core_errors += 1
+                retry_seconds = min(interval_seconds,
+                                    900 * (2 ** min(consecutive_core_errors - 1, 5)))
+            else:
+                consecutive_core_errors = 0
+                retry_seconds = interval_seconds
+            next_due = time.time() + retry_seconds
             _save_schedule_due(next_due)
             _record_schedule(refresh_running=False, refresh_state="waiting",
                              refresh_stage=None, refresh_current_source=None,
@@ -330,7 +345,7 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                 record_event("system", "collector_failed", level="warning",
                              action="scheduled_original_sources",
                              reason="original_source_schedule_failed")
-        if stopped.wait(interval_seconds):
+        if stopped.wait(retry_seconds):
             break
     _record_schedule(refresh_running=False, refresh_state="stopped",
                      refresh_stage=None, refresh_current_source=None,
