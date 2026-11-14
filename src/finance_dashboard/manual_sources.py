@@ -546,7 +546,7 @@ class ManualSourceManager:
                                if job["dataset"] == name), None)
                 # Keep the existing partial spool and stable manual links. A
                 # second click must not hide an outstanding human upload.
-                if dataset is None and latest and latest["status"] == "manual_required":
+                if latest and latest["status"] == "manual_required":
                     skipped[name] = "manual_upload_pending"
                     continue
                 if dataset is None and latest and _recent_import(latest, name):
