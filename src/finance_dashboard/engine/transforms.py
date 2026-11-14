@@ -15,6 +15,8 @@ TRANSFORMS: dict[str, str] = {
     "annual_mean_complete_months": "calendar-year mean of CPI observations only if all twelve monthly values are explicitly observed; no interpolation or incomplete-year substitute",
     "matched_percentile_ratios": "observed CPS annual P90/P50/P10 earnings: P90/P10, P90/P50, P50/P10 on exact shared years; verify P10 <= P50 <= P90",
     "cpi_purchasing_power": "real weekly earnings in 1982-84 dollars = nominal CPS weekly USD * 100 / matched full-year average CPI-U NSA",
+    "matched_oews_hourly_mean_median": "on identical May-year BLS OEWS national all-occupations source rows (SOC 00-0000), mean/median = published mean hourly wage divided by published median hourly wage and gap = mean minus median in USD/hour; no CPS or compensation joins, unmatched years withheld",
+    "oews_may_cpi_deflation": "for each OEWS matched May-year national hourly mean and median, CPI-real amount = nominal USD/hour * 100 / observed BLS CPI-U NSA for May of the identical reference year; no annual interpolation, missing CPI withholds the real year",
     "monthly_yoy_no_fill": "nominal twelve-month change = 100*(level[t]/level[t-12]-1) on exact observed months only; CPI-U and HICP use original annual basket changes",
     "month_end_returns_and_fx": "unhedged EUR USD-quoted asset value = observed source USD index / ECB USD-per-EUR reference quote on the corresponding completed trading month",
     "cpi_deflation": "CPI-real 12-month price/return change = 100*((1+nominal_yoy/100)/(1+CPI_yoy/100)-1), with matched month and currency",
