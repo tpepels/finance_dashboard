@@ -170,10 +170,9 @@ export default function DataHub(){
       observed.current.set(source.dataset,source.status);
     }
     if(changed){
+      // Other open workspaces may refresh their visible figures. The server
+      // already owns availability and acceptance invalidation after commit.
       window.dispatchEvent(new Event('gcm-data-updated'));
-      // Trigger a fresh availability calculation after ingestion; the API
-      // returns immediately while its dedicated worker does the database scan.
-      void fetch('/api/data/health?refresh=true',{cache:'no-store'}).catch(()=>{});
     }
   },[run]);
   const snapshot=health.value?.snapshot;
