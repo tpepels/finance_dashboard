@@ -410,6 +410,48 @@ class ManualSourceTests(unittest.TestCase):
         self.assertTrue(any(a["outcome"] == "publisher_http_429"
                             for a in result["attempts"]))
 
+    def test_global_download_refreshes_stale_mutable_sources_but_not_pinned_origins(self):
+        from datetime import timedelta
+        manager = self.client.app.state.manual_sources
+        now = datetime.now(timezone.utc)
+        recent = now.isoformat()
+        stale = (now - timedelta(days=10)).isoformat()
+        with manager.lock:
+            manager.jobs = [
+                {"id": "00000000000000000000000000000101", "dataset": "gold-spot",
+                 "method": "publisher", "status": "complete", "finished_at": stale},
+                {"id": "00000000000000000000000000000102", "dataset": "wid-world",
+                 "method": "publisher", "status": "complete", "finished_at": recent},
+                {"id": "00000000000000000000000000000103", "dataset": "oecd-icio",
+                 "method": "publisher", "status": "complete", "finished_at": stale},
+            ]
+        with (patch("finance_dashboard.manual_sources.source_specs",
+                    return_value={key: source_specs()[key] for key in (
+                        "gold-spot", "wid-world", "oecd-icio")}),
+              patch.object(manager, "_enqueue", return_value="new-job") as enqueue):
+            result = manager.fetch()
+        self.assertEqual([r["dataset"] for r in result["jobs"]], ["gold-spot"])
+        self.assertEqual(result["skipped"]["wid-world"], "already_current_or_pinned")
+        self.assertEqual(result["skipped"]["oecd-icio"], "already_current_or_pinned")
+        self.assertEqual(enqueue.call_args.args, ("gold-spot", "publisher"))
+
+    def test_most_recent_pinned_success_remains_in_durable_journal(self):
+        manager = self.client.app.state.manual_sources
+        jobs = [{
+            "id": "00000000000000000000000000000101",
+            "dataset": "oecd-icio", "status": "complete",
+            "method": "publisher", "sources": []}]
+        jobs.extend({
+            "id": f"{i+200:032x}", "dataset": "gold-spot",
+            "method": "publisher", "status": "complete", "sources": []}
+            for i in range(100))
+        with manager.lock:
+            manager.jobs = jobs
+            manager._save()
+        kept = json.loads(manager.journal.read_text())["jobs"]
+        self.assertEqual(len(kept), 81)
+        self.assertTrue(any(row["dataset"] == "oecd-icio" for row in kept))
+
     def test_unfinished_manual_upload_survives_more_than_80_later_jobs(self):
         from finance_dashboard.manual_sources import ManualSourceManager
         manager = self.client.app.state.manual_sources
