@@ -4320,7 +4320,7 @@
         "S48",
         "S35"
       ],
-      "outstanding_evidence": "Original WID top1/top10/bottom50 income shares are mapped, separate from wealth. Independent WIID Gini survey concepts, common populations and first-publication histories remain unresolved.",
+      "outstanding_evidence": "Original WID top1/top10/bottom50 income shares are mapped, separate from wealth. Independent WIID Gini survey concepts, common populations and first-publication histories remain unresolved. Piketty extension: WID real income group averages, wealth ratios, macro net income/capital flow/assets and wealth concentration are supplemental, independently source-gated. Comparable inheritance/bequest flows are not registered originals and remain unestimated; r−g is an accounting yield comparison, not a causal inequality law.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -4457,6 +4457,684 @@
               ],
               "population": "US household net-worth percentile groups",
               "concept": "Net-worth shares, distinct from income flows"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_distribution_US",
+            "description": "WID original same-population net personal wealth top1/top10/bottom50 shares, United States. Never borrow US Federal Reserve DFA households.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "inequality.us.net_personal_wealth.top1",
+              "inequality.us.net_personal_wealth.top10",
+              "inequality.us.net_personal_wealth.bottom50"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "US"
+              ],
+              "population": "Equal-split adults 20+; net personal wealth shares",
+              "concept": "WID original same-population net personal wealth top1/top10/bottom50 shares, United States. Never borrow US Federal Reserve DFA households."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_real_income_growth_US",
+            "description": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.us.real_pretax_average.all",
+              "piketty.us.real_pretax_average.bottom50",
+              "piketty.us.real_pretax_average.middle40",
+              "piketty.us.real_pretax_average.top10",
+              "piketty.us.real_pretax_average.top1"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "US"
+              ],
+              "population": "Equal-split adults 20+; pre-tax national income levels in consistent reference-year prices",
+              "concept": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_income_ratios_US",
+            "description": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.us.wealth_to_income.national",
+              "piketty.us.wealth_to_income.private",
+              "piketty.us.wealth_to_income.public"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "US"
+              ],
+              "population": "National macro wealth-to-net-national-income accounts",
+              "concept": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_return_growth_US",
+            "description": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.us.net_capital_income",
+              "piketty.us.net_national_wealth",
+              "piketty.us.net_national_income",
+              "piketty.us.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "US"
+              ],
+              "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_composition_US",
+            "description": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.us.national_housing_assets",
+              "piketty.us.national_business_assets",
+              "piketty.us.net_national_wealth"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "US"
+              ],
+              "population": "National macro market-value assets",
+              "concept": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_distribution_FR",
+            "description": "WID original same-population net personal wealth top1/top10/bottom50 shares, France. Never borrow US Federal Reserve DFA households.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "inequality.fr.net_personal_wealth.top1",
+              "inequality.fr.net_personal_wealth.top10",
+              "inequality.fr.net_personal_wealth.bottom50"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "FR"
+              ],
+              "population": "Equal-split adults 20+; net personal wealth shares",
+              "concept": "WID original same-population net personal wealth top1/top10/bottom50 shares, France. Never borrow US Federal Reserve DFA households."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_real_income_growth_FR",
+            "description": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.fr.real_pretax_average.all",
+              "piketty.fr.real_pretax_average.bottom50",
+              "piketty.fr.real_pretax_average.middle40",
+              "piketty.fr.real_pretax_average.top10",
+              "piketty.fr.real_pretax_average.top1"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "FR"
+              ],
+              "population": "Equal-split adults 20+; pre-tax national income levels in consistent reference-year prices",
+              "concept": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_income_ratios_FR",
+            "description": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.fr.wealth_to_income.national",
+              "piketty.fr.wealth_to_income.private",
+              "piketty.fr.wealth_to_income.public"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "FR"
+              ],
+              "population": "National macro wealth-to-net-national-income accounts",
+              "concept": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_return_growth_FR",
+            "description": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.fr.net_capital_income",
+              "piketty.fr.net_national_wealth",
+              "piketty.fr.net_national_income",
+              "piketty.fr.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "FR"
+              ],
+              "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_composition_FR",
+            "description": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.fr.national_housing_assets",
+              "piketty.fr.national_business_assets",
+              "piketty.fr.net_national_wealth"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "FR"
+              ],
+              "population": "National macro market-value assets",
+              "concept": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_distribution_PT",
+            "description": "WID original same-population net personal wealth top1/top10/bottom50 shares, Portugal. Never borrow US Federal Reserve DFA households.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "inequality.pt.net_personal_wealth.top1",
+              "inequality.pt.net_personal_wealth.top10",
+              "inequality.pt.net_personal_wealth.bottom50"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "PT"
+              ],
+              "population": "Equal-split adults 20+; net personal wealth shares",
+              "concept": "WID original same-population net personal wealth top1/top10/bottom50 shares, Portugal. Never borrow US Federal Reserve DFA households."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_real_income_growth_PT",
+            "description": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.pt.real_pretax_average.all",
+              "piketty.pt.real_pretax_average.bottom50",
+              "piketty.pt.real_pretax_average.middle40",
+              "piketty.pt.real_pretax_average.top10",
+              "piketty.pt.real_pretax_average.top1"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "PT"
+              ],
+              "population": "Equal-split adults 20+; pre-tax national income levels in consistent reference-year prices",
+              "concept": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_income_ratios_PT",
+            "description": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.pt.wealth_to_income.national",
+              "piketty.pt.wealth_to_income.private",
+              "piketty.pt.wealth_to_income.public"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "PT"
+              ],
+              "population": "National macro wealth-to-net-national-income accounts",
+              "concept": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_return_growth_PT",
+            "description": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.pt.net_capital_income",
+              "piketty.pt.net_national_wealth",
+              "piketty.pt.net_national_income",
+              "piketty.pt.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "PT"
+              ],
+              "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_composition_PT",
+            "description": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.pt.national_housing_assets",
+              "piketty.pt.national_business_assets",
+              "piketty.pt.net_national_wealth"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "PT"
+              ],
+              "population": "National macro market-value assets",
+              "concept": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_distribution_CN",
+            "description": "WID original same-population net personal wealth top1/top10/bottom50 shares, China. Never borrow US Federal Reserve DFA households.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "inequality.cn.net_personal_wealth.top1",
+              "inequality.cn.net_personal_wealth.top10",
+              "inequality.cn.net_personal_wealth.bottom50"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "CN"
+              ],
+              "population": "Equal-split adults 20+; net personal wealth shares",
+              "concept": "WID original same-population net personal wealth top1/top10/bottom50 shares, China. Never borrow US Federal Reserve DFA households."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_real_income_growth_CN",
+            "description": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.cn.real_pretax_average.all",
+              "piketty.cn.real_pretax_average.bottom50",
+              "piketty.cn.real_pretax_average.middle40",
+              "piketty.cn.real_pretax_average.top10",
+              "piketty.cn.real_pretax_average.top1"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "CN"
+              ],
+              "population": "Equal-split adults 20+; pre-tax national income levels in consistent reference-year prices",
+              "concept": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_income_ratios_CN",
+            "description": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.cn.wealth_to_income.national",
+              "piketty.cn.wealth_to_income.private",
+              "piketty.cn.wealth_to_income.public"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "CN"
+              ],
+              "population": "National macro wealth-to-net-national-income accounts",
+              "concept": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_return_growth_CN",
+            "description": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.cn.net_capital_income",
+              "piketty.cn.net_national_wealth",
+              "piketty.cn.net_national_income",
+              "piketty.cn.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "CN"
+              ],
+              "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_composition_CN",
+            "description": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.cn.national_housing_assets",
+              "piketty.cn.national_business_assets",
+              "piketty.cn.net_national_wealth"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "CN"
+              ],
+              "population": "National macro market-value assets",
+              "concept": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_distribution_IN",
+            "description": "WID original same-population net personal wealth top1/top10/bottom50 shares, India. Never borrow US Federal Reserve DFA households.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "inequality.in.net_personal_wealth.top1",
+              "inequality.in.net_personal_wealth.top10",
+              "inequality.in.net_personal_wealth.bottom50"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "IN"
+              ],
+              "population": "Equal-split adults 20+; net personal wealth shares",
+              "concept": "WID original same-population net personal wealth top1/top10/bottom50 shares, India. Never borrow US Federal Reserve DFA households."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_real_income_growth_IN",
+            "description": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.in.real_pretax_average.all",
+              "piketty.in.real_pretax_average.bottom50",
+              "piketty.in.real_pretax_average.middle40",
+              "piketty.in.real_pretax_average.top10",
+              "piketty.in.real_pretax_average.top1"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "IN"
+              ],
+              "population": "Equal-split adults 20+; pre-tax national income levels in consistent reference-year prices",
+              "concept": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_income_ratios_IN",
+            "description": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.in.wealth_to_income.national",
+              "piketty.in.wealth_to_income.private",
+              "piketty.in.wealth_to_income.public"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "IN"
+              ],
+              "population": "National macro wealth-to-net-national-income accounts",
+              "concept": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_return_growth_IN",
+            "description": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.in.net_capital_income",
+              "piketty.in.net_national_wealth",
+              "piketty.in.net_national_income",
+              "piketty.in.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "IN"
+              ],
+              "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_composition_IN",
+            "description": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.in.national_housing_assets",
+              "piketty.in.national_business_assets",
+              "piketty.in.net_national_wealth"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "IN"
+              ],
+              "population": "National macro market-value assets",
+              "concept": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_distribution_WO",
+            "description": "WID original same-population net personal wealth top1/top10/bottom50 shares, Published world. Never borrow US Federal Reserve DFA households.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "inequality.world.net_personal_wealth.top1",
+              "inequality.world.net_personal_wealth.top10",
+              "inequality.world.net_personal_wealth.bottom50"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "WORLD"
+              ],
+              "population": "Equal-split adults 20+; net personal wealth shares",
+              "concept": "WID original same-population net personal wealth top1/top10/bottom50 shares, Published world. Never borrow US Federal Reserve DFA households."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_real_income_growth_WO",
+            "description": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.world.real_pretax_average.all",
+              "piketty.world.real_pretax_average.bottom50",
+              "piketty.world.real_pretax_average.middle40",
+              "piketty.world.real_pretax_average.top10",
+              "piketty.world.real_pretax_average.top1"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "WORLD"
+              ],
+              "population": "Equal-split adults 20+; pre-tax national income levels in consistent reference-year prices",
+              "concept": "WID same vintage original real adult pre-tax income group averages, all/bottom50/middle40/top10/top1. Exact years, no GDP substitution."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_income_ratios_WO",
+            "description": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.world.wealth_to_income.national",
+              "piketty.world.wealth_to_income.private",
+              "piketty.world.wealth_to_income.public"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "ratio",
+              "geography": [
+                "WORLD"
+              ],
+              "population": "National macro wealth-to-net-national-income accounts",
+              "concept": "WID original net national, private and public wealth/net national income. Source fraction, not percent and not GDP denominator."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_capital_return_growth_WO",
+            "description": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.world.net_capital_income",
+              "piketty.world.net_national_wealth",
+              "piketty.world.net_national_income",
+              "piketty.world.factor_capital_share"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "WORLD"
+              ],
+              "population": "National macro totals; WID factor-price capital-share context is not a stock return",
+              "concept": "Net capital-income flow, net national wealth stock and real net national income original WID totals; factor capital share is separate interpretive context."
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_wealth_composition_WO",
+            "description": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.world.national_housing_assets",
+              "piketty.world.national_business_assets",
+              "piketty.world.net_national_wealth"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "WORLD"
+              ],
+              "population": "National macro market-value assets",
+              "concept": "National housing/business assets from WID and national wealth denominator; residual is shown and not assumed a stand-alone financial category."
             },
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",

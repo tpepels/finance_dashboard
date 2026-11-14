@@ -31,7 +31,7 @@ from .oecd_cli import OECD_CLI_FLOW, OECD_CLI_ROOT, OECD_CLI_SERIES, oecd_cli_ke
 from .bls_oews import fetch_bls_oews
 from .oecd_earnings import OECD_EARNINGS_SERIES, ROOT as OECD_EARNINGS_ROOT, source_key as oecd_earnings_key, parse_oecd_earnings_csv
 from .ofr_fsi import OFR_FSI_SERIES, OFR_FSI_URL, parse_ofr_fsi
-from .wid import WID_SERIES, WidClient
+from .wid import WID_ALL_SERIES, WidClient
 from .oecd_tiva import TIVA_SERIES, TivaClient
 from .research_returns import FRENCH_SERIES, SWINKELS_SERIES, ResearchReturnsClient
 from .global_market_returns import GLOBAL_MARKET_SERIES
@@ -97,7 +97,7 @@ def fetch_bis(self, series_id, start, item, key):
 def fetch_wid(self, series_id, start, item, key):
     """Validate and fetch native data for WID."""
     provider = item["provider"]
-    expected = WID_SERIES.get(series_id)
+    expected = WID_ALL_SERIES.get(series_id)
     if expected is None or key != "/".join(expected):
         raise SourceUnavailable("WID original variable or population mapping changed")
     if self._wid is None:

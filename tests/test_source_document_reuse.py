@@ -292,7 +292,8 @@ class WidBoundedWaitTests(unittest.TestCase):
                     patch("httpx.HTTPTransport", return_value=httpx.MockTransport(respond)):
                 router = ProviderRouter()
                 try:
-                    ids = [sid for sid in router.supported_ids() if router.definitions[sid]["provider"] == "WID"]
+                    from finance_dashboard.wid import WID_SERIES
+                    ids = [sid for sid in router.supported_ids() if sid in WID_SERIES]
                     for sid in ids:
                         self.assertTrue(router.fetch(sid).observations)
                 finally:
