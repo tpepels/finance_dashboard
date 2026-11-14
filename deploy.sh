@@ -32,7 +32,7 @@ echo "Building a distinct Global Capital Monitor release..."
 docker compose build --build-arg "FINANCE_BUILD_NONCE=$nonce" finance-dashboard
 
 # Do not invoke build a second time with an unversioned default argument.
-docker compose up -d --no-build finance-dashboard
+docker compose up -d --no-build --wait --wait-timeout 120 finance-dashboard
 
 echo "Deployed release metadata:"
-docker compose exec -T finance-dashboard python -m finance_dashboard.runtime_release activate
+docker compose exec -T finance-dashboard python -c 'import json; from finance_dashboard.runtime_release import release_info; print(json.dumps(release_info(), sort_keys=True))'
