@@ -131,9 +131,9 @@ class PolicyArchitectureTests(unittest.TestCase):
     def test_all_declared_series_reference_hosts_have_canonical_rules(self):
         from finance_dashboard.source_policy import catalog_source_policy_audit
         result = catalog_source_policy_audit()
-        self.assertEqual(result["series_catalog_count"], 430)
+        self.assertEqual(result["series_catalog_count"], 432)
         self.assertTrue(result["all_declared_references_classified"])
-        self.assertEqual(result["source_references_classified"], 430)
+        self.assertEqual(result["source_references_classified"], 432)
         self.assertEqual(result["unclassified_or_invalid_source_references"], [])
         self.assertFalse(result["dynamic_network_origins_verified"])
 
