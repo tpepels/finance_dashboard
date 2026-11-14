@@ -12,7 +12,7 @@ import re
 
 from .engine.acceptance import analysis_phase2
 from .engine.analyses import DEFINITIONS
-from .engine.limitations import load_register
+from .engine.limitations import UnmappedLimitation, load_register
 
 _SOURCE_ATTENTION = frozenset({
     "stale", "collection_disabled", "not_ingested", "collection_failed",
@@ -144,7 +144,7 @@ def assess_limitations(*, coverage: dict, document: dict,
     question_ids = [row["id"] for row in document.get("analyses", [])]
     for item in series:
         sid = item.get("id")
-        state = item.get("state")
+        state = item.get("state") or "unknown"
         refreshed = item.get("refresh_state")
         if not sid:
             continue
@@ -185,15 +185,36 @@ def assess_limitations(*, coverage: dict, document: dict,
         "reason": "scientific_acceptance_snapshot_unavailable",
     }
     if snapshot is not None:
-        questions, p2_findings = _phase2_findings(snapshot, document)
-        findings.extend(p2_findings)
-        evaluated = sum(q["state"] != "not_checked" for q in questions)
-        assessment = {
-            "state": "ready" if evaluated == len(question_ids) else "partial",
-            "evaluated_at": snapshot.evaluated_at.isoformat(),
-            "question_count": len(question_ids), "evaluated_questions": evaluated,
-            "reason": None if evaluated == len(question_ids) else "research_questions_not_all_checked",
-        }
+        try:
+            questions, p2_findings = _phase2_findings(snapshot, document)
+        except (UnmappedLimitation, KeyError, TypeError, ValueError) as error:
+            # Do not suppress the bug or allow an optional audit to destroy
+            # the diagnostic ZIP needed to investigate it.
+            reason = "acceptance_limitation_register_invalid:" + type(error).__name__
+            findings.append(_finding(
+                id="assessment:research_limitations_invalid",
+                category="limitation_assessment_failure",
+                severity="high", status="needs_review",
+                title="Research limitation assessment could not be completed",
+                detail="The registered acceptance limitations could not be reconciled.",
+                next_action="Investigate the limitation register and acceptance role output.",
+                provenance="limitation_audit",
+                evidence={"error_class": type(error).__name__},
+            ))
+            assessment = {
+                "state": "failed", "evaluated_at": snapshot.evaluated_at.isoformat(),
+                "question_count": len(question_ids), "evaluated_questions": 0,
+                "reason": reason,
+            }
+        else:
+            findings.extend(p2_findings)
+            evaluated = sum(q["state"] != "not_checked" for q in questions)
+            assessment = {
+                "state": "ready" if evaluated == len(question_ids) else "partial",
+                "evaluated_at": snapshot.evaluated_at.isoformat(),
+                "question_count": len(question_ids), "evaluated_questions": evaluated,
+                "reason": None if evaluated == len(question_ids) else "research_questions_not_all_checked",
+            }
     # The method register is explicit application code, and always inspectable
     # even before the first/next scientific acceptance has finished.
     for aid in sorted(question_ids):
