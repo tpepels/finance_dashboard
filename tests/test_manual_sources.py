@@ -315,7 +315,7 @@ class ManualSourceTests(unittest.TestCase):
         data, meta = wid_fixtures("WO", legacy=True)
         payloads = {"data": data.encode(), "metadata": meta.encode()}
         captured = []
-        def remote(role, destination, browser=None):
+        def remote(role, destination, browser=None, client=None):
             raw = payloads[role["id"]]
             destination.write_bytes(raw)
             captured.append(role["download_url"])
@@ -356,7 +356,7 @@ class ManualSourceTests(unittest.TestCase):
         data, meta = wid_fixtures("WO", legacy=True)
         payloads = {"data": data.encode(), "metadata": meta.encode()}
         counts = {"data": 0, "metadata": 0}
-        def fake_download(role, path, browser=None):
+        def fake_download(role, path, browser=None, client=None):
             name = role["id"]
             counts[name] += 1
             if name == "metadata" and counts[name] == 1:
@@ -401,7 +401,7 @@ class ManualSourceTests(unittest.TestCase):
         from finance_dashboard.publisher_downloads import PublisherDownloadError
         from hashlib import sha256
         data, metadata = wid_fixtures("WO", legacy=True)
-        def remote(role, destination, browser=None):
+        def remote(role, destination, browser=None, client=None):
             if role["id"] == "metadata":
                 raise PublisherDownloadError("publisher_http_403")
             raw = data.encode()
@@ -524,7 +524,7 @@ class ManualSourceTests(unittest.TestCase):
         from hashlib import sha256
         readme = b"readme-test-original"
         archive = b"test-pinned-zip-bytes"
-        def remote(role, destination, browser=None):
+        def remote(role, destination, browser=None, client=None):
             raw = readme if role["download_url"].endswith(".xlsx") else archive
             destination.write_bytes(raw)
             return {"requested_url": role["download_url"], "final_url": role["download_url"],
