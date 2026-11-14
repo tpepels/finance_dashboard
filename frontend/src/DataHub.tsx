@@ -296,6 +296,16 @@ export default function DataHub(){
         Research evidence last evaluated {formatWhen(assessment.evaluated_at)}.</small>}
     </section>
 
+    <details className="data-collection-advanced-actions">
+      <summary>Manual source check (optional)</summary>
+      <p>Scheduled refreshes and ingestion-triggered checks require no action.
+        Use this only to request an additional publisher check now, or to initiate
+        original-source acquisition when the automatic schedule is disabled.
+        Repeating it does not create unpublished observations.</p>
+      <button type="button" className="data-collection-primary" disabled={starting||active}
+        onClick={()=>void start()}>{starting?'Starting…':active?'Source check running':'Check sources now'}</button>
+    </details>
+
     <section aria-label="Current collection" className="data-collection-run" aria-live="polite">
       <div className="data-collection-statusline">
         <span className={'data-state data-state-'+statusStyle(run?.state??'queued')}>
