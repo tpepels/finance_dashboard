@@ -45,7 +45,7 @@ function stubFetch() {
   vi.stubGlobal('fetch', vi.fn((url: string) => {
     urls.push(url);
     const id = url.split('/').pop() as string;
-    const body = { C01: c01, C02: c02, C03: c03, C05: c05, C06: c06, recessions: { periods: [] } }[id];
+    const body = { C01: c01, C02: c02, C03: c03, C05: c05, C06: c06, C07: c07, recessions: { periods: [] } }[id];
     return Promise.resolve(new Response(JSON.stringify(body)));
   }));
   return urls;
