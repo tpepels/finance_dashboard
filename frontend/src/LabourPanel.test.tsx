@@ -65,4 +65,63 @@ describe('LabourPanel', () => {
     expect(screen.getByText(/portugal −0\.07 to \+0\.02/i)).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
   });
+
+  it('integrates the new Piketty companion with the existing L07 research card',async()=>{
+    vi.stubGlobal('ResizeObserver',class {observe(){} disconnect(){}});
+    const emptyLine: [string,number][]=[];
+    const zero={
+      status:'awaiting_matched_originals',
+    };
+    const selected={
+      area:'US',
+      concentration:{status:'partial',concepts:{
+        income:{status:'awaiting_originals',percentage_shares:{
+          top1:emptyLine,top10:emptyLine,bottom50:emptyLine,middle40:emptyLine,
+        },latest_year:null,observed_matched_years:0,derived_middle40:true,
+          excluded_inconsistent_years:[]},
+        wealth:{status:'awaiting_originals',percentage_shares:{
+          top1:emptyLine,top10:emptyLine,bottom50:emptyLine,middle40:emptyLine,
+        },latest_year:null,observed_matched_years:0,derived_middle40:true,
+          excluded_inconsistent_years:[]},
+      }},
+      growth_capture:{...zero,real_per_adult_index:{bottom50:emptyLine,middle40:emptyLine,
+        top10:emptyLine,top1:emptyLine},change_contributions:[],
+        accepted_complete_years:[],rejected_source_identity_years:[]},
+      wealth_income:{...zero,percent_of_net_national_income:{
+        national:emptyLine,private:emptyLine,public:emptyLine},
+        matching_component_years:[],national_minus_private_public_pp:emptyLine},
+      capital_vs_growth:{...zero,net_capital_income_to_mean_national_wealth_pct:emptyLine,
+        real_net_national_income_growth_pct:emptyLine,
+        accounting_net_income_yield_minus_growth_pp:emptyLine,
+        factor_price_capital_share_pct:emptyLine,matched_years:0},
+      composition:{...zero,composition_pct_of_national_wealth:{
+        housing:emptyLine,business_and_other_nonfinancial:emptyLine,residual:emptyLine},
+        matched_years:0},
+      inheritance:{status:'awaiting_comparable_originals',latest_year:null,
+        annual_inheritance_flow_pct:[],reason:'No accepted original bequest flow'},
+    };
+    const piketty={
+      method_source:'WID original',methodology_url:'https://wid.world/codes-dictionary/',
+      report_reference:{title:'World Inequality Report 2026',reference_year:2025,
+        world_income_top10_pct:53,world_wealth_top10_pct:75,
+        basis:'Fixed report',url:'https://wid.world/document/world-inequality-report-2026/'},
+      areas:[selected],finding_order:['concentration','growth_capture','wealth_income',
+        'capital_vs_growth','composition','inheritance'],limitations:['No causal inference'],
+    };
+    const base=(bundles.L07 as {values:{economies:unknown[];history:Record<string,unknown>}});
+    const withPiketty={...bundles,L07:bundle('L07',{...base.values,piketty})};
+    vi.stubGlobal('fetch',vi.fn((url:string)=>{
+      const id=url.split('/').pop() as string;
+      return Promise.resolve(new Response(JSON.stringify(
+        id==='recessions'?{periods:[]}:withPiketty[id])));
+    }));
+    render(<LabourPanel theme="light" dataVersion={0}/>);
+    expect(await screen.findByRole('heading',{name:/Piketty's five research questions/}))
+      .toBeTruthy();
+    expect(screen.getByRole('region',{name:'Piketty concentration'})).toBeTruthy();
+    expect(screen.getByRole('region',{name:'Piketty growth capture'})).toBeTruthy();
+    expect(screen.getByRole('region',{name:'Piketty wealth composition and inheritance'})).toBeTruthy();
+    expect(screen.getByText(/Inheritance and bequests: withheld/)).toBeTruthy();
+  });
+
 });
