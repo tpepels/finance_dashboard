@@ -116,6 +116,14 @@ def source_specs() -> dict[str, dict]:
         "series_ids": [],
         "roles": [],
         "existing_importer": True,
+        "manual_files": [
+            {"id": filename, "label": filename, "download_url": url,
+             "accept": Path(filename).suffix,
+             "max_bytes": 10_000_000 if filename.endswith(".xlsx") else
+                          2_000_000_000}
+            for filename, url in PUBLISHER_URLS.items()
+            if filename.endswith((".xlsx", ".zip"))
+        ],
         "reference_links": [
             {"label": "All OECD ICIO editions: 2025 regular/extended, 2023, 2021, 2018",
              "url": "https://www.oecd.org/en/data/datasets/inter-country-input-output-tables.html"},
