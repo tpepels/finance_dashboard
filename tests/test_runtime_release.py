@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from io import BytesIO
 import json
 import os
+import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -168,7 +169,19 @@ class ReleaseStateTests(unittest.TestCase):
                             self.assertEqual(imports["jobs"], [])
                             self.assertTrue((root / "maintenance" / "jobs.json").is_file())
                             self.assertTrue((root / "maintenance" / "original-imports.json").is_file())
-                            export = client.get("/api/diagnostics/download")
+                            self.assertEqual(client.get("/api/diagnostics/download").status_code, 202)
+                            prep = client.post("/api/diagnostics/prepare",
+                                               headers={"X-GCM-Action": "dashboard"})
+                            self.assertEqual(prep.status_code, 202)
+                            deadline = time.monotonic() + 15
+                            state = None
+                            while time.monotonic() < deadline:
+                                state = client.get("/api/diagnostics/export-status").json()
+                                if state["state"] != "preparing":
+                                    break
+                                time.sleep(.05)
+                            self.assertEqual(state["state"], "ready", state)
+                            export = client.get("/api/diagnostics/export-file")
                             self.assertEqual(export.status_code, 200)
                             self.assertIn(A["release_id"], export.headers["content-disposition"])
                             with ZipFile(BytesIO(export.content)) as archive:
