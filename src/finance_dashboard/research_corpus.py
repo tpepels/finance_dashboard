@@ -130,6 +130,12 @@ def _validate_comparison_contract(ident: str, contract: Any, registry: dict) -> 
             roles.add(role)
         if not str(requirement.get("description", "")).strip():
             errors.append(f"{ident}: requirement source definition required")
+        if requirement.get("requirement_class", "required") not in ("required", "supplemental"):
+            errors.append(f"{ident}: requirement_class must be required or supplemental")
+        if requirement.get("requirement_class") == "supplemental" and (
+                requirement.get("input_type") != "scalar_history"
+                or requirement.get("supply") == "user"):
+            errors.append(f"{ident}: only publisher scalar histories may be supplemental")
         if requirement.get("input_type") not in INPUT_TYPES:
             errors.append(f"{ident}: explicit input representation required")
         artifacts = requirement.get("artifact_ids")
