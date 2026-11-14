@@ -656,6 +656,7 @@ class ManualSourceTests(unittest.TestCase):
                 "diagnostics/publisher-download-queue.json",
                 "diagnostics/manual-fallback-links.json",
                 "diagnostics/maintenance-complete.json",
+                "diagnostics/collection-run.json",
                 "diagnostics/icio-accounting-failures.csv",
                 "diagnostics/original-method-audit.json",
             }.issubset(names))
@@ -663,6 +664,9 @@ class ManualSourceTests(unittest.TestCase):
                 json.loads(archive.read("diagnostics/data-overview.json"))["release"])
             self.assertIn("jobs",
                 json.loads(archive.read("diagnostics/publisher-download-queue.json")))
+            collected = json.loads(archive.read("diagnostics/collection-run.json"))
+            self.assertIn("repair", collected)
+            self.assertIn("counts", collected)
         console = self.client.get("/api/data/debug-console")
         self.assertEqual(console.status_code, 200)
         self.assertIn("source_coverage", console.json())
