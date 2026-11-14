@@ -27,7 +27,7 @@ class ResearchCorpusTests(unittest.TestCase):
             'from finance_dashboard.research_corpus import load_research_corpus, '
             'validate_research_corpus; from finance_dashboard.catalog import load_documents; '
             'corpus = load_research_corpus(); registry, _ = load_documents(); '
-            'assert len(corpus["analyses"]) == 37; '
+            'assert len(corpus["analyses"]) == 39; '
             'assert validate_research_corpus(corpus, registry["series"]) == []'
         )
         env = dict(os.environ)
@@ -107,16 +107,16 @@ class ResearchCorpusTests(unittest.TestCase):
         edited["analyses"][1]["id"] = edited["analyses"][0]["id"]
         issues = validate_research_corpus(edited, self.series["series"])
         self.assertTrue(any("duplicate analysis" in x for x in issues))
-        self.assertTrue(any("expected all 37" in x for x in issues))
+        self.assertTrue(any("expected all 39" in x for x in issues))
 
     def test_reject_unapproved_id_with_unchanged_family_count(self):
         edited = copy.deepcopy(self.document)
         original = edited["analyses"][0]["id"]
         self.assertTrue(original.startswith("C"))
-        edited["analyses"][0]["id"] = "C07"
+        edited["analyses"][0]["id"] = "C08"
         issues = validate_research_corpus(edited, self.series["series"])
         self.assertTrue(any("expected all 37" in issue for issue in issues))
-        self.assertTrue(any(original in issue and "C07" in issue for issue in issues))
+        self.assertTrue(any(original in issue and "C08" in issue for issue in issues))
 
     def test_reject_fake_primary_source_and_context_series(self):
         edited = copy.deepcopy(self.document)
