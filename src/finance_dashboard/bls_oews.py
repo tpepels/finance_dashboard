@@ -50,7 +50,7 @@ def published_archives(html: str, *, today: date | None = None) -> list[tuple[in
         if parsed.query or parsed.fragment:
             continue
         year = 2000 + int(match.group(1))
-        if 2023 <= year <= current.year:
+        if 2021 <= year <= current.year:
             if year in releases and releases[year] != url:
                 raise ProviderError("BLS OEWS national release index contains conflicting URLs")
             releases[year] = url

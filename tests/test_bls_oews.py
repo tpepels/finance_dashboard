@@ -16,7 +16,9 @@ from finance_dashboard.bls_oews import (
 def source_index():
     return """<h2>May 2025</h2><a href="/oes/special-requests/oesm25nat.zip">National</a>
     <h2>May 2024</h2><a href="/oes/special-requests/oesm24nat.zip">National</a>
-    <h2>May 2023</h2><a href="/oes/special-requests/oesm23nat.zip">National</a>"""
+    <h2>May 2023</h2><a href="/oes/special-requests/oesm23nat.zip">National</a>
+    <h2>May 2022</h2><a href="/oes/special-requests/oesm22nat.zip">National</a>
+    <h2>May 2021</h2><a href="/oes/special-requests/oesm21nat.zip">National</a>"""
 
 
 def data_rows():
@@ -38,12 +40,12 @@ def zip_bytes(year):
 class BLSOEWSOriginalTests(unittest.TestCase):
     def test_index_only_accepts_published_same_host_releases(self):
         self.assertEqual([year for year, _ in published_archives(source_index(),
-            today=date(2026, 11, 14))], [2023, 2024, 2025])
+            today=date(2026, 11, 14))], [2021, 2022, 2023, 2024, 2025])
         with self.assertRaisesRegex(ProviderError, "May 2025"):
             published_archives('<a href="https://example.org/oes/special-requests/oesm25nat.zip">fake</a>')
         self.assertEqual(len(published_archives(
             source_index() + '<a href="/oes/special-requests/oesm27nat.zip">future</a>',
-            today=date(2026, 11, 14))), 3)
+            today=date(2026, 11, 14))), 5)
 
     def test_mean_and_median_refer_to_identical_national_occupation_population(self):
         self.assertEqual(parse_national_rows(data_rows(), 2025),
@@ -70,6 +72,47 @@ class BLSOEWSOriginalTests(unittest.TestCase):
                 parse_national_zip(zip_bytes(2024), 2025)
             with self.assertRaisesRegex(ProviderError, "not an approved"):
                 parse_national_zip(b"HTTP 403 blocked", 2025)
+
+
+    def test_phase1_l08_oews_accepted_source_pair_is_atomic_and_optional(self):
+        from finance_dashboard.engine.analyses import DEFINITIONS
+        from finance_dashboard.engine.bundle import build_bundle
+        from finance_dashboard.engine.acceptance import AcceptanceSnapshot
+        from datetime import timezone, datetime
+        definition=DEFINITIONS["L08"]
+        self.assertEqual(set(definition.optional_inputs), {"oews_mean", "oews_median"})
+        other={role: [{"role":role,"series_ids":[sid],"state":"accepted",
+                       "limitations":[]} for role_id,sid in definition.inputs.items()
+                 if role_id not in definition.optional_inputs]}
+        supplemental=[
+            {"role":role,"series_ids":[definition.inputs[role]],
+             "state":"incomplete","limitations":[],
+             "requirement_class":"supplemental"} for role in definition.optional_inputs]
+        points={role: [] for role in definition.inputs}
+        points["oews_mean"]=[(date(2025,5,1),33.54)]
+        points["oews_median"]=[(date(2025,5,1),24.51)]
+        def run(requirements):
+            snapshot=AcceptanceSnapshot(datetime(2026,11,14,tzinfo=timezone.utc),
+                {"L08":{"state":"accepted","blocking_roles":[],"limitations":[],
+                        "requirements":requirements}})
+            return build_bundle(definition,points=points,snapshot=snapshot,
+                corpus_analysis={"title":"L08","method_sources":[]},
+                catalog_series={},view={},computed_at=datetime(2026,11,14,tzinfo=timezone.utc))
+        base=run(other["oews_mean"]+supplemental)
+        self.assertIsNotNone(base["values"])
+        self.assertEqual(base["values"]["oews"]["matched_years"],0)
+        first=next(x for x in base["inputs"] if x["role"]=="oews_mean")
+        self.assertTrue(first["optional"])
+        self.assertEqual(first["observations"],0)
+        partially=[{**s,"state":"accepted"} if s["role"]=="oews_mean"
+                   else s for s in supplemental]
+        half=run(other["oews_mean"]+partially)
+        self.assertEqual(half["values"]["oews"]["matched_years"],0)
+        both=run(other["oews_mean"]+[{**s,"state":"accepted"} for s in supplemental])
+        self.assertEqual(both["values"]["oews"]["matched_years"],1)
+        self.assertEqual(both["values"]["oews"]["mean_to_median_ratio"],
+                         [["2025-05-01",round(33.54/24.51,6)]])
+        self.assertFalse(both["values"]["oews"]["comparable_to_cps_weekly"])
 
     def test_provider_uses_same_workbook_and_respects_historical_window(self):
         router = MagicMock()
