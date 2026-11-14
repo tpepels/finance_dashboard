@@ -350,6 +350,20 @@ class ManualSourceTests(unittest.TestCase):
                          "retrievals").glob("*.json"))
         self.assertEqual(len(receipts), 2)
 
+    def test_due_retry_takes_next_available_worker_slot_without_bypassing_cooldowns(self):
+        from finance_dashboard.manual_sources import ManualSourceManager
+        now = time.time()
+        jobs = [
+            {"id": "first", "status": "queued"},
+            {"id": "future", "status": "deferred", "retry_at_unix": now + 600},
+            {"id": "due", "status": "deferred", "retry_at_unix": now - 30},
+        ]
+        self.assertEqual(ManualSourceManager._next_ready_job(jobs, now)["id"], "due")
+        jobs[2]["retry_at_unix"] = now + 120
+        self.assertEqual(ManualSourceManager._next_ready_job(jobs, now)["id"], "first")
+        jobs[0]["status"] = "complete"
+        self.assertIsNone(ManualSourceManager._next_ready_job(jobs, now))
+
     def test_rate_deferred_pair_resumes_without_refetching_first_original(self):
         from finance_dashboard.source_policy_types import PolicyDeferred
         from hashlib import sha256
