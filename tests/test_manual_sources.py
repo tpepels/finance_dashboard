@@ -419,6 +419,14 @@ class ManualSourceTests(unittest.TestCase):
             pending = finished(self.client, "wid-world")
         self.assertEqual(pending["status"], "manual_required", pending)
         self.assertEqual(pending["failed_roles"], {"metadata": "publisher_http_403"})
+        # A second global click must not replace the outstanding upload link.
+        manager = self.client.app.state.manual_sources
+        with patch("finance_dashboard.manual_sources.source_specs",
+                   return_value={"wid-world": source_specs()["wid-world"]}):
+            repeat = manager.fetch()
+        self.assertEqual(repeat["skipped"]["wid-world"], "manual_upload_pending")
+        self.assertEqual(len([job for job in manager.jobs
+                              if job["dataset"] == "wid-world"]), 1)
         overview = self.client.get("/api/data/overview").json()
         manual = overview["acquisition"]["files_requiring_upload"]
         self.assertEqual(len(manual), 1)
@@ -524,6 +532,11 @@ class ManualSourceTests(unittest.TestCase):
         from hashlib import sha256
         readme = b"verified-test-readme"
         archive = b"verified-test-zip"
+        def validate_import(archive_file, _evidence, readme_file, *, publisher_download=False):
+            self.assertEqual(archive_file.read_bytes(), archive)
+            self.assertEqual(readme_file.read_bytes(), readme)
+            self.assertTrue(publisher_download)
+            return {"status": "accepted", "edition": "2025", "table": "regular"}
         def remote(role, destination, browser=None, client=None):
             if role["download_url"].endswith(".xlsx"):
                 raise PublisherDownloadError("publisher_http_403")
@@ -539,7 +552,7 @@ class ManualSourceTests(unittest.TestCase):
               patch.object(icio, "README_SHA256", sha256(readme).hexdigest()),
               patch.object(original_uploads, "README_SHA256", sha256(readme).hexdigest()),
               patch("finance_dashboard.icio.import_original_archive",
-                    return_value={"status": "accepted", "edition": "2025", "table": "regular"}) as importer,
+                    side_effect=validate_import) as importer,
               patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
                     side_effect=remote)):
             posted = self.client.post("/api/manual-sources/fetch?dataset=oecd-icio",
@@ -564,6 +577,57 @@ class ManualSourceTests(unittest.TestCase):
             self.assertFalse(complete["origin_verified"])
             self.assertEqual(len(complete["sources"]), 1)
             importer.assert_called_once()
+
+    def test_failed_oecd_zip_only_requires_exact_archive_and_resumes_without_redownloading(self):
+        from finance_dashboard import icio, original_uploads
+        from finance_dashboard.publisher_downloads import PublisherDownloadError
+        from hashlib import sha256
+        readme = b"verified-test-readme"
+        archive = b"verified-test-zip"
+        remote_calls = []
+        def remote(role, destination, browser=None, client=None):
+            remote_calls.append(role["download_url"])
+            if role["download_url"].endswith(".zip"):
+                raise PublisherDownloadError("publisher_http_403")
+            destination.write_bytes(readme)
+            return {"requested_url": role["download_url"],
+                    "final_url": role["download_url"],
+                    "sha256": sha256(readme).hexdigest(),
+                    "bytes": len(readme), "content_type": "application/octet-stream",
+                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat()}
+        def validate_import(archive_file, _evidence, readme_file, *, publisher_download=False):
+            self.assertEqual(archive_file.read_bytes(), archive)
+            self.assertEqual(readme_file.read_bytes(), readme)
+            self.assertFalse(publisher_download)
+            return {"status": "accepted", "edition": "2025", "table": "regular"}
+        with (patch.object(icio, "PUBLISHER_ARCHIVES", {
+                  "1995-2000_SML.zip": {"sha256": sha256(archive).hexdigest(),
+                                       "bytes": len(archive)}}),
+              patch.object(icio, "README_SHA256", sha256(readme).hexdigest()),
+              patch.object(original_uploads, "README_SHA256", sha256(readme).hexdigest()),
+              patch("finance_dashboard.icio.import_original_archive",
+                    side_effect=validate_import) as importer,
+              patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
+                    side_effect=remote)):
+            start = self.client.post("/api/manual-sources/fetch?dataset=oecd-icio",
+                                     headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(start.status_code, 202, start.text)
+            waiting = finished(self.client, "oecd-icio")
+            self.assertEqual(waiting["status"], "manual_required", waiting)
+            self.assertEqual(set(waiting["failed_roles"]), {"1995-2000_SML.zip"})
+            files = self.client.get("/api/data/overview").json()[
+                "acquisition"]["files_requiring_upload"]
+            self.assertEqual([row["role"] for row in files], ["1995-2000_SML.zip"])
+            upload = self.client.post("/api/manual-sources/fallback-upload", params={
+                "job_id": waiting["id"], "role": "1995-2000_SML.zip",
+                "filename": "1995-2000_SML.zip"}, data=archive, headers=HEADERS)
+            self.assertEqual(upload.status_code, 201, upload.text)
+            self.assertTrue(upload.json()["import_started"])
+            complete = finished(self.client, "oecd-icio")
+            self.assertEqual(complete["status"], "complete", complete)
+            self.assertFalse(complete["origin_verified"])
+            importer.assert_called_once()
+            self.assertEqual(sum(url.endswith(".xlsx") for url in remote_calls), 1)
 
     def test_oecd_publisher_batch_reuses_pinned_original_importer(self):
         from finance_dashboard import icio
