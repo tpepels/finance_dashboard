@@ -15,6 +15,23 @@ from .runtime_release import release_info
 
 _TERMINAL = {"complete", "partial", "failed", "manual_required", "interrupted"}
 
+def automation_status() -> dict:
+    """Only observed scheduler transitions; never infer a deadline from source age."""
+    from .standalone import scheduled_refresh_status
+    enabled = os.environ.get("FINANCE_AUTO_REFRESH", "1").strip().lower() in (
+        "1", "true", "on", "yes")
+    raw = scheduled_refresh_status()
+    return {
+        "scheduled_refresh_enabled": enabled,
+        "interval_seconds": int(os.environ.get("REFRESH_INTERVAL_SECONDS", "86400")),
+        "automatic_post_ingestion_updates": True,
+        "refresh_running": enabled and raw["refresh_running"] is True,
+        "refresh_state": raw["refresh_state"] if enabled else "disabled",
+        "next_refresh_at": raw["next_refresh_at"] if enabled else None,
+        "last_refresh_finished_at": raw["last_refresh_finished_at"] if enabled else None,
+    }
+
+
 
 def _recent(jobs: list[dict], dataset: str) -> dict | None:
     return next((item for item in jobs if item["dataset"] == dataset), None)
@@ -149,14 +166,7 @@ def install_data_hub(app: FastAPI, *, db, catalog, market_registry,
         """Cached coverage snapshot, refreshed by an independent worker."""
         evaluated = app.state.acceptance.peek()
         return {**app.state.source_health_cache.status(refresh=refresh),
-                "automation": {
-                    "scheduled_refresh_enabled": os.environ.get(
-                        "FINANCE_AUTO_REFRESH", "1").strip().lower()
-                        in ("1", "true", "on", "yes"),
-                    "interval_seconds": int(os.environ.get(
-                        "REFRESH_INTERVAL_SECONDS", "86400")),
-                    "automatic_post_ingestion_updates": True,
-                },
+                "automation": automation_status(),
                 "downstream_updates": app.state.data_change_coordinator.status(),
                 "scientific_assessment": {
                     "running": app.state.acceptance.loading,
