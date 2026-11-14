@@ -149,19 +149,23 @@ export default function DataOperations() {
   }
   const disabled = submitting || Boolean(queue?.active_job_id) || !queue;
   return <section className="data-sync" id="data-management" aria-label="Data synchronization">
-    <div className="data-sync-controls">
-      <button type="button" disabled={disabled} className="data-sync-primary"
-        onClick={() => void sync('sync_current')}>Sync current data</button>
-      <button type="button" disabled={disabled} className="data-sync-secondary"
-        onClick={() => void sync('repair_source_health')}>Repair gaps</button>
-    </div>
-    <p className="data-sync-hint">Update current economic, market and FX data.
-      Repair gaps retries unavailable or stale original sources.</p>
+    <p className="data-sync-hint">Publisher refreshes, validation, ingestion and
+      downstream scientific reassessment run automatically when enabled.
+      The source-health count indicates unresolved evidence, not an outstanding
+      manual command. Repeating a repair cannot create unpublished data.</p>
     <details className="data-sync-advanced">
-      <summary>Historical sync</summary>
-      <p className="data-sync-hint">Full historical collection also checks ALFRED releases and SEC filings.</p>
-      <button type="button" disabled={disabled} className="data-sync-secondary"
-        onClick={() => void sync('sync_history')}>Sync history</button>
+      <summary>Manual maintenance (optional)</summary>
+      <p className="data-sync-hint">Use these controls only to rerun publisher
+        checks outside the regular schedule or investigate a specific failure.
+        Completed imports do not need to be re-imported after deployment.</p>
+      <div className="data-sync-controls">
+        <button type="button" disabled={disabled} className="data-sync-secondary"
+          onClick={() => void sync('sync_current')}>Check current sources now</button>
+        <button type="button" disabled={disabled} className="data-sync-secondary"
+          onClick={() => void sync('repair_source_health')}>Recheck unresolved gaps</button>
+        <button type="button" disabled={disabled} className="data-sync-secondary"
+          onClick={() => void sync('sync_history')}>Recheck historical sources</button>
+      </div>
     </details>
     {active && <div className="data-sync-progress" role="status">
       <strong>{TITLES[active.action] ?? 'Data'} · {description(active.status)}</strong>
