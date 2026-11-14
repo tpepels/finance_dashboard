@@ -123,6 +123,32 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertNotEqual(new_run["id"], started["id"])
         self.assertEqual(manual.fetch_calls, 2)
 
+    def test_repair_status_distinguishes_attempts_from_resolved_source_gaps(self):
+        manual = StubManual()
+        maintenance = StubMaintenance()
+        with patch("finance_dashboard.manual_sources.source_specs", return_value=SPECS):
+            manager = CollectionWorkflow(manual, maintenance,
+                                         path=self.root / "collection-status.json",
+                                         valid_sources=set(), valid_markets=set())
+            started = manager.start()
+        maintenance.jobs[0].update(
+            status="partial", completed=12, total=12,
+            error_code="source_gaps_remaining",
+            result={"status": "partial", "selected_sources": 12,
+                    "issues_before": 12, "issues_after": 12,
+                    "resolved_issues": 0, "failed_sources": 3,
+                    "remaining_series_ids": ["macro.test_one", "macro.test_two"],
+                    "secret": "must-not-leak"})
+        response = manager.status()
+        self.assertEqual(response["repair"]["completed"], 12)
+        self.assertEqual(response["repair"]["details"]["resolved_issues"], 0)
+        self.assertEqual(response["repair"]["details"]["issues_after"], 12)
+        self.assertEqual(response["repair"]["details"]["failed_sources"], 3)
+        self.assertNotIn("secret", response["repair"]["details"])
+        with manual.lock:
+            manual.jobs[0]["status"] = "complete"
+        self.assertEqual(manager.status()["state"], "needs_attention")
+
     def test_busy_maintenance_waits_and_then_runs_repair_without_second_click(self):
         from finance_dashboard.maintenance import BusyMaintenance
         class OccupiedMaintenance(StubMaintenance):
