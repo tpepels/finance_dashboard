@@ -10,6 +10,44 @@ from finance_dashboard.worker import RefreshTask, execute_refresh_tasks
 
 
 class PublisherQuotaTests(unittest.TestCase):
+    def test_full_catalogue_scheduled_planner_reaches_dispatch_without_network(self):
+        """The real mapped 524 macro source plan must not abort before first attempt."""
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from finance_dashboard.database import Base, make_engine
+        from finance_dashboard.worker import refresh_all
+        from finance_dashboard.providers import ProviderRouter
+        with TemporaryDirectory() as directory:
+            engine=make_engine("sqlite:///" + str(Path(directory)/"refresh.db"))
+            Base.metadata.create_all(engine)
+            chosen=[]
+            def dispatch(tasks, **kwargs):
+                chosen.extend(task.source_id for task in tasks)
+                return 0
+            with patch("finance_dashboard.worker.execute_refresh_tasks",
+                       side_effect=dispatch):
+                failures=refresh_all(engine, skip_complete_pinned=True)
+            self.assertEqual(failures,0)
+            self.assertGreaterEqual(len(chosen),500)
+            self.assertIn("piketty.us.real_pretax_average.all", chosen)
+            self.assertIn("labour.us.cps_weekly_p50_nominal", chosen)
+            self.assertEqual(len(chosen),len(set(chosen)))
+            engine.dispose()
+
+    def test_planner_failure_journals_stage_and_safe_class_without_leaking_error(self):
+        from finance_dashboard.worker import refresh_all
+        with (patch("finance_dashboard.worker.ProviderRouter",
+                    side_effect=ValueError("secret provider API key in exception")),
+              patch("finance_dashboard.worker.record_event") as recorder):
+            with self.assertRaisesRegex(ValueError,"secret provider"):
+                refresh_all(None)
+            call=next(x for x in recorder.call_args_list
+                      if x.args[:2]==("macro","collector_failed"))
+            self.assertEqual(call.kwargs["action"],"scheduled_refresh_plan")
+            self.assertEqual(call.kwargs["stage"],"instantiate_router")
+            self.assertEqual(call.kwargs["reason"],"ValueError")
+            self.assertNotIn("secret",str(call))
+
     def test_suppressed_sources_report_complete_bounded_diagnostics_without_crash(self):
         calls = []
         progress = []
