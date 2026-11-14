@@ -231,6 +231,10 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertTrue(after_restart.status()["ready"])
         self.assertEqual(after_restart.prepare()["id"], pending["id"])
         self.assertEqual(len(calls), 1)
+        forced = after_restart.prepare(force=True)
+        self.assertNotEqual(forced["id"], pending["id"])
+        self.assertTrue(wait_for(lambda: after_restart.status()["ready"]))
+        self.assertEqual(len(calls), 2)
 
     def test_export_failure_is_visible_and_retry_generates_a_valid_archive(self):
         archive = self.root / "failed-export.zip"
