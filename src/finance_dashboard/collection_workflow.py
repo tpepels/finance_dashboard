@@ -97,6 +97,13 @@ class CollectionWorkflow:
             try:
                 queued = self.manual.fetch(browser=safe_browser_profile(browser))
                 assignments = {item["dataset"]: item["job_id"] for item in queued["jobs"]}
+                # An outstanding human-upload job belongs in the new run;
+                # skipping it would hide its actionable fallback links.
+                with self.manual.lock:
+                    for job in reversed(self.manual.jobs):
+                        if (job["dataset"] not in assignments and
+                                job["status"] == "manual_required"):
+                            assignments[job["dataset"]] = job["id"]
                 for row in record["entries"]:
                     row["job_id"] = assignments.get(row["dataset"])
                     if row["job_id"] is None:
