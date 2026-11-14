@@ -1,127 +1,101 @@
-# Data page: automatic and manual source acquisition
+# Data page: one-click source acquisition and agent diagnostics
 
-The simplified **Data** page has one update area with two primary actions
-(**Sync current data** and **Repair gaps**), a compact expandable
-**Publisher downloads and manual fallback** source catalogue, and collapsed
-**Source coverage and audit**, **Scientific evidence and advanced monitoring**,
-and **Source explorer** sections. The historical sync remains available
-inside the advanced disclosure next to the update controls.
+The **Data** page is deliberately limited to two human-facing views:
 
-Manual uploads use the same production FastAPI application, the same canonical
-catalogue identifiers, the same domain parsers, the existing append-only
-SQLite observation versions and the existing immutable evidence directory.
-There is no second ingestion database, no generic CSV field mapper and no
-checkbox/confirmation after an accepted upload.
+1. **Source health** — one cumulative table for economic, market and FX
+   sources: totals, retained observations and sources requiring attention.
+   It also shows whether the acquisition/repair queue is running, deferred,
+   completed or has issues requiring an agent.
+2. **Files requiring manual download** — a table that is absent when there
+   are no download failures. Each row supplies the exact registered publisher
+   URL, a short human-readable reason and one upload control.
 
-## Automatic download and import
+There is one primary **Start automatic downloads** button.
+The page does **not** expose separate source explorers, archive diagnostics,
+accounting ledgers, and nested source-health reports. A **Download agent debug
+ZIP** action and one on-demand **Open debug console** action provide the
+developer/agent information.
 
-Open **Data → Publisher downloads and manual fallback**, then select
-**Fetch missing sources** once. The server queues every source not already
-successfully imported, downloads the registered publisher originals over HTTPS,
-validates them with the existing source-specific parsers and ingests accepted
-observations into the canonical database. No extra approval or checkbox is
-required. Individual source rows also have **Refresh from publisher** to request
-new originals even when a previous import succeeded.
+## Automatic workflow
 
-Publisher access uses the same managed HTTP transport, durable rate ledger,
-cooldowns and fixed URL allowlist as the other collection paths. A valid
-deferred permit automatically resumes at the publisher's next allowed time;
-for example, the WID data/metadata pair may require waiting between requests.
-Already received role bytes are verified locally and not fetched again on
-resumption. The Data page shows queued, active, deferred, failed and completed
-jobs, along with the automatic retry time.
+`POST /api/data/acquire` begins both registered original-source acquisition
+and the canonical `repair_source_health` job. The automatic original-source
+queue covers WID world CSV+metadata, EU KLEMS US LAB, Swinkels v6, current
+XAU/USD JSON, MSCI's three valuation PDF originals, the exact pinned MSCI
+methodology, and OECD's five pinned 2025 regular ZIPs plus ReadMe.
 
-Manual upload remains a fallback for a publisher that returns an HTML challenge,
-requires interactive authentication, is inaccessible to the server, or supplies
-only a human download page. Choose the official link and upload the original
-next to its source. Upload inputs stay enabled while other imports run; once a
-source's complete required role set exists it becomes an immutable, persisted
-queue job immediately. A restart resumes queued and interrupted jobs from their
-retained snapshots.
+The UI transmits only the browser's User-Agent, language preference and
+platform hints. These are bounded and sanitized. The server uses ordinary
+browser-compatible navigation request headers and publisher-specific official
+Referer values where appropriate, while all requests pass through the
+existing managed HTTP transport, quota ledger, HTTPS redirect allowlist and
+publisher cooldown rules. A valid rate-limit deferral is automatically retried
+when permitted, with completed role downloads kept in the persistent queue.
+No raw passwords, cookies, access tokens or cross-origin browser storage are
+read or transmitted. **A webpage cannot silently read Chrome's HttpOnly or
+cross-origin cookies.** Therefore User-Agent forwarding does not guarantee
+access to an authenticated or JavaScript-protected publisher. Cloudflare and
+browser-login challenges can still require a human download.
 
-The 2025 **OECD ICIO regular** original ReadMe and five pinned ZIP archives are
-also attempted directly. The full edition-aware original importer remains
-available for historical/extended archives, publisher-access failures and
-reassessment. Full accounting and source-health acceptance still require the
-original scientific checks; downloading a file alone does not certify its data.
+Each source reports successes and exact failed roles. A failure fetching one
+file never discards successfully fetched counterparts, and does not block
+subsequent source families. Scientific/format validation still uses the
+existing canonical parser and append-only ingestion service.
 
-| Source family | Download link shown | Required upload | Canonical effect |
-| --- | --- | --- | --- |
-| WID world income/wealth | Native WID world data and metadata links | `WID_data_WO.csv`, `WID_metadata_WO.csv` | All five world shares |
-| MSCI EAFE | Exact canonical EAFE index factsheet | PDF | Trailing and forward P/E |
-| MSCI Europe | Exact canonical Europe index factsheet | PDF | Trailing and forward P/E |
-| MSCI Japan | Exact canonical Japan index factsheet | PDF | Trailing and forward P/E |
-| MSCI fundamental methodology | Official March 2021 PDF | PDF, only if the archived methodology is unavailable | Strictly SHA-256 pinned underlying method; no numeric series |
-| EU KLEMS US | Official 2025 growth accounts file | `.xlsx` | Native US/TOT/LAB only |
-| Swinkels AU | Dataverse v6 source and metadata/ReadMe references | Exact original `.ods` | Original AU modelled 10-year sovereign returns |
-| Gold | Current Gold API XAU/USD endpoint | `.json` | One source-dated indicative USD quote |
-| OECD ICIO | Publisher 2025 direct ZIPs; official index for 2025 extended, 2023, 2021, 2018 | Supported original ZIP and matching ReadMe | Existing original-source importer and scientific auditing |
+## Manual fallback
 
-The OECD edition index is maintained by the publisher:
-https://www.oecd.org/en/data/datasets/inter-country-input-output-tables.html .
-The original 2025 regular links and the established ReadMe/extended/older
-archive importer remain available; no previous import or reassessment
-functionality was retired.
+Only files whose automatic download actually failed are presented in the
+second table. Select the official link, download in the browser and upload
+the file in the same row. `POST /api/manual-sources/fallback-upload` checks
+the job/role identity, filename, type, size and original hash where pinned.
+After the last missing file arrives, the same durable job restarts ingestion
+**without a second approval or import click**. Mixed origins are recorded per
+file: a Chrome-downloaded replacement never makes other uploaded bytes
+look publisher-retrieved.
 
-## Provenance, acceptance and limits
+The 2025 OECD ZIP/ReadMe fallback uses its existing pinned archive importer.
+Older and extended OECD editions have different schema contracts and remain
+in the original historical archive importer, available in the **developer
+console → Advanced source operations**, including historical sync, gap
+repair and OECD reassessment.
 
-- For owner uploads, the browser can certify **which bytes were uploaded**, their original
-  publisher-shaped identity and their validated numeric values; it cannot
-  prove the user obtained the bytes from the official publisher. Every upload
-  archive and linked ingestion record states
-  `user_uploaded_publisher_origin_unverified` and preserves SHA-256 receipts.
-- WID records must carry exact `WO` concepts, original percentile labels,
-  equal-split adult populations, metadata and supported share units; no
-  percentile substitution or interpolation is permitted.
-- MSCI original PDFs must print the declared index identity and a
-  nonfuture publication date. They use the pinned March 2021 methodology.
-  Distinct factsheets and captured archive documents enter the **same
-  conflicting-value gate**. An observed disagreement blocks that index-month
-  and will not be silently overwritten.
-- EU KLEMS uses the original `US/TOT/LAB` cells, preserving blank years.
-  A successful import with data ending in 2020 does not establish a
-  published observation for 2021.
-- Swinkels accepts only the exact pre-existing version-6 ODS SHA-256.
-  A same-named or differently edited workbook is rejected.
-- Gold requires the declared source/currency and a recent timestamp.
-  A 200 HTML challenge, stale quote or EUR conversion cannot be imported.
-- The API accepts a fixed list of dataset/role names, same-origin guarded
-  binary streams, bounded payloads and safe filename suffixes. Upload bytes
-  are written directly to a private temporary file and atomically staged.
-  Server-acquired bytes have separate publisher HTTPS manifests and receipts;
-  a user upload is never relabelled as a publisher network request.
-  Staged partial files are **never** classified as published observations.
-- Import jobs run under the existing maintenance network lock, so they do
-  not race a concurrent refresh. A successful file import uses the same
-  `IngestionService` and preserves append-only versions; a later
-  automatic publisher refresh may still independently fail.
-- User-uploaded files do not remove source-policy deferrals, certify
-  original first publication vintages or imply completion of other
-  scientific acceptance gates.
+A download whose bytes arrived but failed economic/scientific parsing is
+**an agent issue**, rather than a request for the human to download identical
+bytes again. Source-level status and failure codes are retained for debugging.
 
-## API and validation
+## Human summary and agent handoff
 
-`GET /api/manual-sources` lists the supported source downloads, exact
-roles, staged-file inventory, persistent queued/deferred jobs and retry deadlines.
-`POST /api/manual-sources/fetch` queues missing registered publisher sources;
-`POST /api/manual-sources/fetch?dataset=wid-world` retries one publisher
-source. Both endpoints forbid arbitrary URLs. `POST
-/api/manual-sources/upload?dataset=...&role=...&filename=...` streams an
-exact original file; validated uploads automatically start the canonical
-ingest when the role set is complete. `POST
-/api/manual-sources/import?dataset=...` explicitly retries a complete
-staged set after an interrupted/failed job.
+`GET /api/data/overview` returns a compact aggregate report, queue counts,
+repair status and the exact outstanding manual files. `GET
+/api/data/debug-console` provides the complete redacted state for developers.
 
-The existing `/api/originals` ICIO endpoints remain available. Neither
-fetch nor upload accepts a user-supplied URL or generic source mapping.
+The single `GET /api/diagnostics/download` ZIP includes:
 
-CI acceptance includes backend original ingestion, file-size/filename/
-same-origin restrictions, WID five-series auto-import, EU KLEMS blank-year
-preservation, gold USD timestamp validation, pinned Swinkels and MSCI
-methodology integrity, MSCI capture/owner-upload conflict resolution,
-and frontend link/upload/job rendering.
+- Release identity, diagnostic status, structured console and event journal.
+- Complete source coverage per series as JSON and CSV, with last periods,
+  failures, provenance, evidence and actual observation states.
+- Every registered original family, the current acquisition jobs, per-file
+  successful SHA-256 receipts, failed roles, retry deadlines and transfer
+  attempts, without signed redirect parameters or browser fingerprints.
+- The exact official manual-fallback links, source repair and complete
+  maintenance results, original import journal and publisher policy state.
+- OECD original-method metadata, native accounting-failure ledger, signed
+  residuals, numerical error allowances, concordance information and
+  scientific-acceptance caveats.
 
-**Deployment is required.** Repository tests exercise synthetic or pinned
-fixtures in isolation and does not import files into the owner's private
-Docker database. The live source-health audit must be rerun after actual
-uploads before any of the previously unresolved sources can be certified.
+The ZIP intentionally omits browser cookies, credential values, proprietary
+raw HTTP payloads, personal holdings and complete database/original file bytes.
+The diagnostic bundle is comprehensive for **recorded machine evidence**,
+not a substitute for unavailable publisher records or a full re-execution
+of scientific validation.
+
+## Deployment and checks
+
+Deploy the current `main` image and preserve the existing /data bind mount.
+The Docker build executes frontend tests and static/runtime validation; the
+backend tests cover queue resumption, exact failed links, mixed file
+provenance, secure downloads, OECD pinned import and the debug export.
+
+Neither downloading nor importing an original automatically certifies its
+economic completeness, first publication date, or scientific acceptance.
+The source-health and research audit must be rerun on actual new observations.
