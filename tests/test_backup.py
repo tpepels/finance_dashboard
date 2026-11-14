@@ -312,7 +312,8 @@ class LocalBackupTests(unittest.TestCase):
                 return True
 
         seen = []
-        def macro(_engine, *, stopped, skip_complete_pinned):
+        def macro(_engine, *, stopped, skip_complete_pinned, progress):
+            self.assertTrue(callable(progress))
             self.assertTrue(skip_complete_pinned)
             seen.append("macro")
             self.assertFalse(stopped.is_set())
