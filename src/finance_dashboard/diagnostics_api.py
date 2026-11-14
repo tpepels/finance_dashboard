@@ -300,6 +300,20 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
             put("diagnostics/console.json", _console(events))
             put("diagnostics/events.json", events)
             put("diagnostics/source-coverage.json", {**coverage, "release": release})
+            audit_items = coverage.get("items", [])
+            audit_columns = ["release_id", "asof"] + sorted({
+                key for row in audit_items for key in row.keys()})
+            audit_csv = StringIO()
+            writer = csv.DictWriter(audit_csv, fieldnames=audit_columns,
+                                    lineterminator="\\r\\n")
+            writer.writeheader()
+            for row in audit_items:
+                writer.writerow({
+                    **{"release_id": release["release_id"], "asof": coverage.get("asof")},
+                    **{key: json.dumps(value, sort_keys=True) if isinstance(value, (dict, list))
+                       else value for key, value in row.items()},
+                })
+            archive.writestr("diagnostics/source-audit.csv", audit_csv.getvalue())
             # No source URLs or credentials; the publisher registry exposes
             # publisher names and quota/cooldown metadata only.
             put("diagnostics/publisher-policy.json", {
@@ -346,8 +360,11 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
                 "Release activated: " + str(release["activated_at"] or "not recorded") + "\\n"
                 "Only current-build diagnostic events and job summaries are shown. "
                 "Original evidence, research history, and backups are retained.\\n"
-                "Redacted diagnostic bundle. No secrets, raw HTTP responses, source files, "
-                "portfolio holdings, database contents, or raw process stderr are included.\\n")
+                "Redacted diagnostic bundle with full source status, per-role publisher "
+                "attempts, original hashes, manual fallback links, accounting residuals, "
+                "source audit CSV and maintenance outcomes. Browser cookies, credentials, "
+                "signed redirect parameters, raw HTTP bodies, portfolio holdings and "
+                "database contents are excluded.\\n")
         bundle.seek(0)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         return StreamingResponse(iter([bundle.getvalue()]), media_type="application/zip",
