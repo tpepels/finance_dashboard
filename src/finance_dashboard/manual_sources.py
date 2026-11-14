@@ -608,13 +608,17 @@ class ManualSourceManager:
         try:
             values = _parse_source(dataset, files)
         except Exception:
-            if method == "publisher":
+            # An automatically received file that fails economic parsing is an
+            # agent/source-contract problem. Downloading the same bytes by
+            # hand cannot fix it. An invalid user replacement can be retried.
+            if job.get("manual_supplied"):
                 with self.lock:
-                    job["failed_roles"] = {role["id"]: "publisher_file_validation_failed"
-                                           for role in spec["roles"]}
+                    job["failed_roles"] = {
+                        role: "manual_original_validation_failed"
+                        for role in job["manual_supplied"]}
                     job["status"] = "manual_required"
                     job["phase"] = "waiting_for_valid_originals"
-                    job["error_code"] = "publisher_original_invalid"
+                    job["error_code"] = "manual_original_invalid"
                     job["finished_at"] = datetime.now(timezone.utc).isoformat()
                     self._save()
                 return
