@@ -246,6 +246,24 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         status["release_id"] = release["release_id"]
         return status, events, coverage
 
+    def limitation_assessment(coverage: dict, accounting: dict | None = None) -> dict:
+        from .limitation_assessment import assess_limitations
+        return assess_limitations(
+            coverage=coverage, document=research_document,
+            snapshot=app.state.acceptance.peek(), accounting=accounting,
+            release=release_info())
+
+    @app.get("/api/diagnostics/limitation-assessment")
+    def diagnostic_limitation_assessment():
+        """On-demand full audit; do not burden dashboard status polling.
+
+        Uses the already evaluated Phase 2 snapshot if present. If acceptance
+        has not completed, research status is explicitly unavailable; this
+        endpoint never starts another expensive acceptance evaluation.
+        """
+        _, _, coverage = snapshot()
+        return limitation_assessment(coverage)
+
     @app.get("/api/diagnostics")
     def diagnostics():
         """Cheap status lamp; never recompute entire database coverage."""
@@ -300,6 +318,7 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                                   importer.public_status())
         failure_csv, failure_manifest = _accounting_failures_csv(
             source_audit, release["release_id"])
+        limits = limitation_assessment(coverage, failure_manifest)
         bundle = BytesIO()
         with ZipFile(bundle, "w", compression=ZIP_DEFLATED) as archive:
             def put(name, data):
@@ -312,6 +331,28 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             put("diagnostics/console.json", _console(events))
             put("diagnostics/events.json", events)
             put("diagnostics/source-coverage.json", {**coverage, "release": release})
+            put("diagnostics/limitation-assessment.json", limits)
+            put("diagnostics/research-limitation-matrix.json", {
+                "scientific_acceptance": limits["scientific_acceptance"],
+                "questions": limits["questions"],
+                "method_register": limits["method_register"],
+            })
+            limitation_csv = StringIO()
+            columns = ("id", "category", "severity", "status", "title",
+                       "detail", "next_action", "analysis_ids", "source_ids",
+                       "provenance", "evidence")
+            limitation_writer = csv.DictWriter(limitation_csv,
+                                               fieldnames=columns, lineterminator="\r\n")
+            limitation_writer.writeheader()
+            for finding in limits["findings"]:
+                limitation_writer.writerow({
+                    **finding,
+                    "analysis_ids": json.dumps(finding["analysis_ids"]),
+                    "source_ids": json.dumps(finding["source_ids"]),
+                    "evidence": json.dumps(finding["evidence"], sort_keys=True),
+                })
+            archive.writestr("diagnostics/limitation-assessment.csv",
+                             limitation_csv.getvalue())
             audit_items = coverage.get("items", [])
             audit_columns = ["release_id", "asof"] + sorted({
                 key for row in audit_items for key in row.keys()})
@@ -380,7 +421,9 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                 "Original evidence, research history, and backups are retained.\n"
                 "Redacted diagnostic bundle with full source status, per-role publisher "
                 "attempts, original hashes, manual fallback links, accounting residuals, "
-                "source audit CSV and maintenance outcomes. Browser cookies, credentials, "
+                "source audit CSV, cross-question limitation assessment (JSON/CSV), "
+                "registered methodological caveats, and maintenance outcomes. "
+                "Browser cookies, credentials, "
                 "signed redirect parameters, raw HTTP bodies, portfolio holdings and "
                 "database contents are excluded.\n")
         return bundle.getvalue()
