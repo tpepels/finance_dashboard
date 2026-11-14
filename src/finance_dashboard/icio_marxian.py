@@ -79,6 +79,15 @@ def icio_ratios(evidence_root: Path, classification: dict[str, str], mixed_as: s
                                   "pins": {str(y): d["sha256"] for y, d in PUBLISHER_MATRICES.items()}})).hexdigest()
     cache = base / f"marxian-ratios-{key}.json"
     if cache.is_file():
+        # The derived cache is not independent scientific evidence. Its
+        # pinned source bytes and material accounting must still pass.
+        from .icio import read_icio_evidence
+        proof = read_icio_evidence(evidence_root)
+        if not proof.get("historical_coverage", {}).get("full_history_verified"):
+            raise ValueError("icio_marxian_source_history_unverified")
+        if any(not row["materiality"]["material_accounting_passed"]
+               for row in proof.get("historical_matrices", [])):
+            raise ValueError("icio_marxian_source_accounting_failed")
         data = json.loads(cache.read_text())
         return {(k.split("|")[0], int(k.split("|")[1])): v for k, v in data.items()}
     out = {}
@@ -87,7 +96,10 @@ def icio_ratios(evidence_root: Path, classification: dict[str, str], mixed_as: s
         bundles = [p for p in parent.iterdir() if p.is_dir() and len(p.name) == 64] if parent.is_dir() else []
         if len(bundles) != 1:
             return None
-        _verify_publisher_bundle(bundles[0], year)
+        from .icio import material_accounting
+        audit = _verify_publisher_bundle(bundles[0], year)
+        if not material_accounting(audit)["material_accounting_passed"]:
+            raise ValueError("icio_marxian_source_accounting_failed")
         with (bundles[0] / "matrix.csv").open(newline="") as handle:
             reader = csv.reader(handle)
             header = next(reader)
