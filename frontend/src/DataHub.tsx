@@ -28,7 +28,7 @@ type Health = {
 };
 type ExportStatus = {
   state:string;ready:boolean;id:string|null;prepared_at?:string|null;
-  size_bytes?:number|null;error?:string|null;
+  started_at?:string|null;size_bytes?:number|null;error?:string|null;
 };
 
 const LAST_COLLECTION='gcm-collection-last-known-v1';
@@ -368,7 +368,10 @@ export default function DataHub(){
         <strong>Diagnostic ZIP</strong>
         <p>Full redacted source, queue, import and accounting evidence for investigation.</p>
         {exporter.value?.state==='preparing'&&<small role="status">
-          Preparing the archive in the background. You can leave this page.</small>}
+          Preparing the archive in the background
+          {exporter.value.started_at&&
+            ' · '+Math.max(0,Math.floor((Date.now()-Date.parse(exporter.value.started_at))/60000))+
+            ' min elapsed'}. You can leave this page.</small>}
         {exporter.value?.state==='ready'&&<small>
           Prepared {formatWhen(exporter.value.prepared_at)} ·
           {' '}{Math.round((exporter.value.size_bytes??0)/1048576*10)/10} MB</small>}
