@@ -518,6 +518,53 @@ class ManualSourceTests(unittest.TestCase):
             "/api/manual-sources/fetch?dataset=https://169.254.169.254/",
             headers={"X-GCM-Action": "dashboard"}).status_code, 422)
 
+    def test_failed_oecd_readme_only_requires_readme_manual_upload(self):
+        from finance_dashboard import icio, original_uploads
+        from finance_dashboard.publisher_downloads import PublisherDownloadError
+        from hashlib import sha256
+        readme = b"verified-test-readme"
+        archive = b"verified-test-zip"
+        def remote(role, destination, browser=None, client=None):
+            if role["download_url"].endswith(".xlsx"):
+                raise PublisherDownloadError("publisher_http_403")
+            destination.write_bytes(archive)
+            return {"requested_url": role["download_url"],
+                    "final_url": role["download_url"],
+                    "sha256": sha256(archive).hexdigest(),
+                    "bytes": len(archive), "content_type": "application/zip",
+                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat()}
+        with (patch.object(icio, "PUBLISHER_ARCHIVES", {
+                  "1995-2000_SML.zip": {"sha256": sha256(archive).hexdigest(),
+                                       "bytes": len(archive)}}),
+              patch.object(icio, "README_SHA256", sha256(readme).hexdigest()),
+              patch.object(original_uploads, "README_SHA256", sha256(readme).hexdigest()),
+              patch("finance_dashboard.icio.import_original_archive",
+                    return_value={"status": "accepted", "edition": "2025", "table": "regular"}) as importer,
+              patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
+                    side_effect=remote)):
+            posted = self.client.post("/api/manual-sources/fetch?dataset=oecd-icio",
+                                      headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(posted.status_code, 202)
+            waiting = finished(self.client, "oecd-icio")
+            self.assertEqual(waiting["status"], "manual_required", waiting)
+            self.assertEqual(set(waiting["failed_roles"]), {"ReadMe_ICIO_small.xlsx"})
+            fallback = self.client.get("/api/data/overview").json()
+            links = fallback["acquisition"]["files_requiring_upload"]
+            self.assertEqual(len(links), 1)
+            self.assertEqual(links[0]["role"], "ReadMe_ICIO_small.xlsx")
+            self.assertIn("webfs-sti.oecd.org", links[0]["url"])
+            self.assertEqual(self.client.post(
+                "/api/manual-sources/fallback-upload",
+                params={"job_id": waiting["id"],
+                        "role": "ReadMe_ICIO_small.xlsx",
+                        "filename": "ReadMe_ICIO_small.xlsx"},
+                data=readme, headers=HEADERS).status_code, 201)
+            complete = finished(self.client, "oecd-icio")
+            self.assertEqual(complete["status"], "complete", complete)
+            self.assertFalse(complete["origin_verified"])
+            self.assertEqual(len(complete["sources"]), 1)
+            importer.assert_called_once()
+
     def test_oecd_publisher_batch_reuses_pinned_original_importer(self):
         from finance_dashboard import icio
         from finance_dashboard import original_uploads
