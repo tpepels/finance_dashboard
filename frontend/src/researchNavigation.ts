@@ -21,8 +21,11 @@ export function researchLocation(hash: string) {
   if (anchor === 'portfolio-holdings') return { view: 'portfolio', question: null };
   if (anchor === 'workbench') return { view: 'workbench', question: null };
   if (anchor === 'saved-figures') return { view: 'saved-figures', question: null };
-  if (['research-sources', 'source-coverage'].includes(anchor) || isSourceExplorerHash(hash))
+  if (['research-sources', 'source-coverage'].includes(anchor))
     return { view: 'research-sources', question: null };
+  if (anchor === 'source-explorer' || isSourceExplorerHash(hash))
+    return { view: 'source-explorer', question: null };
+  if (anchor === 'diagnostics') return { view: 'diagnostics', question: null };
   return { view: 'overview', question: null };
 }
 
