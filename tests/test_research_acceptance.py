@@ -23,14 +23,19 @@ class ResearchAcceptanceTests(unittest.TestCase):
     def test_all_approved_roles_have_executable_named_gates_and_no_silent_success(self):
         report = research_corpus_report(self.document, series_registry=self.registry)
         self.assertEqual(report["acceptance_summary"]["analysis_count"], corpus_counts.ANALYSES)
-        expected_count = sum(len(a["comparison_contract"]["original_requirements"])
-                             for a in self.document["analyses"])
+        expected_count = sum(
+            sum(role.get("requirement_class") != "supplemental"
+                for role in a["comparison_contract"]["original_requirements"])
+            for a in self.document["analyses"])
         self.assertEqual(report["acceptance_summary"]["required_input_roles"], expected_count)
         self.assertEqual(report["acceptance_summary"]["accepted_input_roles"], 0)
         self.assertEqual(report["acceptance_summary"]["fully_accepted_analyses"], 0)
         for analysis in report["analyses"]:
             self.assertFalse(analysis["acceptance"]["accepted"])
-            self.assertEqual(analysis["acceptance"]["required_input_roles"], len(analysis["requirements"]))
+            self.assertEqual(
+                analysis["acceptance"]["required_input_roles"],
+                sum(role.get("requirement_class") != "supplemental"
+                    for role in analysis["requirements"]))
             for requirement in analysis["requirements"]:
                 if requirement.get("supply") == "user":
                     # Owner parameters are inputs, not publisher data: one explicit gate.
@@ -196,6 +201,28 @@ class ResearchAcceptanceTests(unittest.TestCase):
         invalid = analysis_acceptance(g06, self.by_id, {}, [], observations_checked=False,
             artifact_evidence={"icio": {"status": "invalid_original_matrix_evidence"}})
         self.assertNotIn("original_artifact_evidence", invalid["requirements"][0])
+
+    def test_optional_original_absence_does_not_fail_required_native_comparison(self):
+        row = copy.deepcopy(self.m02)
+        roles = row["comparison_contract"]["original_requirements"]
+        if len(roles) < 2:
+            self.skipTest("needs at least two original roles")
+        roles[1]["requirement_class"] = "supplemental"
+        sid = roles[0]["series_ids"][0]
+        panel = {"variant_id":"core", "frequency":self.by_id[sid]["frequency"],
+                 "series_ids":roles[0]["series_ids"],
+                 "kind":"original_scope",
+                 "native_input_scope_matches_original_method":True,
+                 "requested_coverage_complete":True,
+                 "state":"bounded_current_vintage_verified","checks":[],
+                 "matched_period_count":4,"source_reconciled":True}
+        # Other required roles still block the comparison as expected, but
+        # the missing supplemental role must never be in uncovered_roles.
+        result=self.evaluate(row,panels=[panel])
+        self.assertNotIn(roles[1]["role"],result["comparison"]["uncovered_roles"])
+        self.assertNotIn(roles[1]["role"],result["blocking_roles"])
+        self.assertIn(roles[1]["role"],result["supplemental_unaccepted_roles"])
+        self.assertEqual(result["supplemental_input_roles"],1)
 
     def test_original_comparison_bundle_preserves_native_frequencies(self):
         row = copy.deepcopy(self.m02)
