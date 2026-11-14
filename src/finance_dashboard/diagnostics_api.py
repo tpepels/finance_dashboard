@@ -88,9 +88,6 @@ def _original_method_summary(root) -> dict:
             if not audit.is_file() or audit.is_symlink() or audit.stat().st_size > 8_000_000:
                 continue
             count += 1
-            if count > 80:
-                result["truncated"] = True
-                return result
             try:
                 row = json.loads(audit.read_bytes())
                 sha = row["archive_sha256"]
@@ -133,7 +130,7 @@ def _original_method_summary(root) -> dict:
                         "tiva_status": (y.get("tiva_reconstruction") or {}).get("status", "not_evaluated"),
                         "tiva_error_code": (y.get("tiva_reconstruction") or {}).get("error_code"),
                         "numerical_residual": (y.get("tiva_reconstruction") or {}).get("max_relative_residual"),
-                    } for y in years[:40]],
+                    } for y in years],
                     "rejected_years": derived.get("rejected_matrices", []),
                     "expected_years": derived.get("expected_years"),
                     "observed_years": derived.get("observed_years", []),
