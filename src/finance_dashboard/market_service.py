@@ -149,6 +149,8 @@ class MarketIngestionService:
                 run.observations_received = len(history.price_bars)
                 run.versions_added = added
                 session.get(MarketInstrumentRow, instrument_id).updated_at = now_utc()
+            from .data_change_bus import publish_change
+            publish_change(self.engine, "market_ingested")
             return {"instrument_id":instrument_id,"status":"success",
                     "received":len(history.price_bars),"versions_added":added,
                     "dividends":len(history.dividends),"splits":len(history.splits),
@@ -201,6 +203,8 @@ class MarketIngestionService:
                 run.ended_at=now_utc()
                 run.observations_received=len(values)
                 run.versions_added=added
+            from .data_change_bus import publish_change
+            publish_change(self.engine, "fx_ingested")
             return {"currency":currency,"status":"success","received":len(values),
                     "versions_added":added}
         except Exception as exc:
