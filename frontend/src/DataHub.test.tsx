@@ -9,11 +9,14 @@ const makeRun=()=>({
   counts:{total:3,finished:1,completed:1,skipped:0,active:2,failed:0,manual_required:0},
   sources:[
     {dataset:'wid-world',label:'WID.world',status:'complete',job_id:'a',
-      completed_files:2,attempted_files:2,completed_sources:5},
+      completed_files:2,attempted_files:2,completed_sources:5,
+      retry_at_unix:null as number|null},
     {dataset:'euklems-us',label:'EU KLEMS',status:'downloading',job_id:'b',
-      completed_files:0,attempted_files:0,completed_sources:0},
+      completed_files:0,attempted_files:0,completed_sources:0,
+      retry_at_unix:null as number|null},
     {dataset:'oecd-icio',label:'OECD ICIO',status:'queued',job_id:'c',
-      completed_files:0,attempted_files:0,completed_sources:0},
+      completed_files:0,attempted_files:0,completed_sources:0,
+      retry_at_unix:null as number|null},
   ],
   manual_files:[] as {job_id:string;dataset:string;source:string;role:string;
     name:string;url:string;reason:string;accept:string;max_bytes:number}[],
@@ -84,6 +87,13 @@ describe('durable Data Collection page',()=>{
     expect(screen.queryByText('Source explorer')).toBeNull();
     expect(screen.queryByText('Advanced source operations')).toBeNull();
     expect(calls.some(item=>item.url==='/api/data/overview')).toBe(false);
+  });
+
+  it('labels an expired retry as awaiting the queue, not as a future appointment',async()=>{
+    run.sources[1].status='deferred';
+    run.sources[1].retry_at_unix=Date.now()/1000-120;
+    render(<DataHub/>);
+    expect(await screen.findByText('Retry eligible; waiting for download queue')).toBeTruthy();
   });
 
   it('shows the difference between 12 attempted repairs and zero resolved gaps',async()=>{
