@@ -321,7 +321,9 @@ export default function DataHub(){
             <td><span className={'data-state data-state-'+statusStyle(source.status)}>
               {statusLabels[source.status]??source.status}</span></td>
             <td>{source.status==='deferred'&&source.retry_at_unix?
-              'Automatic retry '+new Date(source.retry_at_unix*1000).toLocaleTimeString():
+              source.retry_at_unix*1000<=Date.now()?
+                'Retry eligible; waiting for download queue':
+                'Automatic retry '+new Date(source.retry_at_unix*1000).toLocaleTimeString():
               source.status==='failed'||source.status==='partial'||source.status==='interrupted'?
                 reason(source.reason)||'Inspect diagnostics':
               source.status==='manual_required'?'See required files below':
