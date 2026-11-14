@@ -391,10 +391,10 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
         return exports.status()
 
     @app.post("/api/diagnostics/prepare", status_code=202)
-    def prepare_diagnostics(request: Request,
+    def prepare_diagnostics(request: Request, force: bool = False,
                             x_gcm_action: str | None = Header(default=None)):
         _guard(request, x_gcm_action)
-        return exports.prepare()
+        return exports.prepare(force=force)
 
     def send_prepared_export():
         path = exports.ready_file()
