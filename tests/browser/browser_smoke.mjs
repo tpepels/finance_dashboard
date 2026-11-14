@@ -442,14 +442,16 @@ try {
   await shown(mobile.getByRole('heading', { name: 'Dashboard', exact: true }));
   await mobile.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
   await screenshot(mobile, 'mobile-overview-light');
-  // The mobile toolbar deliberately hides Data & sync; it remains reachable through the one navigation menu.
+  // The mobile toolbar hides Data & sync; the canonical Data collection
+  // workspace is still reachable through the single navigation menu.
   await mobile.getByRole('button', { name: 'Menu', exact: true }).click();
-  const mobileSource = mobile.getByRole('link', { name: 'Source data', exact: true });
+  const mobileSource = mobile.getByRole('link', { name: 'Data collection', exact: true });
   const utilityBounds = await mobileSource.boundingBox();
   assert.ok(utilityBounds && utilityBounds.x >= 0 && utilityBounds.x + utilityBounds.width <= 390,
-    'Source data and sync remain reachable from the mobile navigation without horizontal scrolling');
+    'Data collection remains reachable from mobile navigation without horizontal scrolling');
   await mobileSource.click();
-  await shown(mobile.locator('#source-coverage > summary'));
+  await shown(mobile.locator('#source-coverage'));
+  await shown(mobile.getByRole('heading', { name: 'Data availability', exact: true }));
   await mobile.goto(seeded);
   await mobile.keyboard.press('Tab');
   assert.equal(await mobile.getByRole('link', { name: 'Skip to content', exact: true }).evaluate(element => element === document.activeElement), true);
