@@ -7,9 +7,15 @@ does **not** need to be repeated after a deployment.
 ## Default lifecycle
 
 1. **Scheduled collection** runs when `FINANCE_AUTO_REFRESH=1` (normally
-   every 86,400 seconds, with restart-safe due time). Publisher-specific
-   rate limits, original source identities and existing stored observations
-   remain authoritative. Failed/deferred publisher calls do not delete data.
+   every 86,400 seconds, with restart-safe due time). The same cycle also
+   enqueues due registered original-source bundles (WID, EU KLEMS, MSCI,
+   pinned research originals and OECD ICIO) through the existing single
+   publisher-governed, persistent import queue. Each bundle's own freshness
+   interval or immutable pinned receipt decides whether work is needed:
+   previously imported files are retained, not downloaded again after a
+   deployment. Publisher-specific rate limits, original source identities
+   and existing stored observations remain authoritative. Failed/deferred
+   publisher calls do not delete data.
 2. **Validate and commit** an individual source through
    `IngestionService.refresh`. A successful transaction publishes the
    `series_ingested` event **after** commit. A successful refresh reporting
@@ -31,6 +37,9 @@ does **not** need to be repeated after a deployment.
 6. **Record exceptions**: Missing original files, publisher access refusal,
    scientific contract failure and old source observations remain visible
    with the exact series and next action in the limitation audit and debug ZIP.
+
+Market prices and ECB FX ingest through their own post-commit
+notifications, including successful publisher checks containing no new versions.
 
 These notifications also occur when manual originals are accepted, OECD ICIO
 originals are imported/reassessed, maintenance completes and an automatic
