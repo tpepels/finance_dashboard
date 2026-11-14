@@ -43,6 +43,53 @@ Open **http://localhost:5052/** locally, or **http://SERVER_LAN_IP:5052/** from 
 
 A fresh install has an empty database; collection and acceptance evaluation take time. A healthy API does not certify a research corpus. To preserve existing research, migrate the complete stopped data directory using the runbook. Do not replace an existing `.env` or data mount.
 
+## Data Collection workflow
+
+**Data collection** in the main navigation is the operator-facing collection page.
+**Source Explorer** is a separate research page; **Diagnostics** contains
+historical synchronization, original-archive administration and the detailed
+developer console. The Data Collection view does not embed either page.
+
+A single **Start automatic downloads** action creates a persistent collection
+ID and starts the existing original-source queue and canonical source-health
+repair. The collection keeps its run identity and source/job status on disk
+across navigation, browser reloads and container restarts. If unrelated manual
+maintenance is running, source repair is queued behind it. The progress table
+shows each registered original-source family; only specific failed publisher
+files with actionable original URLs appear in the manual-download table.
+Submitting a missing file through that table automatically resumes canonical
+validation and ingestion. Transient publisher failures obey existing rate
+policies and bounded automatic retries. Historical data and source evidence
+are never discarded on a page reload.
+
+Data Collection polls a **lightweight status API** rather than requesting a
+database-wide source-coverage scan every few seconds. Source availability is
+calculated and cached separately. The browser immediately restores its last
+known view while it checks the authoritative server state.
+
+The debug ZIP is a **separate background preparation job**. The page shows
+preparation, completion and errors; when ready, the cached archive is
+downloaded without rebuilding it in the request. Preparing the archive,
+including the full redacted publisher and OECD accounting diagnostics, does
+not block Data Collection status requests.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/data/collection/start` | Start or return the active collection run |
+| `GET /api/data/collection` | Fast, persistent per-source and repair status |
+| `GET /api/data/health` | Cached source availability; `?refresh=true` schedules refresh |
+| `POST /api/manual-sources/fallback-upload` | Upload one failed original and resume import |
+| `POST /api/diagnostics/prepare` | Start/reuse asynchronous debug preparation |
+| `GET /api/diagnostics/export-status` | Query preparation, ready timestamp and errors |
+| `GET /api/diagnostics/export-file` | Download the ready cached ZIP |
+
+All action POSTs require the existing dashboard action marker. The only
+browser hints forwarded to registered publisher requests are sanitized
+non-secret user-agent and language metadata; browser cookies and
+authentication tokens are never collected. Persistent collection and cache
+files reside under the configured maintenance volume, ordinarily
+`/data/maintenance`.
+
 ## Development checks
 
 The runbook uses a project virtual environment (Python 3.12 is the tested runtime) and Node 24 for frontend development. After installing dependencies:
