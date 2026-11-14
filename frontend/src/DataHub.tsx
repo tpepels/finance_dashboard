@@ -231,7 +231,7 @@ export default function DataHub(){
   async function prepareExport(){
     setPreparing(true);setError('');
     try{
-      const response=await fetch('/api/diagnostics/prepare',{
+      const response=await fetch('/api/diagnostics/prepare?force='+Boolean(exporter.value?.ready),{
         method:'POST',headers:HEADERS,body:'{}',
       });
       if(!response.ok)throw new Error('Unable to prepare diagnostics (HTTP '+response.status+')');
