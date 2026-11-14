@@ -657,6 +657,9 @@ class ManualSourceTests(unittest.TestCase):
                 "diagnostics/manual-fallback-links.json",
                 "diagnostics/maintenance-complete.json",
                 "diagnostics/collection-run.json",
+                "diagnostics/limitation-assessment.json",
+                "diagnostics/limitation-assessment.csv",
+                "diagnostics/research-limitation-matrix.json",
                 "diagnostics/icio-accounting-failures.csv",
                 "diagnostics/original-method-audit.json",
             }.issubset(names))
@@ -667,6 +670,17 @@ class ManualSourceTests(unittest.TestCase):
             collected = json.loads(archive.read("diagnostics/collection-run.json"))
             self.assertIn("repair", collected)
             self.assertIn("counts", collected)
+            limits = json.loads(archive.read("diagnostics/limitation-assessment.json"))
+            self.assertEqual(limits["schema_version"], 1)
+            self.assertEqual(limits["counts"]["total"], len(limits["findings"]))
+            self.assertIn("scientific_acceptance", limits)
+            self.assertIn("method_register", limits)
+            self.assertIn("analysis_ids", archive.read(
+                "diagnostics/limitation-assessment.csv").decode("utf-8"))
+            limitation_api = self.client.get("/api/diagnostics/limitation-assessment")
+            self.assertEqual(limitation_api.status_code, 200, limitation_api.text)
+            self.assertIn("scientific_acceptance", limitation_api.json())
+            self.assertEqual(limitation_api.json()["counts"]["research_questions"], 37)
         console = self.client.get("/api/data/debug-console")
         self.assertEqual(console.status_code, 200)
         self.assertIn("source_coverage", console.json())
