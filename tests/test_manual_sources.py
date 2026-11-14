@@ -614,9 +614,14 @@ class ManualSourceTests(unittest.TestCase):
         # Archive preparation must not scan source evidence on the HTTP path.
         self.assertEqual(self.client.get("/api/diagnostics/download").status_code, 202)
         before = time.monotonic()
-        preparation = self.client.post("/api/diagnostics/prepare",
-                                       headers={"X-GCM-Action": "dashboard"})
+        preparation = self.client.post("/api/diagnostics/prepare?force=false",
+                                       json={}, headers={"X-GCM-Action": "dashboard"})
         self.assertEqual(preparation.status_code, 202, preparation.text)
+        # Request must be injected by FastAPI, never parsed as a query field.
+        parameters = self.client.get("/openapi.json").json()["paths"][
+            "/api/diagnostics/prepare"]["post"].get("parameters", [])
+        self.assertNotIn("request", [parameter["name"] for parameter in parameters])
+        self.assertIn("force", [parameter["name"] for parameter in parameters])
         self.assertLess(time.monotonic() - before, 2)
         deadline = time.monotonic() + 15
         ready = None
