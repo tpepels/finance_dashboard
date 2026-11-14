@@ -123,6 +123,33 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertNotEqual(new_run["id"], started["id"])
         self.assertEqual(manual.fetch_calls, 2)
 
+    def test_collection_status_recovers_orphaned_deferred_worker(self):
+        class RestartableManual(StubManual):
+            def __init__(self):
+                super().__init__()
+                self._worker = None
+                self.restarts = 0
+
+            def _ensure_worker(self):
+                from types import SimpleNamespace
+                self.restarts += 1
+                self._worker = SimpleNamespace(is_alive=lambda: True)
+
+        manual = RestartableManual()
+        with patch("finance_dashboard.manual_sources.source_specs", return_value=SPECS):
+            manager = CollectionWorkflow(manual, StubMaintenance(),
+                                         path=self.root / "orphaned-worker.json",
+                                         valid_sources=set(), valid_markets=set())
+            started = manager.start()
+        self.assertTrue(started["running"])
+        with manual.lock:
+            manual.jobs[0]["status"] = "deferred"
+            manual.jobs[0]["retry_at_unix"] = time.time() - 60
+        manager.status()
+        self.assertEqual(manual.restarts, 1)
+        manager.status()
+        self.assertEqual(manual.restarts, 1)
+
     def test_repair_status_distinguishes_attempts_from_resolved_source_gaps(self):
         manual = StubManual()
         maintenance = StubMaintenance()
