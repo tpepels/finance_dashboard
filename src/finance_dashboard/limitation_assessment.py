@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import re
 
-from .engine.acceptance import analysis_phase2
+from .engine.acceptance import UnacceptedInput, analysis_phase2, input_provenance
 from .engine.analyses import DEFINITIONS
 from .engine.limitations import UnmappedLimitation, load_register
 
@@ -145,6 +145,40 @@ def _phase2_findings(snapshot, document: dict) -> tuple[list[dict], list[dict]]:
                 evidence={"analysis_state": state["state"],
                           "open_gates": list(state["open_gates"])},
             ))
+    # Bundles may display a limitation inherited from another question's
+    # accepted role. Attribute that warning to the borrowing question too,
+    # just as engine.bundle.shown_limitations does.
+    for row in document["analyses"]:
+        aid = row["id"]
+        definition = DEFINITIONS.get(aid)
+        if definition is None:
+            continue
+        for role, sid in definition.inputs.items():
+            try:
+                provenance = input_provenance(snapshot, aid, sid)
+            except UnacceptedInput:
+                continue
+            lender = provenance["accepted_under"]
+            if lender["analysis_id"] == aid:
+                continue
+            for limit in provenance.get("limitations") or []:
+                code = limit["code"]
+                detail = limit.get("detail")
+                findings.append(_finding(
+                    id=(f"borrowed:{aid}:{sid}:{code}:"
+                        f"{sha256(str(detail).encode('utf-8')).hexdigest()[:10]}"),
+                    category="borrowed_input_limitation",
+                    severity="information", status="documented",
+                    title=f"{aid}: inherited input limitation ({code.replace('_', ' ')})",
+                    detail=(limit.get("text") or code) +
+                        ((" Detail: " + str(detail)) if detail else ""),
+                    next_action=("Review the cited lending analysis and source role "
+                                 "before interpreting the borrowed input."),
+                    analysis_ids=[aid], source_ids=[sid],
+                    provenance="accepted_borrowed_input",
+                    evidence={"code": code, "input_role": role,
+                              "accepted_under": lender},
+                ))
     return questions, findings
 
 
