@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timezone
+from hashlib import sha256
 import re
 
 from .engine.acceptance import analysis_phase2
@@ -119,7 +120,7 @@ def _phase2_findings(snapshot, document: dict) -> tuple[list[dict], list[dict]]:
             severity = ("high" if gap and state["state"] in _RESEARCH_BLOCKED
                         else "medium" if gap else "information")
             findings.append(_finding(
-                id=f"research:{aid}:{code}:{len(seen)}",
+                id=f"research:{aid}:{code}:{sha256(str(detail).encode('utf-8')).hexdigest()[:10]}",
                 category=category, severity=severity,
                 status="needs_evidence" if gap else "documented",
                 title=f"{aid}: {code.replace('_', ' ')}",
@@ -199,6 +200,7 @@ def assess_limitations(*, coverage: dict, document: dict,
         "state": "unavailable", "evaluated_at": None,
         "question_count": len(question_ids), "evaluated_questions": 0,
         "reason": "scientific_acceptance_snapshot_unavailable",
+        "source_evidence_revalidated_by_this_audit": False,
     }
     if snapshot is not None:
         try:
@@ -230,6 +232,7 @@ def assess_limitations(*, coverage: dict, document: dict,
                 "evaluated_at": snapshot.evaluated_at.isoformat(),
                 "question_count": len(question_ids), "evaluated_questions": evaluated,
                 "reason": None if evaluated == len(question_ids) else "research_questions_not_all_checked",
+                "source_evidence_revalidated_by_this_audit": False,
             }
     for aid in sorted(question_ids):
         if aid not in DEFINITIONS:
