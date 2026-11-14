@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from finance_dashboard.engine.acceptance import AcceptanceSnapshot
 from finance_dashboard.limitation_assessment import assess_limitations
@@ -102,6 +104,33 @@ class LimitationAssessmentTests(unittest.TestCase):
         self.assertFalse(any(f["provenance"] == "phase2_acceptance" for f in report["findings"]))
         self.assertTrue(any(f["provenance"] == "registered_method_limitation"
                             for f in report["findings"]))
+
+    def test_borrowed_input_caveat_is_attributed_to_the_borrowing_question(self):
+        document = {"analyses": [{"id": "Z01", "title": "Borrower"},
+                                 {"id": "Z02", "title": "Lender"}]}
+        snapshot = AcceptanceSnapshot(datetime(2026, 11, 14, tzinfo=timezone.utc), {
+            "Z01": {"state": "accepted", "limitations": [],
+                     "requirements": [], "blocking_roles": []},
+            "Z02": {"state": "accepted", "limitations": [],
+                     "requirements": [{
+                         "role": "accepted_source", "state": "accepted",
+                         "series_ids": ["example.series"],
+                         "limitations": [{
+                             "code": "latest_revised_values_not_real_time",
+                             "series_id": "example.series"}],
+                     }], "blocking_roles": []},
+        })
+        engines = {"Z01": SimpleNamespace(inputs={"borrowed": "example.series"}),
+                   "Z02": SimpleNamespace(inputs={})}
+        with patch("finance_dashboard.limitation_assessment.DEFINITIONS", engines):
+            report = assess_limitations(coverage={"items": []},
+                                        document=document, snapshot=snapshot)
+        borrowed = [f for f in report["findings"]
+                    if f["category"] == "borrowed_input_limitation"]
+        self.assertEqual(len(borrowed), 1)
+        self.assertEqual(borrowed[0]["analysis_ids"], ["Z01"])
+        self.assertEqual(borrowed[0]["source_ids"], ["example.series"])
+        self.assertEqual(borrowed[0]["evidence"]["accepted_under"]["analysis_id"], "Z02")
 
     def test_cached_acceptance_peek_does_not_schedule_new_evaluation(self):
         from finance_dashboard.engine.acceptance import AcceptanceCache
