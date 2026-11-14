@@ -62,6 +62,8 @@ _REGISTRATIONS = (
     ProviderRegistration("FRED_WAYBACK", "fetch_fred_wayback", "native", "full"),
     ProviderRegistration("OECD_CLI", "fetch_oecd_cli", "response", "full",
                          request_origin="https://sdmx.oecd.org/public/rest/data"),
+    ProviderRegistration("OECD_EARNINGS", "fetch_oecd_earnings", "response", "full",
+                         request_origin="https://sdmx.oecd.org/public/rest/data"),
     ProviderRegistration("IMF_BOP_IIP", "fetch_imf_bop_iip", "response", "full"),
     ProviderRegistration("FDIC_BANKFIND", "fetch_fdic_bankfind", "response", "full"),
     ProviderRegistration("SIBLIS_FREE", "fetch_siblis_free", "response", "windowed"),
