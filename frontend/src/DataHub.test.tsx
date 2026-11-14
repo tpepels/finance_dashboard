@@ -178,7 +178,7 @@ describe('durable Data Collection page',()=>{
     expect(screen.getByText(/0 source gaps resolved/)).toBeTruthy();
     expect(screen.getByText(/12 still require attention/)).toBeTruthy();
     expect(screen.getByText(/3 provider requests failed/)).toBeTruthy();
-    expect(screen.getByText(/Source-health repair is incomplete/)).toBeTruthy();
+    expect(screen.getByText(/The publisher check finished, but these source histories remain older than expected/)).toBeTruthy();
   });
 
   it('starts one server-owned collection using the browser language profile',async()=>{
