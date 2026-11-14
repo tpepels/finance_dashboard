@@ -555,6 +555,33 @@ class ManualSourceTests(unittest.TestCase):
                          {"data": "publisher_https", "metadata": "user_upload"})
         self.assertEqual(len(result["sources"]), 5)
 
+    def test_non_uploadable_publisher_error_routes_to_agent_not_manual_queue(self):
+        from finance_dashboard.publisher_downloads import PublisherDownloadError
+        from hashlib import sha256
+        _data, metadata = wid_fixtures("WO", legacy=True)
+        def remote(role, destination, browser=None, client=None):
+            if role["id"] == "data":
+                raise PublisherDownloadError("publisher_file_too_large")
+            raw = metadata.encode()
+            destination.write_bytes(raw)
+            return {"requested_url": role["download_url"],
+                    "final_url": role["download_url"],
+                    "sha256": sha256(raw).hexdigest(), "bytes": len(raw),
+                    "content_type": "text/csv",
+                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat()}
+        with patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
+                   side_effect=remote):
+            response = self.client.post("/api/manual-sources/fetch?dataset=wid-world",
+                                        headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(response.status_code, 202, response.text)
+            result = finished(self.client, "wid-world")
+        self.assertEqual(result["status"], "failed", result)
+        self.assertEqual(result["error_code"], "publisher_file_too_large")
+        self.assertEqual(result["phase"], "source_contract_failed")
+        overview = self.client.get("/api/data/overview").json()
+        self.assertEqual(overview["acquisition"]["files_requiring_upload"], [])
+        self.assertEqual(overview["acquisition"]["problem_sources"], 1)
+
     def test_browser_fingerprint_is_not_exposed_in_download_job_or_debug(self):
         from finance_dashboard.publisher_downloads import safe_browser_profile
         invalid = {"user_agent": "Mozilla/5.0\r\nAuthorization: secret",
