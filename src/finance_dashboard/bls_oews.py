@@ -117,6 +117,8 @@ def parse_national_zip(payload: bytes, year: int) -> dict[str, Decimal]:
             if infos[0].file_size > 12_000_000:
                 raise ProviderError("BLS OEWS source workbook exceeds size bound")
             data = archive.read(name)
+    except ProviderError:
+        raise
     except (BadZipFile, OSError, RuntimeError, ValueError) as exc:
         raise ProviderError("BLS OEWS ZIP is invalid") from exc
     if len(data) > 12_000_000 or not data.startswith(b"PK\x03\x04"):

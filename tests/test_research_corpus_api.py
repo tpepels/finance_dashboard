@@ -38,7 +38,7 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         result = response.json()
         self.assertEqual(result["analysis_count"], corpus_counts.ANALYSES)
-        self.assertEqual(result["method_source_count"], 49)
+        self.assertEqual(result["method_source_count"], 50)
         self.assertEqual(result["fully_validated_analysis_count"], 0)
         self.assertEqual(result["analysis_with_any_stored_macro_observations"], 0)
         self.assertTrue(result["observations_checked"])

@@ -19,7 +19,7 @@ class OfflineCorpusStatusTests(unittest.TestCase):
     def test_exact_approved_roles_and_no_empirical_readiness_claim(self):
         r = self.report
         self.assertEqual(r["analysis_count"], corpus_counts.ANALYSES)
-        self.assertEqual(r["method_source_count"], 49)
+        self.assertEqual(r["method_source_count"], 50)
         self.assertEqual(r["scalar_roles"], corpus_counts.SCALAR_ROLES)
         self.assertEqual(r["scalar_bound_roles"], corpus_counts.BOUND_SCALAR_ROLES)
         self.assertEqual(r["unbound_scalar_roles"], corpus_counts.UNBOUND_SCALAR_ROLES)
