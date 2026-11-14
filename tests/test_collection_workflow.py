@@ -232,6 +232,29 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertEqual(after_restart.prepare()["id"], pending["id"])
         self.assertEqual(len(calls), 1)
 
+    def test_export_failure_is_visible_and_retry_generates_a_valid_archive(self):
+        archive = self.root / "failed-export.zip"
+        state = self.root / "failed-export.json"
+        failure = DiagnosticExportManager(
+            lambda: (_ for _ in ()).throw(RuntimeError("source audit failed")),
+            zip_path=archive, state_path=state)
+        self.assertEqual(failure.prepare()["state"], "preparing")
+        self.assertTrue(wait_for(lambda: failure.status()["state"] == "failed"))
+        self.assertEqual(failure.status()["error"], "diagnostic_export_failed")
+        self.assertIsNone(failure.ready_file())
+        def recovered_zip():
+            data = BytesIO()
+            with ZipFile(data, "w") as output:
+                output.writestr("diagnostics/status.json", "{}")
+            return data.getvalue()
+        recovered = DiagnosticExportManager(
+            recovered_zip, zip_path=archive, state_path=state)
+        self.assertEqual(recovered.status()["state"], "failed")
+        self.assertEqual(recovered.prepare()["state"], "preparing")
+        self.assertTrue(wait_for(lambda: recovered.status()["ready"]))
+        self.assertTrue(archive.is_file())
+
+
 
 if __name__ == "__main__":
     unittest.main()
