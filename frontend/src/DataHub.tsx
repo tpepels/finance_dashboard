@@ -131,6 +131,23 @@ export default function DataHub(){
   const [notification,setNotification]=useState('');
   const [error,setError]=useState('');
   const run=collection.value;
+  const observed=useRef(new Map<string,string>());
+  const observedRun=useRef<string|null>(null);
+  useEffect(()=>{
+    if(!run?.id)return;
+    if(observedRun.current!==run.id){
+      observedRun.current=run.id;
+      observed.current.clear();
+    }
+    let changed=false;
+    for(const source of run.sources){
+      const previous=observed.current.get(source.dataset);
+      if(previous&&previous!==source.status&&TERMINAL.has(source.status)&&
+        !TERMINAL.has(previous))changed=true;
+      observed.current.set(source.dataset,source.status);
+    }
+    if(changed)window.dispatchEvent(new Event('gcm-data-updated'));
+  },[run]);
   const snapshot=health.value?.snapshot;
   const files=run?.manual_files??[];
   const active=run?.state==='running';
@@ -327,10 +344,12 @@ export default function DataHub(){
         'Data availability not yet calculated.'}</p>}
     </section>
 
-    {(error||collection.problem||(!run&&health.problem))&&<p role="alert" className="data-collection-alert">
-      {error||('Status connection: '+collection.problem)||health.problem}
-      {run?.id?' Last known collection state is retained.':''}
-    </p>}
+    {(error||run?.startup_error||collection.problem||(!run&&health.problem))&&
+      <p role="alert" className="data-collection-alert">
+        {error||run?.startup_error||
+          (collection.problem?'Status connection: '+collection.problem:health.problem)}
+        {run?.id?' Last known collection state is retained.':''}
+      </p>}
     {notification&&<p role="status" className="data-collection-notice">{notification}</p>}
 
     <section className="data-collection-export" aria-label="Diagnostic export">
