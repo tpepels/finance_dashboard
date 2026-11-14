@@ -171,6 +171,26 @@ def _read_state(path: Path) -> dict | None:
                 _RELEASE_ID.fullmatch(data["release_id"]) and
                 isinstance(data.get("activated_at"), str)):
             datetime.fromisoformat(data["activated_at"])
+            if "version" in data and (
+                    not isinstance(data["version"], str) or
+                    _SEMVER.fullmatch(data["version"]) is None):
+                return None
+            if "base_version" in data and (
+                    not isinstance(data["base_version"], str) or
+                    _SEMVER.fullmatch(data["base_version"]) is None):
+                return None
+            if "image_build" in data and (
+                    not isinstance(data["image_build"], str) or
+                    re.fullmatch(r"[0-9a-f]{16}", data["image_build"]) is None):
+                return None
+            if "build_number" in data and (
+                    not isinstance(data["build_number"], int) or
+                    isinstance(data["build_number"], bool) or
+                    data["build_number"] < 0):
+                return None
+            if ("version" in data and "image_build" in data
+                    and data["release_id"] != data["version"] + "+" + data["image_build"]):
+                return None
             return data
     except (FileNotFoundError, ValueError, OSError, UnicodeError, TypeError):
         return None
