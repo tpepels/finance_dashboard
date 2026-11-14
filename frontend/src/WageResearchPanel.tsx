@@ -83,7 +83,7 @@ export default function WageResearchPanel({bundle,theme,recessions}:{
     <div className="decision-multiples">
       {charts.map((c,i)=><TimePanel key={c.title} title={c.title} option={c.option}
         height={270} compact={i>1} presets={false} group="l08-worker-earnings" span={c.span}
-        caption={i===3?'The published federal floor varies by state/local jurisdiction; no synthetic weekly rate or Kaitz index is produced.':undefined}/>)}
+        caption={i===3?'The federal minimum is nationwide; states and municipalities may impose higher floors. Real purchasing power uses annual CPI; no synthetic weekly conversion or Kaitz index is produced.':undefined}/>)}
     </div>
     <h4 className="decision-subhead">OECD full-time earnings dispersion and minimum-to-median wages</h4>
     <p className="decision-caption">Published annual ratios and percentages. Country coverage is source-specific.
