@@ -65,6 +65,8 @@ class LimitationAssessmentTests(unittest.TestCase):
             release={"release_id": "0.2.1+test"})
         self.assertEqual(report["scientific_acceptance"]["state"], "ready")
         self.assertEqual(report["counts"]["research_questions_evaluated"], 2)
+        self.assertEqual(report["counts"]["research_by_state"],
+                         {"conditional": 1, "deferred": 1})
         findings = report["findings"]
         self.assertEqual(len([f for f in findings if f["provenance"] == "source_coverage"]), 4)
         current = next(f for f in findings if f["source_ids"] == ["macro.deferred_current"])
@@ -100,6 +102,19 @@ class LimitationAssessmentTests(unittest.TestCase):
         self.assertFalse(any(f["provenance"] == "phase2_acceptance" for f in report["findings"]))
         self.assertTrue(any(f["provenance"] == "registered_method_limitation"
                             for f in report["findings"]))
+
+    def test_cached_acceptance_peek_does_not_schedule_new_evaluation(self):
+        from finance_dashboard.engine.acceptance import AcceptanceCache
+        scheduled = []
+        cache = AcceptanceCache(self._snapshot, ttl_seconds=3600,
+                                spawn=lambda task: scheduled.append(task))
+        self.assertIsNone(cache.peek())
+        self.assertEqual(scheduled, [])
+        cache.warm()
+        self.assertEqual(len(scheduled), 1)
+        scheduled.pop()()
+        self.assertIsNotNone(cache.peek())
+        self.assertEqual(scheduled, [])
 
     def test_missing_compute_definition_is_reported_as_implementation_gap(self):
         document = {"analyses": [{"id": "Z99", "title": "Unimplemented question"}]}
