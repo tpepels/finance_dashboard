@@ -111,6 +111,10 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertEqual(len(snapshot["manual_files"]), 1)
         self.assertEqual(snapshot["manual_files"][0]["name"], "WID metadata")
         self.assertEqual(snapshot["manual_files"][0]["role"], "metadata")
+        self.assertTrue(wait_for(lambda: bool(recovered.current.get("repair_final")),
+                                 timeout=4))
+        maintenance.jobs = []
+        self.assertEqual(recovered.status()["repair"]["status"], "complete")
         with manual.lock:
             manual.jobs[0].update(status="complete", failed_roles={})
         self.assertEqual(recovered.status()["state"], "complete")
@@ -145,6 +149,9 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertEqual(maintenance.calls, 1)
         self.assertEqual(manager.status()["id"], run["id"])
         self.assertEqual(manager.status()["repair"]["total"], 17)
+        maintenance.jobs[0]["status"] = "complete"
+        self.assertTrue(wait_for(lambda: bool(manager.current.get("repair_final")),
+                                 timeout=4))
 
     def test_restart_after_interrupted_collection_start_does_not_leave_phantom_progress(self):
         from finance_dashboard.collection_workflow import _write_json
