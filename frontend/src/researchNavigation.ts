@@ -1,13 +1,13 @@
 /** Stable public anchors; a focused workspace must not invalidate a research link. */
 export const RESEARCH_TOPICS = [
   { id: 'decisions', label: 'Decisions', questions: ['P06', 'P07', 'F03'] },
-  { id: 'growth', label: 'Growth & inflation', questions: ['C01', 'C02', 'C05', 'C03', 'C06'] },
+  { id: 'growth', label: 'Growth & inflation', questions: ['C01', 'C02', 'C05', 'C03', 'C06', 'C07'] },
   { id: 'monetary', label: 'Rates & currencies', questions: ['M01', 'M02', 'M04'] },
   { id: 'credit', label: 'Credit & stress', questions: ['F01', 'F02', 'F04', 'F05', 'F06', 'F07'] },
   { id: 'valuation', label: 'Valuation', questions: ['V01', 'V02', 'V03', 'V05'] },
   { id: 'portfolio', label: 'Portfolio', questions: ['P01', 'P02', 'P03', 'P04', 'P05'] },
   { id: 'global', label: 'World', questions: ['G01', 'G02', 'G03', 'G05', 'G06'] },
-  { id: 'labour', label: 'Labour & inequality', questions: ['L01', 'L02', 'L03', 'L04', 'L05', 'L07'] },
+  { id: 'labour', label: 'Labour & inequality', questions: ['L01', 'L02', 'L03', 'L04', 'L05', 'L07', 'L08'] },
 ] as const;
 
 export const isSourceExplorerHash = (hash: string) => /^#(?:theme-|chart-)/.test(hash)
