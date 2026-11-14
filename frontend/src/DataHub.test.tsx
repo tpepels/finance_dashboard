@@ -84,6 +84,9 @@ describe('durable Data Collection page',()=>{
     expect(screen.getByRole('progressbar',{name:'Source-health repair'}).getAttribute('aria-valuenow')).toBe('6');
     expect(screen.getByText('426 / 426')).toBeTruthy();
     expect(screen.getByText(/series have retained data/)).toBeTruthy();
+    expect(screen.getByRole('link',{
+      name:'Assess all source, research and methodological limitations',
+    }).getAttribute('href')).toBe('#diagnostics');
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getAllByRole('table')).toHaveLength(1);
     expect(screen.queryByRole('link',{name:'Open source explorer'})).toBeNull();
