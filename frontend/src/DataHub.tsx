@@ -84,7 +84,10 @@ function useSnapshot<T>(url:string,interval:number,key?:string){
   useEffect(()=>{
     let alive=true;let timer:number|undefined;
     let abort:AbortController|null=null;
+    let version=0;
     const load=async()=>{
+      const current=++version;
+      abort?.abort();
       abort=new AbortController();
       const request=abort;
       const limit=window.setTimeout(()=>request.abort(),8000);
@@ -92,22 +95,24 @@ function useSnapshot<T>(url:string,interval:number,key?:string){
         const response=await fetch(url,{cache:'no-store',signal:request.signal});
         if(!response.ok)throw new Error('HTTP '+response.status);
         const result=await response.json() as T;
-        if(!alive)return;
+        if(!alive||current!==version)return;
         setValue(result);setProblem('');
         if(key)remember(key,result);
       }catch(error){
-        if(alive)setProblem(error instanceof Error?error.message:'Status unavailable');
+        if(alive&&current===version)setProblem(error instanceof Error?error.message:'Status unavailable');
       }finally{
         window.clearTimeout(limit);
-        if(alive)timer=window.setTimeout(()=>void load(),interval);
+        if(alive&&current===version)timer=window.setTimeout(()=>void load(),interval);
       }
     };
-    refresh.current=load;
-    void load();
-    const focus=()=>{if(document.visibilityState==='visible'){
+    const requestNow=()=>{
       if(timer!==undefined)window.clearTimeout(timer);
-      abort?.abort();
       void load();
+    };
+    refresh.current=async()=>{requestNow();};
+    requestNow();
+    const focus=()=>{if(document.visibilityState==='visible'){
+      requestNow();
     }};
     window.addEventListener('focus',focus);
     return()=>{alive=false;if(timer!==undefined)window.clearTimeout(timer);
@@ -306,7 +311,8 @@ export default function DataHub(){
       </div>
     </section>}
 
-    <section className="data-collection-section data-collection-availability" aria-label="Data availability">
+    <section className="data-collection-section data-collection-availability" id="source-coverage"
+      tabIndex={-1} aria-label="Data availability">
       <h3>Data availability</h3>
       {summary?<div>
         <p><strong>{summary.with_data.toLocaleString()} / {summary.total.toLocaleString()}</strong> series have retained data · <strong>{summary.needs_attention.toLocaleString()}</strong> need attention</p>
