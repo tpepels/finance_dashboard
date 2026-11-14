@@ -119,6 +119,25 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertNotEqual(new_run["id"], started["id"])
         self.assertEqual(manual.fetch_calls, 2)
 
+    def test_restart_after_interrupted_collection_start_does_not_leave_phantom_progress(self):
+        from finance_dashboard.collection_workflow import _write_json
+        path = self.root / "collection.json"
+        _write_json(path, {"schema_version": 1, "id": "recorded-run",
+                          "started_at": "2026-11-14T11:19:00+00:00",
+                          "phase": "starting", "entries": [
+                              {"dataset": "wid-world", "label": "WID.world",
+                               "job_id": None, "initial": "queued",
+                               "manual_roles": SPECS["wid-world"]["roles"]}],
+                          "maintenance_job_id": None, "maintenance_initial": "queued",
+                          "startup_error": None})
+        restored = CollectionWorkflow(StubManual(), StubMaintenance(), path=path,
+                                      valid_sources=set(), valid_markets=set())
+        result = restored.status()
+        self.assertFalse(result["running"], result)
+        self.assertEqual(result["state"], "failed")
+        self.assertEqual(result["startup_error"], "collection_start_interrupted")
+        self.assertEqual(result["counts"]["active"], 0)
+
     def test_health_build_is_non_blocking_and_snapshot_survives_restart(self):
         entered, release = Event(), Event()
         called = []
