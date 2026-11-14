@@ -7,7 +7,7 @@ import DiagnosticsPanel from './DiagnosticsPanel';
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('header diagnostics console', () => {
-  it('shows server severity, readable events and a downloadable redacted bundle', async () => {
+  it('shows server severity and links to separate diagnostic administration', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -30,8 +30,8 @@ describe('header diagnostics console', () => {
     expect(screen.getByText(/Sources requiring attention: 8/)).toBeTruthy();
     expect(screen.getByText(/Build 0.2.0\+1111222233334444/)).toBeTruthy();
     expect(screen.getByLabelText('Recent structured application log').textContent).toContain('source_policy_deferred');
-    expect(screen.getByRole('link', { name: 'Download debug ZIP' }).getAttribute('href'))
-      .toBe('/api/diagnostics/download');
+    expect(screen.getByRole('link', { name: 'Open diagnostics & administration' }).getAttribute('href'))
+      .toBe('#diagnostics');
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
