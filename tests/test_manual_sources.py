@@ -30,7 +30,7 @@ def finished(client, dataset, duration=8):
     while time.monotonic() < end:
         result = client.get("/api/manual-sources").json()
         job = next((job for job in result["jobs"] if job["dataset"] == dataset), None)
-        if job is not None and job["status"] in {"complete", "partial", "failed"}:
+        if job is not None and job["status"] in {"complete", "partial", "failed", "manual_required"}:
             return job
         time.sleep(.02)
     raise AssertionError("Manual source import did not finish")
@@ -396,6 +396,71 @@ class ManualSourceTests(unittest.TestCase):
         self.assertEqual(restored.jobs[0]["status"], "complete", restored.jobs[0])
         self.assertFalse((folder / "data.bin").exists())
         self.assertFalse((folder / "metadata.bin").exists())
+
+    def test_publisher_failure_reports_exact_role_and_one_upload_resumes_pair(self):
+        from finance_dashboard.publisher_downloads import PublisherDownloadError
+        from hashlib import sha256
+        data, metadata = wid_fixtures("WO", legacy=True)
+        def remote(role, destination, browser=None):
+            if role["id"] == "metadata":
+                raise PublisherDownloadError("publisher_http_403")
+            raw = data.encode()
+            destination.write_bytes(raw)
+            return {"requested_url": role["download_url"],
+                    "final_url": "https://wid.world/bulk_download/WID_data_WO.csv",
+                    "sha256": sha256(raw).hexdigest(), "bytes": len(raw),
+                    "content_type": "text/csv",
+                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat()}
+        with patch("finance_dashboard.publisher_downloads.fetch_publisher_file",
+                   side_effect=remote):
+            queued = self.client.post("/api/manual-sources/fetch?dataset=wid-world",
+                                      headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(queued.status_code, 202)
+            pending = finished(self.client, "wid-world")
+        self.assertEqual(pending["status"], "manual_required", pending)
+        self.assertEqual(pending["failed_roles"], {"metadata": "publisher_http_403"})
+        overview = self.client.get("/api/data/overview").json()
+        manual = overview["acquisition"]["files_requiring_upload"]
+        self.assertEqual(len(manual), 1)
+        self.assertEqual(manual[0]["role"], "metadata")
+        self.assertTrue(manual[0]["url"].endswith("/WID_metadata_WO.csv"))
+        answer = self.client.post(
+            "/api/manual-sources/fallback-upload",
+            params={"job_id": pending["id"], "role": "metadata",
+                    "filename": "WID_metadata_WO.csv"},
+            data=metadata.encode(), headers=HEADERS)
+        self.assertEqual(answer.status_code, 201, answer.text)
+        self.assertTrue(answer.json()["import_started"])
+        result = finished(self.client, "wid-world")
+        self.assertEqual(result["status"], "complete", result)
+        self.assertFalse(result["origin_verified"])
+        folder = self.root / "evidence" / "manual-sources" / "wid-world"
+        manifest = json.loads(next(folder.glob("*/manifest.json")).read_text())
+        self.assertEqual(manifest["kind"], "mixed_original")
+        self.assertEqual(manifest["role_acquisitions"],
+                         {"data": "publisher_https", "metadata": "user_upload"})
+        self.assertEqual(len(result["sources"]), 5)
+
+    def test_browser_fingerprint_is_not_exposed_in_download_job_or_debug(self):
+        from finance_dashboard.publisher_downloads import safe_browser_profile
+        invalid = {"user_agent": "Mozilla/5.0\r\nAuthorization: secret",
+                   "language": "en-US", "cookie": "never-leak"}
+        self.assertNotIn("user_agent", safe_browser_profile(invalid))
+        self.assertEqual(safe_browser_profile(invalid), {"language": "en-US"})
+
+    def test_data_hub_start_one_action_submits_source_repair_and_original_batch(self):
+        manager = self.client.app.state.manual_sources
+        from finance_dashboard.maintenance import MaintenanceManager
+        with (patch.object(manager, "fetch", return_value={"jobs": [], "skipped": {}}) as fetch,
+              patch.object(MaintenanceManager, "submit",
+                           return_value={"id": "repair-job", "status": "queued"}) as submit):
+            response = self.client.post("/api/data/acquire", json={"browser": {
+                "user_agent": "Mozilla/5.0 Chrome/157.0", "language": "en-US"}},
+                headers={"X-GCM-Action": "dashboard"})
+            self.assertEqual(response.status_code, 202, response.text)
+            self.assertEqual(response.json()["source_repair"]["id"], "repair-job")
+            self.assertEqual(fetch.call_args.kwargs["browser"]["language"], "en-US")
+            self.assertEqual(submit.call_args.args[0], "repair_source_health")
 
     def test_running_job_is_replayed_after_restart_from_immutable_spool(self):
         from finance_dashboard.manual_sources import ManualSourceManager
