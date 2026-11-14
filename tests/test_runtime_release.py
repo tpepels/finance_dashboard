@@ -95,6 +95,24 @@ class ReleaseStateTests(unittest.TestCase):
             self.assertEqual(saved["version"], "0.2.3")
             self.assertEqual(saved["image_build"], "cccccccccccccccc")
 
+    def test_automatic_release_does_not_go_backward_after_source_rollback(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state = root / "release.json"
+            events = root / "events.jsonl"
+            newer = {"version": "0.3.0", "build": "aaaaaaaaaaaaaaaa",
+                     "release_id": "0.3.0+aaaaaaaaaaaaaaaa"}
+            rolled_back = {"version": "0.2.0", "build": "bbbbbbbbbbbbbbbb",
+                           "release_id": "0.2.0+bbbbbbbbbbbbbbbb"}
+            with patch("finance_dashboard.runtime_release.build_info", return_value=newer):
+                initial = activate_release(
+                    state_path=state, diagnostics_path=events, activated_at=AT_A)
+            self.assertEqual(initial["version"], "0.3.1")
+            with patch("finance_dashboard.runtime_release.build_info", return_value=rolled_back):
+                rollback = activate_release(
+                    state_path=state, diagnostics_path=events, activated_at=AT_B)
+            self.assertEqual(rollback["version"], "0.3.2")
+
     def test_legacy_release_migrates_to_numbered_release_without_resetting_data(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
