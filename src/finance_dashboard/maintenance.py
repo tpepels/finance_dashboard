@@ -183,6 +183,12 @@ class MaintenanceManager:
                     self._active = None
                 manual_sync_pending.clear()
                 _save_atomic(self.path, self._jobs)
+            # Include non-series evidence updates (vintages, holdings,
+            # earnings, original archives) in the same post-commit path.
+            # A failed/cancelled job never claims evidence was updated.
+            if status in ("complete", "partial"):
+                from .data_change_bus import publish_change
+                publish_change(self.engine, "maintenance_completed")
 
     def _progress(self, job_id: str, count: int, total: int | None,
                   item: str | None = None) -> None:
