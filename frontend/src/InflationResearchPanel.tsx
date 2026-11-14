@@ -227,7 +227,8 @@ export default function InflationResearchPanel({bundle,theme,recessions}:{
    <ul className="decision-limits">{data.limitations.map(v=><li key={v}>{v}</li>)}</ul>
    <p className="decision-caption">Source dates, original definitions and provider links are listed
      under this research question's Sources and Method disclosures. Correlation scans are
-     exploratory; forward-looking validation, robust autocorrelation inference, and causal
-     identification require separate registered evidence and methods.</p>
+     exploratory; the displayed moving-block intervals are conditional historical
+     uncertainty estimates, not proof of forecasting power. Prospective validation,
+     causal identification and controlled pass-through need separately accepted methods.</p>
  </div>;
 }
