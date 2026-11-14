@@ -102,11 +102,15 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 stopped=None, skip_complete_pinned: bool = False,
                 attention_only: bool = False) -> int:
     """Canonical macro refresh uses the same task execution contract as markets."""
-    client = ProviderRouter()
+    stage = "instantiate_router"
+    client = None
     try:
+        client = ProviderRouter()
+        stage = "validate_series"
         unknown = series_ids - set(client.supported_ids()) if series_ids is not None else set()
         if unknown:
             raise ValueError("Unknown series IDs: " + ", ".join(sorted(unknown)))
+        stage = "reserve_refresh_lock"
         with reserve_refresh(engine) as acquired:
             if not acquired:
                 log.warning("Another process owns the ingestion refresh lock")
@@ -115,12 +119,14 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 engine, SourceAcquisition(
                     client, Path(os.environ.get(
                         "FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence"))))
+            stage = "select_catalog"
             chosen = [sid for sid in client.supported_ids()
                       if (series_ids is None or sid in series_ids)
                       and (providers is None or client.definitions[sid]["provider"] in providers)]
             if attention_only and chosen:
                 from .source_coverage import build_coverage
                 from .market import instruments
+                stage = "attention_coverage"
                 census = build_coverage(engine, list(client.definitions.values()),
                                         instruments())
                 # Attempt only actual gaps. Source-policy-deferred but
@@ -140,6 +146,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
             # This also avoids repeatedly hammering data-origin redirects for
             # the immutable TiVA and Swinkels archives.
             if skip_complete_pinned and not full and chosen:
+                stage = "publication_bounds"
                 from .source_coverage import PUBLICATION_BOUNDS
                 from .database import ObservationVersion
                 now = datetime.now(timezone.utc).date()
@@ -170,6 +177,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
             # quota-sized permanently failing prefix would still monopolize
             # every cycle. A policy deferral has not used a publisher attempt
             # and must not move an unserved source behind those already tried.
+            stage = "rotation_query"
             with Session(engine) as session:
                 last_completed = dict(session.execute(
                     select(IngestionRun.series_id, func.max(func.coalesce(
@@ -178,6 +186,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                     .group_by(IngestionRun.series_id)).all())
             chosen.sort(key=lambda sid: (sid in last_completed,
                                          last_completed.get(sid) or datetime.min, sid))
+            stage = "construct_tasks"
             tasks = [
                 RefreshTask(
                     family="macro", source_id=sid,
@@ -187,9 +196,25 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 )
                 for sid in chosen
             ]
+            stage = "execute_tasks"
             return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
+    except Exception as exc:
+        # The original exception string can contain API keys, publisher URLs
+        # or DB paths. Only a fixed category and internal stage enter the
+        # redacted operational journal; exceptions still propagate to the
+        # scheduler's cycle-level guard.
+        category = type(exc).__name__ if type(exc).__name__ in {
+            "OperationalError", "IntegrityError", "ProgrammingError",
+            "StatementError", "ValueError", "TypeError", "KeyError",
+            "AttributeError", "RuntimeError", "OSError", "OverflowError",
+        } else "UnexpectedError"
+        record_event("macro", "collector_failed", level="error",
+                     action="scheduled_refresh_plan", stage=stage,
+                     reason=category)
+        raise
     finally:
-        client.close()
+        if client is not None:
+            client.close()
 
 
 def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
