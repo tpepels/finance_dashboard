@@ -382,7 +382,7 @@ class SourceHealthCache:
         self.build = build
         self.path = path or _path("FINANCE_DATA_HEALTH_CACHE", "data-health.json")
         self.lock = Lock()
-        self.cached = _read_json(self.path, max_bytes=16000)
+        self.cached = _read_json(self.path, max_bytes=250_000)
         self.running = False
         self.last_attempt = 0.0
         self.last_error: str | None = None
@@ -416,9 +416,22 @@ class SourceHealthCache:
                                "total": int(group.get("total", 0)),
                                "with_data": int(group.get("with_data", 0)),
                                "attention": int(group.get("needs_attention", 0))})
+            # Include each source requiring attention from the very same
+            # coverage census. No second DB query or upstream request.
+            # Keep source identity, last observed period and publisher caveat;
+            # do not relabel old observations as current after a successful
+            # download when the latest published source year is unverified.
+            attention_items = []
+            for item in summary.get("items", []):
+                if item.get("state") in ("available", "source_checked_no_newer_data"):
+                    continue
+                attention_items.append({key: item.get(key) for key in (
+                    "id", "name", "provider", "state", "latest_source_date",
+                    "published_through", "last_attempt_state", "last_failure_code",
+                    "next_action", "research_questions")})
             snapshot = {"asof": summary.get("asof"),
                         "calculated_at": _utc(), "calculated_unix": time.time(),
-                        "groups": groups,
+                        "groups": groups, "attention_items": attention_items,
                         "sources": {"total": sum(row["total"] for row in groups),
                                     "with_data": sum(row["with_data"] for row in groups),
                                     "needs_attention": sum(row["attention"] for row in groups)}}
