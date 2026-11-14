@@ -148,6 +148,23 @@ class LimitationAssessmentTests(unittest.TestCase):
         self.assertIsNotNone(cache.peek())
         self.assertEqual(scheduled, [])
 
+    def test_missing_supplemental_input_remains_visible_without_marking_core_unaccepted(self):
+        snapshot=self._snapshot()
+        snapshot.analyses["C01"]["requirements"].append({
+            "role":"national_cpi","requirement_class":"supplemental",
+            "state":"incomplete","series_ids":["macro.missing"],
+            "limitations":[],
+        })
+        report=assess_limitations(coverage=self._coverage(),document=DOC,
+                                  snapshot=snapshot)
+        missing=[row for row in report["findings"]
+                 if row["category"]=="supplemental_source_pending"]
+        self.assertEqual(len(missing),1)
+        self.assertEqual(missing[0]["status"],"monitor")
+        self.assertEqual(missing[0]["source_ids"],["macro.missing"])
+        self.assertEqual(missing[0]["analysis_ids"],["C01"])
+        self.assertEqual(missing[0]["severity"],"information")
+
     def test_missing_compute_definition_is_reported_as_implementation_gap(self):
         document = {"analyses": [{"id": "Z99", "title": "Unimplemented question"}]}
         report = assess_limitations(coverage={"items": []}, document=document)
