@@ -388,7 +388,7 @@ export default function DataHub(){
     {(collection.problem||(!run&&health.problem))&&<p role="alert" className="data-collection-alert">
       {collection.problem?'Status connection: '+collection.problem:health.problem}
       {run?.id?' Last known collection state is retained.':''}
-    </p>
+    </p>}
     {notification&&<p role="status" className="data-collection-notice">{notification}</p>}
 
     <section className="data-collection-export" aria-label="Diagnostic export">
