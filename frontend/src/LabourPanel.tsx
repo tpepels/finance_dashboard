@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { breakGaps, entityName, timeChart, type Point, type Recession, type Theme, type TimeSeries } from './chartKit';
 import { Dumbbells, PairBars, StackedShares, VariantSpread, type Variant } from './heroes';
 import TimePanel from './TimePanel';
+import WageResearchPanel,{type WageResearchValues} from './WageResearchPanel';
 import { Section, spanOf, useBundles, type Bundle } from './analysisShell';
 
 type Line = [string, number][];
@@ -202,7 +203,7 @@ function Marxian({ bundle, theme, recessions }: { bundle: Bundle<L04Values>; the
 
 /** Labour, profits and inequality: research context for long-run earnings assumptions. */
 export default function LabourPanel({ theme, dataVersion }: { theme: Theme; dataVersion: number }) {
-  const { bundles, recessions, error } = useBundles(['L01', 'L02', 'L03', 'L04', 'L05', 'L07'], dataVersion);
+  const { bundles, recessions, error } = useBundles(['L01', 'L02', 'L03', 'L04', 'L05', 'L07', 'L08'], dataVersion);
   const section = (id: string, body: (b: Bundle<any>) => ReactNode) => bundles[id] &&
     <Section key={id} bundle={bundles[id]}>{body(bundles[id] as Bundle<any>)}</Section>;
   return <div className="decision-container" id="labour">
@@ -218,5 +219,6 @@ export default function LabourPanel({ theme, dataVersion }: { theme: Theme; data
     {section('L04', b => <Marxian bundle={b} theme={theme} recessions={recessions}/>)}
     {section('L05', b => <Wealth bundle={b} theme={theme} recessions={recessions}/>)}
     {section('L07', b => <Inequality bundle={b} theme={theme} recessions={recessions}/>)}
+    {section('L08', b => <WageResearchPanel bundle={b as Bundle<WageResearchValues>} theme={theme} recessions={recessions}/>)}
   </div>;
 }
