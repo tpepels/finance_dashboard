@@ -301,6 +301,14 @@ class CollectionWorkflow:
             # mutates attempted files and failed-role maps concurrently.
             jobs = {item["id"]: json.loads(json.dumps(item))
                     for item in self.manual.jobs if item["id"] in ids}
+            # A worker that crashes after queuing a retry must not strand
+            # deadline-expired jobs until the next process restart.
+            worker = getattr(self.manual, "_worker", None)
+            ensure = getattr(self.manual, "_ensure_worker", None)
+            if (callable(ensure) and (worker is None or not worker.is_alive())
+                    and any(item["status"] in ("queued", "deferred")
+                            for item in self.manual.jobs)):
+                ensure()
         operation = self.maintenance.list()
         repair = next((item for item in operation["jobs"]
                        if item.get("id") == record["maintenance_job_id"]), None)
