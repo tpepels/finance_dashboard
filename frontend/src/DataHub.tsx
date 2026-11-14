@@ -172,7 +172,8 @@ export default function DataHub(){
         onClick={()=>void start()}>{starting?'Starting…':'Start automatic downloads'}</button>
     </header>
 
-    <section className="data-hub-section" aria-labelledby="data-hub-status">
+    <section className="data-hub-section" id="source-coverage"
+      aria-labelledby="data-hub-status" tabIndex={-1}>
       <div className="data-hub-section-title">
         <h3 id="data-hub-status">Source health</h3>
         <span>{overview?.asof?'Checked '+overview.asof:'Checking status…'}</span>
