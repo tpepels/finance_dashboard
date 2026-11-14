@@ -710,6 +710,44 @@ class ManualSourceManager:
         if successes == len(PUBLISHER_ARCHIVES):
             shutil.rmtree(folder, ignore_errors=True)
 
+    def commit_fallback_file(self, job_id: str, role_id: str, original: str,
+                             uploaded: Path, size: int, digest: str):
+        """Supply one failed publisher role; enqueue automatically when complete."""
+        with self.lock:
+            job = next((item for item in self.jobs if item["id"] == job_id), None)
+            if job is None or job["status"] != "manual_required":
+                raise ValueError("No manual file is needed for this job")
+            spec = source_specs()[job["dataset"]]
+            role = next((item for item in spec["roles"] if item["id"] == role_id), None)
+            if (role is None or role_id not in job["failed_roles"]
+                    or not NAME.fullmatch(original)
+                    or not original.lower().endswith(role["accept"])
+                    or not 0 < size <= role["max_bytes"]
+                    or not re.fullmatch(r"[0-9a-f]{64}", digest)):
+                raise ValueError("Manual fallback file identity invalid")
+            folder = self._job_dir(job_id)
+            if (folder.parent.is_symlink() or folder.is_symlink() or
+                    uploaded.parent != folder or uploaded.is_symlink()
+                    or not uploaded.is_file() or uploaded.stat().st_size != size):
+                raise ValueError("Manual fallback staging invalid")
+            destination = folder / (role_id + ".bin")
+            if destination.is_symlink():
+                raise ValueError("Manual fallback destination invalid")
+            os.replace(uploaded, destination)
+            job["downloaded"].pop(role_id, None)
+            job["failed_roles"].pop(role_id, None)
+            if role_id not in job["manual_supplied"]:
+                job["manual_supplied"].append(role_id)
+            queued = not job["failed_roles"]
+            if queued:
+                job["method"] = "hybrid" if job["downloaded"] else "upload"
+                job.update(status="queued", phase="waiting", finished_at=None, error_code=None)
+            self._save()
+            if queued:
+                self._ensure_worker()
+            return {"job_id": job_id, "role": role_id, "import_started": queued,
+                    "remaining": sorted(job["failed_roles"])}
+
     def commit_uploaded_file(self, dataset: str, role: str, original: str,
                              uploaded: Path, size: int, digest: str):
         """Commit a bounded streamed upload without blocking other queue work."""
@@ -793,6 +831,55 @@ def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, j
                 raise HTTPException(422, "Empty original file")
             return manager.commit_uploaded_file(
                 dataset, role, filename, staged, total, digest.hexdigest())
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        finally:
+            if staged is not None:
+                staged.unlink(missing_ok=True)
+
+    @app.post("/api/manual-sources/fallback-upload", status_code=201)
+    async def upload_failed_original(request: Request, job_id: str, role: str,
+                                     filename: str,
+                                     x_gcm_action: str | None = Header(default=None)):
+        _guard(request, x_gcm_action)
+        with manager.lock:
+            job = next((item for item in manager.jobs if item["id"] == job_id), None)
+            spec = source_specs().get(job["dataset"]) if job else None
+            selected = next((r for r in (spec or {}).get("roles", [])
+                             if r["id"] == role), None)
+        if (selected is None or job is None or job["status"] != "manual_required"
+                or role not in job["failed_roles"] or
+                not NAME.fullmatch(filename) or not filename.lower().endswith(selected["accept"])):
+            raise HTTPException(422, "No matching failed publisher file")
+        length = request.headers.get("content-length")
+        if length:
+            try:
+                if int(length) > selected["max_bytes"]:
+                    raise HTTPException(413, "Original file too large")
+            except ValueError:
+                raise HTTPException(422, "Invalid content length") from None
+        folder = manager._job_dir(job_id)
+        if folder.is_symlink() or not folder.is_dir():
+            raise HTTPException(422, "Manual fallback storage missing")
+        staged = None
+        total, digest = 0, sha256()
+        try:
+            with NamedTemporaryFile(dir=folder, prefix=".fallback-", suffix=".part",
+                                    delete=False) as out:
+                staged = Path(out.name)
+                os.chmod(staged, 0o600)
+                async for chunk in request.stream():
+                    total += len(chunk)
+                    if total > selected["max_bytes"]:
+                        raise HTTPException(413, "Original file too large")
+                    digest.update(chunk)
+                    out.write(chunk)
+                out.flush()
+                os.fsync(out.fileno())
+            if total == 0:
+                raise HTTPException(422, "Original file is empty")
+            return manager.commit_fallback_file(job_id, role, filename, staged, total,
+                                                digest.hexdigest())
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
         finally:
