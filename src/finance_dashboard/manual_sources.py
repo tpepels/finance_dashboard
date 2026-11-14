@@ -560,6 +560,19 @@ class ManualSourceManager:
                     queued.append({"dataset": name, "job_id": token})
         return {"jobs": queued, "skipped": skipped}
 
+    @staticmethod
+    def _next_ready_job(jobs: list[dict], now: float) -> dict | None:
+        """Run overdue retries before starting another first attempt.
+
+        One worker remains authoritative: no extra concurrent downloads,
+        requests or publisher-budget bypasses are introduced.
+        """
+        return (next((item for item in jobs
+                      if item["status"] == "deferred"
+                      and float(item.get("retry_at_unix") or 0) <= now), None)
+                or next((item for item in jobs
+                         if item["status"] == "queued"), None))
+
     def _drain(self):
         """Process ready jobs and revisit publisher deferrals at their due time.
 
@@ -573,10 +586,7 @@ class ManualSourceManager:
             waiting = False
             with self.lock:
                 now = time.time()
-                job = next((item for item in self.jobs
-                            if item["status"] == "queued" or
-                            (item["status"] == "deferred" and
-                             float(item.get("retry_at_unix") or 0) <= now)), None)
+                job = self._next_ready_job(self.jobs, now)
                 if job is None:
                     due = [float(item["retry_at_unix"]) for item in self.jobs
                            if item["status"] == "deferred" and item.get("retry_at_unix")]
