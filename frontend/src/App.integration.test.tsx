@@ -202,14 +202,17 @@ describe('dashboard shell', () => {
     const user = userEvent.setup();
     render(<App/>);
     await user.click(screen.getByRole('button', { name: 'Data & sync' }));
-    expect(await screen.findByRole('button', { name: 'Collection running' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Data Collection' })).toBeTruthy();
+    expect(screen.getByText('Manual source check (optional)')).toBeTruthy();
     expect(screen.getAllByRole('table')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Prepare diagnostic ZIP' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Sync history' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Diagnostics' }));
     expect(await screen.findByRole('heading', { name: 'Diagnostics & administration' })).toBeTruthy();
-    expect(await screen.findByRole('button', { name: 'Sync current data' })).toBeTruthy();
+    const advanced = await screen.findByText('Manual maintenance (optional)');
+    await user.click(advanced);
+    expect(screen.getByRole('button', { name: 'Check current sources now' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Data Collection' })).toBeNull();
   });
 
