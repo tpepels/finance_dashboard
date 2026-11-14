@@ -54,8 +54,9 @@ function PayProductivity({ bundle, theme, recessions }: { bundle: Bundle<L01Valu
       <PairBars theme={theme} title="Real productivity and pay since the base year" unit="%" legend={['real productivity per hour', 'real pay per hour']}
         rows={data.economies.map(r => ({ key: r.area, label: `${entityName(r.area)} (${r.base_year}–${r.latest_year})`, entity: r.area,
           a: r.productivity - 100, b: r.pay - 100 }))}/>
-      <p className="decision-caption">Both are deflated by the same value-added price index, so where pay grows slower than productivity, the
-        labour share of income fell. EU KLEMS (total economy) for European countries and the US; BLS for the US nonfarm business sector.</p>
+      <p className="decision-caption">Both are deflated by the same value-added price index, so where mean compensation grows slower than productivity,
+        the aggregate labour share of income fell. These are economy/sector averages, not the median worker's earnings.
+        Compare L08 for wage percentiles and statutory minimums; EU KLEMS measures the total economy and BLS the US nonfarm business sector.</p>
     </div>
     <h4 className="decision-subhead">Real productivity (blue) and real pay (orange), indexed to the base year</h4>
     <Grid panels={panels}/>
