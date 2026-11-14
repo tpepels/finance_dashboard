@@ -39,7 +39,11 @@ def safe_browser_profile(profile: dict | None) -> dict:
     for key, limit in (("user_agent", 350), ("language", 100), ("platform", 50)):
         value = profile.get(key)
         if (isinstance(value, str) and 0 < len(value) <= limit
-                and all(32 <= ord(ch) <= 126 for ch in value)):
+                and all(32 <= ord(ch) <= 126 for ch in value)
+                and not any(sequence in value.lower() for sequence in (
+                    r"\r", r"\n", "%0d", "%0a"))):
+            # Reject literal, backslash-escaped and URL-escaped CR/LF.
+            # The browser profile is optional; malformed hints are ignored.
             result[key] = value
     return result
 
