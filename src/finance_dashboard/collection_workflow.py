@@ -312,9 +312,27 @@ class CollectionWorkflow:
         operation = self.maintenance.list()
         repair = next((item for item in operation["jobs"]
                        if item.get("id") == record["maintenance_job_id"]), None)
+        repair_origin = "collection_session"
+        prior_build = (isinstance(record.get("release"), str)
+                       and record["release"] != release_info()["release_id"])
         if repair is None and record["maintenance_job_id"]:
-            repair = record.get("repair_final") or {
-                "status": "interrupted", "completed": 0, "total": None}
+            if record.get("repair_final"):
+                repair = record["repair_final"]
+            elif prior_build:
+                # A new deployment deliberately hides old maintenance jobs,
+                # although the original collection is still durably recorded.
+                # Show a newer independent repair if available, labelled as
+                # such; never call the old completed job "interrupted".
+                latest = next((item for item in operation["jobs"]
+                               if item.get("action") == "repair_source_health"), None)
+                if latest:
+                    repair = latest
+                    repair_origin = "latest_independent_check"
+                else:
+                    repair = {"status": "previous_build", "completed": 0, "total": None}
+                    repair_origin = "previous_build_unavailable"
+            else:
+                repair = {"status": "interrupted", "completed": 0, "total": None}
         elif repair is None:
             repair = {"status": record["maintenance_initial"], "completed": 0, "total": None}
 
@@ -370,6 +388,7 @@ class CollectionWorkflow:
                     **{key: repair.get(key) for key in (
                         "status", "completed", "total", "stage",
                         "current_item", "error_code")},
+                    "origin": repair_origin,
                     "details": repair.get("details") or _repair_details(repair),
                 },
                 "startup_error": record.get("startup_error")}
