@@ -225,7 +225,7 @@ export default function ManualSources() {
             && <button type="button" disabled={busy} onClick={()=>void fetchPublishers(source.id)}>Retry publisher download</button>}
           {(recent.status === 'failed' || recent.status === 'interrupted' || recent.status === 'partial')
             && recent.method !== 'publisher'
-            && <button type="button" disabled={busy} onClick={()=>void retry(source.id)}>Retry import</button> 
+            && <button type="button" disabled={busy} onClick={()=>void retry(source.id)}>Retry import</button>}
           {!!recent.sources?.length && <ul>{recent.sources.map(result=><li key={result.id}>
             {result.id} — {result.status}
             {result.last_period && ' · latest source period '+result.last_period}
