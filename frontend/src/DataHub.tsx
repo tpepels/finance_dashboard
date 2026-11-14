@@ -34,7 +34,6 @@ type ExportStatus = {
 const LAST_COLLECTION='gcm-collection-last-known-v1';
 const LAST_HEALTH='gcm-health-last-known-v1';
 const HEADERS={'Content-Type':'application/json','X-GCM-Action':'dashboard'};
-const TERMINAL=new Set(['complete','partial','failed','manual_required','interrupted','skipped']);
 const statusLabels:Record<string,string>={
   complete:'Imported',partial:'Imported with issues',failed:'Agent investigation required',
   interrupted:'Interrupted',manual_required:'Manual file needed',
@@ -149,8 +148,8 @@ export default function DataHub(){
     observedRepair.current=repairStatus;
     for(const source of run.sources){
       const previous=observed.current.get(source.dataset);
-      if(previous&&previous!==source.status&&TERMINAL.has(source.status)&&
-        !TERMINAL.has(previous))changed=true;
+      if(previous&&previous!==source.status&&
+        (source.status==='complete'||source.status==='partial'))changed=true;
       observed.current.set(source.dataset,source.status);
     }
     if(changed){
