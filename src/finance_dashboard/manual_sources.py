@@ -58,6 +58,7 @@ def _recent_import(job: dict, dataset: str) -> bool:
 
 _AGENT_DOWNLOAD_ERRORS = {
     "publisher_url_invalid", "publisher_file_too_large",
+    "publisher_http_404", "publisher_http_410",
     "oecd_readme_identity_mismatch", "oecd_archive_identity_mismatch",
 }
 
