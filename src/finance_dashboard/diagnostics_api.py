@@ -305,7 +305,7 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
                 key for row in audit_items for key in row.keys()})
             audit_csv = StringIO()
             writer = csv.DictWriter(audit_csv, fieldnames=audit_columns,
-                                    lineterminator="\\r\\n")
+                                    lineterminator="\r\n")
             writer.writeheader()
             for row in audit_items:
                 writer.writerow({
