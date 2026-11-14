@@ -31,7 +31,7 @@ def fixture(flow, key):
 
 class PropertySeriesTests(unittest.TestCase):
     def test_distinct_residential_and_commercial_original_sources(self):
-        self.assertEqual(len(PROPERTY_SOURCES), 8)
+        self.assertEqual(len(PROPERTY_SOURCES), 13)
         obs, _ = parse_bis_property(
             fixture("SPP","Q.DE.R.628"),
             flow="SPP",original_key="Q.DE.R.628")
