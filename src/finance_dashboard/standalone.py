@@ -123,7 +123,8 @@ def _save_schedule_due(due: float) -> None:
 
 
 def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
-                 include_markets: bool, refresh_wisesheets: bool = True) -> None:
+                 include_markets: bool, refresh_wisesheets: bool = True,
+                 original_sources=None) -> None:
     # Import the already tested source adapters only when refresh is enabled.
     from .worker import refresh_all, refresh_market_all
 
@@ -245,6 +246,23 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
         # downstream reconciliation for those native archive changes.
         from .data_change_bus import publish_change
         publish_change(engine, "scheduled_cycle_finished")
+        # The already-existing immutable-original queue has publisher budgets,
+        # pending retries, expiry intervals and an ingestion callback. Kick its
+        # due work once per scheduled cycle, outside the network lock. The
+        # queue handles actual downloads; this loop never opens a second
+        # source-acquisition path or duplicates existing imports.
+        if original_sources is not None and not stopped.is_set():
+            try:
+                queued = original_sources.fetch()
+                record_event("system", "stage_finished",
+                             action="scheduled_original_sources",
+                             status="complete",
+                             completed=len(queued.get("jobs") or []))
+            except Exception:
+                cycle_failed = True
+                record_event("system", "collector_failed", level="warning",
+                             action="scheduled_original_sources",
+                             reason="original_source_schedule_failed")
         if stopped.wait(interval_seconds):
             break
 
@@ -262,7 +280,9 @@ async def standalone_lifespan(app: FastAPI, *, engine: Engine) -> AsyncIterator[
                     args=(engine, stopped),
                     kwargs={"interval_seconds": interval_seconds,
                             "include_markets": include_markets,
-                            "refresh_wisesheets": refresh_wisesheets}, daemon=True)
+                            "refresh_wisesheets": refresh_wisesheets,
+                            "original_sources": getattr(app.state, "manual_sources", None)},
+                  daemon=True)
     thread.start()
     log.info("Single-container refresh started: interval=%ss markets=%s",
              interval_seconds, include_markets)
