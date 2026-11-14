@@ -223,6 +223,23 @@
       "non_equivalent": "The national-accounts alternatives include listed and unlisted companies and measure gross operating surplus, before depreciation. Net operating surplus would still be before property-income flows and corporation tax; neither is consolidated after-tax listed-parent net profit.",
       "regional_coverage": "EU27 covers non-financial corporations; the OECD aggregate uses current 38-member eligibility with changing reporting-country/GDP coverage shown separately. Neither covers the worldwide listed-parent universe.",
       "implied_index_earnings_proxy": "ACWI factsheet capitalization divided by P/E is an implied index earnings proxy. MSCI normalizes continuing-operations earnings, applies free-float inclusion factors and excludes missing EPS; matching P/E numerator coverage to total capitalization is unverified. It is not reported company net profit. Proxy / world GDP is arithmetic context. Method: https://www.msci.com/indexes/documents/methodology/0_MSCI_Fundamental_Data_Methodology_20240625.pdf (sections 1.2.2 and 3.1)."
+    },
+    "L08": {
+      "cps_not_all_workers": "US CPS full-time usual weekly earnings cover wage-and-salary employees aged 16+, excluding self-employed. They do not have the BLS nonfarm-business productivity population.",
+      "aggregate_vs_median": "Population median/decile earnings cannot substitute for aggregate compensation of employees in the national-accounts profit/labour split.",
+      "purchasing_power_vs_output_price": "CPI-U annual averaging gives US worker purchasing power; output-price deflation of factor compensation is a different construct.",
+      "no_inferred_mean_p99": "Source-provided P10/P50/P90 and OECD earnings ratios cannot establish mean wages, P99 executive compensation or low-pay incidence without separate evidence.",
+      "federal_floor": "The US federal minimum is an hourly statutory floor, not the effective state or sector minimum; it is not converted to weekly pay to manufacture a Kaitz ratio.",
+      "oecd_scope": "OECD minimum-to-median and interdecile earnings ratios are defined for national full-time employee concepts, not identical to US CPS nominal weekly wages. Missing national statutory minimums remain missing."
+    },
+    "C07": {
+      "noncausal": "Contemporaneous/lead-lag correlations do not establish economic causality, identified inflation shocks or investment advice.",
+      "overlap_autocorrelation": "Rolling 12-month changes overlap, so ordinary Fisher 95% bounds assume independence that the data violate and are only illustrative.",
+      "coverage_no_fill": "Missing monthly observations and incompatible quarterly frequencies are not interpolated. Housing follows its original BIS quarter; national CPI matching for DE, PT and JP is not yet available.",
+      "return_scope": "MSCI ACWI is USD net total return; World Bank gold and commodities are nominal price benchmarks; Swinkels US bonds are hypothetical modelled simple returns. These are different investment concepts.",
+      "currency": "EUR results convert with observed ECB USD/EUR month-end exchange rates, then use euro-area HICP, not US CPI. Results are unhedged, before costs and taxes.",
+      "limited_assets": "The selected commodity benchmarks are not the investable global commodity asset class. PPI, broad commodity basket and structural controls require separately verified originals.",
+      "statistical_hypotheses": "Lag scanning and regime analysis involve multiple comparisons and time-series dependence. Rolling correlation changes may be unstable and are not forecast signals."
     }
   }
 }
