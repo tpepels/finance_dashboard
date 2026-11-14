@@ -16,7 +16,10 @@ type Collection = {
     active:number;failed:number;manual_required:number};
   sources:Source[]; manual_files:ManualFile[];
   repair:{status:string;completed?:number|null;total?:number|null;
-    current_item?:string|null;error_code?:string|null}|null;
+    current_item?:string|null;error_code?:string|null;
+    details?:{selected_sources?:number;issues_before?:number;
+      issues_after?:number;resolved_issues?:number;failed_sources?:number;
+      remaining_series_ids?:string[]}}|null;
   startup_error:string|null;
 };
 type Health = {
@@ -37,7 +40,7 @@ const HEADERS={'Content-Type':'application/json','X-GCM-Action':'dashboard'};
 const statusLabels:Record<string,string>={
   complete:'Imported',partial:'Imported with issues',failed:'Agent investigation required',
   interrupted:'Interrupted',manual_required:'Manual file needed',
-  skipped:'Already current / retained',queued:'Queued',downloading:'Downloading',
+  skipped:'Existing data retained',queued:'Queued',downloading:'Downloading',
   running:'Validating / importing',deferred:'Retry scheduled',waiting:'Waiting',
 };
 const groups=[
@@ -61,6 +64,7 @@ function reason(code?:string|null){
   if(/identity|invalid/.test(code))return 'File failed source verification';
   if(/http_404|http_410/.test(code))return 'Publisher URL unavailable';
   if(/too_large/.test(code))return 'Source exceeds configured file limit';
+  if(code==='source_gaps_remaining')return 'Some source histories still need updating';
   return code.replaceAll('_',' ');
 }
 function formatWhen(value?:string|null){
@@ -234,7 +238,14 @@ export default function DataHub(){
       const response=await fetch('/api/diagnostics/prepare?force='+Boolean(exporter.value?.ready),{
         method:'POST',headers:HEADERS,body:'{}',
       });
-      if(!response.ok)throw new Error('Unable to prepare diagnostics (HTTP '+response.status+')');
+      if(!response.ok){
+        let detail='HTTP '+response.status;
+        try{
+          const body=await response.json() as {detail?:unknown};
+          if(typeof body.detail==='string')detail+=': '+body.detail;
+        }catch{/* response has no JSON detail */}
+        throw new Error('Unable to prepare diagnostics ('+detail+')');
+      }
       exporter.setValue(await response.json() as ExportStatus);
     }catch(cause){setError(cause instanceof Error?cause.message:'Unable to prepare diagnostics');}
     finally{setPreparing(false);}
@@ -271,14 +282,14 @@ export default function DataHub(){
           aria-valuemin={0} aria-valuemax={total} aria-valuenow={finished}>
           <span style={{width:fraction+'%'}}/>
         </div>
-        <small>{run.counts.completed} imported · {run.counts.skipped} already current ·
+        <small>{run.counts.completed} imported · {run.counts.skipped} retained ·
           {' '}{run.counts.active} in progress · {run.counts.manual_required} manual ·
           {' '}{run.counts.failed} require investigation</small>
       </div>:<p className="data-collection-placeholder">Start a collection to download registered sources and repair missing history. Progress continues on the server if you navigate away.</p>}
       {run?.id&&repair&&<div className="data-collection-progress-group">
         <div className="data-collection-progress-header">
           <strong>Source-health repair</strong>
-          <span>{repairTotal?(repair.completed??0)+' / '+repairTotal:repair.status}</span>
+          <span>{repairTotal?(repair.completed??0)+' / '+repairTotal+' checked':repair.status}</span>
         </div>
         {repairTotal>0&&<div className="data-progress" role="progressbar"
           aria-label="Source-health repair" aria-valuemin={0} aria-valuemax={repairTotal}
@@ -286,7 +297,17 @@ export default function DataHub(){
           <span style={{width:repairPercent+'%'}}/>
         </div>}
         {repair.current_item&&<small>Working on {repair.current_item}</small>}
-        {repair.error_code&&<small className="data-collection-alert">{reason(repair.error_code)}</small>}
+        {repair.details?.issues_after!==undefined&&<small>
+          {repair.details.resolved_issues??Math.max(0,(repair.details.issues_before??0)-repair.details.issues_after)}
+          {' '}source gaps resolved · {repair.details.issues_after} still require attention
+          {repair.details.failed_sources!==undefined&&repair.details.failed_sources>0?
+            ' · '+repair.details.failed_sources+' provider requests failed':''}
+        </small>}
+        {repair.error_code&&<small className="data-collection-alert">
+          {repair.details?.issues_after!==undefined&&repair.details.issues_after>0?
+            'Source-health repair is incomplete; inspect Diagnostics for the remaining series.':
+            reason(repair.error_code)}
+        </small>
       </div>}
     </section>
 
@@ -306,7 +327,7 @@ export default function DataHub(){
               source.status==='manual_required'?'See required files below':
               source.status==='complete'&&source.completed_sources?
                 source.completed_sources+' series imported':
-              source.status==='skipped'?'No new download needed':'—'}</td>
+              source.status==='skipped'?'No download attempted':'—'}</td>
           </tr>)}</tbody>
         </table>
       </div>
@@ -359,12 +380,13 @@ export default function DataHub(){
         Availability calculation failed. The collection status above remains available.</p>}
     </section>
 
-    {(error||run?.startup_error||collection.problem||(!run&&health.problem))&&
-      <p role="alert" className="data-collection-alert">
-        {error||run?.startup_error||
-          (collection.problem?'Status connection: '+collection.problem:health.problem)}
-        {run?.id?' Last known collection state is retained.':''}
-      </p>}
+    {(error||run?.startup_error)&&<p role="alert" className="data-collection-alert">
+      {error||run?.startup_error}
+    </p>}
+    {(collection.problem||(!run&&health.problem))&&<p role="alert" className="data-collection-alert">
+      {collection.problem?'Status connection: '+collection.problem:health.problem}
+      {run?.id?' Last known collection state is retained.':''}
+    </p>
     {notification&&<p role="status" className="data-collection-notice">{notification}</p>}
 
     <section className="data-collection-export" aria-label="Diagnostic export">
