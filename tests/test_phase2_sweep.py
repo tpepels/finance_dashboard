@@ -351,7 +351,8 @@ class ScientificWorkplanTests(unittest.TestCase):
             self.document, self.registry, self.report,
             {"series": []}, limit=400)
         self.assertEqual(len(planned["selected_actions"]),
-                         planned["source_acquisition_candidates"])
+                         min(400, planned["source_acquisition_candidates"]))
+        self.assertGreater(planned["source_acquisition_candidates"], 400)
         self.assertGreaterEqual(len(planned["selected_actions"]), 144)
         # No local source evidence supplied by this unit test; never bake the
         # user's live original-history counts into the static contract.
