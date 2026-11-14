@@ -759,6 +759,20 @@ class ManualSourceManager:
                 raise ValueError("No manual file is needed for this job")
             spec = source_specs()[job["dataset"]]
             role = next((item for item in spec["roles"] if item["id"] == role_id), None)
+            if job["dataset"] == "oecd-icio":
+                from .icio import PUBLISHER_ARCHIVES, README_SHA256
+                from .original_uploads import README
+                if role_id == README:
+                    expected_hash, expected_size = README_SHA256, 10_000_000
+                else:
+                    pin = PUBLISHER_ARCHIVES.get(role_id)
+                    expected_hash = pin["sha256"] if pin else ""
+                    expected_size = pin["bytes"] if pin else 0
+                role = {"id": role_id, "accept": Path(role_id).suffix,
+                        "max_bytes": expected_size}
+                if original != role_id or digest != expected_hash or (
+                        role_id != README and size != expected_size):
+                    raise ValueError("OECD original does not match pinned archive identity")
             if (role is None or role_id not in job["failed_roles"]
                     or not NAME.fullmatch(original)
                     or not original.lower().endswith(role["accept"])
@@ -887,6 +901,13 @@ def install_manual_sources(app: FastAPI, engine, *, stage=None, evidence=None, j
             spec = source_specs().get(job["dataset"]) if job else None
             selected = next((r for r in (spec or {}).get("roles", [])
                              if r["id"] == role), None)
+            if job and job["dataset"] == "oecd-icio":
+                from .icio import PUBLISHER_ARCHIVES
+                from .original_uploads import README
+                if role == README:
+                    selected = {"accept": ".xlsx", "max_bytes": 10_000_000}
+                elif role in PUBLISHER_ARCHIVES:
+                    selected = {"accept": ".zip", "max_bytes": PUBLISHER_ARCHIVES[role]["bytes"]}
         if (selected is None or job is None or job["status"] != "manual_required"
                 or role not in job["failed_roles"] or
                 not NAME.fullmatch(filename) or not filename.lower().endswith(selected["accept"])):
