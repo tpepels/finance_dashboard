@@ -335,6 +335,9 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         elif health.get("state") == "refreshing" and status["colour"] == "green":
             status.update(colour="orange", label="Updating source-health snapshot")
         acceptance = app.state.acceptance.peek()
+        collection = app.state.collection_workflow.status()
+        from .data_hub import automation_status
+        automation = automation_status()
         return {"status": status, "release": release,
                 "console": _console(events), "source_summary": summaries,
                 "source_health": {
@@ -349,6 +352,27 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                     "events_reconciled": updates["events_reconciled"],
                     "research_evaluated_at": acceptance.evaluated_at.isoformat()
                                              if acceptance else None,
+                },
+                "update_progress": {
+                    "health": {
+                        "state": health.get("state"),
+                        "snapshot": {
+                            "calculated_at": cached.get("calculated_at"),
+                            "sources": cached.get("sources"),
+                            "attention_items": cached.get("attention_items") or [],
+                        } if cached else None,
+                        "automation": automation,
+                        "downstream_updates": {"state": updates["state"]},
+                        "scientific_assessment": {
+                            "running": app.state.acceptance.loading,
+                            "evaluated_at": acceptance.evaluated_at.isoformat()
+                                            if acceptance else None,
+                        },
+                    },
+                    "collection": {
+                        "running": collection.get("running", False),
+                        "manual_files_count": len(collection.get("manual_files") or []),
+                    },
                 }}
 
     @app.get("/api/data/debug-console")

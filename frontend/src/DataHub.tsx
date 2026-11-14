@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './DataHub.css';
+import ResearchUpdateJourney from './ResearchUpdateJourney';
 
 type Source = {
   dataset:string; label:string; status:string; job_id:string|null;
@@ -275,6 +276,8 @@ export default function DataHub(){
       </div>
     </header>
 
+    <ResearchUpdateJourney health={health.value} collection={run}
+      isLastKnown={Boolean(health.problem&&health.value?.snapshot)}/>
     <section className="data-collection-auto" aria-label="Automatic reconciliation" role="status">
       <strong>{autoEnabled===false?'Scheduled source refresh is disabled':
         autoEnabled===true?'Automatic source refresh enabled':
@@ -295,7 +298,7 @@ export default function DataHub(){
         Research evidence last evaluated {formatWhen(assessment.evaluated_at)}.</small>}
     </section>
 
-    <details className="data-collection-advanced-actions">
+    <details className="data-collection-advanced-actions" open={autoEnabled===false||undefined}>
       <summary>Manual source check (optional)</summary>
       <p>Scheduled refreshes and ingestion-triggered checks require no action.
         Use this only to request an additional publisher check now, or to initiate

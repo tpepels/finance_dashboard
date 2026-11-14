@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReleaseInfo } from './release';
+import ResearchUpdateJourney from './ResearchUpdateJourney';
+import type { JourneyHealth, JourneyCollection } from './ResearchUpdateJourney';
 import { placeDiagnosticsPopup, type PopupPlacement } from './diagnosticsPosition';
 
 type DiagnosticLine = { time:string; level:string; message:string };
@@ -20,6 +22,7 @@ type Diagnostics = {
     assessment_running:boolean;import_running:boolean;generated_at?:string;
   };
   console:DiagnosticLine[];
+  update_progress?:{health:JourneyHealth;collection:JourneyCollection};
   source_health?:{
     state:string;checked_at?:string|null;error?:string|null;
     attention_providers:AttentionPublisher[];
@@ -212,6 +215,9 @@ export default function DiagnosticsPanel() {
               <p>{summary(report,failure)}</p>
             </div>
           </div>
+          {report?.update_progress&&<ResearchUpdateJourney
+            health={report.update_progress.health}
+            collection={report.update_progress.collection} compact/>}
           {report&&<div className="diagnostics-metrics" aria-label="System health overview">
             <div><strong>{status?.sources_with_data??'—'} / {status?.sources_total??'—'}</strong><span>Histories stored</span></div>
             <div><strong>{status?.sources_needing_attention??'—'}</strong><span>Need source review</span></div>
