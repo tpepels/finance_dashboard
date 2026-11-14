@@ -351,8 +351,12 @@ export default function DataHub(){
         <small>Snapshot calculated {formatWhen(snapshot?.calculated_at)}.
           Data availability does not guarantee the latest publisher revision.
           {health.value?.state==='refreshing'?' Refreshing in background…':''}</small>
+        {(health.problem||health.value?.error)&&<p className="data-collection-alert">
+          Availability refresh failed; showing the last retained snapshot.</p>}
       </div>:<p>{health.value?.state==='refreshing'?'Calculating data availability…':
         'Data availability not yet calculated.'}</p>}
+      {!snapshot&&(health.problem||health.value?.error)&&<p className="data-collection-alert">
+        Availability calculation failed. The collection status above remains available.</p>}
     </section>
 
     {(error||run?.startup_error||collection.problem||(!run&&health.problem))&&
