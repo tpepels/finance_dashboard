@@ -16,6 +16,8 @@ _listeners_lock = Lock()
 
 
 def subscribe(engine, listener) -> None:
+    if engine is None:
+        return
     with _listeners_lock:
         listeners = _listeners.get(engine)
         if listeners is None:
@@ -26,6 +28,9 @@ def subscribe(engine, listener) -> None:
 
 def publish_change(engine, reason: str = "source_ingested") -> None:
     """Publish after commit (never inside the DB transaction)."""
+    # An offline scheduler fixture can deliberately have no active engine.
+    if engine is None:
+        return
     with _listeners_lock:
         listeners = list(_listeners.get(engine, ()))
     for listener in listeners:
