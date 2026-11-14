@@ -13,7 +13,8 @@ type Audit={
   data_coverage:{state:string;asof:string|null;registered_series:number};
   counts:{total:number;by_category:Record<string,number>;
     by_severity:Record<string,number>;by_status:Record<string,number>;
-    research_questions:number;research_questions_evaluated:number};
+    research_questions:number;research_questions_evaluated:number;
+    research_by_state?:Record<string,number>};
   scope:string; findings:Finding[];
 };
 type Filter='action'|'all'|'source'|'research'|'method'|'review';
@@ -92,6 +93,10 @@ export default function LimitationAssessment(){
         {' '}Research evidence: {audit.scientific_acceptance.evaluated_questions}/
         {audit.scientific_acceptance.question_count} questions assessed
         {' '}({audit.scientific_acceptance.state}).
+        {audit.counts.research_by_state&&
+          ' Accepted: '+(audit.counts.research_by_state.accepted??0)+
+          '; conditional: '+(audit.counts.research_by_state.conditional??0)+
+          '; deferred: '+(audit.counts.research_by_state.deferred??0)+'.'}
         {audit.scientific_acceptance.evaluated_at&&
           ' Last research evaluation: '+audit.scientific_acceptance.evaluated_at+'.'}
         {audit.scientific_acceptance.reason&&
