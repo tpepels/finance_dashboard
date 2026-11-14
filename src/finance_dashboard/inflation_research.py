@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import date
 from math import atanh, exp, isfinite, sqrt, tanh
 from statistics import mean
+from random import Random
 
 
 def _clean(points):
@@ -116,6 +117,34 @@ def _ci(r, n):
     return [round(tanh(z-half),4),round(tanh(z+half),4)]
 
 
+def _block_bootstrap_ci(pairs, block:int, draws:int=360):
+    """Deterministic circular moving-block bootstrap for a correlation.
+
+    Overlapping 12-month changes require serial-dependence-aware uncertainty.
+    No p-value is inferred, and an underpowered or degenerate sample is
+    withheld. This conditional interval is descriptive, not causal evidence.
+    """
+    n=len(pairs)
+    if n<max(36,3*block):
+        return None
+    rng=Random(0xC07+n*17+block)
+    estimates=[]
+    for _ in range(draws):
+        sample=[]
+        while len(sample)<n:
+            start=rng.randrange(n)
+            sample.extend(pairs[(start+j)%n] for j in range(block))
+        coefficient=_pearson_pairs(sample[:n])
+        if coefficient is not None:
+            estimates.append(coefficient)
+    if len(estimates)<draws*.9:
+        return None
+    estimates.sort()
+    lower=estimates[int((len(estimates)-1)*.025)]
+    upper=estimates[int((len(estimates)-1)*.975)]
+    return [round(lower,4),round(upper,4)]
+
+
 def _date_label(t, quarter):
     year=(t//4 if quarter else t//12)
     period=(t%4 if quarter else t%12)
@@ -165,14 +194,18 @@ def _analysis(asset, inflation, quarter:bool=False):
         "pearson":round(coefficient,4) if valid else None,
         "spearman":round(_rank_correlation(values),4) if valid else None,
         "illustrative_independent_sample_95pct_ci":_ci(coefficient,len(pairs)),
+        "block_bootstrap_95pct_ci":_block_bootstrap_ci(values,4 if quarter else 12),
+        "confidence_method":"circular_moving_block_bootstrap",
         "rolling":rolling,
         "lead_lag":lagged,
-        "regimes":[regime(1980,1999),regime(2000,2019),regime(2020,9999)],
+        "regimes":[regime(1970,1979),regime(1980,1999),
+                   regime(2000,2019),regime(2020,2020),
+                   regime(2021,2023),regime(2024,9999)],
         "scatter":[{"period":_date_label(t,quarter),"asset_change_pct":round(a,4),
                     "inflation_pct":round(b,4)} for t,a,b in pairs],
         "unverified_due_to_insufficient_coverage":not valid,
         "lag_definition":"positive lag k: correlate asset yoy[t] with consumer yoy[t+k]; not a causal test",
-        "confidence_interval_note":"Fisher-z i.i.d. illustration; not HAC/bootstrap robust to overlapping annual changes or serial dependence",
+        "confidence_interval_note":"Moving-block bootstrap interval retains 12-month (or 4-quarter) observation dependence; descriptive only. Fisher-z i.i.d. interval is separately marked as naive and is not robust to overlapping annual changes.",
     }
 
 
@@ -208,6 +241,26 @@ def inflation_assets(points:dict, *,today:date|None=None)->dict:
         "correlation":_analysis(bond,cpi_yoy),
         "real_yoy":{t:100*((1+bond[t]/100)/(1+cpi_yoy[t]/100)-1)
                      for t in bond if t in cpi_yoy and cpi_yoy[t]>-100},
+    }
+    # Swinkels source returns are native USD decimal monthly *simple*
+    # returns. Translate a complete historical 12-month total return with
+    # the observed month-end USD/EUR ratio, never by scaling a yield.
+    bond_eur={
+        t:100*((1+nominal/100)*fx[t-12]/fx[t]-1)
+        for t,nominal in bond.items()
+        if t in fx and t-12 in fx and fx[t]>0 and fx[t-12]>0
+    }
+    assets["us_treasury_hypothetical_total_return_eur"]={
+        "asset_class":"sovereign_hypothetical_10y",
+        "measurement":"compounded_yield_modelled_monthly_simple_return",
+        "quote_currency":"EUR","calendar_yoy":bond_eur,
+        "inflation_denominator":"EA_HICP",
+        "correlation":_analysis(bond_eur,hicp_yoy),
+        "real_yoy":{
+            t:100*((1+nominal/100)/(1+hicp_yoy[t]/100)-1)
+            for t,nominal in bond_eur.items()
+            if t in hicp_yoy and hicp_yoy[t]>-100
+        },
     }
     for name, series in [("equity_total_return_eur",equity),
                          ("gold_eur",gold),*[(n+"_eur",v) for n,v in commodity.items()]]:
