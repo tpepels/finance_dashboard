@@ -115,7 +115,7 @@ class ResearchCorpusTests(unittest.TestCase):
         self.assertTrue(original.startswith("C"))
         edited["analyses"][0]["id"] = "C08"
         issues = validate_research_corpus(edited, self.series["series"])
-        self.assertTrue(any("expected all 37" in issue for issue in issues))
+        self.assertTrue(any("expected all 39" in issue for issue in issues))
         self.assertTrue(any(original in issue and "C08" in issue for issue in issues))
 
     def test_reject_fake_primary_source_and_context_series(self):
