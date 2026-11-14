@@ -75,6 +75,18 @@ downloaded without rebuilding it in the request. Preparing the archive,
 including the full redacted publisher and OECD accounting diagnostics, does
 not block Data Collection status requests.
 
+**Data, research and method limitation audit:** Open Diagnostics and select
+**Assess limitations**. The read-only report distinguishes stale/missing
+publisher observations, deferred collections with usable retained data,
+conditional/deferred scientific acceptance, original-method open gates,
+documented methodological assumptions, fixed-date wording needing review,
+missing computation definitions and OECD source-accounting failures. It links
+findings to exact series and research questions. The debug ZIP includes the
+complete `limitation-assessment.json`, `limitation-assessment.csv` and a
+question-by-question acceptance matrix. The audit never treats an absent
+acceptance snapshot as proof that all research passed; see
+[limitations assessment methodology](docs/LIMITATION_ASSESSMENT.md).
+
 | Endpoint | Purpose |
 |---|---|
 | `POST /api/data/collection/start` | Start or return the active collection run |
@@ -84,6 +96,7 @@ not block Data Collection status requests.
 | `POST /api/diagnostics/prepare` | Start/reuse asynchronous debug preparation |
 | `GET /api/diagnostics/export-status` | Query preparation, ready timestamp and errors |
 | `GET /api/diagnostics/export-file` | Download the ready cached ZIP |
+| `GET /api/diagnostics/limitation-assessment` | On-demand current source/research/method limitations with priority and next actions |
 
 All action POSTs require the existing dashboard action marker. The only
 browser hints forwarded to registered publisher requests are sanitized
