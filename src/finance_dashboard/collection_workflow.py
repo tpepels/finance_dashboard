@@ -282,7 +282,10 @@ class CollectionWorkflow:
                     "repair": None, "startup_error": None, "release": release_info()}
         with self.manual.lock:
             ids = {row["job_id"] for row in record["entries"] if row["job_id"]}
-            jobs = {item["id"]: item for item in self.manual.jobs if item["id"] in ids}
+            # Snapshot nested job records under their owner lock. The worker
+            # mutates attempted files and failed-role maps concurrently.
+            jobs = {item["id"]: json.loads(json.dumps(item))
+                    for item in self.manual.jobs if item["id"] in ids}
         operation = self.maintenance.list()
         repair = next((item for item in operation["jobs"]
                        if item.get("id") == record["maintenance_job_id"]), None)
