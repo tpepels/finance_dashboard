@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ManualSources from './ManualSources';
 
@@ -139,8 +139,11 @@ describe('one manual original-source importer on simplified Data page',()=>{
   it('exposes per-source publisher retry alongside the OECD canonical manual importer',async()=>{
     const user=userEvent.setup();
     render(<ManualSources/>);
-    await user.click(await screen.findByText('OECD — ICIO original archives'));
-    await user.click(screen.getByRole('button',{name:'Refresh from publisher'}));
+    const heading = await screen.findByText('OECD — ICIO original archives');
+    await user.click(heading);
+    const oecd = heading.closest('.manual-source-entry');
+    expect(oecd).not.toBeNull();
+    await user.click(within(oecd as HTMLElement).getByRole('button',{name:'Refresh from publisher'}));
     await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch?dataset=oecd-icio'));
     expect(screen.getByText('OECD canonical uploader')).toBeTruthy();
   });
