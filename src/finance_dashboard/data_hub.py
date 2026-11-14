@@ -6,7 +6,6 @@ the existing redacted developer diagnostic ZIP.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
 
 from fastapi import FastAPI, Body, Header, Request
 from .original_uploads import _guard
@@ -115,10 +114,35 @@ def human_overview(coverage: dict, manual: dict, operations: dict,
 def install_data_hub(app: FastAPI, *, db, catalog, market_registry,
                      maintenance, valid_sources: set[str], valid_markets: set[str]):
     from .source_coverage import build_coverage
-    from .maintenance import BusyMaintenance
+
+    from .collection_workflow import CollectionWorkflow, SourceHealthCache
+
+    app.state.collection_workflow = CollectionWorkflow(
+        app.state.manual_sources, maintenance,
+        valid_sources=valid_sources, valid_markets=valid_markets)
+    app.state.source_health_cache = SourceHealthCache(
+        lambda: build_coverage(db, catalog["series"], market_registry))
+
+    @app.get("/api/data/collection")
+    def collection_status():
+        """Fast status: no SQL, publisher requests or original-file hashing."""
+        return app.state.collection_workflow.status()
+
+    @app.post("/api/data/collection/start", status_code=202)
+    def collection_start(request: Request, browser: dict | None = Body(default=None),
+                         x_gcm_action: str | None = Header(default=None)):
+        _guard(request, x_gcm_action)
+        profile = browser.get("browser") if isinstance(browser, dict) else None
+        return app.state.collection_workflow.start(profile)
+
+    @app.get("/api/data/health")
+    def data_health():
+        """Cached coverage snapshot, refreshed by an independent worker."""
+        return app.state.source_health_cache.status()
 
     @app.get("/api/data/overview")
     def data_overview():
+        """Compatibility endpoint for detailed research and agent auditing."""
         return human_overview(
             build_coverage(db, catalog["series"], market_registry),
             app.state.manual_sources.status(), maintenance.list(),
@@ -127,17 +151,7 @@ def install_data_hub(app: FastAPI, *, db, catalog, market_registry,
     @app.post("/api/data/acquire", status_code=202)
     def acquire_all(request: Request, browser: dict | None = Body(default=None),
                     x_gcm_action: str | None = Header(default=None)):
-        """One click: all registered originals plus canonical source gap repair."""
+        """Compatibility alias for a single durable collection run."""
         _guard(request, x_gcm_action)
         profile = browser.get("browser") if isinstance(browser, dict) else None
-        queued = app.state.manual_sources.fetch(browser=profile)
-        operation = {"status": "already_running"}
-        try:
-            task = maintenance.submit("repair_source_health", {},
-                                      valid_sources=valid_sources,
-                                      valid_markets=valid_markets)
-            operation = {"id": task["id"], "status": task["status"]}
-        except BusyMaintenance:
-            pass
-        return {"publisher_jobs": queued["jobs"], "skipped": queued["skipped"],
-                "source_repair": operation}
+        return app.state.collection_workflow.start(profile)
