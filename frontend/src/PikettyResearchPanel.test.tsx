@@ -78,6 +78,7 @@ describe('source-gated Piketty module in L07',()=>{
   vi.stubGlobal('ResizeObserver',class {observe(){} disconnect(){}});
   render(<PikettyResearchPanel piketty={research} bundle={bundle} theme="light"
     recessions={[]}/>);
+  fireEvent.click(screen.getByRole('radio',{name:'United States'}));
   const headings=screen.getAllByRole('heading',{level:4}).map(node=>node.textContent);
   for(const phrase of ['Income and wealth concentration','Who benefits from real income growth',
      'How large is wealth relative to national income','Accounting return on capital',
@@ -105,13 +106,14 @@ describe('source-gated Piketty module in L07',()=>{
   expect(within(table).getAllByText('—').length).toBeGreaterThan(0);
   expect(screen.queryByRole('table',{name:'Share of real per-adult income change'})).toBeNull();
   expect(screen.getAllByText(/awaiting/).length).toBeGreaterThan(0);
-  expect(screen.getByText(/No accepted original observations for this chart/)).toBeTruthy();
+  expect(screen.getAllByText(/No accepted original observations for this chart/).length).toBeGreaterThan(0);
  });
 
  it('shows exact accepted original identity and scientific limitations',()=>{
   vi.stubGlobal('ResizeObserver',class {observe(){} disconnect(){}});
   render(<PikettyResearchPanel piketty={research} bundle={bundle} theme="light"
    recessions={[]}/>);
+  fireEvent.click(screen.getByRole('radio',{name:'United States'}));
   const source=screen.getByRole('table',{name:'Piketty original source lineage'});
   expect(within(source).getByText('US/aptinc992j/p0p100')).toBeTruthy();
   expect(within(source).getByText('2025-01-01')).toBeTruthy();
