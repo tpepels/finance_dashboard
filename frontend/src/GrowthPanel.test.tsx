@@ -34,6 +34,7 @@ const c05 = bundle('C05', { labels: { industrial_production: 'Industrial product
   episodes: [{ start: '2020-03', end: '2020-04', shocks: [], measures: { industrial_production: null, gdp: null,
     payrolls: { peak: '2020-02', trough: '2020-04', depth: -0.14, months_down: 2, months_to_recover: 28 } } }],
   history: { industrial_production: [['2026-09', 103]], payrolls: [['2026-10', 160000]], gdp: [['2026-07', 24000]] } });
+const c07 = bundle('C07', {consumer_inflation:{us_cpi_yoy:[],ea_hicp_yoy:[]},assets:{},housing:{},limitations:[]});
 const c06 = bundle('C06', { commodities: [{ key: 'brent', name: 'Brent crude oil', latest: 0.93, as_of: '2026-10', history: [['2026-10', 0.93]] }],
   map: { US: [['2024', 2.8, 3.0], ['2025', 2.3, 2.7]], JP: [], CN: [] },
   inflation: { US: [['2025-01-01', 2.7]], JP: [], CN: [] }, growth: { US: [['2025-01-01', 2.3]], JP: [], CN: [] } });
