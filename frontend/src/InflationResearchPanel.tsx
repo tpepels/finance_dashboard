@@ -58,7 +58,6 @@ function Scatter({rows}: {rows:Correlations['scatter']}){
  const x=values.map(r=>r.asset_change_pct), y=values.map(r=>r.inflation_pct);
  const xmin=Math.min(...x),xmax=Math.max(...x),ymin=Math.min(...y),ymax=Math.max(...y);
  const pad=(max:number,min:number)=>max>min?max-min:1;
- const width=440,height=230;
  // Show all available paired periods; no ranking, smoothing or extrapolation.
  return <svg viewBox="0 0 440 230" role="img"
   aria-label={'Scatter of '+values.length+' observed matched annual asset-price changes against consumer inflation'}
