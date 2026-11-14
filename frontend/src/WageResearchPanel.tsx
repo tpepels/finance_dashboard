@@ -15,6 +15,8 @@ export type WageResearchValues={
   dispersion:Record<'p90_p10'|'p90_p50'|'p50_p10',Line>;
   published_real_p50:Line;
   nominal_federal_minimum_hourly:Line;
+  real_federal_minimum_hourly_1982_84_usd:Line;
+  real_federal_minimum_unit:string;
   matched_years:number;first_year:number|null;latest_year:number|null;
   real_median_reconciliation:{compared_years:number;outside_2_percent_years:string[];not_a_scientific_identity:boolean};
   mean_wage_observed:false;p99_wage_observed:false;
@@ -55,9 +57,11 @@ export default function WageResearchPanel({bundle,theme,recessions}:{
     wageGraph('US real weekly earnings by percentile',levels,'CPI-adjusted USD, 1982–84 dollars',x=>x.toFixed(0)),
     wageGraph('US real wage growth index, each percentile rebased to its first common year',indexed,'Index = 100 at common start',x=>x.toFixed(0)),
     wageGraph('US earnings dispersion',disper,'Ratio, e.g. P90 / P50',x=>x.toFixed(2)),
-    wageGraph('US federal hourly statutory minimum',[
-      {name:'Federal minimum, nominal USD/hour',slot:3,data:toPlot(data.us.nominal_federal_minimum_hourly)}
-    ],'USD per hour, not weekly employee earnings',x=>x.toFixed(2)),
+    wageGraph('US statutory minimum wage, nominal and CPI-real per hour',[
+      {name:'Federal minimum, nominal USD/hour',slot:3,data:toPlot(data.us.nominal_federal_minimum_hourly)},
+      {name:'Federal minimum, 1982–84 purchasing-power USD/hour',slot:4,
+       data:toPlot(data.us.real_federal_minimum_hourly_1982_84_usd)}
+    ],'USD per hour; CPI-real and nominal dollars have different bases',x=>x.toFixed(2)),
   ];
  },[data,theme,recessions]);
  if(!data)return null;
