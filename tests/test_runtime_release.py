@@ -277,7 +277,9 @@ class ReleaseStateTests(unittest.TestCase):
                             self.assertEqual(state["state"], "ready", state)
                             export = client.get("/api/diagnostics/export-file")
                             self.assertEqual(export.status_code, 200)
-                            self.assertIn(expected_release_id, export.headers["content-disposition"])
+                            from urllib.parse import unquote
+                            self.assertIn(expected_release_id,
+                                          unquote(export.headers["content-disposition"]))
                             with ZipFile(BytesIO(export.content)) as archive:
                                 meta = json.loads(archive.read("diagnostics/release.json"))
                                 self.assertEqual(meta["release_id"], expected_release_id)
