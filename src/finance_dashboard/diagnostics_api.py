@@ -11,7 +11,7 @@ import csv
 import json
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, Request
 
 from .developer_logs import read_events
 from .runtime_release import release_info
@@ -380,7 +380,6 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry, maintenan
 
     from .diagnostic_exports import DiagnosticExportManager
     from .original_uploads import _guard
-    from fastapi import Header, Request
     from fastapi.responses import FileResponse, JSONResponse
     exports = DiagnosticExportManager(_build_debug_zip_bytes)
     app.state.diagnostic_exports = exports
