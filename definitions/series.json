@@ -4696,6 +4696,38 @@
       "notes": "Replaces ECB ICP U2 series discontinued after December 2025 (2026 rebasing and EA21 composition). Eurostat also publishes first-release values in prc_hicp_fpd."
     },
     {
+      "id": "prices.de.hicp_index_2025",
+      "name": "Germany HICP, all items (2025=100)",
+      "theme": "growth_inflation",
+      "status": "mapped",
+      "provider": "EUROSTAT_HICP",
+      "source_key": "prc_hicp_minr/M.I25.TOTAL.DE",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_minr/default/table?lang=en",
+      "geography": "DE",
+      "frequency": "M",
+      "unit": "index",
+      "measurement": "Eurostat HICP, ECOICOP ver.2 all items (TOTAL), Germany, monthly index 2025=100",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "National Germany monthly HICP, 2025=100, revised from source; same price geography as BIS DE nominal selected residential prices. Revisions and population coverage differ from the euro-area aggregate."
+    },
+    {
+      "id": "prices.pt.hicp_index_2025",
+      "name": "Portugal HICP, all items (2025=100)",
+      "theme": "growth_inflation",
+      "status": "mapped",
+      "provider": "EUROSTAT_HICP",
+      "source_key": "prc_hicp_minr/M.I25.TOTAL.PT",
+      "source_url": "https://ec.europa.eu/eurostat/databrowser/view/prc_hicp_minr/default/table?lang=en",
+      "geography": "PT",
+      "frequency": "M",
+      "unit": "index",
+      "measurement": "Eurostat HICP, ECOICOP ver.2 all items (TOTAL), Portugal, monthly index 2025=100",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "National Portugal monthly HICP, 2025=100, revised from source; same price geography as BIS PT nominal selected residential prices. Revisions and population coverage differ from the euro-area aggregate."
+    },
+    {
       "id": "credit.us.baa_10y_spread",
       "name": "Moody's Baa corporate yield minus 10-year Treasury",
       "theme": "credit_recession",
