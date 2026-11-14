@@ -291,7 +291,7 @@ class ManualSourceManager:
         self.browser_profiles: dict[str, dict] = {}
         try:
             saved = json.loads(self.journal.read_text())
-            for job in saved.get("jobs", [])[-80:]:
+            for job in saved.get("jobs", []):
                 # Replay an immutable snapshot after a process restart.
                 # Ingestion is content-addressed/idempotent; the interrupted
                 # job keeps its original identity and no new source URL.
@@ -313,6 +313,25 @@ class ManualSourceManager:
             if any(job["status"] in ("queued", "deferred") for job in self.jobs):
                 self._ensure_worker()
 
+    @staticmethod
+    def _retained_jobs(jobs: list[dict]) -> list[dict]:
+        """Bound completed history while never evicting an unfinished recovery.
+
+        Keeping only the last N raw jobs used to make older manual-required
+        uploads disappear from the API and permanently lose their job identity
+        on restart after enough later completions.
+        """
+        retained = []
+        completed = 0
+        terminal = {"complete", "partial", "failed", "interrupted"}
+        for job in reversed(jobs):
+            if job.get("status") in terminal:
+                if completed >= 80:
+                    continue
+                completed += 1
+            retained.append(job)
+        return list(reversed(retained))
+
     def _save(self):
         self.journal.parent.mkdir(parents=True, exist_ok=True)
         temporary = None
@@ -321,7 +340,7 @@ class ManualSourceManager:
                                     prefix=".manual-jobs-", dir=self.journal.parent,
                                     delete=False) as out:
                 temporary = Path(out.name)
-                json.dump({"version": 2, "jobs": self.jobs[-80:]}, out)
+                json.dump({"version": 2, "jobs": self._retained_jobs(self.jobs)}, out)
                 out.flush()
                 os.fsync(out.fileno())
             os.chmod(temporary, 0o600)
@@ -374,7 +393,8 @@ class ManualSourceManager:
                 "active": self.active,
                 "queued": sum(job["status"] == "queued" for job in self.jobs),
                 "deferred": sum(job["status"] == "deferred" for job in self.jobs),
-                "jobs": [self._public_job(job) for job in reversed(self.jobs[-80:])],
+                "jobs": [self._public_job(job)
+                         for job in reversed(self._retained_jobs(self.jobs))],
             }
 
     def _ensure_worker(self):
