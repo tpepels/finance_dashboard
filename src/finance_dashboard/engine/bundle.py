@@ -1,9 +1,8 @@
 """The result bundle: what a chart draws and an export contains.
 
-A bundle combines an analysis's computed values with its Phase 2 state, the
-provenance and limitations of every input, the transforms applied, the
-method's own limits and its citations. Only analyses Phase 2 resolved
-(accepted or conditional), with every input accepted, are computed.
+Only an accepted research basis can be computed. Required original inputs
+must be accepted; explicitly supplemental originals may remain unaccepted
+without blocking the core but never contribute unverified values.
 """
 from __future__ import annotations
 
@@ -37,12 +36,18 @@ class AnalysisDefinition:
     # Phase 2 variant id -> roles it supplies. Used only when the analysis itself is unresolved and Phase 2 lists the
     # variant among its verified native alternatives; the bundle then says so in "basis".
     alternatives: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    # Supplemental original roles are independently provenance-gated.
+    # They may add country-specific comparisons but cannot block the accepted
+    # core analysis when their publisher source is temporarily unavailable.
+    optional_inputs: tuple[str, ...] = ()
 
 
-def _input_record(role: str, series_id: str, points: list, catalog_series: dict, provenance: dict | None) -> dict:
+def _input_record(role: str, series_id: str, points: list, catalog_series: dict,
+                  provenance: dict | None, *, optional: bool = False) -> dict:
     meta = catalog_series.get(series_id, {})
     ordered = sorted(day for day, _ in points)
-    return {"role": role, "series_id": series_id, "name": meta.get("name"), "publisher": meta.get("provider"),
+    return {"role": role, "series_id": series_id, "optional": optional,
+            "name": meta.get("name"), "publisher": meta.get("provider"),
             "source_key": meta.get("source_key"), "source_url": meta.get("source_url"),
             "geography": meta.get("geography"), "unit": meta.get("unit"), "frequency": meta.get("frequency"),
             "first": ordered[0].isoformat() if ordered else None,
@@ -109,9 +114,14 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
                 accepted_roles.add(role)
             except UnacceptedInput:
                 provenance = None
-                if resolved:
+                if resolved and role not in definition.optional_inputs:
                     unaccepted.append(series_id)
-        inputs.append(_input_record(role, series_id, points.get(role, []), catalog_series, provenance))
+        # Mark unaccepted supplemental values as absent in the source record
+        # rather than showing their raw database history as accepted evidence.
+        usable_points = points.get(role, []) if provenance else []
+        inputs.append(_input_record(role, series_id, usable_points,
+                                    catalog_series, provenance,
+                                    optional=role in definition.optional_inputs))
     phase2["open_gates"] = phase2["open_gates"] + [f"input_not_accepted:{sid}" for sid in unaccepted]
     computed = None
     basis = None
@@ -120,7 +130,7 @@ def build_bundle(definition: AnalysisDefinition, *, points: dict[str, list[tuple
     elif verified:
         basis = {"kind": "verified_alternatives", "variants": verified}
     if basis:
-        usable = definition.inputs if basis["kind"] == "original" else set(alternative_role) | accepted_roles
+        usable = accepted_roles | set(alternative_role)
         role_points = {role: points.get(role, []) if role in usable else [] for role in definition.inputs}
         computed = (definition.compute(role_points, view, artifacts or {}) if definition.artifacts
                     else definition.compute(role_points, view))
