@@ -85,7 +85,7 @@ class DiagnosticExportManager:
         temporary = None
         try:
             content = self.build()
-            if not isinstance(content, bytes) or not content.startswith(b"PK\\x03\\x04"):
+            if not isinstance(content, bytes) or not content[:2] == b"PK":
                 raise ValueError("invalid_debug_archive")
             if not 0 < len(content) < 512_000_000:
                 raise ValueError("debug_archive_size_invalid")
