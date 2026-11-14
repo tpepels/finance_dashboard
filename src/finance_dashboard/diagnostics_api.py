@@ -326,6 +326,12 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         if health.get("error"):
             status.update(colour="orange", label="Source-health check unavailable")
         updates = app.state.data_change_coordinator.status()
+        if updates["state"] == "failed":
+            status.update(colour="red", label="Downstream reconciliation failed")
+        elif updates["state"] == "pending" and status["colour"] == "green":
+            status.update(colour="orange", label="Processing new source evidence")
+        elif health.get("state") == "refreshing" and status["colour"] == "green":
+            status.update(colour="orange", label="Updating source-health snapshot")
         acceptance = app.state.acceptance.peek()
         return {"status": status, "release": release,
                 "console": _console(events), "source_summary": summaries,
