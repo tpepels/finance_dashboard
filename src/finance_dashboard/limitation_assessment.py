@@ -95,6 +95,24 @@ def _phase2_findings(snapshot, document: dict) -> tuple[list[dict], list[dict]]:
                 evidence={"state": state["state"],
                           "open_gates": list(state["open_gates"])},
             ))
+        for role in recorded.get("requirements", []):
+            if (role.get("requirement_class") == "supplemental"
+                    and role.get("state") != "accepted"):
+                findings.append(_finding(
+                    id=f"research:{aid}:{role['role']}:supplemental_unavailable",
+                    category="supplemental_source_pending",
+                    severity="information", status="monitor",
+                    title=f"{aid}: optional source {role['role']} remains unverified",
+                    detail=("This country's supplemental comparison is withheld "
+                            "until the exact original is accepted. Core results "
+                            "can remain available from their verified inputs."),
+                    next_action=("Allow the governed scheduled collector to import "
+                                 "and validate this original; investigate only if "
+                                 "source health reports a persistent failure."),
+                    analysis_ids=[aid], source_ids=role.get("series_ids") or [],
+                    provenance="phase2_acceptance",
+                    evidence={"role": role["role"], "role_state": role.get("state")},
+                ))
         seen: set[tuple[str, str | None]] = set()
         # Analysis-level and per-role limitations can overlap. De-duplicate
         # by exact (code, detail) while retaining affected source identities.
