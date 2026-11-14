@@ -6,6 +6,7 @@ the existing redacted developer diagnostic ZIP.
 """
 from __future__ import annotations
 
+import os
 
 from fastapi import FastAPI, Body, Header, Request
 from .original_uploads import _guard
@@ -146,14 +147,21 @@ def install_data_hub(app: FastAPI, *, db, catalog, market_registry,
     @app.get("/api/data/health")
     def data_health(refresh: bool = False):
         """Cached coverage snapshot, refreshed by an independent worker."""
+        evaluated = app.state.acceptance.peek()
         return {**app.state.source_health_cache.status(refresh=refresh),
+                "automation": {
+                    "scheduled_refresh_enabled": os.environ.get(
+                        "FINANCE_AUTO_REFRESH", "1").strip().lower()
+                        in ("1", "true", "on", "yes"),
+                    "interval_seconds": int(os.environ.get(
+                        "REFRESH_INTERVAL_SECONDS", "86400")),
+                    "automatic_post_ingestion_updates": True,
+                },
                 "downstream_updates": app.state.data_change_coordinator.status(),
                 "scientific_assessment": {
                     "running": app.state.acceptance.loading,
-                    "evaluated_at": (
-                        app.state.acceptance.peek().evaluated_at.isoformat()
-                        if app.state.acceptance.peek() else None),
-                }}
+                    "evaluated_at": evaluated.evaluated_at.isoformat() if evaluated else None,
+                }}}
 
     @app.get("/api/data/overview")
     def data_overview():
