@@ -27,6 +27,27 @@ def payload(unit="I25"):
 
 
 class EurostatHicpTests(unittest.TestCase):
+    def test_german_and_portuguese_hicp_use_their_own_original_geo(self):
+        for country,geo in (("de","DE"),("pt","PT")):
+            with self.subTest(country=country), TemporaryDirectory() as temp:
+                original=payload()
+                original["dimension"]["geo"]["category"]["index"]={geo:0}
+                with httpx.Client(transport=httpx.MockTransport(
+                        lambda request: httpx.Response(200,json=original))) as http:
+                    result=SourceAcquisition(ProviderRouter(http),Path(temp)).fetch(
+                        f"prices.{country}.hicp_index_2025")
+                self.assertEqual(result.observations[date(2026,10,1)],Decimal("101.9"))
+                manifest=json.loads(next(Path(temp).glob(
+                    "responses/*/*/manifest.json")).read_text())
+                source_url=manifest["sources"][0]["url"]
+                self.assertIn("geo="+geo,source_url)
+                self.assertEqual(_eurostat_hicp(
+                    json.dumps(original).encode(),source_url,expected_geo=geo)[
+                    date(2026,10,1)],Decimal("101.9"))
+                with self.assertRaises(EvidenceError):
+                    _eurostat_hicp(json.dumps(original).encode(),source_url,
+                                   expected_geo="EA")
+
     def test_capture_and_independent_reader(self):
         with TemporaryDirectory() as temp:
             with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=payload()))) as http:
