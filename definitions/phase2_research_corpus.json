@@ -1023,6 +1023,7 @@
           {
             "role": "de_hicp",
             "description": "Germany national monthly 2025-base HICP matched to BIS Germany quarterly property prices.",
+            "requirement_class": "supplemental",
             "series_ids": ["prices.de.hicp_index_2025"],
             "expected": {
               "frequency": "M",
@@ -1038,6 +1039,7 @@
           {
             "role": "pt_hicp",
             "description": "Portugal national monthly 2025-base HICP matched to BIS Portugal quarterly property prices.",
+            "requirement_class": "supplemental",
             "series_ids": ["prices.pt.hicp_index_2025"],
             "expected": {
               "frequency": "M",
