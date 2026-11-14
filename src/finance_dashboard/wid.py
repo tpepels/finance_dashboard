@@ -38,6 +38,42 @@ WID_SERIES = {
 }
 _CONCEPTS = {"sptinc": "Pre-tax national income", "shweal": "Net personal wealth"}
 
+# Further WID variables for the same, already-governed publisher bulk pair.
+# A published code is a registered source identity, not a claim that the
+# original area CSV contains observations for every country and year.
+_PIKETTY_AREAS = (("us", "US"), ("fr", "FR"), ("pt", "PT"),
+                  ("cn", "CN"), ("in", "IN"), ("world", "WO"))
+WID_PIKETTY_SERIES = {}
+for _label, _area in _PIKETTY_AREAS:
+    _sfx = "j992" if _area == "WO" else "992j"
+    WID_PIKETTY_SERIES[f"inequality.{_label}.net_personal_wealth.top1"] = (
+        _area, "shweal" + _sfx, "p99p100")
+    for _group, _percentile in (("all", "p0p100"), ("bottom50", "p0p50"),
+                                ("middle40", "p50p90"), ("top10", "p90p100"),
+                                ("top1", "p99p100")):
+        WID_PIKETTY_SERIES[f"piketty.{_label}.real_pretax_average.{_group}"] = (
+            _area, "aptinc" + _sfx, _percentile)
+    for _role, _code in (("national", "wwealn999i"),
+                         ("private", "wwealp999i"),
+                         ("public", "wwealg999i")):
+        WID_PIKETTY_SERIES[f"piketty.{_label}.wealth_to_income.{_role}"] = (
+            _area, _code, "p0p100")
+    for _role, _code in (
+        ("factor_capital_share", "wcapsh999i"),
+        ("net_national_income", "mnninc999i"),
+        ("net_national_wealth", "mnweal999i"),
+        ("net_capital_income", "mfkpin999i"),
+        ("national_housing_assets", "mnwhou999i"),
+        ("national_business_assets", "mnwbus999i"),
+    ):
+        WID_PIKETTY_SERIES[f"piketty.{_label}.{_role}"] = (
+            _area, _code, "p0p100")
+
+# The special WO legacy j992 suffix follows the existing original bulk
+# identity. Nothing is backfilled from a different reference area.
+WID_ALL_SERIES = {**WID_SERIES, **WID_PIKETTY_SERIES}
+
+
 
 @dataclass(frozen=True)
 class WidBundle:
@@ -126,6 +162,88 @@ def parse_wid_bundle(data_text: str, metadata_text: str, *, area: str) -> WidBun
         raise ProviderError("WID selected original share has no observations")
     return WidBundle({key: dict(sorted(values.items())) for key, values in observations.items()},
                      metadata, quality)
+
+
+
+def parse_piketty_original(data_text: str, metadata_text: str, *, area: str) -> dict:
+    """Select optional WID original measures independently of baseline shares.
+
+    The original data+metadata pair is already archived and hash-checked by
+    WidClient. A new series never becomes valid merely because some other WID
+    variable was present in the same area file. These are exact WID codes,
+    percentile, age, population and native units; missing stays unavailable.
+    """
+    keys = {(variable, percentile) for region, variable, percentile
+            in WID_PIKETTY_SERIES.values() if region == area}
+    allowed = {variable for variable, _ in keys}
+    meta = {}
+    reader = _reader(metadata_text, {"country", "variable", "age", "pop", "unit",
+                                    "source", "method"})
+    try:
+        for row in reader:
+            if row.get("country") != area:
+                raise ProviderError("WID research metadata area mismatch")
+            variable = row.get("variable")
+            if variable not in allowed:
+                continue
+            if variable in meta:
+                raise ProviderError("WID duplicate research variable metadata")
+            age, population = (("992", "j") if variable[0] in ("s", "a")
+                               else ("999", "i"))
+            unit = (row.get("unit") or "").strip()
+            if (row.get("age") != age or row.get("pop") != population
+                    or not unit or not (row.get("source") or "").strip()
+                    or not (row.get("method") or "").strip()):
+                raise ProviderError("WID research age, population or original method mismatch")
+            if variable[0] == "s" and unit != "share":
+                raise ProviderError("WID wealth-share research unit mismatch")
+            if variable[0] == "w" and unit not in ("share", "ratio"):
+                raise ProviderError("WID wealth-income research unit mismatch")
+            if variable[0] in ("m", "a") and unit in ("share", "ratio"):
+                raise ProviderError("WID real-income monetary research unit mismatch")
+            meta[variable] = dict(row)
+        # Compare income/wealth totals only in the same original monetary
+        # currency and price-reference unit; no implicit FX or CPI conversion.
+        macro_units = {r["unit"] for v, r in meta.items() if v.startswith("m")}
+        if len(macro_units) > 1:
+            raise ProviderError("WID monetary total units differ within reference area")
+        observations = {key: {} for key in keys}
+        reader = _reader(data_text, {"country", "variable", "percentile",
+                                     "year", "value", "age", "pop"})
+        for row in reader:
+            if row.get("country") != area:
+                raise ProviderError("WID research data area mismatch")
+            key = row.get("variable"), row.get("percentile")
+            if key not in keys:
+                continue
+            variable = key[0]
+            if variable not in meta:
+                raise ProviderError("WID research observation lacks exact metadata")
+            age, population = (("992", "j") if variable[0] in ("s", "a")
+                               else ("999", "i"))
+            if row.get("age") != age or row.get("pop") != population:
+                raise ProviderError("WID research observation population mismatch")
+            year = row.get("year") or ""
+            if len(year) != 4 or not year.isdigit() or int(year) > date.today().year:
+                raise ProviderError("WID research invalid observation year")
+            raw = row.get("value")
+            if raw in (None, "", "NA", "N/A", "NaN"):
+                continue
+            try:
+                value = Decimal(raw)
+            except InvalidOperation as exc:
+                raise ProviderError("WID research invalid numeric value") from exc
+            if not value.is_finite():
+                raise ProviderError("WID research nonfinite value")
+            period = date(int(year), 1, 1)
+            if period in observations[key]:
+                raise ProviderError("WID research duplicate annual observation")
+            observations[key][period] = value
+    except (csv.Error, ValueError, TypeError) as exc:
+        if isinstance(exc, ProviderError):
+            raise
+        raise ProviderError("Malformed WID research original") from exc
+    return observations
 
 
 def _source_record(response: httpx.Response, filename: str) -> dict:
@@ -346,11 +464,13 @@ class WidClient:
         self.client = require_managed_client(client)
         self.archive_dir = Path(archive_dir) if archive_dir is not None else None
         self._areas: dict[str, WidBundle] = {}
+        self._piketty: dict[str, dict] = {}
+        self._raw_pairs: dict[str, tuple[str, str]] = {}
 
     def fetch(self, series_id: str, start: date | None = None) -> FetchedSeries:
-        selected = WID_SERIES.get(series_id)
+        selected = WID_ALL_SERIES.get(series_id)
         if selected is None:
-            raise ProviderError("Unregistered WID original share source")
+            raise ProviderError("Unregistered WID original research source")
         area, variable, percentile = selected
         data_url = f"{WID_ROOT}/WID_data_{area}.csv"
         metadata_url = f"{WID_ROOT}/WID_metadata_{area}.csv"
@@ -380,8 +500,9 @@ class WidClient:
                     or len(data.content) > 250_000_000 or len(metadata.content) > 20_000_000):
                 raise ProviderError("WID response identity or size mismatch")
             try:
-                bundle = parse_wid_bundle(data.content.decode("utf-8-sig"),
-                                          metadata.content.decode("utf-8-sig"), area=area)
+                data_text = data.content.decode("utf-8-sig")
+                metadata_text = metadata.content.decode("utf-8-sig")
+                bundle = parse_wid_bundle(data_text, metadata_text, area=area)
             except UnicodeError as exc:
                 raise ProviderError("WID original CSV encoding is invalid") from exc
             if self.archive_dir is not None:
@@ -394,9 +515,21 @@ class WidClient:
                 if pending.exists():
                     shutil.rmtree(pending)
             self._areas[area] = bundle
-        values = self._areas[area].observations[(variable, percentile)]
+            self._raw_pairs[area] = (data_text, metadata_text)
+            if series_id in WID_PIKETTY_SERIES:
+                self._piketty[area] = parse_piketty_original(
+                    data_text, metadata_text, area=area)
+        if series_id in WID_PIKETTY_SERIES:
+            if area not in self._piketty:
+                # Reuse the same already-validated original pair in memory.
+                data_text, metadata_text = self._raw_pairs[area]
+                self._piketty[area] = parse_piketty_original(
+                    data_text, metadata_text, area=area)
+            values = self._piketty[area].get((variable, percentile), {})
+        else:
+            values = self._areas[area].observations[(variable, percentile)]
         observations = {day: value for day, value in values.items()
                         if start is None or day >= start}
         if not observations:
-            raise ProviderError("WID original share has no observations in requested period")
+            raise ProviderError("WID requested original measure has no matched observations")
         return FetchedSeries(series_id, data_url + " + " + metadata_url, None, observations)
