@@ -64,8 +64,8 @@ describe('GrowthPanel', () => {
     expect(screen.getByRole('img', { name: /months to regain/i })).toBeTruthy();
     expect(screen.getByText(/242 of 244 quarterly vintages/)).toBeTruthy();
     expect(container.querySelector('table')).toBeNull();
-    expect(urls.filter(u => u.startsWith('/api/analysis/')).sort()).toEqual(['/api/analysis/C01', '/api/analysis/C02', '/api/analysis/C03', '/api/analysis/C05', '/api/analysis/C06']);
-    expect(screen.getAllByText('Export for AI')).toHaveLength(5);
+    expect(urls.filter(u => u.startsWith('/api/analysis/')).sort()).toEqual(['/api/analysis/C01', '/api/analysis/C02', '/api/analysis/C03', '/api/analysis/C05', '/api/analysis/C06', '/api/analysis/C07']);
+    expect(screen.getAllByText('Export for AI')).toHaveLength(6);
   });
 
 });
