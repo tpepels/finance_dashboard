@@ -262,7 +262,9 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         endpoint never starts another expensive acceptance evaluation.
         """
         _, _, coverage = snapshot()
-        return limitation_assessment(coverage)
+        original = _original_method_summary(importer.evidence)
+        _, manifest = _accounting_failures_csv(original, release_info()["release_id"])
+        return limitation_assessment(coverage, manifest)
 
     @app.get("/api/diagnostics")
     def diagnostics():
