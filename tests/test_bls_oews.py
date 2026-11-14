@@ -81,9 +81,9 @@ class BLSOEWSOriginalTests(unittest.TestCase):
         from datetime import timezone, datetime
         definition=DEFINITIONS["L08"]
         self.assertEqual(set(definition.optional_inputs), {"oews_mean", "oews_median"})
-        other={role: [{"role":role,"series_ids":[sid],"state":"accepted",
-                       "limitations":[]} for role_id,sid in definition.inputs.items()
-                 if role_id not in definition.optional_inputs]}
+        required=[{"role":role,"series_ids":[sid],"state":"accepted",
+                   "limitations":[]} for role,sid in definition.inputs.items()
+                  if role not in definition.optional_inputs]
         supplemental=[
             {"role":role,"series_ids":[definition.inputs[role]],
              "state":"incomplete","limitations":[],
@@ -98,7 +98,7 @@ class BLSOEWSOriginalTests(unittest.TestCase):
             return build_bundle(definition,points=points,snapshot=snapshot,
                 corpus_analysis={"title":"L08","method_sources":[]},
                 catalog_series={},view={},computed_at=datetime(2026,11,14,tzinfo=timezone.utc))
-        base=run(other["oews_mean"]+supplemental)
+        base=run(required+supplemental)
         self.assertIsNotNone(base["values"])
         self.assertEqual(base["values"]["oews"]["matched_years"],0)
         first=next(x for x in base["inputs"] if x["role"]=="oews_mean")
@@ -106,9 +106,9 @@ class BLSOEWSOriginalTests(unittest.TestCase):
         self.assertEqual(first["observations"],0)
         partially=[{**s,"state":"accepted"} if s["role"]=="oews_mean"
                    else s for s in supplemental]
-        half=run(other["oews_mean"]+partially)
+        half=run(required+partially)
         self.assertEqual(half["values"]["oews"]["matched_years"],0)
-        both=run(other["oews_mean"]+[{**s,"state":"accepted"} for s in supplemental])
+        both=run(required+[{**s,"state":"accepted"} for s in supplemental])
         self.assertEqual(both["values"]["oews"]["matched_years"],1)
         self.assertEqual(both["values"]["oews"]["mean_to_median_ratio"],
                          [["2025-05-01",round(33.54/24.51,6)]])
