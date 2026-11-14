@@ -29,7 +29,15 @@ def publish_change(engine, reason: str = "source_ingested") -> None:
     with _listeners_lock:
         listeners = list(_listeners.get(engine, ()))
     for listener in listeners:
-        listener.changed(reason)
+        try:
+            listener.changed(reason)
+        except Exception:
+            # The source transaction has already committed. A broken optional
+            # subscriber must never turn a successful import into a false
+            # failed IngestionRun or roll back accepted observations.
+            from .developer_logs import record_event
+            record_event("system", "collector_failed", level="warning",
+                         stage="post_ingestion", reason="post_ingestion_event_failed")
 
 
 def _utc() -> str:
@@ -88,6 +96,13 @@ class DataChangeCoordinator:
             with self.lock:
                 if revision != self.revision:
                     continue
+            # A scheduled source refresh or manual maintenance can hold one
+            # canonical network/ingestion lock for its entire batch. Avoid a
+            # competing full scientific census against that moving corpus.
+            from .standalone import maintenance_network_lock
+            if maintenance_network_lock.locked():
+                self.event.wait(1)
+                continue
             try:
                 self.acceptance.invalidate()
                 self.health.mark_dirty()
