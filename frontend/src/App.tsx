@@ -85,7 +85,11 @@ export default function App() {
   useEffect(() => {
     if (hash === '#source-coverage') window.dispatchEvent(new Event('gcm-open-data-manager'));
     if (hash === '#portfolio-holdings') window.dispatchEvent(new Event('gcm-open-portfolio-holdings'));
-    const targetId = isSourceExplorerHash(hash) ? hash.slice(1) : hash === '#portfolio-holdings' ? 'portfolio-holdings' : selected.question ? `q-${selected.question}` : Panel ? 'research-workspace' : selected.view;
+    const targetId = hash === '#source-coverage' ? 'source-coverage'
+      : isSourceExplorerHash(hash) ? hash.slice(1)
+      : hash === '#portfolio-holdings' ? 'portfolio-holdings'
+      : selected.question ? `q-${selected.question}`
+      : Panel ? 'research-workspace' : selected.view;
     const focus = () => {
       const element = document.getElementById(targetId);
       if (!element) return false;
