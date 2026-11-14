@@ -27,7 +27,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
 from finance_dashboard.service import current_observations
-from finance_dashboard.wid import WID_SERIES
+from finance_dashboard.wid import WID_SERIES, WID_ALL_SERIES, WID_PIKETTY_SERIES, parse_piketty_original
+from finance_dashboard.bis import ProviderError
 from finance_dashboard.oecd_tiva import TIVA_SERIES
 from finance_dashboard.catalog import load_documents, source_contract
 from finance_dashboard.source_capture import canonical_bytes
@@ -39,7 +40,7 @@ from finance_dashboard.return_source_reconciliation import read_return_originals
 from finance_dashboard.constructed_source_reconciliation import CONSTRUCTED_PROVIDERS, constructed_source
 
 SCALE = Decimal("0.0000000001")
-SOURCE_IDS = sorted(set(WID_SERIES) | set(TIVA_SERIES) | set(FRENCH_SERIES) | set(SWINKELS_SERIES) |
+SOURCE_IDS = sorted(set(WID_ALL_SERIES) | set(TIVA_SERIES) | set(FRENCH_SERIES) | set(SWINKELS_SERIES) |
                     {"returns.doeswijk_swinkels.global_multiasset.usd.nominal"})
 _WID_VALUES_CACHE = OrderedDict()
 _WID_CACHE_LOCK = RLock()
@@ -255,11 +256,25 @@ def _wid_source(root, area):
         metadata, metadata_hash = _original_file(path.parent, manifest["sources"]["metadata"], f"WID_metadata_{area}.csv")
     except (KeyError, TypeError):
         raise EvidenceError("source_schema_invalid") from None
-    mappings = tuple(sorted((sid, *source) for sid, source in WID_SERIES.items() if source[0] == area))
+    mappings = tuple(sorted((sid, *source) for sid, source in WID_ALL_SERIES.items() if source[0] == area))
     key = (area, data_hash, metadata_hash, mappings)
     with _WID_CACHE_LOCK:
         if key not in _WID_VALUES_CACHE:
-            _WID_VALUES_CACHE[key] = _parse_wid_values(body, metadata, area)
+            base_values = _parse_wid_values(body, metadata, area)
+            try:
+                # Optional source identities use the same checksum-verified
+                # publisher data/metadata pair, never a second acquisition
+                # route. Malformed supplemental metadata cannot revoke the
+                # independently verified existing L07 source histories.
+                research = parse_piketty_original(body, metadata, area=area)
+            except ProviderError:
+                research = {}
+            base_values.update({
+                sid: dict(research.get((variable, percentile), {}))
+                for sid, (reference, variable, percentile) in WID_PIKETTY_SERIES.items()
+                if reference == area
+            })
+            _WID_VALUES_CACHE[key] = base_values
             if len(_WID_VALUES_CACHE) > 16:
                 _WID_VALUES_CACHE.popitem(last=False)
         _WID_VALUES_CACHE.move_to_end(key)
@@ -459,8 +474,8 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
     root = Path(source_evidence_dir)
     originals, proof, failures = {}, {}, {}
     registry = {item["id"]: item for item in load_documents()[0]["series"]}
-    for area in sorted({source[0] for source in WID_SERIES.values()}):
-        ids = [sid for sid, source in WID_SERIES.items() if source[0] == area and sid in stored]
+    for area in sorted({source[0] for source in WID_ALL_SERIES.values()}):
+        ids = [sid for sid, source in WID_ALL_SERIES.items() if source[0] == area and sid in stored]
         if not ids:
             continue
         try:
@@ -491,7 +506,7 @@ def _reconcile_values(stored, dialect, source_evidence_dir):
         except EvidenceError as exc:
             failures.update({sid: exc.code for sid in ids})
     regional = None
-    for sid in stored.keys() - set(WID_SERIES) - set(TIVA_SERIES) - return_ids:
+    for sid in stored.keys() - set(WID_ALL_SERIES) - set(TIVA_SERIES) - return_ids:
         definition = registry.get(sid)
         if definition and definition["provider"] == "MSCI_PUBLISHED_TOP10":
             from .msci_concentration_originals import read_msci_concentration_originals
