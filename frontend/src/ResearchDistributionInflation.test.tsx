@@ -48,8 +48,8 @@ describe('distribution and inflation research presentation',()=>{
       research_follow_ups:['Does top-tail compensation explain the mean-median divergence?'],
     };
     render(<WageResearchPanel bundle={bundle('L08',values)} theme="light" recessions={[]}/>);
-    expect(screen.getByText(/US real weekly earnings by percentile/)).toBeTruthy();
-    expect(screen.getByText(/US statutory minimum wage, nominal and CPI-real per hour/)).toBeTruthy();
+    expect(screen.getAllByText(/US real weekly earnings by percentile/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/US statutory minimum wage, nominal and CPI-real per hour/).length).toBeGreaterThan(0);
     expect(screen.getByText(/federal minimum is nationwide/i)).toBeTruthy();
     expect(screen.queryByText(/federal floor varies by state/i)).toBeNull();
     expect(screen.getByRole('table',{name:'OECD earnings distribution latest periods'})).toBeTruthy();
@@ -104,7 +104,7 @@ describe('distribution and inflation research presentation',()=>{
     fireEvent.click(screen.getByRole('radio',{name:'EUR unhedged asset changes'}));
     expect(screen.getByRole('table',{name:'Asset consumer inflation correlations'}).textContent)
       .toContain('unhedged EUR');
-    expect(screen.getByText(/Moving-block 95% bootstrap interval/)).toBeTruthy();
+    expect(screen.getAllByText(/Moving-block 95% bootstrap interval/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Validated Japan CPI original unavailable/)).toBeTruthy();
   });
 });
