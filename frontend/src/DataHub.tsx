@@ -1,239 +1,300 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './DataHub.css';
 
-const AdvancedDataOperations=lazy(()=>import('./DataOperations'));
-const AdvancedOriginalUploader=lazy(()=>import('./OriginalUploader'));
-
-type Group = { id:string;label:string;total:number;with_data:number;attention:number };
+type Source = {
+  dataset:string; label:string; status:string; job_id:string|null;
+  reason?:string|null; phase?:string|null; retry_at_unix?:number|null;
+  completed_files:number; attempted_files:number; completed_sources:number;
+};
 type ManualFile = {
-  job_id:string;dataset:string;source:string;role:string;name:string;
-  url:string;accept:string;max_bytes:number;reason:string;
+  job_id:string; dataset:string; source:string; role:string; name:string;
+  url:string; accept:string; max_bytes:number; reason:string;
 };
-type Job = {dataset:string;status:string;method?:string;retry_at_unix?:number|null;
-  completed_files:number;failed_files:number;error_code?:string|null};
-type Overview = {
-  release:{release_id:string};asof?:string;
-  groups:Group[];
-  sources:{total:number;with_data:number;needs_attention:number};
-  acquisition:{queued:number;deferred:number;running:boolean;active_sources:number;
-    successful_sources:number;problem_sources:number;manual_files_needed:number;
-    files_requiring_upload:ManualFile[];recent_jobs:Job[]};
-  sync:{active:{action:string;status:string;completed?:number;total?:number|null}|null;
-    last:{action:string;status:string;finished_at?:string|null;error_code?:string|null}|null};
-  original_import?:{running:boolean;jobs_with_issues:number}|null;
+type Collection = {
+  id:string|null; state:string; running:boolean; started_at:string|null;
+  counts:{total:number;finished:number;completed:number;skipped:number;
+    active:number;failed:number;manual_required:number};
+  sources:Source[]; manual_files:ManualFile[];
+  repair:{status:string;completed?:number|null;total?:number|null;
+    current_item?:string|null;error_code?:string|null}|null;
+  startup_error:string|null;
 };
-type Response = {publisher_jobs:{dataset:string;job_id:string}[];
-  source_repair:{status:string};skipped:Record<string,string>};
+type Health = {
+  state:string; snapshot:{
+    asof:string;calculated_at:string;groups:{id:string;label:string;total:number;
+      with_data:number;attention:number}[];
+    sources:{total:number;with_data:number;needs_attention:number};
+  }|null; error?:string|null;
+};
+type ExportStatus = {
+  state:string;ready:boolean;id:string|null;prepared_at?:string|null;
+  size_bytes?:number|null;error?:string|null;
+};
 
+const LAST_COLLECTION='gcm-collection-last-known-v1';
+const LAST_HEALTH='gcm-health-last-known-v1';
 const HEADERS={'Content-Type':'application/json','X-GCM-Action':'dashboard'};
-const RUNNING=new Set(['queued','running','downloading','deferred']);
-const DONE=new Set(['complete','partial','failed','manual_required','interrupted']);
-const hint=(reason:string):string=>{
-  if(reason.includes('403')||reason.includes('401')||reason.includes('html'))
-    return 'Publisher blocked automatic access';
-  if(reason.includes('timeout')||reason.includes('network'))
-    return 'Download connection failed';
-  if(reason.includes('identity')||reason.includes('validation')||reason.includes('invalid'))
-    return 'Publisher file did not pass validation';
-  if(reason.includes('404')) return 'Publisher link is unavailable';
-  if(reason.includes('429')) return 'Publisher rate limit';
-  return 'Automatic download was unsuccessful';
+const TERMINAL=new Set(['complete','partial','failed','manual_required','interrupted','skipped']);
+const statusLabels:Record<string,string>={
+  complete:'Imported',partial:'Imported with issues',failed:'Agent investigation required',
+  interrupted:'Interrupted',manual_required:'Manual file needed',
+  skipped:'Already current / retained',queued:'Queued',downloading:'Downloading',
+  running:'Validating / importing',deferred:'Retry scheduled',waiting:'Waiting',
 };
-const fmt=(value:number)=>value.toLocaleString();
+const groups=[
+  {id:'macro',label:'Economic data'},
+  {id:'markets',label:'Market prices'},
+  {id:'fx',label:'Exchange rates'},
+];
 
-/** Two human views: source health and only the files that really need intervention. */
-export default function DataHub(){
-  const [overview,setOverview]=useState<Overview|null>(null);
-  const [error,setError]=useState('');
-  const [loadError,setLoadError]=useState('');
-  const [notice,setNotice]=useState('');
-  const [starting,setStarting]=useState(false);
-  const [uploading,setUploading]=useState<Record<string,string>>({});
-  const [debugOpen,setDebugOpen]=useState(false);
-  const [debugData,setDebugData]=useState('');
-  const seen=useRef(new Map<string,string>());
+function stored<T>(key:string):T|null{
+  try{return JSON.parse(sessionStorage.getItem(key)||'null') as T|null;}
+  catch{return null;}
+}
+function remember(key:string,value:unknown){
+  try{sessionStorage.setItem(key,JSON.stringify(value));}catch{/* optional browser cache */}
+}
+function reason(code?:string|null){
+  if(!code)return '';
+  if(/http_403|http_401|html/.test(code))return 'Publisher denied automatic access';
+  if(/timeout|network/.test(code))return 'Connection interrupted';
+  if(/http_429|cooldown|rate/.test(code))return 'Publisher rate limit';
+  if(/identity|invalid/.test(code))return 'File failed source verification';
+  if(/http_404|http_410/.test(code))return 'Publisher URL unavailable';
+  if(/too_large/.test(code))return 'Source exceeds configured file limit';
+  return code.replaceAll('_',' ');
+}
+function formatWhen(value?:string|null){
+  if(!value)return 'Not available';
+  const time=new Date(value);
+  return Number.isNaN(time.valueOf())?'Not available':time.toLocaleString();
+}
+function statusStyle(state:string){
+  if(state==='complete'||state==='skipped')return 'ok';
+  if(state==='manual_required'||state==='partial'||state==='deferred')return 'attention';
+  if(state==='failed'||state==='interrupted')return 'error';
+  return 'active';
+}
 
-  async function refresh(){
-    const res=await fetch('/api/data/overview',{cache:'no-store'});
-    if(!res.ok)throw new Error('Data status unavailable (HTTP '+res.status+')');
-    const data=await res.json() as Overview;
-    for(const job of data.acquisition.recent_jobs){
-      const previous=seen.current.get(job.dataset);
-      if(previous&&RUNNING.has(previous)&&DONE.has(job.status))
-        window.dispatchEvent(new Event('gcm-data-updated'));
-      seen.current.set(job.dataset,job.status);
-    }
-    setOverview(data);
-  }
+/** Poll one endpoint at a time, after completion, with a bounded connection. */
+function useSnapshot<T>(url:string,interval:number,key?:string){
+  const [value,setValue]=useState<T|null>(()=>key?stored<T>(key):null);
+  const [problem,setProblem]=useState('');
+  const refresh=useRef<(()=>Promise<void>)|null>(null);
   useEffect(()=>{
-    let mounted=true;
+    let alive=true;let timer:number|undefined;
+    let abort:AbortController|null=null;
     const load=async()=>{
+      abort=new AbortController();
+      const request=abort;
+      const limit=window.setTimeout(()=>request.abort(),8000);
       try{
-        const res=await fetch('/api/data/overview',{cache:'no-store'});
-        if(!res.ok)throw new Error('Data status unavailable (HTTP '+res.status+')');
-        const data=await res.json() as Overview;
-        if(!mounted)return;
-        for(const job of data.acquisition.recent_jobs){
-          const prior=seen.current.get(job.dataset);
-          if(prior&&RUNNING.has(prior)&&DONE.has(job.status))
-            window.dispatchEvent(new Event('gcm-data-updated'));
-          seen.current.set(job.dataset,job.status);
-        }
-        setOverview(data);setLoadError('');
-      }catch(e){if(mounted)setLoadError(e instanceof Error?e.message:'Unable to read Data status');}
+        const response=await fetch(url,{cache:'no-store',signal:request.signal});
+        if(!response.ok)throw new Error('HTTP '+response.status);
+        const result=await response.json() as T;
+        if(!alive)return;
+        setValue(result);setProblem('');
+        if(key)remember(key,result);
+      }catch(error){
+        if(alive)setProblem(error instanceof Error?error.message:'Status unavailable');
+      }finally{
+        window.clearTimeout(limit);
+        if(alive)timer=window.setTimeout(()=>void load(),interval);
+      }
     };
+    refresh.current=load;
     void load();
-    const interval=window.setInterval(()=>void load(),5000);
-    window.addEventListener('gcm-data-updated',load);
-    return()=>{mounted=false;window.clearInterval(interval);
-      window.removeEventListener('gcm-data-updated',load);};
-  },[]);
+    const focus=()=>{if(document.visibilityState==='visible'){
+      if(timer!==undefined)window.clearTimeout(timer);
+      abort?.abort();
+      void load();
+    }};
+    window.addEventListener('focus',focus);
+    return()=>{alive=false;if(timer!==undefined)window.clearTimeout(timer);
+      abort?.abort();window.removeEventListener('focus',focus);refresh.current=null;};
+  },[url,interval,key]);
+  return {value,setValue,problem,reload:()=>refresh.current?.()};
+}
+
+export default function DataHub(){
+  const collection=useSnapshot<Collection>('/api/data/collection',2000,LAST_COLLECTION);
+  const health=useSnapshot<Health>('/api/data/health',15000,LAST_HEALTH);
+  const exporter=useSnapshot<ExportStatus>('/api/diagnostics/export-status',3000);
+  const [starting,setStarting]=useState(false);
+  const [preparing,setPreparing]=useState(false);
+  const [uploading,setUploading]=useState<Record<string,string>>({});
+  const [notification,setNotification]=useState('');
+  const [error,setError]=useState('');
+  const run=collection.value;
+  const snapshot=health.value?.snapshot;
+  const files=run?.manual_files??[];
+  const active=run?.state==='running';
+  const total=run?.counts.total??0;
+  const finished=run?.counts.finished??0;
+  const fraction=total?Math.min(100,Math.max(0,finished/total*100)):0;
+  const repair=run?.repair;
+  const repairTotal=repair?.total??0;
+  const repairPercent=repairTotal?Math.min(100,(repair?.completed??0)/repairTotal*100):0;
+  const sourceList=run?.sources??[];
+  const summary=snapshot?.sources;
 
   async function start(){
-    setStarting(true);setNotice('Starting source downloads and repair…');setError('');
+    setStarting(true);setNotification('');setError('');
     try{
-      // A website cannot read HttpOnly or cross-origin cookies. Browser
-      // language/user-agent are explicitly supplied without credentials.
-      const browser={
-        user_agent:navigator.userAgent||'',
-        language:(navigator.languages??[navigator.language]).filter(Boolean).join(','),
-        platform:navigator.platform||'',
-      };
-      const res=await fetch('/api/data/acquire',{
-        method:'POST',headers:HEADERS,body:JSON.stringify({browser}),
+      const response=await fetch('/api/data/collection/start',{
+        method:'POST',headers:HEADERS,
+        body:JSON.stringify({browser:{
+          user_agent:navigator.userAgent||'',
+          language:(navigator.languages??[navigator.language]).join(','),
+          platform:navigator.platform||'',
+        }}),
       });
-      if(!res.ok)throw new Error('Unable to start collection (HTTP '+res.status+')');
-      const result=await res.json() as Response;
-      setNotice(result.publisher_jobs.length+' original source families queued; '+
-        (result.source_repair.status==='already_running'
-          ? 'source repair is already running.' : 'source gap repair also started.')+
-        ' Files that cannot be downloaded will appear below.');
-      await refresh();
-    }catch(e){setError(e instanceof Error?e.message:'Could not start automatic download');}
+      if(!response.ok)throw new Error('Start failed (HTTP '+response.status+')');
+      const result=await response.json() as Collection;
+      collection.setValue(result);remember(LAST_COLLECTION,result);
+      setNotification('Collection started. It continues if you leave this page.');
+      void health.reload();
+    }catch(cause){setError(cause instanceof Error?cause.message:'Could not start collection');}
     finally{setStarting(false);}
   }
 
   async function upload(row:ManualFile,file:File){
     const key=row.job_id+'/'+row.role;
     if(file.size>row.max_bytes||!file.name.toLowerCase().endsWith(row.accept)){
-      setError('Wrong file type or size for '+row.name);return;
+      setError('File type or size does not match '+row.name);return;
     }
-    setUploading(previous=>({...previous,[key]:'0%'}));setError('');
+    setUploading(old=>({...old,[key]:'0%'}));setError('');setNotification('');
     const url='/api/manual-sources/fallback-upload?job_id='+encodeURIComponent(row.job_id)+
       '&role='+encodeURIComponent(row.role)+'&filename='+encodeURIComponent(file.name);
     try{
       await new Promise<void>((resolve,reject)=>{
-        const req=new XMLHttpRequest();
-        req.open('POST',url);
-        req.setRequestHeader('Content-Type','application/octet-stream');
-        req.setRequestHeader('X-GCM-Action','dashboard');
-        req.upload.onprogress=progress=>{
-          if(progress.lengthComputable)setUploading(previous=>({
-            ...previous,[key]:Math.round(progress.loaded/progress.total*100)+'%',
+        const request=new XMLHttpRequest();
+        request.open('POST',url);
+        request.setRequestHeader('Content-Type','application/octet-stream');
+        request.setRequestHeader('X-GCM-Action','dashboard');
+        request.upload.onprogress=event=>{
+          if(event.lengthComputable)setUploading(old=>({
+            ...old,[key]:Math.round(100*event.loaded/event.total)+'%',
           }));
         };
-        req.onerror=()=>reject(new Error('Upload connection failed'));
-        req.onload=()=>{
-          if(req.status>=200&&req.status<300){resolve();return;}
-          let detail='Upload rejected (HTTP '+req.status+')';
-          try{detail=(JSON.parse(req.responseText) as {detail?:string}).detail||detail;}
-          catch{/* body may be empty */}
-          reject(new Error(detail));
+        request.onerror=()=>reject(new Error('Upload connection failed'));
+        request.onload=()=>{
+          if(request.status>=200&&request.status<300)resolve();
+          else {
+            let details='Upload rejected (HTTP '+request.status+')';
+            try{details=(JSON.parse(request.responseText) as {detail?:string}).detail||details;}
+            catch{/* text or empty response */}
+            reject(new Error(details));
+          }
         };
-        req.send(file);
+        request.send(file);
       });
-      setNotice(file.name+' uploaded. Validation and ingestion resume automatically.');
-      await refresh();
-    }catch(e){setError(e instanceof Error?e.message:'Manual upload failed');}
-    finally{setUploading(previous=>{const next={...previous};delete next[key];return next;});}
+      setNotification(row.name+' received; validating and importing automatically.');
+      void collection.reload();
+    }catch(cause){setError(cause instanceof Error?cause.message:'Upload failed');}
+    finally{setUploading(old=>{const next={...old};delete next[key];return next;});}
   }
 
-  async function toggleDebug(){
-    if(debugOpen){setDebugOpen(false);return;}
-    setDebugOpen(true);setDebugData('Loading complete redacted diagnostics…');
+  async function prepareExport(){
+    setPreparing(true);setError('');
     try{
-      const res=await fetch('/api/data/debug-console',{cache:'no-store'});
-      if(!res.ok)throw new Error('Debug console unavailable (HTTP '+res.status+')');
-      setDebugData(JSON.stringify(await res.json(),null,2));
-    }catch(e){setDebugData(e instanceof Error?e.message:'Unable to open diagnostic console');}
+      const response=await fetch('/api/diagnostics/prepare',{
+        method:'POST',headers:HEADERS,body:'{}',
+      });
+      if(!response.ok)throw new Error('Unable to prepare diagnostics (HTTP '+response.status+')');
+      exporter.setValue(await response.json() as ExportStatus);
+    }catch(cause){setError(cause instanceof Error?cause.message:'Unable to prepare diagnostics');}
+    finally{setPreparing(false);}
   }
 
-  const state=overview?.acquisition;
-  const running=Boolean(state?.running||state?.queued||state?.deferred||overview?.sync.active);
-  const failed=state?.files_requiring_upload??[];
-  const latest=overview?.sync.last;
-  return <div className="data-hub" id="data-management">
-    <header className="data-hub-header">
+  return <div className="data-collection" id="data-management">
+    <header className="data-collection-heading">
       <div>
-        <h2>Data</h2>
-        <p>One download process, one source-health summary. Manual intervention is shown only when required.</p>
+        <h2>Data Collection</h2>
+        <p>Automatic downloads, recovery requests and data availability.</p>
       </div>
-      <button type="button" className="data-hub-primary" disabled={starting}
-        onClick={()=>void start()}>{starting?'Starting…':'Start automatic downloads'}</button>
+      <button type="button" className="data-collection-primary" disabled={starting||active}
+        onClick={()=>void start()}>{starting?'Starting…':active?'Collection running':'Start automatic downloads'}</button>
     </header>
 
-    <section className="data-hub-section" id="source-coverage"
-      aria-labelledby="data-hub-status" tabIndex={-1}>
-      <div className="data-hub-section-title">
-        <h3 id="data-hub-status">Source health</h3>
-        <span>{overview?.asof?'Checked '+overview.asof:'Checking status…'}</span>
+    <section aria-label="Current collection" className="data-collection-run" aria-live="polite">
+      <div className="data-collection-statusline">
+        <span className={'data-state data-state-'+statusStyle(run?.state??'queued')}>
+          {run?.state==='running'?'Collection running':
+           run?.state==='needs_attention'?'Completed with attention needed':
+           run?.state==='complete'?'Collection completed':
+           run?.state==='failed'?'Collection failed':
+           run?.id?'Last collection status: '+run.state:'No collection started'}
+        </span>
+        <small>{run?.started_at?'Started '+formatWhen(run.started_at):
+          'No previous run recorded'}</small>
       </div>
-      <div className="data-hub-table-scroll">
-        <table aria-label="Aggregate data health">
-          <thead><tr><th>Source category</th><th>With data</th><th>Requires attention</th></tr></thead>
-          <tbody>
-            {overview?.groups.map(g=><tr key={g.id}>
-              <td>{g.label}</td><td>{fmt(g.with_data)} / {fmt(g.total)}</td>
-              <td>{g.attention?fmt(g.attention):'0'}</td>
-            </tr>)}
-            {overview&&<tr className="data-hub-total">
-              <th scope="row">Total</th>
-              <td>{fmt(overview.sources.with_data)} / {fmt(overview.sources.total)}</td>
-              <td>{fmt(overview.sources.needs_attention)}</td>
-            </tr>}
-          </tbody>
-        </table>
-      </div>
-      {overview&&<p className="data-hub-summary" role="status">
-        {running?
-          (state?.queued??0)+' queued · '+(state?.active_sources??0)+' source jobs in progress or waiting'+
-          (state?.deferred?' · '+state.deferred+' publisher-limited':'')+
-          (overview.sync.active?' · source repair '+overview.sync.active.status:''):
-          'No automatic download currently running.'}
-        {' '}{state?.successful_sources??0} source families imported;
-        {' '}{failed.length} files need manual download.
-        {(state?.problem_sources??0)>0&&' '+state?.problem_sources+' source import jobs need agent investigation.'}
-        {(overview.original_import?.jobs_with_issues??0)>0&&' '+
-          overview.original_import?.jobs_with_issues+' historical import jobs have unresolved issues.'}
-      </p>}
-      {latest&&!overview?.sync.active&&<p className="data-hub-meta">
-        Last source repair: {latest.status}{latest.finished_at?
-          ' · '+new Date(latest.finished_at).toLocaleString():''}.
-      </p>}
-      <p className="data-hub-meta">“With data” counts retained observations, not confirmation of the
-        latest publisher release. “Requires attention” includes missing, stale and failed sources.</p>
+      {run?.id?<div className="data-collection-progress-group">
+        <div className="data-collection-progress-header">
+          <strong>Original source downloads</strong>
+          <span>{finished} of {total} resolved</span>
+        </div>
+        <div className="data-progress" role="progressbar" aria-label="Source downloads"
+          aria-valuemin={0} aria-valuemax={total} aria-valuenow={finished}>
+          <span style={{width:fraction+'%'}}/>
+        </div>
+        <small>{run.counts.completed} imported · {run.counts.skipped} already current ·
+          {' '}{run.counts.active} in progress · {run.counts.manual_required} manual ·
+          {' '}{run.counts.failed} require investigation</small>
+      </div>:<p className="data-collection-placeholder">Start a collection to download registered sources and repair missing history. Progress continues on the server if you navigate away.</p>}
+      {run?.id&&repair&&<div className="data-collection-progress-group">
+        <div className="data-collection-progress-header">
+          <strong>Source-health repair</strong>
+          <span>{repairTotal?(repair.completed??0)+' / '+repairTotal:repair.status}</span>
+        </div>
+        {repairTotal>0&&<div className="data-progress" role="progressbar"
+          aria-label="Source-health repair" aria-valuemin={0} aria-valuemax={repairTotal}
+          aria-valuenow={repair.completed??0}>
+          <span style={{width:repairPercent+'%'}}/>
+        </div>}
+        {repair.current_item&&<small>Working on {repair.current_item}</small>}
+        {repair.error_code&&<small className="data-collection-alert">{reason(repair.error_code)}</small>}
+      </div>}
     </section>
 
-    {failed.length>0&&<section className="data-hub-section" aria-labelledby="data-hub-manual">
-      <div className="data-hub-section-title">
-        <h3 id="data-hub-manual">Files requiring manual download ({failed.length})</h3>
-        <span>Download in your browser, then upload here. Import resumes automatically.</span>
+    {run?.id&&<section className="data-collection-section">
+      <h3>Source downloads</h3>
+      <div className="data-collection-table-scroll">
+        <table aria-label="Source download progress">
+          <thead><tr><th>Source</th><th>Status</th><th>Details</th></tr></thead>
+          <tbody>{sourceList.map(source=><tr key={source.dataset}>
+            <td>{source.label}</td>
+            <td><span className={'data-state data-state-'+statusStyle(source.status)}>
+              {statusLabels[source.status]??source.status}</span></td>
+            <td>{source.status==='deferred'&&source.retry_at_unix?
+              'Automatic retry '+new Date(source.retry_at_unix*1000).toLocaleTimeString():
+              source.status==='failed'||source.status==='partial'||source.status==='interrupted'?
+                reason(source.reason)||'Inspect diagnostics':
+              source.status==='manual_required'?'See required files below':
+              source.status==='complete'&&source.completed_sources?
+                source.completed_sources+' series imported':
+              source.status==='skipped'?'No new download needed':'—'}</td>
+          </tr>)}</tbody>
+        </table>
       </div>
-      <div className="data-hub-table-scroll">
-        <table aria-label="Publisher files that could not be downloaded automatically">
-          <thead><tr><th>Publisher source</th><th>File and official link</th>
-            <th>Issue</th><th>Upload replacement</th></tr></thead>
-          <tbody>{failed.map(row=>{
+    </section>}
+
+    {files.length>0&&<section className="data-collection-section" aria-labelledby="manual-files">
+      <h3 id="manual-files">Files requiring manual download ({files.length})</h3>
+      <p>Download the official file in your browser, then upload it here. Validation and import resume without another confirmation.</p>
+      <div className="data-collection-table-scroll">
+        <table aria-label="Files requiring manual download">
+          <thead><tr><th>Source</th><th>Required file</th><th>Reason</th><th>Upload</th></tr></thead>
+          <tbody>{files.map(row=>{
             const key=row.job_id+'/'+row.role;
             return <tr key={key}>
               <td>{row.source}</td>
-              <td><a href={row.url} target="_blank" rel="noopener noreferrer">{row.name}</a></td>
-              <td>{hint(row.reason)}</td>
-              <td><label className="data-hub-upload">
+              <td><a href={row.url} rel="noopener noreferrer" target="_blank">{row.name}</a></td>
+              <td>{reason(row.reason)}</td>
+              <td><label className="data-collection-upload">
                 <span>{uploading[key]?'Uploading '+uploading[key]:'Choose file'}</span>
                 <input type="file" accept={row.accept} disabled={Boolean(uploading[key])}
-                  aria-label={'Upload '+row.name}
-                  onChange={event=>{
+                  aria-label={'Upload '+row.name} onChange={event=>{
                     const file=event.currentTarget.files?.[0];
                     if(file)void upload(row,file);
                     event.currentTarget.value='';
@@ -245,28 +306,48 @@ export default function DataHub(){
       </div>
     </section>}
 
-    {(error||loadError)&&<p className="data-hub-error" role="alert">{error||loadError}</p>}
-    {notice&&<p className="data-hub-notice" role="status">{notice}</p>}
-    <div className="data-hub-debug-actions">
-      <span>Need an agent to investigate? Export the complete redacted diagnostic bundle.</span>
-      <a href="/api/diagnostics/download" download>Download agent debug ZIP</a>
-      <button type="button" onClick={()=>void toggleDebug()}
-        aria-expanded={debugOpen}> {debugOpen?'Close debug console':'Open debug console'}</button>
-    </div>
-    {debugOpen&&<section className="data-hub-console" aria-label="Developer diagnostic console">
-      <div><strong>Developer console</strong><small>Source records, acquisition attempts, errors,
-        accounting diagnostics and research evidence are also in the ZIP.</small></div>
-      <pre tabIndex={0}>{debugData}</pre>
-      <div className="data-hub-advanced-tools">
-        <h3>Advanced source operations</h3>
-        <p>Historical synchronization, source repair, OECD edition uploads and
-          reassessment are retained here for developer use.</p>
-        <a href="#source-library">Open source explorer</a>
-        <Suspense fallback={<p role="status">Loading maintenance tools…</p>}>
-          <AdvancedDataOperations/>
-          <AdvancedOriginalUploader/>
-        </Suspense>
+    <section className="data-collection-section data-collection-availability" aria-label="Data availability">
+      <h3>Data availability</h3>
+      {summary?<div>
+        <p><strong>{summary.with_data.toLocaleString()} / {summary.total.toLocaleString()}</strong> series have retained data · <strong>{summary.needs_attention.toLocaleString()}</strong> need attention</p>
+        <p className="data-collection-subline">{groups.map(group=>{
+          const found=snapshot?.groups.find(item=>item.id===group.id);
+          return found?group.label+': '+found.with_data+'/'+found.total:null;
+        }).filter(Boolean).join(' · ')}</p>
+        <small>Snapshot calculated {formatWhen(snapshot?.calculated_at)}.
+          Data availability does not guarantee the latest publisher revision.
+          {health.value?.state==='refreshing'?' Refreshing in background…':''}</small>
+      </div>:<p>{health.value?.state==='refreshing'?'Calculating data availability…':
+        'Data availability not yet calculated.'}</p>}
+    </section>
+
+    {(error||collection.problem||(!run&&health.problem))&&<p role="alert" className="data-collection-alert">
+      {error||('Status connection: '+collection.problem)||health.problem}
+      {run?.id?' Last known collection state is retained.':''}
+    </p>}
+    {notification&&<p role="status" className="data-collection-notice">{notification}</p>}
+
+    <section className="data-collection-export" aria-label="Diagnostic export">
+      <div>
+        <strong>Diagnostic ZIP</strong>
+        <p>Full redacted source, queue, import and accounting evidence for investigation.</p>
+        {exporter.value?.state==='preparing'&&<small role="status">
+          Preparing the archive in the background. You can leave this page.</small>}
+        {exporter.value?.state==='ready'&&<small>
+          Prepared {formatWhen(exporter.value.prepared_at)} ·
+          {' '}{Math.round((exporter.value.size_bytes??0)/1048576*10)/10} MB</small>}
+        {exporter.value?.state==='failed'&&<small className="data-collection-alert">
+          Preparation failed. You can retry.</small>}
       </div>
-    </section>}
+      <div className="data-collection-export-actions">
+        <button type="button" onClick={()=>void prepareExport()}
+          disabled={preparing||exporter.value?.state==='preparing'}>
+          {preparing||exporter.value?.state==='preparing'?'Preparing ZIP…':
+           exporter.value?.ready?'Prepare fresh ZIP':'Prepare diagnostic ZIP'}
+        </button>
+        {exporter.value?.ready&&<a href="/api/diagnostics/export-file"
+          download>Download diagnostic ZIP</a>}
+      </div>
+    </section>
   </div>;
 }
