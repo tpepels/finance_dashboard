@@ -235,7 +235,17 @@ class CollectionWorkflowTests(unittest.TestCase):
             return {"asof": "2026-11-14", "summary": {
                 "macro": {"total": 3, "with_data": 2, "needs_attention": 1},
                 "markets": {"total": 1, "with_data": 1, "needs_attention": 0},
-                "fx": {"total": 1, "with_data": 1, "needs_attention": 0}}}
+                "fx": {"total": 1, "with_data": 1, "needs_attention": 0}},
+                "items": [
+                    {"id": "wid.world.top10", "name": "WID World top 10%",
+                     "provider": "WID", "state": "stale",
+                     "latest_source_date": "2023-01-01", "next_action": "Verify release",
+                     "research_questions": ["L07"]},
+                    {"id": "macro.current", "name": "Current data",
+                     "provider": "FRED", "state": "available"},
+                    {"id": "macro.publisher_checked", "name": "Publisher checked",
+                     "provider": "OECD", "state": "source_checked_no_newer_data"},
+                ]}
         cache = SourceHealthCache(expensive, path=self.root / "health.json")
         start = time.monotonic()
         status = cache.status()
@@ -246,8 +256,14 @@ class CollectionWorkflowTests(unittest.TestCase):
         release.set()
         self.assertTrue(wait_for(lambda: cache.status()["state"] == "ready"))
         self.assertEqual(cache.status()["snapshot"]["sources"]["with_data"], 4)
+        items = cache.status()["snapshot"]["attention_items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["id"], "wid.world.top10")
+        self.assertEqual(items[0]["latest_source_date"], "2023-01-01")
+        self.assertEqual(items[0]["research_questions"], ["L07"])
         restarted = SourceHealthCache(expensive, path=self.root / "health.json")
         self.assertEqual(restarted.status()["snapshot"]["sources"]["total"], 5)
+        self.assertEqual(restarted.status()["snapshot"]["attention_items"], items)
         self.assertEqual(len(called), 1)
 
     def test_export_preparation_is_nonblocking_persistent_and_cached(self):
