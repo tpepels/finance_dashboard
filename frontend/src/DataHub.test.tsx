@@ -50,7 +50,7 @@ const fetcher=vi.fn(async(input:string,init?:RequestInit)=>{
     run=makeRun();
     return json(run,202);
   }
-  if(url==='/api/diagnostics/prepare'&&method==='POST'){
+  if(url.startsWith('/api/diagnostics/prepare')&&method==='POST'){
     exportState={state:'preparing',ready:false,id:'export-1',
       prepared_at:null,size_bytes:null,error:null};
     return json(exportState,202);
@@ -146,7 +146,7 @@ describe('durable Data Collection page',()=>{
     const user=userEvent.setup();
     const view=render(<DataHub/>);
     await user.click(await screen.findByRole('button',{name:'Prepare diagnostic ZIP'}));
-    await waitFor(()=>expect(calls.some(item=>item.url==='/api/diagnostics/prepare')).toBe(true));
+    await waitFor(()=>expect(calls.some(item=>item.url==='/api/diagnostics/prepare?force=false')).toBe(true));
     expect(screen.getByText(/Preparing the archive in the background/)).toBeTruthy();
     view.unmount();
     exportState={state:'ready',ready:true,id:'export-1',
