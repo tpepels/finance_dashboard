@@ -72,6 +72,12 @@ def wage_distribution(points:dict) -> dict:
         "p90_p50":_ratio(nominal["p90"],nominal["p50"]),
         "p50_p10":_ratio(nominal["p50"],nominal["p10"]),
     }
+    # Both series have explicitly different wage units. CPI adjustment
+    # preserves USD/hour and never creates a min-to-weekly-median ratio.
+    minimum_hourly = _clean(points.get("us_federal_min", []))
+    real_minimum_hourly = {
+        d: 100*rate/cpi[d] for d,rate in minimum_hourly.items() if d in cpi
+    }
     published_real_median = _clean(points.get("p50_publisher_real", []))
     real_comparison = _ratio(real["p50"], published_real_median)
     # Publisher nominal/real CPS series and annual NSA CPI can differ by
@@ -94,7 +100,9 @@ def wage_distribution(points:dict) -> dict:
             "outside_2_percent_years":unverified,
             "not_a_scientific_identity":True,
         },
-        "nominal_federal_minimum_hourly":_history(_clean(points.get("us_federal_min", []))),
+        "nominal_federal_minimum_hourly":_history(minimum_hourly),
+        "real_federal_minimum_hourly_1982_84_usd":_history(real_minimum_hourly),
+        "real_federal_minimum_unit":"1982-84 purchasing-power USD per hour",
         "matched_years":len(years),
         "first_year":years[0].year if years else None,
         "latest_year":years[-1].year if years else None,
