@@ -101,6 +101,18 @@ def research_next_actions(snapshot, document: dict) -> dict:
             'next_step': step,
             'open_gates': row['phase2']['open_gates'],
             'limitations_count': len(row['phase2']['limitations']),
+            # The role gate is the unit of scientific acceptance. Include
+            # its exact controlled check IDs/reasons rather than another
+            # generic "scientific review" message in a debug export.
+            'blocking_role_evidence': [{
+                'role': role['role'],
+                'series_ids': role['series_ids'],
+                'sources_with_observations': role['sources_with_observations'],
+                'blocking_checks': role['blocking_checks'],
+                'blocking_reasons': role.get('blocking_reasons', []),
+            } for role in row['role_dispositions']
+                if not role['supplemental'] and
+                role['state'] != 'descoped' and not role['accepted']],
         })
     return {
         'status': 'ready',
@@ -138,6 +150,12 @@ def research_status(snapshot, document: dict) -> dict:
                 'series_ids': list(role.get('series_ids') or []),
                 'sources_with_observations': role.get('sources_with_observations') or 0,
                 'blocking_checks': list(role.get('blocking_checks') or []),
+                'blocking_reasons': [{
+                    'id': check.get('id'),
+                    'state': check.get('state'),
+                    'code': check.get('code'),
+                } for check in (role.get('checks') or [])[:16]
+                  if check.get('state') != 'passed'],
                 'limitations': grouped(role.get('limitations') or []),
             })
         for role in definition.get('descoped_roles', []):

@@ -144,7 +144,10 @@ def _month_zip(raw, month):
         if report.year!=month.year or report.month!=month.month:continue
         accession=row["ACCESSION_NUMBER"]
         if accession in reports:raise EvidenceError("source_duplicate_identity")
-        reports[accession]=(row["SERIESID"],row["FILING_DATE"])
+        # Comparing the original date strings is unsafe: the SEC permits
+        # several date spellings, and lexical ordering can pick the
+        # older amendment. Normalize before selecting the latest filing.
+        reports[accession]=(row["SERIESID"],_sec_date(row["FILING_DATE"]))
     rows={}
     for row in series:
         a=row["ACCESSION_NUMBER"]

@@ -190,6 +190,25 @@ class OriginalDataTests(unittest.TestCase):
             self.assertFalse(altered["passed"])
             engine.dispose()
 
+    def test_sec_independent_reader_orders_amendments_by_date_not_date_strings(self):
+        from finance_dashboard.extra_publisher_evidence import _month_zip
+        source = BytesIO(zipped_sec())
+        patched = BytesIO()
+        with ZipFile(source) as original, ZipFile(patched, "w") as updated:
+            for name in original.namelist():
+                raw = original.read(name)
+                if name == "NMFP_SUBMISSION.tsv":
+                    # ISO old filing sorts *after* US-formatted newer filing
+                    # as strings. Both valid SEC dates must sort by date.
+                    self.assertIn(b"2026-11-03", raw)
+                    raw = raw.replace(b"2026-11-03", b"11/03/2026")
+                updated.writestr(name, raw)
+        raw = patched.getvalue()
+        actual = parse_nmfp_month(raw, date(2026, 10, 1))
+        independently_verified = _month_zip(raw, date(2026, 10, 1))
+        self.assertEqual(actual, independently_verified)
+        self.assertEqual(actual["NET_ASSETS_MUSD"], Decimal("200"))
+
     def test_sec_requires_operator_contact(self):
         with patch.dict("os.environ",{"SEC_USER_AGENT":""}):
             with self.assertRaisesRegex(ProviderError,"SEC_USER_AGENT"):

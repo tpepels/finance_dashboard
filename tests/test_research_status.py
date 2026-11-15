@@ -112,6 +112,38 @@ class ResearchStatusTests(unittest.TestCase):
         self.assertIsNone(by_id['G03']['next_step']['link'])
         self.assertEqual(report['next_action_counts'],{
             'owner_information':1,'original_research':1})
+        self.assertEqual(by_id['G03']['blocking_role_evidence'], [{
+            'role': 'profit_scope',
+            'series_ids': [],
+            'sources_with_observations': 0,
+            'blocking_checks': [],
+            'blocking_reasons': [],
+        }])
+
+    def test_debug_report_exposes_exact_gate_reason_without_new_evaluation(self):
+        from finance_dashboard.research_status import research_next_actions
+        document={'analyses':[{'id':'C07','title':'Consumer inflation',
+            'comparison_contract':{'original_requirements':[
+                {'role':'copper','description':'Publisher copper price'}]}}],
+            'original_sources': []}
+        snapshot=AcceptanceSnapshot(datetime(2026,11,15,tzinfo=timezone.utc),{
+            'C07':{'state':'incomplete','requirements':[
+                {'role':'copper','state':'incomplete','accepted':False,
+                 'series_ids':['prices.commodity.copper_usd'],
+                 'sources_with_observations':802,
+                 'blocking_checks':['original_source_values'],
+                 'checks':[{'id':'original_source_values','state':'incomplete',
+                            'code':'verified_source_values_required'}],
+                 'limitations':[]}],
+                 'blocking_roles':['copper'],'limitations':[]},
+        })
+        report=research_next_actions(snapshot,document)
+        blockers=report['questions'][0]['blocking_role_evidence']
+        self.assertEqual(blockers[0]['role'],'copper')
+        self.assertEqual(blockers[0]['sources_with_observations'],802)
+        self.assertEqual(blockers[0]['blocking_reasons'],[{
+            'id':'original_source_values','state':'incomplete',
+            'code':'verified_source_values_required'}])
 
     def test_unassessed_question_is_not_reported_as_accepted(self):
         snapshot = AcceptanceSnapshot(datetime(2026, 11, 11, tzinfo=timezone.utc), {})
