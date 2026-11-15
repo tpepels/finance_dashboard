@@ -34,6 +34,16 @@ const fetchMock = vi.fn(async (input: string) => {
     groups:[{id:'macro',label:'Economic data',total:53,with_data:1,attention:52}],
     sources:{total:80,with_data:1,needs_attention:79},
   }});
+  if (path === '/api/diagnostics/limitation-assessment') return json({
+    schema_version:1,generated_at:'2026-11-14T12:00:00Z',
+    scientific_acceptance:{state:'ready',evaluated_at:null,
+      question_count:37,evaluated_questions:37},
+    data_coverage:{state:'ready',asof:'2026-11-14',registered_series:80},
+    counts:{total:0,by_category:{},by_status:{},
+      by_severity:{high:0,medium:0,information:0},
+      research_questions:37,research_questions_evaluated:37},
+    findings:[],scope:'Verified source-based limitations',
+  });
   if (path === '/api/diagnostics/export-status') return json({
     state:'idle',ready:false,id:null,prepared_at:null,size_bytes:null,error:null,
   });
@@ -161,7 +171,7 @@ describe('dashboard shell', () => {
     const appendix = await screen.findByText('Original source appendix loaded');
     // Deep links open the independent research explorer, not Data Collection.
     expect(appendix.closest('#source-explorer')).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Data Collection' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Data & diagnostics' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
     await waitFor(() => expect(document.activeElement?.id).toBe(hash.slice(1)));
   });
@@ -180,41 +190,53 @@ describe('dashboard shell', () => {
     const user = userEvent.setup();
     render(<App/>);
     await user.click(screen.getByRole('button', { name: 'Menu' }));
-    await user.click(screen.getByRole('link', { name: 'Data collection' }));
-    expect(await screen.findByRole('heading', { name: 'Data Collection' })).toBeTruthy();
+    await user.click(screen.getByRole('link', { name: 'Data & diagnostics' }));
+    expect(await screen.findByRole('heading', { name: 'Data & diagnostics' })).toBeTruthy();
     expect(screen.queryByText('Original source appendix loaded')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     await user.click(screen.getByRole('link', { name: 'Source Explorer' }));
     expect(await screen.findByText('Original source appendix loaded')).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Data Collection' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Data & diagnostics' })).toBeNull();
   });
 
   it('opens source coverage when directly loaded from a fresh deep link', async () => {
     history.replaceState({}, '', '/#source-coverage');
     render(<App/>);
-    const coverage = await screen.findByRole('heading', { name: 'Data availability' });
+    const coverage = await screen.findByRole('heading', { name: 'Sources needing attention' });
     expect(coverage.closest('#source-coverage')).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.id).toBe('source-coverage'));
     expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
   });
 
-  it('opens collection through the utility bar and keeps maintenance on Diagnostics', async () => {
+  it('consolidates data status, research quality, diagnostics and maintenance in one route', async () => {
     const user = userEvent.setup();
     render(<App/>);
-    await user.click(screen.getByRole('button', { name: 'Data collection' }));
-    expect(await screen.findByRole('heading', { name: 'Data Collection' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Data & diagnostics' }));
+    expect(await screen.findByRole('heading', { name: 'Data & diagnostics' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Collect original data' })).toBeTruthy();
-    expect(document.querySelector('#research-sources details')).toBeNull();
-    expect(screen.getAllByRole('table')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'Collection activity' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Sources needing attention' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Research quality' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Diagnostics & maintenance' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Prepare diagnostic ZIP' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Sync history' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Menu' }));
-    await user.click(screen.getByRole('link', { name: 'Diagnostics' }));
-    expect(await screen.findByRole('heading', { name: 'Diagnostics & administration' })).toBeTruthy();
-    const advanced = await screen.findByText('Manual maintenance (optional)');
-    await user.click(advanced);
+    expect(screen.getByRole('button', { name: 'View technical log' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Check current sources now' })).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Data Collection' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Recheck historical sources' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reassess previously imported OECD originals' })).toBeTruthy();
+    expect(await screen.findByRole('table', { name: 'Classified limitation findings' })).toBeTruthy();
+    expect(document.querySelector('#research-sources details')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Menu' }));
+    expect(screen.queryByRole('link', { name: 'Diagnostics' })).toBeNull();
+    expect(screen.getAllByRole('link', { name: 'Data & diagnostics' })).toHaveLength(1);
+  });
+
+  it('keeps old diagnostics deep links connected to the unified page and focuses the section', async () => {
+    history.replaceState({}, '', '/#diagnostics');
+    render(<App/>);
+    const section = await screen.findByRole('heading', { name: 'Diagnostics & maintenance' });
+    expect(section.closest('#diagnostics')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Data & diagnostics' })).toBeTruthy();
+    await waitFor(() => expect(document.activeElement?.id).toBe('diagnostics'));
   });
 
   it('closes navigation after selection and restores the menu control on Escape', async () => {
