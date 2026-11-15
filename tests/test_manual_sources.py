@@ -155,13 +155,13 @@ class ManualSourceTests(unittest.TestCase):
         # deliberately absent: the canonical importer must neither fabricate
         # them nor reject the five established share histories.
         data,metadata=wid_fixtures("WO",legacy=True)
-        data+="WO;aptincj992;p0p100;2024;42100;992;j\\n"
+        data+="WO;aptincj992;p0p100;2024;42100;992;j\n"
         fields=metadata.splitlines()[0].split(";")
         row={key:"" for key in fields}
         row.update(country="WO",variable="aptincj992",age="992",pop="j",
                    shortname="Average pre-tax income",unit="2024 PPP USD",
                    source="WID original source",method="")
-        metadata+=";".join(row[k] for k in fields)+"\\n"
+        metadata+=";".join(row[k] for k in fields)+"\n"
         self.assertEqual(self.upload("wid-world","data","WID_data_WO.csv",
                                      data.encode()).status_code,201)
         self.assertEqual(self.upload("wid-world","metadata","WID_metadata_WO.csv",
