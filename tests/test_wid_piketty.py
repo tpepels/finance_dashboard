@@ -111,7 +111,7 @@ class WidPikettyOriginalTests(unittest.TestCase):
             self.assertEqual(annual.observations[date(2024,1,1)],Decimal("110"))
             self.assertEqual(ratio.observations[date(2024,1,1)],Decimal("6"))
             self.assertEqual(len(list(root.glob("wid/US/*/manifest.json"))),1)
-            with self.assertRaisesRegex(ProviderError,"no matched observations"):
+            with self.assertRaisesRegex(ProviderError,"no publisher observations"):
                 wid.fetch("piketty.us.net_national_wealth")
 
 
