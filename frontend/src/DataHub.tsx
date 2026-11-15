@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './DataHub.css';
-import ResearchUpdateJourney from './ResearchUpdateJourney';
+import { describeResearchUpdate } from './ResearchUpdateJourney';
+import LimitationAssessment from './LimitationAssessment';
+import DiagnosticsWorkspace from './DiagnosticsWorkspace';
 
 type Source = {
   dataset:string; label:string; status:string; job_id:string|null;
@@ -190,6 +192,11 @@ export default function DataHub(){
   const autoEnabled=health.value?.automation?.scheduled_refresh_enabled;
   const changes=health.value?.downstream_updates;
   const assessment=health.value?.scientific_assessment;
+  const overview=describeResearchUpdate(health.value,run,
+    Boolean(health.problem&&health.value?.snapshot));
+  const missingCount=summary?Math.max(0,summary.total-summary.with_data):null;
+  const reviewCount=summary&&missingCount!==null?
+    Math.max(0,summary.needs_attention-missingCount):null;
 
   async function start(){
     setStarting(true);setNotification('');setError('');
@@ -270,30 +277,48 @@ export default function DataHub(){
   return <div className="data-collection" id="data-management">
     <header className="data-collection-heading">
       <div>
-        <h2>Data Collection</h2>
-        <p>{autoEnabled===false?'Automatic collection is disabled.':
-          autoEnabled===true?'Automatic collection is enabled.':
-          'Checking automatic collection settings.'}
-          {autoEnabled&&health.value?.automation?.interval_seconds?
-            ' Checks every '+Math.round(health.value.automation.interval_seconds/3600)+' hours.':''}
-          {' '}Accepted data automatically updates the research assessments.</p>
+        <h2>Data &amp; diagnostics</h2>
+        <p>Source coverage, collection progress, research quality and investigation in one place.</p>
       </div>
       <button type="button" className="data-collection-primary" disabled={starting||active}
         onClick={()=>void start()}>Collect original data</button>
     </header>
 
-    <ResearchUpdateJourney health={health.value} collection={run}
-      isLastKnown={Boolean(health.problem&&health.value?.snapshot)}/>
+    <section className="data-overview" aria-label="Data overview">
+      <div className="data-overview-summary" role="status">
+        <span className={'data-state data-state-'+statusStyle(overview.tone)}>
+          {overview.downloading?'Collecting':overview.tone==='attention'?'Attention needed':
+            overview.tone==='complete'?'Current':'Monitoring'}
+        </span>
+        <h3>{overview.heading}</h3>
+        <p>{overview.explanation}</p>
+        <p className="data-overview-next"><strong>Next:</strong> {overview.action}</p>
+        <small>{autoEnabled===false?'Automatic source refresh disabled':
+          autoEnabled===true?'Automatic source refresh enabled':'Checking automatic refresh'}
+          {autoEnabled&&health.value?.automation?.interval_seconds?
+            ' · every '+Math.round(health.value.automation.interval_seconds/3600)+' hours':''}
+          {overview.nextRun?' · next scheduled check '+overview.nextRun:''}</small>
+      </div>
+      <div className="data-overview-metrics" aria-label="Source coverage totals">
+        <div><strong>{summary?summary.with_data.toLocaleString()+' / '+summary.total.toLocaleString():'—'}</strong>
+          <span>Histories stored</span></div>
+        <div><strong>{missingCount===null?'—':missingCount.toLocaleString()}</strong>
+          <span>Without observations</span></div>
+        <div><strong>{reviewCount===null?'—':reviewCount.toLocaleString()}</strong>
+          <span>Other histories to review</span></div>
+      </div>
+    </section>
     {(changes?.state==='pending'||changes?.state==='failed'||assessment?.running||
-        (changes?.state==='complete'&&changes.last_reconciled_at))&&
+      (changes?.state==='complete'&&changes.last_reconciled_at))&&
       <p className="data-collection-update-status" role="status">
         {changes?.state==='pending'?'Updating source health and research assessments.':
-         changes?.state==='failed'?'Research assessment update failed; see Diagnostics.':
+         changes?.state==='failed'?'Research assessment update failed; see the diagnostics below.':
          assessment?.running?'Updating research assessments.':
          'Last research data update: '+formatWhen(changes?.last_reconciled_at)}
       </p>}
 
-    <section aria-label="Current collection" className="data-collection-run" aria-live="polite">
+    <section aria-label="Collection activity" className="data-collection-run" aria-live="polite">
+      <h3>Collection activity</h3>
       <div className="data-collection-statusline">
         <span className={'data-state data-state-'+statusStyle(run?.state??'queued')}>
           {run?.state==='running'?'Collection running':
@@ -350,7 +375,7 @@ export default function DataHub(){
     </section>
 
     {run?.id&&sourceList.length>0&&<section className="data-collection-section">
-      <h3>Original source downloads ({finished} of {total} resolved)</h3>
+      <h3>Download history ({finished} of {total} resolved)</h3>
       <div className="data-collection-table-scroll data-collection-source-list">
         <table aria-label="Source download progress">
           <thead><tr><th>Source</th><th>Status</th><th>Details</th></tr></thead>
@@ -402,9 +427,9 @@ export default function DataHub(){
 
     <section className="data-collection-section data-collection-availability" id="source-coverage"
       tabIndex={-1} aria-label="Data availability">
-      <h3>Data availability</h3>
+      <h3>Sources needing attention</h3>
       {summary?<div>
-        <p><strong>{summary.with_data.toLocaleString()} / {summary.total.toLocaleString()}</strong> series have retained data · <strong>{summary.needs_attention.toLocaleString()}</strong> need attention</p>
+        <p><strong>{summary.needs_attention.toLocaleString()}</strong> histories are missing, stale or need review. See the recorded source-level reasons below.</p>
         <p className="data-collection-subline">{groups.map(group=>{
           const found=snapshot?.groups.find(item=>item.id===group.id);
           return found?group.label+': '+found.with_data+'/'+found.total:null;
@@ -412,8 +437,8 @@ export default function DataHub(){
         <small>Snapshot calculated {formatWhen(snapshot?.calculated_at)}.
           Data availability does not guarantee the latest publisher revision.
           {health.value?.state==='refreshing'?' Refreshing in background…':''}</small>
-        <p><a href="#diagnostics">Assess all source, research and methodological limitations</a>
-          {' '}in Diagnostics, including limitations not visible in source availability counts.</p>
+        <p>These counts describe source availability. Research quality and methodological
+          limitations are assessed separately below.</p>
         {Boolean(snapshot?.attention_items?.length)&&<div className="data-collection-attention">
           <h4>Sources requiring attention ({snapshot?.attention_items?.length})</h4>
           <p>Missing or stale observations, unsuccessful collection attempts, and
@@ -450,6 +475,15 @@ export default function DataHub(){
     </p>}
     {notification&&<p role="status" className="data-collection-notice">{notification}</p>}
 
+    <section className="data-collection-section data-research-quality" id="research-quality">
+      <h3>Research quality</h3>
+      <LimitationAssessment/>
+    </section>
+
+    <section className="data-collection-section data-investigation" id="diagnostics"
+      tabIndex={-1} aria-label="Diagnostics and maintenance">
+      <h3>Diagnostics &amp; maintenance</h3>
+      <p>Download a diagnostic report, inspect errors or run a specific maintenance operation.</p>
     <section className="data-collection-export" aria-label="Diagnostic export">
       <div>
         <strong>Diagnostic ZIP</strong>
@@ -476,6 +510,8 @@ export default function DataHub(){
         {exporter.value?.ready&&<a href="/api/diagnostics/export-file"
           download>Download diagnostic ZIP</a>}
       </div>
+    </section>
+    <DiagnosticsWorkspace/>
     </section>
   </div>;
 }
