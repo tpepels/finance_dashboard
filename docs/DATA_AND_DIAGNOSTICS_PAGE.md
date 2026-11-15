@@ -4,7 +4,7 @@ This page is the authoritative operator entry point for source collection, curre
 
 ## User-facing hierarchy (top to bottom)
 
-1. **Overview:** What is the state? What is missing? What will happen next? Three distinct counts: stored histories, histories without observations, and *other* histories needing review. Missing histories are not counted again in the review figure. Show configured collection cadence and next scheduled run when known. Always-visible primary action: **Collect original data**. Disable it during a running collection, without hiding or changing its name.
+1. **Overview:** What is the state? What is missing? What will happen next? Three distinct counts: stored histories, histories without observations, and *other* histories needing review. Missing histories are not counted again in the review figure. Show configured collection cadence and next scheduled run when known. Always-visible primary action: **Find and download missing data**. Disable it during a running collection, without hiding or changing its name.
 2. **Collection activity:** What is the current or last requested collection doing? Show archive queue progress and independently tracked macro-history repair, explicitly distinguishing tasks checked, source gaps resolved, and publisher failures or deferrals. A missing past-build repair summary must not imply success.
 3. **Needs attention:** Official manual-file download links with upload controls, exact source-level missing/stale/failed histories, dates, and next action. On valid upload, ingestion continues without another confirmation.
 4. **Research quality:** Scientific acceptance counts and limitations, evidence gaps, methodological caveats, missing computations and source-accounting failures. Load the assessment when the page opens; allow an explicit reassessment. Source availability alone must never be represented as research acceptance.
@@ -19,7 +19,7 @@ Source lists can scroll vertically instead of hiding behind expandable disclosur
 - The header Status indicator remains a quick view and links into the single page, rather than opening a second maintenance experience.
 - Existing routes, action authorization, publisher quotas, immutable-original validation, cancellation and source-policy safeguards remain authoritative. Do not create new collection engines or substitute synthetic observations.
 - Keep collection execution and diagnostics preparation asynchronous. Preserve last-known collection and coverage state if status polling fails, while explicitly flagging staleness and errors.
-- The only top-level collection button starts the established original-source queue plus the source-health repair workflow. More specialized operations remain available lower on the page, not as peers of the main action.
+- The only top-level collection button is **Find and download missing data** and starts the established original-source queue plus the source-health repair workflow. More specialized operations remain available lower on the page, not as peers of the main action.
 - The operation labels, diagnostic download, archive upload and scientific acceptance limitations are direct user-visible output, not just developer-console data.
 
 ## Regression acceptance
