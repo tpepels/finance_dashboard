@@ -238,3 +238,46 @@ reconstructed from an already truncated event journal. A stored traceback
 identifies where an operation failed and the observable structured error codes;
 it does not prove all environmental root causes when the exception did not
 expose a safe machine-readable code.
+
+## Independent source refresh attempts (2.11 production incident)
+
+The 2026-11-15 2.11 diagnostic journal identified a scheduled startup
+preflight `TypeError` at `worker.refresh_all`, `publication_bounds`.
+The failure was raised by the `pinned_release_reuse` diagnostic event:
+its `skipped=` argument was unsupported by `record_event`. Clean test
+databases never encountered the event because no completed pinned source
+was eligible for reuse. The event now uses the supported `completed` and
+`total` counters, with a populated-database regression test.
+
+Source collection now isolates failures at the smallest safe boundary.
+One malformed publisher publication bound does not stop other source
+histories and cannot be used to mark its own history complete. An error
+querying pinned-release observations or last ingestion attempts is
+recorded, and the scheduler falls back to trying the affected sources.
+A broken attention-only health selector likewise falls back to the
+registered source batch. Per-source exceptions and progress-observer
+errors are recorded independently, without terminating unrelated tasks.
+Macro and market/FX stages are separately guarded; Yahoo and ECB client
+initialization failures no longer prevent the other market family from
+being attempted. A failed preflight is visible as partial if individual
+source planning faults were recovered.
+
+Never-attempted sources are prioritized over previously attempted
+sources. Within those classes, the planner interleaves publishers to
+avoid starving smaller or faster providers behind slow ones. A genuine
+publisher-wide quota or cooldown is still enforced: further attempts to
+that same rate-limited provider are **not** made in the same batch.
+Every skipped source receives a bounded `source_deferred` event; the
+`publisher_quota_exhausted` event records the aggregate skipped count.
+Other publishers continue. The final `source_refresh_batch` event
+includes `completed` (tasks processed), `total`, `failed`, and
+`complete`, `partial` or `interrupted` status. Processing a task
+does not imply successful source ingestion; consult the source audit
+and immutable ingestion runs for accepted observations.
+
+Global prerequisites such as an unusable database connection, an
+unavailable cross-process ingestion lock, or a failed catalogue/router
+construction can still make source acquisition impossible. Such failures
+are journalled with a sanitized code path rather than reported as
+successful ingestion. The scheduler nevertheless attempts other
+independent stages when safe.
