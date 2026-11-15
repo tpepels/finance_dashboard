@@ -31,7 +31,7 @@ export type DataStatus={
   next:{title:string;detail:string};
   yourAction:{title:string;detail:string;kind:'none'|'manual'|'start'|'technical';link?:string};
   missing:number;needsReview:number;failedSeries:number;
-  waitingSeries:number;manualFiles:number;
+  waitingSeries:number;uncheckedSeries:number;manualFiles:number;
   lastFinishedAt:string|null;
 };
 export function formatDataTime(value?:string|null):string|null{
@@ -41,10 +41,11 @@ export function formatDataTime(value?:string|null):string|null{
     date.toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):null;
 }
 export function issueCategory(state:string,lastFailureCode?:string|null):
-  'technical'|'waiting'|'stale' {
+  'technical'|'waiting'|'stale'|'missing' {
   if(state==='collection_failed'||lastFailureCode &&
      lastFailureCode!=='source_policy_deferred')return 'technical';
-  if(state==='collection_deferred'||state==='source_checked_no_newer_data')return 'waiting';
+  if(state==='collection_deferred'||state==='source_checked_no_newer_data'||lastFailureCode==='source_policy_deferred')return 'waiting';
+  if(state==='not_ingested'||state==='missing')return 'missing';
   return 'stale';
 }
 export function sourceNextStep(state:string,code?:string|null):string {
@@ -55,6 +56,8 @@ export function sourceNextStep(state:string,code?:string|null):string {
   }
   if(issueCategory(state,code)==='waiting')
     return 'The publisher has not supplied usable new data yet. Scheduled checks will continue.';
+  if(issueCategory(state,code)==='missing')
+    return 'No data has been saved yet. The next source check will try to download it.';
   return 'Check for a newer publisher release on the next scheduled run.';
 }
 export function describeDataStatus(input:DataStatusInput):DataStatus{
@@ -64,6 +67,7 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
   const attention=input.attention??[];
   const failedSeries=attention.filter(x=>issueCategory(x.state,x.last_failure_code)==='technical').length;
   const waitingSeries=attention.filter(x=>issueCategory(x.state,x.last_failure_code)==='waiting').length;
+  const uncheckedSeries=attention.filter(x=>issueCategory(x.state,x.last_failure_code)==='missing').length;
   const manuallyNeeded=input.manualFileCount;
   const session=input.session;
   const repair=session?.repair;
@@ -180,5 +184,5 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
       kind:'technical',link:'#diagnostics'};
   }
   return {tone,now,next,yourAction,missing,needsReview,failedSeries,
-    waitingSeries,manualFiles:manuallyNeeded,lastFinishedAt:finished};
+    waitingSeries,uncheckedSeries,manualFiles:manuallyNeeded,lastFinishedAt:finished};
 }
