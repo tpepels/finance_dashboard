@@ -45,6 +45,10 @@ class SourceFailureCodeTests(unittest.TestCase):
             ("Shiller download is not an Excel workbook", "shiller_download_invalid"),
             ("FRED source has no observations in requested window", "fred_window_empty"),
             ("ECB FX series identity mismatch", "fx_identity_mismatch"),
+            ("WID registered measure has no publisher observations", "wid_measure_unavailable"),
+            ("WID research metadata area mismatch", "wid_metadata_invalid"),
+            ("WID research observation population mismatch", "wid_observation_invalid"),
+            ("WID monetary total units differ within reference area", "wid_units_mismatch"),
         ]
         for message, category in cases:
             with self.subTest(category=category):
