@@ -173,9 +173,15 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
     yourAction={title:'Investigate a failed check',
       detail:'The troubleshooting report contains the details needed to fix it.',
       kind:'technical',link:'#diagnostics'};
-  }else if(needsReview>0){
+  }else if(missing>0||needsReview>0){
+    const pending=[
+      missing>0?`${missing} missing data series`:null,
+      needsReview>0?`${needsReview} existing data series to review`:null,
+    ].filter(Boolean).join(' and ');
     yourAction={title:'No manual upload required',
-      detail:`${needsReview} existing data ${needsReview===1?'series needs':'series need'} another publisher check. See the next scheduled update above.`,
+      detail:scheduleEnabled
+        ?`The next scheduled check will look at ${pending}.`
+        :`There are ${pending}. See the scheduled check above.`,
       kind:'none'};
   }
   if(input.cached&&yourAction.kind==='none'){
