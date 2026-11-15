@@ -75,7 +75,7 @@ describe('research update waiting-state journey',()=>{
     const model=describeResearchUpdate(disabled,{running:false});
     expect(model.heading).toBe('Automatic downloads are turned off');
     expect(model.tone).toBe('attention');
-    expect(model.action).toContain('Find data');
+    expect(model.action).toContain('Find and download missing data');
     render(<ResearchUpdateJourney health={disabled}/>);
     expect(screen.getByText('Action required')).toBeTruthy();
   });
