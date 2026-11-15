@@ -550,8 +550,8 @@ export default function DataHub(){
     <section className="data-collection-section data-investigation" id="diagnostics"
       tabIndex={-1} aria-label="Diagnostics and maintenance">
       <h3>Investigate a data problem</h3>
-      <p>Use these tools when a download, uploaded file or research check fails.
-         They provide evidence for investigating the problem; they do not download or change data.</p>
+      <p>When a download, uploaded file or research check fails, create a
+         technical report to investigate the cause or inspect the recorded events.</p>
     <section className="data-collection-export" aria-label="Diagnostic export">
       <div>
         <strong>Download the technical report</strong>

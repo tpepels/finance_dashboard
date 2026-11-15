@@ -30,6 +30,7 @@ const fileSize = (bytes:number) => (bytes/1024/1024).toFixed(1)+' MB';
 export default function ManualSources() {
   const [status, setStatus] = useState<ManualStatus|null>(null);
   const [error, setError] = useState('');
+  const [statusError, setStatusError] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<Record<string,boolean>>({});
@@ -53,9 +54,9 @@ export default function ManualSources() {
           }
           observed.current.set(job.id, job.status);
         }
-        setError('');
+        setStatusError('');
       } catch (cause) {
-        if (live) setError(cause instanceof Error ? cause.message : 'Manual sources unavailable');
+        if (live) setStatusError(cause instanceof Error ? cause.message : 'Manual sources unavailable');
       }
     };
     void refresh();
@@ -174,6 +175,7 @@ export default function ManualSources() {
         {status.datasets.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}
       </select>
     </label>}
+    {statusError&&<p role="alert" className="manual-source-alert">{statusError}</p>}
     {error&&<p role="alert" className="manual-source-alert">{error}</p>}
     {message&&<p role="status" className="manual-source-message">{message}</p>}
     {selected&&<section className="manual-source-selected" aria-label={selected.title+' files'}>

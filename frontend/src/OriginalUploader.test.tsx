@@ -57,7 +57,7 @@ describe('original research file upload', () => {
     }));
     const user = userEvent.setup();
     render(<OriginalUploader/>);
-    await user.click(screen.getByRole('button', { name: 'Recheck uploaded OECD files' }));
+    await user.click(await screen.findByRole('button', { name: 'Recheck uploaded OECD files' }));
     await waitFor(() => expect(requested).toEqual(['dashboard']));
     expect(screen.getByText(/Rechecking uploaded OECD files/)).toBeTruthy();
   });

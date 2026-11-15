@@ -48,6 +48,17 @@ const fetchMock = vi.fn(async (input: string) => {
     state:'idle',ready:false,id:null,prepared_at:null,size_bytes:null,error:null,
   });
   if (path === '/api/originals') return json({active:false,files:[],jobs:[]});
+  if (path === '/api/manual-sources') return json({
+    active:false,queued:0,deferred:0,jobs:[],datasets:[
+      {id:'oecd-icio',title:'OECD — ICIO original archives',
+       description:'OECD source originals.',series_ids:[],roles:[],
+       staged:{},existing_importer:true,reference_links:[]},
+      {id:'wid-world',title:'WID.world — world income and wealth',
+       description:'Publisher observations.',series_ids:[],staged:{},roles:[
+         {id:'data',label:'WID observations',accept:'.csv',
+          download_url:'https://wid.world/original.csv',max_bytes:500000}]},
+    ],
+  });
   if (path === '/api/data/debug-console') return json({status:{},acquisition:{jobs:[]},source_coverage:{summary:{}}});
   if (path === '/api/source-coverage') return json({ summary: {
     macro: { total: 53, with_data: 1, without_data: 52, needs_attention: 52 },
@@ -218,12 +229,15 @@ describe('dashboard shell', () => {
     expect(screen.getByRole('heading', { name: 'Collection activity' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Research quality' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Troubleshooting and other checks' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Investigate a data problem' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Create troubleshooting report' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Show error and event details' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Check for newly published data' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Look for older historical records' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Check stored OECD files for errors' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'View technical event log' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Check for newly published data' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Try missing or outdated sources again' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Search for older records' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Upload OECD archives' })).toBeTruthy();
+    expect(document.querySelector('#manual-files .original-uploader')).toBeTruthy();
+    expect(document.querySelector('#diagnostics .original-uploader')).toBeNull();
     expect(await screen.findByRole('table', { name: 'Classified limitation findings' })).toBeTruthy();
     expect(document.querySelector('#research-sources details')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));
@@ -242,7 +256,7 @@ describe('dashboard shell', () => {
   it('keeps old diagnostics deep links connected to the unified page and focuses the section', async () => {
     history.replaceState({}, '', '/#diagnostics');
     render(<App/>);
-    const section = await screen.findByRole('heading', { name: 'Troubleshooting and other checks' });
+    const section = await screen.findByRole('heading', { name: 'Investigate a data problem' });
     expect(section.closest('#diagnostics')).toBeTruthy();
     expect(await screen.findByRole('heading', { name: 'Data & diagnostics' })).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.id).toBe('diagnostics'));

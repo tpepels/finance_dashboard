@@ -111,7 +111,7 @@ describe('one manual original-source importer on simplified Data page',()=>{
       origin_verified:false,finished_at:'2026-11-13'}] as typeof payload.jobs;
     render(<ManualSources/>);
     await user.selectOptions(await screen.findByRole('combobox'), 'wid-world');
-    expect(screen.getByText(/latest source period 2024-01-01/)).toBeTruthy();
+    expect(screen.getByText(/latest period 2024-01-01/)).toBeTruthy();
     const picker=screen.getByLabelText('Upload WID world observations');
     await user.upload(picker,new File(['a'.repeat(300001)],'WID_data_WO.csv'));
     expect(screen.getByRole('alert').textContent).toContain('exceeds');
