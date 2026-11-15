@@ -54,10 +54,10 @@ const LAST_COLLECTION='gcm-collection-last-known-v1';
 const LAST_HEALTH='gcm-health-last-known-v1';
 const HEADERS={'Content-Type':'application/json','X-GCM-Action':'dashboard'};
 const statusLabels:Record<string,string>={
-  complete:'Imported',partial:'Imported with issues',failed:'Agent investigation required',
-  interrupted:'Interrupted',manual_required:'Manual file needed',
-  skipped:'Existing data retained',queued:'Queued',downloading:'Downloading',
-  running:'Validating / importing',deferred:'Retry scheduled',waiting:'Waiting',
+  complete:'Finished',partial:'Finished with problems',failed:'Failed',
+  interrupted:'Stopped unexpectedly',manual_required:'File needed from publisher',
+  skipped:'Already available',queued:'Waiting',downloading:'Downloading',
+  running:'Checking downloaded files',deferred:'Will retry later',waiting:'Waiting',
 };
 const groups=[
   {id:'macro',label:'Economic data'},
@@ -81,7 +81,7 @@ function reason(code?:string|null){
   if(/http_404|http_410/.test(code))return 'Publisher URL unavailable';
   if(/too_large/.test(code))return 'Source exceeds configured file limit';
   if(code==='source_gaps_remaining')return 'Some source histories still need updating';
-  return code.replaceAll('_',' ');
+  return 'See the troubleshooting report for details';
 }
 function formatWhen(value?:string|null){
   if(!value)return 'Not available';
@@ -90,7 +90,7 @@ function formatWhen(value?:string|null){
 }
 function statusStyle(state:string){
   if(state==='complete'||state==='skipped')return 'ok';
-  if(state==='manual_required'||state==='partial'||state==='deferred')return 'attention';
+  if(state==='manual_required'||state==='partial'||state==='deferred'||state==='attention')return 'attention';
   if(state==='failed'||state==='interrupted')return 'error';
   return 'active';
 }
@@ -212,7 +212,7 @@ export default function DataHub(){
       if(!response.ok)throw new Error('Start failed (HTTP '+response.status+')');
       const result=await response.json() as Collection;
       collection.setValue(result);remember(LAST_COLLECTION,result);
-      setNotification('Checking publishers for available data. You can leave this page while it runs.');
+      setNotification('Checking publisher websites for available data. You can close this page while the check continues.');
       void health.reload();
     }catch(cause){setError(cause instanceof Error?cause.message:'Could not start collection');}
     finally{setStarting(false);}
@@ -278,13 +278,13 @@ export default function DataHub(){
     <header className="data-collection-heading">
       <div>
         <h2>Data &amp; diagnostics</h2>
-        <p>See which data is missing, what the app is doing, and what needs your attention.</p>
+        <p>See available data, download progress, and issues that need a closer look.</p>
       </div>
       <div className="data-main-action">
         <button type="button" className="data-collection-primary" disabled={starting||active}
           onClick={()=>void start()}>Find and download missing data</button>
         <small>{active?'A collection is already running. Progress is shown below.':
-          'Checks official publishers and saves available data. Failures are reported below.'}</small>
+          'Checks publisher websites and saves available files. See the progress below.'}</small>
       </div>
     </header>
 
@@ -305,20 +305,20 @@ export default function DataHub(){
       </div>
       <div className="data-overview-metrics" aria-label="Source coverage totals">
         <div><strong>{summary?summary.with_data.toLocaleString()+' / '+summary.total.toLocaleString():'—'}</strong>
-          <span>Histories stored</span></div>
+          <span>Data series available</span></div>
         <div><strong>{missingCount===null?'—':missingCount.toLocaleString()}</strong>
-          <span>Without observations</span></div>
+          <span>Data series missing</span></div>
         <div><strong>{reviewCount===null?'—':reviewCount.toLocaleString()}</strong>
-          <span>Other histories to review</span></div>
+          <span>Available series to review</span></div>
       </div>
     </section>
     {(changes?.state==='pending'||changes?.state==='failed'||assessment?.running||
       (changes?.state==='complete'&&changes.last_reconciled_at))&&
       <p className="data-collection-update-status" role="status">
-        {changes?.state==='pending'?'Updating source health and research assessments.':
-         changes?.state==='failed'?'Research assessment update failed; see the diagnostics below.':
-         assessment?.running?'Updating research assessments.':
-         'Last research data update: '+formatWhen(changes?.last_reconciled_at)}
+        {changes?.state==='pending'?'Updating data checks and research results.':
+         changes?.state==='failed'?'Some research results could not be updated. See Troubleshooting below.':
+         assessment?.running?'Updating research results.':
+         'Research results last updated: '+formatWhen(changes?.last_reconciled_at)}
       </p>}
 
     <section aria-label="Collection activity" className="data-collection-run" aria-live="polite">
@@ -329,30 +329,30 @@ export default function DataHub(){
            run?.state==='needs_attention'?'Completed with attention needed':
            run?.state==='complete'?'Collection completed':
            run?.state==='failed'?'Collection failed':
-           run?.id?'Last source check: '+run.state:'No source check history yet'}
+           run?.id?'Last check: '+(statusLabels[run.state]??'Status available in report'):'No previous download recorded'}
         </span>
         <small>{run?.started_at?'Started '+formatWhen(run.started_at):
           'No previous run recorded'}</small>
       </div>
       {run?.id?<div className="data-collection-progress-group">
         <div className="data-collection-progress-header">
-          <strong>Original source downloads</strong>
-          <span>{finished} of {total} resolved</span>
+          <strong>Publisher downloads</strong>
+          <span>{finished} of {total} finished</span>
         </div>
         <div className="data-progress" role="progressbar" aria-label="Source downloads"
           aria-valuemin={0} aria-valuemax={total} aria-valuenow={finished}>
           <span style={{width:fraction+'%'}}/>
         </div>
-        <small>{run.counts.completed} imported · {run.counts.skipped} retained ·
-          {' '}{run.counts.active} in progress · {run.counts.manual_required} manual ·
-          {' '}{run.counts.failed} require investigation</small>
-      </div>:<p className="data-collection-placeholder">No manual source check has been recorded. Scheduled ingestion runs independently.</p>}
+        <small>{run.counts.completed} completed · {run.counts.skipped} already available ·
+          {' '}{run.counts.active} running · {run.counts.manual_required} files to download manually ·
+          {' '}{run.counts.failed} failed</small>
+      </div>:<p className="data-collection-placeholder">Your most recent download check will appear here. The automatic schedule continues as configured.</p>}
       {run?.id&&repair&&<div className="data-collection-progress-group">
         <div className="data-collection-progress-header">
-          <strong>{repair.origin==='latest_independent_check'?'Most recent independent source check':
-            'Source-health check'}</strong>
+          <strong>{repair.origin==='latest_independent_check'?'Latest check of missing data':
+            'Checking missing or outdated data'}</strong>
           <span>{repairTotal?(repair.completed??0)+' / '+repairTotal+' checked':
-            repair.status==='previous_build'?'Earlier build result unavailable':repair.status}</span>
+            repair.status==='previous_build'?'Earlier results unavailable':repair.status}</span>
         </div>
         {repairTotal>0&&<div className="data-progress" role="progressbar"
           aria-label="Source-health repair" aria-valuemin={0} aria-valuemax={repairTotal}
@@ -360,26 +360,24 @@ export default function DataHub(){
           <span style={{width:repairPercent+'%'}}/>
         </div>}
         {repair.origin==='latest_independent_check'&&<small>
-          This repair occurred after the source-download session shown above.</small>}
+          This check ran after the download session shown above.</small>}
         {repair.status==='previous_build'&&<small>
-          The earlier repair summary was not retained in this session. This does not mean the source downloads failed.</small>}
-        {repair.current_item&&<small>Working on {repair.current_item}</small>}
+          The previous check has no saved results. Use a new check to see the latest outcome.</small>}
+        {repair.current_item&&<small>Checking {repair.current_item}</small>}
         {repair.details?.issues_after!==undefined&&<small>
           {repair.details.resolved_issues??Math.max(0,(repair.details.issues_before??0)-repair.details.issues_after)}
-          {' '}source gaps resolved · {repair.details.issues_after} still require attention
+          {' '}data series updated · {repair.details.issues_after} still need attention
           {repair.details.failed_sources!==undefined&&repair.details.failed_sources>0?
-            ' · '+repair.details.failed_sources+' provider requests failed':''}
+            ' · '+repair.details.failed_sources+' downloads failed':''}
         </small>}
         {repair.error_code&&<small className="data-collection-alert">
           {repair.details?.issues_after!==undefined&&repair.details.issues_after>0?
-            'The publisher check finished, but these source histories remain older than expected. New observations will be ingested on the normal schedule when available.':
+            'These data series still need newer observations. The app will check again on its regular schedule.':
             reason(repair.error_code)}
         </small>}
       </div>}
-    </section>
-
-    {run?.id&&sourceList.length>0&&<section className="data-collection-section">
-      <h3>Download history ({finished} of {total} resolved)</h3>
+    {run?.id&&sourceList.length>0&&<section className="data-download-details" aria-label="Download history">
+      <h4>Download details ({finished} of {total} finished)</h4>
       <div className="data-collection-table-scroll data-collection-source-list">
         <table aria-label="Source download progress">
           <thead><tr><th>Source</th><th>Status</th><th>Details</th></tr></thead>
@@ -389,22 +387,27 @@ export default function DataHub(){
               {statusLabels[source.status]??source.status}</span></td>
             <td>{source.status==='deferred'&&source.retry_at_unix?
               source.retry_at_unix*1000<=Date.now()?
-                'Retry eligible; waiting for download queue':
-                'Automatic retry '+new Date(source.retry_at_unix*1000).toLocaleTimeString():
+                'Ready to retry':
+                'Next attempt '+new Date(source.retry_at_unix*1000).toLocaleTimeString():
               source.status==='failed'||source.status==='partial'||source.status==='interrupted'?
-                reason(source.reason)||'Inspect diagnostics':
-              source.status==='manual_required'?'See required files below':
+                reason(source.reason)||'See Troubleshooting below':
+              source.status==='manual_required'?'Download the file below':
               source.status==='complete'&&source.completed_sources?
-                source.completed_sources+' series imported':
-              source.status==='skipped'?'No download attempted':'—'}</td>
+                source.completed_sources+' data series saved':
+              source.status==='skipped'?'Already available':'—'}</td>
           </tr>)}</tbody>
         </table>
       </div>
     </section>}
 
-    {files.length>0&&<section className="data-collection-section" aria-labelledby="manual-files">
-      <h3 id="manual-files">Files requiring manual download ({files.length})</h3>
-      <p>Download the file from its official publisher, then upload it here. The app checks the file and adds the data automatically.</p>
+    </section>
+
+    <section className="data-collection-section data-collection-availability" id="source-coverage"
+      tabIndex={-1} aria-label="Data availability">
+      <h3>Needs attention</h3>
+    {files.length>0&&<div className="data-manual-files" aria-labelledby="manual-files">
+      <h4 id="manual-files">Files to download yourself ({files.length})</h4>
+      <p>Download each file from its publisher and upload it here. The app checks and adds its contents.</p>
       <div className="data-collection-table-scroll">
         <table aria-label="Files requiring manual download">
           <thead><tr><th>Source</th><th>Required file</th><th>Reason</th><th>Upload</th></tr></thead>
@@ -427,33 +430,27 @@ export default function DataHub(){
           })}</tbody>
         </table>
       </div>
-    </section>}
+    </div>}
 
-    <section className="data-collection-section data-collection-availability" id="source-coverage"
-      tabIndex={-1} aria-label="Data availability">
-      <h3>Sources needing attention</h3>
       {summary?<div>
-        <p><strong>{summary.needs_attention.toLocaleString()}</strong> histories are missing, stale or need review. See the recorded source-level reasons below.</p>
+        <p><strong>{summary.needs_attention.toLocaleString()}</strong> data series have missing information or need checking.</p>
         <p className="data-collection-subline">{groups.map(group=>{
           const found=snapshot?.groups.find(item=>item.id===group.id);
           return found?group.label+': '+found.with_data+'/'+found.total:null;
         }).filter(Boolean).join(' · ')}</p>
-        <small>Snapshot calculated {formatWhen(snapshot?.calculated_at)}.
-          Data availability does not guarantee the latest publisher revision.
-          {health.value?.state==='refreshing'?' Refreshing in background…':''}</small>
-        <p>These counts describe source availability. Research quality and methodological
-          limitations are assessed separately below.</p>
+        <small>Last checked {formatWhen(snapshot?.calculated_at)}.
+          {health.value?.state==='refreshing'?' Updating the list…':''}</small>
+        
         {Boolean(snapshot?.attention_items?.length)&&<div className="data-collection-attention">
-          <h4>Sources requiring attention ({snapshot?.attention_items?.length})</h4>
-          <p>Missing or stale observations, unsuccessful collection attempts, and
-            unresolved original-source evidence.</p>
+          <h4>Data series to check ({snapshot?.attention_items?.length})</h4>
+          <p>Each row shows the latest saved date and the next step.</p>
           <div className="data-collection-table-scroll data-collection-source-list">
             <table aria-label="Sources requiring attention">
-              <thead><tr><th>Source series</th><th>Last observation</th><th>What remains</th></tr></thead>
+              <thead><tr><th>Data series</th><th>Latest saved data</th><th>Next step</th></tr></thead>
               <tbody>{snapshot?.attention_items?.map(item=><tr key={item.id}>
                 <td><strong>{item.name}</strong><small>{item.id}</small></td>
                 <td>{item.latest_source_date?.slice(0,7)??'None'}</td>
-                <td>{item.next_action??'Investigate source history'}
+                <td>{item.next_action??'Check the publisher for newer data'}
                   {item.last_failure_code&&<small className="data-collection-alert">
                     {' '}Last error: {reason(item.last_failure_code)}
                   </small>}
@@ -463,11 +460,11 @@ export default function DataHub(){
           </div>
         </div>}
         {(health.problem||health.value?.error)&&<p className="data-collection-alert">
-          Availability refresh failed; showing the last retained snapshot.</p>}
-      </div>:<p>{health.value?.state==='refreshing'?'Calculating data availability…':
-        'Data availability not yet calculated.'}</p>}
+          Could not update this list. Showing the last saved results.</p>}
+      </div>:<p>{health.value?.state==='refreshing'?'Checking which data is available…':
+        'The list of available data is being prepared.'}</p>}
       {!snapshot&&(health.problem||health.value?.error)&&<p className="data-collection-alert">
-        Availability calculation failed. The collection status above remains available.</p>}
+        Could not load the latest data list. The download status above is still available.</p>}
     </section>
 
     {(error||run?.startup_error)&&<p role="alert" className="data-collection-alert">
@@ -486,14 +483,14 @@ export default function DataHub(){
 
     <section className="data-collection-section data-investigation" id="diagnostics"
       tabIndex={-1} aria-label="Diagnostics and maintenance">
-      <h3>Diagnostics &amp; maintenance</h3>
-      <p>Download a diagnostic report, inspect errors or run a specific maintenance operation.</p>
+      <h3>Troubleshooting and other checks</h3>
+      <p>Download an error report, review problems, or run an additional data check.</p>
     <section className="data-collection-export" aria-label="Diagnostic export">
       <div>
         <strong>Troubleshooting report</strong>
         <p>A downloadable ZIP containing the source checks, errors, and file-import details needed to investigate problems.</p>
         {exporter.value?.state==='preparing'&&<small role="status">
-          Preparing the archive in the background
+          Creating the report
           {exporter.value.started_at&&
             ' · '+Math.max(0,Math.floor((Date.now()-Date.parse(exporter.value.started_at))/60000))+
             ' min elapsed'}. You can leave this page.</small>}
