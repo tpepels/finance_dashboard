@@ -37,7 +37,76 @@ const LABELS:Record<string,string>={
 };
 const name=(key:string)=>LABELS[key]??key.replaceAll('_',' ');
 const importance=(severity:Finding['severity'])=>severity==='high'
-  ?'High':severity==='medium'?'Needs review':'Informational';
+  ?'High priority':severity==='medium'?'Review':'Information';
+
+type PlainFinding={title:string;detail:string;action:string};
+function explainFinding(row:Finding):PlainFinding {
+  const when=typeof row.evidence.latest_source_date==='string'
+    ?row.evidence.latest_source_date.slice(0,10):null;
+  const period=when?' Latest saved period: '+when+'.':'';
+  switch(row.category){
+    case 'source_missing':
+      return {title:'Data series missing',
+        detail:'This source has no saved data yet.',
+        action:'Use Find and download missing data to check the publisher.'};
+    case 'source_freshness':
+      return {title:'Check the latest published data',
+        detail:'This series may be older than the latest published data.'+period,
+        action:'Check whether the publisher has released newer figures.'};
+    case 'source_refresh_deferred':
+      return {title:'Download postponed',
+        detail:'The publisher has temporarily limited the requests the app can make.',
+        action:'The app will try again when the publisher allows another check.'};
+    case 'research_evidence_gap':
+      return {title:'Research data is incomplete',
+        detail:'Some source data or checks required for this research question are missing.',
+        action:'Open the linked research question to review the missing inputs.'};
+    case 'research_evidence_caveat':
+      return {title:'Research finding needs context',
+        detail:'The available evidence has a limitation that affects how this result can be used.',
+        action:'Review the method and data in the linked research question.'};
+    case 'research_acceptance_state':
+      return {title:'Research checks are incomplete',
+        detail:'This research question still needs data or verification before its results are fully supported.',
+        action:'Open the linked research question to review the outstanding checks.'};
+    case 'supplemental_source_pending':
+      return {title:'Country comparison waiting for data',
+        detail:'The additional country comparison needs an official data file.',
+        action:'Check again after the next publisher update.'};
+    case 'declared_scope_constraint':
+      return {title:'Comparison has limited coverage',
+        detail:'The result uses a narrower set of countries, dates or measurements.',
+        action:'Check the covered data in the linked research question.'};
+    case 'analysis_implementation_missing':
+      return {title:'Research calculation unavailable',
+        detail:'This research question has no working calculation in the application.',
+        action:'The calculation needs a software update.'};
+    case 'unmapped_limitation_register':
+      return {title:'Research note needs checking',
+        detail:'A recorded method note has no matching research question.',
+        action:'Review the research question and its method notes.'};
+    case 'limitation_assessment_failure':
+      return {title:'Research quality check failed',
+        detail:'The app could not complete its check of research limitations.',
+        action:'Download the troubleshooting report to investigate.'};
+    case 'documented_method_constraint':
+      return {title:'Method assumption',
+        detail:row.detail,
+        action:'Keep this assumption in mind when reading the linked research question.'};
+    case 'potentially_outdated_hardcoded_statement':
+      return {title:'Source date to verify',
+        detail:'A date in the research method may need checking against a newer publisher release.',
+        action:'Compare the stated date with the latest official data.'};
+    case 'source_accounting_integrity':
+      return {title:'Accounting differences in OECD files',
+        detail:'The stored OECD files have accounting checks that need review.',
+        action:'Download the troubleshooting report to see which files and calculations are affected.'};
+    default:
+      return {title:'Research issue to review',
+        detail:'This issue requires further checking.',
+        action:'See the troubleshooting report for the original details.'};
+  }
+}
 
 export default function LimitationAssessment(){
   const [audit,setAudit]=useState<Audit|null>(null);
@@ -122,21 +191,23 @@ export default function LimitationAssessment(){
             <th>Priority</th><th>Research and data</th>
             <th>Issue</th><th>Suggested next step</th>
           </tr></thead>
-          <tbody>{visible.map(row=><tr key={row.id}>
-            <td><strong>{importance(row.severity)}</strong>
-              <small style={{display:'block'}}>{name(row.category)}</small>
-
-            </td>
-            <td>{row.analysis_ids.map(id=><a key={id} href={'#q-'+id}
-              style={{marginRight:8}}>{id}</a>)}
-              {row.source_ids.map(id=><small key={id} style={{
-                display:'block',overflowWrap:'anywhere'}}>{id}</small>)}
-            </td>
-            <td><strong>{row.title}</strong>
-              <p style={{margin:'4px 0',fontSize:12}}>{row.detail}</p>
-            </td>
-            <td style={{minWidth:170}}>{row.next_action}</td>
-          </tr>)}</tbody>
+          <tbody>{visible.map(row=>{
+            const summary=explainFinding(row);
+            return <tr key={row.id}>
+              <td><strong>{importance(row.severity)}</strong>
+                <small style={{display:'block'}}>{name(row.category)}</small>
+              </td>
+              <td>{row.analysis_ids.map(id=><a key={id} href={'#q-'+id}
+                style={{marginRight:8}}>{id}</a>)}
+                {row.source_ids.map(id=><small key={id} style={{
+                  display:'block',overflowWrap:'anywhere'}}>{id}</small>)}
+              </td>
+              <td><strong>{summary.title}</strong>
+                <p style={{margin:'4px 0',fontSize:12}}>{summary.detail}</p>
+              </td>
+              <td style={{minWidth:170}}>{summary.action}</td>
+            </tr>;
+          })}</tbody>
         </table>
       </div>
       {visible.length===0&&<p>Nothing needs attention in this category.</p>}
