@@ -26,10 +26,59 @@ class ResearchStatusTests(unittest.TestCase):
         self.assertEqual(role['description'], 'Declared allocation')
         self.assertTrue(role['owner_input_required'])
         self.assertFalse(role['accepted'])
+        self.assertFalse(role['supplemental'])
+        self.assertEqual(rows['P04']['next_step']['kind'], 'owner_information')
+        self.assertEqual(rows['P04']['next_step']['link'], '#portfolio')
         self.assertEqual(rows['G03']['phase2']['open_gates'], ['listed_parent_net_income'])
         self.assertTrue(rows['G03']['phase2']['limitations'][0]['text'])
         self.assertEqual(rows['G03']['role_dispositions'][0]['state'], 'descoped')
         self.assertIn('Worldwide', rows['G03']['role_dispositions'][0]['description'])
+
+    def test_next_step_separates_original_method_from_optional_evidence(self):
+        from finance_dashboard.research_status import evidence_next_step
+        required={'role':'original','state':'accepted','accepted':True,
+                  'supplemental':False,'series_ids':['original.publisher'],
+                  'sources_with_observations':1,'owner_input_required':False}
+        optional={'role':'additional_deciles','state':'incomplete','accepted':False,
+                  'supplemental':True,'series_ids':['extra.publisher'],
+                  'sources_with_observations':0,'owner_input_required':False}
+        accepted=evidence_next_step('L07','accepted',[required,optional],[])
+        self.assertEqual(accepted['kind'],'accepted_with_extensions')
+        self.assertEqual(accepted['counts'],{
+            'required':1,'required_accepted':1,'supplemental':1,
+            'supplemental_accepted':0,'descoped':0})
+        self.assertEqual(accepted['role_ids'],[])
+        # A failed original role still blocks, regardless of optional progress.
+        original_missing={**required,'accepted':False,
+                          'state':'blocked','sources_with_observations':0}
+        blocked=evidence_next_step('L07','incomplete',[original_missing,optional],
+                                   ['original'])
+        self.assertEqual(blocked['kind'],'publisher_data')
+        self.assertEqual(blocked['link'],'#research-sources')
+        self.assertEqual(blocked['role_ids'],['original'])
+        self.assertEqual(blocked['counts']['required_accepted'],0)
+
+    def test_owner_information_is_asked_for_only_if_it_is_actually_missing(self):
+        from finance_dashboard.research_status import evidence_next_step
+        owner={'role':'owner_allocation','state':'user_input','accepted':False,
+               'supplemental':False,'series_ids':[],
+               'sources_with_observations':0,'owner_input_required':True}
+        owner_step=evidence_next_step('P04','conditional',[owner],[])
+        self.assertEqual(owner_step['kind'],'owner_information')
+        self.assertEqual(owner_step['link'],'#portfolio')
+        self.assertIn('Your own information',owner_step['message'])
+        supplied=evidence_next_step('P04','accepted',[{**owner,'accepted':True,
+                                                       'owner_input_required':False}],[])
+        self.assertEqual(supplied['kind'],'ready')
+        self.assertIsNone(supplied['link'])
+        no_mapping=evidence_next_step('G03','deferred',[{**owner,
+            'state':'incomplete','owner_input_required':False}],['original'])
+        self.assertEqual(no_mapping['kind'],'original_research')
+        self.assertIsNone(no_mapping['link'])
+        self.assertNotIn('Your',no_mapping['message'])
+        reassessment=evidence_next_step('G03','not_checked',[],[])
+        self.assertEqual(reassessment['kind'],'assessment_pending')
+        self.assertIsNone(reassessment['link'])
 
     def test_unassessed_question_is_not_reported_as_accepted(self):
         snapshot = AcceptanceSnapshot(datetime(2026, 11, 11, tzinfo=timezone.utc), {})
