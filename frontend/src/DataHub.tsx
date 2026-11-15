@@ -436,7 +436,7 @@ export default function DataHub(){
         aria-label="Why data needs attention">
         <div><strong>{status.failedSeries}</strong><span>Failed data checks</span></div>
         {status.uncheckedSeries>0&&<div><strong>{status.uncheckedSeries}</strong>
-          <span>Missing data not yet checked</span></div>
+          <span>Missing data not yet checked</span></div>}
         <div><strong>{Math.max(0,status.needsReview)}</strong><span>Available data to review</span></div>
         <div><strong>{status.waitingSeries}</strong><span>Downloads postponed</span></div>
         <div><strong>{status.manualFiles}</strong><span>Files you need to upload</span></div>
