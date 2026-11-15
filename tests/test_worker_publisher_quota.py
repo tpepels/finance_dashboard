@@ -111,6 +111,31 @@ class PublisherQuotaTests(unittest.TestCase):
             finally:
                 engine.dispose()
 
+    def test_bad_attention_selector_falls_back_to_attempting_all_eligible_sources(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from finance_dashboard.database import Base, make_engine
+        from finance_dashboard.worker import refresh_all
+        with TemporaryDirectory() as directory:
+            engine=make_engine("sqlite:///"+str(Path(directory)/"repair.db"))
+            Base.metadata.create_all(engine)
+            dispatched=[]
+            try:
+                with (patch("finance_dashboard.source_coverage.build_coverage",
+                            side_effect=TypeError("secret coverage data")),
+                      patch("finance_dashboard.worker.execute_refresh_tasks",
+                            side_effect=lambda tasks,**kw: dispatched.extend(
+                                t.source_id for t in tasks) or 0),
+                      patch("finance_dashboard.worker.record_event") as events):
+                    failures=refresh_all(engine,attention_only=True)
+                self.assertEqual(failures,1)
+                self.assertGreaterEqual(len(dispatched),500)
+                self.assertIn("piketty.us.real_pretax_average.all",dispatched)
+                self.assertTrue(any(call.kwargs.get("stage")=="attention_coverage"
+                                    for call in events.call_args_list))
+            finally:
+                engine.dispose()
+
     def test_rotation_query_failure_still_dispatches_every_other_source(self):
         from pathlib import Path
         from tempfile import TemporaryDirectory
