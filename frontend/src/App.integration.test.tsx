@@ -112,7 +112,7 @@ describe('dashboard shell', () => {
     expect(document.activeElement?.id).toBe('research-workspace');
     expect(screen.queryByRole('heading', { name: 'Credit, debt and market stress' })).toBeNull();
     const requested = fetchMock.mock.calls.map(([url]) => String(url));
-    expect(requested.some(url => url.startsWith('/api/research'))).toBe(false);
+    expect(requested.some(url => url === '/api/research-status')).toBe(true);
     expect(requested.some(url => url.startsWith('/api/risk'))).toBe(false);
   });
 
