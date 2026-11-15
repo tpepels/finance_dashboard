@@ -336,11 +336,35 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
         if not acquired:
             log.warning("Another process owns the ingestion refresh lock")
             return 1
-        yahoo, ecb = YahooMarketClient(), EcbFxClient()
+        yahoo = None
+        ecb = None
+        client_failures = 0
+        def client_fault(component: str, exc: Exception):
+            nonlocal client_failures
+            client_failures += 1
+            from .failure_journal import record_failure
+            record_failure("markets", component, exc)
+            record_event("markets", "collector_failed", level="error",
+                         action="market_source_setup", stage=component,
+                         reason="provider_failed")
         try:
-            service = MarketIngestionService(engine, yahoo, ecb)
             fx = sorted(currencies if currencies is not None else ("USD", "GBP", "CHF"))
             market = sorted(instrument_ids if instrument_ids is not None else instruments())
+            # A broken Yahoo constructor cannot suppress independent ECB FX
+            # collection, nor vice versa. The canonical service can initialize
+            # an unavailable client per task, so that every affected source
+            # obtains its own failure record without stopping siblings.
+            if market:
+                try:
+                    yahoo = YahooMarketClient()
+                except Exception as exc:
+                    client_fault("market_client_setup", exc)
+            if fx:
+                try:
+                    ecb = EcbFxClient()
+                except Exception as exc:
+                    client_fault("fx_client_setup", exc)
+            service = MarketIngestionService(engine, yahoo, ecb)
             tasks = [
                 RefreshTask(
                     family="fx", source_id=currency,
@@ -357,10 +381,22 @@ def refresh_market_all(engine, *, instrument_ids: set[str] | None = None,
                     progress_label=sid,
                 ) for sid in market
             )
-            return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
+            return client_failures + execute_refresh_tasks(
+                tasks, progress=progress, stopped=stopped)
         finally:
-            yahoo.close()
-            ecb.close()
+            for name, client in (("market_client_close", yahoo),
+                                 ("fx_client_close", ecb)):
+                if client is not None:
+                    try:
+                        client.close()
+                    except Exception as exc:
+                        # A cleanup failure must not discard successful
+                        # observations or abort remaining client cleanup.
+                        from .failure_journal import record_failure
+                        record_failure("markets", name, exc)
+                        record_event("markets", "collector_failed",
+                                     level="warning", action="market_cleanup",
+                                     stage=name, reason="provider_failed")
     
 
 def main(argv: list[str] | None = None) -> int:
