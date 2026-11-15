@@ -62,6 +62,7 @@ const fetchMock = vi.fn(async (input: string) => {
     equity_euro_share: .1, bonds_hedged: true, bond_duration_years: 7, rebalancing: { rule: 'threshold', months: 12, band_pp: 5 },
     trading_cost_bps: 10, start_value_eur: 100000, monthly_contribution_eur: 0, annual_withdrawal_pct: 0,
     tax: { mode: 'none', rate_pct: 0 }, is_example: true });
+  if (path === '/api/research-revision') return json({ state:'ready', evaluated_at:'2026-11-11' });
   if (path === '/api/research-status') return json({ evaluated_at: '2026-11-11', counts: { incomplete: 2 }, questions: [
     { analysis_id: 'C01', question: 'Is activity turning?', state: 'incomplete', sources: [], geographies: ['US'] },
     { analysis_id: 'M02', question: 'What drives yields?', state: 'incomplete', sources: [], geographies: ['US'] },
@@ -112,7 +113,7 @@ describe('dashboard shell', () => {
     expect(document.activeElement?.id).toBe('research-workspace');
     expect(screen.queryByRole('heading', { name: 'Credit, debt and market stress' })).toBeNull();
     const requested = fetchMock.mock.calls.map(([url]) => String(url));
-    expect(requested.some(url => url === '/api/research-status')).toBe(true);
+    expect(requested.some(url => url === '/api/research-revision')).toBe(true);
     expect(requested.some(url => url.startsWith('/api/risk'))).toBe(false);
   });
 
