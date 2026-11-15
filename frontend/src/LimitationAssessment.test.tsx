@@ -68,7 +68,7 @@ describe('limitations assessment',()=>{
     })})));
     render(<LimitationAssessment/>);
     expect(await screen.findByText(/0\/37 questions assessed/)).toBeTruthy();
-    expect(screen.getByText(/Research limitation findings may be incomplete/)).toBeTruthy();
+    expect(screen.getByText(/Some research checks need attention/)).toBeTruthy();
   });
 
   it('makes API failure explicit and allows retry',async()=>{
