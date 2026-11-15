@@ -80,6 +80,39 @@ class ResearchStatusTests(unittest.TestCase):
         self.assertEqual(reassessment['kind'],'assessment_pending')
         self.assertIsNone(reassessment['link'])
 
+    def test_debug_workplan_preserves_only_evaluated_next_actions(self):
+        from finance_dashboard.research_status import research_next_actions
+        self.assertEqual(research_next_actions(None, {'analyses': []})['status'],
+                         'assessment_unavailable')
+        self.assertEqual(research_next_actions(None, {'analyses': []})['questions'], [])
+        document={'analyses':[
+            {'id':'P04','title':'Portfolio sensitivity','comparison_contract':{
+                'original_requirements':[{'role':'weights','description':'Owner weights',
+                                          'supply':'user'}]}},
+            {'id':'G03','title':'Global listed profits','comparison_contract':{
+                'original_requirements':[{'role':'profit_scope','description':
+                    'Consolidated parent profits','series_ids':[]}]}}],
+            'original_sources':[]}
+        snapshot=AcceptanceSnapshot(datetime(2026,11,15,tzinfo=timezone.utc),{
+            'P04': {'state':'conditional','requirements':[
+                {'role':'weights','state':'user_input','accepted':False,
+                 'series_ids':[],'limitations':[]}],
+                'limitations':[],'blocking_roles':[]},
+            'G03': {'state':'deferred','requirements':[
+                {'role':'profit_scope','state':'incomplete','accepted':False,
+                 'series_ids':[],'limitations':[]}],
+                'limitations':[],'blocking_roles':['profit_scope']},
+        })
+        report=research_next_actions(snapshot,document)
+        self.assertEqual(report['status'],'ready')
+        self.assertEqual(report['question_count'],2)
+        by_id={r['id']:r for r in report['questions']}
+        self.assertEqual(by_id['P04']['next_step']['kind'],'owner_information')
+        self.assertEqual(by_id['G03']['next_step']['kind'],'original_research')
+        self.assertIsNone(by_id['G03']['next_step']['link'])
+        self.assertEqual(report['next_action_counts'],{
+            'owner_information':1,'original_research':1})
+
     def test_unassessed_question_is_not_reported_as_accepted(self):
         snapshot = AcceptanceSnapshot(datetime(2026, 11, 11, tzinfo=timezone.utc), {})
         report = research_status(snapshot, {'analyses': [{'id': 'C01', 'title': 'Growth'}]})
