@@ -201,7 +201,7 @@ describe('dashboard shell', () => {
   it('opens collection through the utility bar and keeps maintenance on Diagnostics', async () => {
     const user = userEvent.setup();
     render(<App/>);
-    await user.click(screen.getByRole('button', { name: 'Data & sync' }));
+    await user.click(screen.getByRole('button', { name: 'Data collection' }));
     expect(await screen.findByRole('heading', { name: 'Data Collection' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Collect original data' })).toBeTruthy();
     expect(document.querySelector('#research-sources details')).toBeNull();
