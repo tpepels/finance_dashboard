@@ -178,8 +178,20 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
             # production-only planner defect immediately rather than
             # postponing the first diagnosable failure for 24 hours.
             try:
-                refresh_all(engine, stopped=scheduled_stop,
-                            skip_complete_pinned=True, preflight_only=True)
+                findings = refresh_all(engine, stopped=scheduled_stop,
+                                       skip_complete_pinned=True,
+                                       preflight_only=True)
+                if findings:
+                    # Per-source planner failures were recorded independently;
+                    # a partial preflight does not imply the whole catalogue
+                    # cannot be collected at the next scheduled refresh.
+                    _record_schedule(refresh_state="preflight_partial",
+                                     last_error_code="planner_partial",
+                                     last_error_stage="startup_refresh_preflight",
+                                     last_error_at=_utc_time(time.time()))
+                    record_event("macro", "stage_finished", level="warning",
+                                 action="source_refresh_preflight",
+                                 status="partial", failed=findings)
             except Exception as exc:
                 failure = record_failure("scheduler", "startup_refresh_preflight", exc)
                 _record_schedule(refresh_running=False,
