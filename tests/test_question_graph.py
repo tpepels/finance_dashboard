@@ -34,7 +34,7 @@ class QuestionNetworkTests(unittest.TestCase):
         # parent links and child follow-ups, even when the link is fully curated.
         snapshot=AcceptanceSnapshot(datetime(2026,11,15,tzinfo=timezone.utc),{
             "L07":{"state":"conditional","requirements":[],"blocking_roles":["inheritance"],
-                   "limitations":[{"code":"research_original_requires_validation",
+                   "limitations":[{"code":"original_comparison_open",
                                    "detail":"Comparable original inheritance evidence is missing."}]},
             "G03":{"state":"deferred","requirements":[],"blocking_roles":["listed_parent_net_income"],
                    "limitations":[]},
