@@ -30,6 +30,12 @@ describe('integrated data synchronization and source health repair',()=>{
     expect(screen.getByRole('button',{name:'Try missing or outdated sources again'})).toBeTruthy();
     expect(screen.getByRole('button',{name:'Look for older historical records'})).toBeTruthy();
     expect(screen.getAllByRole('button')).toHaveLength(3);
+    expect(screen.getByText(/Checks economic indicators, market prices, exchange rates/)).toBeTruthy();
+    expect(screen.getByText(/Retries histories flagged as missing or old/)).toBeTruthy();
+    expect(screen.getByText(/Searches earlier economic releases, fund holdings/)).toBeTruthy();
+    for(const button of screen.getAllByRole('button')){
+      expect(button.textContent).not.toMatch(/\\b(refresh|ingest|analyse|reassess)\\b/i);
+    }
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
     await waitFor(()=>expect(screen.getByRole('button',{
