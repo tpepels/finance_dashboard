@@ -278,7 +278,7 @@ export default function DiagnosticsPanel() {
         <footer className="diagnostics-foot">
           <span>Build {report?report.release.version+' · '+report.release.build.slice(0,8):'unknown'}</span>
           <a href="#diagnostics" className="diagnostics-download"
-            onClick={()=>setOpen(false)}>Open diagnostics &amp; administration</a>
+            onClick={()=>setOpen(false)}>Open Data &amp; diagnostics</a>
         </footer>
       </div>,document.body)}
   </div>;
