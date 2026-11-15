@@ -149,3 +149,13 @@ html[data-theme='dark'] .data-technical-console pre{background:#16282d;color:#d6
   .data-overview-summary{padding:16px}
   .data-overview-metrics>div{padding:12px 14px}
 }
+
+/* Show related details under their parent activity and attention headings. */
+.data-download-details{display:grid;gap:12px;border-top:1px solid #dce5e5;padding-top:17px}
+.data-download-details h4,.data-manual-files h4{font-size:15px;font-weight:700;margin:0}
+.data-manual-files{display:grid;gap:10px;padding:15px 0;border-bottom:1px solid #dce5e5;margin-bottom:18px}
+.data-manual-files p{font-size:13px;line-height:1.5;color:#647981;margin:0}
+.data-collection-availability>.data-manual-files+.data-collection-attention{border-top:0}
+html[data-theme='dark'] .data-download-details,
+html[data-theme='dark'] .data-manual-files{border-color:#42565d}
+html[data-theme='dark'] .data-manual-files p{color:#afc0c4}
