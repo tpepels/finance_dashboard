@@ -1099,7 +1099,7 @@ html[data-theme="dark"] .diagnostics-warnings {color:#e5b575;}
 /* Original-data upload lives inside the existing Source data workspace. */
 .original-uploader { margin: 0 0 25px; padding: 18px; border: 1px solid #71818d55;
   border-radius: 8px; background: rgba(125,140,150,.035); }
-.original-uploader h3 { margin: 0 0 6px; font-size: 18px; }
+.original-uploader h4 { margin: 0 0 6px; font-size: 18px; }
 .original-uploader header p { max-width: 75ch; line-height: 1.6; }
 .original-file-picker { display: inline-flex; flex-direction: column; gap: 9px;
   border: 1px dashed #7f9b9d; border-radius: 7px; padding: 12px 16px; margin: 12px 0;
@@ -1156,7 +1156,7 @@ html[data-theme="dark"] .diagnostics-warnings {color:#e5b575;}
 .manual-source-note { font-size: 12px; opacity: .8; }
 .manual-source-entry .original-uploader { margin: 12px 0 0; padding: 12px;
   border-radius: 6px; }
-.manual-source-entry .original-uploader h3 { font-size: 15px; }
+.manual-source-entry .original-uploader h4 { font-size: 15px; }
 .workspace-sources > .research-source-advanced > summary { cursor: pointer; }
 @media(max-width:650px) {
   .manual-source-panel { margin: 12px 0; padding: 10px 0; }
