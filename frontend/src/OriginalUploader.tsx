@@ -223,12 +223,12 @@ export default function OriginalUploader() {
       onClick={() => { void reassess(); }}>
       Reassess previously imported OECD originals
     </button>
-    {inventory.files.length > 0 && <details className="original-staged-files">
-      <summary>Uploaded originals ({inventory.files.length})</summary>
+    {inventory.files.length > 0 && <div className="original-staged-files">
+      <h4>Uploaded originals ({inventory.files.length})</h4>
       <ul>{inventory.files.map(file => <li key={file.filename}>
         <span>{file.filename}</span><small>{size(file.bytes)}</small>
       </li>)}</ul>
-    </details>}
+    </div>}
     <p className="original-import-note">2025 regular matrices receive the pinned original
       accounting audit. Extended and 2018/2021/2023 originals are checked against their own
       native dimensions and annual source flows. Where the publisher supplies no independent
