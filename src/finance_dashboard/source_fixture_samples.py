@@ -119,13 +119,20 @@ def _sample_wid(root: Path, area: str, requested: list[str]) -> dict:
             meta_fields,meta_rows=[],[]
             with metadata.open("r",encoding="utf-8-sig",newline="") as handle:
                 reader=csv.DictReader(handle,delimiter=";")
-                meta_fields=reader.fieldnames
-                if not meta_fields or not {"country","variable","age","pop","unit","source"} <= set(meta_fields):
+                original_fields=reader.fieldnames
+                if not original_fields or not {"country","variable","age","pop","unit","source"} <= set(original_fields):
                     raise SampleUnavailable("source_csv_schema_invalid")
+                # Preserve literal values of the identity, method and unit
+                # cells used by ingestion. Unrelated multi-paragraph
+                # descriptions would make diagnostic fixtures unnecessarily
+                # large without changing parser expectations.
+                required_meta=("country","variable","age","pop","shortname",
+                               "shorttype","shortpop","shortage","unit","source","method")
+                meta_fields=[field for field in required_meta if field in original_fields]
                 selected_vars={key[0] for key in expected}
                 for row in reader:
                     if row.get("country")==area and row.get("variable") in selected_vars:
-                        meta_rows.append(row)
+                        meta_rows.append({field:row.get(field,"") for field in meta_fields})
             data_rows=[row for key in sorted(rows) for row in rows[key]]
             if not data_rows:
                 raise SampleUnavailable("source_has_no_requested_rows")
@@ -140,7 +147,7 @@ def _sample_wid(root: Path, area: str, requested: list[str]) -> dict:
                 "data_rows":data_rows,"metadata_rows":meta_rows,
                 "selected_keys":[{"variable":v,"percentile":p,"rows":len(rows.get((v,p),[]))}
                                  for v,p in sorted(expected)],
-                "sample_policy":"first and last 3 original rows of each registered variable/percentile",
+                "sample_policy":"first and last 3 original data rows plus exact metadata identity/method columns",
             }
             if len(json.dumps(result,ensure_ascii=False).encode("utf-8"))>MAX_OUTPUT_BYTES:
                 raise SampleUnavailable("sample_size_limit")
