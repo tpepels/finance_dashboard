@@ -79,3 +79,69 @@ html[data-theme='dark'] .data-progress{background:#40575e}
   .data-collection td,.data-collection th{padding:10px 8px;font-size:12px}
   .data-collection td:nth-child(2){white-space:normal}
 }
+
+/* Unified operations page: status and next action first, diagnostics last. */
+.data-overview{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(270px,1fr);
+  gap:18px;align-items:stretch}
+.data-overview-summary{border:1px solid #d8e2e2;border-radius:7px;padding:22px;
+  background:#f7faf9;display:flex;flex-direction:column;align-items:flex-start;gap:9px}
+.data-overview-summary h3{margin:2px 0 0;font-size:20px;line-height:1.35;letter-spacing:-.025em}
+.data-overview-summary p{margin:0;max-width:78ch;font-size:13px;line-height:1.55;color:#536a72}
+.data-overview-summary .data-overview-next{margin-top:4px}
+.data-overview-summary small{margin-top:auto;padding-top:8px;font-size:11px;line-height:1.5;color:#687d84}
+.data-overview-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;align-content:stretch}
+.data-overview-metrics>div{border:1px solid #d8e2e2;border-radius:7px;padding:17px 16px;
+  display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;background:#fff}
+.data-overview-metrics>div:first-child{grid-column:1/-1}
+.data-overview-metrics strong{font-size:24px;letter-spacing:-.035em;line-height:1.15;
+  font-variant-numeric:tabular-nums}
+.data-overview-metrics span{font-size:12px;color:#647980;line-height:1.4}
+.data-collection-run>h3{margin:0;font-size:18px;letter-spacing:-.02em}
+.data-research-quality .limitation-audit{display:grid;gap:12px;min-width:0}
+.data-research-quality .limitation-audit h4{font-size:15px;margin:0}
+.data-research-quality .limitation-audit p{margin:0;line-height:1.55;font-size:13px}
+.data-research-quality .limitation-audit button{justify-self:start;padding:9px 13px;
+  border:1px solid #b7c9cd;border-radius:5px;background:transparent;color:inherit;cursor:pointer}
+.data-research-quality .limitation-audit select{margin-left:8px;padding:7px;
+  border-radius:5px;max-width:min(100%,330px)}
+.data-research-quality .limitation-audit table{min-width:620px}
+.data-investigation{display:grid;gap:17px}
+.data-investigation>h3{margin-bottom:0}
+.data-investigation>p{margin:0}
+.data-tools-body{display:grid;gap:18px;border-top:1px solid #d9e2e1;padding-top:20px}
+.data-tools-body>section,.data-tools-body>.original-uploader{margin:0;min-width:0}
+.data-tools-body h4{font-size:15px;margin:0 0 8px}
+.data-technical-console{display:grid;justify-items:start;gap:10px}
+.data-technical-console p{margin:0;color:#647980;font-size:12px;line-height:1.55}
+.data-technical-console button{padding:9px 13px;border:1px solid #b7c9cd;border-radius:5px;
+  background:transparent;color:inherit;font-weight:600;cursor:pointer}
+.data-technical-console pre{width:100%;box-sizing:border-box;padding:14px;
+  border:1px solid #d9e2e1;border-radius:6px;background:#f4f7f7;color:#253e47}
+.data-technical-maintenance{display:grid;gap:7px}
+.data-technical-maintenance>.data-sync{padding:0}
+.data-technical-maintenance .data-sync-hint:first-child{margin-top:0}
+.data-technical-maintenance .data-sync-results{max-height:260px;overflow:auto}
+.data-tools-body .original-uploader{border-radius:7px;background:transparent}
+.data-tools-body .original-uploader header p{margin:0}
+.data-tools-body .original-staged-files ul{max-height:210px;overflow:auto}
+html[data-theme='dark'] .data-overview-summary,
+html[data-theme='dark'] .data-overview-metrics>div{border-color:#43575e;background:#203238}
+html[data-theme='dark'] .data-overview-summary p,
+html[data-theme='dark'] .data-overview-summary small,
+html[data-theme='dark'] .data-overview-metrics span,
+html[data-theme='dark'] .data-technical-console p{color:#afc0c4}
+html[data-theme='dark'] .data-tools-body{border-color:#42565d}
+html[data-theme='dark'] .data-technical-console pre{background:#16282d;color:#d6e2e4;
+  border-color:#43575e}
+@media(max-width:940px){
+  .data-overview{grid-template-columns:1fr}
+  .data-overview-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .data-overview-metrics>div:first-child{grid-column:auto}
+}
+@media(max-width:590px){
+  .data-overview-metrics{grid-template-columns:1fr}
+  .data-overview-metrics strong{font-size:21px}
+  .data-overview-summary{padding:16px}
+  .data-overview-metrics>div{padding:12px 14px}
+}
