@@ -194,6 +194,76 @@ def _sample_pink_sheet(root: Path, sid: str) -> dict:
     raise SampleUnavailable("verified_pink_sheet_original_unavailable")
 
 
+def _sample_bls_oews(root: Path, sid: str) -> dict:
+    """Reproduce one national total from the exact archived BLS ZIP release.
+
+    The archive may also contain an index HTML original; it is never treated
+    as a wage response. Denied/HTML publisher responses are excluded.
+    """
+    from zipfile import ZipFile, BadZipFile
+    from python_calamine import CalamineWorkbook
+    from .bls_oews import INDEX_URL, parse_national_rows
+    source_pattern=re.compile(
+        r"https://www\.bls\.gov/oes/special-requests/oesm(\d{2})nat\.zip")
+    for directory in ("responses","rejected-responses"):
+        for folder,manifest in _latest_archives(root / directory / sid):
+            if manifest.get("series_id")!=sid or manifest.get("provider")!="BLS_OEWS":
+                continue
+            samples=[]
+            try:
+                for record in manifest.get("sources",[]):
+                    match=source_pattern.fullmatch(str(record.get("url","")))
+                    if not match:
+                        continue
+                    year=2000+int(match.group(1))
+                    filename=record.get("file")
+                    if not re.fullmatch(r"response-\d+\.bin",str(filename)):
+                        continue
+                    path=_archive_file(folder,record,filename,8_000_000)
+                    raw=path.read_bytes()
+                    if not raw.startswith(b"PK\x03\x04"):
+                        continue
+                    with ZipFile(io.BytesIO(raw)) as archive:
+                        members=[x for x in archive.infolist() if not x.is_dir()]
+                        expected=f"national_M{year}_dl.xlsx"
+                        if len(members)!=1 or members[0].filename not in {
+                                expected,f"oesm{year % 100:02d}nat/{expected}"}:
+                            continue
+                        if members[0].file_size>12_000_000:
+                            continue
+                        book_raw=archive.read(members[0])
+                    if not book_raw.startswith(b"PK\x03\x04"):
+                        continue
+                    book=CalamineWorkbook.from_filelike(io.BytesIO(book_raw))
+                    for index in range(len(book.sheet_names)):
+                        rows=book.get_sheet_by_index(index).to_python()
+                        headers=[(i,[str(c).strip().upper().replace(" ","_")
+                                     for c in row]) for i,row in enumerate(rows[:25])
+                                 if {"OCC_CODE","OCC_TITLE","TOT_EMP","H_MEAN","H_MEDIAN"}
+                                    <= {str(c).strip().upper().replace(" ","_") for c in row}]
+                        if len(headers)!=1:
+                            continue
+                        offset,names=headers[0]
+                        pos=names.index("OCC_CODE")
+                        totals=[r for r in rows[offset+1:]
+                                if len(r)>pos and str(r[pos]).strip()=="00-0000"]
+                        if len(totals)!=1:
+                            continue
+                        verify=parse_national_rows([rows[offset],*totals],year)
+                        samples.append({"reference_year":year,"workbook":expected,
+                            "original_sha256":record["sha256"],"source_url":record["url"],
+                            "header":rows[offset],"national_total_row":totals[0],
+                            "expected_values":{key:str(value) for key,value in verify.items()}})
+                        break
+            except (BadZipFile,ValueError,TypeError,KeyError,OSError,SampleUnavailable):
+                continue
+            if samples:
+                return {"kind":"bls_oews_national","series_id":sid,
+                        "samples":sorted(samples,key=lambda row:row["reference_year"])[-2:],
+                        "sample_policy":"exact source national total and column header for last 2 available years"}
+    raise SampleUnavailable("verified_bls_national_archive_unavailable")
+
+
 def collect_failure_samples(evidence_root: Path, coverage_items: list[dict]) -> dict:
     """Bounded, safe excerpts from actual archived failed/pending source families.
 
@@ -214,6 +284,18 @@ def collect_failure_samples(evidence_root: Path, coverage_items: list[dict]) -> 
         except SampleUnavailable as exc:
             unavailable.append({"area":area,"source":"WID.world",
                                 "affected_series":len(series),"reason":str(exc)})
+    bls_ids=sorted(row["id"] for row in coverage_items
+                   if row.get("provider")=="BLS_OEWS"
+                   and row.get("state") not in ("available","source_checked_no_newer_data")
+                   and row.get("id","").startswith("labour.us.oews_all_"))
+    if bls_ids:
+        # Both measures share the same publisher release but may have
+        # independently captured evidence records.
+        for sid in bls_ids:
+            try:
+                samples.append(_sample_bls_oews(root,sid))
+            except SampleUnavailable as exc:
+                unavailable.append({"series_id":sid,"source":"BLS OEWS","reason":str(exc)})
     copper="prices.commodity.copper_usd"
     if any(row.get("id")==copper and row.get("state")!="available"
            for row in coverage_items):
