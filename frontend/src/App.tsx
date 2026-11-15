@@ -223,7 +223,6 @@ export default function App() {
         <div className="workspace-context">
           {selected.question ? <div className="workspace-question-path"><a href={`#${topic!.id}`}>← {topic!.label}</a><span className="research-id">{selected.question}</span></div>
             : <p>{topic!.questions.length} research questions</p>}
-          <button type="button" className="workspace-reload" onClick={() => { invalidateAnalysisReads(); setDataVersion(value => value + 1); }}>Reload research</button>
         </div>
         {selected.question&&<Suspense fallback={null}>
           <QuestionConnections key={selected.question} questionId={selected.question} dataVersion={dataVersion}/>
