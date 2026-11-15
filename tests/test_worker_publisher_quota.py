@@ -32,6 +32,13 @@ class PublisherQuotaTests(unittest.TestCase):
             self.assertIn("piketty.us.real_pretax_average.all", chosen)
             self.assertIn("labour.us.cps_weekly_p50_nominal", chosen)
             self.assertEqual(len(chosen),len(set(chosen)))
+            from finance_dashboard.catalog import load_documents
+            providers={entry["id"]:entry["provider"]
+                       for entry in load_documents()[0]["series"]}
+            first_publishers={providers[sid] for sid in chosen[:20]}
+            # One slow publisher must not keep unrelated missing histories
+            # behind dozens of its own still-unattempted source IDs.
+            self.assertGreaterEqual(len(first_publishers),8)
             engine.dispose()
 
     def test_completed_pinned_history_does_not_crash_scheduled_plan(self):
