@@ -192,6 +192,22 @@ class ArchivedOriginalSamplingTests(unittest.TestCase):
             self.assertEqual(blocked["unavailable"][0]["reason"],
                              "verified_bls_national_archive_unavailable")
 
+    def test_one_broken_sampler_does_not_prevent_other_source_fixture_exports(self):
+        with TemporaryDirectory() as temp:
+            root=Path(temp)
+            with patch("finance_dashboard.source_fixture_samples._sample_wid",
+                       side_effect=RuntimeError("test malformed WID archive")), \
+                 patch("finance_dashboard.source_fixture_samples._sample_pink_sheet",
+                       return_value={"kind":"world_bank_pink_sheet","rows":[["Copper"]]}):
+                result=collect_failure_samples(root,[
+                    {"id":"inequality.us.pretax_income.top1","state":"collection_failed"},
+                    {"id":"prices.commodity.copper_usd","state":"collection_failed"},
+                ])
+            self.assertEqual(len(result["samples"]),1)
+            self.assertEqual(result["samples"][0]["kind"],"world_bank_pink_sheet")
+            self.assertEqual(result["unavailable"][0]["reason"],"source_sampling_failed")
+            self.assertNotIn("malformed WID",json.dumps(result))
+
     def test_optional_wid_monetary_measure_with_source_but_no_method_can_be_sampled(self):
         # Synthetic extension is explicit; it exercises the *same* parser
         # against the schema copied from the real WID captured excerpt.
