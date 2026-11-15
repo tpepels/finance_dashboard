@@ -112,9 +112,12 @@ def parse_wid_bundle(data_text: str, metadata_text: str, *, area: str) -> WidBun
         raise ProviderError("Unregistered WID reference area")
     expected_variables = {key[0] for key in keys}
     metadata = {}
+    # Publisher methodology notes are optional for both historical shares
+    # and the supplemental Piketty source measures. Require the actual
+    # original source citation and every economic/age/population identity.
     reader = _reader(metadata_text, {"country", "variable", "age", "pop", "shortname",
                                     "shorttype", "shortpop", "shortage", "unit",
-                                    "source", "method"})
+                                    "source"})
     try:
         for row in reader:
             if row.get("country") != area:
@@ -129,8 +132,7 @@ def parse_wid_bundle(data_text: str, metadata_text: str, *, area: str) -> WidBun
                     or row.get("shortpop") != "equal-split adults"
                     or row.get("shortage") != "Adults"
                     or (row.get("shortname") or "").strip() != _CONCEPTS[variable[:6]]
-                    or not (row.get("source") or "").strip()
-                    or not (row.get("method") or "").strip()):
+                    or not (row.get("source") or "").strip()):
                 raise ProviderError("WID concept, population, unit or source metadata mismatch")
             metadata[variable] = dict(row)
         if set(metadata) != expected_variables:
