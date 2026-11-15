@@ -53,6 +53,20 @@ for _label, _area in _PIKETTY_AREAS:
                                 ("top1", "p99p100")):
         WID_PIKETTY_SERIES[f"piketty.{_label}.real_pretax_average.{_group}"] = (
             _area, "aptinc" + _sfx, _percentile)
+    # Exact WID income-average percentile groups. These source codes are
+    # separately addressable from the same hash-verified area CSV/metadata pair.
+    # Country/year omissions remain absent; the UI withholds incidence curves
+    # until both endpoint years contain matching original observations.
+    for _group, _percentile in (
+        ("p00_10", "p0p10"), ("p10_20", "p10p20"),
+        ("p20_30", "p20p30"), ("p30_40", "p30p40"),
+        ("p40_50", "p40p50"), ("p50_60", "p50p60"),
+        ("p60_70", "p60p70"), ("p70_80", "p70p80"),
+        ("p80_90", "p80p90"), ("p90_99", "p90p99"),
+        ("p99_99_9", "p99p99.9"), ("p99_9_100", "p99.9p100"),
+    ):
+        WID_PIKETTY_SERIES[f"piketty.{_label}.real_pretax_average.{_group}"] = (
+            _area, "aptinc" + _sfx, _percentile)
     for _role, _code in (("national", "wwealn999i"),
                          ("private", "wwealp999i"),
                          ("public", "wwealg999i")):
