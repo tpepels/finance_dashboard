@@ -152,15 +152,13 @@ function Inequality({ bundle, theme, recessions }: { bundle: Bundle<L07Values>; 
     <p className="decision-caption">Quarterly shares of household net wealth for the richest 10% and bottom 50%.
       ECB household estimates have a different population and method from WID per-adult wealth shares;
       comparisons are displayed separately and never joined into the same historical series.</p>
-    <table className="research-native-table" aria-label="ECB household wealth distribution by area">
-      <thead><tr><th>Area</th><th>Latest quarter</th><th>Top 10%</th><th>Bottom 50%</th></tr></thead>
-      <tbody>{Object.entries(data.ecb_dwa??{}).map(([code,record])=><tr key={code}>
-        <th scope="row">{entityName(code.toUpperCase())}</th>
-        <td>{record.latest?.quarter??'Awaiting original data'}</td>
-        <td>{record.latest?record.latest.top10_pct.toFixed(1)+'%':'—'}</td>
-        <td>{record.latest?record.latest.bottom50_pct.toFixed(1)+'%':'—'}</td>
-      </tr>)}</tbody>
-    </table>
+    <p className="decision-caption">
+      {Object.entries(data.ecb_dwa??{}).map(([code,r])=>
+        entityName(code.toUpperCase())+': '+(r.latest?
+        `top 10% ${r.latest.top10_pct.toFixed(1)}%, bottom 50% ${r.latest.bottom50_pct.toFixed(1)}% (${r.latest.quarter})`:
+        'awaiting verified source data')).join(' · ')}
+    </p>
+
     <div className="decision-multiples">
       {Object.entries(data.ecb_dwa??{}).filter(([,r])=>r.top10.length||r.bottom50.length)
         .map(([code,r])=><TimePanel key={code}
