@@ -127,6 +127,56 @@ describe('unified Data and Diagnostics page',()=>{
     expect(calls.some(item=>item.url==='/api/data/overview')).toBe(false);
   });
 
+  it('shows the 0.2.13 diagnostic state without inventing a manual task or a running scheduler',async()=>{
+    run.running=false;run.state='needs_attention';
+    run.counts={total:9,finished:9,completed:1,skipped:8,active:0,failed:0,manual_required:0};
+    run.repair={status:'partial',completed:132,total:132,current_item:null,
+      error_code:'source_gaps_remaining',
+      details:{issues_before:132,issues_after:49,resolved_issues:83,failed_sources:32}};
+    Object.assign(run.repair,{finished_at:'2026-11-15T13:50:39Z'});
+    health.snapshot.sources={total:552,with_data:520,needs_attention:49};
+    health.snapshot.attention_items=[
+      ...Array.from({length:29},(_,i)=>({
+        id:'piketty.'+i,name:'WID Piketty '+i,provider:'WID',
+        state:'collection_failed',last_failure_code:'source_invalid',
+        latest_source_date:null,published_through:null,
+        next_action:'Investigate collector',research_questions:['L07'],
+      })),
+      {id:'wages',name:'US wages',provider:'BLS_OEWS',state:'collection_failed',
+        last_failure_code:'provider_http_403',latest_source_date:null,published_through:null,
+        next_action:'Investigate access',research_questions:['L08']},
+      {id:'copper',name:'Copper',provider:'WORLD_BANK_PINK_SHEET',state:'collection_failed',
+        last_failure_code:'source_invalid',latest_source_date:null,published_through:null,
+        next_action:'Investigate format',research_questions:[]},
+      {id:'median',name:'Median wage',provider:'BLS_OEWS',state:'collection_deferred',
+        last_failure_code:'source_policy_deferred',latest_source_date:null,published_through:null,
+        next_action:'Wait for source',research_questions:[]},
+      ...Array.from({length:17},(_,i)=>({
+        id:'old.'+i,name:'Older series '+i,provider:'WID',state:'stale',
+        latest_source_date:'2023-01-01',published_through:null,
+        next_action:'Check publisher',research_questions:[],
+      })),
+    ];
+    Object.assign(health.automation,{
+      refresh_running:false,refresh_state:'waiting',
+      last_refresh_finished_at:null,
+      next_refresh_at:'2026-11-15T22:02:42Z',
+    });
+    health.scientific_assessment.running=true;
+    render(<DataHub/>);
+    expect(await screen.findByRole('heading',{name:'Updating research results'})).toBeTruthy();
+    expect(screen.getByText('Technical follow-up needed')).toBeTruthy();
+    expect(screen.getByText(/31 data series have failed checks/)).toBeTruthy();
+    expect(screen.getByText(/No files need uploading/)).toBeTruthy();
+    expect(screen.getByText(/Next publisher check:/)).toBeTruthy();
+    expect(screen.getByText(/No completed automatic run has been recorded/)).toBeTruthy();
+    expect(screen.getByText('Files you need to upload').previousElementSibling?.textContent).toBe('0');
+    expect(screen.getByText('Failed data checks').previousElementSibling?.textContent).toBe('31');
+    expect(screen.getByRole('link',{name:'See troubleshooting details'}).getAttribute('href')).toBe('#diagnostics');
+    expect(screen.queryByRole('link',{name:'See files to download'})).toBeNull();
+    expect(screen.queryByText('source_invalid')).toBeNull();
+  });
+
   it('shows 36 never-ingested sources and the scheduled waiting pipeline',async()=>{
     run.running=false;
     run.state='complete';
