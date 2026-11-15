@@ -63,6 +63,40 @@ class RefreshArchitectureTests(unittest.TestCase):
             self.assertEqual(session.query(MarketPriceVersion).count(), 0)
             self.assertEqual(session.query(FxRateVersion).count(), 0)
 
+    def test_market_and_fx_clients_setup_fail_independently(self):
+        from finance_dashboard.worker import refresh_market_all
+        class GoodClient:
+            def close(self): pass
+        for fail in ("market","fx"):
+            with self.subTest(fail=fail):
+                attempts=[]
+                class StubService:
+                    def __init__(self,engine,yahoo,ecb): pass
+                    def refresh_fx(self,currency,full=False):
+                        attempts.append("fx:"+currency)
+                        return {"received":1}
+                    def refresh_instrument(self,sid,full=False):
+                        attempts.append("markets:"+sid)
+                        return {"received":1}
+                def failing():
+                    raise RuntimeError("secret URL should never be copied")
+                with (patch("finance_dashboard.market.YahooMarketClient",
+                            side_effect=failing if fail=="market" else lambda:GoodClient()),
+                      patch("finance_dashboard.market.EcbFxClient",
+                            side_effect=failing if fail=="fx" else lambda:GoodClient()),
+                      patch("finance_dashboard.market_service.MarketIngestionService",
+                            StubService),
+                      patch("finance_dashboard.worker.record_event") as events):
+                    failures=refresh_market_all(
+                        self.engine,instrument_ids={"vt"},currencies={"USD"})
+                self.assertEqual(failures,1)
+                self.assertEqual(attempts,["fx:USD","markets:vt"])
+                self.assertTrue(any(call.kwargs.get("action")=="market_source_setup"
+                                    and call.kwargs.get("stage")==
+                                        ("market_client_setup" if fail=="market"
+                                         else "fx_client_setup")
+                                    for call in events.call_args_list))
+
     def test_one_execution_path_for_macro_market_fx_and_policy_deferral(self):
         progress, executed, logged = [], [], []
         def successful(label):
