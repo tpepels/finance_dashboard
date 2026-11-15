@@ -164,7 +164,11 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
       detail:'The automatic service has not started. You can start a check using the main button.',
       kind:'start',link:'#data-management'};
     tone='attention';
-  }else if(failedSeries>0&&!session?.running&&!automaticRunning){
+  }else if(session?.running||automaticRunning){
+    yourAction={title:'No action while the check runs',
+      detail:'The app is working through the sources. Review the results when the check finishes.',
+      kind:'none'};
+  }else if(failedSeries>0){
     yourAction={title:'Technical follow-up needed',
       detail:`No files need uploading. ${failedSeries} data ${failedSeries===1?'series has':'series have'} failed checks. See the troubleshooting report for the details needed to investigate.`,
       kind:'technical',link:'#diagnostics'};
