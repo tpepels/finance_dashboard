@@ -277,21 +277,23 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
      <p className="decision-note" role="status"><strong>Inheritance and bequests: withheld.</strong>
        {' '}{area.inheritance.reason}</p>
    </section>
-   <details className="decision-limits-fold">
-     <summary>Original source definitions, observation years, and scientific limitations</summary>
+   <section className="decision-hero" aria-label="Piketty source definitions and limitations">
+     <h4 className="decision-subhead">Original sources, dates, and limitations</h4>
      <p className="decision-caption">WID source variable identifiers, latest observation
        years and independent source acceptance are shown below. The scientific
        evaluation timestamp is not the date the publisher first released an observation.</p>
+     <div className="piketty-source-table" tabIndex={0} aria-label="Scroll original source lineage">
      <table className="research-native-table" aria-label="Piketty original source lineage">
        <thead><tr><th>Original</th><th>Source code</th><th>Latest accepted observation</th></tr></thead>
        <tbody>{lineage.map(row=><tr key={row.role}>
          <th scope="row">{row.name??row.series_id}</th><td>{row.source_key??'—'}</td>
          <td>{row.last??'—'}</td></tr>)}</tbody>
      </table>
+     </div>
      {lineage.length===0&&<p className="decision-note">No supplemental originals have completed scientific acceptance.</p>}
      <ul className="decision-limits">{piketty.limitations.map(v=><li key={v}>{v}</li>)}</ul>
      <a href={piketty.methodology_url} target="_blank" rel="noreferrer">
        WID source variable dictionary and definitions</a>
-   </details>
+   </section>
  </div>;
 }
