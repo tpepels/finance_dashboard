@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import './PikettyResearchPanel.css';
 import {timeChart,breakGaps,type Recession,type Theme,type TimeSeries,type Point} from './chartKit';
 import TimePanel from './TimePanel';
@@ -37,6 +37,12 @@ export type PikettyValues={method_source:string;methodology_url:string;
  reconciliation:{state:string;reason:string};basis:string;url:string};
  areas:Area[];finding_order:string[];limitations:string[]};
 type ResearchBundle=Bundle<{piketty?:PikettyValues}>;
+type WidQuality={
+ quality_interpretation:string;validation_scope:string;
+ areas:Record<string,{state:string;retrieved_at?:string;manifest_sha256?:string;
+ source_sha256?:string;series:Record<string,{state:string;quality_code:string|null;
+ latest_original_period:string|null}>}>;
+};
 const NAMES:Record<string,string>={US:'United States',FR:'France',PT:'Portugal',
  CN:'China',IN:'India',WORLD:'Published world'};
 const GROUP:Record<string,string>={bottom50:'Bottom 50%',middle40:'Middle 40%',
@@ -71,8 +77,24 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
  piketty:PikettyValues;bundle:ResearchBundle;theme:Theme;recessions:Recession[];
 }){
  const [selected,setSelected]=useState('WORLD');
+ const [quality,setQuality]=useState<WidQuality|null>(null);
+ useEffect(()=>{
+  let cancelled=false;
+  const update=async()=>{
+   try{
+    const response=await fetch('/api/source-evidence/wid-quality',{cache:'no-store'});
+    if(!response.ok)return;
+    const original=await response.json() as WidQuality;
+    if(!cancelled)setQuality(original);
+   }catch{/* The scientific result remains usable without the optional archive summary. */}
+  };
+  setQuality(null);
+  void update();
+  return ()=>{cancelled=true;};
+ },[bundle.phase2.evaluated_at]);
  const area=piketty.areas.find(row=>row.area===selected)??piketty.areas[0];
  const inputs=bundle.inputs??[];
+ const archived=quality?.areas[area?.area==='WORLD'?'WO':area?.area];
  const lineage=useMemo(()=>inputs.filter(row=>row.role.endsWith(':'+area.area)||
    row.role.includes(':'+area.area+':')).filter(row=>row.observations>0),
    [inputs,area.area]);
@@ -280,15 +302,32 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
    </section>
    <section className="decision-hero" aria-label="Piketty source definitions and limitations">
      <h4 className="decision-subhead">Original sources, dates, and limitations</h4>
+     <p className="decision-caption"><strong>Original publisher archive:</strong>{' '}
+       {archived?.state==='archived_metadata'
+        ?<>Collected {archived.retrieved_at?.slice(0,10)}; WID source quality codes
+           are shown without reinterpretation. This collection date is not
+           the publisher's first publication date.</>
+        :<>A quality-code archive is not available for this geography.
+           No quality grade is inferred.</>}
+     </p>
      <p className="decision-caption">WID source variable identifiers, latest observation
        years and independent source acceptance are shown below. The scientific
        evaluation timestamp is not the date the publisher first released an observation.</p>
      <div className="piketty-source-table" tabIndex={0} aria-label="Scroll original source lineage">
      <table className="research-native-table" aria-label="Piketty original source lineage">
-       <thead><tr><th>Original</th><th>Source code</th><th>Latest accepted observation</th></tr></thead>
-       <tbody>{lineage.map(row=><tr key={row.role}>
+       <thead><tr><th>Original</th><th>Source code</th><th>Latest saved observation</th>
+         <th>Scientific use</th><th>Publisher quality code</th></tr></thead>
+       <tbody>{lineage.map(row=>{
+        const code=archived?.series?.[row.series_id];
+        return <tr key={row.role}>
          <th scope="row">{row.name??row.series_id}</th><td>{row.source_key??'—'}</td>
-         <td>{row.last??'—'}</td></tr>)}</tbody>
+         <td>{row.last??'—'}</td>
+         <td>{row.accepted_under?'Accepted under a recorded input role':'Not independently accepted'}</td>
+         <td>{code?.quality_code
+           ?<>{code.quality_code} <small>({code.latest_original_period?.slice(0,4)})</small></>
+           :'Not reported'}</td>
+        </tr>;
+       })}</tbody>
      </table>
      </div>
      {lineage.length===0&&<p className="decision-note">No supplemental originals have completed scientific acceptance.</p>}
