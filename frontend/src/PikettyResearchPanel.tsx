@@ -5,10 +5,17 @@ import {spanOf,type Bundle} from './analysisShell';
 
 type Line=[string,number][];
 type Chapter={status:string;note?:string;notes?:string[]};
-type Shares=Chapter&{concepts:Record<string,{status:string;percentage_shares:Record<string,Line>;
+type Shares=Chapter&{compared_years:number[];latest_comparable_year:number|null;
+ concepts:Record<string,{status:string;percentage_shares:Record<string,Line>;
+ top_to_bottom_ratios?:Record<string,[string,number|null][]>;
  observed_matched_years:number;latest_year:number|null;derived_middle40:boolean;
  excluded_inconsistent_years:number[]}>};
-type Growth=Chapter&{real_per_adult_index:Record<string,Line>;
+type GrowthIncidence={status:string;reference_year:number|null;comparison_year:number|null;
+ matched_years:number;missing_groups:string[];reason:string;
+ rows:{group:string;label:string;population_weight:number;reference_average:number;
+ latest_average:number;cumulative_real_growth_pct:number;ratio_of_averages:number}[]};
+type Growth=Chapter&{distribution_incidence:GrowthIncidence;
+ real_per_adult_index:Record<string,Line>;
  change_contributions:{year:number;real_income_per_adult_change_pct:number|null;
  contribution_to_change_pct:Record<string,number>;contribution_sum_pct:number}[];
  accepted_complete_years:number[];rejected_source_identity_years:number[]};
@@ -24,7 +31,9 @@ type Area={area:string;concentration:Shares;growth_capture:Growth;wealth_income:
  capital_vs_growth:Capital;composition:Composition;inheritance:Inheritance};
 export type PikettyValues={method_source:string;methodology_url:string;
  report_reference:{title:string;reference_year:number;world_income_top10_pct:number;
- world_wealth_top10_pct:number;basis:string;url:string};
+ world_wealth_top10_pct:number;world_income_bottom50_pct:number;
+ world_wealth_bottom50_pct:number;
+ reconciliation:{state:string;reason:string};basis:string;url:string};
  areas:Area[];finding_order:string[];limitations:string[]};
 type ResearchBundle=Bundle<{piketty?:PikettyValues}>;
 const NAMES:Record<string,string>={US:'United States',FR:'France',PT:'Portugal',
@@ -69,12 +78,18 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
  if(!area)return null;
  const income=area.concentration.concepts.income;
  const wealth=area.concentration.concepts.wealth;
- const incomeLatest=income.latest_year;
- const wealthLatest=wealth.latest_year;
+ const comparedYear=area.concentration.latest_comparable_year;
  const values=(block:typeof income, group:string):number|null=>{
    const line=block.percentage_shares[group]??[];
-   return line.length?line[line.length-1][1]:null;
+   return line.find(([year])=>Number(year)===comparedYear)?.[1]??null;
  };
+ const multiples=(block:typeof income,kind:string):string=>{
+   const point=(block.top_to_bottom_ratios?.[kind]??[])
+     .find(([year])=>Number(year)===comparedYear);
+   return point&&point[1]!==null?point[1].toFixed(2)+'×':'Withheld';
+ };
+ const incidence=area.growth_capture.distribution_incidence;
+ const maxGrowth=Math.max(1,...(incidence?.rows??[]).map(row=>Math.abs(row.cumulative_real_growth_pct)));
  const latestIncomeCapture=area.growth_capture.change_contributions.slice(-6).reverse();
  const capital=area.capital_vs_growth;
  const r=Object.fromEntries(capital.net_capital_income_to_mean_national_wealth_pct??[]);
@@ -91,8 +106,10 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
      <p className="decision-caption">For the world in {piketty.report_reference.reference_year},
        the report attributes {fmt(piketty.report_reference.world_income_top10_pct)} of
        income and {fmt(piketty.report_reference.world_wealth_top10_pct)} of personal
-       wealth to the top 10%. These are fixed report figures, not automatically updated
-       source observations or a guaranteed match to the current WID database version.</p>
+       wealth to the top 10%; the bottom 50% hold
+       {' '}{fmt(piketty.report_reference.world_income_bottom50_pct)} of income and
+       {' '}{fmt(piketty.report_reference.world_wealth_bottom50_pct)} of wealth.
+       These are fixed, dated report estimates. {piketty.report_reference.reconciliation.reason}</p>
      <a href={piketty.report_reference.url} target="_blank" rel="noreferrer">
        Published report and methodology</a>
    </div>
@@ -103,9 +120,11 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
        onClick={()=>setSelected(row.area)}>{NAMES[row.area]??row.area}</button>)}
    </div>
    <p className="decision-caption">Selected geography: <strong>{NAMES[area.area]??area.area}</strong>.
-     Scientific assessment evaluated {bundle.phase2.evaluated_at??'at an unknown time'};
-     this timestamp is not the publisher's release vintage. Individual source years and
-     identities are disclosed below.</p>
+     Research last assessed {bundle.phase2.evaluated_at??'at an unknown time'}.
+     This is the application assessment date, not the publisher release date.
+     {lineage.length>0&&<> {lineage.length} WID source entries have observations;
+       {' '}{lineage.filter(row=>row.accepted_under!==null).length} are included
+       under a recorded acceptance role.</>} Source revisions may change historical values.</p>
    <section className="decision-hero" aria-label="Piketty concentration">
      <h4 className="decision-subhead">1. Income and wealth concentration</h4>
      <Status block={area.concentration} label="Income/wealth concentration"/>
@@ -115,8 +134,9 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
        wealth at the bottom is possible.</p>
      <div style={{overflowX:'auto'}}>
        <table className="research-native-table" aria-label="Piketty income and wealth concentration">
-         <thead><tr><th>Ranked group</th><th>Income (%), {incomeLatest??'unavailable'}</th>
-           <th>Wealth (%), {wealthLatest??'unavailable'}</th></tr></thead>
+         <thead><tr><th>Ranked group</th>
+           <th>Income (%), {comparedYear??'no matched year'}</th>
+           <th>Wealth (%), {comparedYear??'no matched year'}</th></tr></thead>
          <tbody>{order.map(group=><tr key={group}><th scope="row">{GROUP[group]}</th>
            <td>{fmt(values(income,group))}</td><td>{fmt(values(wealth,group))}</td></tr>)}</tbody>
        </table>
