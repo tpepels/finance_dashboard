@@ -5253,6 +5253,192 @@
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
             "artifact_ids": []
+          },
+          {
+            "role": "piketty_growth_incidence_US",
+            "description": "Optional original WID pre-tax income average by 9 deciles and 3 top-tail groups in US. Only exactly matched original years produce a growth-incidence figure; missing percentiles remain missing.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.us.real_pretax_average.p00_10",
+              "piketty.us.real_pretax_average.p10_20",
+              "piketty.us.real_pretax_average.p20_30",
+              "piketty.us.real_pretax_average.p30_40",
+              "piketty.us.real_pretax_average.p40_50",
+              "piketty.us.real_pretax_average.p50_60",
+              "piketty.us.real_pretax_average.p60_70",
+              "piketty.us.real_pretax_average.p70_80",
+              "piketty.us.real_pretax_average.p80_90",
+              "piketty.us.real_pretax_average.p90_99",
+              "piketty.us.real_pretax_average.p99_99_9",
+              "piketty.us.real_pretax_average.p99_9_100"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "US"
+              ],
+              "population": "WID equal-split adults aged 20+, independently ranked per year",
+              "concept": "Source-defined annual real average pre-tax national income per adult by published percentile group"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_growth_incidence_FR",
+            "description": "Optional original WID pre-tax income average by 9 deciles and 3 top-tail groups in FR. Only exactly matched original years produce a growth-incidence figure; missing percentiles remain missing.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.fr.real_pretax_average.p00_10",
+              "piketty.fr.real_pretax_average.p10_20",
+              "piketty.fr.real_pretax_average.p20_30",
+              "piketty.fr.real_pretax_average.p30_40",
+              "piketty.fr.real_pretax_average.p40_50",
+              "piketty.fr.real_pretax_average.p50_60",
+              "piketty.fr.real_pretax_average.p60_70",
+              "piketty.fr.real_pretax_average.p70_80",
+              "piketty.fr.real_pretax_average.p80_90",
+              "piketty.fr.real_pretax_average.p90_99",
+              "piketty.fr.real_pretax_average.p99_99_9",
+              "piketty.fr.real_pretax_average.p99_9_100"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "FR"
+              ],
+              "population": "WID equal-split adults aged 20+, independently ranked per year",
+              "concept": "Source-defined annual real average pre-tax national income per adult by published percentile group"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_growth_incidence_PT",
+            "description": "Optional original WID pre-tax income average by 9 deciles and 3 top-tail groups in PT. Only exactly matched original years produce a growth-incidence figure; missing percentiles remain missing.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.pt.real_pretax_average.p00_10",
+              "piketty.pt.real_pretax_average.p10_20",
+              "piketty.pt.real_pretax_average.p20_30",
+              "piketty.pt.real_pretax_average.p30_40",
+              "piketty.pt.real_pretax_average.p40_50",
+              "piketty.pt.real_pretax_average.p50_60",
+              "piketty.pt.real_pretax_average.p60_70",
+              "piketty.pt.real_pretax_average.p70_80",
+              "piketty.pt.real_pretax_average.p80_90",
+              "piketty.pt.real_pretax_average.p90_99",
+              "piketty.pt.real_pretax_average.p99_99_9",
+              "piketty.pt.real_pretax_average.p99_9_100"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "PT"
+              ],
+              "population": "WID equal-split adults aged 20+, independently ranked per year",
+              "concept": "Source-defined annual real average pre-tax national income per adult by published percentile group"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_growth_incidence_CN",
+            "description": "Optional original WID pre-tax income average by 9 deciles and 3 top-tail groups in CN. Only exactly matched original years produce a growth-incidence figure; missing percentiles remain missing.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.cn.real_pretax_average.p00_10",
+              "piketty.cn.real_pretax_average.p10_20",
+              "piketty.cn.real_pretax_average.p20_30",
+              "piketty.cn.real_pretax_average.p30_40",
+              "piketty.cn.real_pretax_average.p40_50",
+              "piketty.cn.real_pretax_average.p50_60",
+              "piketty.cn.real_pretax_average.p60_70",
+              "piketty.cn.real_pretax_average.p70_80",
+              "piketty.cn.real_pretax_average.p80_90",
+              "piketty.cn.real_pretax_average.p90_99",
+              "piketty.cn.real_pretax_average.p99_99_9",
+              "piketty.cn.real_pretax_average.p99_9_100"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "CN"
+              ],
+              "population": "WID equal-split adults aged 20+, independently ranked per year",
+              "concept": "Source-defined annual real average pre-tax national income per adult by published percentile group"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_growth_incidence_IN",
+            "description": "Optional original WID pre-tax income average by 9 deciles and 3 top-tail groups in IN. Only exactly matched original years produce a growth-incidence figure; missing percentiles remain missing.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.in.real_pretax_average.p00_10",
+              "piketty.in.real_pretax_average.p10_20",
+              "piketty.in.real_pretax_average.p20_30",
+              "piketty.in.real_pretax_average.p30_40",
+              "piketty.in.real_pretax_average.p40_50",
+              "piketty.in.real_pretax_average.p50_60",
+              "piketty.in.real_pretax_average.p60_70",
+              "piketty.in.real_pretax_average.p70_80",
+              "piketty.in.real_pretax_average.p80_90",
+              "piketty.in.real_pretax_average.p90_99",
+              "piketty.in.real_pretax_average.p99_99_9",
+              "piketty.in.real_pretax_average.p99_9_100"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "IN"
+              ],
+              "population": "WID equal-split adults aged 20+, independently ranked per year",
+              "concept": "Source-defined annual real average pre-tax national income per adult by published percentile group"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
+          },
+          {
+            "role": "piketty_growth_incidence_WO",
+            "description": "Optional original WID pre-tax income average by 9 deciles and 3 top-tail groups in WO. Only exactly matched original years produce a growth-incidence figure; missing percentiles remain missing.",
+            "requirement_class": "supplemental",
+            "series_ids": [
+              "piketty.world.real_pretax_average.p00_10",
+              "piketty.world.real_pretax_average.p10_20",
+              "piketty.world.real_pretax_average.p20_30",
+              "piketty.world.real_pretax_average.p30_40",
+              "piketty.world.real_pretax_average.p40_50",
+              "piketty.world.real_pretax_average.p50_60",
+              "piketty.world.real_pretax_average.p60_70",
+              "piketty.world.real_pretax_average.p70_80",
+              "piketty.world.real_pretax_average.p80_90",
+              "piketty.world.real_pretax_average.p90_99",
+              "piketty.world.real_pretax_average.p99_99_9",
+              "piketty.world.real_pretax_average.p99_9_100"
+            ],
+            "expected": {
+              "frequency": "A",
+              "unit": "wid_real_currency",
+              "geography": [
+                "WO"
+              ],
+              "population": "WID equal-split adults aged 20+, independently ranked per year",
+              "concept": "Source-defined annual real average pre-tax national income per adult by published percentile group"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": []
           }
         ],
         "variants": [
