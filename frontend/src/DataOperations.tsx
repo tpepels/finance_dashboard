@@ -32,9 +32,9 @@ type Job = {
 type Queue = { active_job_id: string | null; jobs: Job[] };
 
 const TITLES: Record<string, string> = {
-  sync_current: 'Current data',
-  sync_history: 'Historical data',
-  repair_source_health: 'Source health repair',
+  sync_current: 'Latest published data',
+  sync_history: 'Older historical records',
+  repair_source_health: 'Missing or outdated histories',
 };
 const FINISHED = new Set(['complete', 'partial', 'failed', 'blocked', 'cancelled', 'interrupted']);
 const HEADERS = { 'Content-Type': 'application/json', 'X-GCM-Action': 'dashboard' };
@@ -149,20 +149,26 @@ export default function DataOperations() {
   }
   const disabled = submitting || Boolean(queue?.active_job_id) || !queue;
   return <section className="data-sync" id="maintenance-tools" aria-label="Additional source maintenance">
-    <p className="data-sync-hint">Publisher refreshes, validation, ingestion and
-      downstream scientific reassessment run automatically when enabled.
-      The source-health count indicates unresolved evidence, not an outstanding
-      manual command. Repeating a repair cannot create unpublished data.</p>
+    <p className="data-sync-hint">The app checks for new data automatically when enabled.
+      These extra checks are for investigating a problem or collecting older records.
+      They cannot retrieve information a publisher has not released.</p>
     <div className="data-sync-advanced">
-      <p className="data-sync-hint">Use a targeted check only when investigating a
-        problem or when the regular schedule has not collected the required evidence.</p>
       <div className="data-sync-controls">
-        <button type="button" disabled={disabled} className="data-sync-secondary"
-          onClick={() => void sync('sync_current')}>Check current sources now</button>
-        <button type="button" disabled={disabled} className="data-sync-secondary"
-          onClick={() => void sync('repair_source_health')}>Recheck unresolved gaps</button>
-        <button type="button" disabled={disabled} className="data-sync-secondary"
-          onClick={() => void sync('sync_history')}>Recheck historical sources</button>
+        <div className="data-sync-action">
+          <button type="button" disabled={disabled} className="data-sync-secondary"
+            onClick={() => void sync('sync_current')}>Check for newly published data</button>
+          <small>Checks economic indicators, market prices, exchange rates and company earnings.</small>
+        </div>
+        <div className="data-sync-action">
+          <button type="button" disabled={disabled} className="data-sync-secondary"
+            onClick={() => void sync('repair_source_health')}>Try missing or outdated sources again</button>
+          <small>Retries histories flagged as missing or old. Existing observations stay intact.</small>
+        </div>
+        <div className="data-sync-action">
+          <button type="button" disabled={disabled} className="data-sync-secondary"
+            onClick={() => void sync('sync_history')}>Look for older historical records</button>
+          <small>Searches earlier economic releases, fund holdings and historical source data.</small>
+        </div>
       </div>
     </div>
     {active && <div className="data-sync-progress" role="status">
@@ -174,14 +180,14 @@ export default function DataOperations() {
           ' · ' + (active.stage_completed ?? 0) + ' / ' + active.stage_total : ''}
       </span>
       <button type="button" onClick={() => void cancel()}
-        disabled={active.status === 'cancelling'}>Cancel</button>
+        disabled={active.status === 'cancelling'}>Stop this check</button>
     </div>}
     {!active && last && <div className="data-sync-last" role="status">
       <span>{TITLES[last.action] ?? last.action} · {description(last.status)}</span>
       {last.finished_at && <small>{new Date(last.finished_at).toLocaleString()}</small>}
       {last.error_code && last.status !== 'partial' && <small>{last.error_code}</small>}
       {last.result?.parts && <div className="data-sync-results">
-        <strong>Latest check results</strong>
+        <strong>Results of the last check</strong>
         <ul>{Object.entries(last.result.parts).map(([key, value]) =>
           <li key={key}><strong>{key.replaceAll('_',' ')}</strong> ·
             {' '}{description(value.status ?? 'complete')}
@@ -209,9 +215,9 @@ export default function DataOperations() {
     </div>}
     {!active && last?.action === 'repair_source_health' && last.result && <p
       className="data-sync-hint" role="status">
-      Selected {last.result.selected_sources ?? 0} actionable sources;
-      {' '}{last.result.resolved_issues ?? 0} issues resolved in this run;
-      {' '}{last.result.issues_after ?? 'unknown'} issues remain.
+      Checked {last.result.selected_sources ?? 0} source histories;
+      {' '}{last.result.resolved_issues ?? 0} missing or outdated histories fixed;
+      {' '}{last.result.issues_after ?? 'unknown'} still need attention.
       {last.result.failed_sources != null && last.result.failed_sources > 0
         ? ' ' + last.result.failed_sources + ' source operations failed, were deferred, or were not attempted after publisher quota exhaustion.' : ''}
       {' '}Preserved original observations are never overwritten.
