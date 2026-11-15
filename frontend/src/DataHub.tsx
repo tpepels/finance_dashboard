@@ -209,9 +209,6 @@ export default function DataHub(){
     researchFailed:changes?.state==='failed',
     cached:Boolean(health.problem&&snapshot),
   });
-  const missingCount=summary?Math.max(0,summary.total-summary.with_data):null;
-  const reviewCount=summary&&missingCount!==null?
-    Math.max(0,summary.needs_attention-missingCount):null;
 
   async function start(){
     setStarting(true);setNotification('');setError('');
