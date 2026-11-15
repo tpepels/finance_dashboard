@@ -238,7 +238,7 @@ describe('durable Data Collection page',()=>{
     const request=calls.find(item=>item.url==='/api/data/collection/start')!;
     expect(JSON.parse(request.body||'{}').browser).toHaveProperty('language');
     expect(await screen.findByText(/continues if you leave this page/)).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Collection running'}).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button',{name:'Collect original data'}).hasAttribute('disabled')).toBe(true);
   });
 
   it('restores last-known status immediately when returning even if the server is delayed',async()=>{
