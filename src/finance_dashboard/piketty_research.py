@@ -29,6 +29,65 @@ def _result(status, **values):
     return {"status": status, **values}
 
 
+# WID group percentiles span the complete adult distribution without
+# substituting quantile thresholds for group mean income. Upper tails are
+# disjoint from the first nine deciles; a missing original remains absent.
+INCIDENCE_GROUPS = (
+    ("p00_10", "P0–10", 0.10), ("p10_20", "P10–20", 0.10),
+    ("p20_30", "P20–30", 0.10), ("p30_40", "P30–40", 0.10),
+    ("p40_50", "P40–50", 0.10), ("p50_60", "P50–60", 0.10),
+    ("p60_70", "P60–70", 0.10), ("p70_80", "P70–80", 0.10),
+    ("p80_90", "P80–90", 0.10), ("p90_99", "P90–99", 0.09),
+    ("p99_99_9", "P99–99.9", 0.009),
+    ("p99_9_100", "P99.9–100", 0.001),
+)
+
+
+def _growth_incidence(points, area):
+    """Original per-percentile-group growth; no quantile or population inference."""
+    originals = {
+        key: {year: value for year, value in
+              _years(points.get(f"piketty:{area}:income_distribution:{key}", [])).items()
+              if year >= 1980 and value > 0}
+        for key, _, _ in INCIDENCE_GROUPS
+    }
+    missing = [key for key, _, _ in INCIDENCE_GROUPS if not originals[key]]
+    common = sorted(set.intersection(*(set(originals[key]) for key, _, _
+                                       in INCIDENCE_GROUPS))) if not missing else []
+    if len(common) < 2:
+        return {
+            "status": "awaiting_matched_originals",
+            "reference_year": None, "comparison_year": None,
+            "matched_years": len(common), "rows": [],
+            "missing_groups": missing,
+            "reason": ("No two original years contain all twelve identical-"
+                       "population WID percentile averages. No growth-incidence "
+                       "curve can be produced from partial country or percentile series."),
+        }
+    first, last = common[0], common[-1]
+    results = []
+    for key, label, weight in INCIDENCE_GROUPS:
+        previous, latest = originals[key][first], originals[key][last]
+        results.append({
+            "group": key, "label": label,
+            "population_weight": weight,
+            "reference_average": round(previous, 8),
+            "latest_average": round(latest, 8),
+            "cumulative_real_growth_pct": round(100 * (latest / previous - 1), 6),
+            "ratio_of_averages": round(latest / previous, 8),
+        })
+    return {
+        "status": "available",
+        "reference_year": first, "comparison_year": last,
+        "matched_years": len(common),
+        "rows": results, "missing_groups": [],
+        "reason": ("Original WID group means for the same area, annual concept "
+                   "and constant-price reference unit. Percentile membership "
+                   "can change between years; this is not individual lifetime "
+                   "income growth or a wealth-inheritance observation."),
+    }
+
+
 def _shares(points, area):
     """WID percentages are fractions, including legitimately negative net wealth."""
     concepts = {}
@@ -66,8 +125,37 @@ def _shares(points, area):
             "excluded_inconsistent_years": rejects,
         }
         anomalies[concept] = rejects
+    # Only one year common to *both* published concept distributions can
+    # support a side-by-side income/wealth comparison. Do not display a 2025
+    # wealth share alongside a 2023 income share as if contemporaneous.
+    matched = sorted(set(
+        int(year) for year in concepts["income"]["percentage_shares"]["top10"]
+        for year in [year[0]]) & set(
+        int(year) for year in concepts["wealth"]["percentage_shares"]["top10"]
+        for year in [year[0]]))
+    def ratio(numerator, denominator):
+        # Negative/near-zero net wealth at the bottom is economically possible.
+        # Dividing by it can produce a meaningless concentration multiple.
+        return round(numerator / denominator, 6) if denominator > .0005 else None
+    for concept in ("income", "wealth"):
+        original = concepts[concept]["percentage_shares"]
+        by_year = {name: {int(y): val for y, val in rows}
+                   for name, rows in original.items()}
+        concepts[concept]["top_to_bottom_ratios"] = {
+            "top10_to_bottom50": [
+                [str(year), ratio(by_year["top10"][year], by_year["bottom50"][year])]
+                for year in matched
+                if year in by_year["top10"] and year in by_year["bottom50"]
+            ],
+            "top1_to_bottom50": [
+                [str(year), ratio(by_year["top1"][year], by_year["bottom50"][year])]
+                for year in matched
+                if year in by_year["top1"] and year in by_year["bottom50"]
+            ],
+        }
     return _result("available" if all(
         concepts[c]["status"] == "available" for c in concepts) else "partial",
+        compared_years=matched, latest_comparable_year=matched[-1] if matched else None,
         concepts=concepts, notes=[
             "Pre-tax national income and net personal wealth use different WID ranking variables; never rank both by the same households.",
             "Middle 40% is the exact residual of source top 10% and bottom 50% shares, not an independently published observation.",
@@ -207,7 +295,8 @@ def piketty_findings(points:dict)->dict:
         rows.append({
             "area":area,
             "concentration":_shares(points,area),
-            "growth_capture":_growth(points,area),
+            "growth_capture":{**_growth(points,area),
+                              "distribution_incidence":_growth_incidence(points,area)},
             "wealth_income":_ratios(points,area),
             "capital_vs_growth":_return_vs_growth(points,area),
             "composition":_composition(points,area),
@@ -229,6 +318,15 @@ def piketty_findings(points:dict)->dict:
             "reference_year":2025,
             "world_income_top10_pct":53,
             "world_wealth_top10_pct":75,
+            "world_income_bottom50_pct":8,
+            "world_wealth_bottom50_pct":2,
+            "reconciliation":{
+                "state":"report_reference_separate",
+                "reason":("The published world report reference is a fixed 2025 "
+                          "snapshot with its own definitions. It is not a "
+                          "verified observation from the accepted WID annual "
+                          "area CSV pair and is never spliced into its histories."),
+            },
             "basis":"2025 world PPP report methodology; fixed publication benchmark, not automatically recomputed or necessarily identical to current WID vintage",
             "url":"https://wid.world/document/world-inequality-report-2026/",
         },
