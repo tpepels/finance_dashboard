@@ -66,7 +66,7 @@ describe('original research file upload', () => {
     }], jobs: [] };
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => original })));
     render(<OriginalUploader/>);
-    expect(await screen.findByText('Uploaded originals (1)')).toBeTruthy();
+    expect(await screen.findByText('Files already uploaded (1)')).toBeTruthy();
     expect(screen.queryByText(/verified publisher regular original/)).toBeNull();
   });
 });
