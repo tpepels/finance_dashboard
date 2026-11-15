@@ -202,7 +202,7 @@ describe('dashboard shell', () => {
   it('opens source coverage when directly loaded from a fresh deep link', async () => {
     history.replaceState({}, '', '/#source-coverage');
     render(<App/>);
-    const coverage = await screen.findByRole('heading', { name: 'Sources needing attention' });
+    const coverage = await screen.findByRole('heading', { name: 'Needs attention' });
     expect(coverage.closest('#source-coverage')).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.id).toBe('source-coverage'));
     expect(screen.queryByRole('heading', { name: 'Dashboard', level: 2 })).toBeNull();
@@ -215,9 +215,9 @@ describe('dashboard shell', () => {
     expect(await screen.findByRole('heading', { name: 'Data & diagnostics' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Find and download missing data' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Collection activity' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Sources needing attention' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Research quality' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Diagnostics & maintenance' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Troubleshooting and other checks' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Create troubleshooting report' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Show error and event details' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Check for newly published data' })).toBeTruthy();
@@ -233,7 +233,7 @@ describe('dashboard shell', () => {
   it('keeps old diagnostics deep links connected to the unified page and focuses the section', async () => {
     history.replaceState({}, '', '/#diagnostics');
     render(<App/>);
-    const section = await screen.findByRole('heading', { name: 'Diagnostics & maintenance' });
+    const section = await screen.findByRole('heading', { name: 'Troubleshooting and other checks' });
     expect(section.closest('#diagnostics')).toBeTruthy();
     expect(await screen.findByRole('heading', { name: 'Data & diagnostics' })).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.id).toBe('diagnostics'));
