@@ -108,8 +108,8 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByRole('progressbar',{name:'Source downloads'}).getAttribute('aria-valuenow')).toBe('1');
     expect(screen.getByRole('progressbar',{name:'Source-health repair'}).getAttribute('aria-valuenow')).toBe('6');
     expect(screen.getByText('426 / 426')).toBeTruthy();
-    expect(screen.getByText('Histories stored')).toBeTruthy();
-    expect(screen.getByText('Other histories to review').previousElementSibling?.textContent).toBe('12');
+    expect(screen.getByText('Data series available')).toBeTruthy();
+    expect(screen.getByText('Available series to review').previousElementSibling?.textContent).toBe('12');
     expect(screen.getByRole('heading',{name:'Research quality'})).toBeTruthy();
     expect(screen.getByRole('heading',{name:'Diagnostics & maintenance'})).toBeTruthy();
     expect(screen.getByRole('table',{name:'Source download progress'})).toBeTruthy();
@@ -142,12 +142,12 @@ describe('unified Data and Diagnostics page',()=>{
     });
     render(<DataHub/>);
     expect(await screen.findByRole('heading',{
-      name:'Waiting for initial source downloads',
+      name:'Some data is missing',
     })).toBeTruthy();
     expect(screen.getByText('426 / 462')).toBeTruthy();
-    expect(screen.getByText('Without observations').previousElementSibling?.textContent).toBe('36');
-    expect(screen.getByText('Other histories to review').previousElementSibling?.textContent).toBe('6');
-    expect(screen.getByText(/Next scheduled source check/)).toBeTruthy();
+    expect(screen.getByText('Data series missing').previousElementSibling?.textContent).toBe('36');
+    expect(screen.getByText('Available series to review').previousElementSibling?.textContent).toBe('6');
+    expect(screen.getByText(/Next automatic check/)).toBeTruthy();
     expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
   });
 
@@ -158,7 +158,7 @@ describe('unified Data and Diagnostics page',()=>{
     health.automation.scheduled_refresh_enabled=false;
     render(<DataHub/>);
     expect(await screen.findByRole('heading',{
-      name:'Source collection needs a manual start',
+      name:'Automatic downloads are turned off',
     })).toBeTruthy();
     expect(screen.getByText('Attention needed')).toBeTruthy();
     expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
@@ -168,7 +168,7 @@ describe('unified Data and Diagnostics page',()=>{
   it('automatically reports post-ingestion reconciliation without requiring a repair click',async()=>{
     const view=render(<DataHub/>);
     expect(await screen.findByText(/Automatic source refresh enabled/)).toBeTruthy();
-    expect(screen.getByText(/Last research data update/)).toBeTruthy();
+    expect(screen.getByText(/Research results last updated/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Repair gaps'})).toBeNull();
     expect(calls.some(item=>item.method==='POST')).toBe(false);
     expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
@@ -180,9 +180,9 @@ describe('unified Data and Diagnostics page',()=>{
       origin:'latest_independent_check',error_code:'source_gaps_remaining',
       details:{issues_before:6,issues_after:6,resolved_issues:0,failed_sources:0}};
     render(<DataHub/>);
-    expect(await screen.findByText('Most recent independent source check')).toBeTruthy();
-    expect(screen.getByText(/This repair occurred after the source-download session/)).toBeTruthy();
-    expect(screen.getByText(/6 still require attention/)).toBeTruthy();
+    expect(await screen.findByText('Latest check of missing data')).toBeTruthy();
+    expect(screen.getByText(/This check ran after the download session/)).toBeTruthy();
+    expect(screen.getByText(/6 still need attention/)).toBeTruthy();
     expect(screen.queryByText('Source-health repair interrupted')).toBeNull();
   });
 
@@ -208,7 +208,7 @@ describe('unified Data and Diagnostics page',()=>{
       })),
     ];
     const view=render(<DataHub/>);
-    expect(await screen.findByRole('heading',{name:'Sources requiring attention (10)'})).toBeTruthy();
+    expect(await screen.findByRole('heading',{name:'Data series to check (10)'})).toBeTruthy();
     expect(view.container.querySelectorAll('details')).toHaveLength(0);
     expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
     expect(screen.getByText('US labour compensation')).toBeTruthy();
@@ -320,7 +320,7 @@ describe('unified Data and Diagnostics page',()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status:503,json:async()=>({})})));
     render(<DataHub/>);
     expect(screen.getByRole('cell',{name:'WID.world'})).toBeTruthy();
-    await waitFor(()=>expect(screen.getByText(/Last known collection state is retained/)).toBeTruthy());
+    await waitFor(()=>expect(screen.getByText(/Showing the last saved download status/)).toBeTruthy());
     expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
   });
 });
