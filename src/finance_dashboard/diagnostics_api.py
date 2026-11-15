@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from io import BytesIO, StringIO
 import csv
 import json
+import os
+from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import FastAPI, Header, Request
@@ -443,6 +445,24 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             put("diagnostics/events.json", events)
             put("diagnostics/failure-journal.json", read_failures())
             put("diagnostics/source-coverage.json", {**coverage, "release": release})
+            # A small, literal set of publisher rows makes failing source
+            # parsers reproducible from the user's next diagnostic ZIP.
+            # Each input is checked against the immutable source archive hash;
+            # rejected HTML/error responses and complete original files are
+            # never placed in the ZIP. Sampling failures do not block export.
+            try:
+                from .source_fixture_samples import collect_failure_samples
+                samples = collect_failure_samples(
+                    Path(os.environ.get("FINANCE_SOURCE_EVIDENCE_DIR",
+                                        "/data/source-evidence")),
+                    coverage.get("items", []))
+            except Exception as exc:
+                from .failure_journal import record_failure
+                record_failure("macro", "diagnostic_fixture_samples", exc)
+                samples = {"schema_version": 1, "samples": [],
+                           "unavailable": [{"reason": "source_sampling_failed"}],
+                           "warning": "Source sample collection failed. Other diagnostics remain available."}
+            put("diagnostics/source-fixture-samples.json", samples)
             put("diagnostics/icio-consumer-dependencies.json", dependencies)
             put("diagnostics/limitation-assessment.json", limits)
             put("diagnostics/research-limitation-matrix.json", {
