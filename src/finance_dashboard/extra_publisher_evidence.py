@@ -101,14 +101,25 @@ def _eurostat(raw, source, definition, start):
 
 def _tsv(zf, name):
     names={f"NMFP_{name}.TSV", f"{name}.TSV"}
+    if len(zf.infolist()) > 256:
+        raise EvidenceError("source_schema_invalid")
     matches=[r for r in zf.infolist()
              if not r.is_dir() and r.filename.upper().split("/")[-1] in names]
-    if len(matches)!=1 or matches[0].file_size>35_000_000:
+    if (len(matches)!=1 or matches[0].file_size>35_000_000
+            or matches[0].file_size<=0 or matches[0].compress_size==0
+            or matches[0].file_size>matches[0].compress_size*500
+            or matches[0].filename.startswith("/")
+            or ".." in matches[0].filename.split("/")):
         raise EvidenceError("source_schema_invalid")
     rows=csv.DictReader(StringIO(zf.read(matches[0]).decode("utf-8-sig")),delimiter="\t")
-    if not rows.fieldnames or "ACCESSION_NUMBER" not in rows.fieldnames:
+    if (not rows.fieldnames or "ACCESSION_NUMBER" not in rows.fieldnames
+            or len(rows.fieldnames)!=len(set(rows.fieldnames))
+            or any(not name or len(name)>128 for name in rows.fieldnames)):
         raise EvidenceError("source_schema_invalid")
-    return list(rows)
+    parsed=list(rows)
+    if any(None in row for row in parsed):
+        raise EvidenceError("source_schema_invalid")
+    return parsed
 
 
 def _sec_date(value):

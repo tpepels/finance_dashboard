@@ -190,20 +190,27 @@ def nmfp_archives(index: str) -> list[tuple[date,str]]:
 
 def _tsv(archive: ZipFile, table: str) -> list[dict]:
     names = {f"NMFP_{table.upper()}.TSV", f"{table.upper()}.TSV"}
-    matches = [entry for entry in archive.infolist()
+    members = archive.infolist()
+    if len(members) > 256:
+        raise ProviderError("SEC N-MFP archive has too many members")
+    matches = [entry for entry in members
                if not entry.is_dir()
                and entry.filename.rsplit("/", 1)[-1].upper() in names]
     if len(matches) != 1:
         raise ProviderError(f"SEC N-MFP {table} data table missing or ambiguous")
     member = matches[0]
-    if (".." in member.filename.split("/") or member.file_size > 35_000_000
-            or member.file_size <= 0):
+    if (".." in member.filename.split("/") or member.filename.startswith("/")
+            or member.file_size > 35_000_000 or member.file_size <= 0
+            or member.compress_size == 0
+            or member.file_size > member.compress_size * 500):
         raise ProviderError("SEC N-MFP selected table exceeds verified boundaries")
     try:
         raw = archive.read(member)
         text = raw.decode("utf-8-sig")
         reader = csv.DictReader(StringIO(text), delimiter="\t")
-        if not reader.fieldnames or "ACCESSION_NUMBER" not in reader.fieldnames:
+        if (not reader.fieldnames or "ACCESSION_NUMBER" not in reader.fieldnames
+                or len(reader.fieldnames) != len(set(reader.fieldnames))
+                or any(not name or len(name) > 128 for name in reader.fieldnames)):
             raise ProviderError("SEC N-MFP table header invalid")
         rows = list(reader)
         if any(None in row for row in rows):

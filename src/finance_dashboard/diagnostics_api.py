@@ -341,6 +341,19 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             status.update(colour="orange", label="Updating source-health snapshot")
         acceptance = app.state.acceptance.peek()
         collection = app.state.collection_workflow.status()
+        running = bool(collection.get("running", False))
+        status["collection_running"] = running
+        repair = collection.get("repair") or {}
+        status["collection_progress"] = {
+            "completed": repair.get("completed"),
+            "total": repair.get("total"),
+            "stage": repair.get("stage"),
+        } if running else None
+        if running:
+            if status["colour"] == "green":
+                status.update(colour="orange", label="Collecting source histories")
+            elif status["colour"] == "red":
+                status["label"] = "Collection running; source issues remain"
         from .data_hub import automation_status
         automation = automation_status()
         persistent = read_failures()
@@ -412,21 +425,65 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         }
 
     def _build_debug_zip_bytes() -> bytes:
-        status, events, coverage = snapshot()
+        # Independent diagnostic sections must survive corruption of an
+        # unrelated source/archive subsystem. Every omission is reported
+        # explicitly, not replaced with a fabricated clean result.
+        problems = []
+        def safe_section(name, call, fallback):
+            try:
+                return call()
+            except Exception as exc:
+                from .failure_journal import record_failure
+                record_failure("macro", "diagnostic_" + name, exc)
+                problems.append({"section": name, "state": "unavailable",
+                                 "reason": "diagnostic_section_failed"})
+                return fallback
+
         release = release_info()
-        policy = policy_summary()
-        operations = maintenance.list()
-        source_audit = _original_method_summary(importer.evidence)
+        status, events, coverage = safe_section(
+            "source_snapshot", snapshot, (
+                {"colour": "red", "label": "Source health unavailable",
+                 "sources_total": None, "sources_with_data": None,
+                 "sources_needing_attention": None, "release_id": release["release_id"]},
+                [], {"asof": None, "summary": {}, "items": [], "state": "unavailable"}))
+        policy = safe_section("publisher_policy", policy_summary,
+                              {"publishers": [], "state": []})
+        operations = safe_section("maintenance", maintenance.list,
+                                  {"active_job_id": None, "jobs": []})
+        source_audit = safe_section(
+            "original_method_audit", lambda: _original_method_summary(importer.evidence),
+            {"archives": [], "truncated": True,
+             "source_archive_bytes_reverified": False,
+             "state": "unavailable"})
         from .data_hub import human_overview, automation_status
-        scheduler = automation_status()
-        manual = app.state.manual_sources.status()
-        overview = human_overview(coverage, manual, operations,
-                                  importer.public_status())
-        failure_csv, failure_manifest = _accounting_failures_csv(
-            source_audit, release["release_id"])
+        scheduler = safe_section("scheduler", automation_status,
+                                 {"state": "unavailable"})
+        manual = safe_section("manual_sources", app.state.manual_sources.status,
+                              {"datasets": [], "jobs": [], "queued": 0,
+                               "deferred": 0, "active": False})
+        importer_status = safe_section("original_import", importer.public_status,
+                                      {"state": "unavailable"})
+        overview = safe_section(
+            "human_overview", lambda: human_overview(
+                coverage, manual, operations, importer_status),
+            {"state": "unavailable", "acquisition": {"files_requiring_upload": []}})
+        failure_csv, failure_manifest = safe_section(
+            "icio_failure_ledger",
+            lambda: _accounting_failures_csv(source_audit, release["release_id"]),
+            ("", {"failure_equations_exported": 0,
+                  "complete_for_exported_matrices": False,
+                  "annual_matrices_without_complete_failure_ledger": [],
+                  "state": "unavailable"}))
         from .icio_dependency_audit import classify_icio_dependencies
-        dependencies = classify_icio_dependencies(source_audit)
-        limits = limitation_assessment(coverage, failure_manifest, dependencies)
+        dependencies = safe_section(
+            "icio_dependencies", lambda: classify_icio_dependencies(source_audit),
+            {"status": "unavailable"})
+        limits = safe_section(
+            "limitation_assessment",
+            lambda: limitation_assessment(coverage, failure_manifest, dependencies),
+            {"scientific_acceptance": {"state": "unavailable"},
+             "questions": [], "method_register": [], "findings": [],
+             "state": "unavailable"})
         bundle = BytesIO()
         with ZipFile(bundle, "w", compression=ZIP_DEFLATED) as archive:
             def put(name, data):
@@ -461,6 +518,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             except Exception as exc:
                 from .failure_journal import record_failure
                 record_failure("macro", "diagnostic_fixture_samples", exc)
+                problems.append({"section": "fixture_samples", "state": "unavailable",
+                                 "reason": "diagnostic_section_failed"})
                 samples = {"schema_version": 1, "samples": [],
                            "unavailable": [{"reason": "source_sampling_failed"}],
                            "warning": "Source sample collection failed. Other diagnostics remain available."}
@@ -482,6 +541,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             except Exception as exc:
                 from .failure_journal import record_failure
                 record_failure("macro", "diagnostic_research_next_actions", exc)
+                problems.append({"section": "research_next_actions", "state": "unavailable",
+                                 "reason": "diagnostic_section_failed"})
                 next_actions = {
                     "status": "unavailable", "evaluated_at": None,
                     "questions": [], "next_action_counts": {},
@@ -571,12 +632,22 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                         "scan and scientific acceptance. Current state is operational, "
                         "not proof of a new publisher release.",
             })
-            put("diagnostics/original-import.json", importer.public_status())
+            put("diagnostics/original-import.json", importer_status)
             put("diagnostics/original-method-audit.json",
                 {**source_audit, "release": release})
             put("diagnostics/icio-accounting-failures-manifest.json",
                 {**failure_manifest, "release": release})
             archive.writestr("diagnostics/icio-accounting-failures.csv", failure_csv)
+            put("diagnostics/section-health.json", {
+                "status": "complete" if not problems else "partial",
+                "unavailable_sections": problems,
+                "collection_in_progress": safe_section(
+                    "collection_state",
+                    lambda: bool(app.state.collection_workflow.status().get("running", False)),
+                    False),
+                "note": ("A partial export retains the available evidence. "
+                         "Unavailable sections must never be interpreted as healthy."),
+            })
             archive.writestr("README.txt",
                 "Global Capital Monitor build: " + release["release_id"] + "\n"
                 "Release activated: " + str(release["activated_at"] or "not recorded") + "\n"

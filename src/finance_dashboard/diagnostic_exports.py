@@ -6,6 +6,8 @@ is an immutable snapshot and can be downloaded repeatedly without rebuilding.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from hashlib import sha256
+from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from threading import Lock, Thread
@@ -13,6 +15,7 @@ from uuid import uuid4
 import json
 import os
 import time
+from zipfile import BadZipFile, ZipFile
 
 from .collection_workflow import _path, _read_json, _write_json
 from .runtime_release import release_info
@@ -38,13 +41,60 @@ class DiagnosticExportManager:
             self.record = {**self.record, "state": "interrupted",
                            "error": "preparation_interrupted_by_restart"}
             _write_json(self.state_path, self.record)
-        if self.record and self.record["state"] == "ready" and not self._has_file():
-            self.record = {**self.record, "state": "failed", "error": "cached_zip_missing"}
+        if self.record and self.record["state"] == "ready":
+            # A ready marker from a previous process is not evidence that the
+            # file still contains the same complete archive.
+            if not self._verify_ready_archive():
+                self.record = {**self.record, "state": "failed",
+                               "error": "cached_zip_missing_or_corrupt"}
+                _write_json(self.state_path, self.record)
         self.worker: Thread | None = None
 
     def _has_file(self) -> bool:
-        return (self.zip_path.is_file() and not self.zip_path.is_symlink()
-                and 0 < self.zip_path.stat().st_size < 512_000_000)
+        try:
+            if not self.zip_path.is_file() or self.zip_path.is_symlink():
+                return False
+            size = self.zip_path.stat().st_size
+            expected = self.record.get("size_bytes") if self.record else None
+            return (0 < size < 512_000_000 and (expected is None or
+                    type(expected) is int and expected == size))
+        except OSError:
+            return False
+
+    @staticmethod
+    def _verify_zip_content(content: bytes) -> bool:
+        # Verify actual central directory, required documents and compressed
+        # member CRCs. PK alone is not a valid diagnostic archive.
+        try:
+            with ZipFile(BytesIO(content)) as archive:
+                names = archive.namelist()
+                if (len(names) != len(set(names)) or
+                        not {"diagnostics/release.json",
+                             "diagnostics/status.json"} <= set(names)):
+                    return False
+                if any(member.file_size > 100_000_000 or
+                       member.filename.startswith("/") or
+                       ".." in member.filename.split("/")
+                       for member in archive.infolist()):
+                    return False
+                return archive.testzip() is None
+        except (BadZipFile, OSError, ValueError, RuntimeError, EOFError):
+            return False
+
+    def _verify_ready_archive(self) -> bool:
+        if not self._has_file() or not self.record:
+            return False
+        digest = self.record.get("sha256")
+        if not isinstance(digest, str) or len(digest) != 64:
+            return False
+        try:
+            # Bounded by _has_file; verified only on startup and download,
+            # never during frequent /export-status requests.
+            content = self.zip_path.read_bytes()
+            return (sha256(content).hexdigest() == digest
+                    and self._verify_zip_content(content))
+        except OSError:
+            return False
 
     def _status_unlocked(self) -> dict:
         record = self.record
@@ -85,10 +135,11 @@ class DiagnosticExportManager:
         temporary = None
         try:
             content = self.build()
-            if not isinstance(content, bytes) or not content[:2] == b"PK":
+            if not isinstance(content, bytes) or not self._verify_zip_content(content):
                 raise ValueError("invalid_debug_archive")
             if not 0 < len(content) < 512_000_000:
                 raise ValueError("debug_archive_size_invalid")
+            digest = sha256(content).hexdigest()
             self.zip_path.parent.mkdir(parents=True, exist_ok=True)
             with NamedTemporaryFile(dir=self.zip_path.parent, prefix=".debug-export-",
                                     suffix=".part", delete=False) as stream:
@@ -101,7 +152,8 @@ class DiagnosticExportManager:
             temporary = None
             with self.lock:
                 self.record.update(state="ready", prepared_at=_now(),
-                                   prepared_unix=time.time(), size_bytes=len(content))
+                                   prepared_unix=time.time(), size_bytes=len(content),
+                                   sha256=digest)
                 _write_json(self.state_path, self.record)
         except Exception:
             with self.lock:
@@ -113,4 +165,11 @@ class DiagnosticExportManager:
 
     def ready_file(self) -> Path | None:
         with self.lock:
-            return self.zip_path if self._status_unlocked()["ready"] else None
+            if not self._status_unlocked()["ready"]:
+                return None
+            if not self._verify_ready_archive():
+                # Refuse serving a stale, truncated or tampered cached file.
+                self.record.update(state="failed", error="cached_zip_missing_or_corrupt")
+                _write_json(self.state_path, self.record)
+                return None
+            return self.zip_path

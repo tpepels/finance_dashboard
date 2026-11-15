@@ -30,6 +30,8 @@ SAFE_QUERY = frozenset({"series_id", "file_type", "observation_start", "id", "co
                         "limit", "fields", "agg_sort_by", "agg_sort_order", "coicop18"})
 SAFE_HEADERS = frozenset({"content-type", "last-modified", "etag", "date"})
 MAX_RESPONSE_BYTES = 50_000_000
+MAX_RESPONSE_COUNT = 32
+MAX_BATCH_CAPTURE_BYTES = 260_000_000
 
 
 def canonical_bytes(value):
@@ -79,6 +81,12 @@ class SourceAcquisition:
             raw = response.read()
             if len(raw) > MAX_RESPONSE_BYTES or (response.status_code == 200 and not raw):
                 raise ProviderError("Original response exceeds capture bounds")
+            if len(responses) + len(rejected) >= MAX_RESPONSE_COUNT:
+                raise ProviderError("Original publisher response count exceeds batch limit")
+            if (sum(len(row[0]) for row in responses) +
+                    sum(len(row[0]) for row in rejected) + len(raw) >
+                    MAX_BATCH_CAPTURE_BYTES):
+                raise ProviderError("Original publisher response bytes exceed batch limit")
             retrieved = response.extensions.setdefault(
                 ORIGINAL_TIME_EXTENSION, datetime.now(timezone.utc).isoformat())
             captured = (raw, safe_url(response.request.url), {
@@ -104,9 +112,16 @@ class SourceAcquisition:
                 fetched = self.router.fetch(series_id, start)
             except Exception:
                 if responses or rejected:
-                    self._quarantine_failed_response(
-                        series_id, definition, start,
-                        [(*item, 200) for item in responses] + rejected)
+                    try:
+                        self._quarantine_failed_response(
+                            series_id, definition, start,
+                            [(*item, 200) for item in responses] + rejected)
+                    except Exception as quarantine_error:
+                        # A broken quarantine filesystem must not overwrite
+                        # the source error we were originally investigating.
+                        from .failure_journal import record_failure
+                        record_failure("macro", "failed_source_quarantine",
+                                       quarantine_error, series_id=series_id)
                 raise
             if rejected:
                 self._quarantine_failed_response(series_id, definition, start, rejected)
