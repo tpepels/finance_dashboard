@@ -123,6 +123,26 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertNotEqual(new_run["id"], started["id"])
         self.assertEqual(manual.fetch_calls, 2)
 
+    def test_archive_queue_exception_still_submits_independent_macro_repair(self):
+        manual = StubManual()
+        maintenance = StubMaintenance()
+        with patch("finance_dashboard.manual_sources.source_specs", return_value=SPECS), \
+             patch.object(manual, "fetch", side_effect=RuntimeError("archive queue broken")), \
+             patch("finance_dashboard.failure_journal.record_failure") as journal:
+            manager = CollectionWorkflow(
+                manual, maintenance, path=self.root / "queue-fault.json",
+                valid_sources={"gold.usd.spot"}, valid_markets=set())
+            status = manager.start()
+        self.assertEqual(maintenance.calls, 1)
+        self.assertEqual(status["state"], "running")
+        self.assertEqual(status["repair"]["status"], "running")
+        self.assertEqual(status["startup_error"], "original_queue_start_failed")
+        self.assertEqual(status["sources"][0]["status"], "skipped")
+        self.assertEqual(status["sources"][0]["reason"], "original_queue_start_failed")
+        self.assertEqual(journal.call_args.args[1], "collection_original_queue_start")
+        maintenance.jobs[0]["status"] = "complete"
+        self.assertEqual(manager.status()["state"], "needs_attention")
+
     def test_collection_status_recovers_orphaned_deferred_worker(self):
         class RestartableManual(StubManual):
             def __init__(self):
