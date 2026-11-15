@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './DataHub.css';
-import { describeResearchUpdate } from './ResearchUpdateJourney';
+import { describeDataStatus, formatDataTime, issueCategory, sourceNextStep } from './dataStatus';
 import LimitationAssessment from './LimitationAssessment';
 import DiagnosticsWorkspace from './DiagnosticsWorkspace';
 
@@ -19,7 +19,7 @@ type Collection = {
     active:number;failed:number;manual_required:number};
   sources:Source[]; manual_files:ManualFile[];
   repair:{status:string;completed?:number|null;total?:number|null;
-    current_item?:string|null;error_code?:string|null;
+    current_item?:string|null;error_code?:string|null;finished_at?:string|null;
     details?:{selected_sources?:number;issues_before?:number;
       issues_after?:number;resolved_issues?:number;failed_sources?:number;
       remaining_series_ids?:string[]};
@@ -39,7 +39,9 @@ type Health = {
     }[];
   }|null; error?:string|null;
   automation?:{scheduled_refresh_enabled:boolean;interval_seconds:number;
-    automatic_post_ingestion_updates:boolean};
+    automatic_post_ingestion_updates:boolean;refresh_running?:boolean;
+    refresh_state?:string;refresh_stage?:string|null;
+    next_refresh_at?:string|null;last_refresh_finished_at?:string|null};
   downstream_updates?:{state:string;last_change_at?:string|null;
     last_reconciled_at?:string|null;events_seen:number;events_reconciled:number;
     batches:number;error?:string|null};
@@ -197,8 +199,16 @@ export default function DataHub(){
   const autoEnabled=health.value?.automation?.scheduled_refresh_enabled;
   const changes=health.value?.downstream_updates;
   const assessment=health.value?.scientific_assessment;
-  const overview=describeResearchUpdate(health.value,run,
-    Boolean(health.problem&&health.value?.snapshot));
+  const status=describeDataStatus({
+    sources:summary,
+    attention:snapshot?.attention_items??[],
+    manualFileCount:files.length,
+    session:run,
+    automatic:health.value?.automation,
+    researchRunning:Boolean(assessment?.running||changes?.state==='pending'),
+    researchFailed:changes?.state==='failed',
+    cached:Boolean(health.problem&&snapshot),
+  });
   const missingCount=summary?Math.max(0,summary.total-summary.with_data):null;
   const reviewCount=summary&&missingCount!==null?
     Math.max(0,summary.needs_attention-missingCount):null;
@@ -293,38 +303,47 @@ export default function DataHub(){
       </div>
     </header>
 
-    <section className="data-overview" aria-label="Data overview">
+    <section className="data-overview" aria-label="Current data status">
       <div className="data-overview-summary" role="status">
-        <span className={'data-state data-state-'+statusStyle(overview.tone)}>
-          {overview.downloading?'Collecting':overview.tone==='attention'?'Attention needed':
-            overview.tone==='complete'?'Current':'Monitoring'}
+        <span className={'data-state data-state-'+status.tone}>
+          {status.tone==='active'?'Checking':status.tone==='ok'?'Up to date':'Needs attention'}
         </span>
-        <h3>{overview.heading}</h3>
-        <p>{overview.explanation}</p>
-        <p className="data-overview-next"><strong>Next:</strong> {overview.action}</p>
-        <small>{autoEnabled===false?'Automatic source refresh disabled':
-          autoEnabled===true?'Automatic source refresh enabled':'Checking automatic refresh'}
-          {autoEnabled&&health.value?.automation?.interval_seconds?
-            ' · every '+Math.round(health.value.automation.interval_seconds/3600)+' hours':''}
-          {overview.nextRun?' · next scheduled check '+overview.nextRun:''}</small>
+        <h3>{status.now.title}</h3>
+        <p>{status.now.detail}</p>
+        {status.lastFinishedAt&&<small>
+          Last data check finished {formatDataTime(status.lastFinishedAt)}
+        </small>}
+        {!status.lastFinishedAt&&run?.started_at&&<small>
+          Last check started {formatWhen(run.started_at)}
+        </small>}
       </div>
-      <div className="data-overview-metrics" aria-label="Source coverage totals">
+      <div className="data-overview-metrics" aria-label="Data availability totals">
         <div><strong>{summary?summary.with_data.toLocaleString()+' / '+summary.total.toLocaleString():'—'}</strong>
           <span>Data series available</span></div>
-        <div><strong>{missingCount===null?'—':missingCount.toLocaleString()}</strong>
+        <div><strong>{summary?status.missing.toLocaleString():'—'}</strong>
           <span>Data series missing</span></div>
-        <div><strong>{reviewCount===null?'—':reviewCount.toLocaleString()}</strong>
+        <div><strong>{summary?status.needsReview.toLocaleString():'—'}</strong>
           <span>Available series to review</span></div>
       </div>
     </section>
-    {(changes?.state==='pending'||changes?.state==='failed'||assessment?.running||
-      (changes?.state==='complete'&&changes.last_reconciled_at))&&
-      <p className="data-collection-update-status" role="status">
-        {changes?.state==='pending'?'Updating data checks and research results.':
-         changes?.state==='failed'?'Some research results could not be updated. See Troubleshooting below.':
-         assessment?.running?'Updating research results.':
-         'Research results last updated: '+formatWhen(changes?.last_reconciled_at)}
-      </p>}
+
+    <section className="data-next-steps" aria-label="What happens next">
+      <div className="data-next-step" role="status">
+        <span className="data-next-step-label">Next automatic step</span>
+        <strong>{status.next.title}</strong>
+        <p>{status.next.detail}</p>
+      </div>
+      <div className={'data-next-step data-your-action data-your-action-'+status.yourAction.kind}
+        role="status">
+        <span className="data-next-step-label">Your action</span>
+        <strong>{status.yourAction.title}</strong>
+        <p>{status.yourAction.detail}</p>
+        {status.yourAction.kind==='manual'&&status.yourAction.link&&
+          <a href={status.yourAction.link}>See files to download</a>}
+        {status.yourAction.kind==='technical'&&status.yourAction.link&&
+          <a href={status.yourAction.link}>See troubleshooting details</a>}
+      </div>
+    </section>
 
     <section aria-label="Collection activity" className="data-collection-run" aria-live="polite">
       <h3>Collection activity</h3>
@@ -410,6 +429,13 @@ export default function DataHub(){
     <section className="data-collection-section data-collection-availability" id="source-coverage"
       tabIndex={-1} aria-label="Data availability">
       <h3>Needs attention</h3>
+      {summary&&<div className="data-issue-breakdown"
+        aria-label="Why data needs attention">
+        <div><strong>{status.failedSeries}</strong><span>Failed data checks</span></div>
+        <div><strong>{Math.max(0,status.needsReview)}</strong><span>Available data to review</span></div>
+        <div><strong>{status.waitingSeries}</strong><span>Downloads postponed</span></div>
+        <div><strong>{status.manualFiles}</strong><span>Files you need to upload</span></div>
+      </div>}
     {files.length>0&&<div className="data-manual-files" aria-labelledby="manual-files">
       <h4 id="manual-files">Files to download yourself ({files.length})</h4>
       <p>Download each file from its publisher and upload it here. The app checks and adds its contents.</p>
@@ -451,16 +477,24 @@ export default function DataHub(){
           <p>Each row shows the latest saved date and the next step.</p>
           <div className="data-collection-table-scroll data-collection-source-list">
             <table aria-label="Sources requiring attention">
-              <thead><tr><th>Data series</th><th>Latest saved data</th><th>Next step</th></tr></thead>
-              <tbody>{snapshot?.attention_items?.map(item=><tr key={item.id}>
-                <td><strong>{item.name}</strong><small>{item.id}</small></td>
-                <td>{item.latest_source_date?.slice(0,7)??'None'}</td>
-                <td>{item.next_action??'Check the publisher for newer data'}
-                  {item.last_failure_code&&<small className="data-collection-alert">
-                    {' '}Last error: {reason(item.last_failure_code)}
-                  </small>}
-                </td>
-              </tr>)}</tbody>
+              <thead><tr><th>Data series</th><th>Latest saved data</th><th>Status</th><th>Next step</th></tr></thead>
+              <tbody>{[...(snapshot?.attention_items??[])].sort((a,b)=>{
+                const rank=(state:string,code?:string|null)=>
+                  ({technical:0,waiting:1,stale:2}[issueCategory(state,code)]);
+                return rank(a.state,a.last_failure_code)-rank(b.state,b.last_failure_code)||
+                  a.name.localeCompare(b.name);
+              }).map(item=>{
+                const kind=issueCategory(item.state,item.last_failure_code);
+                return <tr key={item.id}>
+                  <td><strong>{item.name}</strong><small>{item.provider}</small></td>
+                  <td>{item.latest_source_date?.slice(0,7)??'No data'}</td>
+                  <td><span className={'data-state data-state-'+
+                    (kind==='technical'?'error':kind==='waiting'?'active':'attention')}>
+                    {kind==='technical'?'Failed':kind==='waiting'?'Postponed':'Possibly outdated'}
+                  </span></td>
+                  <td>{sourceNextStep(item.state,item.last_failure_code)}</td>
+                </tr>;
+              })}</tbody>
             </table>
           </div>
         </div>}
