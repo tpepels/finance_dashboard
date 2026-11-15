@@ -330,7 +330,7 @@ export default function ResearchUpdateJourney({health,collection,compact=false,
         <small>Automatic collection interval: {Math.round(data.interval/3600)} hours.
           A scheduled check does not guarantee a new publisher release.</small>}
       {!compact&&data.hasData&&<a href="#source-coverage">Inspect exact source histories</a>}
-      {compact&&<a href="#data-management">Open Data Collection for exact source status</a>}
+      {compact&&<a href="#data-management">Open Data &amp; diagnostics for exact source status</a>}
     </div>
   </section>;
 }
