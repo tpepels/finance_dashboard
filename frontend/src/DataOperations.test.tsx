@@ -32,7 +32,7 @@ describe('integrated data synchronization and source health repair',()=>{
     expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(screen.getByText(/Checks economic indicators, market prices, exchange rates/)).toBeTruthy();
     expect(screen.getByText(/Checks missing or outdated data again/)).toBeTruthy();
-    expect(screen.getByText(/Searches earlier economic releases, fund holdings/)).toBeTruthy();
+    expect(screen.getByText(/Looks for earlier economic releases and fund holdings/)).toBeTruthy();
     for(const button of screen.getAllByRole('button')){
       expect(button.textContent).not.toMatch(/\b(refresh|ingest|analyse|reassess)\b/i);
     }
@@ -83,7 +83,7 @@ describe('integrated data synchronization and source health repair',()=>{
     vi.stubGlobal('fetch',liveFetch);
     const user=userEvent.setup();
     render(<DataOperations/>);
-    expect(await screen.findByText(/Markets and exchange rates/)).toBeTruthy();
+    expect(await screen.findByText(/Checking market prices and currencies/)).toBeTruthy();
     expect(screen.getByText(/15 \/ 27/)).toBeTruthy();
     expect(screen.getByRole('button',{name:'Look for older historical records'}).hasAttribute('disabled')).toBe(true);
     await user.click(screen.getByRole('button',{name:'Stop this check'}));
@@ -117,8 +117,8 @@ describe('integrated data synchronization and source health repair',()=>{
     expect(screen.getByText(/FRED API rejected the configured key/)).toBeTruthy();
     expect(screen.getByText(/964 missing/)).toBeTruthy();
     expect(screen.getByText(/first affected data series: SAHMREALTIME/)).toBeTruthy();
-    expect(screen.getByText(/11 filings found\/cached in this run/)).toBeTruthy();
-    expect(screen.getByText(/50 filings found\/cached in this run/)).toBeTruthy();
+    expect(screen.getByText(/11 fund filings saved/)).toBeTruthy();
+    expect(screen.getByText(/50 fund filings saved/)).toBeTruthy();
     expect(screen.getByText(/Older records may be incomplete/)).toBeTruthy();
   });
   it('shows provider failures without hiding the result section',async()=>{
