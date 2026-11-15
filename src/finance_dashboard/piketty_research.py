@@ -282,6 +282,12 @@ def _return_vs_growth(points, area):
         net_capital_income_to_mean_national_wealth_pct=_line(stock_yield),
         real_net_national_income_growth_pct=_line(growth),
         accounting_net_income_yield_minus_growth_pp=_line(gap),
+        piketty_r_minus_g_status="not_empirically_validated",
+        piketty_r_minus_g_reason=(
+            "The accounting flow/stock yield excludes changes in asset values "
+            "and is not an independently sourced rate of return on aggregate "
+            "private wealth. The gap is reported as a descriptive accounting "
+            "comparison, not validated evidence of Piketty's r minus g mechanism."),
         factor_price_capital_share_pct=_line(capital_share,100),
         matched_years=len(gap),
         note=("Net CAPITAL-INCOME FLOW relative to mean prior/current net "
