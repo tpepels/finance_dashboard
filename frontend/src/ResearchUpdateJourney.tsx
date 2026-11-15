@@ -93,131 +93,121 @@ export function describeResearchUpdate(
   const hasError=Boolean(health?.downstream_updates?.state==='failed');
   const hasData=Boolean(source);
 
-  let heading='Checking the source and research update state';
-  let explanation='The dashboard is reading the latest source inventory and scientific assessment.';
-  let action='The next step cannot be determined until the source-health snapshot is available.';
+  let heading='Checking data status';
+  let explanation='Loading the latest information about saved data and research results.';
+  let action='The current status will appear when the check finishes.';
   let tone:StepState='waiting';
 
   if(hasData && isLastKnown){
-    heading='Showing the last known update state';
-    explanation='The server status could not be refreshed. These counts may be outdated.';
-    action='Reconnect to the server before relying on a current waiting estimate.';
+    heading='Showing the last saved status';
+    explanation='The latest connection failed. These figures are from the previous successful check.';
+    action='Try opening this page again to see current figures.';
     tone='attention';
   }else if(hasData && hasError){
-    heading='Research update requires investigation';
-    explanation='The downstream evidence reconciliation failed. New analysis results cannot be treated as current.';
-    action='Inspect Diagnostics for the failed reconciliation; the system cannot confirm automatic completion.';
+    heading='Research results need attention';
+    explanation='A recent update failed. Some research results may be outdated.';
+    action='See the error details under Troubleshooting.';
     tone='attention';
   }else if(hasData && health?.automation?.last_failure_persisted===false){
-    heading='Internal source failure could not be preserved';
-    explanation='The scheduler detected an internal error, but writing the persistent failure journal failed. No future diagnostic ZIP can reconstruct this exception from disk.';
-    action='Check permissions and free space on the maintenance volume. The live scheduler still reports the error stage, but deployment may erase its context.';
+    heading='Error history could not be saved';
+    explanation='A data check failed, and the server could not save the error details.';
+    action='Check available disk space and file permissions on the server.';
     tone='attention';
   }else if(hasData && health?.automation?.refresh_state==='preflight_partial'){
-    heading='Source refresh preflight found isolated errors';
-    explanation=missing+' source histories remain without observations. The read-only startup planner found individual source metadata or query errors; the remaining source tasks remain eligible for scheduled collection.';
-    action='Inspect the persistent failure journal in the Diagnostic ZIP. The scheduled worker will still try other sources; source availability has not yet improved.';
+    heading='Some publisher checks found problems';
+    explanation=missing+' data series are missing. Initial checks found errors for some publishers.';
+    action='Review the errors under Troubleshooting. Other publishers will still be checked on schedule.';
     tone='attention';
   }else if(hasData && collectorFailed){
-    heading='Scheduled source collection failed';
-    const stage=health?.automation?.last_error_stage||'macro';
+    heading='Scheduled download stopped with an error';
     const when=showDate(health?.automation?.last_error_at);
-    explanation=missing+' registered histories still have no observations. The scheduled '+
-      stage+' collection stage aborted with an internal error'+(when?' at '+when:'')+'.'+
-      (scheduled?' Other scheduled maintenance may still be running.':'');
-    action='This refresh attempt did not resolve the missing sources. Inspect the '+
-      'diagnostic scheduler and events, then correct the failed stage. '+
-      'You can retry the source check after the error is resolved.';
+    explanation=missing+' data series are still missing. The latest scheduled check encountered an error'+
+      (when?' on '+when:'')+'.';
+    action='View the details under Troubleshooting. Try another check after correcting the problem.';
     tone='attention';
   }else if(hasData && health?.automation?.failure_journal_state==='invalid'){
-    heading='Failure evidence journal is unreadable';
-    explanation='The persistent error journal is invalid or inaccessible. Internal errors may no longer be reconstructable from a diagnostic ZIP.';
-    action='Check the maintenance volume, file permissions and journal integrity. The source counts remain independent of this diagnostic failure.';
+    heading='Saved error details are unavailable';
+    explanation='The server could not read its saved error log.';
+    action='Check the server storage and file permissions.';
     tone='attention';
   }else if(hasData && unresolvedPastFailure){
-    heading='Previous deployment encountered an internal source failure';
-    explanation=missing+' source histories remain absent. The archived '+pastFailure!.component+
-      ' failure at '+pastFailure!.stage+' ('+pastFailure!.exception_type+
-      ') occurred on '+(showDate(pastFailure!.last_at)??'an unknown date')+
-      '. The current build has not recorded a successful refresh.';
-    action='The exact redacted code path and incident '+pastFailure!.id+
-      ' are retained in the Diagnostic ZIP. The next scheduled check has not yet confirmed recovery.';
+    heading='An earlier download check failed';
+    explanation=missing+' data series are missing. A check failed on '+
+      (showDate(pastFailure!.last_at)??'an unknown date')+'.';
+    action='See the saved error under Troubleshooting. A new check can confirm the current state.';
     tone='attention';
   }else if(hasData && manual>0){
-    heading='Manual source files are required';
-    explanation=manual+' original file'+(manual===1?' is':'s are')+' awaiting download and upload.';
-    action='Use the Files requiring manual download section below; automatic processing resumes after a valid upload.';
+    heading='Files need to be downloaded';
+    explanation=manual+' file'+(manual===1?' needs':'s need')+' to be downloaded from the publisher.';
+    action='Use Files to download yourself below, then upload each file on this page.';
     tone='attention';
   }else if(hasData && missing>0 && config===false){
-    heading='Source collection needs a manual start';
-    explanation=missing+' registered source histor'+(missing===1?'y has':'ies have')+' no stored observations. Automatic source refresh is disabled.';
-    action='Use Collect original data at the top of this page. Some publisher sources may still need separate evidence.';
+    heading='Automatic downloads are turned off';
+    explanation=missing+' data series are missing. Automatic downloads are currently disabled.';
+    action='Select Find and download missing data above to start a check.';
     tone='attention';
   }else if(hasData && missing>0 && config===true && !downloading &&
     (schedulerState==='not_started'||schedulerState==='stopped')){
     heading=schedulerState==='stopped'
-      ?'Automatic source refresh is stopped'
-      :'Automatic source scheduler has not started';
-    explanation=missing+' registered source histories are missing observations, but the server has not confirmed an active source-refresh schedule.';
-    action='Automatic refresh is configured, but the scheduler reports '+schedulerState+
-      '. Inspect server startup and scheduler settings; waiting alone may not start collection.';
+      ?'Automatic downloads have stopped'
+      :'Automatic downloads have not started';
+    explanation=missing+' data series are missing. The automatic service is currently inactive.';
+    action='Start a check using the main button above, or review server settings under Troubleshooting.';
     tone='attention';
   }else if(hasData && missing>0 && failed>0 && !downloading){
-    heading='Some source collection attempts failed';
-    explanation=missing+' source histories have no observations; '+failed+' source'+(failed===1?' has':'s have')+' a recorded collection failure.';
-    action='Review the source errors below. Automatic retries may be policy-limited; waiting alone may not resolve these failures.';
+    heading='Some data downloads failed';
+    explanation=missing+' data series are missing. '+failed+
+      ' source request'+(failed===1?' has':'s have')+' a recorded error.';
+    action='See the affected sources under Needs attention. The app will retry eligible downloads.';
     tone='attention';
   }else if(hasData && missing>0 && config===true &&
     schedulerState==='waiting_for_manual_collection' && !downloading){
-    heading='Automatic source checks are waiting for manual collection';
-    explanation=missing+' source histories still need ingestion. The scheduled worker has yielded to a manual source operation.';
-    action='Check the active source operation below. The scheduler resumes on its next cycle when the manual-operation pause clears.';
+    heading='Automatic checks are waiting';
+    explanation='A manually started check is taking priority.';
+    action='The automatic schedule resumes when the current operation finishes.';
     tone='waiting';
   }else if(hasData && missing>0 && postMacroWork){
-    heading='Source collection stage finished; other maintenance is running';
-    const stage=health?.automation?.refresh_stage??'other';
-    explanation=missing+' histories are still missing observations. The scheduled worker is now in its '+
-      stage+' stage; it is no longer executing the macro source-collection task list.';
-    action='Review completed source attempts and errors in Diagnostics. The remaining '+
-      'source histories will require a later source check or a separate verified import.';
+    heading='Downloads finished; other checks are running';
+    explanation=missing+' data series remain missing. The app is continuing its scheduled work.';
+    action='See the completed download results below. Remaining sources will be checked again later.';
     tone='waiting';
   }else if(hasData && missing>0){
-    heading=downloading?'Collecting missing original source histories':'Waiting for initial source downloads';
-    explanation=missing+' registered source histor'+(missing===1?'y has':'ies have')+' no stored observations.'+
-      (never>0?' '+never+' have never had a collection attempt.':'')+
-      (downloading?' A collection or scheduled refresh is currently running.':'');
+    heading=downloading?'Downloading data':'Some data is missing';
+    explanation=missing+' data series have no saved observations.'+
+      (never>0?' '+never+' have not been checked yet.':'')+
+      (downloading?' A download is in progress.':'');
     action=downloading
-      ?'After successful ingestion, the system will refresh source health and reassess research evidence.'
+      ?'The results will appear in Collection activity as each check finishes.'
       :config===true
-        ?nextRun?'Next scheduled source check: '+nextRun+'. No manual action is required for scheduled sources.'
-          :'Automatic refresh is enabled. The next check runs on its configured schedule; the exact start time is not available.'
-        :'Check the automatic-refresh configuration before assuming sources will be collected.';
+        ?nextRun?'Next automatic check: '+nextRun+'.'
+          :'The next automatic check will run on the configured schedule.'
+        :'Use Find and download missing data above to start a check.';
     tone=downloading?'running':'waiting';
   }else if(hasData && healthChecking){
-    heading='Checking newly collected source data';
-    explanation='The source-health snapshot is being rebuilt from stored observations.';
-    action='Research evidence will be reassessed after successful source changes.';
+    heading='Checking downloaded data';
+    explanation='Comparing the saved data with the publisher records.';
+    action='Research results will update after this check.';
     tone='running';
   }else if(hasData && (scientificChecking||reconciliation==='pending')){
-    heading='Updating scientific research evidence';
-    explanation='The source data has been collected; research acceptance or post-ingestion reconciliation is in progress.';
-    action='Wait for the assessment to finish before using newly computed research panels.';
+    heading='Updating research results';
+    explanation='New data is being checked against the research calculations.';
+    action='The updated results will appear when the check finishes.';
     tone='running';
   }else if(hasData && attention>0){
-    heading='Waiting for source updates or verification';
-    explanation=attention+' source histories still need review. Some stored histories may end at the latest available publisher period.';
+    heading='Some data needs review';
+    explanation=attention+' data series have been flagged for checking.';
     action=config===false
-      ?'Scheduled refresh is disabled. A manual source check can recheck official publication availability.'
-      :nextRun?'Next scheduled source check: '+nextRun+'. A check cannot create unpublished data.'
-       :'Further checks run on the configured schedule. A check cannot create unpublished data.';
+      ?'Use Find and download missing data above to check for updates.'
+      :nextRun?'Next automatic check: '+nextRun+'.'
+       :'The next check will run on the configured schedule.';
     tone='waiting';
   }else if(hasData){
-    heading='Source checks completed';
-    explanation='All registered histories have stored data and no source-health issues are currently flagged.';
+    heading='All registered data series are available';
+    explanation='The latest source check found data for every listed series.';
     action=evaluated
-      ?'Research evidence last evaluated '+(showDate(evaluated)??'at an unknown time')+
-        '. Source health does not establish acceptance of every research method.'
-      :'The scientific assessment has not yet produced a confirmed snapshot.';
+      ?'Research results last checked '+(showDate(evaluated)??'at an unknown time')+
+        '. See Research quality for individual findings.'
+      :'See Research quality below for the latest assessment.';
     tone=evaluated?'complete':'waiting';
   }
 
@@ -237,24 +227,24 @@ export function describeResearchUpdate(
     missing>0||reconciliation==='pending'?'waiting':
     evaluated?'complete':'waiting';
   const stages:Stage[]=[
-    {name:'Collect original data',state:sourcesState,
-      explanation:health?.automation?.refresh_state==='preflight_partial'?'Preflight issues':
+    {name:'Find data',state:sourcesState,
+      explanation:health?.automation?.refresh_state==='preflight_partial'?'Publisher errors':
         collectorFailed?'Collection failed':
-        unresolvedPastFailure?'Previous deployment failure':
-        downloading?'Source collection active':
-        missing>0?missing+' histories without data':
-        attention>0?attention+' histories need review':'Histories available'},
-    {name:'Check source health',state:healthState,
-      explanation:healthChecking?'Recalculating coverage':
-        hasError?'Reconciliation failed':
-        missing>0?'After source ingestion':
-        snapshot?.calculated_at?'Coverage snapshot available':'Awaiting coverage scan'},
-    {name:'Evaluate research',state:researchState,
-      explanation:scientificChecking?'Scientific assessment running':
-        hasError?'Assessment needs investigation':
-        missing>0?'New results await source evidence':
-        reconciliation==='pending'?'Post-ingestion work pending':
-        evaluated?'Assessment snapshot available':'Awaiting scientific assessment'},
+        unresolvedPastFailure?'Earlier check failed':
+        downloading?'Downloading':
+        missing>0?missing+' data series missing':
+        attention>0?attention+' data series to review':'Data available'},
+    {name:'Check downloaded data',state:healthState,
+      explanation:healthChecking?'Checking saved data':
+        hasError?'Update failed':
+        missing>0?'After downloads':
+        snapshot?.calculated_at?'Latest results available':'Waiting for check'},
+    {name:'Update research results',state:researchState,
+      explanation:scientificChecking?'Checking new results':
+        hasError?'Update failed':
+        missing>0?'Waiting for missing data':
+        reconciliation==='pending'?'Updating results':
+        evaluated?'Research checks available':'Waiting for data'},
   ];
   return {
     heading,explanation,action,tone,stages,
@@ -285,26 +275,26 @@ export default function ResearchUpdateJourney({health,collection,compact=false,
       health.automation.refresh_total!=null&&
       health.automation.refresh_total>0 &&
       <p className="research-journey-task-count" role="status">
-        Macro tasks processed: {health.automation.refresh_completed??0} / {health.automation.refresh_total}.
-        {' '}This includes deferred or failed attempts, not necessarily ingested observations.
+        Publisher requests checked: {health.automation.refresh_completed??0} / {health.automation.refresh_total}.
+        {' '}Includes requests that were delayed or failed.
       </p>}
     {data.hasData&&<div className="research-journey-coverage">
       <div className="research-journey-coverage-label">
-        <strong>Source availability</strong>
-        <span>{source.withData} / {source.total} histories stored</span>
+        <strong>Available data</strong>
+        <span>{source.withData} / {source.total} data series available</span>
       </div>
       <div className="research-journey-coverage-bar" role="img"
-        aria-label={source.withoutAttention+' histories with no source attention, '+
-        source.needsReviewWithData+' stored histories need review, '+
-        source.missing+' histories without observations'}>
+        aria-label={source.withoutAttention+' data series ready, '+
+        source.needsReviewWithData+' data series need review, '+
+        source.missing+' data series missing'}>
         <span className="research-journey-covered" style={{width:pct(source.withoutAttention)+'%'}}/>
         <span className="research-journey-review" style={{width:pct(source.needsReviewWithData)+'%'}}/>
         <span className="research-journey-missing" style={{width:pct(source.missing)+'%'}}/>
       </div>
       <div className="research-journey-legend" aria-label="Source availability breakdown">
-        <span><i className="research-journey-key covered"/>{source.withoutAttention} no attention</span>
-        <span><i className="research-journey-key review"/>{source.needsReviewWithData} review</span>
-        <span><i className="research-journey-key missing"/>{source.missing} not ingested</span>
+        <span><i className="research-journey-key covered"/>{source.withoutAttention} available</span>
+        <span><i className="research-journey-key review"/>{source.needsReviewWithData} to review</span>
+        <span><i className="research-journey-key missing"/>{source.missing} missing</span>
       </div>
     </div>}
     <ol className="research-journey-steps" aria-label="Update steps">
@@ -328,9 +318,9 @@ export default function ResearchUpdateJourney({health,collection,compact=false,
       <p>{data.action}</p>
       {!compact&&data.config===true&&!data.downloading&&data.hasData&&data.interval&&
         <small>Automatic collection interval: {Math.round(data.interval/3600)} hours.
-          A scheduled check does not guarantee a new publisher release.</small>}
-      {!compact&&data.hasData&&<a href="#source-coverage">Inspect exact source histories</a>}
-      {compact&&<a href="#data-management">Open Data &amp; diagnostics for exact source status</a>}
+          The next check will look for newly published data.</small>}
+      {!compact&&data.hasData&&<a href="#source-coverage">See data that needs attention</a>}
+      {compact&&<a href="#data-management">Open Data &amp; diagnostics</a>}
     </div>
   </section>;
 }
