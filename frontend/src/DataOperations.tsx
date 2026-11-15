@@ -49,9 +49,9 @@ const HEADERS = { 'Content-Type': 'application/json', 'X-GCM-Action': 'dashboard
 
 async function json(response: Response): Promise<unknown> {
   if (!response.ok) {
-    if (response.status === 409) throw new Error('Another sync is already running');
-    if (response.status === 403) throw new Error('Data sync is not permitted from this page');
-    throw new Error('Sync request failed (HTTP ' + response.status + ')');
+    if (response.status === 409) throw new Error('Another data check is already running');
+    if (response.status === 403) throw new Error('You do not have permission to start this data check');
+    throw new Error('Could not start the data check (HTTP ' + response.status + ')');
   }
   return response.json() as Promise<unknown>;
 }
@@ -76,7 +76,19 @@ function failureReason(reason: string): string {
     backup_failed: 'Backup verification failed',
     no_progress: 'No additional historical records were obtained',
   };
-  return messages[reason] ?? reason.replaceAll('_',' ');
+  return messages[reason] ?? 'See the troubleshooting report for details';
+}
+
+function stageName(value?:string|null):string {
+  if(!value)return 'Preparing data check';
+  const stage=value.toLowerCase();
+  if(stage.includes('economic indicators'))return 'Checking economic indicators';
+  if(stage.includes('markets')||stage.includes('exchange rates'))return 'Checking market prices and currencies';
+  if(stage.includes('alfred')||stage.includes('historical publication'))return 'Looking for older economic records';
+  if(stage.includes('sec')||stage.includes('fund holdings'))return 'Checking fund holdings';
+  if(stage.includes('backup'))return 'Saving a verified backup';
+  if(stage.includes('earnings'))return 'Checking company earnings';
+  return 'Checking data';
 }
 
 function description(status: string): string {
@@ -84,12 +96,12 @@ function description(status: string): string {
   if (status === 'skipped') return 'Already current or scheduled later';
   if (status === 'partial') return 'Completed with issues';
   if (status === 'blocked') return 'Source access blocked';
-  if (status === 'failed') return 'Sync failed';
+  if (status === 'failed') return 'Check failed';
   if (status === 'cancelled') return 'Cancelled';
-  if (status === 'interrupted') return 'Interrupted; you can sync again';
+  if (status === 'interrupted') return 'Check stopped; try again';
   if (status === 'waiting') return 'Waiting for scheduled collection';
   if (status === 'cancelling') return 'Stopping after the current request';
-  return 'Synchronizing';
+  return 'Checking data';
 }
 
 export default function DataOperations() {
@@ -119,7 +131,7 @@ export default function DataOperations() {
     let live = true;
     const poll = async () => {
       try { await refresh(); }
-      catch { if (live) setError('Unable to read synchronization status'); }
+      catch { if (live) setError('Could not read the current check status'); }
     };
     void poll();
     const interval = window.setInterval(() => { if (live) void poll(); }, 2500);
@@ -152,14 +164,13 @@ export default function DataOperations() {
       }));
       await refresh();
     } catch {
-      setError('Could not request cancellation');
+      setError('Could not stop the check');
     }
   }
   const disabled = submitting || Boolean(queue?.active_job_id) || !queue;
   return <section className="data-sync" id="maintenance-tools" aria-label="Additional source maintenance">
     <p className="data-sync-hint">The app checks for new data automatically when enabled.
-      These extra checks are for investigating a problem or collecting older records.
-      They cannot retrieve information a publisher has not released.</p>
+      Use these checks when you want to investigate a problem or look for older records.</p>
     <div className="data-sync-advanced">
       <div className="data-sync-controls">
         <div className="data-sync-action">
@@ -170,20 +181,20 @@ export default function DataOperations() {
         <div className="data-sync-action">
           <button type="button" disabled={disabled} className="data-sync-secondary"
             onClick={() => void sync('repair_source_health')}>Try missing or outdated sources again</button>
-          <small>Retries histories flagged as missing or old. Existing observations stay intact.</small>
+          <small>Checks missing or outdated data again. Saved data stays available.</small>
         </div>
         <div className="data-sync-action">
           <button type="button" disabled={disabled} className="data-sync-secondary"
             onClick={() => void sync('sync_history')}>Look for older historical records</button>
-          <small>Searches earlier economic releases, fund holdings and historical source data.</small>
+          <small>Looks for earlier economic releases and fund holdings.</small>
         </div>
       </div>
     </div>
     {active && <div className="data-sync-progress" role="status">
       <strong>{TITLES[active.action] ?? 'Data'} · {description(active.status)}</strong>
-      {active.total != null && <progress aria-label="Sync progress"
+      {active.total != null && <progress aria-label="Data check progress"
         max={Math.max(active.total, 1)} value={active.completed ?? 0}/>}
-      <span>{active.stage ?? active.current_item ?? 'Preparing sources'}
+      <span>{stageName(active.stage)}
         {active.stage_total != null ?
           ' · ' + (active.stage_completed ?? 0) + ' / ' + active.stage_total : ''}
       </span>
@@ -193,31 +204,31 @@ export default function DataOperations() {
     {!active && last && <div className="data-sync-last" role="status">
       <span>{TITLES[last.action] ?? last.action} · {description(last.status)}</span>
       {last.finished_at && <small>{new Date(last.finished_at).toLocaleString()}</small>}
-      {last.error_code && last.status !== 'partial' && <small>{last.error_code}</small>}
+      {last.error_code && last.status !== 'partial' && <small>{failureReason(last.error_code)}</small>}
       {last.result?.parts && <div className="data-sync-results">
-        <strong>Results of the last check</strong>
+        <strong>Last check results</strong>
         <ul>{Object.entries(last.result.parts).map(([key, value]) =>
-          <li key={key}><strong>{PART_TITLES[key]??key.replaceAll('_',' ')}</strong> ·
+          <li key={key}><strong>{PART_TITLES[key]??'Other data'}</strong> ·
             {' '}{description(value.status ?? 'complete')}
             {value.failed != null && value.failed > 0 && ' · ' + value.failed + ' failed'}
             {value.downloaded != null && ' · ' + value.downloaded + ' downloaded'}
             {value.missing != null && value.missing > 0 && ' · ' + value.missing + ' missing'}
-            {value.source_state === 'deferred' && ' · provider quota deferred'}
+            {value.source_state === 'deferred' && ' · Publisher request limit reached'}
             {value.reason && ' · ' + failureReason(value.reason)}
-            {value.http_status != null && ' · HTTP ' + value.http_status}
-            {value.first_failed_series && ' · first rejected source ' + value.first_failed_series}
+            
+            {value.first_failed_series && ' · first affected data series: ' + value.first_failed_series}
             {value.first_failed_asof && ' as of ' + value.first_failed_asof}
             {value.funds && <ul className="data-sync-funds">
               {value.funds.map(fund => <li key={fund.id}>
                 {fund.id.toUpperCase()} · {description(fund.status)}
-                {' · '}{fund.stored} filings found/cached in this run
+                {' · '}{fund.stored} fund filings saved
                 {fund.errors > 0 && ' · ' + fund.errors + ' errors'}
                 {fund.reason && ' · ' + failureReason(fund.reason)}
-                {fund.http_status != null && ' · HTTP ' + fund.http_status}
-                {fund.historical_coverage_limited && ' · additional older filings not scanned'}
+                
+                {fund.historical_coverage_limited && ' · Older records may be incomplete'}
               </li>)}
             </ul>}
-            {value.note && <small className="data-sync-caveat">{value.note}</small>}
+            
           </li>)}</ul>
       </div>}
     </div>}
@@ -227,8 +238,8 @@ export default function DataOperations() {
       {' '}{last.result.resolved_issues ?? 0} missing or outdated histories fixed;
       {' '}{last.result.issues_after ?? 'unknown'} still need attention.
       {last.result.failed_sources != null && last.result.failed_sources > 0
-        ? ' ' + last.result.failed_sources + ' source operations failed, were deferred, or were not attempted after publisher quota exhaustion.' : ''}
-      {' '}Preserved original observations are never overwritten.
+        ? ' ' + last.result.failed_sources + ' source requests failed or were postponed by the publisher.' : ''}
+      {' '}Previously saved data stays available.
     </p>}
     {error && <p role="alert" className="data-sync-error">{error}</p>}
   </section>;
