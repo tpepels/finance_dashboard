@@ -129,6 +129,14 @@ class DiagnosticJournalTests(unittest.TestCase):
             self.assertEqual(event["reason"], "internal_error")
             self.assertNotIn("user-token-secret-123", json.dumps(log))
             self.assertNotIn("/api/test-failure", json.dumps(log))
+            from finance_dashboard.failure_journal import read_failures
+            journal=read_failures()
+            self.assertEqual(journal["state"],"ready")
+            self.assertEqual(journal["failures"][-1]["component"],"api")
+            self.assertEqual(journal["failures"][-1]["stage"],"http_handler")
+            self.assertEqual(journal["failures"][-1]["exception_type"],"RuntimeError")
+            self.assertNotIn("user-token-secret-123",json.dumps(journal))
+            self.assertNotIn("/api/test-failure",json.dumps(journal))
         finally:
             engine.dispose()
 
