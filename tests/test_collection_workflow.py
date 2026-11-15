@@ -144,6 +144,54 @@ class CollectionWorkflowTests(unittest.TestCase):
         maintenance.jobs[0]["status"] = "complete"
         self.assertEqual(manager.status()["state"], "needs_attention")
 
+    def test_broken_original_source_registry_still_runs_scalar_repair(self):
+        manual = StubManual()
+        maintenance = StubMaintenance()
+        with patch("finance_dashboard.manual_sources.source_specs",
+                   side_effect=RuntimeError("archive registry broken")), \
+             patch("finance_dashboard.failure_journal.record_failure") as journal, \
+             patch.object(CollectionWorkflow, "_ensure_repair_monitor"):
+            manager = CollectionWorkflow(
+                manual, maintenance, path=self.root / "registry-fault.json",
+                valid_sources={"gold.usd.spot"}, valid_markets=set())
+            status = manager.start()
+        self.assertEqual(maintenance.calls, 1)
+        self.assertEqual(manual.fetch_calls, 0)
+        self.assertEqual(status["startup_error"], "original_specs_unavailable")
+        self.assertEqual(status["repair"]["status"], "running")
+        self.assertEqual(status["counts"]["total"], 0)
+        self.assertEqual(journal.call_args.args[1], "collection_original_specs")
+
+    def test_partially_started_archive_job_keeps_identity_after_queue_exception(self):
+        from datetime import datetime, timezone
+
+        class PartialManual(StubManual):
+            def fetch(self, browser=None):
+                self.fetch_calls += 1
+                with self.lock:
+                    self.jobs.append({
+                        "id": "partial-job", "dataset": "wid-world",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "status": "downloading", "error_code": None,
+                        "phase": "downloading", "downloaded": {},
+                        "attempts": [], "sources": [], "failed_roles": {},
+                    })
+                raise RuntimeError("archive queue failed after one submission")
+
+        manual = PartialManual()
+        maintenance = StubMaintenance()
+        with patch("finance_dashboard.manual_sources.source_specs", return_value=SPECS), \
+             patch("finance_dashboard.failure_journal.record_failure"), \
+             patch.object(CollectionWorkflow, "_ensure_repair_monitor"):
+            manager = CollectionWorkflow(
+                manual, maintenance, path=self.root / "partial-queue.json",
+                valid_sources={"gold.usd.spot"}, valid_markets=set())
+            status = manager.start()
+        self.assertEqual(maintenance.calls, 1)
+        self.assertEqual(status["sources"][0]["job_id"], "partial-job")
+        self.assertEqual(status["sources"][0]["status"], "downloading")
+        self.assertEqual(status["startup_error"], "original_queue_start_failed")
+
     def test_collection_status_recovers_orphaned_deferred_worker(self):
         class RestartableManual(StubManual):
             def __init__(self):
