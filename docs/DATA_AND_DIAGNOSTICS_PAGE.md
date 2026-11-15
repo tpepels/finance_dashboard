@@ -4,7 +4,7 @@ This page is the authoritative operator entry point for source collection, curre
 
 ## User-facing hierarchy (top to bottom)
 
-1. **Overview:** What is the state? What is missing? What will happen next? Three distinct counts: available data series, missing data series, and available series requiring review. Keep each series in one count. Show configured collection cadence and next scheduled run when known. Always-visible primary action: **Find and download missing data**. Disable it during a running collection, without hiding or changing its name.
+1. **Overview:** Show the current job stage, the last completed check's time, available/missing/outdated data totals, and two immediately visible cards: **Next automatic step** and **Your action**. The automatic card shows a real scheduler deadline when observed, and explicitly flags an enabled service with no completed run. The action card distinguishes zero manual uploads from failed source requests requiring technical investigation. **Find and download missing data** stays visible but visually secondary while automatic checking is enabled; it becomes the dominant action only when a manual check is actually necessary.
 2. **Collection activity:** What is the current or last requested collection doing? Show download progress, then the individual download results within the same section. Show missing-data checks separately and distinguish attempts, new data saved, failures and postponed requests.
 3. **Needs attention:** Keep the files a person must download at the start of this section, followed by affected data series, their latest saved dates and next steps. Valid uploads start processing automatically.
 4. **Research quality:** Show research findings that require a closer look, with clear priorities and the suggested next step. Load the list automatically and offer a button to check for changes. Preserve scientific distinctions in the underlying calculations and downloadable technical evidence.
@@ -31,6 +31,11 @@ Source lists can scroll vertically instead of hiding behind expandable disclosur
 - State limitations as direct outcomes with an identified next step. Avoid repetitive disclaimers or constructions contrasting what a feature is with what it isn't.
 - The main page and quick status popup contain no expandable disclosure arrows. Technical details can be opened deliberately with an explicitly labeled button.
 - Keep missing series separate from available series needing review. A completed check must retain unresolved failures and delays.
+
+- A failed publisher check is a technical issue, not an implicit request for the person to download a file. Ask for manual uploads only when the collection API provides exact official file links for an active `manual_required` job. Keep these two cases visibly distinct.
+- Show the publisher request count, the number of series actually repaired, and the still-missing series separately. Policy-deferred requests are included in unsuccessful request totals, and should be labelled accordingly.
+- Display source-level issues with plain statuses (**Failed**, **Postponed**, **Possibly outdated**) and their next step. Technical codes and internal source IDs belong in the ZIP.
+- When a check is running, the page presents progress and postpones technical follow-up decisions until the result is known. When scheduler data has not loaded, display an unknown state rather than saying automatic checking is off.
 
 ## Regression acceptance
 
