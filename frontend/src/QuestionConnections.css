@@ -7,6 +7,16 @@
 .question-connections-heading p{margin:0;color:var(--text-secondary,#607178)}
 .question-connections-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px}
 .question-connections-layout>section{min-width:0}
+.question-next-step{padding:0 0 12px;margin:0 0 15px;
+ border-bottom:1px solid var(--hairline,#d7e1e1)}
+.question-next-step h3{margin:5px 0 6px}
+.question-next-step p{margin:0 0 6px}
+.question-next-step a{font-size:13px;font-weight:600}
+.question-optional-status{padding-top:6px;margin-top:12px;
+ border-top:1px solid var(--hairline,#d7e1e1)}
+.question-optional-status strong{font-size:13px}
+.question-optional-status p{margin:5px 0}
+.question-connections-evidence>h4{margin:12px 0 6px;font-size:13px}
 .question-connections-related{border-left:1px solid var(--hairline,#d7e1e1);padding-left:24px}
 .question-measures{max-height:225px;overflow:auto;overscroll-behavior:contain}
 .question-measures p{margin:0 0 8px}
