@@ -6,7 +6,10 @@ import type { QuestionGraph } from './QuestionConnections';
 type Row = { analysis_id: string; question: string; decision_informed: string | null; sources: string[];
   geographies: string[]; state: string; has_engine: boolean;
   phase2?: { state: string; evaluated_at: string; limitations: { code: string; text: string }[]; open_gates: string[] };
-  role_dispositions?: { role: string; state: string; description: string; limitations: { code: string; text: string }[] }[] };
+  role_dispositions?: { role: string; state: string; description: string; limitations: { code: string; text: string }[] }[];
+  next_step?: { kind:string; message:string; link:string|null;
+    counts:{required:number;required_accepted:number; supplemental:number;
+      supplemental_accepted:number;descoped:number} }|null };
 const TOPICS = [['C', 'Growth & inflation'], ['M', 'Rates & currencies'], ['F', 'Credit & stress'],
   ['V', 'Valuation'], ['G', 'World'], ['L', 'Labour & inequality'], ['P', 'Portfolio']];
 const regionOf = (code: string) => code === 'WLD' ? 'WORLD' : code;
@@ -91,10 +94,10 @@ export default function Workbench({ dataVersion = 0 }: { dataVersion?: number })
         <span className="workbench-meta"><span className={`workbench-state workbench-state-${row.phase2?.state ?? row.state}`}>
           {researchStateLabel(row.phase2?.state ?? row.state)}</span>{row.decision_informed ? ` · ${row.decision_informed}` : ''}</span>
         {row.phase2&&<p className="workbench-evidence-summary">
-          {row.phase2.open_gates.length>0
-            ? `${row.phase2.open_gates.length} scientific requirements still open. `
-            : 'Scientific requirements checked. '}
-          <a href={`#q-${row.analysis_id}`}>View evidence, methods and limitations</a>
+          {row.next_step?.message??(row.phase2.open_gates.length
+            ? `${row.phase2.open_gates.length} scientific requirements still open.`
+            : 'Scientific requirements assessed.')}
+          {' '}<a href={`#q-${row.analysis_id}`}>Evidence and next questions</a>
         </p>}
         {next.length>0&&<div className="workbench-next" aria-label={`Next questions for ${row.analysis_id}`}>
           <strong>Related questions</strong>
