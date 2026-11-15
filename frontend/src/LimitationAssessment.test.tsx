@@ -47,14 +47,17 @@ describe('limitations assessment',()=>{
     render(<LimitationAssessment/>);
     expect(await screen.findByText(/4 recorded findings/)).toBeTruthy();
     expect(screen.getByText(/Research questions checked:/)).toBeTruthy();
-    expect(screen.getByText('Showing 3 of 4 findings.')).toBeTruthy();
+    expect(screen.getByText('Showing 2 of 4 findings.')).toBeTruthy();
     expect(screen.getByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
-    expect(screen.getByText('Check the latest published data')).toBeTruthy();
+    expect(screen.queryByText('Check the latest published data')).toBeNull();
     expect(screen.getByText('Accounting differences in OECD files')).toBeTruthy();
     expect(screen.queryByText('OECD ICIO accounting')).toBeNull();
     expect(screen.queryByText('G06 TiVA source period')).toBeNull();
     expect(screen.getAllByRole('link',{name:'G06'}).some(
       a=>a.getAttribute('href')==='#q-G06')).toBe(true);
+    await user.selectOptions(screen.getByLabelText('Show findings'),'source');
+    expect(screen.getByText('Check the latest published data')).toBeTruthy();
+    expect(screen.getByText('Showing 1 of 4 findings.')).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Show findings'),'method');
     expect(screen.getByText('Method assumption')).toBeTruthy();
     expect(screen.getByText('TiVA ends 2022')).toBeTruthy();
