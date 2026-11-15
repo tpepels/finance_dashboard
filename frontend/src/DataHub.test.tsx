@@ -82,8 +82,10 @@ afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 
 describe('durable Data Collection page',()=>{
   it('shows live source progress and availability with no Source Explorer or nested admin',async()=>{
-    render(<DataHub/>);
+    const view=render(<DataHub/>);
     expect(await screen.findByRole('heading',{name:'Data Collection'})).toBeTruthy();
+    expect(view.container.querySelectorAll('details')).toHaveLength(0);
+    expect(screen.getByRole('button',{name:'Collect original data'})).toBeTruthy();
     expect(await screen.findByRole('cell',{name:'WID.world'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'EU KLEMS'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'OECD ICIO'})).toBeTruthy();
@@ -146,19 +148,17 @@ describe('durable Data Collection page',()=>{
       name:'Source collection needs a manual start',
     })).toBeTruthy();
     expect(screen.getByText('Action required')).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Check sources now'})).toBeTruthy();
-    const details=screen.getByText('Manual source check (optional)').closest('details');
-    expect(details?.hasAttribute('open')).toBe(true);
+    expect(screen.getByRole('button',{name:'Collect original data'})).toBeTruthy();
+    expect(screen.queryByText('Manual source check (optional)')).toBeNull();
   });
 
   it('automatically reports post-ingestion reconciliation without requiring a repair click',async()=>{
     const view=render(<DataHub/>);
-    expect(await screen.findByText('Automatic source refresh enabled')).toBeTruthy();
-    expect(screen.getByText(/Last ingestion-triggered reconciliation/)).toBeTruthy();
-    expect(screen.getByText(/Research evidence last evaluated/)).toBeTruthy();
+    expect(await screen.findByText(/Automatic collection is enabled/)).toBeTruthy();
+    expect(screen.getByText(/Last research data update/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Repair gaps'})).toBeNull();
     expect(calls.some(item=>item.method==='POST')).toBe(false);
-    expect(screen.getByText('Manual source check (optional)')).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Collect original data'})).toBeTruthy();
     view.unmount();
   });
 
@@ -194,16 +194,9 @@ describe('durable Data Collection page',()=>{
         next_action:'Check latest factsheet',research_questions:[],
       })),
     ];
-    const user=userEvent.setup();
-    render(<DataHub/>);
-    const disclosure=await screen.findByText('10 series need attention — show exact sources');
-    // Closed <details> keeps its children in the DOM. jsdom's accessible-role
-    // queries can still find the nested table, so assert disclosure state.
-    const details=disclosure.closest('details') as HTMLDetailsElement|null;
-    expect(details).not.toBeNull();
-    expect(details?.open).toBe(false);
-    await user.click(disclosure);
-    expect(details?.open).toBe(true);
+    const view=render(<DataHub/>);
+    expect(await screen.findByRole('heading',{name:'Sources requiring attention (10)'})).toBeTruthy();
+    expect(view.container.querySelectorAll('details')).toHaveLength(0);
     expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
     expect(screen.getByText('US labour compensation')).toBeTruthy();
     expect(screen.getAllByText('Check publisher release')).toHaveLength(5);
@@ -236,17 +229,16 @@ describe('durable Data Collection page',()=>{
       sources:[],manual_files:[],repair:null,started_at:null};
     const user=userEvent.setup();
     render(<DataHub/>);
-    expect(await screen.findByText('Automatic source refresh enabled')).toBeTruthy();
+    expect(await screen.findByText(/Automatic collection is enabled/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Start automatic downloads'})).toBeNull();
-    await user.click(screen.getByText('Manual source check (optional)'));
-    const button=await screen.findByRole('button',{name:'Check sources now'});
+    const button=await screen.findByRole('button',{name:'Collect original data'});
     await user.click(button);
     await waitFor(()=>expect(calls.some(item=>item.url==='/api/data/collection/start'
       && item.method==='POST')).toBe(true));
     const request=calls.find(item=>item.url==='/api/data/collection/start')!;
     expect(JSON.parse(request.body||'{}').browser).toHaveProperty('language');
     expect(await screen.findByText(/continues if you leave this page/)).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Source check running'}).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button',{name:'Collection running'}).hasAttribute('disabled')).toBe(true);
   });
 
   it('restores last-known status immediately when returning even if the server is delayed',async()=>{
