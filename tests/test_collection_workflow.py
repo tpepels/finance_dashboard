@@ -101,7 +101,9 @@ class CollectionWorkflowTests(unittest.TestCase):
                 status="manual_required", phase="waiting_for_manual_files",
                 error_code="publisher_files_unavailable",
                 failed_roles={"metadata": "publisher_http_403"})
-        maintenance.jobs[0]["status"] = "complete"
+        maintenance.jobs[0].update(
+            status="complete", started_at="2026-11-15T12:42:54+00:00",
+            finished_at="2026-11-15T13:50:39+00:00")
         recovered = CollectionWorkflow(manual, maintenance, path=path,
                                        valid_sources=set(), valid_markets=set())
         snapshot = recovered.status()
@@ -115,6 +117,10 @@ class CollectionWorkflowTests(unittest.TestCase):
                                  timeout=4))
         maintenance.jobs = []
         self.assertEqual(recovered.status()["repair"]["status"], "complete")
+        self.assertEqual(recovered.status()["repair"]["finished_at"],
+                         "2026-11-15T13:50:39+00:00")
+        self.assertEqual(recovered.status()["repair"]["started_at"],
+                         "2026-11-15T12:42:54+00:00")
         with manual.lock:
             manual.jobs[0].update(status="complete", failed_roles={})
         self.assertEqual(recovered.status()["state"], "complete")
