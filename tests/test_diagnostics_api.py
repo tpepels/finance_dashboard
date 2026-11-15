@@ -67,6 +67,15 @@ class DiagnosticsSeverityTests(unittest.TestCase):
         self.assertEqual(grouped[1]["oldest_observation"],"2020-01-01")
         self.assertEqual(sum(r["failed"] for r in grouped),0)
 
+    def test_cached_failed_sources_remain_red_without_recent_events(self):
+        cache={"summary":{"macro":{"total":100,"with_data":80,
+                 "needs_attention":20,"collection_failed":5,
+                 "refresh_failed_with_data":2}}}
+        result=_status([],cache,False,False)
+        self.assertEqual(result["colour"],"red")
+        self.assertEqual(result["unresolved_source_failures"],7)
+        self.assertEqual(result["sources_needing_attention"],20)
+
     def test_console_only_formats_whitelisted_event_fields(self):
         message = _console([{"at": "2026-11-12T14:00:00+00:00", "scope": "macro",
                              "event": "source_deferred", "level": "warning",

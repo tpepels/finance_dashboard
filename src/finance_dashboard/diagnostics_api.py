@@ -336,10 +336,21 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             row["id"]: {
                 "total": row["total"], "with_data": row["with_data"],
                 "needs_attention": row["attention"],
+                "collection_failed": row.get("collection_failed", 0),
+                "refresh_failed_with_data": row.get("refresh_failed_with_data", 0),
             } for row in cached.get("groups", [])
         }
         status = _status(events, {"summary": summaries},
                          app.state.acceptance.loading, importer.running())
+        # Older on-disk health snapshots predate per-state counters. Preserve
+        # the red severity from their already-cached attention items without
+        # running SQL or waiting for the next background rebuild.
+        failed_items = sum(item.get("state") in (
+            "collection_failed", "refresh_failed_with_data")
+            for item in cached.get("attention_items", []) if isinstance(item, dict))
+        if failed_items and status["unresolved_source_failures"] < failed_items:
+            status["unresolved_source_failures"] = failed_items
+            status.update(colour="red", label="Source failures require attention")
         status["release_id"] = release["release_id"]
         if not cached or health.get("state") == "unavailable":
             status.update(colour="orange", label="Source health not evaluated")
@@ -430,21 +441,48 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
 
     @app.get("/api/data/debug-console")
     def data_debug_console():
-        """Full redacted current-state console, separate from human Data view."""
-        status, events, coverage = snapshot()
+        """Independent redacted evidence survives partial subsystem outages."""
+        sections_unavailable = []
+        def read(name, factory, fallback):
+            try:
+                return factory()
+            except Exception as exc:
+                # Debug console is an explicit operator action, unlike the
+                # cheap polled status; a redacted error record is useful here.
+                from .failure_journal import record_failure
+                record_failure("macro", "debug_console_" + name, exc)
+                sections_unavailable.append(name)
+                return fallback
+        release = release_info()
+        status, events, coverage = read("source_snapshot", snapshot,
+            ({"colour": "red", "label": "Source health unavailable",
+              "release_id": release["release_id"]},
+             [], {"state": "unavailable", "summary": {}, "items": []}))
         from .data_hub import human_overview
-        manual = app.state.manual_sources.status()
-        original = importer.public_status()
-        operations = maintenance.list()
+        manual = read("manual_sources", app.state.manual_sources.status,
+                      {"state": "unavailable", "datasets": []})
+        original = read("original_import", importer.public_status,
+                        {"state": "unavailable"})
+        operations = read("maintenance", maintenance.list,
+                          {"active_job_id": None, "jobs": []})
+        overview = read("human_overview",
+                        lambda: human_overview(coverage, manual, operations, original),
+                        {"state": "unavailable"})
         return {
-            "release": release_info(), "status": status,
-            "human_overview": human_overview(coverage, manual, operations, original),
-            "events": events, "failure_journal": read_failures(),
+            "release": release, "status": status,
+            "human_overview": overview,
+            "events": events, "failure_journal": read(
+                "failure_journal", read_failures,
+                {"state": "unavailable", "failures": []}),
             "source_coverage": coverage,
             "acquisition": manual,
             "original_import": original,
             "maintenance": operations,
-            "publisher_policy": policy_summary(),
+            "publisher_policy": read("publisher_policy", policy_summary,
+                                     {"state": "unavailable", "publishers": []}),
+            "diagnostic_sections": {
+                "status": "complete" if not sections_unavailable else "partial",
+                "unavailable": sections_unavailable},
             "note": "Credentials, raw source responses and portfolio holdings are excluded.",
         }
 

@@ -77,3 +77,9 @@ status reports `collection.running = null` (unknown), not falsely
 `false`. High-frequency polling does not write a failure journal
 entry per request; the explicit ZIP export records detailed sanitized
 provenance for failure sections.
+
+The operator's full `/api/data/debug-console` uses the same fail-closed
+principle: if the database, manual-source manager or another diagnostic
+observer fails, the endpoint returns the remaining safe sections with
+`diagnostic_sections.status=partial` and the unavailable component names.
+It does not claim those missing observations were accepted.

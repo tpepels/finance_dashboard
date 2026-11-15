@@ -168,6 +168,14 @@ class DiagnosticSectionRecoveryTests(unittest.TestCase):
                     market_registry=[],research_document={"analyses":[]},
                     maintenance=maintenance,importer=importer)
                 output=app.state.diagnostic_exports.build()
+                from fastapi.testclient import TestClient
+                with TestClient(app) as client:
+                    response=client.get("/api/data/debug-console")
+                self.assertEqual(response.status_code,200)
+                diagnostic=response.json()
+                self.assertEqual(diagnostic["diagnostic_sections"]["status"],"partial")
+                self.assertIn("source_snapshot",
+                              diagnostic["diagnostic_sections"]["unavailable"])
             with ZipFile(BytesIO(output)) as archive:
                 self.assertIn("diagnostics/status.json",archive.namelist())
                 self.assertIn("diagnostics/failure-journal.json",archive.namelist())

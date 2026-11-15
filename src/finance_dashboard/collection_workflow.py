@@ -490,7 +490,9 @@ class SourceHealthCache:
                 groups.append({"id": key, "label": title,
                                "total": int(group.get("total", 0)),
                                "with_data": int(group.get("with_data", 0)),
-                               "attention": int(group.get("needs_attention", 0))})
+                               "attention": int(group.get("needs_attention", 0)),
+                               "collection_failed": int(group.get("collection_failed", 0)),
+                               "refresh_failed_with_data": int(group.get("refresh_failed_with_data", 0))})
             # Include each source requiring attention from the very same
             # coverage census. No second DB query or upstream request.
             # Keep source identity, last observed period and publisher caveat;
