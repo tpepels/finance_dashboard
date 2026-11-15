@@ -172,12 +172,12 @@ export default function OriginalUploader() {
   const latest = inventory.jobs[0];
   return <section className="original-uploader" aria-labelledby="original-uploader-heading">
     <header>
-      <h4 id="original-uploader-heading">Import original research files</h4>
+      <h4 id="original-uploader-heading">Add official OECD data files</h4>
       <p>Upload official OECD ICIO ZIP archives and the matching ReadMe workbook. Files are
         verified and registered in the existing research store; already stored evidence is preserved.</p>
     </header>
     <label className="original-file-picker">
-      <span>{busy ? 'Uploading…' : 'Choose research files to upload'}</span>
+      <span>{busy ? 'Uploading files…' : 'Choose OECD files (.zip or .xlsx)'}</span>
       <input type="file" accept=".zip,.xlsx" multiple disabled={busy}
         aria-label="Upload original research ZIP files and ReadMe workbook"
         onChange={event => {
@@ -217,11 +217,11 @@ export default function OriginalUploader() {
       <button type="button" className="original-resume-import" disabled={busy}
         onClick={() => { void importFiles(inventory, []).catch(reason =>
           setError(reason instanceof Error ? reason.message : 'Import could not start')); }}>
-        Import pending uploaded archives
+        Finish adding uploaded files
       </button>}
     <button type="button" className="original-reassess-import" disabled={busy || inventory.active}
       onClick={() => { void reassess(); }}>
-      Reassess previously imported OECD originals
+      Check stored OECD files for errors
     </button>
     {inventory.files.length > 0 && <div className="original-staged-files">
       <h4>Uploaded originals ({inventory.files.length})</h4>
