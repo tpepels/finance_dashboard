@@ -151,7 +151,7 @@ export function describeResearchUpdate(
   }else if(hasData && missing>0 && config===false){
     heading='Source collection needs a manual start';
     explanation=missing+' registered source histor'+(missing===1?'y has':'ies have')+' no stored observations. Automatic source refresh is disabled.';
-    action='Open Manual source check and choose Check sources now. Some publisher sources may still need separate evidence.';
+    action='Use Collect original data at the top of this page. Some publisher sources may still need separate evidence.';
     tone='attention';
   }else if(hasData && missing>0 && config===true && !downloading &&
     (schedulerState==='not_started'||schedulerState==='stopped')){
