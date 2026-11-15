@@ -66,7 +66,6 @@ describe('limitations assessment',()=>{
         ...report.scientific_acceptance,state:'unavailable',
         evaluated_questions:0,reason:'scientific_acceptance_snapshot_unavailable'},
     })})));
-    const user=userEvent.setup();
     render(<LimitationAssessment/>);
     expect(await screen.findByText(/0\/37 questions assessed/)).toBeTruthy();
     expect(screen.getByText(/Research limitation findings may be incomplete/)).toBeTruthy();
@@ -74,7 +73,6 @@ describe('limitations assessment',()=>{
 
   it('makes API failure explicit and allows retry',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status:503})));
-    const user=userEvent.setup();
     render(<LimitationAssessment/>);
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('HTTP 503');
