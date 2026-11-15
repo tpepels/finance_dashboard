@@ -160,6 +160,30 @@ class ParserTests(unittest.TestCase):
             rows[5][1] = "($/kg)"
             parse_pink_sheet_gold(rows)
 
+    def test_world_bank_pink_sheet_copper_from_native_monthly_rows(self):
+        # Copper is explicitly quoted in USD per metric ton by the publisher.
+        rows = [
+            ["World Bank Pink Sheet, monthly nominal prices"],
+            ["2026 monthly original prices"],
+            ["", "Gold", "Copper", "Crude oil, Brent"],
+            ["", "($/troy oz)", "($/mt)", "($/bbl)"],
+            ["2026M08", 3370, 12631.5, 86],
+            ["2026M09", 3470, 12342.0, 87],
+            ["2026M10", 3595, 12752.25, 91],
+        ]
+        from finance_dashboard.provider_parsers import parse_pink_sheet_price
+        parsed = parse_pink_sheet_price(rows, "Copper")
+        self.assertEqual(parsed[date(2026, 8, 1)], Decimal("12631.5"))
+        self.assertEqual(parsed[date(2026, 10, 1)], Decimal("12752.25"))
+        self.assertEqual(len(parsed), 3)
+        self.assertNotEqual(parsed[date(2026, 8, 1)], Decimal("3370"))
+        shifted = [list(r) for r in rows]
+        shifted[3][2] = "($/troy oz)"
+        with self.assertRaisesRegex(ProviderError, "per metric ton"):
+            parse_pink_sheet_price(shifted, "Copper")
+        with self.assertRaisesRegex(ProviderError, "Unapproved"):
+            parse_pink_sheet_price(rows, "Copper LME synthetic")
+
     def test_un_global_labour_share(self):
         raw = {"series": "SL_EMP_GTOTL", "geoAreaCode": 1, "dimensions": [
             {"value": "53.9", "timePeriodStart": "2004", "Age": "ALLAGE", "Reporting Type": "G"},
