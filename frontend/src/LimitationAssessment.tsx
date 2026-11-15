@@ -136,7 +136,7 @@ export default function LimitationAssessment(){
     if(!audit)return [];
     return audit.findings.filter(row=>{
       if(filter==='all')return true;
-      if(filter==='action')return row.severity!=='information';
+      if(filter==='action')return row.severity!=='information'&&row.provenance!=='source_coverage';
       if(filter==='source')return row.provenance==='source_coverage';
       if(filter==='research')return row.provenance==='phase2_acceptance';
       if(filter==='method')return row.category==='documented_method_constraint';
@@ -146,7 +146,7 @@ export default function LimitationAssessment(){
 
   return <section className="limitation-audit" aria-label="Data and research limitation assessment">
     <h4>Research findings to review</h4>
-    <p>See which research findings need newer data, a calculation check, or a closer look at the method.</p>
+    <p>See research calculations and assumptions that need a closer look. Source-specific problems are listed under Needs attention above.</p>
     <button type="button" disabled={loading} onClick={()=>void load()}>
       {loading?'Checking data and research problems…':
         audit?'Check for changes in data and research problems':'Check data and research problems'}
@@ -176,7 +176,7 @@ export default function LimitationAssessment(){
       <label htmlFor="limitation-audit-filter">Show findings
         <select id="limitation-audit-filter" value={filter}
           onChange={event=>setFilter(event.target.value as Filter)}>
-          <option value="action">Needs attention</option>
+          <option value="action">Research findings to review</option>
           <option value="all">All recorded findings</option>
           <option value="source">Missing or outdated data</option>
           <option value="research">Research calculation issues</option>
@@ -185,7 +185,7 @@ export default function LimitationAssessment(){
         </select>
       </label>
       <p><small>Showing {visible.length} of {audit.findings.length} findings.</small></p>
-      <div style={{overflowX:'auto',maxWidth:'100%',marginTop:12}}>
+      <div className="research-quality-table" style={{overflowX:'auto',maxWidth:'100%',marginTop:12}}>
         <table aria-label="Classified limitation findings">
           <thead><tr>
             <th>Priority</th><th>Research and data</th>
