@@ -154,10 +154,10 @@ export default function LimitationAssessment(){
     {error&&<p role="alert">{error}</p>}
     {audit&&<>
       <p role="status">
-        {audit.counts.total} recorded findings ·
-        {' '}{audit.counts.by_severity.high??0} high priority ·
-        {' '}{audit.counts.by_severity.medium??0} need checking ·
-        {' '}{audit.counts.by_severity.information??0} notes
+        {visible.length} findings shown ·
+        {' '}{visible.filter(row=>row.severity==='high').length} high priority ·
+        {' '}{visible.filter(row=>row.severity==='medium').length} need checking ·
+        {' '}{visible.filter(row=>row.severity==='information').length} notes
       </p>
       <p><small>
         Data last checked: {audit.data_coverage.asof??'unknown'}.
@@ -184,7 +184,7 @@ export default function LimitationAssessment(){
           <option value="review">Dates to double-check</option>
         </select>
       </label>
-      <p><small>Showing {visible.length} of {audit.findings.length} findings.</small></p>
+      <p><small>{audit.findings.length} recorded issues across all categories.</small></p>
       <div className="research-quality-table" style={{overflowX:'auto',maxWidth:'100%',marginTop:12}}>
         <table aria-label="Classified limitation findings">
           <thead><tr>
