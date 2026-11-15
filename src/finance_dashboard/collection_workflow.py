@@ -427,7 +427,7 @@ class CollectionWorkflow:
                 "repair": {
                     **{key: repair.get(key) for key in (
                         "status", "completed", "total", "stage",
-                        "current_item", "error_code")},
+                        "current_item", "error_code", "started_at", "finished_at")},
                     "origin": repair_origin,
                     "details": repair.get("details") or _repair_details(repair),
                 },
