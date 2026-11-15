@@ -161,6 +161,7 @@ def question_graph(corpus: dict, evaluated: list[dict],
             "owner_priority": min((edge["owner_priority"] for edge in edges
                                    if edge["child"] == identifier), default="P2"),
             "research_state": cards["findings"]["research_state"],
+            "next_step": status.get("next_step"),
             "source_citations": [
                 {"id": source["id"], "label": source.get("label"), "url": source.get("url")}
                 for source in sources
