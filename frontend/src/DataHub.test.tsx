@@ -111,7 +111,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByRole('heading',{name:'Checking missing and outdated data'})).toBeTruthy();
     expect(screen.getByText('Next automatic step')).toBeTruthy();
     expect(screen.getByText('Your action')).toBeTruthy();
-    expect(screen.getByText('No action required')).toBeTruthy();
+    expect(screen.getByText('No manual upload required')).toBeTruthy();
     expect(screen.getByRole('region',{name:'What happens next'})).toBeTruthy();
     expect(screen.getByRole('progressbar',{name:'Missing-data check progress'}).getAttribute('aria-valuenow')).toBe('6');
     expect(screen.getByText('426 / 426')).toBeTruthy();
@@ -166,14 +166,14 @@ describe('unified Data and Diagnostics page',()=>{
     render(<DataHub/>);
     expect(await screen.findByText('Automatic checks are off')).toBeTruthy();
     expect(screen.getByText('Start a data check')).toBeTruthy();
-    expect(screen.getByText('Attention needed')).toBeTruthy();
+    expect(screen.getAllByText('Needs attention').length).toBeGreaterThan(0);
     expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
     expect(screen.queryByText('Manual source check (optional)')).toBeNull();
   });
 
   it('automatically reports post-ingestion reconciliation without requiring a repair click',async()=>{
     const view=render(<DataHub/>);
-    expect(await screen.findByText(/Automatic checks are enabled/)).toBeTruthy();
+    expect(await screen.findByText(/After the current check/)).toBeTruthy();
     expect(screen.getByText(/Research results last updated/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Repair gaps'})).toBeNull();
     expect(calls.some(item=>item.method==='POST')).toBe(false);
@@ -238,7 +238,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(await screen.findByText('12 / 12 checked')).toBeTruthy();
     expect(screen.getByText(/0 data series updated/)).toBeTruthy();
     expect(screen.getByText(/12 still need attention/)).toBeTruthy();
-    expect(screen.getByText(/3 downloads failed/)).toBeTruthy();
+    expect(screen.getByText(/3 requests failed or postponed/)).toBeTruthy();
     expect(screen.getByText(/These data series still need newer observations/)).toBeTruthy();
   });
 
@@ -248,7 +248,7 @@ describe('unified Data and Diagnostics page',()=>{
       sources:[],manual_files:[],repair:null,started_at:null};
     const user=userEvent.setup();
     render(<DataHub/>);
-    expect(await screen.findByText(/Automatic source refresh enabled/)).toBeTruthy();
+    expect(await screen.findByText(/Automatic checks are enabled/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Start automatic downloads'})).toBeNull();
     const button=await screen.findByRole('button',{name:'Find and download missing data'});
     await user.click(button);
