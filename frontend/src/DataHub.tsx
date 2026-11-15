@@ -85,7 +85,7 @@ function reason(code?:string|null){
   if(/identity|invalid/.test(code))return 'File failed source verification';
   if(/http_404|http_410/.test(code))return 'Publisher URL unavailable';
   if(/too_large/.test(code))return 'Source exceeds configured file limit';
-  if(code==='source_gaps_remaining')return 'Some source histories still need updating';
+  if(code==='source_gaps_remaining')return 'Some data series still need updating';
   return 'See the troubleshooting report for details';
 }
 function formatWhen(value?:string|null){
@@ -360,7 +360,7 @@ export default function DataHub(){
             repair.status==='previous_build'?'Earlier results unavailable':repairLabels[repair.status??'']??'See troubleshooting report'}</span>
         </div>
         {repairTotal>0&&<div className="data-progress" role="progressbar"
-          aria-label="Source-health repair" aria-valuemin={0} aria-valuemax={repairTotal}
+          aria-label="Missing-data check progress" aria-valuemin={0} aria-valuemax={repairTotal}
           aria-valuenow={repair.completed??0}>
           <span style={{width:repairPercent+'%'}}/>
         </div>}
@@ -441,7 +441,7 @@ export default function DataHub(){
         <p><strong>{summary.needs_attention.toLocaleString()}</strong> data series have missing information or need checking.</p>
         <p className="data-collection-subline">{groups.map(group=>{
           const found=snapshot?.groups.find(item=>item.id===group.id);
-          return found?group.label+': '+found.with_data+'/'+found.total:null;
+          return found?group.label+': '+found.with_data+' of '+found.total+' available':null;
         }).filter(Boolean).join(' · ')}</p>
         <small>Last checked {formatWhen(snapshot?.calculated_at)}.
           {health.value?.state==='refreshing'?' Updating the list…':''}</small>
