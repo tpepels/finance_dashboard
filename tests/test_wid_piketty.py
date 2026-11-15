@@ -80,9 +80,14 @@ class WidPikettyOriginalTests(unittest.TestCase):
         self.assertNotEqual(data,invalid)
         with self.assertRaisesRegex(ProviderError,"population mismatch"):
             parse_piketty_original(invalid,metadata,area="US")
-        metadata=metadata.replace("WID distribution methodology","")
+        # Publisher methodological notes may be empty ("if any"), but a
+        # precise source citation and population identity remain required.
+        optional_method=metadata.replace("WID distribution methodology","")
+        parsed=parse_piketty_original(data,optional_method,area="US")
+        self.assertEqual(parsed[("aptinc992j","p0p100")][date(2024,1,1)],Decimal("110"))
+        no_source=metadata.replace("WID original","")
         with self.assertRaisesRegex(ProviderError,"original method mismatch"):
-            parse_piketty_original(data,metadata,area="US")
+            parse_piketty_original(data,no_source,area="US")
 
     def test_same_governed_data_metadata_pair_serves_base_and_new_research_sources(self):
         data,metadata=extended_pair()
