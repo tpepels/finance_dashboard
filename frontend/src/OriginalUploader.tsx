@@ -14,6 +14,13 @@ type ImportJob = {
 type Inventory = { active: boolean; readme_available?: boolean; files: StoredFile[]; jobs: ImportJob[] };
 
 const READ_ME = 'ReadMe_ICIO_small.xlsx';
+function fileCheckStatus(status:string):string{
+  return ({
+    complete:'Finished',partial:'Finished with problems',failed:'Failed',
+    queued:'Waiting',running:'Checking files',blocked:'Needs attention',
+    skipped:'Already added',cancelled:'Stopped',interrupted:'Interrupted',
+  } as Record<string,string>)[status]??'See troubleshooting report';
+}
 const initial: Inventory = { active: false, files: [], jobs: [] };
 const size = (bytes: number) => bytes < 1024 * 1024
   ? (bytes / 1024).toFixed(0) + ' KB'
@@ -173,8 +180,8 @@ export default function OriginalUploader() {
   return <section className="original-uploader" aria-labelledby="original-uploader-heading">
     <header>
       <h4 id="original-uploader-heading">Add official OECD data files</h4>
-      <p>Upload official OECD ICIO ZIP archives and the matching ReadMe workbook. Files are
-        verified and registered in the existing research store; already stored evidence is preserved.</p>
+      <p>Add the OECD data ZIP files and their matching ReadMe workbook. The app checks
+        the files and adds the information to your research data.</p>
     </header>
     <label className="original-file-picker">
       <span>{busy ? 'Uploading files…' : 'Choose OECD files (.zip or .xlsx)'}</span>
@@ -188,27 +195,21 @@ export default function OriginalUploader() {
     {activity && <p role="status" className="original-import-activity">{activity}</p>}
     {error && <p role="alert" className="original-import-error">{error}</p>}
     {latest && <div className="original-import-job" role="status">
-      <strong>{latest.mode === 'reassess' ? 'Checking stored files' : 'Adding file data'}: {latest.status}</strong>
-      <span>{latest.completed} of {latest.total} archives processed</span>
+      <strong>{latest.mode === 'reassess' ? 'Checking stored files' : 'Adding file data'}: {fileCheckStatus(latest.status)}</strong>
+      <span>{latest.completed} of {latest.total} files checked</span>
       <progress max={latest.total} value={latest.completed}/>
       {latest.scientific_assessment && <p role="status" className="original-import-activity">
-        Scientific verification: {latest.scientific_assessment.parsed_native_years} native years parsed;
-        {latest.scientific_assessment.rejected_native_years} native years rejected;
-        {latest.scientific_assessment.unresolved_archives} archive layouts unresolved.
-        Processing completion does not establish OECD TiVA agreement.
+        Years read: {latest.scientific_assessment.parsed_native_years} ·
+        {' '}Years that failed checks: {latest.scientific_assessment.rejected_native_years} ·
+        {' '}Files needing attention: {latest.scientific_assessment.unresolved_archives}.
       </p>}
       {latest.results.length > 0 && <ul>{latest.results.map(result =>
         <li key={result.filename}>
-          <strong>{result.filename}</strong>: {result.status.replaceAll('_', ' ')}
-          {result.error_code && <small> · {result.error_code}</small>}
-          {result.native_validation_status && <small> · {result.native_validation_status.replaceAll('_', ' ')}
-            · {result.annual_matrix_count ?? 0} native years parsed
-            · {result.rejected_year_count ?? 0} rejected
-            {result.source_identity_status ? ' · ' +
-              result.source_identity_status.replaceAll('_', ' ') : ''}
-            {!!Object.keys(result.rejected_error_codes ?? {}).length &&
-              ' · rejection causes: ' + Object.entries(result.rejected_error_codes ?? {})
-                .map(([code, count]) => code + ' (' + count + ')').join(', ')}
+          <strong>{result.filename}</strong>: {fileCheckStatus(result.status)}
+          {result.error_code && <small> · See the troubleshooting report for details</small>}
+          {result.native_validation_status && <small>
+            {' '}· {result.annual_matrix_count ?? 0} years read
+            {result.rejected_year_count ? ' · '+result.rejected_year_count+' years need review' : ''}
           </small>}
         </li>)}</ul>}
     </div>}
@@ -224,15 +225,12 @@ export default function OriginalUploader() {
       Check stored OECD files for errors
     </button>
     {inventory.files.length > 0 && <div className="original-staged-files">
-      <h4>Uploaded originals ({inventory.files.length})</h4>
+      <h4>Files already uploaded ({inventory.files.length})</h4>
       <ul>{inventory.files.map(file => <li key={file.filename}>
         <span>{file.filename}</span><small>{size(file.bytes)}</small>
       </li>)}</ul>
     </div>}
-    <p className="original-import-note">2025 regular matrices receive the pinned original
-      accounting audit. Extended and 2018/2021/2023 originals are checked against their own
-      native dimensions and annual source flows. Where the publisher supplies no independent
-      accounting rows, those accounts remain unverified; direct foreign demand is not TiVA value
-      added, and different source editions are never silently combined.</p>
+    <p className="original-import-note">The app checks each OECD file using the format and years
+      provided by the publisher. Any issues appear in the results above and in the troubleshooting report.</p>
   </section>;
 }
