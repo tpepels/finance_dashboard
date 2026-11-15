@@ -196,7 +196,7 @@ def _sample_pink_sheet(root: Path, sid: str) -> dict:
                         "sheet":"Monthly Prices","rows":excerpt,
                         "original_periods":[str(x[0]) for x in prices[-3:]],
                         "sample_policy":"native header, unit row, and last 3 published months"}
-            except (KeyError, TypeError, OSError, ValueError, SampleUnavailable):
+            except (KeyError, TypeError, OSError, ValueError, RuntimeError, SampleUnavailable):
                 continue
     raise SampleUnavailable("verified_pink_sheet_original_unavailable")
 
@@ -262,7 +262,7 @@ def _sample_bls_oews(root: Path, sid: str) -> dict:
                             "header":rows[offset],"national_total_row":totals[0],
                             "expected_values":{key:str(value) for key,value in verify.items()}})
                         break
-            except (BadZipFile,ValueError,TypeError,KeyError,OSError,SampleUnavailable):
+            except (BadZipFile,ValueError,TypeError,KeyError,OSError,RuntimeError,SampleUnavailable):
                 continue
             if samples:
                 return {"kind":"bls_oews_national","series_id":sid,
@@ -291,6 +291,9 @@ def collect_failure_samples(evidence_root: Path, coverage_items: list[dict]) -> 
         except SampleUnavailable as exc:
             unavailable.append({"area":area,"source":"WID.world",
                                 "affected_series":len(series),"reason":str(exc)})
+        except Exception:
+            unavailable.append({"area":area,"source":"WID.world",
+                                "affected_series":len(series),"reason":"source_sampling_failed"})
     bls_ids=sorted(row["id"] for row in coverage_items
                    if row.get("provider")=="BLS_OEWS"
                    and row.get("state") not in ("available","source_checked_no_newer_data")
@@ -303,6 +306,8 @@ def collect_failure_samples(evidence_root: Path, coverage_items: list[dict]) -> 
                 samples.append(_sample_bls_oews(root,sid))
             except SampleUnavailable as exc:
                 unavailable.append({"series_id":sid,"source":"BLS OEWS","reason":str(exc)})
+            except Exception:
+                unavailable.append({"series_id":sid,"source":"BLS OEWS","reason":"source_sampling_failed"})
     copper="prices.commodity.copper_usd"
     if any(row.get("id")==copper and row.get("state")!="available"
            for row in coverage_items):
@@ -311,6 +316,9 @@ def collect_failure_samples(evidence_root: Path, coverage_items: list[dict]) -> 
         except SampleUnavailable as exc:
             unavailable.append({"series_id":copper,
                                 "source":"World Bank Pink Sheet","reason":str(exc)})
+        except Exception:
+            unavailable.append({"series_id":copper,
+                                "source":"World Bank Pink Sheet","reason":"source_sampling_failed"})
     result={"schema_version":1,"samples":samples,"unavailable":unavailable,
             "provenance":"Read-only excerpts from archived publisher source bytes, each SHA-256 checked",
             "warning":"Samples preserve literal rows but are not complete or independently accepted originals."}
