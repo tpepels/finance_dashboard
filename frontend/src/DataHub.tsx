@@ -391,7 +391,7 @@ export default function DataHub(){
           {repair.details.resolved_issues??Math.max(0,(repair.details.issues_before??0)-repair.details.issues_after)}
           {' '}data series updated · {repair.details.issues_after} still need attention
           {repair.details.failed_sources!==undefined&&repair.details.failed_sources>0?
-            ' · '+repair.details.failed_sources+' downloads failed':''}
+            ' · '+repair.details.failed_sources+' requests failed or postponed':''}
         </small>}
         {repair.error_code&&<small className="data-collection-alert">
           {typeof repair.details?.issues_after==='number'&&repair.details.issues_after>0?
