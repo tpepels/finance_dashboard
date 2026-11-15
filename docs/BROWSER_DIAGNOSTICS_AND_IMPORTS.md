@@ -190,3 +190,51 @@ and uploads are staged under `/data/incoming/icio-2025` unless
 - `GET /api/source-evidence/icio`: regular-year coverage and
   `additional_editions` inventory, native Leontief results, RData parse
   status and separate derived method evidence
+
+## Durable internal failure evidence (release 0.2.11 and later)
+
+A developer-console event such as `collector_failed/internal_error` is not a
+root-cause diagnostic. The developer event journal intentionally resets on
+deployment, and the in-process scheduler's status resets on restart. Neither
+may be used as the only record of a failed operation.
+
+The independent `failure-journal.json` is stored in the existing maintenance
+volume beside `diagnostics.jsonl` (override:
+`FINANCE_FAILURE_JOURNAL_PATH`). It survives build activation, container
+restart and normal data refresh. A bounded 64 distinct incident signatures
+and their repetition counts are kept in an atomically replaced 0600 file
+with a separate process lock. Unexpected macro-source, planner, HTTP API,
+scheduler, vintage, SEC, backup, original-download, downstream-notification
+and scheduler-thread exceptions are recorded at the catch site.
+
+The debug ZIP always contains `diagnostics/failure-journal.json`, including
+its explicit state (`not_created`, `ready`, or `invalid`), irrespective of
+the build that generated each entry. Records contain a stable incident ID,
+first/last occurrence time, originating release, component and stage,
+exception class, error-class chain, allowed SQLite/SQLSTATE/HTTP error codes,
+bounded Python module/function/line traceback, occurrence count and a small
+sample of registered source IDs. No exception text, file paths, request URLs,
+credentials, cookies, SQL, local variables or response bodies are retained.
+The current diagnostic API exposes the latest incident with its originating
+release and distinguishes previous-release evidence from a new live error.
+
+An invalid/unwritable journal is displayed as an explicit diagnostic fault;
+the scheduler retains an in-process `last_failure_persisted=false` signal
+until restart. If even the maintenance volume becomes unwritable, long-term
+persistence is impossible; the UI must not imply that a diagnostic ZIP can
+recover the lost exception.
+
+With `FINANCE_REFRESH_ON_START=0`, the source refresh remains deferred on its
+persisted cadence. By default `FINANCE_SOURCE_PREFLIGHT_ON_START=1` checks
+the actual registered source planner and the current production database
+immediately without publisher HTTP, observation writes or a new ingestion run.
+If this fails, both the exact safe planner stage and the stack appear in the
+durable journal before the daily source refresh would otherwise begin.
+A successful preflight establishes only that planning succeeded; it does not
+establish that downloads or scientific research acceptance succeeded.
+
+Historic exceptions from a build deployed before this feature cannot be
+reconstructed from an already truncated event journal. A stored traceback
+identifies where an operation failed and the observable structured error codes;
+it does not prove all environmental root causes when the exception did not
+expose a safe machine-readable code.
