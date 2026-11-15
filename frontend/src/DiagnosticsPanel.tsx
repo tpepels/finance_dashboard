@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReleaseInfo } from './release';
-import ResearchUpdateJourney from './ResearchUpdateJourney';
+import { describeResearchUpdate } from './ResearchUpdateJourney';
 import type { JourneyHealth, JourneyCollection } from './ResearchUpdateJourney';
 import { placeDiagnosticsPopup, type PopupPlacement } from './diagnosticsPosition';
 
@@ -38,38 +38,31 @@ function localTime(value?:string|null):string {
   return Number.isNaN(parsed.valueOf())?'Not yet available':
     parsed.toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
 }
-function sourceName(provider:string):string {
-  return ({WID:'WID.world',EUKLEMS:'EU KLEMS'} as Record<string,string>)[provider]||provider;
-}
-function ageLabel(value?:string|null):string {
-  return value&&/^\d{4}-\d{2}/.test(value)?value.slice(0,7):'Unknown';
-}
 function summary(report:Diagnostics|null,failure:string):string {
-  if(failure)return 'Status information is temporarily unavailable. Automatic retry remains enabled.';
-  if(!report)return 'Reading source health and processing state.';
+  if(failure)return 'Could not load the latest status. Try opening this panel again.';
+  if(!report)return 'Loading the latest data and research status.';
   if(report.data_changes?.state==='failed')
-    return 'A post-ingestion assessment could not finish. Review Diagnostics for the cause before relying on newly imported evidence.';
+    return 'Some research results could not be updated. Details are on the Data & diagnostics page.';
   const status=report.status;
   if(status.recent_errors>0||Number(status.unresolved_source_failures||0)>0)
-    return 'Collection or processing failures were detected. Inspect Diagnostics for the exact cause.';
+    return 'Some data downloads or research checks failed. Details are on the Data & diagnostics page.';
   if(report.source_health?.error)
-    return 'The latest source-health calculation failed. Previously imported observations have been retained.';
+    return 'The latest data check failed. Your previously saved data is still available.';
   if(!report.source_health?.checked_at)
-    return 'Source coverage has not been checked yet. The background assessment is still pending.';
+    return 'Checking which data is available.';
   if(status.sources_needing_attention>0)
-    return 'Stored data is available, but some histories end earlier than expected. A successful import does not establish that a newer publisher release exists.';
-  if((status.warnings_last_24h||0)>0)
-    return 'Source warnings were recorded during the last 24 hours. Review the event details if necessary.';
+    return 'Some data series are missing or need checking.';
   if(status.assessment_running||status.import_running)
-    return 'Imports or scientific reassessment are running in the background.';
-  return 'The latest source check reports no failures or stale histories. Research-method limitations are assessed separately.';
+    return 'A data or research check is running.';
+  if((status.warnings_last_24h||0)>0)
+    return 'The app recorded warnings today. Details are on the Data & diagnostics page.';
+  return 'The latest source check completed. See Research quality for individual findings.';
 }
 
 export default function DiagnosticsPanel() {
   const [report,setReport]=useState<Diagnostics|null>(null);
   const [failure,setFailure]=useState('');
   const [open,setOpen]=useState(false);
-  const [expanded,setExpanded]=useState(false);
   const [position,setPosition]=useState<PopupPlacement|null>(null);
   const button=useRef<HTMLButtonElement>(null);
   const panel=useRef<HTMLDivElement>(null);
@@ -138,7 +131,7 @@ export default function DiagnosticsPanel() {
       window.visualViewport?.removeEventListener('resize',recalculate);
       window.visualViewport?.removeEventListener('scroll',recalculate);
     };
-  },[open,report,expanded,failure]);
+  },[open,report,failure]);
 
   useEffect(()=>{
     if(!open)return;
@@ -166,23 +159,19 @@ export default function DiagnosticsPanel() {
   },[open]);
 
   const colour=failure?'red':report?.status.colour??'orange';
-  const label=failure?'Status unavailable':report?.status.label||'Checking status';
   const status=report?.status;
-  const providers=report?.source_health?.attention_providers??[];
+  const label=failure?'Status unavailable':!report?'Checking status':
+    status?.import_running||status?.assessment_running?'Checking data':
+    status?.recent_errors||status?.unresolved_source_failures?'Some checks failed':
+    status?.sources_needing_attention?'Some data needs attention':
+    colour==='red'?'Problems need attention':
+    colour==='orange'?'Review recommended':'Up to date';
   const recentErrors=status?.recent_errors??0;
-  const unresolvedFailures=status?.unresolved_source_failures??0;
-  const activity=[
-    status?.import_running?'Original import running':null,
-    status?.assessment_running?'Research assessment running':null,
-    report?.data_changes?.state==='pending'?'Reconciling imported evidence':null,
-    report?.source_health?.state==='refreshing'?'Updating source-health snapshot':null,
-  ].filter((item):item is string=>Boolean(item));
-  const events=report?.console.slice(-12).reverse()??[];
-
+  const nextRun=report?.update_progress?.health.automation?.next_refresh_at;
   return <div className="diagnostics-anchor">
     <button ref={button} type="button" className="diagnostics-light"
       aria-expanded={open} aria-haspopup="dialog" aria-controls="diagnostics-console"
-      aria-label={'System health: '+label+'. Open diagnostic console'}
+      aria-label={'System health: '+label+'. View status'}
       title={'System health: '+label}
       onClick={()=>setOpen(value=>!value)}>
       <span className={'diagnostics-lamp diagnostics-lamp-'+colour} aria-hidden="true"/>
@@ -215,70 +204,23 @@ export default function DiagnosticsPanel() {
               <p>{summary(report,failure)}</p>
             </div>
           </div>
-          {report?.update_progress&&<ResearchUpdateJourney
-            health={report.update_progress.health}
-            collection={report.update_progress.collection} compact/>}
-          {report&&<div className="diagnostics-metrics" aria-label="System health overview">
-            <div><strong>{status?.sources_with_data??'—'} / {status?.sources_total??'—'}</strong><span>Histories stored</span></div>
-            <div><strong>{status?.sources_needing_attention??'—'}</strong><span>Need source review</span></div>
-            <div><strong>{recentErrors}</strong><span>Errors (24h)</span></div>
+          {report&&<div className="diagnostics-metrics" aria-label="Data status at a glance">
+            <div><strong>{status?.sources_with_data??'—'} / {status?.sources_total??'—'}</strong><span>Data series available</span></div>
+            <div><strong>{status?.sources_needing_attention??'—'}</strong><span>Need checking</span></div>
+            <div><strong>{recentErrors}</strong><span>Errors today</span></div>
           </div>}
-          {report&&<section className="diagnostics-block" aria-label="Source recency">
-            <div className="diagnostics-block-heading">
-              <h3>Source recency</h3>
-              <span>Checked {localTime(report.source_health?.checked_at)}</span>
-            </div>
-            {providers.length>0?
-              <ul className="diagnostics-providers">
-                {providers.map(source=><li key={source.provider}>
-                  <div><strong>{sourceName(source.provider)}</strong>
-                    <span>{source.count} {source.count===1?'history':'histories'} need review
-                      {source.failed>0?' · '+source.failed+' failed checks':''}</span>
-                  </div>
-                  <small>Oldest: {ageLabel(source.oldest_observation)}</small>
-                </li>)}
-              </ul>:
-              <p className="diagnostics-quiet">{status?.sources_needing_attention
-                ?'Source-level details are still being prepared.'
-                :'No histories currently flagged as stale or missing.'}</p>}
-            <a href="#source-coverage" className="diagnostics-inline-link"
-              onClick={()=>setOpen(false)}>View exact source histories</a>
-          </section>}
-          {report&&<section className="diagnostics-block" aria-label="Background activity">
-            <div className="diagnostics-block-heading"><h3>Background activity</h3></div>
-            {activity.length>0?
-              <ul className="diagnostics-activity">{activity.map(item=><li key={item}>{item}</li>)}</ul>:
-              <p className="diagnostics-quiet">No active imports or assessments.</p>}
-            <p className="diagnostics-evaluated">
-              Research last evaluated: {localTime(report.data_changes?.research_evaluated_at)}
-            </p>
-            {unresolvedFailures>0&&<p className="diagnostics-warnings">
-              {unresolvedFailures} unresolved source-collection failures.</p>}
-            {report?.data_changes?.state==='failed'&&<p className="diagnostics-warnings">
-              Downstream reconciliation failed; see Diagnostics for details.</p>}
-            {(status?.warnings_last_24h??0)>0&&<p className="diagnostics-warnings">
-              {status?.warnings_last_24h} warnings recorded in the last 24 hours.</p>}
-          </section>}
+          {nextRun&&<p className="diagnostics-evaluated">
+            Next automatic check: {localTime(nextRun)}
+          </p>}
           {failure&&<p className="diagnostics-fetch-error" role="alert">{failure}</p>}
-          <section className="diagnostics-block diagnostics-events">
-            <details open={expanded} onToggle={event=>setExpanded(event.currentTarget.open)}>
-              <summary>Recent events <span>{report?report.console.length+' recorded in this build':''}</span></summary>
-              {events.length>0?<ol aria-label="Recent structured application log" className="diagnostics-event-list">
-                {events.map((row,i)=><li key={row.time+'-'+i}>
-                  <time>{localTime(row.time)}</time>
-                  <span className={'diagnostics-event-level diagnostics-event-'+row.level}>{row.level}</span>
-                  <code>{row.message}</code>
-                </li>)}
-              </ol>:<p className="diagnostics-quiet">
-                {report?'No events recorded in the current build.':'Event history unavailable.'}
-              </p>}
-            </details>
-          </section>
+          <p className="diagnostics-quiet">
+            Open the main page to see each issue, download a report or start a data check.
+          </p>
         </div>
         <footer className="diagnostics-foot">
           <span>Build {report?report.release.version+' · '+report.release.build.slice(0,8):'unknown'}</span>
           <a href="#diagnostics" className="diagnostics-download"
-            onClick={()=>setOpen(false)}>Open Data &amp; diagnostics</a>
+            onClick={()=>setOpen(false)}>View Data &amp; diagnostics</a>
         </footer>
       </div>,document.body)}
   </div>;
