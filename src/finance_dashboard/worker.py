@@ -74,6 +74,9 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
                         task.family, task.source_id)
         except Exception as exc:
             failures += 1
+            from .failure_journal import record_failure
+            record_failure(task.family, "execute_source_task", exc,
+                           series_id=task.source_id)
             record_event(task.family, "source_failed", level="error",
                          source_id=task.source_id,
                          reason=safe_source_failure_code(exc),
@@ -199,10 +202,11 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
             stage = "execute_tasks"
             return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
     except Exception as exc:
-        # The original exception string can contain API keys, publisher URLs
-        # or DB paths. Only a fixed category and internal stage enter the
-        # redacted operational journal; exceptions still propagate to the
-        # scheduler's cycle-level guard.
+        # Persist sanitized Python module/function/line and exception kind
+        # BEFORE the scheduler catches the exception or a new build clears
+        # the transient event journal. Raw error messages are never stored.
+        from .failure_journal import record_failure
+        record_failure("macro", stage, exc)
         category = type(exc).__name__ if type(exc).__name__ in {
             "OperationalError", "IntegrityError", "ProgrammingError",
             "StatementError", "ValueError", "TypeError", "KeyError",
