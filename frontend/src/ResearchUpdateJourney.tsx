@@ -106,6 +106,11 @@ export function describeResearchUpdate(
     explanation='The downstream evidence reconciliation failed. New analysis results cannot be treated as current.';
     action='Inspect Diagnostics for the failed reconciliation; the system cannot confirm automatic completion.';
     tone='attention';
+  }else if(hasData && health?.automation?.last_failure_persisted===false){
+    heading='Internal source failure could not be preserved';
+    explanation='The scheduler detected an internal error, but writing the persistent failure journal failed. No future diagnostic ZIP can reconstruct this exception from disk.';
+    action='Check permissions and free space on the maintenance volume. The live scheduler still reports the error stage, but deployment may erase its context.';
+    tone='attention';
   }else if(hasData && collectorFailed){
     heading='Scheduled source collection failed';
     const stage=health?.automation?.last_error_stage||'macro';
@@ -211,6 +216,7 @@ export function describeResearchUpdate(
 
   const sourcesState:StepState=!hasData?'waiting':
     collectorFailed||unresolvedPastFailure||
+      health?.automation?.last_failure_persisted===false||
       health?.automation?.failure_journal_state==='invalid'?'attention':
     downloading?'running':
     manual>0||failed>0||config===false&&missing>0||
