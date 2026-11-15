@@ -76,9 +76,8 @@ export default function LimitationAssessment(){
   },[audit,filter]);
 
   return <section className="limitation-audit" aria-label="Data and research limitation assessment">
-    <h4>Problems and limitations affecting the research</h4>
-    <p>Lists missing evidence, data that may be outdated, and limitations that affect
-      research conclusions. Dates are checked against published sources where possible.</p>
+    <h4>Research findings to review</h4>
+    <p>See which research findings need newer data, a calculation check, or a closer look at the method.</p>
     <button type="button" disabled={loading} onClick={()=>void load()}>
       {loading?'Checking data and research problems…':
         audit?'Check for changes in data and research problems':'Check data and research problems'}
@@ -87,16 +86,14 @@ export default function LimitationAssessment(){
     {audit&&<>
       <p role="status">
         {audit.counts.total} recorded findings ·
-        {' '}{audit.counts.by_severity.high??0} high ·
-        {' '}{audit.counts.by_severity.medium??0} need review ·
-        {' '}{audit.counts.by_severity.information??0} informational
+        {' '}{audit.counts.by_severity.high??0} high priority ·
+        {' '}{audit.counts.by_severity.medium??0} need checking ·
+        {' '}{audit.counts.by_severity.information??0} notes
       </p>
       <p><small>
-        Source census: {audit.data_coverage.registered_series} series,
-        as of {audit.data_coverage.asof??'unknown'}.
-        {' '}Research evidence: {audit.scientific_acceptance.evaluated_questions}/
-        {audit.scientific_acceptance.question_count} questions assessed
-        {' '}({audit.scientific_acceptance.state}).
+        Data last checked: {audit.data_coverage.asof??'unknown'}.
+        {' '}Research questions checked: {audit.scientific_acceptance.evaluated_questions}/
+        {audit.scientific_acceptance.question_count}.
         {audit.counts.research_by_state&&
           ' Accepted: '+(audit.counts.research_by_state.accepted??0)+
           '; conditional: '+(audit.counts.research_by_state.conditional??0)+
@@ -104,31 +101,31 @@ export default function LimitationAssessment(){
         {audit.scientific_acceptance.evaluated_at&&
           ' Last research evaluation: '+audit.scientific_acceptance.evaluated_at+'.'}
         {audit.scientific_acceptance.reason&&
-          ' Research limitation findings may be incomplete: '+audit.scientific_acceptance.reason+'.'}
+          ' Some research checks need attention. See the report under Troubleshooting.'}
       </small></p>
-      <p><small>{audit.scope}</small></p>
+
       <label htmlFor="limitation-audit-filter">Show findings
         <select id="limitation-audit-filter" value={filter}
           onChange={event=>setFilter(event.target.value as Filter)}>
-          <option value="action">Requires evidence or review</option>
+          <option value="action">Needs attention</option>
           <option value="all">All recorded findings</option>
-          <option value="source">Source collection and freshness</option>
-          <option value="research">Research acceptance caveats</option>
-          <option value="method">Documented method limitations</option>
-          <option value="review">Potentially outdated hardcoded statements</option>
+          <option value="source">Missing or outdated data</option>
+          <option value="research">Research calculation issues</option>
+          <option value="method">Method and assumptions</option>
+          <option value="review">Dates to double-check</option>
         </select>
       </label>
       <p><small>Showing {visible.length} of {audit.findings.length} findings.</small></p>
       <div style={{overflowX:'auto',maxWidth:'100%',marginTop:12}}>
         <table aria-label="Classified limitation findings">
           <thead><tr>
-            <th>Priority / category</th><th>Research / sources</th>
-            <th>Limitation and evidence</th><th>Assessment / next action</th>
+            <th>Priority</th><th>Research and data</th>
+            <th>Issue</th><th>Suggested next step</th>
           </tr></thead>
           <tbody>{visible.map(row=><tr key={row.id}>
             <td><strong>{importance(row.severity)}</strong>
               <small style={{display:'block'}}>{name(row.category)}</small>
-              <small style={{display:'block'}}>{row.status.replaceAll('_',' ')}</small>
+
             </td>
             <td>{row.analysis_ids.map(id=><a key={id} href={'#q-'+id}
               style={{marginRight:8}}>{id}</a>)}
@@ -142,7 +139,7 @@ export default function LimitationAssessment(){
           </tr>)}</tbody>
         </table>
       </div>
-      {visible.length===0&&<p>No findings match this filter.</p>}
+      {visible.length===0&&<p>Nothing needs attention in this category.</p>}
     </>}
   </section>;
 }
