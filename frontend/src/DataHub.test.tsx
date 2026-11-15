@@ -61,6 +61,22 @@ const fetcher=vi.fn(async(input:string,init?:RequestInit)=>{
   if(url==='/api/data/collection'&&method==='GET')return json(run);
   if(url==='/api/data/health')return json(health);
   if(url==='/api/diagnostics/export-status')return json(exportState);
+  if(url==='/api/maintenance')return json({active_job_id:null,jobs:[],operations:[]});
+  if(url==='/api/originals')return json({active:false,files:[],jobs:[]});
+  if(url==='/api/diagnostics/limitation-assessment')return json({
+    schema_version:1,generated_at:'2026-11-14T14:00:00Z',
+    scientific_acceptance:{state:'ready',evaluated_at:'2026-11-14T13:45:00Z',
+      question_count:37,evaluated_questions:37},
+    data_coverage:{state:'ready',asof:'2026-11-14',registered_series:426},
+    counts:{total:1,by_category:{},by_status:{},
+      by_severity:{high:0,medium:1,information:0},
+      research_questions:37,research_questions_evaluated:37},
+    findings:[{id:'research:method-review',category:'documented_method_constraint',
+      severity:'medium',status:'review',title:'Research method assumption',
+      detail:'Compare with original source',next_action:'Review method',
+      source_ids:[],analysis_ids:['G06'],provenance:'registered_method_limitation',evidence:{}}],
+    scope:'Original evidence and methodological limits',
+  });
   if(url==='/api/data/collection/start'&&method==='POST'){
     run=makeRun();
     return json(run,202);
@@ -80,10 +96,10 @@ beforeEach(()=>{
 });
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 
-describe('durable Data Collection page',()=>{
+describe('unified Data and Diagnostics page',()=>{
   it('shows live source progress and availability with no Source Explorer or nested admin',async()=>{
     const view=render(<DataHub/>);
-    expect(await screen.findByRole('heading',{name:'Data Collection'})).toBeTruthy();
+    expect(await screen.findByRole('heading',{name:'Data & diagnostics'})).toBeTruthy();
     expect(view.container.querySelectorAll('details')).toHaveLength(0);
     expect(screen.getByRole('button',{name:'Collect original data'})).toBeTruthy();
     expect(await screen.findByRole('cell',{name:'WID.world'})).toBeTruthy();
@@ -92,12 +108,12 @@ describe('durable Data Collection page',()=>{
     expect(screen.getByRole('progressbar',{name:'Source downloads'}).getAttribute('aria-valuenow')).toBe('1');
     expect(screen.getByRole('progressbar',{name:'Source-health repair'}).getAttribute('aria-valuenow')).toBe('6');
     expect(screen.getByText('426 / 426')).toBeTruthy();
-    expect(screen.getByText(/series have retained data/)).toBeTruthy();
-    expect(screen.getByRole('link',{
-      name:'Assess all source, research and methodological limitations',
-    }).getAttribute('href')).toBe('#diagnostics');
-    expect(screen.getByText('12')).toBeTruthy();
-    expect(screen.getAllByRole('table')).toHaveLength(1);
+    expect(screen.getByText('Histories stored')).toBeTruthy();
+    expect(screen.getByText('Other histories to review').previousElementSibling?.textContent).toBe('12');
+    expect(screen.getByRole('heading',{name:'Research quality'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Diagnostics & maintenance'})).toBeTruthy();
+    expect(screen.getByRole('table',{name:'Source download progress'})).toBeTruthy();
+    expect(await screen.findByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     expect(screen.queryByRole('link',{name:'Open source explorer'})).toBeNull();
     expect(screen.queryByText('Source explorer')).toBeNull();
     expect(screen.queryByText('Advanced source operations')).toBeNull();
@@ -128,14 +144,11 @@ describe('durable Data Collection page',()=>{
     expect(await screen.findByRole('heading',{
       name:'Waiting for initial source downloads',
     })).toBeTruthy();
-    expect(screen.getByText('426 / 462 histories stored')).toBeTruthy();
-    expect(screen.getByText('420 no attention')).toBeTruthy();
-    expect(screen.getByText('6 review')).toBeTruthy();
-    expect(screen.getByText('36 not ingested')).toBeTruthy();
+    expect(screen.getByText('426 / 462')).toBeTruthy();
+    expect(screen.getByText('Without observations').previousElementSibling?.textContent).toBe('36');
+    expect(screen.getByText('Other histories to review').previousElementSibling?.textContent).toBe('6');
     expect(screen.getByText(/Next scheduled source check/)).toBeTruthy();
-    expect(screen.getByRole('list',{name:'Update steps'}).children).toHaveLength(3);
-    expect(screen.getByRole('img',{name:/36 histories without observations/})).toBeTruthy();
-    expect(screen.queryByText('Action required')).toBeNull();
+    expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
   });
 
   it('shows an actionable manual source check when automatic refresh is disabled',async()=>{
@@ -147,7 +160,7 @@ describe('durable Data Collection page',()=>{
     expect(await screen.findByRole('heading',{
       name:'Source collection needs a manual start',
     })).toBeTruthy();
-    expect(screen.getByText('Action required')).toBeTruthy();
+    expect(screen.getByText('Attention needed')).toBeTruthy();
     expect(screen.getByRole('button',{name:'Collect original data'})).toBeTruthy();
     expect(screen.queryByText('Manual source check (optional)')).toBeNull();
   });
