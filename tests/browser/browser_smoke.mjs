@@ -467,9 +467,16 @@ try {
   await shown(mobile.getByText('Your action', { exact: true }));
   await shown(mobile.getByRole('region', { name: 'What happens next' }));
   await shown(mobile.getByRole('button', { name: 'Find and download missing data', exact: true }));
+  await shown(mobile.getByRole('heading', { name: 'Add publisher files', exact: true }));
+  await shown(mobile.getByRole('combobox', { name: 'Choose a publisher or dataset', exact: true }));
   await shown(mobile.getByRole('heading', { name: 'Needs attention', exact: true }));
   await shown(mobile.getByRole('heading', { name: 'Research quality', exact: true }));
-  await shown(mobile.getByRole('heading', { name: 'Troubleshooting and other checks', exact: true }));
+  await shown(mobile.getByRole('button', { name: 'Search for older records', exact: true }));
+  assert.equal(await mobile.locator('#diagnostics .original-uploader').count(), 0,
+    'OECD original upload stays outside the troubleshooting tools');
+  assert.equal(await mobile.locator('#diagnostics #maintenance-tools').count(), 0,
+    'Maintenance actions stay outside the troubleshooting tools');
+  await shown(mobile.getByRole('heading', { name: 'Investigate a data problem', exact: true }));
   assert.equal(await mobile.locator('#research-sources details').count(), 0,
     'No operations are hidden behind disclosure arrows');
   assert.equal(await mobile.getByRole('link', { name: 'Diagnostics', exact: true }).count(), 0,
@@ -477,7 +484,7 @@ try {
   await screenshot(mobile, 'mobile-data-diagnostics', mobile.locator('#research-sources'));
   await mobile.goto(`${seeded}/#diagnostics`);
   await shown(mobile.locator('#diagnostics'));
-  await shown(mobile.getByRole('heading', { name: 'Troubleshooting and other checks', exact: true }));
+  await shown(mobile.getByRole('heading', { name: 'Investigate a data problem', exact: true }));
   await mobile.goto(seeded);
   await mobile.keyboard.press('Tab');
   assert.equal(await mobile.getByRole('link', { name: 'Skip to content', exact: true }).evaluate(element => element === document.activeElement), true);
