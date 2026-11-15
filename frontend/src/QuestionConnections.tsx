@@ -4,7 +4,11 @@ import './QuestionConnections.css';
 
 export type ResearchNode={
  id:string;question:string;parent_ids:string[];child_ids:string[];
- research_state:string;source_citations:{id:string;label:string;url:string|null}[];
+ research_state:string;
+ next_step?:{kind:string;message:string;link:string|null;role_count:number;
+  role_ids:string[];counts:{required:number;required_accepted:number;
+   supplemental:number;supplemental_accepted:number;descoped:number}}|null;
+ source_citations:{id:string;label:string;url:string|null}[];
  cards:{
   measurement:{role:string;concept:string|null;unit:string|null}[];
   scope:{role:string;population:string|null;frequency:string|null;
@@ -12,7 +16,8 @@ export type ResearchNode={
   method:{specification:string|null;variants:{id:string;label:string;satisfies_original_method:boolean}[]};
   findings:{research_state:string;evaluated_at:string|null;open_gates:string[];
    limitations:{code:string;text:string}[];disposition:{role:string;description:string;state:string;
-    accepted:boolean;owner_input_required:boolean}[]};
+    accepted:boolean;owner_input_required:boolean;supplemental?:boolean;
+    sources_with_observations?:number}[]};
   distribution:{role:string;population:string|null;concept:string|null;unit:string|null}[];
   uncertainty:{outstanding_evidence:string;open_gates:string[];limitations:{code:string;text:string}[]};
  };
@@ -43,6 +48,10 @@ function ConnectionsView({node,graph}:{node:ResearchNode;graph:QuestionGraph}){
  const children=graph.edges.filter(x=>x.parent===node.id);
  const parents=graph.edges.filter(x=>x.child===node.id);
  const roles=node.cards.findings.disposition;
+ const core=roles.filter(role=>!role.supplemental&&role.state!=='descoped');
+ const pendingCore=core.filter(role=>!role.accepted);
+ const optional=roles.filter(role=>role.supplemental);
+ const optionalPending=optional.filter(role=>!role.accepted);
  const limitations=node.cards.findings.limitations;
  const method=methodLink(node.cards.method.specification);
  return <section className="question-connections" aria-label="Evidence and related research questions">
@@ -55,6 +64,14 @@ function ConnectionsView({node,graph}:{node:ResearchNode;graph:QuestionGraph}){
   </div>
   <div className="question-connections-layout">
    <section aria-label="Current research evidence" className="question-connections-evidence">
+    {node.next_step&&<section className="question-next-step" aria-label="What happens next">
+      <h3>What happens next</h3>
+      <p>{node.next_step.message}</p>
+      {node.next_step.link&&<a href={node.next_step.link}>
+        {node.next_step.kind==='owner_information'
+          ? 'Open your portfolio information'
+          : 'See data collection and any action needed'}</a>}
+    </section>}
     <h3>What is measured</h3>
     <div className="question-measures">
      {node.cards.measurement.map((row,i)=><p key={row.role+'-'+i}>
@@ -66,17 +83,28 @@ function ConnectionsView({node,graph}:{node:ResearchNode;graph:QuestionGraph}){
     </div>
     <h3>Quality and coverage</h3>
     <p className="question-connections-status">
-     {roles.filter(r=>r.accepted).length} of {roles.length} assessed source roles accepted.
+     {core.filter(r=>r.accepted).length} of {core.length} required source roles accepted.
+     {optional.length>0&&<> Additional research:
+      {' '}{optional.length-optionalPending.length} of {optional.length} optional source roles accepted.</>}
      {node.cards.findings.evaluated_at&&
       <> Last checked {node.cards.findings.evaluated_at.slice(0,10)}.</>}
     </p>
-    {roles.filter(r=>!r.accepted).length>0&&
+    {pendingCore.length>0&&<>
+     <h4>Open requirements for this analysis</h4>
      <ul className="question-missing">
-      {roles.filter(r=>!r.accepted).map(r=><li key={r.role}>
+      {pendingCore.map(r=><li key={r.role}>
        {r.description} — {r.owner_input_required?'Your data is needed.':
-       r.state==='descoped'?'Outside the accepted method.':
-       'Not yet independently accepted.'}</li>)}
-     </ul>}
+       r.series_ids.length&&r.sources_with_observations===0
+       ?'Publisher data have not been collected for the required series.':
+       'This original has not passed all scientific checks.'}</li>)}
+     </ul>
+    </>}
+    {optionalPending.length>0&&<div className="question-optional-status">
+      <strong>Further research awaiting original evidence</strong>
+      <p>{optionalPending.length} optional research roles are still being verified.
+        Their absence does not change the original-method result shown above.
+        Full source details are available in Data & diagnostics.</p>
+    </div>}
     {limitations.length>0&&<div className="question-uncertainty">
      <strong>What limits this finding</strong>
      <ul>{limitations.slice(0,5).map(item=><li key={item.code}>
