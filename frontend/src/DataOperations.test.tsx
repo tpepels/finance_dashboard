@@ -106,7 +106,6 @@ describe('integrated data synchronization and source health repair',()=>{
         }],
       }),
     })));
-    const user=userEvent.setup();
     render(<DataOperations/>);
     expect(await screen.findByText('Latest check results')).toBeTruthy();
     expect(screen.getByText(/FRED API rejected the configured key/)).toBeTruthy();
@@ -131,7 +130,6 @@ describe('integrated data synchronization and source health repair',()=>{
         }],
       }),
     })));
-    const user=userEvent.setup();
     render(<DataOperations/>);
     await waitFor(() => {
       expect(screen.getByRole('status').textContent).toContain('Current data');
