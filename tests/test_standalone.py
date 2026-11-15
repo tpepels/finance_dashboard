@@ -103,6 +103,70 @@ class StandaloneContainerTests(TestCase):
                 self.assertTrue(refresh.call_args.kwargs["preflight_only"])
                 self.assertTrue(refresh.call_args.kwargs["skip_complete_pinned"])
 
+    def test_partial_startup_preflight_records_planning_failure_but_preserves_schedule(self):
+        from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
+        class Halt:
+            seconds = None
+            def is_set(self): return False
+            def wait(self, seconds):
+                self.seconds=seconds
+                return True
+        stop=Halt()
+        with tempfile.TemporaryDirectory() as directory:
+            with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_REFRESH_ON_START="0",
+                          FINANCE_SOURCE_PREFLIGHT_ON_START="1",
+                          FINANCE_REFRESH_SCHEDULE_PATH=str(Path(directory)/"schedule.json")),
+                  patch("finance_dashboard.worker.refresh_all",return_value=2) as refresh,
+                  patch("finance_dashboard.standalone.record_event") as event):
+                refresh_loop(object(),stop,interval_seconds=86400,
+                             include_markets=False,refresh_wisesheets=False)
+                self.assertTrue(refresh.call_args.kwargs["preflight_only"])
+                status=scheduled_refresh_status()
+                self.assertEqual(status["last_error_code"],"planner_partial")
+                self.assertEqual(status["last_error_stage"],"startup_refresh_preflight")
+                self.assertEqual(stop.seconds,86400)
+                self.assertFalse(status["refresh_running"])
+                self.assertTrue(any(c.kwargs.get("action")=="source_refresh_preflight"
+                                    and c.kwargs.get("status")=="partial"
+                                    and c.kwargs.get("failed")==2
+                                    for c in event.call_args_list))
+
+    def test_macro_and_market_refresh_stages_continue_after_independent_crashes(self):
+        from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
+        class Halt:
+            def is_set(self): return False
+            def wait(self, seconds): return True
+        for crashing in ("macro","markets"):
+            with self.subTest(crashing=crashing):
+                called=[]
+                def macro(*args,**kwargs):
+                    called.append("macro")
+                    if crashing=="macro":
+                        raise RuntimeError("API_KEY=private-macro-failure")
+                    return 0
+                def market(*args,**kwargs):
+                    called.append("markets")
+                    if crashing=="markets":
+                        raise RuntimeError("SECRET_MARKET_URL=private")
+                    return 0
+                with tempfile.TemporaryDirectory() as directory:
+                    with (environ(FINANCE_AUTO_REFRESH="1",FINANCE_REFRESH_ON_START="1",
+                                  FINANCE_VINTAGE_REFRESH="0",
+                                  FINANCE_SEC_HOLDINGS_REFRESH="0",
+                                  FINANCE_AUTO_BACKUP="0",
+                                  FINANCE_FAILURE_JOURNAL_PATH=str(
+                                      Path(directory)/"failures.json")),
+                          patch("finance_dashboard.worker.refresh_all",side_effect=macro),
+                          patch("finance_dashboard.worker.refresh_market_all",side_effect=market),
+                          patch("finance_dashboard.data_change_bus.publish_change")):
+                        refresh_loop(None,Halt(),interval_seconds=86400,
+                                     include_markets=True,refresh_wisesheets=False)
+                        status=scheduled_refresh_status()
+                        self.assertEqual(status["last_error_stage"],crashing)
+                        self.assertEqual(status["last_refresh_outcome"],"partial")
+                        self.assertTrue(status["last_failure_persisted"])
+                self.assertEqual(called,["macro","markets"])
+
     def test_operator_sees_a_real_scheduled_wait_not_an_invented_countdown(self):
         from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
         from finance_dashboard.data_hub import automation_status
