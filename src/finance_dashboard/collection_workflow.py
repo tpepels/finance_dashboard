@@ -231,7 +231,18 @@ class CollectionWorkflow:
             self.current = record
             _write_json(self.path, record)
             try:
-                queued = self.manual.fetch(browser=safe_browser_profile(browser))
+                try:
+                    queued = self.manual.fetch(browser=safe_browser_profile(browser))
+                except Exception as exc:
+                    # An unavailable original-archive queue is independent of
+                    # scalar macro histories. Preserve the fault and still
+                    # submit the canonical source-health repair operation.
+                    from .failure_journal import record_failure
+                    record_failure("macro", "collection_original_queue_start", exc)
+                    record["startup_error"] = "original_queue_start_failed"
+                    queued = {"jobs": [], "skipped": {
+                        dataset: "original_queue_start_failed"
+                        for dataset in specs}}
                 assignments = {item["dataset"]: item["job_id"] for item in queued["jobs"]}
                 # An outstanding human-upload job belongs in the new run;
                 # skipping it would hide its actionable fallback links.
@@ -377,8 +388,10 @@ class CollectionWorkflow:
         repair_running = repair["status"] in _ACTIVE
         running = (record["phase"] == "starting" or counts["active"] > 0 or repair_running)
         state = ("running" if running else
-                 "failed" if record.get("startup_error") else
-                 "needs_attention" if (counts["failed"] or counts["manual_required"] or
+                 "failed" if record.get("startup_error") in (
+                     "collection_start_failed", "collection_start_interrupted") else
+                 "needs_attention" if (record.get("startup_error") or counts["failed"]
+                     or counts["manual_required"] or
                      repair["status"] in ("failed", "partial", "blocked", "interrupted"))
                  else "complete")
         return {"id": record["id"], "state": state, "running": running,
