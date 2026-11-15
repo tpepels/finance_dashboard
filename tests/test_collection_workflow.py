@@ -270,7 +270,8 @@ class CollectionWorkflowTests(unittest.TestCase):
                    return_value={"release_id": "0.2.1+new1234567890123"}):
             unavailable = manager.status()
         self.assertEqual(unavailable["repair"]["status"], "previous_build")
-        self.assertEqual(unavailable["state"], "complete")
+        # A hidden prior-build repair outcome cannot certify completion.
+        self.assertEqual(unavailable["state"], "needs_attention")
         self.assertEqual(unavailable["repair"]["origin"], "previous_build_unavailable")
 
     def test_restart_after_interrupted_collection_start_does_not_leave_phantom_progress(self):
