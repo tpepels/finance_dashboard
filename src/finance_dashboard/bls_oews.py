@@ -109,26 +109,49 @@ def parse_national_zip(payload: bytes, year: int) -> dict[str, Decimal]:
     if len(payload) > 8_000_000 or not payload.startswith(b"PK\x03\x04"):
         raise ProviderError("BLS OEWS response is not an approved national ZIP")
     name = f"national_M{year}_dl.xlsx"
+    # Publisher ZIPs may place the same identified workbook inside their
+    # oesmYYnat folder. These are two exact approved paths, not a recursive
+    # search for any spreadsheet with a matching-looking name.
+    year_dir = f"oesm{year % 100:02d}nat"
+    allowed = {name, f"{year_dir}/{name}"}
     try:
         with ZipFile(BytesIO(payload)) as archive:
             infos = [item for item in archive.infolist() if not item.is_dir()]
-            if len(infos) != 1 or infos[0].filename != name:
+            if len(infos) != 1 or infos[0].filename not in allowed:
                 raise ProviderError("BLS OEWS national workbook year/identity mismatch")
             if infos[0].file_size > 12_000_000:
                 raise ProviderError("BLS OEWS source workbook exceeds size bound")
-            data = archive.read(name)
+            data = archive.read(infos[0])
     except ProviderError:
         raise
     except (BadZipFile, OSError, RuntimeError, ValueError) as exc:
         raise ProviderError("BLS OEWS ZIP is invalid") from exc
-    if len(data) > 12_000_000 or not data.startswith(b"PK\x03\x04"):
+    if len(data) > 12_000_000 or not data.startswith(b"PK\\x03\\x04"):
         raise ProviderError("BLS OEWS national XLSX is invalid")
     from python_calamine import CalamineWorkbook
     try:
         workbook = CalamineWorkbook.from_filelike(BytesIO(data))
-        if len(workbook.sheet_names) != 1:
+        names = workbook.sheet_names
+        if not 1 <= len(names) <= 4 or len(names) != len(set(names)):
             raise ProviderError("BLS OEWS national workbook has ambiguous worksheets")
-        rows = workbook.get_sheet_by_index(0).to_python()
+        # Official national workbooks can include a 'Field Descriptions' sheet.
+        # Require exactly one worksheet with the all-occupations data header;
+        # never accept a random extra sheet as an alternative wage population.
+        matches = []
+        for index, sheet_name in enumerate(names):
+            if sheet_name.casefold().replace("_", " ").strip() in {
+                    "field descriptions", "field description"}:
+                continue
+            rows = workbook.get_sheet_by_index(index).to_python()
+            header = any(
+                {"OCC_CODE", "OCC_TITLE", "TOT_EMP", "H_MEAN", "H_MEDIAN"}
+                <= {str(cell).strip().upper().replace(" ", "_") for cell in row}
+                for row in rows[:25])
+            if header:
+                matches.append(rows)
+        if len(matches) != 1:
+            raise ProviderError("BLS OEWS national workbook data worksheet missing or ambiguous")
+        rows = matches[0]
     except ProviderError:
         raise
     except (OSError, ValueError, RuntimeError, TypeError) as exc:
