@@ -135,6 +135,63 @@ class ArchivedOriginalSamplingTests(unittest.TestCase):
             self.assertFalse(unavailable["samples"])
             self.assertNotIn("SECRET",json.dumps(unavailable))
 
+    def test_bls_archived_publisher_zip_preserves_native_mean_median_total(self):
+        from zipfile import ZipFile
+        from finance_dashboard.bls_oews import parse_national_rows
+        source_id="labour.us.oews_all_mean_hourly"
+        rows=[
+            ["May 2025 OEWS"],
+            ["OCC_CODE","OCC_TITLE","TOT_EMP","H_MEAN","H_MEDIAN"],
+            ["00-0000","All Occupations",155495730,33.54,24.51],
+            ["11-0000","Management occupations",11132700,69.84,60.83],
+        ]
+        # A tiny ZIP-shaped original is test-only; the exported row values
+        # correspond to the BLS May 2025 All Occupations source excerpt.
+        zipped=io.BytesIO()
+        with ZipFile(zipped,"w") as archive:
+            archive.writestr("oesm25nat/national_M2025_dl.xlsx",
+                             bytes([80,75,3,4])+b"publisher-workbook-test")
+        raw=zipped.getvalue()
+        with TemporaryDirectory() as temp:
+            root=Path(temp)
+            archive=root/"responses"/source_id/("c"*64)
+            archive.mkdir(parents=True)
+            (archive/"response-0.bin").write_bytes(raw)
+            url="https://www.bls.gov/oes/special-requests/oesm25nat.zip"
+            (archive/"manifest.json").write_text(json.dumps({
+                "schema_version":1,"provider":"BLS_OEWS",
+                "series_id":source_id,
+                "retrieved_at_utc":"2026-11-15T13:00:00+00:00",
+                "sources":[{"file":"response-0.bin","url":url,
+                            "bytes":len(raw),"sha256":sha256(raw).hexdigest()}],
+            }))
+            fake=MagicMock()
+            fake.sheet_names=["national_M2025_dl","Field Descriptions"]
+            data_sheet=MagicMock()
+            data_sheet.to_python.return_value=rows
+            notes=MagicMock()
+            notes.to_python.return_value=[["Field","Description"]]
+            fake.get_sheet_by_index.side_effect=[data_sheet,notes]
+            with patch("python_calamine.CalamineWorkbook.from_filelike",
+                       return_value=fake):
+                result=collect_failure_samples(root,[
+                    {"id":source_id,"provider":"BLS_OEWS","state":"collection_failed"}])
+            self.assertEqual(result["unavailable"],[])
+            self.assertEqual(len(result["samples"]),1)
+            sample=result["samples"][0]["samples"][0]
+            self.assertEqual(sample["original_sha256"],sha256(raw).hexdigest())
+            self.assertEqual(sample["expected_values"]["H_MEAN"],"33.54")
+            self.assertEqual(sample["expected_values"]["H_MEDIAN"],"24.51")
+            self.assertEqual(parse_national_rows(
+                [sample["header"],sample["national_total_row"]],2025),
+                {"H_MEAN":Decimal("33.54"),"H_MEDIAN":Decimal("24.51")})
+            (archive/"response-0.bin").write_bytes(b"<html>blocked by source</html>")
+            blocked=collect_failure_samples(root,[
+                {"id":source_id,"provider":"BLS_OEWS","state":"collection_failed"}])
+            self.assertFalse(blocked["samples"])
+            self.assertEqual(blocked["unavailable"][0]["reason"],
+                             "verified_bls_national_archive_unavailable")
+
     def test_optional_wid_monetary_measure_with_source_but_no_method_can_be_sampled(self):
         # Synthetic extension is explicit; it exercises the *same* parser
         # against the schema copied from the real WID captured excerpt.
