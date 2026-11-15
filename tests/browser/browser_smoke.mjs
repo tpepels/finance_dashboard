@@ -451,6 +451,10 @@ try {
     'Unified data and diagnostics remain reachable on mobile without horizontal scrolling');
   await mobileSource.click();
   await shown(mobile.getByRole('heading', { name: 'Data & diagnostics', exact: true }));
+  await shown(mobile.getByText('Right now', { exact: true }));
+  await shown(mobile.getByText('Next automatic step', { exact: true }));
+  await shown(mobile.getByText('Your action', { exact: true }));
+  await shown(mobile.getByRole('region', { name: 'What happens next' }));
   await shown(mobile.getByRole('button', { name: 'Find and download missing data', exact: true }));
   await shown(mobile.getByRole('heading', { name: 'Needs attention', exact: true }));
   await shown(mobile.getByRole('heading', { name: 'Research quality', exact: true }));
