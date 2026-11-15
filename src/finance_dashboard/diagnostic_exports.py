@@ -16,6 +16,7 @@ import json
 import os
 import time
 from zipfile import BadZipFile, ZipFile
+import zlib
 
 from .collection_workflow import _path, _read_json, _write_json
 from .runtime_release import release_info
@@ -68,7 +69,8 @@ class DiagnosticExportManager:
         try:
             with ZipFile(BytesIO(content)) as archive:
                 names = archive.namelist()
-                if (len(names) != len(set(names)) or
+                if (len(names) > 128 or len(names) != len(set(names)) or
+                        sum(member.file_size for member in archive.infolist()) > 256_000_000 or
                         not {"diagnostics/release.json",
                              "diagnostics/status.json"} <= set(names)):
                     return False
@@ -78,7 +80,7 @@ class DiagnosticExportManager:
                        for member in archive.infolist()):
                     return False
                 return archive.testzip() is None
-        except (BadZipFile, OSError, ValueError, RuntimeError, EOFError):
+        except (BadZipFile, OSError, ValueError, RuntimeError, EOFError, zlib.error):
             return False
 
     def _verify_ready_archive(self) -> bool:

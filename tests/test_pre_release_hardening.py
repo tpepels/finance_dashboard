@@ -104,6 +104,10 @@ class DiagnosticSectionRecoveryTests(unittest.TestCase):
                 "FINANCE_DIAGNOSTIC_EXPORT_CACHE":str(Path(temp)/"export.zip"),
                 "FINANCE_DIAGNOSTIC_EXPORT_STATE":str(Path(temp)/"export.json")}):
             app=FastAPI()
+            app.state.source_health_cache=MagicMock()
+            app.state.collection_workflow=MagicMock()
+            app.state.data_change_coordinator=MagicMock()
+            app.state.manual_sources=MagicMock()
             app.state.acceptance=MagicMock(loading=False)
             app.state.acceptance.peek.return_value=None
             app.state.source_health_cache.status.return_value={

@@ -402,6 +402,8 @@ class CollectionWorkflowTests(unittest.TestCase):
             calls.append(1)
             data = BytesIO()
             with ZipFile(data, "w") as archive:
+                archive.writestr("diagnostics/release.json", "{}")
+                archive.writestr("diagnostics/status.json", "{}")
                 archive.writestr("diagnostics/source-coverage.json", "{}")
                 archive.writestr("diagnostics/source-audit.csv", "source,status\n")
             return data.getvalue()
@@ -445,6 +447,7 @@ class CollectionWorkflowTests(unittest.TestCase):
         def recovered_zip():
             data = BytesIO()
             with ZipFile(data, "w") as output:
+                output.writestr("diagnostics/release.json", "{}")
                 output.writestr("diagnostics/status.json", "{}")
             return data.getvalue()
         recovered = DiagnosticExportManager(
