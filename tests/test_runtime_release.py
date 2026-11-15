@@ -232,6 +232,12 @@ class ReleaseStateTests(unittest.TestCase):
                     self.assertEqual(activation["version"], "0.2.1")
                     expected_release_id = activation["release_id"]
                     record_event("sync", "finished", status="complete", action="sync_history")
+                    from finance_dashboard.failure_journal import record_failure
+                    try:
+                        raise RuntimeError("API_KEY=secret-production-error")
+                    except RuntimeError as exc:
+                        failure = record_failure("scheduler","macro",exc)
+                    self.assertTrue(failure["persisted"],failure)
                     legacy = {"id":"pre-release", "action":"sync_current", "status":"complete",
                               "created_at":"2026-11-12T10:00:00+00:00"}
                     (root / "maintenance" / "jobs.json").write_text(json.dumps({
@@ -248,6 +254,10 @@ class ReleaseStateTests(unittest.TestCase):
                             self.assertEqual(status.json()["release"]["release_id"], expected_release_id)
                             self.assertEqual(status.json()["status"]["release_id"], expected_release_id)
                             self.assertEqual(status.json()["console"][-1]["level"], "info")
+                            incident = status.json()["failure_evidence"]
+                            self.assertEqual(incident["journal_state"],"ready")
+                            self.assertEqual(incident["latest"]["id"],failure["id"])
+                            self.assertEqual(incident["latest"]["stage"],"macro")
                             developer = client.get("/api/developer-log")
                             self.assertEqual(developer.status_code, 200)
                             self.assertEqual(developer.json()["release"]["activated_at"], AT_A)
@@ -289,6 +299,16 @@ class ReleaseStateTests(unittest.TestCase):
                                     "diagnostics/status.json"))["release_id"], expected_release_id)
                                 self.assertIn("diagnostics/icio-accounting-failures.csv",
                                               archive.namelist())
+                                self.assertIn("diagnostics/failure-journal.json",
+                                              archive.namelist())
+                                failure_data = json.loads(archive.read(
+                                    "diagnostics/failure-journal.json"))
+                                self.assertEqual(failure_data["state"],"ready")
+                                self.assertEqual(failure_data["failures"][0]["id"],failure["id"])
+                                self.assertEqual(failure_data["failures"][0]["stage"],"macro")
+                                self.assertNotIn("secret-production-error",
+                                                 json.dumps(failure_data))
+                                self.assertNotIn("API_KEY",json.dumps(failure_data))
                                 failure_manifest = json.loads(archive.read(
                                     "diagnostics/icio-accounting-failures-manifest.json"))
                                 self.assertTrue(failure_manifest["complete_for_exported_matrices"])
