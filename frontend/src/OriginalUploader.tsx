@@ -100,19 +100,19 @@ export default function OriginalUploader() {
     const filenames = [...new Set([...selected.filter(name => name !== READ_ME),
       ...staged.map(item => item.filename)])];
     if (!filenames.length) {
-      setActivity('All selected originals are already registered.');
+      setActivity('These files have already been added.');
       return;
     }
     const hasReadme = data.readme_available || data.files.some(file => file.filename === READ_ME);
     const ready = hasReadme ? filenames : filenames.filter(name => !data.files.some(
       file => file.filename === name && file.kind === 'verified_regular'));
     if (!ready.length) {
-      setActivity('Regular archive stored. Upload ' + READ_ME + ' to validate the matrices.');
+      setActivity('File saved. Add ' + READ_ME + ' so its contents can be checked.');
       return;
     }
     if (data.active) {
       pendingImport.current = [...new Set([...(pendingImport.current ?? []), ...filenames])];
-      setActivity('Originals uploaded. Import will start automatically when the current job finishes.');
+      setActivity('Files uploaded. Their data will be added automatically when the current check finishes.');
       return;
     }
     const response = await fetch('/api/originals/import', {
@@ -125,7 +125,7 @@ export default function OriginalUploader() {
     }
     const queued = await response.json() as { id: string };
     queuedJob.current = queued.id;
-    setActivity('Importing ' + ready.length + ' archive(s); progress appears below.' +
+    setActivity('Adding data from ' + ready.length + ' file(s); progress appears below.' +
       (ready.length < filenames.length ? ' Regular archives wait for the matching ReadMe.' : ''));
     await refresh();
   };
@@ -151,20 +151,20 @@ export default function OriginalUploader() {
     }
   };
   const reassess = async () => {
-    setBusy(true); setError(''); setActivity('Reassessing previously registered original archives…');
+    setBusy(true); setError(''); setActivity('Checking stored OECD files for errors…');
     try {
       const response = await fetch('/api/originals/reassess', {
         method: 'POST', headers: { 'X-GCM-Action': 'dashboard' },
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as { detail?: string };
-        throw new Error(body.detail ?? 'Original reassessment could not start (' + response.status + ')');
+        throw new Error(body.detail ?? 'Could not start checking stored OECD files (' + response.status + ')');
       }
       const queued = await response.json() as { id: string };
       queuedJob.current = queued.id;
       await refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Original reassessment failed');
+      setError(reason instanceof Error ? reason.message : 'Could not check stored OECD files');
     } finally {
       setBusy(false);
     }
@@ -188,7 +188,7 @@ export default function OriginalUploader() {
     {activity && <p role="status" className="original-import-activity">{activity}</p>}
     {error && <p role="alert" className="original-import-error">{error}</p>}
     {latest && <div className="original-import-job" role="status">
-      <strong>{latest.mode === 'reassess' ? 'Reassessment' : 'Import'}: {latest.status}</strong>
+      <strong>{latest.mode === 'reassess' ? 'Checking stored files' : 'Adding file data'}: {latest.status}</strong>
       <span>{latest.completed} of {latest.total} archives processed</span>
       <progress max={latest.total} value={latest.completed}/>
       {latest.scientific_assessment && <p role="status" className="original-import-activity">
