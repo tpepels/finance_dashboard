@@ -160,8 +160,8 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
       kind:'start',link:'#data-management'};
     tone='attention';
   }else if(failedSeries>0){
-    yourAction={title:'No files to upload',
-      detail:`${failedSeries} data ${failedSeries===1?'series has':'series have'} failed checks. A technical fix or publisher access may be needed. The troubleshooting report contains the details.`,
+    yourAction={title:'Technical follow-up needed',
+      detail:`No files need uploading. ${failedSeries} data ${failedSeries===1?'series has':'series have'} failed checks. See the troubleshooting report for the details needed to investigate.`,
       kind:'technical',link:'#diagnostics'};
     if(tone==='ok')tone='attention';
   }else if(session?.state==='failed'||input.researchFailed){
