@@ -435,6 +435,8 @@ export default function DataHub(){
       {summary&&<div className="data-issue-breakdown"
         aria-label="Why data needs attention">
         <div><strong>{status.failedSeries}</strong><span>Failed data checks</span></div>
+        {status.uncheckedSeries>0&&<div><strong>{status.uncheckedSeries}</strong>
+          <span>Missing data not yet checked</span></div>
         <div><strong>{Math.max(0,status.needsReview)}</strong><span>Available data to review</span></div>
         <div><strong>{status.waitingSeries}</strong><span>Downloads postponed</span></div>
         <div><strong>{status.manualFiles}</strong><span>Files you need to upload</span></div>
@@ -483,7 +485,7 @@ export default function DataHub(){
               <thead><tr><th>Data series</th><th>Latest saved data</th><th>Status</th><th>Next step</th></tr></thead>
               <tbody>{[...(snapshot?.attention_items??[])].sort((a,b)=>{
                 const rank=(state:string,code?:string|null)=>
-                  ({technical:0,waiting:1,stale:2}[issueCategory(state,code)]);
+                  ({technical:0,missing:1,waiting:2,stale:3}[issueCategory(state,code)]);
                 return rank(a.state,a.last_failure_code)-rank(b.state,b.last_failure_code)||
                   a.name.localeCompare(b.name);
               }).map(item=>{
@@ -493,7 +495,8 @@ export default function DataHub(){
                   <td>{item.latest_source_date?.slice(0,7)??'No data'}</td>
                   <td><span className={'data-state data-state-'+
                     (kind==='technical'?'error':kind==='waiting'?'active':'attention')}>
-                    {kind==='technical'?'Failed':kind==='waiting'?'Postponed':'Possibly outdated'}
+                    {kind==='technical'?'Failed':kind==='waiting'?'Postponed':
+                      kind==='missing'?'Missing':'Possibly outdated'}
                   </span></td>
                   <td>{sourceNextStep(item.state,item.last_failure_code)}</td>
                 </tr>;
