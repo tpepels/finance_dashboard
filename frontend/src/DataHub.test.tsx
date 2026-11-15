@@ -108,6 +108,11 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByRole('cell',{name:'EU KLEMS'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'OECD ICIO'})).toBeTruthy();
     expect(screen.getByRole('progressbar',{name:'Source downloads'}).getAttribute('aria-valuenow')).toBe('1');
+    expect(screen.getByRole('heading',{name:'Checking missing and outdated data'})).toBeTruthy();
+    expect(screen.getByText('Next automatic step')).toBeTruthy();
+    expect(screen.getByText('Your action')).toBeTruthy();
+    expect(screen.getByText('No action required')).toBeTruthy();
+    expect(screen.getByRole('region',{name:'What happens next'})).toBeTruthy();
     expect(screen.getByRole('progressbar',{name:'Missing-data check progress'}).getAttribute('aria-valuenow')).toBe('6');
     expect(screen.getByText('426 / 426')).toBeTruthy();
     expect(screen.getByText('Data series available')).toBeTruthy();
@@ -144,12 +149,12 @@ describe('unified Data and Diagnostics page',()=>{
     });
     render(<DataHub/>);
     expect(await screen.findByRole('heading',{
-      name:'Some data is missing',
+      name:'The latest data check finished with issues',
     })).toBeTruthy();
     expect(screen.getByText('426 / 462')).toBeTruthy();
     expect(screen.getByText('Data series missing').previousElementSibling?.textContent).toBe('36');
     expect(screen.getByText('Available series to review').previousElementSibling?.textContent).toBe('6');
-    expect(screen.getByText(/Next automatic check/)).toBeTruthy();
+    expect(screen.getByText(/Next publisher check/)).toBeTruthy();
     expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
   });
 
@@ -159,9 +164,8 @@ describe('unified Data and Diagnostics page',()=>{
     health.snapshot.sources={total:462,with_data:426,needs_attention:36};
     health.automation.scheduled_refresh_enabled=false;
     render(<DataHub/>);
-    expect(await screen.findByRole('heading',{
-      name:'Automatic downloads are turned off',
-    })).toBeTruthy();
+    expect(await screen.findByText('Automatic checks are off')).toBeTruthy();
+    expect(screen.getByText('Start a data check')).toBeTruthy();
     expect(screen.getByText('Attention needed')).toBeTruthy();
     expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
     expect(screen.queryByText('Manual source check (optional)')).toBeNull();
@@ -169,7 +173,7 @@ describe('unified Data and Diagnostics page',()=>{
 
   it('automatically reports post-ingestion reconciliation without requiring a repair click',async()=>{
     const view=render(<DataHub/>);
-    expect(await screen.findByText(/Automatic source refresh enabled/)).toBeTruthy();
+    expect(await screen.findByText(/Automatic checks are enabled/)).toBeTruthy();
     expect(screen.getByText(/Research results last updated/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Repair gaps'})).toBeNull();
     expect(calls.some(item=>item.method==='POST')).toBe(false);
@@ -214,7 +218,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(view.container.querySelectorAll('details')).toHaveLength(0);
     expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
     expect(screen.getByText('US labour compensation')).toBeTruthy();
-    expect(screen.getAllByText('Check publisher release')).toHaveLength(5);
+    expect(screen.getAllByText('Check for a newer publisher release on the next scheduled run.')).toHaveLength(10);
     expect(screen.getAllByText('2026-08')).toHaveLength(4);
     expect(screen.queryByText('Original source appendix loaded')).toBeNull();
   });
