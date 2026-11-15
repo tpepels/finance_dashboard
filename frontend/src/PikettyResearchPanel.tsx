@@ -23,6 +23,7 @@ type Growth=Chapter&{distribution_incidence:GrowthIncidence;
 type Ratio=Chapter&{percent_of_net_national_income:Record<string,Line>;
  matching_component_years:number[];national_minus_private_public_pp:Line};
 type Capital=Chapter&{net_capital_income_to_mean_national_wealth_pct:Line;
+ piketty_r_minus_g_status?:string;piketty_r_minus_g_reason?:string;
  real_net_national_income_growth_pct:Line;
  accounting_net_income_yield_minus_growth_pp:Line;
  factor_price_capital_share_pct:Line;matched_years:number};
@@ -254,15 +255,17 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
        }))} theme={theme} recessions={recessions}/>
    </section>
    <section className="decision-hero" aria-label="Piketty capital return versus growth">
-     <h4 className="decision-subhead">4. Accounting return on capital versus real growth (r − g)</h4>
+     <h4 className="decision-subhead">4. Accounting capital-income yield versus real growth</h4>
      <Status block={capital} label="Net capital-income yield and growth"/>
-     <p className="decision-caption">r here is an accounting net-capital-income
+     <p className="decision-note" role="status"><strong>Piketty's r − g: not empirically validated.</strong>
+       {' '}{capital.piketty_r_minus_g_reason??'The available originals support an accounting yield and real growth comparison only.'}</p>
+     <p className="decision-caption">The yield here is an accounting net-capital-income
        annual flow divided by the average of the current and previous year's
        national net wealth stock, using WID monetary totals in the same
        original constant-price unit. g is real net national-income growth.
-       Both require consecutive source observations. This r excludes capital
-       gains and is not a traded investment return. r − g does not mechanically
-       establish a change in inequality.</p>
+       Both require consecutive source observations. This yield excludes capital
+       gains and is not a traded investment return. The difference does not
+       establish a causal relationship with inequality.</p>
      <Plot title="Accounting net capital-income yield and real net national-income growth"
        group={'piketty-capital-'+area.area}
        rows={[{name:'Net capital-income / mean wealth (r)',slot:0,
@@ -272,7 +275,8 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
        theme={theme} recessions={recessions}/>
      {latestCapital.length>0&&<div style={{overflowX:'auto'}}>
        <table className="research-native-table" aria-label="Matched accounting capital yield minus growth">
-         <thead><tr><th>Year</th><th>r (%)</th><th>g (%)</th><th>r − g (percentage points)</th></tr></thead>
+         <thead><tr><th>Year</th><th>Accounting yield (%)</th><th>Real growth (%)</th>
+           <th>Yield − growth (percentage points)</th></tr></thead>
          <tbody>{latestCapital.map(([year,gap])=><tr key={year}>
            <th scope="row">{year}</th><td>{fmt(r[year])}</td><td>{fmt(g[year])}</td>
            <td>{fmt(gap,' pp')}</td></tr>)}</tbody>
