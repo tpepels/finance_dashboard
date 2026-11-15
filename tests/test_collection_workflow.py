@@ -128,7 +128,8 @@ class CollectionWorkflowTests(unittest.TestCase):
         maintenance = StubMaintenance()
         with patch("finance_dashboard.manual_sources.source_specs", return_value=SPECS), \
              patch.object(manual, "fetch", side_effect=RuntimeError("archive queue broken")), \
-             patch("finance_dashboard.failure_journal.record_failure") as journal:
+             patch("finance_dashboard.failure_journal.record_failure") as journal, \
+             patch.object(CollectionWorkflow, "_ensure_repair_monitor"):
             manager = CollectionWorkflow(
                 manual, maintenance, path=self.root / "queue-fault.json",
                 valid_sources={"gold.usd.spot"}, valid_markets=set())
