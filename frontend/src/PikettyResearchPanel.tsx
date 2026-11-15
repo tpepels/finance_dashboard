@@ -79,7 +79,7 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
  if(!area)return null;
  const income=area.concentration.concepts.income;
  const wealth=area.concentration.concepts.wealth;
- const comparedYear=area.concentration.latest_comparable_year;
+ const comparedYear=area.concentration.latest_comparable_year??null;
  const values=(block:typeof income, group:string):number|null=>{
    const line=block.percentage_shares[group]??[];
    return line.find(([year])=>Number(year)===comparedYear)?.[1]??null;
@@ -110,7 +110,7 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
        wealth to the top 10%; the bottom 50% hold
        {' '}{fmt(piketty.report_reference.world_income_bottom50_pct)} of income and
        {' '}{fmt(piketty.report_reference.world_wealth_bottom50_pct)} of wealth.
-       These are fixed, dated report estimates. {piketty.report_reference.reconciliation.reason}</p>
+       These are fixed, dated report estimates. {piketty.report_reference.reconciliation?.reason??'This reference has not been reconciled with the accepted original WID histories.'}</p>
      <a href={piketty.report_reference.url} target="_blank" rel="noreferrer">
        Published report and methodology</a>
    </div>
