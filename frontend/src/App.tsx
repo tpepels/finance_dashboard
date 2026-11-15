@@ -17,6 +17,7 @@ const PANELS = {
   global: lazy(() => import('./GlobalPanel')), labour: lazy(() => import('./LabourPanel')),
 };
 const Workbench = lazy(() => import('./Workbench'));
+const QuestionConnections = lazy(() => import('./QuestionConnections'));
 const SavedViews = lazy(() => import('./SavedViews'));
 const SourceWorkspace = lazy(() => import('./SourceWorkspace'));
 const SourceExplorer = lazy(() => import('./SourceExplorer'));
@@ -188,6 +189,9 @@ export default function App() {
             : <p>{topic!.questions.length} research questions</p>}
           <button type="button" className="workspace-reload" onClick={() => { invalidateAnalysisReads(); setDataVersion(value => value + 1); }}>Reload research</button>
         </div>
+        {selected.question&&<Suspense fallback={null}>
+          <QuestionConnections key={selected.question} questionId={selected.question} dataVersion={dataVersion}/>
+        </Suspense>}
         {waiting && <p role="status" className="workspace-loading">Reading {selected.question ? `${selected.question} · ${topic!.label}` : topic!.label}…</p>}
         <div id="research-workspace" className={selected.question ? 'workspace-selected' : undefined} tabIndex={-1} aria-busy={waiting}>
           <Suspense fallback={null}><Panel key={selected.view} theme={theme} dataVersion={dataVersion}/></Suspense>
