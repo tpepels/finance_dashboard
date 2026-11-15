@@ -40,7 +40,7 @@ describe('original research file upload', () => {
     await user.upload(screen.getByLabelText('Upload original research ZIP files and ReadMe workbook'), file);
     await waitFor(() => expect(queue).toEqual([['ICIO2021econA.zip']]));
     expect(sent[0]).toContain('filename=ICIO2021econA.zip');
-    expect(screen.getByText(/Importing 1 archive/)).toBeTruthy();
+    expect(screen.getByText(/Adding data from 1 file/)).toBeTruthy();
   });
 
   it('reassesses already stored archives from the browser without re-upload', async () => {
@@ -57,7 +57,7 @@ describe('original research file upload', () => {
     render(<OriginalUploader/>);
     await user.click(screen.getByRole('button', { name: 'Check stored OECD files for errors' }));
     await waitFor(() => expect(requested).toEqual(['dashboard']));
-    expect(screen.getByText(/Reassessing previously registered original archives/)).toBeTruthy();
+    expect(screen.getByText(/Checking stored OECD files for errors/)).toBeTruthy();
   });
 
   it('retains a staged regular archive until its required ReadMe is supplied', async () => {
