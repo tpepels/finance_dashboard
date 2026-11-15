@@ -28,15 +28,15 @@ def eurostat():
 
 def zipped_sec():
     tables={
-    "SUBMISSION.tsv":"ACCESSION_NUMBER\tSUBMISSIONTYPE\tREPORTDATE\tFILING_DATE\tSERIESID\n"
+    "NMFP_SUBMISSION.tsv":"ACCESSION_NUMBER\tSUBMISSIONTYPE\tREPORTDATE\tFILING_DATE\tSERIESID\n"
        "old\tN-MFP3\t2026-10-31\t2026-11-01\tS000000001\n"
        "new\tN-MFP3/A\t2026-10-31\t2026-11-03\tS000000001\n"
        "feeder\tN-MFP3\t2026-10-31\t2026-11-02\tS000000002\n",
-    "SERIESLEVELINFO.tsv":"ACCESSION_NUMBER\tFEEDERFUNDFLAG\tNETASSETSOFSERIES\tAVERAGEPORTFOLIOMATURITY\tAVERAGELIFEMATURITY\n"
+    "NMFP_SERIESLEVELINFO.tsv":"ACCESSION_NUMBER\tFEEDERFUNDFLAG\tNETASSETSOFSERIES\tAVERAGEPORTFOLIOMATURITY\tAVERAGELIFEMATURITY\n"
        "old\tN\t100000000\t30\t60\n"
        "new\tN\t200000000\t28\t56\n"
        "feeder\tY\t900000000\t10\t20\n",
-    "LIQUIDASSETSDETAILS.tsv":"ACCESSION_NUMBER\tTOTLIQUIDASSETSNEARPCTDATE\tPCTWEEKLYLIQUIDASSETS\n"
+    "NMFP_LIQUIDASSETSDETAILS.tsv":"ACCESSION_NUMBER\tTOTLIQUIDASSETSNEARPCTDATE\tPCTWEEKLYLIQUIDASSETS\n"
        "old\t2026-10-30\t0.70\nnew\t2026-10-30\t0.80\nfeeder\t2026-10-30\t0.99\n"}
     output=BytesIO()
     with ZipFile(output,"w") as archive:
@@ -132,6 +132,11 @@ class OriginalDataTests(unittest.TestCase):
                 {"source_key":"NET_ASSETS_MUSD","unit":"million_usd"},None)
         with self.assertRaises(ProviderError):
             parse_nmfp_month(b"<html>Access denied</html>",date(2026,10,1))
+        with ZipFile(BytesIO(raw)) as archive:
+            self.assertEqual(
+                sorted(archive.namelist()),
+                sorted(["NMFP_SUBMISSION.tsv", "NMFP_SERIESLEVELINFO.tsv",
+                        "NMFP_LIQUIDASSETSDETAILS.tsv"]))
 
     def test_managed_ingestion_archive_and_independent_reconciliation(self):
         from pathlib import Path

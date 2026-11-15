@@ -4,6 +4,7 @@ from datetime import date
 from hashlib import sha256
 from pathlib import Path
 import os
+import re
 import httpx
 
 from .bis import BisPolicyClient, FetchedSeries
@@ -12,6 +13,21 @@ from .source_policy import managed_client, require_managed_client, SourcePolicyG
 from .provider_registry import PROVIDER_CODES, get_provider
 from .provider_parsers import SourceUnavailable
 from .source_documents import BatchOriginal, MAX_BATCH_BYTES, MAX_BATCH_DOCUMENTS
+
+# The 16 SEC monthly N-MFP ZIPs are reused for four registered measures.
+# Bounded SEC-only cache admission avoids 64 large downloads; each original
+# still has the existing 50 MB size and SHA-256 fingerprint constraints.
+SEC_NMFP_CACHE_BYTES = 230_000_000
+
+
+def _is_sec_nmfp_document(url: httpx.URL) -> bool:
+    if url.scheme != "https" or url.host != "www.sec.gov" or url.query:
+        return False
+    return (url.path == "/data-research/sec-markets-data/dera-form-n-mfp-data-sets"
+            or bool(re.fullmatch(
+                r"/files/dera/data/form-n-mfp-data-sets/[0-9]{8}-[0-9]{8}_nmfp\.zip",
+                url.path, re.I)))
+
 
 
 class ProviderRouter:
@@ -116,7 +132,18 @@ class ProviderRouter:
             established = self.client.build_request("GET", url, **kwargs)
             context_digest = sha256(established.headers.get("cookie", "").encode()).hexdigest()
             original = BatchOriginal.from_response(response, key, context_digest)
-            if (len(self._documents) < MAX_BATCH_DOCUMENTS
+            if _is_sec_nmfp_document(request.url):
+                # Evict the oldest earlier batch originals, not the immutable
+                # publisher evidence on disk. SEC's 16 monthly archives plus
+                # its catalogue can then be shared across all four measures.
+                while self._documents and (
+                        len(self._documents) >= MAX_BATCH_DOCUMENTS
+                        or sum(len(item.raw) for item in self._documents.values())
+                        + len(original.raw) > SEC_NMFP_CACHE_BYTES):
+                    self._documents.pop(next(iter(self._documents)))
+                if len(original.raw) <= SEC_NMFP_CACHE_BYTES:
+                    self._documents[key] = original
+            elif (len(self._documents) < MAX_BATCH_DOCUMENTS
                     and sum(len(item.raw) for item in self._documents.values())
                     + len(original.raw) <= MAX_BATCH_BYTES):
                 self._documents[key] = original

@@ -46,3 +46,39 @@ Run tests/test_extra_publisher_sources.py, offline Python, frontend,
 Chromium/browser and release image workflows. Validate real archive receipts,
 source histories and scientific acceptance in the next production Data &
 diagnostics report. CI does not prove publisher availability on the server.
+
+## Publisher-format and freshness corrections (15 November 2026)
+
+The SEC DERA monthly ZIP has `NMFP_SUBMISSION.tsv`,
+`NMFP_SERIESLEVELINFO.tsv` and `NMFP_LIQUIDASSETSDETAILS.tsv`.
+The original parser and independent evidence selector admit those exact
+publisher-prefixed filenames, reject duplicate/ambiguous matches, and do not
+reconstruct facts from unrecognized source tables. Weekly liquidity is an
+original 0–1 fraction; invalid values are rejected rather than guessed.
+
+The 16 monthly SEC bundles are reusable in a 230 MB **SEC-only** bounded
+original-response cache, with the unchanged 32-document and 50 MB-per-document
+limits and SHA-256 verification. It evicts older in-memory responses when the
+long-running macro collector has filled the shared cache. Immutable disk
+archives remain unaffected. The four metric-specific evidence receipts keep
+their own exact source identities and independently reconcilable originals.
+
+Official release-aware source dates correct false stale flags:
+- ECB DWA country histories PT/DE/FR through 2026-Q1 (released 24 Aug)
+  are accepted as current only before 25 Nov 2026.
+- ECB euro-area I9 is an older **distinct fixed-composition** source and ends
+  at 2025-Q4; it must not be joined with another area's Q1 data.
+- Eurostat original 2026-Q2 HPI indices were released 30 Sep; the next
+  planned update is January 2027, so a 2026-Q2 observation remains current
+  through 31 Dec 2026, if the full stated quarter was actually acquired.
+
+See the ECB DWA statistical calendar and ECB Data Portal individual I9 key,
+and the Eurostat 1 October 2026 house-price note. Bounds automatically
+expire on the named next release date. Missing earlier published quarters
+remain stale despite a valid publisher calendar entry.
+
+Regression coverage: `tests/test_extra_publisher_sources.py` uses the
+publisher-prefixed SEC TSVs for ingestion, independent archive reconstruction
+and tamper rejection; `tests/test_quarterly_publication_and_sec_cache.py`
+verifies all 23 distinct quarterly release states, conservative expiry,
+and SEC scoped verified cache eviction/reuse.

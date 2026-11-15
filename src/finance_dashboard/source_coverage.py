@@ -334,6 +334,44 @@ PUBLICATION_BOUNDS.update({
     )
 })
 
+# Exact current publication windows for the new quarterly histories:
+# ECB DWA national 2026-Q1 was published 24 Aug 2026; next Q2 release is
+# scheduled 25 Nov. ECB I9 fixed euro area ended at 2025-Q4 on 29 May.
+# Keep the I9 original separate: do not splice I9 and I10 geographies.
+PUBLICATION_BOUNDS.update({
+    f"wealth.{area}.ecb_dwa_{group}": {
+        "version": "ECB DWA, 24 August 2026 (2026-Q1)",
+        "released": date(2026, 8, 24),
+        "expires": date(2026, 11, 25),
+        "through": date(2026, 1, 1),
+        "url": "https://data.ecb.europa.eu/data/datasets/DWA/data-information",
+    }
+    for area in ("pt", "de", "fr") for group in ("top10", "bottom50")
+})
+PUBLICATION_BOUNDS.update({
+    f"wealth.ea.ecb_dwa_{group}": {
+        "version": "ECB fixed euro area I9 DWA, 29 May 2026 (2025-Q4)",
+        "released": date(2026, 5, 29),
+        "expires": date(2026, 11, 25),
+        "through": date(2025, 10, 1),
+        "url": "https://data.ecb.europa.eu/data/datasets/DWA/data-information",
+    } for group in ("top10", "bottom50")
+})
+# Eurostat HPI Q2 2026 released 30 Sep 2026; next planned
+# publication: January 2027 (official Statistics Explained note).
+# The earliest possible January date is used as a conservative expiry.
+PUBLICATION_BOUNDS.update({
+    f"property.{area}.eurostat_hpi_{kind}": {
+        "version": "Eurostat HPI 2026-Q2 (30 September 2026)",
+        "released": date(2026, 9, 30),
+        "expires": date(2027, 1, 1),
+        "through": date(2026, 4, 1),
+        "url": "https://ec.europa.eu/eurostat/en/web/products-eurostat-news/w/ddn-20261001-3",
+    }
+    for area in ("pt", "de", "fr", "ea", "eu")
+    for kind in ("total", "new", "existing")
+})
+
 SAFE_ERROR_CODES = {
     "provider_http_400", "provider_http_401", "provider_http_403",
     "provider_http_404", "provider_http_429", "provider_http_500",

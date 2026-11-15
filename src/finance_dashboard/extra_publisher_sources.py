@@ -189,9 +189,10 @@ def nmfp_archives(index: str) -> list[tuple[date,str]]:
 
 
 def _tsv(archive: ZipFile, table: str) -> list[dict]:
+    names = {f"NMFP_{table.upper()}.TSV", f"{table.upper()}.TSV"}
     matches = [entry for entry in archive.infolist()
-               if not entry.is_dir() and entry.filename.upper().endswith("/"+table.upper()+".TSV")
-               or (not entry.is_dir() and entry.filename.upper()==table.upper()+".TSV")]
+               if not entry.is_dir()
+               and entry.filename.rsplit("/", 1)[-1].upper() in names]
     if len(matches) != 1:
         raise ProviderError(f"SEC N-MFP {table} data table missing or ambiguous")
     member = matches[0]
@@ -297,13 +298,11 @@ def parse_nmfp_month(raw: bytes, report_month: date) -> dict[str, Decimal]:
             continue
         value = _number(row["PCTWEEKLYLIQUIDASSETS"],"SEC N-MFP weekly liquidity",
                         maximum=Decimal(100))
-        # N-MFP reports portions of assets as fractions for current filing
-        # series. Fractions cannot exceed one; percentages already in 0..100
-        # retain their original scale (no inference from missing records).
-        if value <= 1:
-            value *= 100
-        if value > 100:
-            raise ProviderError("SEC N-MFP weekly liquidity exceeds 100 percent")
+        # N-MFP3 discloses proportions on a 0..1 scale. Do not guess
+        # whether an out-of-range original used a different convention.
+        if value > 1:
+            raise ProviderError("SEC N-MFP weekly liquidity fraction exceeds one")
+        value *= 100
         if accession in last_liquid and day == last_liquid[accession][0]:
             raise ProviderError("SEC N-MFP repeated fund/date liquidity observation")
         if accession not in last_liquid or day > last_liquid[accession][0]:

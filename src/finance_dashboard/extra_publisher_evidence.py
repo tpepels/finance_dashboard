@@ -100,7 +100,9 @@ def _eurostat(raw, source, definition, start):
 
 
 def _tsv(zf, name):
-    matches=[r for r in zf.infolist() if not r.is_dir() and r.filename.upper().split("/")[-1]==name+".TSV"]
+    names={f"NMFP_{name}.TSV", f"{name}.TSV"}
+    matches=[r for r in zf.infolist()
+             if not r.is_dir() and r.filename.upper().split("/")[-1] in names]
     if len(matches)!=1 or matches[0].file_size>35_000_000:
         raise EvidenceError("source_schema_invalid")
     rows=csv.DictReader(StringIO(zf.read(matches[0]).decode("utf-8-sig")),delimiter="\t")
