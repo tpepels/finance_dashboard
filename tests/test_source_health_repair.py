@@ -111,6 +111,67 @@ class SourceHealthRepairTests(unittest.TestCase):
         self.assertEqual(result["msci_original_acquisition"]["stored_verified"], 3)
         self.assertEqual(result["status"], "complete")
 
+    def test_broken_initial_census_falls_back_to_collectors_and_preserves_error(self):
+        manager = Manager()
+        with patch("finance_dashboard.source_coverage.build_coverage",
+                   side_effect=[RuntimeError("coverage down"), census()]), \
+             patch("finance_dashboard.worker.refresh_all", return_value=0) as refresh, \
+             patch("finance_dashboard.failure_journal.record_failure") as journal, \
+             patch("finance_dashboard.developer_logs.record_event"):
+            result = run_repair_source_health(
+                manager, "job", "repair_source_health", {}, Event())
+        self.assertTrue(refresh.called)
+        self.assertGreater(len(refresh.call_args.kwargs["series_ids"]), 100)
+        self.assertEqual(result["selected_sources"],
+                         len(refresh.call_args.kwargs["series_ids"]))
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["reason"], "source_health_unavailable")
+        self.assertIsNone(result["issues_before"])
+        self.assertIsNone(result["resolved_issues"])
+        self.assertEqual(result["issues_after"], 0)
+        self.assertIn("repair_coverage_before", result["coverage_errors"])
+        self.assertEqual(journal.call_args.args[1], "repair_coverage_before")
+
+    def test_broken_final_census_preserves_collection_and_does_not_claim_repair(self):
+        sid = "gold.usd.spot"
+        manager = Manager()
+        with patch("finance_dashboard.source_coverage.build_coverage",
+                   side_effect=[census((sid, "not_ingested")),
+                                RuntimeError("post-collection query down")]), \
+             patch("finance_dashboard.worker.refresh_all", return_value=0) as refresh, \
+             patch("finance_dashboard.failure_journal.record_failure") as journal, \
+             patch("finance_dashboard.developer_logs.record_event"):
+            result = run_repair_source_health(
+                manager, "job", "repair_source_health", {}, Event())
+        self.assertEqual(refresh.call_args.kwargs["series_ids"], {sid})
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["reason"], "source_health_unavailable")
+        self.assertEqual(result["issues_before"], 1)
+        self.assertIsNone(result["issues_after"])
+        self.assertIsNone(result["resolved_issues"])
+        self.assertIsNone(result["remaining_series_ids"])
+        self.assertIn("repair_coverage_after", result["coverage_errors"])
+        self.assertEqual(journal.call_args.args[1], "repair_coverage_after")
+
+    def test_unexpected_msci_archive_error_does_not_block_other_sources(self):
+        ids = ("valuation.europe.msci_forward_pe", "gold.usd.spot")
+        manager = Manager()
+        with patch("finance_dashboard.source_coverage.build_coverage",
+                   side_effect=[census(*[(sid, "stale") for sid in ids]),
+                                census(*[(sid, "available") for sid in ids])]), \
+             patch("finance_dashboard.msci_regional_factsheets.collect",
+                   side_effect=RuntimeError("internal msci parser bug")), \
+             patch("finance_dashboard.worker.refresh_all", return_value=0) as refresh, \
+             patch("finance_dashboard.failure_journal.record_failure") as journal:
+            result = run_repair_source_health(
+                manager, "job", "repair_source_health", {}, Event())
+        self.assertEqual(refresh.call_args.kwargs["series_ids"], set(ids))
+        self.assertEqual(result["msci_original_acquisition"],
+                         {"status": "failed", "reason": "internal_error"})
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["reason"], "provider_failed")
+        self.assertEqual(journal.call_args.args[1], "repair_msci_factsheets")
+
     def test_when_all_data_healthy_does_not_attempt_source_requests(self):
         manager = Manager()
         with patch("finance_dashboard.source_coverage.build_coverage",
