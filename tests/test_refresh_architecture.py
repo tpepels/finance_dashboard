@@ -87,9 +87,12 @@ class RefreshArchitectureTests(unittest.TestCase):
         self.assertEqual(progress, [
             (1, 3, "FX:USD"), (2, 3, "research.test"), (3, 3, "vt"),
         ])
-        self.assertEqual(len(logged), 1)
+        self.assertEqual(len(logged), 2)
         self.assertEqual(logged[0][0][1], "source_deferred")
         self.assertEqual(logged[0][1]["reason"], "source_policy_deferred")
+        self.assertEqual(logged[1][1]["action"], "source_refresh_batch")
+        self.assertEqual(logged[1][1]["completed"], 3)
+        self.assertEqual(logged[1][1]["failed"], 1)
 
     def test_one_publisher_quota_deferral_skips_remaining_requests_in_same_cycle(self):
         attempts, events, progress = [], [], []
@@ -117,13 +120,20 @@ class RefreshArchitectureTests(unittest.TestCase):
         self.assertEqual(failures, 3)
         self.assertEqual(attempts, ["first", "fred"])
         self.assertEqual(len(progress), 4)
-        self.assertEqual(len(events), 2)
+        self.assertEqual(len(events), 5)
         self.assertEqual(events[0][0][1], "source_deferred")
-        self.assertEqual(events[1][1]["action"], "publisher_quota_exhausted")
-        self.assertEqual(events[1][1]["stage"], "OECD_NFC_ACCOUNTS")
-        self.assertEqual(events[1][1]["failed"], 2)
-        self.assertNotIn("provider", events[1][1])
-        self.assertNotIn("sources_not_attempted", events[1][1])
+        self.assertEqual([e[1].get("source_id") for e in events[:3]],
+                         ["oecd.first", "oecd.second", "oecd.third"])
+        self.assertEqual([e[1].get("action") for e in events[1:3]],
+                         ["publisher_quota_exhausted"]*2)
+        self.assertEqual(events[3][1]["action"], "publisher_quota_exhausted")
+        self.assertEqual(events[3][1]["stage"], "OECD_NFC_ACCOUNTS")
+        self.assertEqual(events[3][1]["failed"], 2)
+        self.assertEqual(events[4][1]["action"], "source_refresh_batch")
+        self.assertEqual(events[4][1]["completed"], 4)
+        self.assertEqual(events[4][1]["failed"], 3)
+        self.assertNotIn("provider", events[3][1])
+        self.assertNotIn("sources_not_attempted", events[3][1])
 
     def test_temporary_concurrency_deferral_does_not_skip_other_same_provider(self):
         attempts = []
