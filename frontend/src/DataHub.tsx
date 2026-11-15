@@ -293,15 +293,20 @@ export default function DataHub(){
         <p>See available data, download progress, and issues that need a closer look.</p>
       </div>
       <div className="data-main-action">
-        <button type="button" className="data-collection-primary" disabled={starting||active}
+        <button type="button"
+          className={'data-collection-primary'+
+            (status.yourAction.kind==='start'?'':' data-collection-optional')}
+          disabled={starting||active}
           onClick={()=>void start()}>Find and download missing data</button>
-        <small>{active?'A collection is already running. Progress is shown below.':
-          'Checks publisher websites and saves available files. See the progress below.'}</small>
+        <small>{active?'A check is already running. See Collection activity below.':
+          status.yourAction.kind==='start'?'Start a check here. Automatic downloads are currently unavailable.':
+          'Run an extra check now. Scheduled updates continue automatically.'}</small>
       </div>
     </header>
 
     <section className="data-overview" aria-label="Current data status">
       <div className="data-overview-summary" role="status">
+        <span className="data-overview-label">Right now</span>
         <span className={'data-state data-state-'+status.tone}>
           {status.tone==='active'?'Checking':status.tone==='ok'?'Up to date':'Needs attention'}
         </span>
