@@ -472,6 +472,22 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                 "questions": limits["questions"],
                 "method_register": limits["method_register"],
             })
+            # Record exactly what is blocking each question before the owner
+            # exports the next ZIP, without requiring a separate button.
+            # A failure here must not discard the rest of the diagnostics.
+            try:
+                from .research_status import research_next_actions
+                next_actions = research_next_actions(
+                    app.state.acceptance.peek(), research_document)
+            except Exception as exc:
+                from .failure_journal import record_failure
+                record_failure("macro", "diagnostic_research_next_actions", exc)
+                next_actions = {
+                    "status": "unavailable", "evaluated_at": None,
+                    "questions": [], "next_action_counts": {},
+                    "reason": "research_next_actions_failed",
+                }
+            put("diagnostics/research-next-actions.json", next_actions)
             limitation_csv = StringIO()
             columns = ("id", "category", "severity", "status", "title",
                        "detail", "next_action", "analysis_ids", "source_ids",
@@ -578,7 +594,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                 "Redacted diagnostic bundle with full source status, per-role publisher "
                 "attempts, original hashes, manual fallback links, accounting residuals, "
                 "source audit CSV, cross-question limitation assessment (JSON/CSV), "
-                "registered methodological caveats, and maintenance outcomes. "
+                "per-question next actions with core and supplemental evidence "
+                "counts, registered methodological caveats, and maintenance outcomes. "
                 "Browser cookies, credentials, "
                 "signed redirect parameters, raw HTTP bodies, portfolio holdings and "
                 "database contents are excluded.\n")
