@@ -442,16 +442,27 @@ try {
   await shown(mobile.getByRole('heading', { name: 'Dashboard', exact: true }));
   await mobile.getByText('Reading research findings…', { exact: true }).waitFor({ state: 'hidden' });
   await screenshot(mobile, 'mobile-overview-light');
-  // The mobile toolbar hides Data & sync; the canonical Data collection
-  // workspace is still reachable through the single navigation menu.
+  // The unified operations workspace must remain reachable, legible and
+  // actionable on a 390px screen without a second navigation route.
   await mobile.getByRole('button', { name: 'Menu', exact: true }).click();
-  const mobileSource = mobile.getByRole('link', { name: 'Data collection', exact: true });
+  const mobileSource = mobile.getByRole('link', { name: 'Data & diagnostics', exact: true });
   const utilityBounds = await mobileSource.boundingBox();
   assert.ok(utilityBounds && utilityBounds.x >= 0 && utilityBounds.x + utilityBounds.width <= 390,
-    'Data collection remains reachable from mobile navigation without horizontal scrolling');
+    'Unified data and diagnostics remain reachable on mobile without horizontal scrolling');
   await mobileSource.click();
-  await shown(mobile.locator('#source-coverage'));
-  await shown(mobile.getByRole('heading', { name: 'Data availability', exact: true }));
+  await shown(mobile.getByRole('heading', { name: 'Data & diagnostics', exact: true }));
+  await shown(mobile.getByRole('button', { name: 'Collect original data', exact: true }));
+  await shown(mobile.getByRole('heading', { name: 'Sources needing attention', exact: true }));
+  await shown(mobile.getByRole('heading', { name: 'Research quality', exact: true }));
+  await shown(mobile.getByRole('heading', { name: 'Diagnostics & maintenance', exact: true }));
+  assert.equal(await mobile.locator('#research-sources details').count(), 0,
+    'No operations are hidden behind disclosure arrows');
+  assert.equal(await mobile.getByRole('link', { name: 'Diagnostics', exact: true }).count(), 0,
+    'Old Diagnostics navigation item was removed');
+  await screenshot(mobile, 'mobile-data-diagnostics', mobile.locator('#research-sources'));
+  await mobile.goto(`${seeded}/#diagnostics`);
+  await shown(mobile.locator('#diagnostics'));
+  await shown(mobile.getByRole('heading', { name: 'Diagnostics & maintenance', exact: true }));
   await mobile.goto(seeded);
   await mobile.keyboard.press('Tab');
   assert.equal(await mobile.getByRole('link', { name: 'Skip to content', exact: true }).evaluate(element => element === document.activeElement), true);
