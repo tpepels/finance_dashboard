@@ -298,6 +298,8 @@ class CollectionWorkflowTests(unittest.TestCase):
         maintenance.jobs = [{
             "id": "new-repair", "action": "repair_source_health",
             "status": "partial", "completed": 6, "total": 6,
+            "started_at": "2026-11-15T12:42:54+00:00",
+            "finished_at": "2026-11-15T13:50:39+00:00",
             "error_code": "source_gaps_remaining",
             "result": {"issues_before": 6, "issues_after": 6,
                        "resolved_issues": 0, "failed_sources": 0},
@@ -311,6 +313,8 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertEqual(status["repair"]["origin"], "latest_independent_check")
         self.assertEqual(status["repair"]["status"], "partial")
         self.assertEqual(status["repair"]["completed"], 6)
+        self.assertEqual(status["repair"]["finished_at"], "2026-11-15T13:50:39+00:00")
+        self.assertEqual(status["repair"]["started_at"], "2026-11-15T12:42:54+00:00")
         self.assertEqual(status["repair"]["details"]["issues_after"], 6)
         self.assertNotEqual(status["repair"]["status"], "interrupted")
 
