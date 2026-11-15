@@ -76,6 +76,6 @@ describe('limitations assessment',()=>{
     render(<LimitationAssessment/>);
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('HTTP 503');
-    expect(screen.getByRole('button',{name:'Assess limitations'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Check data and research problems'})).toBeTruthy();
   });
 });
