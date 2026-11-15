@@ -117,7 +117,7 @@ class PikettyResearchTests(unittest.TestCase):
                          (1980,2025))
         self.assertEqual(incidence["matched_years"],3)
         self.assertEqual(len(incidence["rows"]),12)
-        self.assertEqual(sum(x["population_weight"] for x in incidence["rows"]),1)
+        self.assertAlmostEqual(sum(x["population_weight"] for x in incidence["rows"]),1)
         self.assertAlmostEqual(incidence["rows"][-1]["cumulative_real_growth_pct"],110)
         # A missing publisher percentile/period cannot be interpolated to
         # complete the figure, even if other groups retain the last year.
