@@ -61,7 +61,7 @@ _RESOLVED = {"complete", "skipped"}
 _ACTIVE = {"queued", "downloading", "running", "deferred", "waiting", "cancelling"}
 
 _REPAIR_DETAILS = ("selected_sources", "issues_before", "issues_after",
-                   "resolved_issues", "failed_sources",
+                   "resolved_issues", "failed_sources", "coverage_errors",
                    "remaining_series_ids", "unavailable_source_mappings")
 
 
