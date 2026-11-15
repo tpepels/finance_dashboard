@@ -50,7 +50,7 @@ describe('header diagnostics console', () => {
     await user.click(screen.getByText(/Recent events/));
     expect(screen.getByRole('list',{name:'Recent structured application log'})
       .textContent).toContain('source_policy_deferred');
-    expect(screen.getByRole('link', { name: 'Open diagnostics & administration' }).getAttribute('href'))
+    expect(screen.getByRole('link', { name: 'Open Data & diagnostics' }).getAttribute('href'))
       .toBe('#diagnostics');
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
