@@ -230,6 +230,14 @@ describe('dashboard shell', () => {
     expect(screen.getAllByRole('link', { name: 'Data & diagnostics' })).toHaveLength(1);
   });
 
+  it('keeps manual-file action links inside the consolidated page', async () => {
+    history.replaceState({}, '', '/#manual-files');
+    render(<App/>);
+    expect(await screen.findByRole('heading',{name:'Data & diagnostics'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Needs attention'})).toBeTruthy();
+    expect(screen.queryByRole('heading',{name:'Decisions'})).toBeNull();
+  });
+
   it('keeps old diagnostics deep links connected to the unified page and focuses the section', async () => {
     history.replaceState({}, '', '/#diagnostics');
     render(<App/>);
