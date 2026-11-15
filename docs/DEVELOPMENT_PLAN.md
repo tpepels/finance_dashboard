@@ -1,6 +1,6 @@
 # Development plan
 
-The sole current roadmap, reviewed **2026-11-11**. Detailed tasks are in the [completion implementation plan](superpowers/plans/2026-11-11-project-completion.md) and [research/presentation plan](superpowers/plans/2026-11-11-research-presentation.md); current evidence is in [research release verification](RESEARCH_RELEASE_VERIFICATION.md). The [initial project review](PROJECT_REVIEW.md) records the starting state. Earlier milestones remain in git history and [the archived history](archive/DEVELOPMENT_PLAN_HISTORY_2026-11.md).
+This is the top-level delivery plan. Its November 11 completion evidence is historical. The current research expansion is specified in the [November 14 research audit and phase roadmap](RESEARCH_AUDIT_ROADMAP_2026-11-14.md), with an [implementation/evidence checkpoint from November 15](RESEARCH_PHASES_PROGRESS_2026-11-15.md). Earlier detailed tasks remain in the [completion implementation plan](superpowers/plans/2026-11-11-project-completion.md), [research/presentation plan](superpowers/plans/2026-11-11-research-presentation.md), [research release verification](RESEARCH_RELEASE_VERIFICATION.md) and [archived history](archive/DEVELOPMENT_PLAN_HISTORY_2026-11.md). Neither a new commit nor CI success establishes a newer production data snapshot.
 
 ## Goal and deployment target
 
@@ -10,7 +10,7 @@ Run the same React/FastAPI/SQLite image locally and on an owner-managed **Linux 
 
 Scientific scope remains governed by the [charter](PHASE1_SCIENTIFIC_CHARTER.md), [catalogue](PHASE1_ANALYSIS_CATALOGUE.md), [specifications](PHASE1_ANALYSIS_SPECIFICATIONS.md), [fallback matrix](PHASE1_FALLBACK_SOURCE_MATRIX.md), [visualization contract](PHASE1_VISUALIZATION_CONTRACT.md) and [source policy](SOURCE_POLICY.md). This plan does not change acceptance thresholds.
 
-## Current state
+## Verified original delivery baseline — 11 November 2026
 
 | Area | State |
 |---|---|
@@ -24,6 +24,23 @@ Scientific scope remains governed by the [charter](PHASE1_SCIENTIFIC_CHARTER.md)
 | Verification | Updated Python suite: 1,215 tests OK with 10 optional skips; frontend: 149 passing; TypeScript/Vite and expanded browser flows verified |
 
 The live local and server containers use the same verified release image. Each has completed a fresh full-corpus assessment with the states above. A clean installation intentionally has no equivalent research history; each later collection can change acceptance.
+
+## Research expansion — current code and evidence status
+
+The approved catalogue now contains **596 mapped series definitions** and
+**39 approved research questions** (including L08 and C07). These are
+*registered source identities*, not 596 verified source histories or new
+economic observations. Source-specific scientific acceptance continues to
+depend on independently verified originals.
+
+The November 14 research roadmap governs Phases 0–5: integrity, worker pay,
+consumer/asset inflation, Piketty/WID, question-driven navigation and
+remaining original-method evidence. Current implemented functionality,
+missing-data states, source fixtures and the next diagnostic acceptance
+procedure are itemized in the [November 15 checkpoint](RESEARCH_PHASES_PROGRESS_2026-11-15.md).
+
+The earlier release and deployment statements below are records of the
+November 11 baseline, not claims about the currently deployed server.
 
 ## Completion order
 
