@@ -108,7 +108,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByRole('cell',{name:'EU KLEMS'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'OECD ICIO'})).toBeTruthy();
     expect(screen.getByRole('progressbar',{name:'Source downloads'}).getAttribute('aria-valuenow')).toBe('1');
-    expect(screen.getByRole('progressbar',{name:'Source-health repair'}).getAttribute('aria-valuenow')).toBe('6');
+    expect(screen.getByRole('progressbar',{name:'Missing-data check progress'}).getAttribute('aria-valuenow')).toBe('6');
     expect(screen.getByText('426 / 426')).toBeTruthy();
     expect(screen.getByText('Data series available')).toBeTruthy();
     expect(screen.getByText('Available series to review').previousElementSibling?.textContent).toBe('12');
