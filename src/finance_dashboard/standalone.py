@@ -170,6 +170,29 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
         initial_wait = max(0, math.ceil(due - time.time()))
         _record_schedule(refresh_running=False, refresh_state="waiting",
                          next_refresh_at=_utc_time(due))
+        if engine is not None and enabled("FINANCE_SOURCE_PREFLIGHT_ON_START", "1"):
+            # Source refresh is deliberately delayed after deployment. A
+            # read-only planner check nevertheless exercises the real stored
+            # histories and publisher registration now, without network
+            # requests or modifying observations. This exposes a
+            # production-only planner defect immediately rather than
+            # postponing the first diagnosable failure for 24 hours.
+            try:
+                refresh_all(engine, stopped=scheduled_stop,
+                            skip_complete_pinned=True, preflight_only=True)
+            except Exception as exc:
+                failure = record_failure("scheduler", "startup_refresh_preflight", exc)
+                _record_schedule(refresh_running=False,
+                                 refresh_state="preflight_failed",
+                                 last_error_code="internal_error",
+                                 last_error_stage="startup_refresh_preflight",
+                                 last_error_at=_utc_time(time.time()),
+                                 last_failure_id=failure["id"],
+                                 last_failure_persisted=failure["persisted"])
+                record_event("system", "collector_failed", level="error",
+                             action="source_refresh_preflight",
+                             reason="internal_error",
+                             stage="startup_refresh_preflight")
         if initial_wait > 0 and stopped.wait(initial_wait):
             _record_schedule(refresh_running=False, refresh_state="stopped",
                              next_refresh_at=None)
