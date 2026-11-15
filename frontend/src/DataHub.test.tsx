@@ -169,7 +169,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByText(/31 data series have failed checks/)).toBeTruthy();
     expect(screen.getByText(/No files need uploading/)).toBeTruthy();
     expect(screen.getByText(/Next publisher check:/)).toBeTruthy();
-    expect(screen.getByText(/No completed automatic run has been recorded/)).toBeTruthy();
+    expect(screen.getByText(/No automatic check has finished since the app last started/)).toBeTruthy();
     expect(screen.getByText('Files you need to upload').previousElementSibling?.textContent).toBe('0');
     expect(screen.getByText('Failed data checks').previousElementSibling?.textContent).toBe('31');
     expect(screen.getByRole('link',{name:'See troubleshooting details'}).getAttribute('href')).toBe('#diagnostics');
