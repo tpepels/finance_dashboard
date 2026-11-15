@@ -177,22 +177,29 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                       if (series_ids is None or sid in series_ids)
                       and (providers is None or client.definitions[sid]["provider"] in providers)]
             if attention_only and chosen:
-                from .source_coverage import build_coverage
-                from .market import instruments
                 stage = "attention_coverage"
-                census = build_coverage(engine, list(client.definitions.values()),
-                                        instruments())
-                # Attempt only actual gaps. Source-policy-deferred but
-                # in-cadence rows remain visible in the operational audit,
-                # but do not consume scarce publisher requests in repair mode.
-                actionable = {item["id"] for item in census["items"]
-                              if item["family"] == "macro" and item["state"] not in (
-                                  "available", "source_checked_no_newer_data")}
-                prior = len(chosen)
-                chosen = [sid for sid in chosen if sid in actionable]
-                record_event("macro", "stage_finished",
-                             action="source_health_selection", status="complete",
-                             completed=len(chosen), total=prior)
+                try:
+                    from .source_coverage import build_coverage
+                    from .market import instruments
+                    census = build_coverage(engine, list(client.definitions.values()),
+                                            instruments())
+                    # Only skip series after coverage was evaluated reliably.
+                    actionable = {item["id"] for item in census["items"]
+                                  if item["family"] == "macro" and item["state"] not in (
+                                      "available", "source_checked_no_newer_data")}
+                    prior = len(chosen)
+                    chosen = [sid for sid in chosen if sid in actionable]
+                    record_event("macro", "stage_finished",
+                                 action="source_health_selection", status="complete",
+                                 completed=len(chosen), total=prior)
+                except Exception as exc:
+                    planner_fault("attention_coverage", exc)
+                    # Do not silently skip every source when the coverage
+                    # selector itself is broken. The canonical per-series
+                    # task loop still honors publisher policy and journaling.
+                    record_event("macro", "stage_finished", level="warning",
+                                 action="source_health_selection", status="partial",
+                                 total=len(chosen), failed=1)
             # A frozen publisher edition does not release more observations
             # every day. Skip already complete versions in *scheduled* cycles;
             # explicit/manual refresh still rechecks them on request.
