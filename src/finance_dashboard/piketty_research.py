@@ -128,15 +128,14 @@ def _shares(points, area):
     # Only one year common to *both* published concept distributions can
     # support a side-by-side income/wealth comparison. Do not display a 2025
     # wealth share alongside a 2023 income share as if contemporaneous.
-    matched = sorted(set(
-        int(year) for year in concepts["income"]["percentage_shares"]["top10"]
-        for year in [year[0]]) & set(
-        int(year) for year in concepts["wealth"]["percentage_shares"]["top10"]
-        for year in [year[0]]))
+    matched = sorted(
+        {int(point[0]) for point in concepts["income"]["percentage_shares"]["top10"]}
+        & {int(point[0]) for point in concepts["wealth"]["percentage_shares"]["top10"]}
+    )
     def ratio(numerator, denominator):
         # Negative/near-zero net wealth at the bottom is economically possible.
         # Dividing by it can produce a meaningless concentration multiple.
-        return round(numerator / denominator, 6) if denominator > .0005 else None
+        return round(numerator / denominator, 6) if denominator > 0.05 else None
     for concept in ("income", "wealth"):
         original = concepts[concept]["percentage_shares"]
         by_year = {name: {int(y): val for y, val in rows}
