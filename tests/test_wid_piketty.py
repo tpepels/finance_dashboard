@@ -55,8 +55,8 @@ def extended_pair():
 class WidPikettyOriginalTests(unittest.TestCase):
     def test_exact_registered_codes_preserve_base_sources_and_world_identity(self):
         self.assertEqual(len(WID_SERIES),30)
-        self.assertEqual(len(WID_PIKETTY_SERIES),90)
-        self.assertEqual(len(WID_ALL_SERIES),120)
+        self.assertEqual(len(WID_PIKETTY_SERIES),162)
+        self.assertEqual(len(WID_ALL_SERIES),192)
         self.assertEqual(WID_ALL_SERIES["piketty.us.wealth_to_income.national"],
                          ("US","wwealn999i","p0p100"))
         self.assertEqual(WID_ALL_SERIES["piketty.world.real_pretax_average.all"],
