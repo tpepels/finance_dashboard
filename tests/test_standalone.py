@@ -58,6 +58,51 @@ class StandaloneContainerTests(TestCase):
         self.assertFalse(collected.is_set())
         self.assertEqual(stop.seconds, 86400)
 
+    def test_deferred_deployment_preflight_records_real_failure_without_source_attempts(self):
+        from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
+        from finance_dashboard.failure_journal import read_failures
+        class Halt:
+            def is_set(self): return False
+            def wait(self, seconds): return True
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_REFRESH_ON_START="0",
+                          FINANCE_SOURCE_PREFLIGHT_ON_START="1",
+                          FINANCE_REFRESH_SCHEDULE_PATH=str(root/"schedule.json"),
+                          FINANCE_FAILURE_JOURNAL_PATH=str(root/"failures.json"),
+                          FINANCE_DIAGNOSTICS_PATH=str(root/"events.jsonl")),
+                  patch("finance_dashboard.worker.refresh_all",
+                        side_effect=RuntimeError("API_KEY=secret-should-never-appear")) as collect):
+                refresh_loop(object(), Halt(),interval_seconds=86400,
+                             include_markets=False,refresh_wisesheets=False)
+                collect.assert_called_once()
+                self.assertTrue(collect.call_args.kwargs["preflight_only"])
+                self.assertEqual(scheduled_refresh_status()["last_error_code"],"internal_error")
+                self.assertEqual(scheduled_refresh_status()["last_error_stage"],
+                                 "startup_refresh_preflight")
+                self.assertTrue(scheduled_refresh_status()["last_failure_persisted"])
+                journal=read_failures()
+                self.assertEqual(journal["state"],"ready")
+                self.assertEqual(journal["failures"][-1]["stage"],"startup_refresh_preflight")
+                self.assertNotIn("secret-should-never-appear",json.dumps(journal))
+                self.assertEqual(scheduled_refresh_status()["refresh_running"],False)
+
+    def test_deferred_deployment_preflight_succeeds_without_initial_source_download(self):
+        from finance_dashboard.standalone import refresh_loop
+        class Halt:
+            def is_set(self): return False
+            def wait(self, seconds): return True
+        with tempfile.TemporaryDirectory() as tmp:
+            with (environ(FINANCE_AUTO_REFRESH="1", FINANCE_REFRESH_ON_START="0",
+                          FINANCE_SOURCE_PREFLIGHT_ON_START="1",
+                          FINANCE_REFRESH_SCHEDULE_PATH=str(Path(tmp)/"schedule.json")),
+                  patch("finance_dashboard.worker.refresh_all", return_value=0) as refresh):
+                refresh_loop(object(), Halt(), interval_seconds=86400,
+                             include_markets=False,refresh_wisesheets=False)
+                refresh.assert_called_once()
+                self.assertTrue(refresh.call_args.kwargs["preflight_only"])
+                self.assertTrue(refresh.call_args.kwargs["skip_complete_pinned"])
+
     def test_operator_sees_a_real_scheduled_wait_not_an_invented_countdown(self):
         from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
         from finance_dashboard.data_hub import automation_status
