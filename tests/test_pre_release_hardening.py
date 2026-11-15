@@ -95,6 +95,44 @@ class DiagnosticArtifactTests(unittest.TestCase):
 
 
 class DiagnosticSectionRecoveryTests(unittest.TestCase):
+    def test_live_diagnostics_degrades_explicitly_when_status_observers_fail(self):
+        import os
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from finance_dashboard.diagnostics_api import install_diagnostics
+        with TemporaryDirectory() as temp,patch.dict(os.environ,{
+                "FINANCE_MAINTENANCE_STATE":str(Path(temp)/"jobs.json"),
+                "FINANCE_DIAGNOSTIC_EXPORT_CACHE":str(Path(temp)/"export.zip"),
+                "FINANCE_DIAGNOSTIC_EXPORT_STATE":str(Path(temp)/"export.json")}):
+            app=FastAPI()
+            app.state.source_health_cache=MagicMock()
+            app.state.collection_workflow=MagicMock()
+            app.state.data_change_coordinator=MagicMock()
+            app.state.manual_sources=MagicMock()
+            app.state.acceptance=MagicMock(loading=False)
+            app.state.acceptance.peek.return_value=None
+            importer=MagicMock()
+            importer.evidence=Path(temp)
+            importer.running.return_value=False
+            maintenance=MagicMock()
+            maintenance.list.return_value={"active_job_id":None,"jobs":[]}
+            install_diagnostics(app,db=None,catalog={"series":[]},
+                market_registry=[],research_document={"analyses":[]},
+                maintenance=maintenance,importer=importer)
+            app.state.source_health_cache.status.side_effect=OSError("health unavailable")
+            app.state.collection_workflow.status.side_effect=RuntimeError("collection unavailable")
+            app.state.data_change_coordinator.status.side_effect=RuntimeError("reconcile unavailable")
+            with TestClient(app) as client:
+                response=client.get("/api/diagnostics")
+            self.assertEqual(response.status_code,200)
+            result=response.json()
+            self.assertEqual(result["status"]["colour"],"red")
+            self.assertIn("source_health",result["status"]["unavailable_diagnostic_components"])
+            self.assertIn("collection_status",result["status"]["unavailable_diagnostic_components"])
+            self.assertIn("data_changes",result["status"]["unavailable_diagnostic_components"])
+            self.assertIsNone(result["update_progress"]["collection"]["running"])
+            self.assertEqual(result["data_changes"]["state"],"unavailable")
+
     def test_export_survives_broken_database_snapshot_and_reports_missing_section(self):
         import os
         from fastapi import FastAPI

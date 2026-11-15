@@ -314,10 +314,23 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
 
     @app.get("/api/diagnostics")
     def diagnostics():
-        """Cheap status lamp; never recompute entire database coverage."""
+        """Cheap status lamp; isolate failed observers without expensive retries."""
+        unavailable = []
+        def observe(name, read, fallback):
+            try:
+                return read()
+            except Exception:
+                # Don't spam the disk-backed failure journal on every status
+                # poll. Export preparation separately records failure traces.
+                unavailable.append(name)
+                return fallback
         release = release_info()
-        events = read_events(limit=400, since=release["activated_at"])
-        health = app.state.source_health_cache.status(schedule=False)
+        events = observe("event_log",
+                         lambda: read_events(limit=400, since=release["activated_at"]), [])
+        health = observe("source_health",
+                         lambda: app.state.source_health_cache.status(schedule=False),
+                         {"state":"unavailable", "snapshot":None,
+                          "error":"source_health_unavailable"})
         cached = health.get("snapshot") or {}
         summaries = {
             row["id"]: {
@@ -332,16 +345,21 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             status.update(colour="orange", label="Source health not evaluated")
         if health.get("error"):
             status.update(colour="orange", label="Source-health check unavailable")
-        updates = app.state.data_change_coordinator.status()
-        if updates["state"] == "failed":
+        updates = observe("data_changes", app.state.data_change_coordinator.status,
+                          {"state":"unavailable", "events_reconciled":None})
+        if updates["state"] == "unavailable":
+            status.update(colour="red", label="Data processing status unavailable")
+        elif updates["state"] == "failed":
             status.update(colour="red", label="Downstream reconciliation failed")
         elif updates["state"] == "pending" and status["colour"] == "green":
             status.update(colour="orange", label="Processing new source evidence")
         elif health.get("state") == "refreshing" and status["colour"] == "green":
             status.update(colour="orange", label="Updating source-health snapshot")
-        acceptance = app.state.acceptance.peek()
-        collection = app.state.collection_workflow.status()
-        running = bool(collection.get("running", False))
+        acceptance = observe("scientific_assessment", app.state.acceptance.peek, None)
+        collection = observe("collection_status",
+                             app.state.collection_workflow.status,
+                             {"state":"unavailable", "running":None, "repair":{}})
+        running = collection.get("running") if collection.get("state") != "unavailable" else None
         status["collection_running"] = running
         repair = collection.get("repair") or {}
         status["collection_progress"] = {
@@ -355,8 +373,14 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             elif status["colour"] == "red":
                 status["label"] = "Collection running; source issues remain"
         from .data_hub import automation_status
-        automation = automation_status()
-        persistent = read_failures()
+        automation = observe("scheduler", automation_status, {"state":"unavailable"})
+        persistent = observe("failure_journal", read_failures,
+                             {"state":"unavailable", "failures":[]})
+        if persistent["state"] == "invalid":
+            status.update(colour="red", label="Diagnostic failure journal is corrupt")
+        elif unavailable and status["colour"] == "green":
+            status.update(colour="orange", label="Some diagnostic components unavailable")
+        status["unavailable_diagnostic_components"] = unavailable
         last = persistent["failures"][-1] if persistent["failures"] else None
         recent = None if last is None else {
             "id": last["id"], "release_id": last["release_id"],
@@ -399,7 +423,7 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                         },
                     },
                     "collection": {
-                        "running": collection.get("running", False),
+                        "running": collection.get("running"),
                         "manual_files_count": len(collection.get("manual_files") or []),
                     },
                 }}

@@ -65,3 +65,15 @@ from verified archives. Preserve database and immutable source evidence.
 - A BLS 403 is an upstream access outcome, not an importable source file.
 - The 54 ICIO edition accounting failures cannot be relabelled as numerical
   tolerance noise without a publisher-accounting reconciliation.
+
+## Live diagnostics degradation
+
+The regular `/api/diagnostics` endpoint isolates failures from
+source-health cache, collection journal, scheduler and downstream
+reconciliation observers. It returns a red or orange status with
+`unavailable_diagnostic_components` and preserves the remaining
+status evidence instead of throwing HTTP 500. A missing collection
+status reports `collection.running = null` (unknown), not falsely
+`false`. High-frequency polling does not write a failure journal
+entry per request; the explicit ZIP export records detailed sanitized
+provenance for failure sections.
