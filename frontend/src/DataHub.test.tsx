@@ -318,7 +318,7 @@ describe('unified Data and Diagnostics page',()=>{
 
   it('explains an unexpected source error without printing its internal code',async()=>{
     run.repair={status:'failed',completed:1,total:1,current_item:null,
-      error_code:'unrecognized_internal_stage_code',details:null};
+      error_code:'unrecognized_internal_stage_code'};
     render(<DataHub/>);
     expect(await screen.findByText('See the troubleshooting report for details')).toBeTruthy();
     expect(screen.queryByText('unrecognized_internal_stage_code')).toBeNull();
