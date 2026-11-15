@@ -38,5 +38,14 @@ def research_status(snapshot, document: dict) -> dict:
                           'owner_input_required': False, 'series_ids': [], 'limitations': []})
         questions.append({**row, 'phase2': analysis_phase2(snapshot, aid),
                           'role_dispositions': roles})
+    # The same evaluated response powers both the question catalogue and
+    # its follow-up network. Partial test/research subsets retain their
+    # established behavior without fabricating edges to missing questions.
+    from .question_graph import load_question_links, question_graph
+    approved = load_question_links()
+    linked_ids = {id for edge in approved['links']
+                  for id in (edge['parent'], edge['child'])}
+    graph = question_graph(document, questions, approved) if set(definitions) == linked_ids else None
     return {'evaluated_at': snapshot.evaluated_at.isoformat(),
-            'counts': dict(Counter(row['state'] for row in questions)), 'questions': questions}
+            'counts': dict(Counter(row['state'] for row in questions)),
+            'questions': questions, 'question_graph': graph}
