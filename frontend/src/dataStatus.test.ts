@@ -37,7 +37,7 @@ describe('operator status based on actual collection, schedule and data',()=>{
     const status=describeDataStatus(base());
     expect(status.now.title).toBe('Updating research results');
     expect(status.next.title).toContain('Next publisher check:');
-    expect(status.next.detail).toContain('No completed automatic run');
+    expect(status.next.detail).toContain('No automatic check has finished since the app last started');
     expect(status.yourAction.title).toBe('Technical follow-up needed');
     expect(status.yourAction.detail).toContain('No files need uploading');
     expect(status.yourAction.link).toBe('#diagnostics');
