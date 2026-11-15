@@ -152,7 +152,7 @@ try {
   await shown(section(emptyPage, 'C01').getByText(/Not computed: research state is incomplete/));
   await navigate(emptyPage, 'Find a question');
   await emptyPage.getByRole('searchbox', { name: 'Find a question', exact: true }).fill('hedging');
-  await shown(emptyPage.locator('#workbench a[href="#q-P07"]'));
+  await shown(emptyPage.locator('#workbench a.workbench-question-link[href="#q-P07"]'));
   await screenshot(emptyPage, 'empty-install-desktop');
   record('Empty installation: overview, catalogue/workbench, withheld data and no saved figures');
   await emptyContext.close();
