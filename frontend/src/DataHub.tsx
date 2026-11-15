@@ -279,8 +279,7 @@ export default function DataHub(){
           {' '}Accepted data automatically updates the research assessments.</p>
       </div>
       <button type="button" className="data-collection-primary" disabled={starting||active}
-        onClick={()=>void start()}>{starting?'Starting collection…':
-          active?'Collection running':'Collect original data'}</button>
+        onClick={()=>void start()}>Collect original data</button>
     </header>
 
     <ResearchUpdateJourney health={health.value} collection={run}
