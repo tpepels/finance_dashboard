@@ -110,6 +110,13 @@ class PikettyResearchTests(unittest.TestCase):
             first=100+10*index
             data[f"piketty:US:income_distribution:{group}"]=points([
                 (1980,first),(1990,first*1.05),(2025,first*(1+.1*index))])
+        def original_total(year):
+            return sum(weight*next(value for day,value in
+                       data[f"piketty:US:income_distribution:{group}"]
+                       if day.year==year)
+                       for group,_,weight in INCIDENCE_GROUPS)
+        data["piketty:US:income_avg:all"]=points([
+            (year,original_total(year)) for year in (1980,1990,2025)])
         report=piketty_findings(data)
         incidence=report["areas"][0]["growth_capture"]["distribution_incidence"]
         self.assertEqual(incidence["status"],"available")
@@ -125,6 +132,15 @@ class PikettyResearchTests(unittest.TestCase):
         missing=piketty_findings(data)["areas"][0]["growth_capture"]["distribution_incidence"]
         self.assertEqual(missing["status"],"awaiting_matched_originals")
         self.assertEqual(missing["rows"],[])
+        data=source_fixture()
+        for index,(group,_,_) in enumerate(INCIDENCE_GROUPS):
+            data[f"piketty:US:income_distribution:{group}"]=points([
+                (1980,100),(2025,110)])
+        data["piketty:US:income_avg:all"]=points([(1980,100),(2025,125)])
+        mismatched=piketty_findings(data)["areas"][0]["growth_capture"]["distribution_incidence"]
+        self.assertEqual(mismatched["status"],"awaiting_matched_originals")
+        self.assertIn(2025,mismatched["rejected_source_identity_years"])
+        self.assertFalse(mismatched["rows"])
 
     def test_income_wealth_comparisons_never_mix_different_latest_years(self):
         data=source_fixture()
