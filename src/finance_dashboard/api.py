@@ -357,6 +357,13 @@ def create_app(engine=None) -> FastAPI:
         """Phase 2 approved-question source evidence, with actual stored-source periods."""
         return current_corpus_report()
 
+    @app.get("/api/source-evidence/wid-quality")
+    def original_wid_quality_report():
+        """Read archived original WID quality codes without collection or grade inference."""
+        from .wid_quality import original_wid_quality
+        return original_wid_quality(Path(environ.get(
+            "FINANCE_SOURCE_EVIDENCE_DIR", "/data/source-evidence")))
+
     @app.get("/api/source-evidence/icio")
     def original_icio_evidence():
         """Original matrix accounting evidence; no native cells or source request secrets."""
