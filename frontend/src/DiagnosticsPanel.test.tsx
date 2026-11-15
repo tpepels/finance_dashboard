@@ -7,7 +7,7 @@ import DiagnosticsPanel from './DiagnosticsPanel';
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('header diagnostics console', () => {
-  it('shows server severity and links to separate diagnostic administration', async () => {
+  it('shows a compact status summary with a single route to the consolidated page', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -31,27 +31,22 @@ describe('header diagnostics console', () => {
     const user = userEvent.setup();
     render(<DiagnosticsPanel/>);
     const button = screen.getByRole('button', { name: /System health:/ });
-    await waitFor(() => expect(button.getAttribute('aria-label')).toContain('6 source histories need review'));
+    await waitFor(() => expect(button.getAttribute('aria-label')).toContain('Some data needs attention'));
     expect(button.querySelector('.diagnostics-lamp-orange')).toBeTruthy();
     await user.click(button);
     expect(screen.getByRole('dialog', { name: 'System diagnostics' })).toBeTruthy();
     const dialog=screen.getByRole('dialog',{name:'System diagnostics'});
     expect(dialog.parentElement).toBe(document.body); // portal escapes sticky header
     expect(screen.getByText('426 / 426')).toBeTruthy();
-    expect(screen.getByText('Histories stored')).toBeTruthy();
-    expect(screen.getByText('Need source review')).toBeTruthy();
-    expect(screen.getByText('WID.world')).toBeTruthy();
-    expect(screen.getByText('EU KLEMS')).toBeTruthy();
-    expect(screen.getByText('Oldest: 2023-01')).toBeTruthy();
-    expect(screen.getByText('Oldest: 2020-01')).toBeTruthy();
+    expect(screen.getByText('Data series available')).toBeTruthy();
+    expect(screen.getByText('Need checking')).toBeTruthy();
+    expect(screen.getByText('Errors today')).toBeTruthy();
+    expect(screen.getByText(/Some data series are missing or need checking/)).toBeTruthy();
     expect(screen.getByText(/Build 0.2.0 · 11112222/)).toBeTruthy();
-    expect(screen.getByRole('link',{name:'View exact source histories'}).getAttribute('href'))
-      .toBe('#source-coverage');
-    await user.click(screen.getByText(/Recent events/));
-    expect(screen.getByRole('list',{name:'Recent structured application log'})
-      .textContent).toContain('source_policy_deferred');
-    expect(screen.getByRole('link', { name: 'Open Data & diagnostics' }).getAttribute('href'))
+    expect(screen.getByRole('link', { name: 'View Data & diagnostics' }).getAttribute('href'))
       .toBe('#diagnostics');
+    expect(dialog.querySelector('details')).toBeNull();
+    expect(screen.queryByText('source_policy_deferred')).toBeNull();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
@@ -90,14 +85,13 @@ describe('header diagnostics console', () => {
     const user=userEvent.setup();
     render(<DiagnosticsPanel/>);
     await user.click(await screen.findByRole('button',{name:/System health:/}));
-    expect(await screen.findByRole('heading',{
-      name:'Waiting for initial source downloads',
-    })).toBeTruthy();
-    expect(screen.getByText('426 / 462 histories stored')).toBeTruthy();
-    expect(screen.getByRole('list',{name:'Update steps'})).toBeTruthy();
-    expect(screen.getByText(/36 have never had a collection attempt/)).toBeTruthy();
-    expect(screen.getByRole('link',{name:'Open Data & diagnostics for exact source status'})
-      .getAttribute('href')).toBe('#data-management');
+    expect(await screen.findByRole('heading',{name:'System status'})).toBeTruthy();
+    expect(screen.getByText('426 / 462')).toBeTruthy();
+    expect(screen.getByText('Some data needs attention')).toBeTruthy();
+    expect(screen.getByText(/Next automatic check:/)).toBeTruthy();
+    expect(screen.getByRole('link',{name:'View Data & diagnostics'})
+      .getAttribute('href')).toBe('#diagnostics');
+    expect(screen.queryByRole('list',{name:'Update steps'})).toBeNull();
   });
 
   it('automatically notifies visible research after scheduled acceptance finishes', async () => {
@@ -156,11 +150,12 @@ describe('header diagnostics console', () => {
     const user=userEvent.setup();
     render(<DiagnosticsPanel/>);
     const button=screen.getByRole('button',{name:/System health:/});
-    await waitFor(()=>expect(button.getAttribute('aria-label')).toContain('No current'));
+    await waitFor(()=>expect(button.getAttribute('aria-label')).toContain('Up to date'));
     await user.click(button);
-    expect(screen.getByText('No histories currently flagged as stale or missing.')).toBeTruthy();
-    expect(screen.getByText(/No active imports or assessments/)).toBeTruthy();
-    expect(screen.getByText(/No events recorded in the current build/)).toBeTruthy();
+    expect(screen.getByText(/The latest source check completed/)).toBeTruthy();
+    expect(screen.getByRole('link',{name:'View Data & diagnostics'})).toBeTruthy();
+    expect(screen.queryByText('Recent events')).toBeNull();
+    expect(screen.getByRole('dialog').querySelectorAll('details')).toHaveLength(0);
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(button);
