@@ -24,10 +24,8 @@ afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 describe('integrated data synchronization and source health repair',()=>{
   it('shows the three integrated operations without source selectors',async()=>{
     render(<DataOperations/>);
-    const user=userEvent.setup();
-    expect(screen.getByText('Manual maintenance (optional)')).toBeTruthy();
-    expect(screen.getByText('Manual maintenance (optional)').closest('details')?.open).toBe(false);
-    await user.click(screen.getByText('Manual maintenance (optional)'));
+    expect(document.querySelector('#maintenance-tools')).toBeTruthy();
+    expect(document.querySelectorAll('details')).toHaveLength(0);
     expect(screen.getByRole('button',{name:'Check current sources now'})).toBeTruthy();
     expect(screen.getByRole('button',{name:'Recheck unresolved gaps'})).toBeTruthy();
     expect(screen.getByRole('button',{name:'Recheck historical sources'})).toBeTruthy();
@@ -40,7 +38,6 @@ describe('integrated data synchronization and source health repair',()=>{
   it('refreshes all current sources through one backend operation',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    await user.click(screen.getByText('Manual maintenance (optional)'));
     const button=screen.getByRole('button',{name:'Check current sources now'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
@@ -52,7 +49,6 @@ describe('integrated data synchronization and source health repair',()=>{
   it('starts history backfill without date or provider selections',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    await user.click(screen.getByText('Manual maintenance (optional)'));
     const button=screen.getByRole('button',{name:'Recheck historical sources'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
@@ -62,7 +58,6 @@ describe('integrated data synchronization and source health repair',()=>{
   it('submits canonical parameterless source-health repair action',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    await user.click(screen.getByText('Manual maintenance (optional)'));
     const button=screen.getByRole('button',{name:'Recheck unresolved gaps'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
@@ -84,7 +79,6 @@ describe('integrated data synchronization and source health repair',()=>{
     render(<DataOperations/>);
     expect(await screen.findByText(/Markets and exchange rates/)).toBeTruthy();
     expect(screen.getByText(/15 \/ 27/)).toBeTruthy();
-    await user.click(screen.getByText('Manual maintenance (optional)'));
     expect(screen.getByRole('button',{name:'Recheck historical sources'}).hasAttribute('disabled')).toBe(true);
     await user.click(screen.getByRole('button',{name:'Cancel'}));
     expect(liveFetch.mock.calls.some(([url,init])=>
@@ -114,8 +108,7 @@ describe('integrated data synchronization and source health repair',()=>{
     })));
     const user=userEvent.setup();
     render(<DataOperations/>);
-    const summary=await screen.findByText('Sync results');
-    await user.click(summary);
+    expect(await screen.findByText('Latest check results')).toBeTruthy();
     expect(screen.getByText(/FRED API rejected the configured key/)).toBeTruthy();
     expect(screen.getByText(/964 missing/)).toBeTruthy();
     expect(screen.getByText(/first rejected source SAHMREALTIME/)).toBeTruthy();
@@ -123,7 +116,7 @@ describe('integrated data synchronization and source health repair',()=>{
     expect(screen.getByText(/50 filings found\/cached in this run/)).toBeTruthy();
     expect(screen.getByText(/additional older filings not scanned/)).toBeTruthy();
   });
-  it('keeps provider failures in a collapsed result section',async()=>{
+  it('shows provider failures without hiding the result section',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({
       ok:true,status:200,json:async()=>({
         active_job_id:null,jobs:[{
@@ -144,11 +137,8 @@ describe('integrated data synchronization and source health repair',()=>{
       expect(screen.getByRole('status').textContent).toContain('Current data');
       expect(screen.getByRole('status').textContent).toContain('Completed with issues');
     });
-    const resultSummary = screen.getByText('Sync results');
-    const resultDetails = resultSummary.closest('details');
-    expect(resultDetails?.open).toBe(false);
-    await user.click(resultSummary);
-    expect(resultDetails?.open).toBe(true);
-    expect(screen.getByText(/2 failed/).closest('details')).toBe(resultDetails);
+    expect(screen.getByText('Latest check results')).toBeTruthy();
+    expect(document.querySelectorAll('details')).toHaveLength(0);
+    expect(screen.getByText(/2 failed/).closest('.data-sync-results')).toBeTruthy();
   });
 });
