@@ -196,7 +196,8 @@ class CollectionWorkflow:
                         self.current["repair_final"] = {
                             **{key: job.get(key) for key in (
                                 "status", "completed", "total", "stage",
-                                "current_item", "error_code")},
+                                "current_item", "error_code",
+                                "started_at", "finished_at")},
                             "details": _repair_details(job),
                         }
                         _write_json(self.path, self.current)
