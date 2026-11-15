@@ -128,7 +128,9 @@ class ArchivedOriginalSamplingTests(unittest.TestCase):
             self.assertEqual(sample["samples"][0]["source_sha256"],sha256(raw).hexdigest())
             values=parse_pink_sheet_price(sample["samples"][0]["rows"],"Copper")
             self.assertEqual(values[date(2026,10,1)],Decimal("14508"))
-            available=collect_failure_samples(root,[{"id":sid,"state":"available"}])
+            with patch("python_calamine.CalamineWorkbook.from_filelike",
+                       return_value=workbook):
+                available=collect_failure_samples(root,[{"id":sid,"state":"available"}])
             self.assertEqual(len(available["samples"]),1)
             self.assertEqual(available["samples"][0]["kind"],"world_bank_pink_sheet")
             # A rejected HTTP response body must never be exported as a
