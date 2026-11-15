@@ -203,6 +203,8 @@ describe('unified Data and Diagnostics page',()=>{
     })).toBeTruthy();
     expect(screen.getByText('426 / 462')).toBeTruthy();
     expect(screen.getByText('Data series missing').previousElementSibling?.textContent).toBe('36');
+    expect(screen.getByText('Missing data not yet checked').previousElementSibling?.textContent).toBe('36');
+    expect(screen.getAllByText('Missing').length).toBeGreaterThan(0);
     expect(screen.getByText('Available series to review').previousElementSibling?.textContent).toBe('6');
     expect(screen.getByText(/Next publisher check/)).toBeTruthy();
     expect(screen.getByRole('table',{name:'Sources requiring attention'})).toBeTruthy();
