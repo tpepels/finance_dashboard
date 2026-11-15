@@ -17,6 +17,7 @@ from zipfile import BadZipFile, ZipFile
 
 from .bis import FetchedSeries, ProviderError
 from .provider_parsers import parse_ecb_csv
+from .source_documents import MAX_DOCUMENT_BYTES
 
 DWA_BASE = "https://data-api.ecb.europa.eu/service/data/DWA/"
 EUROSTAT_HPI_URL = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hpi_q"
@@ -237,7 +238,7 @@ def parse_nmfp_month(raw: bytes, report_month: date) -> dict[str, Decimal]:
     is conditional on funds with a usable corresponding filing; do not impute
     missing percentages or treat it as a fund-run probability.
     """
-    if len(raw) > 50_000_000 or not raw.startswith(b"PK\x03\x04"):
+    if len(raw) > MAX_DOCUMENT_BYTES or not raw.startswith(b"PK\x03\x04"):
         raise ProviderError("SEC N-MFP response is not a bounded publisher ZIP")
     try:
         with ZipFile(BytesIO(raw)) as archive:

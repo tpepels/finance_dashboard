@@ -67,13 +67,14 @@ class ProviderRouter:
         )
 
     def blocked(self) -> list[dict]:
+        supported = set(self.supported_ids())
         return [{
             "series_id": sid, "provider": item["provider"],
             "reason": "source_mapping_unresolved" if item["status"] != "mapped"
                       else "adapter_unavailable",
             "notes": item["notes"],
         } for sid, item in self.definitions.items()
-            if sid not in self.supported_ids()]
+            if sid not in supported]
 
     def _get(self, url: str, **kwargs) -> httpx.Response:
         # Policy-controlled transport owns request pacing and durable backoff.

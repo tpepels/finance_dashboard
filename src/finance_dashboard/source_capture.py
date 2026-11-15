@@ -21,16 +21,18 @@ from .bis import ProviderError
 from .catalog import source_contract
 from .source_evidence import record_acquisition_receipt
 from .provider_registry import get_provider
-from .source_documents import BatchOriginal, ORIGINAL_TIME_EXTENSION
+from .source_documents import (
+    BatchOriginal, ORIGINAL_TIME_EXTENSION, MAX_DOCUMENT_BYTES, MAX_BATCH_DOCUMENTS,
+)
 
 SAFE_QUERY = frozenset({"series_id", "file_type", "observation_start", "id", "cosd", "format",
                         "per_page", "date", "startPeriod", "sinceTimePeriod", "freq", "unit", "direct",
-                        "sector", "na_item", "geo", "purchase", "unit", "index_codes", "currency_symbol", "index_variant",
+                        "sector", "na_item", "geo", "purchase", "index_codes", "currency_symbol", "index_variant",
                         "data_frequency", "start_date", "end_date", "agg_by", "agg_sum_fields", "agg_limit",
                         "limit", "fields", "agg_sort_by", "agg_sort_order", "coicop18"})
 SAFE_HEADERS = frozenset({"content-type", "last-modified", "etag", "date"})
-MAX_RESPONSE_BYTES = 50_000_000
-MAX_RESPONSE_COUNT = 32
+MAX_RESPONSE_BYTES = MAX_DOCUMENT_BYTES
+MAX_RESPONSE_COUNT = MAX_BATCH_DOCUMENTS
 MAX_BATCH_CAPTURE_BYTES = 260_000_000
 
 
@@ -77,9 +79,13 @@ class SourceAcquisition:
         responses = []
         rejected = []
         reused = []
-        def capture(response):
-            raw = response.read()
-            if len(raw) > MAX_RESPONSE_BYTES or (response.status_code == 200 and not raw):
+
+        def admit_original(raw, *, require_content=True):
+            # Reused successful originals obey the same admission limits.
+            # A rejected HTTP response may legitimately have an empty body;
+            # preserve its HTTP status instead of hiding it as a parse error.
+            if (not isinstance(raw, bytes) or len(raw) > MAX_RESPONSE_BYTES
+                    or (require_content and not raw)):
                 raise ProviderError("Original response exceeds capture bounds")
             if len(responses) + len(rejected) >= MAX_RESPONSE_COUNT:
                 raise ProviderError("Original publisher response count exceeds batch limit")
@@ -87,6 +93,10 @@ class SourceAcquisition:
                     sum(len(row[0]) for row in rejected) + len(raw) >
                     MAX_BATCH_CAPTURE_BYTES):
                 raise ProviderError("Original publisher response bytes exceed batch limit")
+
+        def capture(response):
+            raw = response.read()
+            admit_original(raw, require_content=response.status_code == 200)
             retrieved = response.extensions.setdefault(
                 ORIGINAL_TIME_EXTENSION, datetime.now(timezone.utc).isoformat())
             captured = (raw, safe_url(response.request.url), {
@@ -99,6 +109,7 @@ class SourceAcquisition:
             if not isinstance(original, BatchOriginal):
                 raise ProviderError("Shared original response is missing")
             original.verify(original.request_digest)
+            admit_original(original.raw)
             responses.append((original.raw, safe_url(original.url), dict(original.headers),
                               original.retrieved_at_utc))
             reused.append(original)

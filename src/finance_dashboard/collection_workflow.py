@@ -442,7 +442,11 @@ class SourceHealthCache:
         self.build = build
         self.path = path or _path("FINANCE_DATA_HEALTH_CACHE", "data-health.json")
         self.lock = Lock()
-        self.cached = _read_json(self.path, max_bytes=250_000)
+        self.cached = _read_json(self.path, max_bytes=1_000_000)
+        # Health belongs to the catalogue/code release that computed it.
+        # Never serve the previous build's cached "all clear" after deploy.
+        if self.cached and self.cached.get("release_id") != release_info()["release_id"]:
+            self.cached = None
         self.running = False
         self.last_attempt = 0.0
         self.last_error: str | None = None
@@ -507,6 +511,7 @@ class SourceHealthCache:
                     "published_through", "last_attempt_state", "last_failure_code",
                     "next_action", "research_questions")})
             snapshot = {"asof": summary.get("asof"),
+                        "release_id": release_info()["release_id"],
                         "calculated_at": _utc(), "calculated_unix": time.time(),
                         "groups": groups, "attention_items": attention_items,
                         "sources": {"total": sum(row["total"] for row in groups),

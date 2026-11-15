@@ -63,23 +63,28 @@ class DiagnosticExportManager:
             return False
 
     @staticmethod
+    def _verify_zip_members(archive: ZipFile) -> bool:
+        # One structure/CRC contract for in-memory generation and on-disk
+        # download. An archive with merely a PK prefix is not acceptable.
+        members = archive.infolist()
+        names = [member.filename for member in members]
+        if (len(names) > 128 or len(names) != len(set(names))
+                or sum(member.file_size for member in members) > 256_000_000
+                or not {"diagnostics/release.json",
+                        "diagnostics/status.json"} <= set(names)):
+            return False
+        if any(member.file_size > 100_000_000
+               or member.filename.startswith("/")
+               or ".." in member.filename.split("/")
+               for member in members):
+            return False
+        return archive.testzip() is None
+
+    @staticmethod
     def _verify_zip_content(content: bytes) -> bool:
-        # Verify actual central directory, required documents and compressed
-        # member CRCs. PK alone is not a valid diagnostic archive.
         try:
             with ZipFile(BytesIO(content)) as archive:
-                names = archive.namelist()
-                if (len(names) > 128 or len(names) != len(set(names)) or
-                        sum(member.file_size for member in archive.infolist()) > 256_000_000 or
-                        not {"diagnostics/release.json",
-                             "diagnostics/status.json"} <= set(names)):
-                    return False
-                if any(member.file_size > 100_000_000 or
-                       member.filename.startswith("/") or
-                       ".." in member.filename.split("/")
-                       for member in archive.infolist()):
-                    return False
-                return archive.testzip() is None
+                return DiagnosticExportManager._verify_zip_members(archive)
         except (BadZipFile, OSError, ValueError, RuntimeError, EOFError, zlib.error):
             return False
 
@@ -90,12 +95,17 @@ class DiagnosticExportManager:
         if not isinstance(digest, str) or len(digest) != 64:
             return False
         try:
-            # Bounded by _has_file; verified only on startup and download,
-            # never during frequent /export-status requests.
-            content = self.zip_path.read_bytes()
-            return (sha256(content).hexdigest() == digest
-                    and self._verify_zip_content(content))
-        except OSError:
+            # Stream disk verification; a 250 MB support ZIP must not
+            # allocate another 250 MB just to approve an existing cache.
+            check = sha256()
+            with self.zip_path.open("rb") as stored:
+                for chunk in iter(lambda: stored.read(1024 * 1024), b""):
+                    check.update(chunk)
+            if check.hexdigest() != digest:
+                return False
+            with ZipFile(self.zip_path) as archive:
+                return self._verify_zip_members(archive)
+        except (BadZipFile, OSError, ValueError, RuntimeError, EOFError, zlib.error):
             return False
 
     def _status_unlocked(self) -> dict:
@@ -104,11 +114,14 @@ class DiagnosticExportManager:
             return {"state": "idle", "ready": False, "id": None,
                     "prepared_at": None, "size_bytes": None, "error": None}
         ready = record["state"] == "ready" and self._has_file()
-        return {"state": record["state"], "ready": ready,
+        # A vanished or resized ZIP cannot leave the operator stuck in a
+        # contradictory state of "ready" with ready=false.
+        missing = record["state"] == "ready" and not ready
+        return {"state": "failed" if missing else record["state"], "ready": ready,
                 "id": record.get("id"), "prepared_at": record.get("prepared_at"),
                 "started_at": record.get("started_at"),
                 "size_bytes": record.get("size_bytes"),
-                "error": record.get("error")}
+                "error": "cached_zip_missing_or_corrupt" if missing else record.get("error")}
 
     def status(self) -> dict:
         with self.lock:

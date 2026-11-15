@@ -76,6 +76,31 @@ class DiagnosticsSeverityTests(unittest.TestCase):
         self.assertEqual(result["unresolved_source_failures"],7)
         self.assertEqual(result["sources_needing_attention"],20)
 
+    def test_corrupt_or_timezone_naive_events_do_not_crash_status(self):
+        from datetime import timedelta
+        now=datetime.now(timezone.utc)
+        events=[
+            {"at":now.replace(tzinfo=None).isoformat(),"level":"error"},
+            {"at":None,"level":"error"},
+            {"at":"invalid timestamp","level":"error"},
+            {"at":(now+timedelta(hours=1)).isoformat(),"level":"error"},
+            {"at":now.isoformat(),"level":"warning"},
+            None,
+        ]
+        result=_status(events,{"summary":{}},False,False)
+        self.assertEqual(result["recent_errors"],0)
+        self.assertEqual(result["warnings_last_24h"],1)
+        self.assertEqual(result["colour"],"orange")
+
+    def test_console_discards_invalid_event_records_without_exception(self):
+        events=[None, {"at": "bad", "level": "error"},
+                {"at": "2026-11-15T20:00:00+00:00",
+                 "scope": "macro", "level": "warning",
+                 "event": "source_deferred", "reason": "publisher_cooldown"}]
+        rows=_console(events)
+        self.assertEqual(len(rows),1)
+        self.assertIn("source_deferred",rows[0]["message"])
+
     def test_console_only_formats_whitelisted_event_fields(self):
         message = _console([{"at": "2026-11-12T14:00:00+00:00", "scope": "macro",
                              "event": "source_deferred", "level": "warning",

@@ -23,15 +23,22 @@ from .runtime_release import release_info
 
 
 def _console(events: list[dict]) -> list[dict]:
-    return [{
-        "time": e["at"],
-        "level": e["level"],
-        "message": " ".join(str(value) for value in (
-            e["scope"], e["event"], e.get("action"), e.get("status"),
-            e.get("source_id"), e.get("reason"),
-            ("HTTP " + str(e["http_status"])) if "http_status" in e else None,
-        ) if value is not None),
-    } for e in events[-200:]]
+    rows = []
+    for e in events[-200:]:
+        if not isinstance(e, dict) or not all(
+                isinstance(e.get(key), str)
+                for key in ("at", "level", "scope", "event")):
+            continue
+        rows.append({
+            "time": e["at"],
+            "level": e["level"],
+            "message": " ".join(str(value) for value in (
+                e["scope"], e["event"], e.get("action"), e.get("status"),
+                e.get("source_id"), e.get("reason"),
+                ("HTTP " + str(e["http_status"])) if "http_status" in e else None,
+            ) if value is not None),
+        })
+    return rows
 
 
 def _status(events: list[dict], coverage: dict, accepting: bool, importing: bool) -> dict:
@@ -40,15 +47,19 @@ def _status(events: list[dict], coverage: dict, accepting: bool, importing: bool
     now = datetime.now(timezone.utc)
     recent = []
     for event in events:
+        if not isinstance(event, dict) or not isinstance(event.get("at"), str):
+            continue
         try:
-            if datetime.fromisoformat(event["at"]) >= now - timedelta(days=1):
+            observed_at = datetime.fromisoformat(event["at"])
+            if (observed_at.tzinfo is not None
+                    and now - timedelta(days=1) <= observed_at <= now):
                 recent.append(event)
-        except (ValueError, KeyError):
+        except (ValueError, TypeError, OverflowError):
             continue
     failures = [e for e in recent
-                if e["level"] == "error"
+                if e.get("level") == "error"
                 and not (e.get("stage") == "api" and e.get("http_status") == 503)]
-    warnings = sum(e["level"] == "warning" for e in recent)
+    warnings = sum(e.get("level") == "warning" for e in recent)
     summaries = coverage.get("summary", {})
     groups = [group for group in summaries.values() if isinstance(group, dict)]
     attention = sum(group.get("needs_attention", 0) for group in groups)
@@ -331,30 +342,58 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                          lambda: app.state.source_health_cache.status(schedule=False),
                          {"state":"unavailable", "snapshot":None,
                           "error":"source_health_unavailable"})
+        if not isinstance(health, dict):
+            unavailable.append("source_health")
+            health = {"state": "unavailable", "snapshot": None}
         cached = health.get("snapshot") or {}
+        if not isinstance(cached, dict):
+            unavailable.append("source_health_snapshot")
+            cached = {}
+        if cached and not {"groups", "attention_items"} <= set(cached):
+            unavailable.append("source_health_snapshot")
+        groups = cached.get("groups", [])
+        if (not isinstance(groups, list) or any(
+                not isinstance(row, dict)
+                or not isinstance(row.get("id"), str)
+                or any(type(row.get(key)) is not int
+                       for key in ("total", "with_data", "attention"))
+                or any(type(row.get(key, 0)) is not int
+                       for key in ("collection_failed", "refresh_failed_with_data"))
+                for row in groups)):
+            if cached:
+                unavailable.append("source_health_snapshot")
+            groups = []
+        attention_items = cached.get("attention_items", [])
+        if not isinstance(attention_items, list):
+            unavailable.append("source_health_snapshot")
+            attention_items = []
         summaries = {
             row["id"]: {
                 "total": row["total"], "with_data": row["with_data"],
                 "needs_attention": row["attention"],
                 "collection_failed": row.get("collection_failed", 0),
                 "refresh_failed_with_data": row.get("refresh_failed_with_data", 0),
-            } for row in cached.get("groups", [])
+            } for row in groups
         }
-        status = _status(events, {"summary": summaries},
-                         app.state.acceptance.loading, importer.running())
+        accepting = observe("assessment_status",
+                            lambda: app.state.acceptance.loading, None)
+        importing = observe("import_status", importer.running, None)
+        status = _status(events, {"summary": summaries}, accepting, importing)
         # Older on-disk health snapshots predate per-state counters. Preserve
         # the red severity from their already-cached attention items without
         # running SQL or waiting for the next background rebuild.
         failed_items = sum(item.get("state") in (
             "collection_failed", "refresh_failed_with_data")
-            for item in cached.get("attention_items", []) if isinstance(item, dict))
+            for item in attention_items if isinstance(item, dict))
         if failed_items and status["unresolved_source_failures"] < failed_items:
             status["unresolved_source_failures"] = failed_items
             status.update(colour="red", label="Source failures require attention")
         status["release_id"] = release["release_id"]
-        if not cached or health.get("state") == "unavailable":
-            status.update(colour="orange", label="Source health not evaluated")
-        if health.get("error"):
+        if (not cached or health.get("state") == "unavailable"
+                or "source_health_snapshot" in unavailable):
+            if status["colour"] != "red":
+                status.update(colour="orange", label="Source health not evaluated")
+        if health.get("error") and status["colour"] != "red":
             status.update(colour="orange", label="Source-health check unavailable")
         updates = observe("data_changes", app.state.data_change_coordinator.status,
                           {"state":"unavailable", "events_reconciled":None})
@@ -409,7 +448,7 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                     "checked_at": cached.get("calculated_at"),
                     "error": health.get("error"),
                     "attention_providers": _attention_publishers(
-                        cached.get("attention_items") or []),
+                        attention_items),
                 },
                 "data_changes": {
                     "state": updates["state"],
@@ -423,12 +462,12 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                         "snapshot": {
                             "calculated_at": cached.get("calculated_at"),
                             "sources": cached.get("sources"),
-                            "attention_items": cached.get("attention_items") or [],
+                            "attention_items": attention_items,
                         } if cached else None,
                         "automation": automation,
                         "downstream_updates": {"state": updates["state"]},
                         "scientific_assessment": {
-                            "running": app.state.acceptance.loading,
+                            "running": accepting,
                             "evaluated_at": acceptance.evaluated_at.isoformat()
                                             if acceptance else None,
                         },

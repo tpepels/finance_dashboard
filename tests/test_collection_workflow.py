@@ -12,6 +12,7 @@ import unittest
 
 from finance_dashboard.collection_workflow import CollectionWorkflow, SourceHealthCache
 from finance_dashboard.diagnostic_exports import DiagnosticExportManager
+from finance_dashboard.runtime_release import release_info
 
 
 def wait_for(predicate, timeout=4):
@@ -392,6 +393,14 @@ class CollectionWorkflowTests(unittest.TestCase):
         self.assertEqual(restarted.status()["snapshot"]["sources"]["total"], 5)
         self.assertEqual(restarted.status()["snapshot"]["attention_items"], items)
         self.assertEqual(len(called), 1)
+        self.assertEqual(restarted.status()["snapshot"]["release_id"],
+                         release_info()["release_id"])
+        with patch("finance_dashboard.collection_workflow.release_info",
+                   return_value={"release_id": "new-deployment"}):
+            next_release = SourceHealthCache(expensive, path=self.root / "health.json")
+            outdated = next_release.status(schedule=False)
+            self.assertEqual(outdated["state"], "unavailable")
+            self.assertIsNone(outdated["snapshot"])
 
     def test_export_preparation_is_nonblocking_persistent_and_cached(self):
         entered, release = Event(), Event()

@@ -137,6 +137,19 @@ class PolicyArchitectureTests(unittest.TestCase):
         self.assertEqual(result["unclassified_or_invalid_source_references"], [])
         self.assertFalse(result["dynamic_network_origins_verified"])
 
+    def test_unsupported_catalog_check_evaluates_supported_ids_once(self):
+        from unittest.mock import patch
+        import httpx
+        from finance_dashboard.providers import ProviderRouter
+        with httpx.Client(transport=httpx.MockTransport(
+                lambda _: httpx.Response(200))) as client:
+            router = ProviderRouter(client)
+            with patch.object(router, "supported_ids", wraps=router.supported_ids) as bound:
+                result = router.blocked()
+            self.assertEqual(bound.call_count, 1)
+            expected = set(router.definitions) - set(router.supported_ids())
+            self.assertEqual({item["series_id"] for item in result}, expected)
+
     def test_catalog_shares_rules_between_same_publisher_paths(self):
         from finance_dashboard.source_policy import PolicyRegistry
         registry = PolicyRegistry()

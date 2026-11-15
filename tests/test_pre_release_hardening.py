@@ -82,6 +82,34 @@ class DiagnosticArtifactTests(unittest.TestCase):
         with ZipFile(bad,"w") as z:z.writestr("diagnostics/other.json","{}")
         self.assertFalse(DiagnosticExportManager._verify_zip_content(bad.getvalue()))
 
+    def test_ready_zip_verification_streams_file_instead_of_reading_entire_archive(self):
+        with TemporaryDirectory() as temp, patch(
+                "finance_dashboard.diagnostic_exports.release_info",
+                return_value={"release_id":"test-release"}):
+            manager=self.manager(Path(temp),lambda:sample_zip())
+            manager.prepare()
+            manager.worker.join(timeout=10)
+            with patch.object(Path,"read_bytes",
+                              side_effect=AssertionError("whole-file read forbidden")):
+                self.assertEqual(manager.ready_file(),Path(temp)/"export.zip")
+
+    def test_missing_cached_zip_is_reported_failed_and_can_be_regenerated(self):
+        with TemporaryDirectory() as temp, patch(
+                "finance_dashboard.diagnostic_exports.release_info",
+                return_value={"release_id":"test-release"}):
+            manager=self.manager(Path(temp),lambda:sample_zip())
+            manager.prepare()
+            manager.worker.join(timeout=10)
+            self.assertTrue(manager.status()["ready"])
+            manager.zip_path.unlink()
+            self.assertEqual(manager.status()["state"],"failed")
+            self.assertFalse(manager.status()["ready"])
+            self.assertEqual(manager.status()["error"],"cached_zip_missing_or_corrupt")
+            self.assertIsNone(manager.ready_file())
+            self.assertEqual(manager.prepare()["state"],"preparing")
+            manager.worker.join(timeout=10)
+            self.assertTrue(manager.status()["ready"])
+
     def test_status_poll_does_not_rehash_zip(self):
         with TemporaryDirectory() as temp, patch(
                 "finance_dashboard.diagnostic_exports.release_info",
@@ -124,6 +152,22 @@ class DiagnosticSectionRecoveryTests(unittest.TestCase):
             app.state.data_change_coordinator.status.side_effect=RuntimeError("reconcile unavailable")
             with TestClient(app) as client:
                 response=client.get("/api/diagnostics")
+                app.state.source_health_cache.status.side_effect=None
+                app.state.source_health_cache.status.return_value={
+                    "state":"ready",
+                    "snapshot":{"groups":{"invalid":"shape"},
+                                "attention_items":{"invalid":"shape"}},
+                    "error":None}
+                app.state.collection_workflow.status.side_effect=None
+                app.state.collection_workflow.status.return_value={"running":False}
+                app.state.data_change_coordinator.status.side_effect=None
+                app.state.data_change_coordinator.status.return_value={
+                    "state":"complete","events_reconciled":0}
+                malformed=client.get("/api/diagnostics")
+            self.assertEqual(malformed.status_code,200)
+            self.assertIn("source_health_snapshot",
+                malformed.json()["status"]["unavailable_diagnostic_components"])
+            self.assertNotEqual(malformed.json()["status"]["colour"],"green")
             self.assertEqual(response.status_code,200)
             result=response.json()
             self.assertEqual(result["status"]["colour"],"red")
@@ -220,6 +264,28 @@ class OriginalResponseFailureTests(unittest.TestCase):
             finally:
                 client.close()
 
+    def test_empty_http_rejection_keeps_transport_error_and_quarantine(self):
+        with TemporaryDirectory() as temp:
+            def parser(client):
+                def run(*_):
+                    rejected=httpx.Response(
+                        503,content=b"",request=httpx.Request(
+                            "GET","https://fred.stlouisfed.org/empty.csv"))
+                    for hook in tuple(client.event_hooks["response"]):
+                        hook(rejected)
+                    raise ProviderError("upstream_http_503")
+                return run
+            router,client=self.router(parser)
+            try:
+                acquire=SourceAcquisition(router,Path(temp))
+                with self.assertRaisesRegex(ProviderError,"upstream_http_503"):
+                    acquire.fetch("test.source")
+                self.assertTrue(list(Path(temp).glob(
+                    "rejected-responses/test.source/*/manifest.json")))
+                self.assertIsNone(acquire.last_evidence["receipt_name"])
+            finally:
+                client.close()
+
     def test_response_capture_cannot_accumulate_unbounded_documents(self):
         with TemporaryDirectory() as temp:
             def parser(client):
@@ -239,6 +305,55 @@ class OriginalResponseFailureTests(unittest.TestCase):
                 with patch.object(acquire,"_quarantine_failed_response"):
                     with self.assertRaisesRegex(ProviderError,"response count exceeds"):
                         acquire.fetch("test.source")
+            finally:
+                client.close()
+
+
+    def test_cached_reuse_must_obey_the_same_count_limit_as_real_network_responses(self):
+        from finance_dashboard.source_documents import BatchOriginal
+        with TemporaryDirectory() as temp:
+            router,client=self.router(lambda _: lambda *_: None)
+            response=httpx.Response(
+                200, content=b"verified source",request=httpx.Request(
+                    "GET","https://fred.stlouisfed.org/reused.csv"))
+            original=BatchOriginal.from_response(response,"digest","anonymous")
+            def overfilled(*_):
+                for _ in range(MAX_RESPONSE_COUNT+1):
+                    for hook in tuple(router.original_reuse_hooks):
+                        hook(original)
+                raise AssertionError("Reuse bypassed canonical evidence limits")
+            router.fetch.side_effect=overfilled
+            try:
+                acquire=SourceAcquisition(router,Path(temp))
+                with patch.object(acquire,"_quarantine_failed_response"):
+                    with self.assertRaisesRegex(ProviderError,"response count exceeds"):
+                        acquire.fetch("test.source")
+                self.assertIsNone(acquire.last_evidence["receipt_name"])
+                self.assertEqual(router.original_reuse_hooks,[])
+            finally:
+                client.close()
+
+    def test_cached_reuse_obeys_same_byte_budget_as_real_response(self):
+        from finance_dashboard.source_documents import BatchOriginal
+        with TemporaryDirectory() as temp:
+            router,client=self.router(lambda _: lambda *_: None)
+            original=BatchOriginal.from_response(httpx.Response(
+                200,content=b"123456",request=httpx.Request(
+                    "GET","https://fred.stlouisfed.org/reused.csv")),
+                "digest","anonymous")
+            def oversized(*_):
+                for _ in range(2):
+                    for hook in tuple(router.original_reuse_hooks):
+                        hook(original)
+                raise AssertionError("Reuse bypassed source byte budget")
+            router.fetch.side_effect=oversized
+            try:
+                acquire=SourceAcquisition(router,Path(temp))
+                with patch("finance_dashboard.source_capture.MAX_BATCH_CAPTURE_BYTES",9):
+                    with patch.object(acquire,"_quarantine_failed_response"):
+                        with self.assertRaisesRegex(ProviderError,"bytes exceed"):
+                            acquire.fetch("test.source")
+                self.assertIsNone(acquire.last_evidence["receipt_name"])
             finally:
                 client.close()
 

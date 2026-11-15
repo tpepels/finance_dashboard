@@ -1,6 +1,6 @@
 # Current architecture
 
-Reviewed **2026-11-11**. [Development plan](DEVELOPMENT_PLAN.md) is the sole roadmap; [project review](PROJECT_REVIEW.md) records measured evidence and gaps; [RUNNING.md](RUNNING.md) covers operation.
+Reviewed **2026-11-15**. [Development plan](DEVELOPMENT_PLAN.md) is the sole roadmap; [project review](PROJECT_REVIEW.md) records measured evidence and gaps; [RUNNING.md](RUNNING.md) covers operation.
 
 ## Runtime and persistence
 
@@ -14,13 +14,13 @@ The standalone Compose service maps port 5052 by default and bind-mounts `FINANC
 
 | Component | Responsibility |
 |---|---|
-| `definitions/` and `catalog.py` | 398 mapped source definitions, 37 research questions, 21 original source-chart definitions and registered market instruments; counts measured on review date |
+| `definitions/` and `catalog.py` | the registered source catalogue, research questions, chart definitions and market instruments; coverage is measured from the catalogue at runtime |
 | `providers.py`, provider registry/adapters and source modules | Fetch/parse original native publisher observations through shared HTTP/publisher policy; never invent missing values |
 | `database.py` and `migrations/` | Append-only observation/market/FX versions, ingestion runs and evidence references in SQLite WAL |
 | `source_capture.py`, reconciliation modules and archive readers | Preserve source responses/receipts and independently compare originals with stored values |
 | `source_policy*` | Shared publisher request budgets, cooldowns, operator attestations and durable rate ledger |
 | `research_acceptance.py`, `research_runtime.py` | One evidence acceptance model for source roles and research questions |
-| `engine/` | Compute result bundles with accepted inputs, named transforms/formulas, values/estimates, limitations and export; 37 engine definitions |
+| `engine/` | Compute result bundles with accepted inputs, named transforms/formulas, values/estimates, limitations and export; question definitions remain centralized |
 | `api.py` | Same-origin data, analyses, portfolio inputs, source evidence and operations; expensive acceptance evaluated in a cached background job |
 | `standalone.py`, `worker.py` | One in-process refresh thread, macro/optional market collection, optional Wisesheets/vintage/holdings tasks and daily backup |
 | Frontend panels, `Overview`, `Workbench` | Read engine bundles; overview and searchable catalogue lead to eight analysis panels |
@@ -39,6 +39,10 @@ National-account surplus, listed net income and Marxian surplus-value measures r
 Portfolio P04/P05 use owner allocations, shock assumptions and historical replay. Rebalancing rules, contributions/withdrawals, trading costs and tax modes are implemented; historical coverage, par-bond reconstruction and currency/hedging approximations remain explicit. Independent fixture arithmetic and original-return reconciliation checks are recorded in [PORTFOLIO_VALIDATION.md](PORTFOLIO_VALIDATION.md); model and empirical limits remain explicit.
 
 The source explorer is the provenance/inspection layer. Pre-engine research, risk, insight, market comparison, vintage backtest and Marxian-accounting routes were retired; do not restore them as parallel calculation paths.
+
+The collector remains a single path through `ProviderRouter`, the managed source-policy client and `SourceAcquisition`. The document cache is memory-bounded and valid only within a sequential router batch; it never becomes a second long-term evidence store. Source originals are archived once per source identity and independently reconciled before acceptance. A reused response must satisfy the same capture limits as a network response. SEC's explicitly scoped larger batch cache is an optimization only; it must not affect admissibility or introduce a separate collector. The maximum original-response size and number of batch documents are defined in `source_documents.py` and referenced by capture and adapter code.
+
+Diagnostics expose separate cheap cached status and explicit expensive export; `diagnostics_api.py` owns both HTTP routes. A partially unavailable support export must report the missing sections. Diagnostic archive generation and download use the same ZIP structure and CRC contract, with streaming verification of cached disk bytes. Do not add new status stores or duplicate collector-progress engines.
 
 ## Operational limits
 
