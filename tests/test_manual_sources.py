@@ -441,7 +441,9 @@ class ManualSourceTests(unittest.TestCase):
             result = finished(self.client, "wid-world", duration=6)
             self.assertEqual(result["status"], "complete", result)
             self.assertEqual(counts, {"data": 1, "metadata": 2})
-            self.assertEqual(len(result["sources"]), 5)
+            self.assertEqual(len(result["sources"]), 32)
+            self.assertEqual(sum(row["status"] == "success"
+                                 for row in result["sources"][:5]),5)
 
     def test_transient_http_429_retries_without_turning_into_manual_fallback(self):
         from finance_dashboard.publisher_downloads import PublisherDownloadError
@@ -495,10 +497,14 @@ class ManualSourceTests(unittest.TestCase):
                         "gold-spot", "wid-world", "oecd-icio")}),
               patch.object(manager, "_enqueue", return_value="new-job") as enqueue):
             result = manager.fetch()
-        self.assertEqual([r["dataset"] for r in result["jobs"]], ["gold-spot"])
-        self.assertEqual(result["skipped"]["wid-world"], "already_current_or_pinned")
+        # A prior-release world upload included only five base histories.
+        # Discover the new optional Piketty roles automatically on upgrade.
+        self.assertEqual([r["dataset"] for r in result["jobs"]],
+                         ["gold-spot","wid-world"])
+        self.assertNotIn("wid-world",result["skipped"])
         self.assertEqual(result["skipped"]["oecd-icio"], "already_current_or_pinned")
-        self.assertEqual(enqueue.call_args.args, ("gold-spot", "publisher"))
+        self.assertEqual([call.args for call in enqueue.call_args_list],
+                         [("gold-spot","publisher"),("wid-world","publisher")])
 
     def test_most_recent_pinned_success_remains_in_durable_journal(self):
         manager = self.client.app.state.manual_sources
@@ -629,7 +635,9 @@ class ManualSourceTests(unittest.TestCase):
         self.assertEqual(manifest["kind"], "mixed_original")
         self.assertEqual(manifest["role_acquisitions"],
                          {"data": "publisher_https", "metadata": "user_upload"})
-        self.assertEqual(len(result["sources"]), 5)
+        self.assertEqual(len(result["sources"]), 32)
+        self.assertEqual(sum(row["status"] == "success"
+                             for row in result["sources"]),5)
 
     def test_transient_publisher_backoff_has_two_retries_then_manual_fallback(self):
         from finance_dashboard.manual_sources import _retry_transient_publisher_http
