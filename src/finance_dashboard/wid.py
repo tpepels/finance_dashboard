@@ -186,8 +186,11 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
             raise ProviderError(detail)
         invalid.add(variable)
 
+    # WID documents methodological notes as optional. Keep the original
+    # source citation and exact variable/age/population/unit mandatory, while
+    # accepting a blank method field for a published native observation.
     reader = _reader(metadata_text, {"country", "variable", "age", "pop", "unit",
-                                    "source", "method"})
+                                    "source"})
     try:
         for row in reader:
             if row.get("country") != area:
@@ -202,8 +205,7 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
                                else ("999", "i"))
             unit = (row.get("unit") or "").strip()
             if (row.get("age") != age or row.get("pop") != population
-                    or not unit or not (row.get("source") or "").strip()
-                    or not (row.get("method") or "").strip()):
+                    or not unit or not (row.get("source") or "").strip()):
                 reject(variable, "WID research age, population or original method mismatch")
                 continue
             if variable[0] == "s" and unit != "share":
@@ -554,5 +556,9 @@ class WidClient:
         observations = {day: value for day, value in values.items()
                         if start is None or day >= start}
         if not observations:
-            raise ProviderError("WID requested original measure has no matched observations")
+            # A registered, source-shaped optional measure can genuinely be
+            # absent from one area/vintage. Keep this distinct from invalid
+            # original bytes so an absent publisher series isn't misreported
+            # as a broken CSV parser.
+            raise ProviderError("WID registered measure has no publisher observations")
         return FetchedSeries(series_id, data_url + " + " + metadata_url, None, observations)
