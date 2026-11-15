@@ -134,7 +134,7 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
     next={title:'Next publisher check: '+nextRun,
       detail:input.automatic?.last_refresh_finished_at
         ?'The app will check again on its scheduled cycle. Previously failed requests may still need a fix.'
-        :'The check is scheduled. No completed automatic run has been recorded yet.'};
+        :'The next check is scheduled. No automatic check has finished since the app last started.'};
   }else if(scheduleEnabled){
     next={title:'Automatic checks are enabled',
       detail:'The app will check for publisher updates on its configured schedule.'};
