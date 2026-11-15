@@ -133,6 +133,58 @@ class OriginalDataTests(unittest.TestCase):
         with self.assertRaises(ProviderError):
             parse_nmfp_month(b"<html>Access denied</html>",date(2026,10,1))
 
+    def test_managed_ingestion_archive_and_independent_reconciliation(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        import httpx
+        from finance_dashboard.providers import ProviderRouter
+        from finance_dashboard.source_capture import SourceAcquisition
+        from finance_dashboard.service import IngestionService
+        from finance_dashboard.database import make_engine, Base
+        from finance_dashboard.source_reconciliation import reconcile
+
+        dwa="DWA.Q.PT.S14._Z._Z.NWA.T10.PT.S.N"
+        index_link="https://www.sec.gov/files/dera/data/form-n-mfp-data-sets/20261008-20261106_nmfp.zip"
+        html=f'<a href="{index_link}">2026 October NMFP</a>'
+        def transport(request):
+            if request.url.host=="data-api.ecb.europa.eu":
+                return httpx.Response(200,text="KEY,TIME_PERIOD,OBS_VALUE\n"+
+                                      f"{dwa},2025-Q1,57.2\n{dwa},2025-Q2,57.4\n")
+            if request.url.host=="ec.europa.eu":
+                return httpx.Response(200,json=eurostat())
+            if request.url.host=="www.sec.gov":
+                if request.url.path.endswith("_nmfp.zip"):
+                    return httpx.Response(200,content=zipped_sec())
+                return httpx.Response(200,text=html)
+            raise AssertionError("Unapproved publisher URL "+str(request.url))
+        identifiers=["wealth.pt.ecb_dwa_top10",
+                     "property.pt.eurostat_hpi_total",
+                     "funding.us.sec_nmfp_net_assets_musd"]
+        with TemporaryDirectory() as temp, patch.dict("os.environ",{
+                "SEC_USER_AGENT":"OriginalSourceTests tester@example.org"}):
+            root=Path(temp)
+            db="sqlite:///"+str(root/"series.db")
+            engine=make_engine(db)
+            Base.metadata.create_all(engine)
+            with httpx.Client(transport=httpx.MockTransport(transport)) as http:
+                service=IngestionService(engine,SourceAcquisition(ProviderRouter(http),root))
+                for sid in identifiers:
+                    first=service.refresh(sid,full=True)
+                    self.assertGreater(first["versions_added"],0,sid)
+                    repeated=service.refresh(sid,full=True)
+                    self.assertEqual(repeated["versions_added"],0,sid)
+            report=reconcile(db,root,identifiers)
+            self.assertTrue(report["passed"],report)
+            self.assertEqual(report["matched_series"],3)
+            # Verify original bytes are archived, and changing a publisher
+            # response invalidates the proof rather than changing history.
+            original=next((root/"responses"/identifiers[0]).glob("*/response-0.bin"))
+            original.write_bytes(original.read_bytes().replace(b"57.2",b"55.2"))
+            altered=reconcile(db,root,[identifiers[0]])
+            self.assertFalse(altered["passed"])
+            engine.dispose()
+
     def test_sec_requires_operator_contact(self):
         with patch.dict("os.environ",{"SEC_USER_AGENT":""}):
             with self.assertRaisesRegex(ProviderError,"SEC_USER_AGENT"):
