@@ -79,6 +79,9 @@ class ManualSourceTests(unittest.TestCase):
             "msci-eafe", "msci-europe", "msci-japan", "msci-methodology",
             "oecd-icio"})
         self.assertEqual(len(rows["wid-world"]["series_ids"]), 5)
+        self.assertEqual(len(rows["wid-world"]["optional_series_ids"]), 27)
+        self.assertIn("piketty.world.real_pretax_average.p99_9_100",
+                      rows["wid-world"]["optional_series_ids"])
         self.assertEqual(len(rows["msci-eafe"]["series_ids"]), 2)
         self.assertEqual(len(rows["oecd-icio"]["reference_links"]), 8)
         self.assertIn("2021, 2018", rows["oecd-icio"]["reference_links"][0]["label"])
@@ -119,8 +122,18 @@ class ManualSourceTests(unittest.TestCase):
         self.assertTrue(second.json()["import_started"])
         job = finished(self.client, "wid-world")
         self.assertEqual(job["status"], "complete", job)
-        self.assertEqual(len(job["sources"]), 5)
-        self.assertEqual({row["last_period"] for row in job["sources"]}, {"2024-01-01"})
+        self.assertEqual(len(job["sources"]), 32)
+        required={row["id"] for row in source_specs()["wid-world"]["series_ids"]}
+        self.assertEqual({row["id"] for row in job["sources"]
+                          if row["id"] in required},required)
+        self.assertTrue(all(row["status"]=="success" for row in job["sources"]
+                            if row["id"] in required))
+        self.assertEqual({row["last_period"] for row in job["sources"]
+                          if row["id"] in required},{"2024-01-01"})
+        self.assertTrue(all(row["status"] in ("success","not_published_in_original")
+                            for row in job["sources"]))
+        self.assertTrue(any(row["status"]=="not_published_in_original"
+                            for row in job["sources"]))
         self.assertFalse(job["origin_verified"])
         self.assertFalse(self.client.get("/api/manual-sources").json()["datasets"][7]
                          .get("original_certified", False))
@@ -135,6 +148,44 @@ class ManualSourceTests(unittest.TestCase):
         self.assertEqual(len(list((self.root/"evidence"/"manual-sources"/"wid-world"/"retrievals")
                                   .glob("*.json"))), 1)
         self.assertFalse(list((self.root / "pending" / "wid-world").glob("*.bin")))
+
+    def test_world_wid_manual_pair_also_ingests_available_piketty_observations(self):
+        # Add one genuine source-shaped WID optional monetary observation to
+        # the legacy world share pair. All unrelated optional series are
+        # deliberately absent: the canonical importer must neither fabricate
+        # them nor reject the five established share histories.
+        data,metadata=wid_fixtures("WO",legacy=True)
+        data+="WO;aptincj992;p0p100;2024;42100;992;j\\n"
+        fields=metadata.splitlines()[0].split(";")
+        row={key:"" for key in fields}
+        row.update(country="WO",variable="aptincj992",age="992",pop="j",
+                   shortname="Average pre-tax income",unit="2024 PPP USD",
+                   source="WID original source",method="")
+        metadata+=";".join(row[k] for k in fields)+"\\n"
+        self.assertEqual(self.upload("wid-world","data","WID_data_WO.csv",
+                                     data.encode()).status_code,201)
+        self.assertEqual(self.upload("wid-world","metadata","WID_metadata_WO.csv",
+                                     metadata.encode()).status_code,201)
+        job=finished(self.client,"wid-world")
+        self.assertEqual(job["status"],"complete",job)
+        items={row["id"]:row for row in job["sources"]}
+        sid="piketty.world.real_pretax_average.all"
+        self.assertEqual(items[sid]["status"],"success")
+        self.assertEqual(items[sid]["last_period"],"2024-01-01")
+        missing="piketty.world.real_pretax_average.p99_9_100"
+        self.assertEqual(items[missing]["status"],"not_published_in_original")
+        with Session(self.engine) as session:
+            values=current_observations(session,sid)
+            self.assertEqual(len(values),1)
+            self.assertEqual(values[0].period,date(2024,1,1))
+            self.assertEqual(str(values[0].value),"42100")
+        # A current full original check can be reused, even when WID has not
+        # published all optional percentiles for this vintage.
+        from finance_dashboard.manual_sources import _recent_import
+        self.assertTrue(_recent_import(job,"wid-world"))
+        prior={**job,"sources":[row for row in job["sources"]
+                               if row["id"] in source_specs()["wid-world"]["series_ids"]]}
+        self.assertFalse(_recent_import(prior,"wid-world"))
 
     def test_us_lab_xlsx_uses_existing_parser_and_preserves_blank_years(self):
         body = workbook({"LAB": [
