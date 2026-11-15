@@ -101,6 +101,8 @@ describe('unified Data and Diagnostics page',()=>{
     const view=render(<DataHub/>);
     expect(await screen.findByRole('heading',{name:'Data & diagnostics'})).toBeTruthy();
     expect(view.container.querySelectorAll('details')).toHaveLength(0);
+    expect(view.container.querySelector('.data-collection-run .data-download-details')).toBeTruthy();
+    expect(view.container.querySelector('#source-coverage .data-download-details')).toBeNull();
     expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
     expect(await screen.findByRole('cell',{name:'WID.world'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'EU KLEMS'})).toBeTruthy();
@@ -287,6 +289,7 @@ describe('unified Data and Diagnostics page',()=>{
     const official=await screen.findByRole('link',{name:'WID_metadata_WO.csv'});
     expect(official.getAttribute('href')).toContain('wid.world');
     expect(screen.getByRole('table',{name:'Files requiring manual download'})).toBeTruthy();
+    expect(document.querySelector('#source-coverage .data-manual-files')).toBeTruthy();
     expect(screen.getByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     await user.upload(screen.getByLabelText('Upload WID_metadata_WO.csv'),
       new File(['metadata'],'WID_metadata_WO.csv'));
@@ -311,6 +314,14 @@ describe('unified Data and Diagnostics page',()=>{
     expect(link.getAttribute('href')).toBe('/api/diagnostics/export-file');
     expect(screen.getByRole('button',{name:'Create updated report'})).toBeTruthy();
     expect(calls.some(item=>item.url==='/api/diagnostics/download')).toBe(false);
+  });
+
+  it('explains an unexpected source error without printing its internal code',async()=>{
+    run.repair={status:'failed',completed:1,total:1,current_item:null,
+      error_code:'unrecognized_internal_stage_code',details:null};
+    render(<DataHub/>);
+    expect(await screen.findByText('See the troubleshooting report for details')).toBeTruthy();
+    expect(screen.queryByText('unrecognized_internal_stage_code')).toBeNull();
   });
 
   it('keeps status visible when polling fails rather than replacing it with a blank page',async()=>{
