@@ -270,6 +270,50 @@ class SourceCoverageTests(unittest.TestCase):
         for sid in sources:
             self.assertEqual(expired[sid]["state"], "stale")
 
+    def test_bis_nominal_recent_full_original_is_checked_not_new_observation(self):
+        # These are the five exact BIS keys with full SHA-verified receipts
+        # in the owner's 2026-11-15 source audit. Age remains visible.
+        sources={
+            "property.de.nominal_residential.bis":date(2026,4,1),
+            "property.ea.nominal_residential.bis":date(2026,4,1),
+            "property.jp.nominal_residential.bis":date(2025,10,1),
+            "property.pt.nominal_residential.bis":date(2026,4,1),
+            "property.us.nominal_residential.bis":date(2026,4,1),
+        }
+        for sid,when in sources.items():
+            self.add_macro(sid,when=when)
+            with Session(self.engine) as session,session.begin():
+                run=session.get(IngestionRun,"run-"+sid)
+                run.evidence_scope="full_source_snapshot"
+                run.evidence_kind="response"
+                run.evidence_bundle_digest="b"*64
+                run.evidence_receipt_name="verified-bis-spp.json"
+        rows={row["id"]:row for row in build_coverage(
+            self.engine,self.catalog,self.registry,
+            asof=date(2026,11,15))["items"]}
+        for sid,when in sources.items():
+            with self.subTest(series=sid):
+                row=rows[sid]
+                self.assertEqual(row["state"],"source_checked_no_newer_data")
+                self.assertEqual(row["observation_state"],"stale")
+                self.assertEqual(row["freshness_basis"],"recent_complete_publisher_snapshot")
+                self.assertEqual(row["latest_source_date"],when.isoformat())
+                self.assertIsNone(row["published_through"])
+        expired={row["id"]:row for row in build_coverage(
+            self.engine,self.catalog,self.registry,
+            asof=date(2026,11,18))["items"]}
+        for sid in sources:
+            self.assertEqual(expired[sid]["state"],"stale")
+        # Without a matching archived publisher receipt, the successful
+        # network response alone never certifies that an aged series is current.
+        with Session(self.engine) as session,session.begin():
+            run=session.get(IngestionRun,"run-property.jp.nominal_residential.bis")
+            run.evidence_receipt_name=None
+        unverified={row["id"]:row for row in build_coverage(
+            self.engine,self.catalog,self.registry,
+            asof=date(2026,11,15))["items"]}
+        self.assertEqual(unverified["property.jp.nominal_residential.bis"]["state"],"stale")
+
     def test_later_quota_deferral_preserves_recent_complete_publisher_check(self):
         sid = "profit.es.nfc_net_fixed_assets"
         self.add_macro(sid, status="success", when=date(2023, 1, 1))
