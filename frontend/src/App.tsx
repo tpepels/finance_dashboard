@@ -45,6 +45,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const [dataVersion, setDataVersion] = useState(0);
+  const lastEvaluatedResearch = useRef<string|null>(null);
   const selected = researchLocation(hash || (location.search ? '#research-sources' : ''));
   const [savedVisited, setSavedVisited] = useState(selected.view === 'saved-figures');
   const Panel = selected.view in PANELS ? PANELS[selected.view as keyof typeof PANELS] : undefined;
@@ -64,6 +65,41 @@ export default function App() {
       window.removeEventListener('gcm-data-updated', update);
     };
   }, []);
+  useEffect(() => {
+    // Scientific assessment is recomputed automatically after each accepted
+    // import. A research page must pick up those results even if Data
+    // collection is not open; avoid a second manual "reload" operation.
+    const workspaces=new Set(['workbench','growth','monetary','credit',
+      'valuation','portfolio','global','labour','decisions','overview']);
+    if(!workspaces.has(selected.view))return;
+    let active=true;
+    let inFlight=false;
+    const check=async()=>{
+      if(!active||inFlight||document.visibilityState==='hidden')return;
+      inFlight=true;
+      try{
+        const response=await fetch('/api/research-status',{cache:'no-store'});
+        if(!response.ok)return; // 503: assessment is still being rebuilt.
+        const data=await response.json() as {evaluated_at?:string};
+        const revision=data.evaluated_at;
+        if(!active||!revision)return;
+        const previous=lastEvaluatedResearch.current;
+        lastEvaluatedResearch.current=revision;
+        if(previous!==null&&previous!==revision){
+          window.dispatchEvent(new Event('gcm-data-updated'));
+        }
+      }catch{/* The page retains its previous research while offline. */}
+      finally{inFlight=false;}
+    };
+    void check();
+    const timer=window.setInterval(()=>void check(),60_000);
+    const focus=()=>void check();
+    window.addEventListener('focus',focus);
+    document.addEventListener('visibilitychange',focus);
+    return ()=>{active=false;window.clearInterval(timer);
+      window.removeEventListener('focus',focus);
+      document.removeEventListener('visibilitychange',focus);};
+  },[selected.view]);
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
