@@ -470,6 +470,21 @@ def create_app(engine=None) -> FastAPI:
         from .research_status import research_status
         return research_status(acceptance_or_503(), research_sources)
 
+    @app.get('/api/research-revision')
+    def research_revision():
+        """Cheap polling token for already-open research charts.
+
+        Does not build the question graph, read source histories or trigger
+        publisher acquisition. Only a *finished* scientific assessment can
+        invalidate visible research data.
+        """
+        acceptance = app.state.acceptance
+        if acceptance.loading:
+            return {"state": "updating", "evaluated_at": None}
+        latest = acceptance.peek()
+        return {"state": "ready" if latest else "not_evaluated",
+                "evaluated_at": latest.evaluated_at.isoformat() if latest else None}
+
     @app.get("/api/analysis/{analysis_id}")
     def analysis_result(analysis_id: str, today: date | None = None, view: str | None = None):
         """One analysis as a self-describing result bundle."""
