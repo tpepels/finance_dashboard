@@ -164,7 +164,7 @@ def _sample_pink_sheet(root: Path, sid: str) -> dict:
                 path=_archive_file(folder,source,"response-0.bin",MAX_RESPONSE)
                 with path.open("rb") as handle:
                     raw=handle.read()
-                if not raw.startswith(b"PK\\x03\\x04"):
+                if not raw.startswith(b"PK\x03\x04"):
                     continue
                 book=CalamineWorkbook.from_filelike(io.BytesIO(raw))
                 if "Monthly Prices" not in book.sheet_names:
@@ -178,7 +178,7 @@ def _sample_pink_sheet(root: Path, sid: str) -> dict:
                 if j>=len(rows[i+1]) or str(rows[i+1][j]).strip()!="($/mt)":
                     continue
                 prices=[row for row in rows[i+2:]
-                        if row and re.fullmatch(r"\\d{4}M(0[1-9]|1[0-2])",str(row[0]).strip())
+                        if row and re.fullmatch(r"\d{4}M(0[1-9]|1[0-2])",str(row[0]).strip())
                         and len(row)>j]
                 excerpt=[rows[i],rows[i+1],*prices[-3:]]
                 return {"kind":"world_bank_pink_sheet","series_id":sid,
