@@ -271,42 +271,28 @@ export default function DataHub(){
     <header className="data-collection-heading">
       <div>
         <h2>Data Collection</h2>
-        <p>Sources are refreshed on their configured schedule. Newly imported evidence
-          automatically updates availability and scientific assessments.</p>
+        <p>{autoEnabled===false?'Automatic collection is disabled.':
+          autoEnabled===true?'Automatic collection is enabled.':
+          'Checking automatic collection settings.'}
+          {autoEnabled&&health.value?.automation?.interval_seconds?
+            ' Checks every '+Math.round(health.value.automation.interval_seconds/3600)+' hours.':''}
+          {' '}Accepted data automatically updates the research assessments.</p>
       </div>
+      <button type="button" className="data-collection-primary" disabled={starting||active}
+        onClick={()=>void start()}>{starting?'Starting collection…':
+          active?'Collection running':'Collect original data'}</button>
     </header>
 
     <ResearchUpdateJourney health={health.value} collection={run}
       isLastKnown={Boolean(health.problem&&health.value?.snapshot)}/>
-    <section className="data-collection-auto" aria-label="Automatic reconciliation" role="status">
-      <strong>{autoEnabled===false?'Scheduled source refresh is disabled':
-        autoEnabled===true?'Automatic source refresh enabled':
-        'Checking automatic refresh configuration'}</strong>
-      <p>{autoEnabled===false?
-        'Newly imported data still triggers downstream assessments, but periodic source downloads are disabled in the server configuration.':
-        'Source updates run without a manual repair action. A refresh checks publisher data; accepted imports update the database, source-health snapshot and research assessment.'}
-        {autoEnabled&&health.value?.automation?.interval_seconds?
-          ' Scheduled interval: '+Math.round(health.value.automation.interval_seconds/3600)+' hours.':''}
-      </p>
-      {changes?.state==='pending'&&<small>New evidence received; refreshing source health and scientific acceptance automatically.</small>}
-      {changes?.state==='complete'&&changes.last_reconciled_at&&
-        <small>Last ingestion-triggered reconciliation: {formatWhen(changes.last_reconciled_at)}.</small>}
-      {changes?.state==='failed'&&<small className="data-collection-alert">
-        Downstream reconciliation failed; see Diagnostics.</small>}
-      {assessment?.running&&<small>Scientific acceptance is being recalculated in the background.</small>}
-      {assessment?.evaluated_at&&!assessment.running&&<small>
-        Research evidence last evaluated {formatWhen(assessment.evaluated_at)}.</small>}
-    </section>
-
-    <details className="data-collection-advanced-actions" open={autoEnabled===false||undefined}>
-      <summary>Manual source check (optional)</summary>
-      <p>Scheduled refreshes and ingestion-triggered checks require no action.
-        Use this only to request an additional publisher check now, or to initiate
-        original-source acquisition when the automatic schedule is disabled.
-        Repeating it does not create unpublished observations.</p>
-      <button type="button" className="data-collection-primary" disabled={starting||active}
-        onClick={()=>void start()}>{starting?'Starting…':active?'Source check running':'Check sources now'}</button>
-    </details>
+    {(changes?.state==='pending'||changes?.state==='failed'||assessment?.running||
+        (changes?.state==='complete'&&changes.last_reconciled_at))&&
+      <p className="data-collection-update-status" role="status">
+        {changes?.state==='pending'?'Updating source health and research assessments.':
+         changes?.state==='failed'?'Research assessment update failed; see Diagnostics.':
+         assessment?.running?'Updating research assessments.':
+         'Last research data update: '+formatWhen(changes?.last_reconciled_at)}
+      </p>}
 
     <section aria-label="Current collection" className="data-collection-run" aria-live="polite">
       <div className="data-collection-statusline">
@@ -364,10 +350,9 @@ export default function DataHub(){
       </div>}
     </section>
 
-    {run?.id&&<section className="data-collection-section">
-      <details open={active||undefined}>
-        <summary>Source download history ({finished} of {total} resolved)</summary>
-      <div className="data-collection-table-scroll">
+    {run?.id&&sourceList.length>0&&<section className="data-collection-section">
+      <h3>Original source downloads ({finished} of {total} resolved)</h3>
+      <div className="data-collection-table-scroll data-collection-source-list">
         <table aria-label="Source download progress">
           <thead><tr><th>Source</th><th>Status</th><th>Details</th></tr></thead>
           <tbody>{sourceList.map(source=><tr key={source.dataset}>
@@ -387,7 +372,6 @@ export default function DataHub(){
           </tr>)}</tbody>
         </table>
       </div>
-      </details>
     </section>}
 
     {files.length>0&&<section className="data-collection-section" aria-labelledby="manual-files">
@@ -431,12 +415,11 @@ export default function DataHub(){
           {health.value?.state==='refreshing'?' Refreshing in background…':''}</small>
         <p><a href="#diagnostics">Assess all source, research and methodological limitations</a>
           {' '}in Diagnostics, including limitations not visible in source availability counts.</p>
-        {Boolean(snapshot?.attention_items?.length)&&<details className="data-collection-attention">
-          <summary>{snapshot?.attention_items?.length} series need attention — show exact sources</summary>
-          <p>These sources have stale or missing observations, failed collection,
-            or unresolved source evidence. A successful download alone does not
-            establish that newer source observations exist.</p>
-          <div className="data-collection-table-scroll">
+        {Boolean(snapshot?.attention_items?.length)&&<div className="data-collection-attention">
+          <h4>Sources requiring attention ({snapshot?.attention_items?.length})</h4>
+          <p>Missing or stale observations, unsuccessful collection attempts, and
+            unresolved original-source evidence.</p>
+          <div className="data-collection-table-scroll data-collection-source-list">
             <table aria-label="Sources requiring attention">
               <thead><tr><th>Source series</th><th>Last observation</th><th>What remains</th></tr></thead>
               <tbody>{snapshot?.attention_items?.map(item=><tr key={item.id}>
@@ -450,7 +433,7 @@ export default function DataHub(){
               </tr>)}</tbody>
             </table>
           </div>
-        </details>}
+        </div>}
         {(health.problem||health.value?.error)&&<p className="data-collection-alert">
           Availability refresh failed; showing the last retained snapshot.</p>}
       </div>:<p>{health.value?.state==='refreshing'?'Calculating data availability…':
