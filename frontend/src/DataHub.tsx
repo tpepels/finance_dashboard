@@ -313,6 +313,8 @@ export default function DataHub(){
         {!status.lastFinishedAt&&run?.started_at&&<small>
           Last check started {formatWhen(run.started_at)}
         </small>}
+        {changes?.state==='complete'&&changes.last_reconciled_at&&
+          <small>Research results last updated {formatWhen(changes.last_reconciled_at)}</small>}
       </div>
       <div className="data-overview-metrics" aria-label="Data availability totals">
         <div><strong>{summary?summary.with_data.toLocaleString()+' / '+summary.total.toLocaleString():'—'}</strong>
