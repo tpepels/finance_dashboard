@@ -167,7 +167,7 @@ describe('unified Data and Diagnostics page',()=>{
 
   it('automatically reports post-ingestion reconciliation without requiring a repair click',async()=>{
     const view=render(<DataHub/>);
-    expect(await screen.findByText(/Automatic collection is enabled/)).toBeTruthy();
+    expect(await screen.findByText(/Automatic source refresh enabled/)).toBeTruthy();
     expect(screen.getByText(/Last research data update/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Repair gaps'})).toBeNull();
     expect(calls.some(item=>item.method==='POST')).toBe(false);
@@ -242,7 +242,7 @@ describe('unified Data and Diagnostics page',()=>{
       sources:[],manual_files:[],repair:null,started_at:null};
     const user=userEvent.setup();
     render(<DataHub/>);
-    expect(await screen.findByText(/Automatic collection is enabled/)).toBeTruthy();
+    expect(await screen.findByText(/Automatic source refresh enabled/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Start automatic downloads'})).toBeNull();
     const button=await screen.findByRole('button',{name:'Collect original data'});
     await user.click(button);
@@ -286,7 +286,8 @@ describe('unified Data and Diagnostics page',()=>{
     render(<DataHub/>);
     const official=await screen.findByRole('link',{name:'WID_metadata_WO.csv'});
     expect(official.getAttribute('href')).toContain('wid.world');
-    expect(screen.getAllByRole('table')).toHaveLength(2);
+    expect(screen.getByRole('table',{name:'Files requiring manual download'})).toBeTruthy();
+    expect(screen.getByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     await user.upload(screen.getByLabelText('Upload WID_metadata_WO.csv'),
       new File(['metadata'],'WID_metadata_WO.csv'));
     await waitFor(()=>expect(sent.file?.name).toBe('WID_metadata_WO.csv'));
@@ -319,7 +320,7 @@ describe('unified Data and Diagnostics page',()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status:503,json:async()=>({})})));
     render(<DataHub/>);
     expect(screen.getByRole('cell',{name:'WID.world'})).toBeTruthy();
-    expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(screen.getByText(/Last known collection state is retained/)).toBeTruthy();
+    await waitFor(()=>expect(screen.getByText(/Last known collection state is retained/)).toBeTruthy());
+    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
   });
 });
