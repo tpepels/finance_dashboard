@@ -1155,6 +1155,11 @@ def _l07(points: dict, view: dict) -> Computed:
         for group in ("all", "bottom50", "middle40", "top10", "top1"):
             research[f"piketty:{country}:income_avg:{group}"] = points.get(
                 f"piketty_avg:{country}:{group}", [])
+        for group in ("p00_10", "p10_20", "p20_30", "p30_40",
+                      "p40_50", "p50_60", "p60_70", "p70_80",
+                      "p80_90", "p90_99", "p99_99_9", "p99_9_100"):
+            research[f"piketty:{country}:income_distribution:{group}"] = points.get(
+                f"piketty_incidence:{country}:{group}", [])
         for kind in ("national", "private", "public"):
             research[f"piketty:{country}:ratio:{kind}"] = points.get(
                 f"piketty_ratio:{country}:{kind}", [])
@@ -1194,6 +1199,11 @@ _L07_PIKETTY_INPUTS = {
     **{f"piketty_avg:{a}:{group}": f"piketty.{a.lower()}.real_pretax_average.{group}"
        for a in INEQUALITY_AREAS
        for group in ("all", "bottom50", "middle40", "top10", "top1")},
+    **{f"piketty_incidence:{a}:{group}": f"piketty.{a.lower()}.real_pretax_average.{group}"
+       for a in INEQUALITY_AREAS
+       for group in ("p00_10", "p10_20", "p20_30", "p30_40",
+                     "p40_50", "p50_60", "p60_70", "p70_80",
+                     "p80_90", "p90_99", "p99_99_9", "p99_9_100")},
     **{f"piketty_ratio:{a}:{kind}": f"piketty.{a.lower()}.wealth_to_income.{kind}"
        for a in INEQUALITY_AREAS for kind in ("national", "private", "public")},
     **{f"piketty_macro:{a}:{metric}": f"piketty.{a.lower()}.{metric}"
