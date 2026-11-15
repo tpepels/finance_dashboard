@@ -43,6 +43,7 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
     progress exactly once. Stored observations remain untouched on failure.
     """
     failures = 0
+    processed = 0
     total = len(tasks)
     # A confirmed publisher-wide hourly quota cannot be repaired by
     # immediately attempting twenty more series using the same source host.
@@ -77,6 +78,7 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
                          source_id=task.source_id,
                          reason="source_policy_deferred")
             failures += publish_progress(index, task)
+            processed += 1
             continue
         try:
             report = task.execute()
@@ -112,12 +114,22 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
             log.error("%s refresh failed: %s (publisher details redacted)",
                       task.family, task.source_id)
         failures += publish_progress(index, task)
+        processed += 1
     for group, count in sorted(suppressed.items()):
         record_event("macro", "stage_finished", level="warning",
                      action="publisher_quota_exhausted", status="deferred",
                      stage=group, failed=count)
         log.warning("%s: %d additional sources left unattempted after source quota exhaustion",
                     group, count)
+    if tasks:
+        # Emit a final bounded summary after every batch, including partial
+        # success or early preemption. The full per-series ingestion history
+        # remains in the source audit; quota skips are separate events.
+        scope = "macro" if tasks[0].family == "macro" else "markets"
+        record_event(scope, "stage_finished", action="source_refresh_batch",
+                     status=("interrupted" if processed < total else
+                             "partial" if failures else "complete"),
+                     completed=processed, total=total, failed=failures)
     return failures
 
 
