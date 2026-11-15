@@ -392,7 +392,8 @@ class CollectionWorkflow:
                      "collection_start_failed", "collection_start_interrupted") else
                  "needs_attention" if (record.get("startup_error") or counts["failed"]
                      or counts["manual_required"] or
-                     repair["status"] in ("failed", "partial", "blocked", "interrupted"))
+                     repair["status"] in ("failed", "partial", "blocked",
+                                          "interrupted", "previous_build"))
                  else "complete")
         return {"id": record["id"], "state": state, "running": running,
                 "started_at": record["started_at"], "release": release_info(),
