@@ -148,16 +148,14 @@ export default function DataOperations() {
     }
   }
   const disabled = submitting || Boolean(queue?.active_job_id) || !queue;
-  return <section className="data-sync" id="data-management" aria-label="Data synchronization">
+  return <section className="data-sync" id="maintenance-tools" aria-label="Additional source maintenance">
     <p className="data-sync-hint">Publisher refreshes, validation, ingestion and
       downstream scientific reassessment run automatically when enabled.
       The source-health count indicates unresolved evidence, not an outstanding
       manual command. Repeating a repair cannot create unpublished data.</p>
-    <details className="data-sync-advanced">
-      <summary>Manual maintenance (optional)</summary>
-      <p className="data-sync-hint">Use these controls only to rerun publisher
-        checks outside the regular schedule or investigate a specific failure.
-        Completed imports do not need to be re-imported after deployment.</p>
+    <div className="data-sync-advanced">
+      <p className="data-sync-hint">Use a targeted check only when investigating a
+        problem or when the regular schedule has not collected the required evidence.</p>
       <div className="data-sync-controls">
         <button type="button" disabled={disabled} className="data-sync-secondary"
           onClick={() => void sync('sync_current')}>Check current sources now</button>
@@ -166,7 +164,7 @@ export default function DataOperations() {
         <button type="button" disabled={disabled} className="data-sync-secondary"
           onClick={() => void sync('sync_history')}>Recheck historical sources</button>
       </div>
-    </details>
+    </div>
     {active && <div className="data-sync-progress" role="status">
       <strong>{TITLES[active.action] ?? 'Data'} · {description(active.status)}</strong>
       {active.total != null && <progress aria-label="Sync progress"
@@ -182,8 +180,8 @@ export default function DataOperations() {
       <span>{TITLES[last.action] ?? last.action} · {description(last.status)}</span>
       {last.finished_at && <small>{new Date(last.finished_at).toLocaleString()}</small>}
       {last.error_code && last.status !== 'partial' && <small>{last.error_code}</small>}
-      {last.result?.parts && <details className="data-sync-results">
-        <summary>Sync results</summary>
+      {last.result?.parts && <div className="data-sync-results">
+        <strong>Latest check results</strong>
         <ul>{Object.entries(last.result.parts).map(([key, value]) =>
           <li key={key}><strong>{key.replaceAll('_',' ')}</strong> ·
             {' '}{description(value.status ?? 'complete')}
@@ -207,7 +205,7 @@ export default function DataOperations() {
             </ul>}
             {value.note && <small className="data-sync-caveat">{value.note}</small>}
           </li>)}</ul>
-      </details>}
+      </div>}
     </div>}
     {!active && last?.action === 'repair_source_health' && last.result && <p
       className="data-sync-hint" role="status">
