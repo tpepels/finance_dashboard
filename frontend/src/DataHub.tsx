@@ -196,7 +196,6 @@ export default function DataHub(){
   const repairPercent=repairTotal?Math.min(100,(repair?.completed??0)/repairTotal*100):0;
   const sourceList=run?.sources??[];
   const summary=snapshot?.sources;
-  const autoEnabled=health.value?.automation?.scheduled_refresh_enabled;
   const changes=health.value?.downstream_updates;
   const assessment=health.value?.scientific_assessment;
   const status=describeDataStatus({
