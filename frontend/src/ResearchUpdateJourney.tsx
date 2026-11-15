@@ -70,8 +70,10 @@ export function describeResearchUpdate(
   const manual=collection?.manual_files_count??collection?.manual_files?.length??0;
   const config=health?.automation?.scheduled_refresh_enabled;
   const schedulerState=health?.automation?.refresh_state;
-  const collectorFailed=health?.automation?.last_error_code==='internal_error'
-    && health?.automation?.last_refresh_outcome!=='complete';
+  const collectorFailed=(
+    health?.automation?.last_error_code==='internal_error' ||
+    health?.automation?.last_error_code==='planner_partial'
+  ) && health?.automation?.last_refresh_outcome!=='complete';
   const pastFailure=health?.automation?.last_persisted_failure;
   const unresolvedPastFailure=Boolean(pastFailure?.previous_release &&
     !health?.automation?.last_refresh_finished_at &&
@@ -110,6 +112,11 @@ export function describeResearchUpdate(
     heading='Internal source failure could not be preserved';
     explanation='The scheduler detected an internal error, but writing the persistent failure journal failed. No future diagnostic ZIP can reconstruct this exception from disk.';
     action='Check permissions and free space on the maintenance volume. The live scheduler still reports the error stage, but deployment may erase its context.';
+    tone='attention';
+  }else if(hasData && health?.automation?.refresh_state==='preflight_partial'){
+    heading='Source refresh preflight found isolated errors';
+    explanation=missing+' source histories remain without observations. The read-only startup planner found individual source metadata or query errors; the remaining source tasks remain eligible for scheduled collection.';
+    action='Inspect the persistent failure journal in the Diagnostic ZIP. The scheduled worker will still try other sources; source availability has not yet improved.';
     tone='attention';
   }else if(hasData && collectorFailed){
     heading='Scheduled source collection failed';
@@ -231,7 +238,8 @@ export function describeResearchUpdate(
     evaluated?'complete':'waiting';
   const stages:Stage[]=[
     {name:'Collect original data',state:sourcesState,
-      explanation:collectorFailed?'Collection failed':
+      explanation:health?.automation?.refresh_state==='preflight_partial'?'Preflight issues':
+        collectorFailed?'Collection failed':
         unresolvedPastFailure?'Previous deployment failure':
         downloading?'Source collection active':
         missing>0?missing+' histories without data':
