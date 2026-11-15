@@ -79,7 +79,8 @@ def evidence_next_step(analysis_id: str, research_state: str,
 
 
 
-def research_next_actions(snapshot, document: dict) -> dict:
+def research_next_actions(snapshot, document: dict,
+                          coverage_items: list[dict] | None = None) -> dict:
     """Bounded research-readiness summary for the on-demand diagnostic ZIP.
 
     A submitted source is not an accepted original. Owner action is named
@@ -92,9 +93,28 @@ def research_next_actions(snapshot, document: dict) -> dict:
                 'note': 'A complete scientific assessment was not yet available.'}
     from collections import Counter
     report = research_status(snapshot, document)
+    stored = {row["id"]: row.get("stored_periods")
+              for row in (coverage_items or [])
+              if isinstance(row, dict) and isinstance(row.get("id"), str)}
     questions = []
     for row in report['questions']:
         step = row['next_step']
+        blockers = []
+        for role in row['role_dispositions']:
+            if role['supplemental'] or role['state'] == 'descoped' or role['accepted']:
+                continue
+            evidence = {
+                'role': role['role'],
+                'series_ids': role['series_ids'],
+                'sources_with_observations': role['sources_with_observations'],
+                'blocking_checks': role['blocking_checks'],
+                'blocking_reasons': role.get('blocking_reasons', []),
+                'original_source_proof': role.get('original_source_proof'),
+            }
+            if coverage_items is not None:
+                evidence['stored_source_periods'] = {
+                    sid: stored.get(sid) for sid in role['series_ids']}
+            blockers.append(evidence)
         questions.append({
             'id': row['analysis_id'],
             'state': row['phase2']['state'],
@@ -104,15 +124,7 @@ def research_next_actions(snapshot, document: dict) -> dict:
             # The role gate is the unit of scientific acceptance. Include
             # its exact controlled check IDs/reasons rather than another
             # generic "scientific review" message in a debug export.
-            'blocking_role_evidence': [{
-                'role': role['role'],
-                'series_ids': role['series_ids'],
-                'sources_with_observations': role['sources_with_observations'],
-                'blocking_checks': role['blocking_checks'],
-                'blocking_reasons': role.get('blocking_reasons', []),
-            } for role in row['role_dispositions']
-                if not role['supplemental'] and
-                role['state'] != 'descoped' and not role['accepted']],
+            'blocking_role_evidence': blockers,
         })
     return {
         'status': 'ready',
@@ -154,8 +166,16 @@ def research_status(snapshot, document: dict) -> dict:
                     'id': check.get('id'),
                     'state': check.get('state'),
                     'code': check.get('code'),
+                    'series_ids': list(check.get('series_ids') or [])[:32],
                 } for check in (role.get('checks') or [])[:16]
                   if check.get('state') != 'passed'],
+                'original_source_proof': next((
+                    {'state': check.get('state'),
+                     'code': check.get('code'),
+                     'unverified_series_ids': list(
+                         check.get('series_ids') or [])[:32]}
+                    for check in (role.get('checks') or [])
+                    if check.get('id') == 'original_source_values'), None),
                 'limitations': grouped(role.get('limitations') or []),
             })
         for role in definition.get('descoped_roles', []):

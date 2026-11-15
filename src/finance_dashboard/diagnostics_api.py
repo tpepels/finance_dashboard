@@ -288,6 +288,67 @@ def _accounting_failures_csv(summary: dict, release_id: str) -> tuple[str, dict]
     }
 
 
+
+def _source_failure_stages(coverage: dict, journal: dict) -> dict:
+    """Compact stage classification from existing, redacted source evidence.
+
+    Unknown failures remain unknown. Historic journal entries retain their
+    release identity; do not attribute an old planner exception to this run.
+    """
+    items = coverage.get("items", []) if isinstance(coverage, dict) else []
+    failures = []
+    for row in items:
+        if not isinstance(row, dict) or row.get("refresh_state") not in ("failed", "deferred"):
+            continue
+        code = row.get("last_failure_code")
+        if not isinstance(code, str):
+            code = "unknown"
+        if code == "source_policy_deferred":
+            stage = "publisher_policy"
+        elif code.startswith("provider_http_") or code == "source_transport_failed":
+            stage = "acquisition"
+        elif code.startswith(("sec_nmfp_", "wid_")) or code in (
+                "source_parse_failed", "source_date_invalid",
+                "source_value_invalid", "source_duplicate_period"):
+            stage = "publisher_parsing"
+        elif code == "source_archive_failed":
+            stage = "archiving"
+        else:
+            stage = "undetermined"
+        failures.append({
+            "series_id": row.get("id"),
+            "provider": row.get("provider"),
+            "state": row.get("state"),
+            "attempt_state": row.get("refresh_state"),
+            "last_failure_code": code,
+            "stage": stage,
+            "stored_periods": row.get("stored_periods"),
+        })
+    failures.sort(key=lambda row: (
+        str(row["provider"]), str(row["stage"]), str(row["series_id"])))
+    records = journal.get("failures", []) if isinstance(journal, dict) else []
+    planner = [{
+        "component": entry.get("component"),
+        "stage": entry.get("stage"),
+        "exception_type": entry.get("exception_type"),
+        "release_id": entry.get("release_id"),
+        "count": entry.get("count"),
+        "example_series_ids": entry.get("example_series_ids", []),
+    } for entry in records if isinstance(entry, dict)
+        and entry.get("stage") not in ("execute_source_task",)]
+    by_stage = {}
+    for item in failures:
+        by_stage[item["stage"]] = by_stage.get(item["stage"], 0) + 1
+    return {
+        "schema_version": 1,
+        "failed_or_deferred_attempts": failures,
+        "counts_by_stage": by_stage,
+        "planner_and_other_stage_failures": planner[-64:],
+        "classification_policy": "Only explicit error codes establish a stage. Unknown codes remain undetermined.",
+        "raw_error_messages_included": False,
+    }
+
+
 def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                         research_document, maintenance, importer):
     from .source_coverage import build_coverage
@@ -603,8 +664,15 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             })
             put("diagnostics/console.json", _console(events))
             put("diagnostics/events.json", events)
-            put("diagnostics/failure-journal.json", read_failures())
+            journal = safe_section("failure_journal", read_failures,
+                                   {"state": "unavailable", "failures": []})
+            put("diagnostics/failure-journal.json", journal)
             put("diagnostics/source-coverage.json", {**coverage, "release": release})
+            put("diagnostics/source-failure-stages.json",
+                safe_section("source_failure_stages",
+                             lambda: _source_failure_stages(coverage, journal),
+                             {"state": "unavailable", "failed_or_deferred_attempts": [],
+                              "planner_and_other_stage_failures": []}))
             # A small, literal set of publisher rows makes failing source
             # parsers reproducible from the user's next diagnostic ZIP.
             # Each input is checked against the immutable source archive hash;
@@ -625,6 +693,23 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                            "unavailable": [{"reason": "source_sampling_failed"}],
                            "warning": "Source sample collection failed. Other diagnostics remain available."}
             put("diagnostics/source-fixture-samples.json", samples)
+            # Inspect the exact SEC ZIP table names and headers from retained
+            # originals. No new publisher requests or raw ZIP payloads.
+            try:
+                from .source_fixture_samples import collect_sec_archive_inspection
+                sec = collect_sec_archive_inspection(
+                    Path(os.environ.get("FINANCE_SOURCE_EVIDENCE_DIR",
+                                        "/data/source-evidence")),
+                    coverage.get("items", []))
+            except Exception as exc:
+                from .failure_journal import record_failure
+                record_failure("macro", "diagnostic_sec_archives", exc)
+                problems.append({"section": "sec_archives", "state": "unavailable",
+                                 "reason": "diagnostic_section_failed"})
+                sec = {"schema_version": 1, "state": "unavailable",
+                       "archives_found": 0, "archives_inspected": [],
+                       "unavailable": [{"reason": "sec_archive_inspection_failed"}]}
+            put("diagnostics/sec-archive-inspection.json", sec)
             put("diagnostics/icio-consumer-dependencies.json", dependencies)
             put("diagnostics/limitation-assessment.json", limits)
             put("diagnostics/research-limitation-matrix.json", {
@@ -638,7 +723,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             try:
                 from .research_status import research_next_actions
                 next_actions = research_next_actions(
-                    app.state.acceptance.peek(), research_document)
+                    app.state.acceptance.peek(), research_document,
+                    coverage.get("items", []))
             except Exception as exc:
                 from .failure_journal import record_failure
                 record_failure("macro", "diagnostic_research_next_actions", exc)
@@ -759,7 +845,10 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                 "has been recorded by this facility; previous exports cannot be reconstructed. "
                 "The latest collection-run snapshot is also retained across builds. "
                 "Small hash-verified original publisher row samples for WID, BLS "
-                "and World Bank may appear in source-fixture-samples.json. Missing "
+                "and World Bank may appear in source-fixture-samples.json. SEC "
+                "ZIP member/column inspection and bounded parser outcomes are in "
+                "sec-archive-inspection.json; source-failure-stages.json groups "
+                "controlled failure codes with the relevant stage. Missing "
                 "source bytes are reported without substitutions. The full "
                 "original data remain on the server. "
                 "Original evidence, research history, and backups are retained.\n"

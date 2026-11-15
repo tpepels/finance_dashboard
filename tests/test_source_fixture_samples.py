@@ -128,6 +128,9 @@ class ArchivedOriginalSamplingTests(unittest.TestCase):
             self.assertEqual(sample["samples"][0]["source_sha256"],sha256(raw).hexdigest())
             values=parse_pink_sheet_price(sample["samples"][0]["rows"],"Copper")
             self.assertEqual(values[date(2026,10,1)],Decimal("14508"))
+            available=collect_failure_samples(root,[{"id":sid,"state":"available"}])
+            self.assertEqual(len(available["samples"]),1)
+            self.assertEqual(available["samples"][0]["kind"],"world_bank_pink_sheet")
             # A rejected HTTP response body must never be exported as a
             # source fixture or interpreted as economic data.
             (archive/"response-0.bin").write_bytes(b"<html>HTTP 403 SECRET</html>")
@@ -207,6 +210,95 @@ class ArchivedOriginalSamplingTests(unittest.TestCase):
             self.assertEqual(result["samples"][0]["kind"],"world_bank_pink_sheet")
             self.assertEqual(result["unavailable"][0]["reason"],"source_sampling_failed")
             self.assertNotIn("malformed WID",json.dumps(result))
+
+
+    def test_sec_archived_zip_schema_and_parser_outcome_are_deduplicated(self):
+        from test_extra_publisher_sources import zipped_sec
+        from finance_dashboard.extra_publisher_sources import SEC_NMFP_INDEX, SEC_NMFP_ROOT
+        from finance_dashboard.source_fixture_samples import collect_sec_archive_inspection
+        raw = zipped_sec()
+        zip_url = SEC_NMFP_ROOT + "20261101-20261130_nmfp.zip"
+        html = (f'<a href="{zip_url}">2026 October NMFP</a>').encode()
+        ids = ("funding.us.sec_nmfp_net_assets_musd",
+               "funding.us.sec_nmfp_wam_days")
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for sid in ids:
+                folder = root / "rejected-responses" / sid / ("a"*64)
+                folder.mkdir(parents=True)
+                sources = []
+                for index, (body, url) in enumerate((
+                        (html, SEC_NMFP_INDEX), (raw, zip_url))):
+                    name = f"response-{index}.bin"
+                    (folder / name).write_bytes(body)
+                    sources.append({"file": name, "bytes": len(body),
+                                    "sha256": sha256(body).hexdigest(), "url": url,
+                                    "http_status": 200})
+                (folder / "manifest.json").write_text(json.dumps({
+                    "schema_version": 1, "series_id": sid, "provider": "SEC_NMFP",
+                    "retrieved_at_utc": "2026-11-15T20:00:00+00:00",
+                    "sources": sources,
+                }))
+            report = collect_sec_archive_inspection(root, [
+                {"id": sid, "provider": "SEC_NMFP",
+                 "state": "collection_failed", "last_failure_code": "source_invalid"}
+                for sid in ids])
+            self.assertEqual(report["archives_found"], 1)
+            self.assertEqual(len(report["archives_inspected"]), 1)
+            entry = report["archives_inspected"][0]
+            self.assertEqual(entry["publisher_month"], "2026-10-01")
+            self.assertEqual(entry["source_sha256"], sha256(raw).hexdigest())
+            self.assertEqual(entry["referenced_by"], list(ids))
+            self.assertEqual(entry["tables"]["SUBMISSION"]["missing_columns"], [])
+            self.assertEqual(entry["parser_outcome"], "accepted_shape_not_certified")
+            self.assertEqual(entry["parsed_metric_keys"],
+                             ["NET_ASSETS_MUSD", "WAL_DAYS",
+                              "WAM_DAYS", "WEEKLY_LIQUIDITY_PCT"])
+            self.assertNotIn("200000000", json.dumps(report))
+            self.assertNotIn("S000000001", json.dumps(report))
+
+    def test_sec_inspection_reports_missing_original_without_substituting_bytes(self):
+        from finance_dashboard.source_fixture_samples import collect_sec_archive_inspection
+        with TemporaryDirectory() as temporary:
+            report = collect_sec_archive_inspection(Path(temporary), [
+                {"id": "funding.us.sec_nmfp_wal_days",
+                 "provider": "SEC_NMFP", "state": "collection_failed",
+                 "last_failure_code": "sec_nmfp_schema_invalid"}])
+        self.assertEqual(report["archives_found"], 0)
+        self.assertEqual(report["archives_inspected"], [])
+        self.assertEqual(report["unavailable"][0]["reason"],
+                         "no_hash_identified_archived_sec_zip")
+
+    def test_wid_sampling_reports_full_row_count_not_just_four_excerpts(self):
+        data = (HERE / "US_data.csv").read_bytes()
+        meta = (HERE / "US_metadata.csv").read_bytes()
+        lines = data.decode("utf-8-sig").splitlines()
+        copied = lines[1].split(";")
+        header = lines[0].split(";")
+        self.assertIn("year", header)
+        self.assertIn("variable", header)
+        self.assertIn("percentile", header)
+        self.assertIn("country", header)
+        year_column = header.index("year")
+        augmented = data.decode("utf-8-sig")
+        if not augmented.endswith("\n"):
+            augmented += "\n"
+        for year in range(1930, 1939):
+            row = list(copied)
+            row[year_column] = str(year)
+            augmented += ";".join(row) + "\n"
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _make_wid_archive(root, "US", augmented.encode("utf-8"), meta)
+            samples = collect_failure_samples(root, [
+                {"id": "inequality.us.pretax_income.top1", "state": "stale"}])
+        self.assertEqual(samples["unavailable"], [])
+        selected = samples["samples"][0]["selected_keys"]
+        exact = next(item for item in selected
+                     if item["variable"] == copied[header.index("variable")]
+                     and item["percentile"] == copied[header.index("percentile")])
+        self.assertGreater(exact["rows"], exact["sampled_rows"])
+        self.assertLessEqual(exact["sampled_rows"], 4)
 
     def test_optional_wid_monetary_measure_with_source_but_no_method_can_be_sampled(self):
         # Synthetic extension is explicit; it exercises the *same* parser

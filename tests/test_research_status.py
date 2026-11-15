@@ -118,6 +118,7 @@ class ResearchStatusTests(unittest.TestCase):
             'sources_with_observations': 0,
             'blocking_checks': [],
             'blocking_reasons': [],
+            'original_source_proof': None,
         }])
 
     def test_debug_report_exposes_exact_gate_reason_without_new_evaluation(self):
@@ -143,7 +144,16 @@ class ResearchStatusTests(unittest.TestCase):
         self.assertEqual(blockers[0]['sources_with_observations'],802)
         self.assertEqual(blockers[0]['blocking_reasons'],[{
             'id':'original_source_values','state':'incomplete',
-            'code':'verified_source_values_required'}])
+            'code':'verified_source_values_required', 'series_ids':[]}])
+        self.assertEqual(blockers[0]['original_source_proof'], {
+            'state': 'incomplete', 'code': 'verified_source_values_required',
+            'unverified_series_ids': [],
+        })
+        report_with_coverage = research_next_actions(snapshot, document, [
+            {'id': 'prices.commodity.copper_usd', 'stored_periods': 802}])
+        self.assertEqual(report_with_coverage['questions'][0]
+                         ['blocking_role_evidence'][0]['stored_source_periods'],
+                         {'prices.commodity.copper_usd': 802})
 
     def test_unassessed_question_is_not_reported_as_accepted(self):
         snapshot = AcceptanceSnapshot(datetime(2026, 11, 11, tzinfo=timezone.utc), {})

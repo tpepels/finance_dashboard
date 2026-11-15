@@ -92,6 +92,33 @@ class DiagnosticsSeverityTests(unittest.TestCase):
         self.assertEqual(result["warnings_last_24h"],1)
         self.assertEqual(result["colour"],"orange")
 
+
+    def test_source_failure_stages_does_not_guess_unknown_root_causes(self):
+        from finance_dashboard.diagnostics_api import _source_failure_stages
+        coverage = {"items": [
+            {"id": "funding.us.sec_nmfp_wam_days", "provider": "SEC_NMFP",
+             "state": "collection_failed", "refresh_state": "failed",
+             "last_failure_code": "sec_nmfp_schema_invalid", "stored_periods": 0},
+            {"id": "prices.commodity.copper_usd", "provider": "WORLD_BANK_PINK_SHEET",
+             "state": "refresh_failed_with_data", "refresh_state": "failed",
+             "last_failure_code": "source_invalid", "stored_periods": 802},
+            {"id": "prices.ea.hicp_index_2025", "provider": "EUROSTAT",
+             "state": "available", "refresh_state": "success",
+             "last_failure_code": None, "stored_periods": 5},
+        ]}
+        journal = {"failures": [{
+            "component": "macro", "stage": "publication_bound_item",
+            "exception_type": "TypeError", "release_id": "previous_release",
+            "count": 1, "example_series_ids": ["prices.commodity.copper_usd"],
+        }]}
+        report = _source_failure_stages(coverage, journal)
+        self.assertEqual(report["counts_by_stage"],
+                         {"publisher_parsing": 1, "undetermined": 1})
+        self.assertEqual(len(report["failed_or_deferred_attempts"]), 2)
+        self.assertEqual(report["planner_and_other_stage_failures"][0]
+                         ["release_id"], "previous_release")
+        self.assertFalse(report["raw_error_messages_included"])
+
     def test_console_discards_invalid_event_records_without_exception(self):
         events=[None, {"at": "bad", "level": "error"},
                 {"at": "2026-11-15T20:00:00+00:00",

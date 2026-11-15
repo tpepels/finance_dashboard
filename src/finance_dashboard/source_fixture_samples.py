@@ -100,6 +100,7 @@ def _sample_wid(root: Path, area: str, requested: list[str]) -> dict:
             data = _archive_file(folder,sources["data"],data_name,MAX_WID_FILE)
             metadata = _archive_file(folder,sources["metadata"],metadata_name,20_000_000)
             rows: dict[tuple[str,str],list[dict]] = defaultdict(list)
+            row_counts: dict[tuple[str,str],int] = defaultdict(int)
             with data.open("r",encoding="utf-8-sig",newline="") as handle:
                 reader = csv.DictReader(handle,delimiter=";")
                 fields = reader.fieldnames
@@ -109,6 +110,7 @@ def _sample_wid(root: Path, area: str, requested: list[str]) -> dict:
                     key=(row.get("variable",""),row.get("percentile",""))
                     if row.get("country") != area or key not in expected:
                         continue
+                    row_counts[key] += 1
                     bucket=rows[key]
                     # Preserve earliest and newest rows, not inferred or
                     # normalized values. WID data is not guaranteed sorted.
@@ -145,7 +147,9 @@ def _sample_wid(root: Path, area: str, requested: list[str]) -> dict:
                                "metadata":sources["metadata"]["url"]},
                 "data_header":fields,"metadata_header":meta_fields,
                 "data_rows":data_rows,"metadata_rows":meta_rows,
-                "selected_keys":[{"variable":v,"percentile":p,"rows":len(rows.get((v,p),[]))}
+                "selected_keys":[{"variable":v,"percentile":p,
+                                  "rows":row_counts.get((v,p),0),
+                                  "sampled_rows":len(rows.get((v,p),[]))}
                                  for v,p in sorted(expected)],
                 "sample_policy":"first and last 3 original data rows plus exact metadata identity/method columns",
             }
@@ -160,7 +164,7 @@ def _sample_wid(root: Path, area: str, requested: list[str]) -> dict:
 def _sample_pink_sheet(root: Path, sid: str) -> dict:
     """Sample rejected or accepted publisher XLSX for the *exact* copper series."""
     from python_calamine import CalamineWorkbook
-    for directory in ("rejected-responses","responses"):
+    for directory in ("responses","rejected-responses"):
         for folder,manifest in _latest_archives(root / directory / sid):
             try:
                 if (manifest.get("provider")!="WORLD_BANK_PINK_SHEET"
@@ -271,6 +275,223 @@ def _sample_bls_oews(root: Path, sid: str) -> dict:
     raise SampleUnavailable("verified_bls_national_archive_unavailable")
 
 
+
+def collect_sec_archive_inspection(evidence_root: Path, coverage_items: list[dict]) -> dict:
+    """Inspect a bounded sample of retained SEC monthly originals, never their bodies.
+
+    The archive catalogue is SHA-deduplicated across the four measures. Parser
+    replay uses an authenticated-by-hash publisher ZIP and its *publisher index*
+    month label, never the filename's filing window. Failed captures remain
+    explicitly noncertifying, even if offline parsing happens to succeed.
+    """
+    from zipfile import BadZipFile, ZipFile
+    from .extra_publisher_sources import (
+        SEC_NMFP_INDEX, SEC_NMFP_ROOT, nmfp_archives, parse_nmfp_month,
+    )
+    from .service import safe_source_failure_code
+    from .source_documents import MAX_DOCUMENT_BYTES
+
+    affected = sorted(
+        (row for row in coverage_items
+         if row.get("provider") == "SEC_NMFP"
+         and row.get("state") not in ("available", "source_checked_no_newer_data")),
+        key=lambda row: row["id"],
+    )
+    result = {
+        "schema_version": 1,
+        "source_ids": [{
+            "id": row["id"], "state": row.get("state"),
+            "last_failure_code": row.get("last_failure_code"),
+        } for row in affected],
+        "archives_found": 0, "archives_inspected": [], "uninspected_archives": 0,
+        "unavailable": [], "source": "SEC N-MFP3",
+        "constraints": {
+            "max_archive_catalogue": 48, "max_archives_inspected": 10,
+            "max_replayed_archives": 5,
+            "original_bytes_included": False,
+            "publisher_index_required_for_month": True,
+        },
+    }
+    if not affected:
+        return result
+
+    root = Path(evidence_root)
+    archives: dict[str, dict] = {}
+    absent = set()
+    for row in affected:
+        sid = row["id"]
+        snapshots = []
+        for kind in ("rejected-responses", "responses"):
+            snapshots.extend(
+                (folder, manifest, kind)
+                for folder, manifest in _latest_archives(root / kind / sid)[:2])
+        snapshots.sort(key=lambda item: item[1].get("retrieved_at_utc", ""), reverse=True)
+        found = False
+        for folder, manifest, kind in snapshots[:3]:
+            if (manifest.get("series_id") != sid
+                    or manifest.get("provider") != "SEC_NMFP"
+                    or not isinstance(manifest.get("sources"), list)):
+                continue
+            sources = manifest["sources"]
+            periods = {}
+            if sources and sources[0].get("url") == SEC_NMFP_INDEX:
+                try:
+                    index = _archive_file(
+                        folder, sources[0], "response-0.bin", 2_000_000)
+                    periods = {
+                        url: month.isoformat()
+                        for month, url in nmfp_archives(index.read_text("utf-8-sig"))
+                    }
+                except (SampleUnavailable, ValueError, UnicodeError, OSError):
+                    pass
+            for item in sources[1:]:
+                url = item.get("url")
+                name = item.get("file")
+                if (not isinstance(url, str)
+                        or not re.fullmatch(
+                            re.escape(SEC_NMFP_ROOT) + r"\d{8}-\d{8}_nmfp\.zip",
+                            url, re.I)
+                        or not re.fullmatch(r"response-\d+\.bin", str(name))
+                        or item.get("http_status", 200) != 200
+                        or not re.fullmatch(
+                            r"[0-9a-f]{64}", str(item.get("sha256", "")))):
+                    continue
+                found = True
+                digest = item["sha256"]
+                if digest not in archives and len(archives) >= 48:
+                    result["uninspected_archives"] += 1
+                    continue
+                if digest not in archives:
+                    archives[digest] = {
+                        "source_sha256": digest,
+                        "bytes": item.get("bytes"), "publisher_month": periods.get(url),
+                        "publisher_index_month_verified": url in periods,
+                        "archive_filename": url.rsplit("/", 1)[-1],
+                        "capture_state": kind,
+                        "referenced_by": [sid],
+                        "_folder": folder, "_record": item, "_filename": name,
+                    }
+                else:
+                    archive = archives[digest]
+                    if sid not in archive["referenced_by"]:
+                        archive["referenced_by"].append(sid)
+                    if archive["publisher_month"] is None and url in periods:
+                        archive["publisher_month"] = periods[url]
+                        archive["publisher_index_month_verified"] = True
+        if not found:
+            absent.add(sid)
+    result["unavailable"] = [
+        {"series_id": sid, "reason": "no_hash_identified_archived_sec_zip"}
+        for sid in sorted(absent)]
+    result["archives_found"] = len(archives)
+
+    required = {
+        "SUBMISSION": ("ACCESSION_NUMBER", "SUBMISSIONTYPE", "REPORTDATE",
+                       "FILING_DATE", "SERIESID"),
+        "SERIESLEVELINFO": ("ACCESSION_NUMBER", "FEEDERFUNDFLAG",
+                            "NETASSETSOFSERIES", "AVERAGEPORTFOLIOMATURITY",
+                            "AVERAGELIFEMATURITY"),
+        "LIQUIDASSETSDETAILS": ("ACCESSION_NUMBER",
+                                "TOTLIQUIDASSETSNEARPCTDATE",
+                                "PCTWEEKLYLIQUIDASSETS"),
+    }
+    # Inspect first, middle and latest files across the publisher's labelled
+    # months; the full catalogue remains hashed and visible as metadata.
+    ordered = sorted(archives.values(), key=lambda a: (
+        a["publisher_month"] or "", a["source_sha256"]))
+    sample_indices = set(range(min(3, len(ordered))))
+    sample_indices.update(range(max(0, len(ordered)-3), len(ordered)))
+    if ordered:
+        sample_indices.add(len(ordered)//2)
+    sample_indices.update(
+        round(i*(len(ordered)-1)/9) for i in range(10) if ordered)
+    # Retain latest and earliest even when the set has more than ten points.
+    prioritized = sorted(sample_indices, key=lambda i: (
+        0 if i in (0, len(ordered)-1) else
+        1 if i in (1, len(ordered)-2, len(ordered)//2) else 2,
+        i))
+    chosen = set(prioritized[:10])
+    result["archive_catalogue"] = [{
+        k: a[k] for k in ("source_sha256", "bytes", "publisher_month",
+                         "publisher_index_month_verified", "archive_filename",
+                         "capture_state", "referenced_by")
+    } for a in ordered]
+    replayed = 0
+    for index, item in enumerate(ordered):
+        if index not in chosen:
+            result["uninspected_archives"] += 1
+            continue
+        entry = {
+            k: item[k] for k in ("source_sha256", "bytes", "publisher_month",
+                               "publisher_index_month_verified", "archive_filename",
+                               "capture_state", "referenced_by")
+        }
+        entry["tables"] = {}
+        try:
+            path = _archive_file(item["_folder"], item["_record"],
+                                 item["_filename"], MAX_DOCUMENT_BYTES)
+            from .extra_publisher_sources import _tsv
+            with ZipFile(path) as zf:
+                members = zf.infolist()
+                entry["zip_member_count"] = len(members)
+                entry["zip_members"] = [
+                    (name if re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", name)
+                     else "unsafe_or_nested_member")
+                    for name in (member.filename.rsplit("/", 1)[-1]
+                                 for member in members[:64])]
+                entry["zip_members_omitted"] = max(0, len(members)-64)
+                for table, columns in required.items():
+                    names = {f"NMFP_{table}.TSV", f"{table}.TSV"}
+                    matches = [m for m in members if not m.is_dir()
+                               and m.filename.rsplit("/", 1)[-1].upper() in names]
+                    info = {"matches": len(matches), "required_columns": list(columns)}
+                    if len(matches) == 1:
+                        member = matches[0]
+                        info.update(uncompressed_bytes=member.file_size,
+                                    compressed_bytes=member.compress_size)
+                        if (0 < member.file_size <= 35_000_000 and
+                                member.compress_size > 0 and
+                                member.file_size <= member.compress_size*500):
+                            with zf.open(member) as fh:
+                                header = fh.readline(8193)
+                            if len(header) <= 8192:
+                                try:
+                                    fields = header.decode("utf-8-sig").rstrip("\r\n").split("\t")
+                                    safe_fields = [f if re.fullmatch(
+                                        r"[A-Za-z0-9_]{1,100}", f)
+                                        else "invalid_column_name" for f in fields[:80]]
+                                    info["column_headers"] = safe_fields
+                                    info["missing_columns"] = sorted(set(columns)-set(fields))
+                                    info["extra_columns_count"] = max(0, len(fields)-len(columns))
+                                    info["headers_truncated"] = len(fields)>80
+                                except UnicodeError:
+                                    info["header_error"] = "non_utf8_header"
+                            else:
+                                info["header_error"] = "header_size_limit"
+                        else:
+                            info["header_error"] = "member_size_or_ratio_limit"
+                    entry["tables"][table] = info
+            if item["publisher_month"] and replayed < 5 and path.stat().st_size <= 20_000_000:
+                from datetime import date
+                replayed += 1
+                try:
+                    metrics = parse_nmfp_month(
+                        path.read_bytes(), date.fromisoformat(item["publisher_month"]))
+                    entry["parser_outcome"] = "accepted_shape_not_certified"
+                    entry["parsed_metric_keys"] = sorted(metrics)
+                except Exception as exc:
+                    entry["parser_outcome"] = "rejected"
+                    entry["parser_failure_code"] = safe_source_failure_code(exc)
+            else:
+                entry["parser_outcome"] = (
+                    "publisher_month_unverified" if not item["publisher_month"]
+                    else "replay_limit")
+        except (SampleUnavailable, BadZipFile, OSError, RuntimeError,
+                ValueError, KeyError, TypeError):
+            entry["archive_inspection_error"] = "hash_or_zip_unavailable"
+        result["archives_inspected"].append(entry)
+    return result
+
 def collect_failure_samples(evidence_root: Path, coverage_items: list[dict]) -> dict:
     """Bounded, safe excerpts from actual archived failed/pending source families.
 
@@ -309,8 +530,9 @@ def collect_failure_samples(evidence_root: Path, coverage_items: list[dict]) -> 
             except Exception:
                 unavailable.append({"series_id":sid,"source":"BLS OEWS","reason":"source_sampling_failed"})
     copper="prices.commodity.copper_usd"
-    if any(row.get("id")==copper and row.get("state")!="available"
-           for row in coverage_items):
+    # Research gates can reject a perfectly stored series. Sample this one
+    # named source even when source-health says available; no extra download.
+    if any(row.get("id")==copper for row in coverage_items):
         try:
             samples.append(_sample_pink_sheet(root,copper))
         except SampleUnavailable as exc:
