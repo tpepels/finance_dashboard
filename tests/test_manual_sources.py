@@ -123,7 +123,7 @@ class ManualSourceTests(unittest.TestCase):
         job = finished(self.client, "wid-world")
         self.assertEqual(job["status"], "complete", job)
         self.assertEqual(len(job["sources"]), 32)
-        required={row["id"] for row in source_specs()["wid-world"]["series_ids"]}
+        required=set(source_specs()["wid-world"]["series_ids"])
         self.assertEqual({row["id"] for row in job["sources"]
                           if row["id"] in required},required)
         self.assertTrue(all(row["status"]=="success" for row in job["sources"]
@@ -178,7 +178,8 @@ class ManualSourceTests(unittest.TestCase):
             values=current_observations(session,sid)
             self.assertEqual(len(values),1)
             self.assertEqual(values[0].period,date(2024,1,1))
-            self.assertEqual(str(values[0].value),"42100")
+            from decimal import Decimal
+            self.assertEqual(values[0].value,Decimal("42100"))
         # A current full original check can be reused, even when WID has not
         # published all optional percentiles for this vintage.
         from finance_dashboard.manual_sources import _recent_import
