@@ -97,13 +97,14 @@ describe('source-gated Piketty module in L07',()=>{
   fireEvent.click(screen.getByRole('radio',{name:'United States'}));
   const headings=screen.getAllByRole('heading',{level:4}).map(node=>node.textContent);
   for(const phrase of ['Income and wealth concentration','Who benefits from real income growth',
-     'How large is wealth relative to national income','Accounting return on capital',
+     'How large is wealth relative to national income','Accounting capital-income yield',
      'Wealth composition and intergenerational transmission']){
     expect(headings.some(h=>h?.includes(phrase))).toBe(true);
   }
   expect(screen.getByRole('table',{name:'Piketty income and wealth concentration'})).toBeTruthy();
   expect(screen.getByRole('table',{name:'Share of real per-adult income change'})).toBeTruthy();
   expect(screen.getByRole('table',{name:'Matched accounting capital yield minus growth'})).toBeTruthy();
+  expect(screen.getByText(/Piketty's r − g: not empirically validated/)).toBeTruthy();
   expect(screen.getByText(/53% of/)).toBeTruthy();
   expect(screen.getByText(/75% of personal/)).toBeTruthy();
   expect(screen.getByText(/Inheritance and bequests: withheld/)).toBeTruthy();
