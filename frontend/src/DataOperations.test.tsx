@@ -26,19 +26,19 @@ describe('integrated data synchronization and source health repair',()=>{
     render(<DataOperations/>);
     expect(document.querySelector('#maintenance-tools')).toBeTruthy();
     expect(document.querySelectorAll('details')).toHaveLength(0);
-    expect(screen.getByRole('button',{name:'Check current sources now'})).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Recheck unresolved gaps'})).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Recheck historical sources'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Check for newly published data'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Try missing or outdated sources again'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Look for older historical records'})).toBeTruthy();
     expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
     await waitFor(()=>expect(screen.getByRole('button',{
-      name:'Check current sources now'}).hasAttribute('disabled')).toBe(false));
+      name:'Check for newly published data'}).hasAttribute('disabled')).toBe(false));
   });
   it('refreshes all current sources through one backend operation',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    const button=screen.getByRole('button',{name:'Check current sources now'});
+    const button=screen.getByRole('button',{name:'Check for newly published data'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
     await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
@@ -49,7 +49,7 @@ describe('integrated data synchronization and source health repair',()=>{
   it('starts history backfill without date or provider selections',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    const button=screen.getByRole('button',{name:'Recheck historical sources'});
+    const button=screen.getByRole('button',{name:'Look for older historical records'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
     await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
@@ -58,7 +58,7 @@ describe('integrated data synchronization and source health repair',()=>{
   it('submits canonical parameterless source-health repair action',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    const button=screen.getByRole('button',{name:'Recheck unresolved gaps'});
+    const button=screen.getByRole('button',{name:'Try missing or outdated sources again'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
     await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
@@ -79,8 +79,8 @@ describe('integrated data synchronization and source health repair',()=>{
     render(<DataOperations/>);
     expect(await screen.findByText(/Markets and exchange rates/)).toBeTruthy();
     expect(screen.getByText(/15 \/ 27/)).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Recheck historical sources'}).hasAttribute('disabled')).toBe(true);
-    await user.click(screen.getByRole('button',{name:'Cancel'}));
+    expect(screen.getByRole('button',{name:'Look for older historical records'}).hasAttribute('disabled')).toBe(true);
+    await user.click(screen.getByRole('button',{name:'Stop this check'}));
     expect(liveFetch.mock.calls.some(([url,init])=>
       String(url).endsWith('/job1/cancel') && init?.method==='POST')).toBe(true);
   });
@@ -107,7 +107,7 @@ describe('integrated data synchronization and source health repair',()=>{
       }),
     })));
     render(<DataOperations/>);
-    expect(await screen.findByText('Latest check results')).toBeTruthy();
+    expect(await screen.findByText('Results of the last check')).toBeTruthy();
     expect(screen.getByText(/FRED API rejected the configured key/)).toBeTruthy();
     expect(screen.getByText(/964 missing/)).toBeTruthy();
     expect(screen.getByText(/first rejected source SAHMREALTIME/)).toBeTruthy();
@@ -135,7 +135,7 @@ describe('integrated data synchronization and source health repair',()=>{
       expect(screen.getByRole('status').textContent).toContain('Current data');
       expect(screen.getByRole('status').textContent).toContain('Completed with issues');
     });
-    expect(screen.getByText('Latest check results')).toBeTruthy();
+    expect(screen.getByText('Results of the last check')).toBeTruthy();
     expect(document.querySelectorAll('details')).toHaveLength(0);
     expect(screen.getByText(/2 failed/).closest('.data-sync-results')).toBeTruthy();
   });
