@@ -34,6 +34,29 @@ class PublisherQuotaTests(unittest.TestCase):
             self.assertEqual(len(chosen),len(set(chosen)))
             engine.dispose()
 
+    def test_read_only_preflight_plans_full_catalogue_without_ingesting_or_contacting_publishers(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from sqlalchemy import func, select
+        from sqlalchemy.orm import Session
+        from finance_dashboard.database import Base, IngestionRun, make_engine
+        from finance_dashboard.worker import refresh_all
+        with TemporaryDirectory() as directory:
+            engine=make_engine("sqlite:///" + str(Path(directory) / "preflight.db"))
+            Base.metadata.create_all(engine)
+            try:
+                with patch("finance_dashboard.worker.execute_refresh_tasks",
+                           side_effect=AssertionError("preflight must never ingest")) as dispatch:
+                    result=refresh_all(engine,skip_complete_pinned=True,
+                                       preflight_only=True)
+                    self.assertEqual(result,0)
+                    dispatch.assert_not_called()
+                with Session(engine) as session:
+                    self.assertEqual(session.scalar(
+                        select(func.count()).select_from(IngestionRun)),0)
+            finally:
+                engine.dispose()
+
     def test_planner_failure_journals_stage_and_safe_class_without_leaking_error(self):
         from finance_dashboard.worker import refresh_all
         with (patch("finance_dashboard.worker.ProviderRouter",
