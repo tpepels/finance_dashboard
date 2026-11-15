@@ -216,7 +216,17 @@ class CollectionWorkflow:
             if self.current is not None and self._status_unlocked()["running"]:
                 return self._status_unlocked()
 
-            specs = source_specs()
+            # Archive source registration is independent of macro collection.
+            # A broken optional archive manifest must not suppress repair of
+            # the registered scalar histories.
+            try:
+                specs = source_specs()
+                archive_specs_failed = False
+            except Exception as exc:
+                from .failure_journal import record_failure
+                record_failure("macro", "collection_original_specs", exc)
+                specs = {}
+                archive_specs_failed = True
             record = {
                 "schema_version": 1, "id": uuid4().hex,
                 "started_at": _utc(), "release": release_info()["release_id"],
@@ -226,23 +236,39 @@ class CollectionWorkflow:
                      "job_id": None, "initial": "queued"}
                     for name, spec in specs.items()],
                 "maintenance_job_id": None, "maintenance_initial": "queued",
-                "repair_final": None, "startup_error": None,
+                "repair_final": None,
+                "startup_error": ("original_specs_unavailable"
+                                  if archive_specs_failed else None),
             }
             self.current = record
             _write_json(self.path, record)
             try:
-                try:
-                    queued = self.manual.fetch(browser=safe_browser_profile(browser))
-                except Exception as exc:
-                    # An unavailable original-archive queue is independent of
-                    # scalar macro histories. Preserve the fault and still
-                    # submit the canonical source-health repair operation.
-                    from .failure_journal import record_failure
-                    record_failure("macro", "collection_original_queue_start", exc)
-                    record["startup_error"] = "original_queue_start_failed"
-                    queued = {"jobs": [], "skipped": {
-                        dataset: "original_queue_start_failed"
-                        for dataset in specs}}
+                if archive_specs_failed:
+                    queued = {"jobs": [], "skipped": {}}
+                else:
+                    try:
+                        queued = self.manual.fetch(
+                            browser=safe_browser_profile(browser))
+                    except Exception as exc:
+                        # A partially started archive queue may still contain
+                        # live jobs. Retain their identities for diagnostics,
+                        # then submit the independent macro repair regardless.
+                        from .failure_journal import record_failure
+                        record_failure("macro", "collection_original_queue_start", exc)
+                        record["startup_error"] = "original_queue_start_failed"
+                        partial_jobs = {}
+                        with self.manual.lock:
+                            for item in reversed(self.manual.jobs):
+                                created = item.get("created_at")
+                                name = item.get("dataset")
+                                if (name in specs and name not in partial_jobs
+                                        and isinstance(created, str)
+                                        and created >= record["started_at"]):
+                                    partial_jobs[name] = {
+                                        "dataset": name, "job_id": item["id"]}
+                        queued = {"jobs": list(partial_jobs.values()), "skipped": {
+                            dataset: "original_queue_start_failed"
+                            for dataset in specs}}
                 assignments = {item["dataset"]: item["job_id"] for item in queued["jobs"]}
                 # An outstanding human-upload job belongs in the new run;
                 # skipping it would hide its actionable fallback links.
