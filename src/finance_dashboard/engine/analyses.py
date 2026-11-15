@@ -778,9 +778,21 @@ def _f07(points: dict, view: dict) -> Computed:
     leverage = matched_ratio(points.get("broker_assets", []), points.get("broker_equity", []))
     repo = matched_ratio(points.get("broker_repo", []), points.get("broker_liabilities", []), 100)
     mmf = now_and_years_ago(points.get("mmf_assets", []), 5)
+    sec_roles = ("net_assets_musd", "wam_days", "wal_days", "weekly_liquidity_pct")
+    sec_histories = {measure: _series(points.get("sec_nmfp:"+measure, []))
+                     for measure in sec_roles}
+    sec_last = sorted(set.intersection(*[
+        {day for day, _ in points.get("sec_nmfp:"+measure, [])}
+        for measure in sec_roles])) if all(points.get("sec_nmfp:"+measure) for measure in sec_roles) else []
+    sec_latest = ({"as_of": sec_last[-1].isoformat(),
+                   **{measure: dict(points["sec_nmfp:"+measure])[sec_last[-1]]
+                      for measure in sec_roles}} if sec_last else None)
     values = {"latest": {"broker_leverage": leverage[-1][1] if leverage else None,
                          "repo_share": repo[-1][1] if repo else None, "as_of": leverage[-1][0] if leverage else None,
                          "mmf_assets": mmf["latest"], "mmf_assets_5y_ago": mmf["back"], "mmf_as_of": mmf["as_of"]},
+              "sec_nmfp": {"latest": sec_latest, "history": sec_histories,
+                           "source": "SEC Form N-MFP3 as-filed data; asset-weighted non-feeder reporting funds, not a complete MMF universe",
+                           "status": "matched_report_month" if sec_latest else "awaiting_matched_original_filings"},
               "history": {"broker_leverage": leverage, "repo_share": repo, "mmf_assets": _series(points.get("mmf_assets", [])),
                           "finance_company_assets": _series(points.get("finance_assets", []))}}
     as_points = lambda line: [(date.fromisoformat(d), v) for d, v in line]  # noqa: E731
@@ -800,7 +812,10 @@ F07 = AnalysisDefinition("F07", {
     "broker_assets": "funding.us.broker_assets", "broker_equity": "funding.us.broker_equity_capital",
     "broker_liabilities": "funding.us.broker_liabilities", "broker_repo": "funding.us.broker_repo_liabilities",
     "mmf_assets": "funding.us.money_market_assets", "finance_assets": "funding.us.finance_company_total_assets",
-}, _f07)
+    **{f"sec_nmfp:{metric}": f"funding.us.sec_nmfp_{metric}"
+       for metric in ("net_assets_musd", "wam_days", "wal_days", "weekly_liquidity_pct")},
+}, _f07, optional_inputs=tuple(f"sec_nmfp:{metric}" for metric in
+    ("net_assets_musd", "wam_days", "wal_days", "weekly_liquidity_pct")))
 
 def _monthly_points(ends: dict) -> list[tuple[date, float]]:
     return [(date(k[0], k[1], 1), v) for k, (_, v) in sorted(ends.items())]
@@ -1168,11 +1183,26 @@ def _l07(points: dict, view: dict) -> Computed:
                         "national_housing_assets", "national_business_assets"):
             research[f"piketty:{country}:macro:{measure}"] = points.get(
                 f"piketty_macro:{country}:{measure}", [])
+    # ECB DWA uses a household net-worth population distinct from WID adults.
+    dwa = {}
+    for country in ("pt", "de", "fr", "ea"):
+        top = _by_period(points.get(f"dwa:{country}:top10", []))
+        bottom = _by_period(points.get(f"dwa:{country}:bottom50", []))
+        common = sorted(set(top) & set(bottom))
+        dwa[country] = {
+            "status": "matched_household_wealth_shares" if common else "awaiting_matched_originals",
+            "top10": _series(points.get(f"dwa:{country}:top10", [])),
+            "bottom50": _series(points.get(f"dwa:{country}:bottom50", [])),
+            "latest": ({"quarter": common[-1].isoformat(),
+                        "top10_pct": top[common[-1]],
+                        "bottom50_pct": bottom[common[-1]]}
+                       if common else None),
+        }
     # The existing L07 top1/bottom50 results remain the primary accepted
     # research question; each Piketty supplement is independently gated.
     return Computed(
         values={"economies": economies, "history": history,
-                "piketty": piketty_findings(research)},
+                "piketty": piketty_findings(research), "ecb_dwa": dwa},
         estimates=None,
         comparison=["top1", "bottom50", "piketty_concentration",
                     "piketty_income_growth", "piketty_wealth_to_income",
@@ -1216,7 +1246,10 @@ L07 = AnalysisDefinition("L07", {
     **{f"top1:{a}": f"inequality.{a.lower()}.pretax_income.top1" for a in INEQUALITY_AREAS},
     **{f"bottom50:{a}": f"inequality.{a.lower()}.pretax_income.bottom50" for a in INEQUALITY_AREAS},
     **_L07_PIKETTY_INPUTS,
-}, _l07, optional_inputs=tuple(_L07_PIKETTY_INPUTS))
+    **{f"dwa:{c}:{group}":f"wealth.{c}.ecb_dwa_{group}"
+       for c in ("pt","de","fr","ea") for group in ("top10","bottom50")},
+}, _l07, optional_inputs=tuple(_L07_PIKETTY_INPUTS) + tuple(
+    f"dwa:{c}:{group}" for c in ("pt","de","fr","ea") for group in ("top10","bottom50")))
 
 def pearson(x: list[float], y: list[float]) -> float | None:
     if len(x) < 3 or len(x) != len(y):
@@ -1919,6 +1952,10 @@ def _c07(points: dict, view: dict) -> Computed:
                     applied_to=["assets", "consumer_inflation"],
                     produces=["assets.correlation"], windows=[36,60,120],
                     lags=list(range(-12,13))),
+            applied("eurostat_quarterly_house_price_originals",
+                    applied_to=[f"eurostat:{c}:{kind}" for c in ("pt","de","fr","ea","eu")
+                                for kind in ("total","new","existing")],
+                    produces=["eurostat_hpi"], no_fill=True, unit="index_2015_100"),
             applied("quarterly_housing_no_fill",
                     applied_to=[f"housing:{c}" for c in ("us","ea","de","pt","jp")]
                                + ["us_cpi","ea_hicp","de_hicp","pt_hicp"],
@@ -1941,7 +1978,11 @@ C07 = AnalysisDefinition("C07", {
     "copper":"prices.commodity.copper_usd",
     **{f"housing:{country}":f"property.{country}.nominal_residential.bis"
        for country in ("us","de","pt","jp","ea")},
-}, _c07, optional_inputs=("de_hicp", "pt_hicp"))
+    **{f"eurostat:{country}:{kind}":f"property.{country}.eurostat_hpi_{kind}"
+       for country in ("pt","de","fr","ea","eu") for kind in ("total","new","existing")},
+}, _c07, optional_inputs=("de_hicp", "pt_hicp") + tuple(
+    f"eurostat:{country}:{kind}" for country in ("pt","de","fr","ea","eu")
+    for kind in ("total","new","existing")))
 
 
 DEFINITIONS: dict[str, AnalysisDefinition] = {"P06": P06, "P07": P07, "F03": F03, "C01": C01, "C03": C03, "C06": C06, "C07": C07,

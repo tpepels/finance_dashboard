@@ -29,6 +29,7 @@ from .fed_g17 import G17_DIFFUSION_SERIES, G17_DIFFUSION_URL, parse_g17_diffusio
 from .imf_external import IMF_SDMX_ROOT, IMF_SERIES, imf_key, parse_imf_bop_iip
 from .oecd_cli import OECD_CLI_FLOW, OECD_CLI_ROOT, OECD_CLI_SERIES, oecd_cli_key, parse_oecd_cli_csv
 from .bls_oews import fetch_bls_oews
+from .extra_publisher_sources import fetch_ecb_dwa, fetch_eurostat_hpi, fetch_sec_nmfp
 from .oecd_earnings import OECD_EARNINGS_SERIES, ROOT as OECD_EARNINGS_ROOT, source_key as oecd_earnings_key, parse_oecd_earnings_csv
 from .ofr_fsi import OFR_FSI_SERIES, OFR_FSI_URL, parse_ofr_fsi
 from .wid import WID_ALL_SERIES, WidClient

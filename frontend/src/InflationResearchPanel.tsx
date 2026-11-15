@@ -30,6 +30,9 @@ type Housing={nominal_yoy:Line;consumer_inflation_matched:boolean;
 export type InflationResearchValues={
  consumer_inflation:{us_cpi_yoy:Line;ea_hicp_yoy:Line};
  assets:Record<string,Asset>;housing:Record<string,Housing>;limitations:string[];
+ eurostat_hpi?:Record<string,{status:string;index_base:string;levels:Record<string,Line>;
+  nominal_yoy:Record<string,Line>;real_total_yoy:Line;new_minus_existing_yoy_pp:Line;
+  correlation:Correlations|null;inflation_denominator:string|null;no_national_hicp:string|null}>;
 };
 const TITLES:Record<string,string>={
  equity_total_return_usd:'World equities, USD net total return',
@@ -239,6 +242,33 @@ export default function InflationResearchPanel({bundle,theme,recessions}:{
        </details>}
       </div>;
     })}
+   </div>
+
+   <h4 className="decision-subhead">House prices — Eurostat transaction index (2015=100)</h4>
+   <p className="decision-caption">Quarterly transaction prices for all, new and existing dwellings.
+     Annual changes are calculated from matching quarters. Portugal, Germany and the euro area
+     show inflation-adjusted changes only with their matching HICP histories; France and the EU
+     remain nominal when a compatible original HICP is unavailable.</p>
+   <table className="research-native-table" aria-label="Eurostat quarterly house price evidence">
+     <thead><tr><th>Area</th><th>Matched quarterly observations</th><th>Inflation benchmark</th></tr></thead>
+     <tbody>{Object.entries(data.eurostat_hpi??{}).map(([code,v])=><tr key={code}>
+       <th scope="row">{HOUSE[code]??code.toUpperCase()}</th>
+       <td>{v.nominal_yoy.total?.length??0}</td>
+       <td>{v.inflation_denominator??'Unavailable'}</td>
+     </tr>)}</tbody>
+   </table>
+   <div className="decision-multiples">
+    {Object.entries(data.eurostat_hpi??{}).filter(([,v])=>v.nominal_yoy.total?.length)
+      .map(([code,v])=>{
+       const lines:TimeSeries[]=[
+        {name:'All homes nominal year-on-year',slot:0,data:quarterly(v.nominal_yoy.total??[])},
+        {name:'New homes nominal year-on-year',slot:1,data:quarterly(v.nominal_yoy.new??[])},
+        {name:'Existing homes nominal year-on-year',slot:2,data:quarterly(v.nominal_yoy.existing??[])},
+        {name:'All homes CPI-real year-on-year',slot:3,data:quarterly(v.real_total_yoy??[])}];
+       return <TimePanel key={code} title={HOUSE[code]??code.toUpperCase()}
+         option={graph(lines.filter(l=>l.data.length),theme,recessions,'% over four quarters')}
+         span={spanOf(lines.map(l=>l.data as Line),['2005-01-01','2026-01-01'])}
+         group="eurostat-hpi" compact presets={false} height={220}/>})}
    </div>
    <h4 className="decision-subhead">Statistical and economic limitations</h4>
    <ul className="decision-limits">{data.limitations.map(v=><li key={v}>{v}</li>)}</ul>

@@ -15,7 +15,11 @@ type F05Values = { economies: SectorRow[]; history: Record<string, { household: 
   bank: { equity_to_assets: number | null; as_of: string | null; history: Line } };
 type F06Values = { residential: ({ area: string; change_5y_pct: number | null } & Own)[];
   commercial: ({ area: string; change_5y_pct: number | null } & Own)[]; history: Record<string, Line> };
-type F07Values = { positions: ({ key: string; name: string; unit: string } & Own)[]; history: Record<string, Line> };
+type F07Values = { positions: ({ key: string; name: string; unit: string } & Own)[];
+  history: Record<string, Line>; sec_nmfp?:{
+    latest:({as_of:string;net_assets_musd:number;wam_days:number;wal_days:number;weekly_liquidity_pct:number})|null;
+    history:Record<string,Line>; status:string;source:string;
+  } };
 
 const FALLBACK: [string, string] = ['1970-01-01', '2026-01-01'];
 const percentile = historyPosition;
@@ -118,6 +122,32 @@ function Sectors({ bundle, theme, recessions }: { bundle: Bundle<F05Values>; the
     <div className="decision-charts">
       <TimePanel title="US banks: equity as a share of assets" option={bankOption} span={spanOf([data.bank.history], FALLBACK)}
         caption={data.bank.equity_to_assets === null ? undefined : `Latest: ${data.bank.equity_to_assets.toFixed(1)}% (${data.bank.as_of}). A thicker equity cushion absorbs more loan losses.`}/>
+    </div>
+
+    <h4 className="decision-subhead">Money-market fund filings — SEC N-MFP3</h4>
+    <p className="decision-caption">{data.sec_nmfp?.source??'SEC N-MFP3 original filings'}
+      . Reported fund samples may be incomplete and cannot establish a redemption-run probability.
+      Each statistic is shown only after its own archived original has passed verification.</p>
+    {data.sec_nmfp?.latest?<table className="research-native-table" aria-label="Latest verified SEC money market filing sample">
+      <tbody>
+        <tr><th scope="row">Reporting month</th><td>{data.sec_nmfp.latest.as_of}</td></tr>
+        <tr><th scope="row">Fund net assets</th><td>{(data.sec_nmfp.latest.net_assets_musd/1e6).toFixed(2)} trillion USD</td></tr>
+        <tr><th scope="row">Weighted average maturity</th><td>{data.sec_nmfp.latest.wam_days.toFixed(1)} days</td></tr>
+        <tr><th scope="row">Weighted average life</th><td>{data.sec_nmfp.latest.wal_days.toFixed(1)} days</td></tr>
+        <tr><th scope="row">Weekly liquid assets (latest reported)</th><td>{data.sec_nmfp.latest.weekly_liquidity_pct.toFixed(1)}%</td></tr>
+      </tbody>
+    </table>:<p className="decision-caption">Awaiting matching verified monthly N-MFP3 originals.</p>}
+    <div className="decision-multiples">
+      {([['net_assets_musd','Reported net fund assets','USD million'],
+         ['wam_days','Weighted average maturity','days'],
+         ['wal_days','Weighted average life','days'],
+         ['weekly_liquidity_pct','Weekly liquid assets','%']] as const)
+        .filter(([key])=>(data.sec_nmfp?.history[key]?.length??0)>0)
+        .map(([key,title,unit])=><TimePanel key={key} title={title}
+          option={timeChart({theme,recessions,nonUS:true,unit,
+            series:[{name:title,slot:0,data:data.sec_nmfp?.history[key]??[]}]})}
+          span={spanOf([data.sec_nmfp?.history[key]??[]],['2025-07-01','2026-12-01'])}
+          group="sec-nmfp" compact presets={false} height={220}/>)}
     </div>
   </>;
 }

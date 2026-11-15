@@ -25,7 +25,7 @@ from .source_documents import BatchOriginal, ORIGINAL_TIME_EXTENSION
 
 SAFE_QUERY = frozenset({"series_id", "file_type", "observation_start", "id", "cosd", "format",
                         "per_page", "date", "startPeriod", "sinceTimePeriod", "freq", "unit", "direct",
-                        "sector", "na_item", "geo", "index_codes", "currency_symbol", "index_variant",
+                        "sector", "na_item", "geo", "purchase", "unit", "index_codes", "currency_symbol", "index_variant",
                         "data_frequency", "start_date", "end_date", "agg_by", "agg_sum_fields", "agg_limit",
                         "limit", "fields", "agg_sort_by", "agg_sort_order", "coicop18"})
 SAFE_HEADERS = frozenset({"content-type", "last-modified", "etag", "date"})

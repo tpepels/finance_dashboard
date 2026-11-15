@@ -1243,6 +1243,116 @@
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
             "artifact_ids": []
+          },
+          {
+            "role": "eurostat_hpi_pt",
+            "description": "Eurostat original quarterly nominal house prices for PT, by all/new/existing dwelling purchase class.",
+            "series_ids": [
+              "property.pt.eurostat_hpi_total",
+              "property.pt.eurostat_hpi_new",
+              "property.pt.eurostat_hpi_existing"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "index",
+              "geography": [
+                "PT"
+              ],
+              "population": "Eurostat dwelling transactions (purchases)",
+              "concept": "Nominal residential house price index, base 2015=100"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "eurostat_hpi_de",
+            "description": "Eurostat original quarterly nominal house prices for DE, by all/new/existing dwelling purchase class.",
+            "series_ids": [
+              "property.de.eurostat_hpi_total",
+              "property.de.eurostat_hpi_new",
+              "property.de.eurostat_hpi_existing"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "index",
+              "geography": [
+                "DE"
+              ],
+              "population": "Eurostat dwelling transactions (purchases)",
+              "concept": "Nominal residential house price index, base 2015=100"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "eurostat_hpi_fr",
+            "description": "Eurostat original quarterly nominal house prices for FR, by all/new/existing dwelling purchase class.",
+            "series_ids": [
+              "property.fr.eurostat_hpi_total",
+              "property.fr.eurostat_hpi_new",
+              "property.fr.eurostat_hpi_existing"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "index",
+              "geography": [
+                "FR"
+              ],
+              "population": "Eurostat dwelling transactions (purchases)",
+              "concept": "Nominal residential house price index, base 2015=100"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "eurostat_hpi_ea",
+            "description": "Eurostat original quarterly nominal house prices for EA20, by all/new/existing dwelling purchase class.",
+            "series_ids": [
+              "property.ea.eurostat_hpi_total",
+              "property.ea.eurostat_hpi_new",
+              "property.ea.eurostat_hpi_existing"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "index",
+              "geography": [
+                "EA"
+              ],
+              "population": "Eurostat dwelling transactions (purchases)",
+              "concept": "Nominal residential house price index, base 2015=100"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "eurostat_hpi_eu",
+            "description": "Eurostat original quarterly nominal house prices for EU27_2020, by all/new/existing dwelling purchase class.",
+            "series_ids": [
+              "property.eu.eurostat_hpi_total",
+              "property.eu.eurostat_hpi_new",
+              "property.eu.eurostat_hpi_existing"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "index",
+              "geography": [
+                "EU"
+              ],
+              "population": "Eurostat dwelling transactions (purchases)",
+              "concept": "Nominal residential house price index, base 2015=100"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
           }
         ],
         "variants": []
@@ -2305,6 +2415,86 @@
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
             "artifact_ids": []
+          },
+          {
+            "role": "sec_nmfp_net_assets_musd",
+            "description": "SEC original N-MFP3 money market funds' reported assets using as-filed fund level records; independently validated original source required.",
+            "series_ids": [
+              "funding.us.sec_nmfp_net_assets_musd"
+            ],
+            "expected": {
+              "frequency": "M",
+              "unit": "million_usd",
+              "geography": [
+                "US"
+              ],
+              "population": "SEC reporting non-feeder money-market-fund series",
+              "concept": "US money-market fund reported aggregate net asset value, USD millions"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "sec_nmfp_wam_days",
+            "description": "SEC original N-MFP3 portfolio weighted average maturity using as-filed fund level records; independently validated original source required.",
+            "series_ids": [
+              "funding.us.sec_nmfp_wam_days"
+            ],
+            "expected": {
+              "frequency": "M",
+              "unit": "days",
+              "geography": [
+                "US"
+              ],
+              "population": "SEC reporting non-feeder money-market-fund series",
+              "concept": "US money-market fund asset-weighted average portfolio maturity, days"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "sec_nmfp_wal_days",
+            "description": "SEC original N-MFP3 portfolio weighted average life using as-filed fund level records; independently validated original source required.",
+            "series_ids": [
+              "funding.us.sec_nmfp_wal_days"
+            ],
+            "expected": {
+              "frequency": "M",
+              "unit": "days",
+              "geography": [
+                "US"
+              ],
+              "population": "SEC reporting non-feeder money-market-fund series",
+              "concept": "US money-market fund asset-weighted average portfolio life, days"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "sec_nmfp_weekly_liquidity_pct",
+            "description": "SEC original N-MFP3 weekly liquid asset share using as-filed fund level records; independently validated original source required.",
+            "series_ids": [
+              "funding.us.sec_nmfp_weekly_liquidity_pct"
+            ],
+            "expected": {
+              "frequency": "M",
+              "unit": "percent",
+              "geography": [
+                "US"
+              ],
+              "population": "SEC reporting non-feeder money-market-fund series",
+              "concept": "US money-market fund weighted latest reported weekly liquid share, percent"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
           }
         ],
         "variants": [
@@ -5439,6 +5629,90 @@
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
             "artifact_ids": []
+          },
+          {
+            "role": "ecb_dwa_household_wealth_pt",
+            "description": "ECB household net wealth top 10% and bottom 50%, PT; separately scoped from WID income/wealth adults.",
+            "series_ids": [
+              "wealth.pt.ecb_dwa_top10",
+              "wealth.pt.ecb_dwa_bottom50"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "percent",
+              "geography": [
+                "PT"
+              ],
+              "population": "ECB distributional household accounts (S14)",
+              "concept": "Net household wealth shares, top 10% and bottom 50%"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "ecb_dwa_household_wealth_de",
+            "description": "ECB household net wealth top 10% and bottom 50%, DE; separately scoped from WID income/wealth adults.",
+            "series_ids": [
+              "wealth.de.ecb_dwa_top10",
+              "wealth.de.ecb_dwa_bottom50"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "percent",
+              "geography": [
+                "DE"
+              ],
+              "population": "ECB distributional household accounts (S14)",
+              "concept": "Net household wealth shares, top 10% and bottom 50%"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "ecb_dwa_household_wealth_fr",
+            "description": "ECB household net wealth top 10% and bottom 50%, FR; separately scoped from WID income/wealth adults.",
+            "series_ids": [
+              "wealth.fr.ecb_dwa_top10",
+              "wealth.fr.ecb_dwa_bottom50"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "percent",
+              "geography": [
+                "FR"
+              ],
+              "population": "ECB distributional household accounts (S14)",
+              "concept": "Net household wealth shares, top 10% and bottom 50%"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
+          },
+          {
+            "role": "ecb_dwa_household_wealth_ea",
+            "description": "ECB household net wealth top 10% and bottom 50%, EA; separately scoped from WID income/wealth adults.",
+            "series_ids": [
+              "wealth.ea.ecb_dwa_top10",
+              "wealth.ea.ecb_dwa_bottom50"
+            ],
+            "expected": {
+              "frequency": "Q",
+              "unit": "percent",
+              "geography": [
+                "EA"
+              ],
+              "population": "ECB distributional household accounts (S14)",
+              "concept": "Net household wealth shares, top 10% and bottom 50%"
+            },
+            "temporal_requirement": "latest_revised",
+            "input_type": "scalar_history",
+            "artifact_ids": [],
+            "requirement_class": "supplemental"
           }
         ],
         "variants": [

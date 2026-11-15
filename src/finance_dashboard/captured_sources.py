@@ -36,7 +36,10 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
         if manifest.get("scope") != scope[0] or (manifest.get("requested_from") is not None) != scope[1]:
             raise EvidenceError("source_snapshot_partial")
         provider = definition["provider"]
-        if len(manifest["sources"]) != (2 if provider == "SHILLER" else 1):
+        if (len(manifest["sources"]) < 2 if provider == "SEC_NMFP" else
+                len(manifest["sources"]) != (2 if provider == "SHILLER" else 1)):
+            raise EvidenceError("source_response_ambiguous")
+        if provider == "SEC_NMFP" and len(manifest["sources"]) > 32:
             raise EvidenceError("source_response_ambiguous")
         sources=manifest['sources']
         if content["responses"] != [{key: source[key] for key in ("file", "url", "sha256", "bytes")} for source in sources]:
@@ -47,7 +50,7 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
                    for index,source in enumerate(sources)]
         source=sources[-1]
         raw,data_hash=originals[-1]
-        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS'} else None
+        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS','SEC_NMFP'} else None
         dimensions={}
         if provider == "FRED":
             values = _fred(body, definition, source["url"])
@@ -63,6 +66,10 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
         elif provider == 'SHILLER':
             values,dimensions = _shiller(raw,definition,originals[0][0].decode('utf-8-sig'),
                               sources[0]['url'],source['url'], return_metadata=True)
+        elif provider in ("ECB_DWA", "EUROSTAT_HPI", "SEC_NMFP"):
+            from .extra_publisher_evidence import independent_values
+            values, dimensions = independent_values(provider, originals, sources,
+                                                  definition, manifest.get("requested_from"))
         elif provider == 'ECB':
             values,dimensions = _ecb(body,definition,source['url'],manifest.get('requested_from') if allow_subset else None)
         elif provider == 'FED_G17_DIFFUSION':
@@ -91,7 +98,8 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
         return values, {"source_sha256": data_hash, "source_manifest_sha256": manifest_hash,
             "evidence_retrieved_at_utc": retrieved.isoformat(), "selection_method": method,
             "source_snapshot_scope": manifest["scope"],**dimensions,
-            **({'supporting_source_sha256':{'homepage':originals[0][1]}} if provider=='SHILLER' else {})}
+            **({'supporting_source_sha256':{'homepage':originals[0][1]}} if provider=='SHILLER' else {}),
+            **({'source_response_sha256': [hash for _,hash in originals]} if provider=='SEC_NMFP' else {})}
     except EvidenceError:
         raise
     except (KeyError, TypeError, ValueError, IndexError, AttributeError, UnicodeError, csv.Error):

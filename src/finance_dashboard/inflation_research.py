@@ -331,6 +331,39 @@ def inflation_assets(points:dict, *,today:date|None=None)->dict:
                          round(100*((1+yoy[t]/100)/(1+inflation[t]/100)-1),4)]
                         for t in sorted(yoy) if t in inflation and inflation[t]>-100],
         }
+    # Eurostat's 2015-base purchase-price families are distinct from BIS
+    # selected residential indices. Differences compare annual percentage
+    # changes, never raw index levels from different purchase populations.
+    eurostat_hpi = {}
+    eurostat_denominators = {"pt":pt_hicp,"de":de_hicp,"ea":hicp}
+    for country in ("pt","de","fr","ea","eu"):
+        categories = {}
+        for kind in ("total","new","existing"):
+            original = _quarterly_change(points.get(f"eurostat:{country}:{kind}",[]))
+            categories[kind] = {"level":[[_date_label(t,True),round(v,4)]
+                                         for t,v in sorted(original.items())],
+                                "yoy":_annual_change(original,4)}
+        denominator=eurostat_denominators.get(country)
+        inflation=_annual_change(_quarter_averages(denominator),4) if denominator else {}
+        nominal=categories["total"]["yoy"]
+        new=categories["new"]["yoy"]; old=categories["existing"]["yoy"]
+        eurostat_hpi[country]={
+            "status":"available" if nominal else "awaiting_original_hpi",
+            "index_base":"2015=100",
+            "levels":{kind:record["level"] for kind,record in categories.items()},
+            "nominal_yoy":{kind:[[_date_label(t,True),round(v,4)]
+                                     for t,v in sorted(record["yoy"].items())]
+                           for kind,record in categories.items()},
+            "new_minus_existing_yoy_pp":[[_date_label(t,True),round(new[t]-old[t],4)]
+                                         for t in sorted(set(new)&set(old))],
+            "real_total_yoy":[[_date_label(t,True),
+                    round(100*((1+nominal[t]/100)/(1+inflation[t]/100)-1),4)]
+                 for t in sorted(set(nominal)&set(inflation)) if inflation[t]>-100],
+            "correlation":_analysis(nominal,inflation,quarter=True)
+                           if denominator and nominal else None,
+            "inflation_denominator":({"pt":"PT_HICP","de":"DE_HICP","ea":"EA_HICP"}.get(country)),
+            "no_national_hicp":"No exact national HICP input registered" if denominator is None else None,
+        }
     # Serialize large intermediate arrays only when useful for charting. The
     # derived return/level histories share exact canonical month/quarter keys.
     clean_assets={}
@@ -345,7 +378,7 @@ def inflation_assets(points:dict, *,today:date|None=None)->dict:
             "us_cpi_yoy":[[_date_label(t,False),round(v,4)] for t,v in sorted(cpi_yoy.items())],
             "ea_hicp_yoy":[[_date_label(t,False),round(v,4)] for t,v in sorted(hicp_yoy.items())],
         },
-        "assets":clean_assets,"housing":housing,
+        "assets":clean_assets,"housing":housing,"eurostat_hpi":eurostat_hpi,
         "limitations":[
             "Monthly rolling and contemporaneous 12-month changes overlap and are serially dependent; naïve Fisher confidence intervals overstate precision.",
             "Lag correlations are observational and are not evidence of exogenous shocks, causal pass-through, or market timing.",
@@ -354,6 +387,7 @@ def inflation_assets(points:dict, *,today:date|None=None)->dict:
             "World Bank named commodity benchmarks are not a diversified commodity total-return basket.",
             "Swinkels US sovereign monthly returns are hypothetical yield-modelled returns ending at the pinned source observation, not an investable bond fund.",
             "Gold is a monthly average; MSCI ACWI is a daily net total return index converted at month-end FX; mixed conventions can affect correlations.",
+            "Eurostat house-price total/new/existing nominal indices use a 2015 base and distinct dwelling purchase populations. CPI-real comparisons require same-country HICP.",
             "BIS country property price coverage and definitions differ; Germany/Portugal use matching original national HICP, Japan is withheld until a contemporary national CPI series is validated.",
             "EUR investor results use euro-area HICP and ECB USD/EUR reference values; returns are not hedged and do not reflect taxes or costs.",
         ],

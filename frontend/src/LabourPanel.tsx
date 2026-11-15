@@ -15,7 +15,9 @@ type L03Values = { economies: { area: string; first: number; first_year: string;
 type L05Values = { groups: { key: string; label: string; first: number | null; latest: number | null }[]; first_date: string | null;
   latest_date: string | null; history: Record<string, Line> };
 type L07Values = { economies: { area: string; then_year: string; latest_year: string; top1_then: number; top1_latest: number;
-  bottom50_then: number; bottom50_latest: number }[]; history: Record<string, { top1: Line; bottom50: Line }>; piketty?: PikettyValues };
+  bottom50_then: number; bottom50_latest: number }[]; history: Record<string, { top1: Line; bottom50: Line }>; piketty?: PikettyValues;
+  ecb_dwa?:Record<string,{status:string;top10:Line;bottom50:Line;
+    latest:{quarter:string;top10_pct:number;bottom50_pct:number}|null}> };
 
 type Spread = { min: number; max: number; variants: Variant[] } | null;
 type Method = 'io' | 'klems_io' | 'klems' | 'sea';
@@ -145,6 +147,30 @@ function Inequality({ bundle, theme, recessions }: { bundle: Bundle<L07Values>; 
     </div>
     <h4 className="decision-subhead">Top 1% (red) and bottom 50% (blue) shares of pre-tax income</h4>
     <Grid panels={panels}/>
+
+    <h4 className="decision-subhead">European household wealth concentration — ECB Distributional Wealth Accounts</h4>
+    <p className="decision-caption">Quarterly shares of household net wealth for the richest 10% and bottom 50%.
+      ECB household estimates have a different population and method from WID per-adult wealth shares;
+      comparisons are displayed separately and never joined into the same historical series.</p>
+    <table className="research-native-table" aria-label="ECB household wealth distribution by area">
+      <thead><tr><th>Area</th><th>Latest quarter</th><th>Top 10%</th><th>Bottom 50%</th></tr></thead>
+      <tbody>{Object.entries(data.ecb_dwa??{}).map(([code,record])=><tr key={code}>
+        <th scope="row">{entityName(code.toUpperCase())}</th>
+        <td>{record.latest?.quarter??'Awaiting original data'}</td>
+        <td>{record.latest?record.latest.top10_pct.toFixed(1)+'%':'—'}</td>
+        <td>{record.latest?record.latest.bottom50_pct.toFixed(1)+'%':'—'}</td>
+      </tr>)}</tbody>
+    </table>
+    <div className="decision-multiples">
+      {Object.entries(data.ecb_dwa??{}).filter(([,r])=>r.top10.length||r.bottom50.length)
+        .map(([code,r])=><TimePanel key={code}
+        title={entityName(code.toUpperCase())+' — net household wealth shares'}
+        option={timeChart({theme,recessions,nonUS:true,unit:'% of net household wealth',
+          series:[{name:'Top 10% of households',slot:0,data:r.top10},
+                  {name:'Bottom 50% of households',slot:1,data:r.bottom50}]})}
+        span={spanOf([r.top10,r.bottom50],['2009-01-01','2026-01-01'])}
+        group="ecb-dwa" compact presets={false} height={220}/>)}
+    </div>
     {data.piketty&&<PikettyResearchPanel piketty={data.piketty} bundle={bundle}
       theme={theme} recessions={recessions}/>}
   </>;
