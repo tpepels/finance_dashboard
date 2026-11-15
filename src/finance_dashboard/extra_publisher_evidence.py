@@ -109,6 +109,15 @@ def _tsv(zf, name):
     return list(rows)
 
 
+def _sec_date(value):
+    for fmt in ("%Y-%m-%d","%m/%d/%Y","%d-%b-%Y"):
+        try:
+            return datetime.strptime(str(value).strip(),fmt).date()
+        except (ValueError,TypeError):
+            pass
+    raise EvidenceError("source_period_invalid")
+
+
 def _month_zip(raw, month):
     # Independent keyed joins, choosing latest amendment per fund series.
     with ZipFile(BytesIO(raw)) as zf:
@@ -118,7 +127,7 @@ def _month_zip(raw, month):
     reports={}
     for row in submission:
         if row.get("SUBMISSIONTYPE") not in ("N-MFP3","N-MFP3/A"):continue
-        report=datetime.strptime(row["REPORTDATE"],"%Y-%m-%d").date()
+        report=_sec_date(row["REPORTDATE"])
         if report.year!=month.year or report.month!=month.month:continue
         accession=row["ACCESSION_NUMBER"]
         if accession in reports:raise EvidenceError("source_duplicate_identity")
@@ -152,7 +161,7 @@ def _month_zip(raw, month):
     for row in liquidity:
         accession=row["ACCESSION_NUMBER"]
         if accession not in holdings or not row.get("PCTWEEKLYLIQUIDASSETS"):continue
-        day=datetime.strptime(row["TOTLIQUIDASSETSNEARPCTDATE"],"%Y-%m-%d").date()
+        day=_sec_date(row["TOTLIQUIDASSETSNEARPCTDATE"])
         if (day.year,day.month)!=(month.year,month.month):continue
         fraction=_decimal(row["PCTWEEKLYLIQUIDASSETS"])
         if not 0<=fraction<=1:raise EvidenceError("source_numeric_invalid")
@@ -173,13 +182,24 @@ def _sec_nmfp(originals, sources, definition):
     from urllib.parse import urljoin
     class Links(HTMLParser):
         def __init__(self):
-            super().__init__();self.links=[]
+            super().__init__();self.links={};self.href=None;self.label=""
         def handle_starttag(self, tag, attrs):
             if tag=="a":
-                href=dict(attrs).get("href")
-                if href:self.links.append(urljoin(sources[0]["url"],href))
+                self.href=dict(attrs).get("href")
+                self.label=""
+        def handle_data(self, value):
+            if self.href:self.label+=value
+        def handle_endtag(self, tag):
+            if tag=="a" and self.href:
+                match=re.fullmatch(r"(20\d{2})\s+([A-Za-z]+)\s+NMFP",self.label.strip())
+                months=("January","February","March","April","May","June",
+                        "July","August","September","October","November","December")
+                if match and match.group(2) in months:
+                    period=date(int(match.group(1)),months.index(match.group(2))+1,1)
+                    self.links[urljoin(sources[0]["url"],self.href)]=period
+                self.href=None
     links=Links();links.feed(originals[0][0].decode("utf-8-sig"))
-    allowed=set(links.links)
+    allowed=links.links
     metric=definition["source_key"]
     if metric not in ("NET_ASSETS_MUSD","WAM_DAYS","WAL_DAYS","WEEKLY_LIQUIDITY_PCT"):
         raise EvidenceError("source_identity_mismatch")
@@ -190,12 +210,9 @@ def _sec_nmfp(originals, sources, definition):
         matched=re.fullmatch(
             r"https://www\.sec\.gov/files/dera/data/form-n-mfp-data-sets/(\d{8})-(\d{8})_nmfp\.zip",url,re.I)
         if not matched:raise EvidenceError("source_identity_mismatch")
-        # Filing windows are not reporting months. Obtain report month from
-        # the verified SEC link label, never from ZIP acquisition dates.
-        # Each monthly archive includes the prior-month reporting forms.
-        end=datetime.strptime(matched.group(2),"%Y%m%d").date()
-        month=(date(end.year if end.month>1 else end.year-1,
-                    end.month-1 if end.month>1 else 12,1))
+        # The SEC publisher's own monthly label defines the reporting month.
+        # The filename is a filing window and cannot establish this period.
+        month=allowed[url]
         sample=_month_zip(raw,month)
         if metric in sample:
             if month in values:raise EvidenceError("source_duplicate_identity")
