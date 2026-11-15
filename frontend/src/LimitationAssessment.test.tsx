@@ -45,9 +45,9 @@ describe('limitations assessment',()=>{
   it('loads automatically and separates actionable from method constraints and links questions',async()=>{
     const user=userEvent.setup();
     render(<LimitationAssessment/>);
-    expect(await screen.findByText(/4 recorded findings/)).toBeTruthy();
+    expect(await screen.findByText(/2 findings shown/)).toBeTruthy();
     expect(screen.getByText(/Research questions checked:/)).toBeTruthy();
-    expect(screen.getByText('Showing 2 of 4 findings.')).toBeTruthy();
+    expect(screen.getByText('4 recorded issues across all categories.')).toBeTruthy();
     expect(screen.getByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     expect(screen.queryByText('Check the latest published data')).toBeNull();
     expect(screen.getByText('Accounting differences in OECD files')).toBeTruthy();
@@ -57,13 +57,13 @@ describe('limitations assessment',()=>{
       a=>a.getAttribute('href')==='#q-G06')).toBe(true);
     await user.selectOptions(screen.getByLabelText('Show findings'),'source');
     expect(screen.getByText('Check the latest published data')).toBeTruthy();
-    expect(screen.getByText('Showing 1 of 4 findings.')).toBeTruthy();
+    expect(screen.getByText('1 finding shown')).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Show findings'),'method');
     expect(screen.getByText('Method assumption')).toBeTruthy();
     expect(screen.getByText('TiVA ends 2022')).toBeTruthy();
-    expect(screen.getByText('Showing 1 of 4 findings.')).toBeTruthy();
+    expect(screen.getByText('1 finding shown')).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Show findings'),'all');
-    expect(screen.getByText('Showing 4 of 4 findings.')).toBeTruthy();
+    expect(screen.getByText('4 findings shown')).toBeTruthy();
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
   });
 
