@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.engine import Engine
 
 from .developer_logs import record_event
+from .failure_journal import record_failure
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ _schedule_progress = {
     "refresh_current_source": None, "refresh_started_at": None,
     "last_refresh_outcome": None, "last_error_code": None,
     "last_error_stage": None, "last_error_at": None,
+    "last_failure_id": None, "last_failure_persisted": None,
 }
 
 
@@ -187,7 +189,8 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                              refresh_total=None, refresh_current_source=None,
                              refresh_started_at=_utc_time(time.time()),
                              last_error_code=None, last_error_stage=None,
-                             last_error_at=None, last_refresh_outcome=None,
+                             last_error_at=None, last_failure_id=None,
+                             last_failure_persisted=None, last_refresh_outcome=None,
                              next_refresh_at=None)
             cycle_failed = False
             core_crashed = False
@@ -202,8 +205,9 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                 try:
                     from .wisesheets_local import refresh_local_wisesheets
                     refresh_local_wisesheets()
-                except Exception:
+                except Exception as exc:
                     cycle_failed = True
+                    record_failure("earnings", "wisesheets", exc)
                     record_event("earnings", "collector_failed", level="warning",
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
@@ -228,15 +232,18 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                                      failed=market_failures)
                         log.warning("%d market/FX sources failed; retained last successful observations",
                                     market_failures)
-            except Exception:
+            except Exception as exc:
                 cycle_failed = True
                 core_crashed = True
                 failed_stage = scheduled_refresh_status().get("refresh_stage") or "macro"
+                failure = record_failure("scheduler", failed_stage, exc)
                 _record_schedule(refresh_state="source_collection_failed",
                                  refresh_stage=failed_stage,
                                  last_error_code="internal_error",
                                  last_error_stage=failed_stage,
-                                 last_error_at=_utc_time(time.time()))
+                                 last_error_at=_utc_time(time.time()),
+                                 last_failure_id=failure["id"],
+                                 last_failure_persisted=failure["persisted"])
                 record_event("system", "collector_failed", level="error",
                              action="scheduled_refresh", reason="internal_error",
                              stage=failed_stage)
@@ -258,8 +265,9 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     elif outcome["status"] == "complete":
                         log.info("Completed ALFRED month-end capture for %s",
                                  outcome["asof"])
-                except Exception:
+                except Exception as exc:
                     cycle_failed = True
+                    record_failure("alfred", "vintage", exc)
                     record_event("alfred", "collector_failed", level="warning",
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("ALFRED month-end capture failed; source API credentials redacted")
@@ -275,8 +283,9 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                         log.warning("Official SEC N-PORT refresh partially failed; retaining stored filings")
                     elif result["status"] == "complete":
                         log.info("Official SEC N-PORT monthly report collection completed")
-                except Exception:
+                except Exception as exc:
                     cycle_failed = True
+                    record_failure("sec", "holdings", exc)
                     record_event("sec", "collector_failed", level="warning",
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("SEC N-PORT collection failed; preserving verified historical filings")
@@ -293,8 +302,9 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                         keep=int(environ.get("FINANCE_BACKUP_KEEP", "14")),
                     )
                     log.info("Verified SQLite online backup created")
-                except Exception:
+                except Exception as exc:
                     cycle_failed = True
+                    record_failure("backup", "sqlite_backup", exc)
                     record_event("backup", "collector_failed", level="error",
                                  action="scheduled_refresh", reason="backup_failed")
                     log.warning("SQLite online backup failed; latest verified backups retained")
@@ -327,7 +337,14 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
         # original evidence outside IngestionService.refresh. Notify one
         # downstream reconciliation for those native archive changes.
         from .data_change_bus import publish_change
-        publish_change(engine, "scheduled_cycle_finished")
+        try:
+            publish_change(engine, "scheduled_cycle_finished")
+        except Exception as exc:
+            record_failure("scheduler", "publish_change", exc)
+            record_event("system", "collector_failed", level="error",
+                         action="scheduled_refresh",
+                         reason="downstream_notification_failed",
+                         stage="publish_change")
         # The already-existing immutable-original queue has publisher budgets,
         # pending retries, expiry intervals and an ingestion callback. Kick its
         # due work once per scheduled cycle, outside the network lock. The
@@ -340,8 +357,9 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                              action="scheduled_original_sources",
                              status="complete",
                              completed=len(queued.get("jobs") or []))
-            except Exception:
+            except Exception as exc:
                 cycle_failed = True
+                record_failure("scheduler", "scheduled_original_sources", exc)
                 record_event("system", "collector_failed", level="warning",
                              action="scheduled_original_sources",
                              reason="original_source_schedule_failed")
@@ -363,13 +381,29 @@ async def standalone_lifespan(app: FastAPI, *, engine: Engine) -> AsyncIterator[
     include_markets = enabled("FINANCE_INCLUDE_MARKETS")
     refresh_wisesheets = enabled("FINANCE_WISESHEETS_REFRESH", "1")
     stopped = Event()
-    thread = Thread(target=refresh_loop, name="finance-macro-refresh",
-                    args=(engine, stopped),
-                    kwargs={"interval_seconds": interval_seconds,
-                            "include_markets": include_markets,
-                            "refresh_wisesheets": refresh_wisesheets,
-                            "original_sources": getattr(app.state, "manual_sources", None)},
-                  daemon=True)
+    def guarded_refresh():
+        try:
+            refresh_loop(engine, stopped, interval_seconds=interval_seconds,
+                         include_markets=include_markets,
+                         refresh_wisesheets=refresh_wisesheets,
+                         original_sources=getattr(app.state, "manual_sources", None))
+        except Exception as exc:
+            # Absolute last-resort guard for errors outside the normal
+            # macro/source/backup catches. Never leave a dead thread claiming
+            # that source collection is still running.
+            failure = record_failure("scheduler", "thread_uncaught", exc)
+            _record_schedule(refresh_running=False, refresh_state="crashed",
+                             last_error_code="internal_error",
+                             last_error_stage="thread_uncaught",
+                             last_error_at=_utc_time(time.time()),
+                             last_failure_id=failure["id"],
+                             last_failure_persisted=failure["persisted"],
+                             next_refresh_at=None)
+            record_event("system", "collector_failed", level="error",
+                         action="scheduled_refresh", reason="internal_error",
+                         stage="thread_uncaught")
+    thread = Thread(target=guarded_refresh, name="finance-macro-refresh",
+                    daemon=True)
     thread.start()
     log.info("Single-container refresh started: interval=%ss markets=%s",
              interval_seconds, include_markets)
