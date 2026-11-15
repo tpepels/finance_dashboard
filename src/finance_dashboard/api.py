@@ -158,12 +158,14 @@ def create_app(engine=None) -> FastAPI:
 
     @app.middleware("http")
     async def record_unexpected_api_failure(request: Request, call_next):
-        # Do not persist request paths, query parameters, headers or exception
-        # details. A 5xx code is enough to correlate a server fault with the
-        # time and a subsequent source/status inspection.
+        # Do not persist request paths, query parameters, headers or raw
+        # exception details. Unexpected 500s retain only sanitized traceback
+        # module/function/line, class and stable codes in the failure journal.
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception as exc:
+            from .failure_journal import record_failure
+            record_failure("api", "http_handler", exc)
             record_event("system", "collector_failed", level="error",
                          stage="api", reason="internal_error")
             raise
