@@ -60,7 +60,7 @@ class WidOriginalMethodMetadataTests(unittest.TestCase):
                          Decimal("0.46"))
         # A publisher export may omit the entire optional column.
         columns=metadata.splitlines()
-        without_column="\n".join(line.rsplit(";",1)[0] for line in columns)+"\\n"
+        without_column="\n".join(line.rsplit(";",1)[0] for line in columns)+"\n"
         result=wid.parse_wid_bundle(data,without_column,area="WO")
         self.assertEqual(result.observations[("shwealj992","p90p100")][date(2024,1,1)],
                          Decimal("0.70"))
