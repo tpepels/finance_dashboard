@@ -51,6 +51,25 @@ def fixtures(area="US", *, legacy=False):
     return data, out.getvalue()
 
 
+class WidOriginalMethodMetadataTests(unittest.TestCase):
+    def test_method_note_is_optional_but_original_source_and_scope_are_not(self):
+        data,metadata=fixtures("WO",legacy=True)
+        empty=metadata.replace("Original estimation method","")
+        result=wid.parse_wid_bundle(data,empty,area="WO")
+        self.assertEqual(result.observations[("sptincj992","p90p100")][date(2024,1,1)],
+                         Decimal("0.46"))
+        # A publisher export may omit the entire optional column.
+        columns=metadata.splitlines()
+        without_column="\n".join(line.rsplit(";",1)[0] for line in columns)+"\\n"
+        result=wid.parse_wid_bundle(data,without_column,area="WO")
+        self.assertEqual(result.observations[("shwealj992","p90p100")][date(2024,1,1)],
+                         Decimal("0.70"))
+        missing_source=empty.replace("Original source publication URL","")
+        with self.assertRaisesRegex(ProviderError,
+                                    "concept, population, unit or source metadata mismatch"):
+            wid.parse_wid_bundle(data,missing_source,area="WO")
+
+
 class WidPublisherSpacingResumeTests(unittest.TestCase):
     def test_two_governed_requests_resume_across_runs_without_certifying_partial(self):
         import time
