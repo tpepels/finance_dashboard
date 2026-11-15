@@ -284,6 +284,24 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                         if item.tzinfo is not None else item)
             chosen.sort(key=lambda sid: (sid in last_completed,
                                          order_date(sid), sid))
+            # Fairly interleave provider groups within each freshness class:
+            # all never-attempted sources precede previously attempted ones,
+            # while an exceptionally slow/rate-limited WID publisher cannot
+            # monopolize the front of the batch ahead of FRED/BLS/OECD.
+            from collections import deque
+            interleaved = []
+            for previously_attempted in (False, True):
+                queues = {}
+                for sid in chosen:
+                    if (sid in last_completed) == previously_attempted:
+                        group = client.definitions.get(sid, {}).get("provider", "UNKNOWN")
+                        queues.setdefault(group, deque()).append(sid)
+                while queues:
+                    for group in sorted(tuple(queues)):
+                        interleaved.append(queues[group].popleft())
+                        if not queues[group]:
+                            del queues[group]
+            chosen = interleaved
             stage = "construct_tasks"
             tasks = []
             for sid in chosen:
