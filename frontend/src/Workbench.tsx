@@ -87,7 +87,7 @@ export default function Workbench({ dataVersion = 0 }: { dataVersion?: number })
     <ul className="workbench-list">{visible.map(row => {
       const next=graph?.edges.filter(edge=>edge.parent===row.analysis_id)??[];
       return <li key={row.analysis_id}>
-      <span className="research-id">{row.analysis_id}</span><div><a href={`#q-${row.analysis_id}`}>{row.question}</a>
+      <span className="research-id">{row.analysis_id}</span><div><a className="workbench-question-link" href={`#q-${row.analysis_id}`}>{row.question}</a>
         <span className="workbench-meta"><span className={`workbench-state workbench-state-${row.phase2?.state ?? row.state}`}>
           {researchStateLabel(row.phase2?.state ?? row.state)}</span>{row.decision_informed ? ` · ${row.decision_informed}` : ''}</span>
         {row.phase2&&<p className="workbench-evidence-summary">
