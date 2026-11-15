@@ -141,6 +141,22 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
            <td>{fmt(values(income,group))}</td><td>{fmt(values(wealth,group))}</td></tr>)}</tbody>
        </table>
      </div>
+     {comparedYear!==null&&<div className="piketty-ratios" aria-label="Income and wealth concentration ratios">
+       <p className="decision-caption"><strong>Latest matched income and wealth year: {comparedYear}.</strong>
+         {' '}Top-to-bottom multiples are withheld when the bottom 50% holds
+         less than 0.05 percentage points of the total or has negative net wealth.</p>
+       <table className="research-native-table">
+        <thead><tr><th>Concentration ratio</th><th>Income</th><th>Wealth</th></tr></thead>
+        <tbody><tr><th scope="row">Top 10% / bottom 50%</th>
+          <td>{multiples(income,'top10_to_bottom50')}</td>
+          <td>{multiples(wealth,'top10_to_bottom50')}</td></tr>
+         <tr><th scope="row">Top 1% / bottom 50%</th>
+          <td>{multiples(income,'top1_to_bottom50')}</td>
+          <td>{multiples(wealth,'top1_to_bottom50')}</td></tr>
+        </tbody></table></div>}
+     {comparedYear===null&&<p className="decision-note" role="status">
+       No year has a complete original income and wealth distribution for this geography.
+       The comparison is withheld until both concepts have matching data.</p>}
      <Plot title="Top income and wealth shares" group={'piketty-concentration-'+area.area}
        rows={[
          {name:'Income top 10%',slot:0,data:income.percentage_shares.top10},
@@ -163,6 +179,30 @@ export default function PikettyResearchPanel({piketty,bundle,theme,recessions}:{
        rows={['bottom50','middle40','top10','top1'].map((key,index)=>({
          name:GROUP[key],slot:index,data:area.growth_capture.real_per_adult_index[key]??[],
        }))} theme={theme} recessions={recessions}/>
+     <h5 className="decision-subhead">Long-run growth incidence across original percentiles</h5>
+     {incidence?.status==='available'?<>
+      <p className="decision-caption">
+       {incidence.reference_year}–{incidence.comparison_year} ·
+       {' '}{incidence.matched_years} comparable published years ·
+       real pre-tax annual income per adult in the same source-defined area currency.
+       These values compare people occupying each percentile group in two years;
+       they are not the growth experienced by the same individuals.</p>
+      <div className="piketty-growth-bars"
+       role="img" aria-label={`Real income growth by WID percentile between ${incidence.reference_year} and ${incidence.comparison_year}`}>
+       {incidence.rows.map(item=><div className="piketty-growth-row" key={item.group}>
+        <span>{item.label}</span>
+        <div className="piketty-growth-track"><span
+          className={item.cumulative_real_growth_pct<0?'piketty-bar-negative':'piketty-bar-positive'}
+          style={{width:(100*Math.abs(item.cumulative_real_growth_pct)/maxGrowth).toFixed(2)+'%'}}/></div>
+        <strong>{fmt(item.cumulative_real_growth_pct)}</strong>
+       </div>)}
+      </div>
+     </>:<p className="decision-note" role="status">
+      Long-run percentile growth comparison withheld: no two matched years contain
+      all 12 published WID average-income groups for this geography.
+      {incidence?.missing_groups.length?<>
+       {' '}Missing original groups: {incidence.missing_groups.join(', ')}.</>:null}
+      The app will use the same automatic WID collection and scientific checks.</p>}
      {latestIncomeCapture.length>0&&<div style={{overflowX:'auto'}}>
        <table className="research-native-table" aria-label="Share of real per-adult income change">
          <thead><tr><th>Year</th><th>Total real change</th><th>Bottom 50%</th>
