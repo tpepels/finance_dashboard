@@ -111,7 +111,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByRole('heading',{name:'Checking missing and outdated data'})).toBeTruthy();
     expect(screen.getByText('Next automatic step')).toBeTruthy();
     expect(screen.getByText('Your action')).toBeTruthy();
-    expect(screen.getByText('No manual upload required')).toBeTruthy();
+    expect(screen.getByText('No action while the check runs')).toBeTruthy();
     expect(screen.getByRole('region',{name:'What happens next'})).toBeTruthy();
     expect(screen.getByRole('progressbar',{name:'Missing-data check progress'}).getAttribute('aria-valuenow')).toBe('6');
     expect(screen.getByText('426 / 426')).toBeTruthy();
