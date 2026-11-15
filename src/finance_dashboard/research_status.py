@@ -78,6 +78,42 @@ def evidence_next_step(analysis_id: str, research_state: str,
                   'Scientific assessment is pending. No action is requested.')
 
 
+
+def research_next_actions(snapshot, document: dict) -> dict:
+    """Bounded research-readiness summary for the on-demand diagnostic ZIP.
+
+    A submitted source is not an accepted original. Owner action is named
+    only for an explicitly missing user-supplied input. The per-question
+    entries are derived from the same acceptance snapshot as the UI.
+    """
+    if snapshot is None:
+        return {'status': 'assessment_unavailable', 'evaluated_at': None,
+                'counts': {}, 'next_action_counts': {}, 'questions': [],
+                'note': 'A complete scientific assessment was not yet available.'}
+    from collections import Counter
+    report = research_status(snapshot, document)
+    questions = []
+    for row in report['questions']:
+        step = row['next_step']
+        questions.append({
+            'id': row['analysis_id'],
+            'state': row['phase2']['state'],
+            'next_step': step,
+            'open_gates': row['phase2']['open_gates'],
+            'limitations_count': len(row['phase2']['limitations']),
+        })
+    return {
+        'status': 'ready',
+        'evaluated_at': report['evaluated_at'],
+        'question_count': len(questions),
+        'counts': report['counts'],
+        'next_action_counts': dict(Counter(q['next_step']['kind'] for q in questions)),
+        'questions': questions,
+        'note': ('A methodological role may remain unaccepted despite source data '
+                 'having been downloaded. Owner inputs are requested only when '
+                 'the canonical owner-supplied role is missing.'),
+    }
+
 def research_status(snapshot, document: dict) -> dict:
     """Describe current scope; never compute, accept or promote an input here."""
     definitions = {r['id']: r for r in document['analyses']}
