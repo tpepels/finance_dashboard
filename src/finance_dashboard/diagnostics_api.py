@@ -1,7 +1,9 @@
 """Private diagnostic status, structured console and redacted support ZIP.
 
-No request URLs, provider payloads, credentials, environment values or raw server
-stderr are exposed. The same short bounded diagnostic journal powers the UI and ZIP.
+Credentials, environment values, HTTP rejection bodies and raw server
+stderr are excluded. On explicit ZIP preparation, a bounded set of literal
+publisher data rows may be included for regression fixtures, with verified
+source hashes and fixed original URLs. Full source payloads stay on the server.
 """
 from __future__ import annotations
 
@@ -568,6 +570,10 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                 "identities across deployments. A missing journal means no failure "
                 "has been recorded by this facility; previous exports cannot be reconstructed. "
                 "The latest collection-run snapshot is also retained across builds. "
+                "Small hash-verified original publisher row samples for WID, BLS "
+                "and World Bank may appear in source-fixture-samples.json. Missing "
+                "source bytes are reported without substitutions. The full "
+                "original data remain on the server. "
                 "Original evidence, research history, and backups are retained.\n"
                 "Redacted diagnostic bundle with full source status, per-role publisher "
                 "attempts, original hashes, manual fallback links, accounting residuals, "
