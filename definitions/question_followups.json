@@ -1,0 +1,398 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-11-15",
+  "scope": "39 approved scientific questions in the canonical research corpus",
+  "semantics": "Suggested follow-up questions. Edges are methodological motivations, not supported economic findings; target evidence and status derive from the canonical corpus and scientific assessment.",
+  "links": [
+    {
+      "parent": "C01",
+      "child": "C02",
+      "reason": "Compare turning-point evidence with dated recession signals.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C01",
+      "child": "C03",
+      "reason": "Check whether apparent national turning points reflect shared global growth.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C01",
+      "child": "C05",
+      "reason": "Measure how quickly activity recovers after the identified change.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C02",
+      "child": "F03",
+      "reason": "Compare recession signals with credit and debt-service warning measures.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C02",
+      "child": "C05",
+      "reason": "Study whether warnings precede persistent economic damage.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C03",
+      "child": "G02",
+      "reason": "Compare growth with the geography of investable equity exposure.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C03",
+      "child": "L01",
+      "reason": "Test whether growth translates into labour productivity and compensation.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C05",
+      "child": "P03",
+      "reason": "Compare economic shock duration with observed portfolio drawdowns.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C05",
+      "child": "P05",
+      "reason": "Examine whether portfolio policies survive long recovery periods.",
+      "priority": "P2"
+    },
+    {
+      "parent": "C06",
+      "child": "C07",
+      "reason": "Measure the relationship between consumer, commodity and asset-price changes.",
+      "priority": "P1"
+    },
+    {
+      "parent": "C06",
+      "child": "L02",
+      "reason": "Investigate whether cost shocks coincide with changes in factor income shares.",
+      "priority": "P1"
+    },
+    {
+      "parent": "C07",
+      "child": "P02",
+      "reason": "Examine whether measured co-movements persist across market regimes.",
+      "priority": "P1"
+    },
+    {
+      "parent": "C07",
+      "child": "P04",
+      "reason": "Separate historical asset-inflation evidence from portfolio stress assumptions.",
+      "priority": "P1"
+    },
+    {
+      "parent": "C07",
+      "child": "M02",
+      "reason": "Check how inflation compensation affects reported real returns.",
+      "priority": "P1"
+    },
+    {
+      "parent": "F01",
+      "child": "F02",
+      "reason": "Measure whether rising credit stocks increase actual servicing burdens.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F01",
+      "child": "F05",
+      "reason": "Locate the debt among the balance-sheet sectors carrying the risk.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F02",
+      "child": "F03",
+      "reason": "Compare debt-service stress with other financial early-warning indicators.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F02",
+      "child": "F06",
+      "reason": "Test whether housing prices magnify household servicing burdens.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F03",
+      "child": "F04",
+      "reason": "Check whether balance-sheet warnings coincide with market stress.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F03",
+      "child": "P04",
+      "reason": "Assess exposure to the financial conditions identified in the credit evidence.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F04",
+      "child": "F07",
+      "reason": "Identify nonbank channels that can amplify observed market stress.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F04",
+      "child": "P03",
+      "reason": "Study actual drawdowns during stress rather than assuming a fixed shock.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F05",
+      "child": "F07",
+      "reason": "Identify leverage and liquidity concentration outside traditional banks.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F05",
+      "child": "G05",
+      "reason": "Compare domestic leverage with cross-border balance-sheet exposure.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F06",
+      "child": "V02",
+      "reason": "Compare property valuation pressure with replacement-cost valuation measures.",
+      "priority": "P2"
+    },
+    {
+      "parent": "F07",
+      "child": "G05",
+      "reason": "Test whether cross-border financing amplifies nonbank vulnerabilities.",
+      "priority": "P2"
+    },
+    {
+      "parent": "G01",
+      "child": "G02",
+      "reason": "Compare constituent concentration with country weights.",
+      "priority": "P2"
+    },
+    {
+      "parent": "G01",
+      "child": "P01",
+      "reason": "Check how market concentration reaches owned ETF holdings.",
+      "priority": "P2"
+    },
+    {
+      "parent": "G02",
+      "child": "P01",
+      "reason": "Contrast benchmark geography with the portfolio's original holdings.",
+      "priority": "P2"
+    },
+    {
+      "parent": "G02",
+      "child": "P07",
+      "reason": "Examine the currency effects of the identified geographic allocations.",
+      "priority": "P2"
+    },
+    {
+      "parent": "G03",
+      "child": "G01",
+      "reason": "Test whether global profit claims rely on the same issuer universe as concentration.",
+      "priority": "P1"
+    },
+    {
+      "parent": "G05",
+      "child": "G06",
+      "reason": "Study whether cross-border capital positions align with production exposures.",
+      "priority": "P2"
+    },
+    {
+      "parent": "G05",
+      "child": "M04",
+      "reason": "Examine currency changes against international financial imbalances.",
+      "priority": "P2"
+    },
+    {
+      "parent": "G06",
+      "child": "C07",
+      "reason": "Test whether external input exposure may transmit commodity inflation.",
+      "priority": "P1"
+    },
+    {
+      "parent": "G06",
+      "child": "L04",
+      "reason": "Compare cross-border value-added exposure with surplus assumptions.",
+      "priority": "P1"
+    },
+    {
+      "parent": "L01",
+      "child": "L08",
+      "reason": "Check whether typical and low-wage workers share aggregate pay gains.",
+      "priority": "P1"
+    },
+    {
+      "parent": "L01",
+      "child": "L02",
+      "reason": "Separate per-hour compensation growth from the aggregate labour share.",
+      "priority": "P1"
+    },
+    {
+      "parent": "L02",
+      "child": "L04",
+      "reason": "Test sensitivity of surplus measures to factor-income definitions.",
+      "priority": "P1"
+    },
+    {
+      "parent": "L02",
+      "child": "L08",
+      "reason": "Compare economy-wide compensation shares with within-worker earnings distributions.",
+      "priority": "P1"
+    },
+    {
+      "parent": "L03",
+      "child": "L04",
+      "reason": "Examine how capital-stock measures affect surplus-rate sensitivity.",
+      "priority": "P2"
+    },
+    {
+      "parent": "L03",
+      "child": "V01",
+      "reason": "Distinguish operating-surplus change from stock-market valuation.",
+      "priority": "P2"
+    },
+    {
+      "parent": "L04",
+      "child": "G03",
+      "reason": "Check the issuer and accounting universe before interpreting global surplus.",
+      "priority": "P2"
+    },
+    {
+      "parent": "L05",
+      "child": "L07",
+      "reason": "Compare household financial wealth with broader income and wealth distributions.",
+      "priority": "P2"
+    },
+    {
+      "parent": "L05",
+      "child": "P01",
+      "reason": "Check how ownership concentration relates to actual ETF constituents.",
+      "priority": "P2"
+    },
+    {
+      "parent": "L07",
+      "child": "G03",
+      "reason": "Distinguish inequality in national income/wealth from globally consolidated firm profit.",
+      "priority": "P1"
+    },
+    {
+      "parent": "L07",
+      "child": "L08",
+      "reason": "Compare adult income distribution with the earnings distribution of workers.",
+      "priority": "P1"
+    },
+    {
+      "parent": "L08",
+      "child": "P01",
+      "reason": "Test whether the distributional shifts matter for owner-specific investment exposure.",
+      "priority": "P1"
+    },
+    {
+      "parent": "M01",
+      "child": "M02",
+      "reason": "Trace policy divergence to real yields and inflation compensation.",
+      "priority": "P2"
+    },
+    {
+      "parent": "M01",
+      "child": "M04",
+      "reason": "Compare monetary divergence with exchange-rate movements.",
+      "priority": "P2"
+    },
+    {
+      "parent": "M02",
+      "child": "P02",
+      "reason": "Assess real-yield changes against observed diversification.",
+      "priority": "P2"
+    },
+    {
+      "parent": "M02",
+      "child": "V01",
+      "reason": "Examine valuation sensitivity to the discount-rate components.",
+      "priority": "P2"
+    },
+    {
+      "parent": "M04",
+      "child": "P07",
+      "reason": "Measure the euro-investor effect of currency moves and hedge costs.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P01",
+      "child": "P04",
+      "reason": "Translate verified holdings into a bounded scenario exposure.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P01",
+      "child": "P05",
+      "reason": "Use actual investable holdings when testing portfolio policy.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P02",
+      "child": "P03",
+      "reason": "Test whether historical diversification persists in real drawdown episodes.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P02",
+      "child": "P04",
+      "reason": "Distinguish observed covariation from scenario assumptions.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P03",
+      "child": "P05",
+      "reason": "Compare alternative policy rules on the same historical drawdowns.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P04",
+      "child": "P05",
+      "reason": "Assess rebalancing under the same explicitly declared assumptions.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P04",
+      "child": "P07",
+      "reason": "Measure how the chosen currency exposure changes scenario results.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P05",
+      "child": "P06",
+      "reason": "Check how valuation assumptions affect long-horizon policy comparisons.",
+      "priority": "P2"
+    },
+    {
+      "parent": "P06",
+      "child": "V05",
+      "reason": "Evaluate whether the estimated return–valuation relationship holds across regimes.",
+      "priority": "P2"
+    },
+    {
+      "parent": "V01",
+      "child": "V02",
+      "reason": "Check whether replacement-cost valuations corroborate earnings ratios.",
+      "priority": "P2"
+    },
+    {
+      "parent": "V01",
+      "child": "V05",
+      "reason": "Test whether valuation levels historically predict later returns.",
+      "priority": "P2"
+    },
+    {
+      "parent": "V02",
+      "child": "V03",
+      "reason": "Compare valuation concepts before making a cross-region claim.",
+      "priority": "P2"
+    },
+    {
+      "parent": "V03",
+      "child": "V05",
+      "reason": "Check whether regional valuation comparisons have reliable predictive evidence.",
+      "priority": "P2"
+    }
+  ]
+}
