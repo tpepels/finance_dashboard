@@ -57,13 +57,13 @@ describe('limitations assessment',()=>{
       a=>a.getAttribute('href')==='#q-G06')).toBe(true);
     await user.selectOptions(screen.getByLabelText('Show findings'),'source');
     expect(screen.getByText('Check the latest published data')).toBeTruthy();
-    expect(screen.getByText('1 finding shown')).toBeTruthy();
+    expect(screen.getByText(/1 finding shown/)).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Show findings'),'method');
     expect(screen.getByText('Method assumption')).toBeTruthy();
     expect(screen.getByText('TiVA ends 2022')).toBeTruthy();
-    expect(screen.getByText('1 finding shown')).toBeTruthy();
+    expect(screen.getByText(/1 finding shown/)).toBeTruthy();
     await user.selectOptions(screen.getByLabelText('Show findings'),'all');
-    expect(screen.getByText('4 findings shown')).toBeTruthy();
+    expect(screen.getByText(/4 findings shown/)).toBeTruthy();
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
   });
 
