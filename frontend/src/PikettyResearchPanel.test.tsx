@@ -18,8 +18,8 @@ const country=(area:'US'|'WORLD',hasData:boolean)=>({
      percentage_shares:{top1:hasData?line:[],top10:hasData?line:[],
        bottom50:hasData?line:[],middle40:hasData?line:[]},
      observed_matched_years:hasData?2:0,latest_year:hasData?2025:null,
-     top_to_bottom_ratios:{top10_to_bottom50:hasData?[['2025',1]]:[],
-       top1_to_bottom50:hasData?[['2025',1]]:[]},
+     top_to_bottom_ratios:{top10_to_bottom50:hasData?([['2025',1]] as [string,number][]):[],
+       top1_to_bottom50:hasData?([['2025',1]] as [string,number][]):[]},
      derived_middle40:true,excluded_inconsistent_years:[]},
    wealth:{status:hasData?'available':'awaiting_originals',
      percentage_shares:{top1:hasData?line:[],top10:hasData?line:[],
@@ -110,7 +110,7 @@ describe('source-gated Piketty module in L07',()=>{
   expect(screen.getByRole('img',{name:/Real income growth by WID percentile/})).toBeTruthy();
   expect(screen.getByText('P99.9–100')).toBeTruthy();
   expect(screen.getByText(/Latest matched income and wealth year: 2025/)).toBeTruthy();
-  expect(screen.getByText(/bottom 50% hold/)).toBeTruthy();
+  expect(screen.getAllByText(/bottom 50% hold/).length).toBeGreaterThan(0);
   expect(screen.getByText(/same original constant-price unit/)).toBeTruthy();
   expect(screen.queryByRole('heading',{name:'Inherited wealth index'})).toBeNull();
  });
