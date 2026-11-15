@@ -46,6 +46,7 @@ describe('operator status based on actual collection, schedule and data',()=>{
     expect(status.needsReview).toBe(17);
     expect(status.waitingSeries).toBe(1);
     expect(status.manualFiles).toBe(0);
+    expect(status.uncheckedSeries).toBe(0);
     expect(status.lastFinishedAt).toBe('2026-11-15T13:50:39Z');
   });
   it('shows completed results after research assessment finishes without implying errors resolved',()=>{
@@ -91,6 +92,8 @@ describe('operator status based on actual collection, schedule and data',()=>{
     expect(issueCategory('collection_failed','provider_http_403')).toBe('technical');
     expect(issueCategory('collection_deferred','source_policy_deferred')).toBe('waiting');
     expect(issueCategory('stale',null)).toBe('stale');
+    expect(issueCategory('not_ingested',null)).toBe('missing');
+    expect(sourceNextStep('not_ingested',null)).toContain('No data has been saved yet.');
     expect(sourceNextStep('collection_failed','provider_http_403')).toContain('access was refused');
     expect(sourceNextStep('collection_failed','source_invalid')).toContain('software fix');
     expect(sourceNextStep('collection_deferred','source_policy_deferred')).toContain('Scheduled checks');
