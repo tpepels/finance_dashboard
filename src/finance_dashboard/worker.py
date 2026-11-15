@@ -103,7 +103,8 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
 def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 series_ids: set[str] | None = None, progress=None,
                 stopped=None, skip_complete_pinned: bool = False,
-                attention_only: bool = False) -> int:
+                attention_only: bool = False,
+                preflight_only: bool = False) -> int:
     """Canonical macro refresh uses the same task execution contract as markets."""
     stage = "instantiate_router"
     client = None
@@ -199,6 +200,15 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 )
                 for sid in chosen
             ]
+            if preflight_only:
+                # Validate current deployment, registered sources, immutable
+                # publication guards and real DB refresh-plan SQL without
+                # executing any provider, issuing HTTP, or inserting runs.
+                record_event("macro", "stage_finished",
+                             action="source_refresh_preflight",
+                             stage="construct_tasks", status="complete",
+                             total=len(tasks))
+                return 0
             stage = "execute_tasks"
             return execute_refresh_tasks(tasks, progress=progress, stopped=stopped)
     except Exception as exc:
