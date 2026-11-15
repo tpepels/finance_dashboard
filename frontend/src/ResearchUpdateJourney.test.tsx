@@ -121,6 +121,42 @@ describe('research update waiting-state journey',()=>{
     expect(model.stages[0].state).toBe('waiting');
   });
 
+  it('retains prior-release internal failure context when a restart resets live status',()=>{
+    const previous=missing({automation:{
+      scheduled_refresh_enabled:true,interval_seconds:86400,
+      refresh_running:false,refresh_state:'waiting',
+      last_refresh_finished_at:null,
+      next_refresh_at:'2026-11-15T22:02:42Z',
+      failure_journal_state:'ready',
+      last_persisted_failure:{
+        id:'1234aabbccdd5678',release_id:'0.2.9+abcdef1234567890',
+        previous_release:true,component:'macro',stage:'rotation_query',
+        exception_type:'OperationalError',last_at:'2026-11-14T21:50:58Z',
+        count:1,origin:{module:'finance_dashboard.worker',
+                        function:'refresh_all',line:187},
+      },
+    }});
+    const model=describeResearchUpdate(previous,null);
+    expect(model.heading).toBe('Previous deployment encountered an internal source failure');
+    expect(model.tone).toBe('attention');
+    expect(model.stages[0].state).toBe('attention');
+    expect(model.action).toContain('1234aabbccdd5678');
+    render(<ResearchUpdateJourney health={previous}/>);
+    expect(screen.getByRole('heading',{name:/Previous deployment encountered/})).toBeTruthy();
+  });
+
+  it('does not silently hide an invalid persistent failure journal',()=>{
+    const bad=missing({automation:{
+      scheduled_refresh_enabled:true,interval_seconds:86400,
+      refresh_running:false,refresh_state:'waiting',
+      failure_journal_state:'invalid',next_refresh_at:null,
+    }});
+    const model=describeResearchUpdate(bad,null);
+    expect(model.heading).toBe('Failure evidence journal is unreadable');
+    expect(model.stages[0].state).toBe('attention');
+    expect(model.explanation).toContain('invalid or inaccessible');
+  });
+
   it('does not recommend waiting when the configured automatic scheduler has not started',()=>{
     const missingWorker=missing({
       automation:{scheduled_refresh_enabled:true,interval_seconds:86400,
