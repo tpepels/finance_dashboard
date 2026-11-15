@@ -21,6 +21,24 @@ def automation_status() -> dict:
     enabled = os.environ.get("FINANCE_AUTO_REFRESH", "1").strip().lower() in (
         "1", "true", "on", "yes")
     raw = scheduled_refresh_status()
+    from .failure_journal import read_failures
+    from .runtime_release import release_info
+    journal = read_failures()
+    previous = journal["failures"][-1] if journal["failures"] else None
+    active_release = release_info().get("release_id")
+    recent = None if previous is None else {
+        "id": previous["id"],
+        "release_id": previous["release_id"],
+        "previous_release": previous["release_id"] != active_release,
+        "stage": previous["stage"],
+        "component": previous["component"],
+        "exception_type": previous["exception_type"],
+        "origin": next((frame for frame in reversed(previous["frames"])
+                        if frame["module"].startswith("finance_dashboard.")),
+                       previous["frames"][-1] if previous["frames"] else None),
+        "last_at": previous["last_at"],
+        "count": previous["count"],
+    }
     return {
         "scheduled_refresh_enabled": enabled,
         "interval_seconds": int(os.environ.get("REFRESH_INTERVAL_SECONDS", "86400")),
@@ -38,6 +56,10 @@ def automation_status() -> dict:
         "last_error_code": raw["last_error_code"] if enabled else None,
         "last_error_stage": raw["last_error_stage"] if enabled else None,
         "last_error_at": raw["last_error_at"] if enabled else None,
+        "last_failure_id": raw["last_failure_id"] if enabled else None,
+        "last_failure_persisted": raw["last_failure_persisted"] if enabled else None,
+        "failure_journal_state": journal["state"],
+        "last_persisted_failure": recent,
     }
 
 
