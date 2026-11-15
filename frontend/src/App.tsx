@@ -147,7 +147,7 @@ export default function App() {
             else document.getElementById('research-sources')?.scrollIntoView({
               block: 'start', behavior: 'instant'
             });
-          }}>Data &amp; sync</button>
+          }}>Data collection</button>
           <button type="button" className="workspace-density" aria-label={density === 'comfortable' ? 'Use compact spacing' : 'Use comfortable spacing'}
             aria-pressed={density === 'compact'} title={density === 'comfortable' ? 'Use compact spacing' : 'Use comfortable spacing'}
             onClick={() => setDensity(value => value === 'comfortable' ? 'compact' : 'comfortable')}>
