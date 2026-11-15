@@ -40,7 +40,27 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
                             if item["family"] == "macro" and item["state"] not in (
                                 "available", "source_checked_no_newer_data"))
         return report, actionable
-    before, issues = census()
+    # Source-health SQL is advisory for selection. A broken census must
+    # never prevent the canonical collector from attempting registered sources.
+    # Its failure is journalled separately and the resulting counts remain
+    # explicitly unknown rather than being presented as repaired histories.
+    coverage_errors = []
+    def coverage_fault(stage, exc):
+        from .failure_journal import record_failure
+        from .developer_logs import record_event
+        record_failure("macro", stage, exc)
+        coverage_errors.append(stage)
+        record_event("macro", "collector_failed", level="error",
+                     action="repair_source_health", stage=stage,
+                     reason="internal_error")
+
+    try:
+        before, issues = census()
+        before_known = True
+    except Exception as exc:
+        coverage_fault("repair_coverage_before", exc)
+        before, issues = {"items": []}, sorted(supported)
+        before_known = False
     targets = set(issues) & supported
     unconfigured = sorted(set(issues) - targets)
     if cancelled.is_set():
@@ -88,7 +108,10 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
         msci_not_before = (
             _date(last.year + 1, 1, 1) if last.month == 12
             else _date(last.year, last.month + 1, 1))
-    if msci_indexes and not cancelled.is_set():
+    # If source-health discovery failed, we cannot reliably identify which
+    # historical MSCI original is stale. Let the ordinary per-series collector
+    # proceed; do not launch a speculative full MSCI Wayback archive scan.
+    if msci_indexes and before_known and not cancelled.is_set():
         from .msci_regional_factsheets import collect as collect_msci, MsciFactsheetError
         from .source_policy_types import PolicyDeferred, PolicyViolation
         from .service import safe_source_failure_code
@@ -115,6 +138,12 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
                            else "blocked" if isinstance(exc, PolicyViolation)
                            else "failed",
                            "reason": safe_source_failure_code(exc)}
+        except Exception as exc:
+            # An unexpected archive discovery/parsing failure must not abort
+            # unrelated FRED, WID, OECD or other individual source collectors.
+            from .failure_journal import record_failure
+            record_failure("macro", "repair_msci_factsheets", exc)
+            msci_result = {"status": "failed", "reason": "internal_error"}
     if cancelled.is_set():
         raise MaintenanceBlocked("cancelled")
     self._change(job_id, stage="Refresh verified source histories",
@@ -125,17 +154,29 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
         progress=lambda done, total, sid: self._progress(job_id, done, total, sid))
     if cancelled.is_set():
         raise MaintenanceBlocked("cancelled")
-    after, remaining = census()
-    repaired = len(set(issues) - set(remaining))
+    try:
+        after, remaining = census()
+        after_known = True
+    except Exception as exc:
+        coverage_fault("repair_coverage_after", exc)
+        remaining = []
+        after_known = False
+    msci_incomplete = bool(msci_result and msci_result["status"] != "complete")
     result = {
-        "status": "complete" if not remaining and not failed else "partial",
-        "reason": ("source_gaps_remaining" if remaining else
-                   "provider_failed" if failed else None),
+        "status": ("partial" if coverage_errors or remaining or failed
+                   or msci_incomplete else "complete"),
+        "reason": ("source_health_unavailable" if coverage_errors else
+                   "source_gaps_remaining" if remaining else
+                   "provider_failed" if failed or msci_incomplete else None),
         "selected_sources": len(targets),
-        "issues_before": len(issues), "issues_after": len(remaining),
-        "resolved_issues": repaired, "failed_sources": failed,
+        "issues_before": len(issues) if before_known else None,
+        "issues_after": len(remaining) if after_known else None,
+        "resolved_issues": (len(set(issues) - set(remaining))
+                            if before_known and after_known else None),
+        "failed_sources": failed,
+        "coverage_errors": coverage_errors,
         "unavailable_source_mappings": unconfigured,
-        "remaining_series_ids": remaining,
+        "remaining_series_ids": remaining if after_known else None,
         "msci_original_acquisition": msci_result,
         "note": ("Failed/deferred publisher requests stay visible. "
                  "A series is resolved only when the stored source coverage "
