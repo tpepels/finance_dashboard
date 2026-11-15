@@ -159,3 +159,10 @@ html[data-theme='dark'] .data-technical-console pre{background:#16282d;color:#d6
 html[data-theme='dark'] .data-download-details,
 html[data-theme='dark'] .data-manual-files{border-color:#42565d}
 html[data-theme='dark'] .data-manual-files p{color:#afc0c4}
+
+/* Keep long research issue lists readable and prevent hundreds of rows pushing
+   the troubleshooting actions far down the page. */
+.data-research-quality .research-quality-table{max-height:380px;overflow:auto;
+  overscroll-behavior:contain;border:1px solid #dce5e5;border-radius:5px}
+.data-research-quality .research-quality-table th{position:sticky;top:0;z-index:1}
+html[data-theme='dark'] .data-research-quality .research-quality-table{border-color:#42565d}
