@@ -20,10 +20,8 @@ const Workbench = lazy(() => import('./Workbench'));
 const SavedViews = lazy(() => import('./SavedViews'));
 const SourceWorkspace = lazy(() => import('./SourceWorkspace'));
 const SourceExplorer = lazy(() => import('./SourceExplorer'));
-const DiagnosticsWorkspace = lazy(() => import('./DiagnosticsWorkspace'));
 const PRIMARY = [['overview', 'Dashboard'], ['workbench', 'Find a question'], ['saved-figures', 'Saved figures'],
-  ['research-sources', 'Data collection'], ['source-explorer', 'Source Explorer'],
-  ['diagnostics', 'Diagnostics']];
+  ['research-sources', 'Data & diagnostics'], ['source-explorer', 'Source Explorer']];
 
 function initialTheme(): Theme {
   try {
@@ -88,7 +86,7 @@ export default function App() {
   useEffect(() => {
     // The Data Collection page owns its own server-backed lifecycle.
     if (hash === '#portfolio-holdings') window.dispatchEvent(new Event('gcm-open-portfolio-holdings'));
-    const targetId = hash === '#source-coverage' ? 'source-coverage'
+    const targetId = ['#source-coverage', '#diagnostics', '#research-quality'].includes(hash) ? hash.slice(1)
       : isSourceExplorerHash(hash) ? hash.slice(1)
       : hash === '#portfolio-holdings' ? 'portfolio-holdings'
       : selected.question ? `q-${selected.question}`
@@ -147,7 +145,7 @@ export default function App() {
             else document.getElementById('research-sources')?.scrollIntoView({
               block: 'start', behavior: 'instant'
             });
-          }}>Data collection</button>
+          }}>Data &amp; diagnostics</button>
           <button type="button" className="workspace-density" aria-label={density === 'comfortable' ? 'Use compact spacing' : 'Use comfortable spacing'}
             aria-pressed={density === 'compact'} title={density === 'comfortable' ? 'Use compact spacing' : 'Use comfortable spacing'}
             onClick={() => setDensity(value => value === 'comfortable' ? 'compact' : 'comfortable')}>
@@ -203,9 +201,6 @@ export default function App() {
           <SourceExplorer theme={theme} dataVersion={dataVersion}/>
         </Suspense>
       </section>}
-      {selected.view === 'diagnostics' && <Suspense fallback={<p role="status" className="workspace-loading">Opening diagnostics…</p>}>
-        <DiagnosticsWorkspace/>
-      </Suspense>}
     </main>
     <footer className="research-footer"><span>Global Capital Monitor · Local economic research</span>
       <span>Primary sources · Explicit denominators · No synthetic observations</span></footer>
