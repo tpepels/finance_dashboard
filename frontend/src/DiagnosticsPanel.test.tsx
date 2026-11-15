@@ -96,7 +96,7 @@ describe('header diagnostics console', () => {
     expect(screen.getByText('426 / 462 histories stored')).toBeTruthy();
     expect(screen.getByRole('list',{name:'Update steps'})).toBeTruthy();
     expect(screen.getByText(/36 have never had a collection attempt/)).toBeTruthy();
-    expect(screen.getByRole('link',{name:'Open Data Collection for exact source status'})
+    expect(screen.getByRole('link',{name:'Open Data & diagnostics for exact source status'})
       .getAttribute('href')).toBe('#data-management');
   });
 
