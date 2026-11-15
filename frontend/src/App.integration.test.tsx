@@ -203,7 +203,8 @@ describe('dashboard shell', () => {
     render(<App/>);
     await user.click(screen.getByRole('button', { name: 'Data & sync' }));
     expect(await screen.findByRole('heading', { name: 'Data Collection' })).toBeTruthy();
-    expect(screen.getByText('Manual source check (optional)')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Collect original data' })).toBeTruthy();
+    expect(document.querySelector('#research-sources details')).toBeNull();
     expect(screen.getAllByRole('table')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Prepare diagnostic ZIP' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Sync history' })).toBeNull();
