@@ -332,6 +332,7 @@ SAFE_ERROR_CODES = {
     "source_policy_deferred", "source_policy_denied",
     "source_parse_failed", "source_empty", "source_transport_failed",
     "source_invalid", "provider_failed", "fred_schema_invalid",
+    "wid_measure_unavailable", "wid_metadata_invalid", "wid_observation_invalid", "wid_units_mismatch",
     "fred_empty", "fred_table_invalid", "source_date_invalid",
     "source_duplicate_period", "source_value_invalid", "source_empty",
     "source_window_invalid", "source_future_date", "source_mapping_mismatch",
