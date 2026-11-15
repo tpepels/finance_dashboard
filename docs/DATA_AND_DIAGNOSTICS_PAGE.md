@@ -5,10 +5,11 @@ This page is the authoritative operator entry point for source collection, curre
 ## User-facing hierarchy (top to bottom)
 
 1. **Overview:** Show the current job stage, the last completed check's time, available/missing/outdated data totals, and two immediately visible cards: **Next automatic step** and **Your action**. The automatic card shows a real scheduler deadline when observed, and explicitly flags an enabled service with no completed run. The action card distinguishes zero manual uploads from failed source requests requiring technical investigation. **Find and download missing data** stays visible but visually secondary while automatic checking is enabled; it becomes the dominant action only when a manual check is actually necessary.
-2. **Collection activity:** What is the current or last requested collection doing? Show download progress, then the individual download results within the same section. Show missing-data checks separately and distinguish attempts, new data saved, failures and postponed requests.
-3. **Needs attention:** Keep the files a person must download at the start of this section, followed by affected data series, their latest saved dates and next steps. Valid uploads start processing automatically.
-4. **Research quality:** Show research findings that require a closer look, with clear priorities and the suggested next step. Load the list automatically and offer a button to check for changes. Preserve scientific distinctions in the underlying calculations and downloadable technical evidence.
-5. **Troubleshooting and other checks:** Create or download a troubleshooting report, view detailed errors on request, use three clearly described additional checks, and add or verify OECD files. Display results beneath the operation that produced them.
+2. **Collection activity:** Show automatic collection progress and individual download results. A separate, clearly identified historical-record search remains available here for occasional older economic releases and fund holdings. Do not duplicate the normal collection and repair actions.
+3. **Add publisher files:** The single upload destination contains files explicitly requested by the current collection and other official publisher originals (WID, EU KLEMS, MSCI, Swinkels, gold and OECD). Choose one publisher from a labeled selector. Display download links, upload fields and processing status together, without nested expandable disclosures. OECD ZIP/ReadMe uploads and rechecks use the existing importer in this same section.
+4. **Needs attention:** Show affected data series, their latest saved dates, status and next steps. Data needing investigation must not imply that a manual download is necessary.
+5. **Research quality:** Show findings that require scientific review, prioritizing their current state and actual next step.
+6. **Investigate a data problem:** An explicitly technical area, only for exportable failure evidence and on-demand event logs. It never starts a publisher collection or presents a file uploader.
 
 Source lists can scroll vertically instead of hiding behind expandable disclosures. Put low-frequency, technical tools below actionable information, but do not hide their controls inside disclosure widgets.
 
@@ -24,15 +25,15 @@ Source lists can scroll vertically instead of hiding behind expandable disclosur
 
 ## Writing and grouping rules
 
-- Name sections after the decision they support: **Collection activity**, **Needs attention**, **Research quality**, and **Troubleshooting and other checks**. Download history belongs in Collection activity. Manual download and upload controls belong in Needs attention.
+- Name sections by purpose: **Collection activity**, **Add publisher files**, **Needs attention**, **Research quality**, and **Investigate a data problem**. Download history and optional historical searches belong in Collection activity. Every manual upload control belongs in Add publisher files.
 - Show users what happened, the current state, and the next useful action. One or two sentences are enough for normal states. Avoid generic statements about how the architecture works.
-- Buttons use a specific verb and object: **Find and download missing data**, **Check for newly published data**, **Look for older historical records**, **Create troubleshooting report**. Put one brief explanation beside specialized actions.
+- Keep one normal collection action: **Find and download missing data**. The separate **Search for older records** retrieves historical economic releases and fund filings. **Create troubleshooting report** only packages diagnostic evidence. Give specialized actions a brief purpose and show their actual results below them.
 - Use plain terms such as "data series", "saved files", "missing data", "publisher", "check" and "research results". Reserve internal terms such as ingestion, synchronization, preflight, source-health, native matrices, release journals, HTTP codes and raw enum values for the technical event log and troubleshooting ZIP.
 - State limitations as direct outcomes with an identified next step. Avoid repetitive disclaimers or constructions contrasting what a feature is with what it isn't.
-- The main page and quick status popup contain no expandable disclosure arrows. Technical details can be opened deliberately with an explicitly labeled button.
+- The main page and quick status popup contain no expandable disclosure arrows. The official-file catalogue uses one labeled selector; publisher links, uploads and results are visible for the selected source. Technical events open only on an explicit button.
 - Keep missing series separate from available series needing review. A completed check must retain unresolved failures and delays.
 
-- A failed publisher check is a technical issue, not an implicit request for the person to download a file. Ask for manual uploads only when the collection API provides exact official file links for an active `manual_required` job. Keep these two cases visibly distinct.
+- A failed publisher check is a technical issue, not an implicit request for the person to download a file. Distinguish **files requested now** (exact official links from active `manual_required` jobs) from the **optional official-file catalogue** for previously obtained originals. Both are presented together.
 - Show the publisher request count, the number of series actually repaired, and the still-missing series separately. Policy-deferred requests are included in unsuccessful request totals, and should be labelled accordingly.
 - Display source-level issues with plain statuses (**Failed**, **Postponed**, **Possibly outdated**) and their next step. Technical codes and internal source IDs belong in the ZIP.
 - When a check is running, the page presents progress and postpones technical follow-up decisions until the result is known. When scheduler data has not loaded, display an unknown state rather than saying automatic checking is off.
@@ -41,7 +42,7 @@ Source lists can scroll vertically instead of hiding behind expandable disclosur
 
 - Render the unified hierarchy and direct collection action without any `<details>` inside the operator page.
 - Route old diagnostics/source-coverage links into the new page and focus the correct section.
-- Preserve per-source progress, manual fallback upload, research caveats and file import/reassessment paths.
+- Preserve per-source progress, manual fallback upload, optional publisher file sources, OECD ZIP/ReadMe import and reassessment, research caveats, historical records and diagnostic export paths.
 - Show failed or missing evidence as unresolved; do not equate an attempted source with repaired coverage.
 - Maintain keyboard-focusable buttons, labeled progress, accessible tables, mobile layout, and dark theme.
 - Execute frontend, Python, browser and release-image workflows after changes.

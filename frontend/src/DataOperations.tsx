@@ -138,12 +138,12 @@ export default function DataOperations() {
     return () => { live = false; window.clearInterval(interval); };
   }, []);
 
-  async function sync(action: 'sync_current' | 'sync_history' | 'repair_source_health') {
+  async function sync() {
     setError('');
     setSubmitting(true);
     try {
       const job = await json(await fetch('/api/maintenance', {
-        method: 'POST', headers: HEADERS, body: JSON.stringify({ action }),
+        method: 'POST', headers: HEADERS, body: JSON.stringify({ action: 'sync_history' }),
       })) as Job;
       submitted.current.add(job.id);
       await refresh();
@@ -168,27 +168,12 @@ export default function DataOperations() {
     }
   }
   const disabled = submitting || Boolean(queue?.active_job_id) || !queue;
-  return <section className="data-sync" id="maintenance-tools" aria-label="Additional source maintenance">
-    <p className="data-sync-hint">The app checks for new data automatically when enabled.
-      Use these checks when you want to investigate a problem or look for older records.</p>
-    <div className="data-sync-advanced">
-      <div className="data-sync-controls">
-        <div className="data-sync-action">
-          <button type="button" disabled={disabled} className="data-sync-secondary"
-            onClick={() => void sync('sync_current')}>Check for newly published data</button>
-          <small>Checks economic indicators, market prices, exchange rates and company earnings.</small>
-        </div>
-        <div className="data-sync-action">
-          <button type="button" disabled={disabled} className="data-sync-secondary"
-            onClick={() => void sync('repair_source_health')}>Try missing or outdated sources again</button>
-          <small>Checks missing or outdated data again. Saved data stays available.</small>
-        </div>
-        <div className="data-sync-action">
-          <button type="button" disabled={disabled} className="data-sync-secondary"
-            onClick={() => void sync('sync_history')}>Look for older historical records</button>
-          <small>Looks for earlier economic releases and fund holdings.</small>
-        </div>
-      </div>
+  return <section className="data-sync" id="maintenance-tools" aria-label="Historical archives">
+    <div className="data-sync-historical-action">
+      <button type="button" disabled={disabled} className="data-sync-secondary"
+        onClick={()=>void sync()}>Search for older records</button>
+      <small>Checks earlier economic releases and fund holdings.
+        Normal publisher updates continue automatically.</small>
     </div>
     {active && <div className="data-sync-progress" role="status">
       <strong>{TITLES[active.action] ?? 'Data'} · {description(active.status)}</strong>

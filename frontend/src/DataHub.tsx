@@ -3,6 +3,8 @@ import './DataHub.css';
 import { describeDataStatus, formatDataTime, issueCategory, sourceNextStep } from './dataStatus';
 import LimitationAssessment from './LimitationAssessment';
 import DiagnosticsWorkspace from './DiagnosticsWorkspace';
+import DataOperations from './DataOperations';
+import ManualSources from './ManualSources';
 
 type Source = {
   dataset:string; label:string; status:string; job_id:string|null;
@@ -427,20 +429,22 @@ export default function DataHub(){
       </div>
     </section>}
 
+       <section className="data-history-check" aria-label="Older historical data">
+         <div>
+           <h4>Older releases and fund holdings</h4>
+           <p>Regular updates check current sources. This separate check looks for
+             additional older economic releases and historical fund filings.</p>
+         </div>
+         <DataOperations/>
+       </section>
     </section>
 
-    <section className="data-collection-section data-collection-availability" id="source-coverage"
-      tabIndex={-1} aria-label="Data availability">
-      <h3>Needs attention</h3>
-      {summary&&<div className="data-issue-breakdown"
-        aria-label="Why data needs attention">
-        <div><strong>{status.failedSeries}</strong><span>Failed data checks</span></div>
-        {status.uncheckedSeries>0&&<div><strong>{status.uncheckedSeries}</strong>
-          <span>Missing data not yet checked</span></div>}
-        <div><strong>{Math.max(0,status.needsReview)}</strong><span>Available data to review</span></div>
-        <div><strong>{status.waitingSeries}</strong><span>Downloads postponed</span></div>
-        <div><strong>{status.manualFiles}</strong><span>Files you need to upload</span></div>
-      </div>}
+    <section className="data-collection-section data-source-uploads" id="manual-files"
+      tabIndex={-1} aria-label="Add publisher files">
+      <h3>Add publisher files</h3>
+      <p>Most sources update automatically. Upload a file only when a publisher
+        download needs your help or you have an original research archive to add.</p>
+      {files.length>0?<>
     {files.length>0&&<div className="data-manual-files" aria-labelledby="manual-files">
       <h4 id="manual-files">Files to download yourself ({files.length})</h4>
       <p>Download each file from its publisher and upload it here. The app checks and adds its contents.</p>
@@ -467,6 +471,23 @@ export default function DataHub(){
         </table>
       </div>
     </div>}
+      </>:<p className="data-upload-none">No files requested by the current data check.</p>}
+      <ManualSources/>
+    </section>
+
+    <section className="data-collection-section data-collection-availability" id="source-coverage"
+      tabIndex={-1} aria-label="Data availability">
+      <h3>Needs attention</h3>
+      {summary&&<div className="data-issue-breakdown"
+        aria-label="Why data needs attention">
+        <div><strong>{status.failedSeries}</strong><span>Failed data checks</span></div>
+        {status.uncheckedSeries>0&&<div><strong>{status.uncheckedSeries}</strong>
+          <span>Missing data not yet checked</span></div>}
+        <div><strong>{Math.max(0,status.needsReview)}</strong><span>Available data to review</span></div>
+        <div><strong>{status.waitingSeries}</strong><span>Downloads postponed</span></div>
+        <div><strong>{status.manualFiles}</strong><span>Files you need to upload</span></div>
+      </div>}
+
 
       {summary?<div>
         <p><strong>{summary.needs_attention.toLocaleString()}</strong> data series have missing information or need checking.</p>
@@ -528,12 +549,14 @@ export default function DataHub(){
 
     <section className="data-collection-section data-investigation" id="diagnostics"
       tabIndex={-1} aria-label="Diagnostics and maintenance">
-      <h3>Troubleshooting and other checks</h3>
-      <p>Download an error report, review problems, or run an additional data check.</p>
+      <h3>Investigate a data problem</h3>
+      <p>Use these tools when a download, uploaded file or research check fails.
+         They provide evidence for investigating the problem; they do not download or change data.</p>
     <section className="data-collection-export" aria-label="Diagnostic export">
       <div>
-        <strong>Troubleshooting report</strong>
-        <p>A downloadable ZIP containing the source checks, errors, and file-import details needed to investigate problems.</p>
+        <strong>Download the technical report</strong>
+        <p>Create a ZIP to share when asking for help with failed data checks. It includes
+           source errors, archived-file inspections and research verification details.</p>
         {exporter.value?.state==='preparing'&&<small role="status">
           Creating the report
           {exporter.value.started_at&&

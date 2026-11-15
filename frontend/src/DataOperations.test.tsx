@@ -22,53 +22,25 @@ beforeEach(()=>{calls.length=0;mockFetch.mockClear();vi.stubGlobal('fetch',mockF
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 
 describe('integrated data synchronization and source health repair',()=>{
-  it('shows the three integrated operations without source selectors',async()=>{
+  it('shows only the distinct historical archive action, not duplicate collection buttons',async()=>{
     render(<DataOperations/>);
     expect(document.querySelector('#maintenance-tools')).toBeTruthy();
     expect(document.querySelectorAll('details')).toHaveLength(0);
-    expect(screen.getByRole('button',{name:'Check for newly published data'})).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Try missing or outdated sources again'})).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Look for older historical records'})).toBeTruthy();
-    expect(screen.getAllByRole('button')).toHaveLength(3);
-    expect(screen.getByText(/Checks economic indicators, market prices, exchange rates/)).toBeTruthy();
-    expect(screen.getByText(/Checks missing or outdated data again/)).toBeTruthy();
-    expect(screen.getByText(/Looks for earlier economic releases and fund holdings/)).toBeTruthy();
-    for(const button of screen.getAllByRole('button')){
-      expect(button.textContent).not.toMatch(/\b(refresh|ingest|analyse|reassess)\b/i);
-    }
-    expect(screen.queryByRole('combobox')).toBeNull();
-    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.getByRole('button',{name:'Search for older records'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Check for newly published data'})).toBeNull();
+    expect(screen.queryByRole('button',{name:'Try missing or outdated sources again'})).toBeNull();
     await waitFor(()=>expect(screen.getByRole('button',{
-      name:'Check for newly published data'}).hasAttribute('disabled')).toBe(false));
-  });
-  it('refreshes all current sources through one backend operation',async()=>{
-    const user=userEvent.setup();
-    render(<DataOperations/>);
-    const button=screen.getByRole('button',{name:'Check for newly published data'});
-    await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
-    await user.click(button);
-    await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
-    expect(calls.find(c=>c.method==='POST')?.body).toEqual({action:'sync_current'});
-    expect(mockFetch.mock.calls.some(([,init])=>
-      new Headers(init?.headers).get('X-GCM-Action')==='dashboard')).toBe(true);
+      name:'Search for older records'}).hasAttribute('disabled')).toBe(false));
   });
   it('starts history backfill without date or provider selections',async()=>{
     const user=userEvent.setup();
     render(<DataOperations/>);
-    const button=screen.getByRole('button',{name:'Look for older historical records'});
+    const button=screen.getByRole('button',{name:'Search for older records'});
     await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
     await user.click(button);
     await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
     expect(calls.find(c=>c.method==='POST')?.body).toEqual({action:'sync_history'});
-  });
-  it('submits canonical parameterless source-health repair action',async()=>{
-    const user=userEvent.setup();
-    render(<DataOperations/>);
-    const button=screen.getByRole('button',{name:'Try missing or outdated sources again'});
-    await waitFor(()=>expect(button.hasAttribute('disabled')).toBe(false));
-    await user.click(button);
-    await waitFor(()=>expect(calls.some(c=>c.method==='POST')).toBe(true));
-    expect(calls.find(c=>c.method==='POST')?.body).toEqual({action:'repair_source_health'});
   });
   it('shows running progress and cancellation, disables competing syncs',async()=>{
     const liveFetch=vi.fn(async (_request:string,init?:RequestInit)=>{
@@ -85,7 +57,7 @@ describe('integrated data synchronization and source health repair',()=>{
     render(<DataOperations/>);
     expect(await screen.findByText(/Checking market prices and currencies/)).toBeTruthy();
     expect(screen.getByText(/15 \/ 27/)).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Look for older historical records'}).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button',{name:'Search for older records'}).hasAttribute('disabled')).toBe(true);
     await user.click(screen.getByRole('button',{name:'Stop this check'}));
     expect(liveFetch.mock.calls.some(([url,init])=>
       String(url).endsWith('/job1/cancel') && init?.method==='POST')).toBe(true);

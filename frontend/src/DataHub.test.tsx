@@ -63,6 +63,13 @@ const fetcher=vi.fn(async(input:string,init?:RequestInit)=>{
   if(url==='/api/diagnostics/export-status')return json(exportState);
   if(url==='/api/maintenance')return json({active_job_id:null,jobs:[],operations:[]});
   if(url==='/api/originals')return json({active:false,files:[],jobs:[]});
+  if(url==='/api/manual-sources')return json({active:false,queued:0,deferred:0,jobs:[],datasets:[
+    {id:'wid-world',title:'WID.world — world income and wealth',description:'Publisher observations.',
+     series_ids:[],roles:[{id:'data',label:'WID observations',accept:'.csv',
+       download_url:'https://wid.world/original.csv',max_bytes:500000}],staged:{}},
+    {id:'oecd-icio',title:'OECD — ICIO original archives',description:'OECD source originals.',
+     series_ids:[],roles:[],staged:{},existing_importer:true,reference_links:[]},
+  ]});
   if(url==='/api/diagnostics/limitation-assessment')return json({
     schema_version:1,generated_at:'2026-11-14T14:00:00Z',
     scientific_acceptance:{state:'ready',evaluated_at:'2026-11-14T13:45:00Z',
@@ -118,7 +125,12 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByText('Data series available')).toBeTruthy();
     expect(screen.getByText('Available series to review').previousElementSibling?.textContent).toBe('12');
     expect(screen.getByRole('heading',{name:'Research quality'})).toBeTruthy();
-    expect(screen.getByRole('heading',{name:'Troubleshooting and other checks'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Investigate a data problem'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Add publisher files'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Older releases and fund holdings'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Check for newly published data'})).toBeNull();
+    expect(screen.queryByRole('button',{name:'Try missing or outdated sources again'})).toBeNull();
+    expect(screen.getByRole('button',{name:'Search for older records'})).toBeTruthy();
     expect(screen.getByRole('table',{name:'Source download progress'})).toBeTruthy();
     expect(await screen.findByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     expect(screen.queryByRole('link',{name:'Open source explorer'})).toBeNull();
@@ -345,7 +357,8 @@ describe('unified Data and Diagnostics page',()=>{
     const official=await screen.findByRole('link',{name:'WID_metadata_WO.csv'});
     expect(official.getAttribute('href')).toContain('wid.world');
     expect(screen.getByRole('table',{name:'Files requiring manual download'})).toBeTruthy();
-    expect(document.querySelector('#source-coverage .data-manual-files')).toBeTruthy();
+    expect(document.querySelector('#manual-files .data-manual-files')).toBeTruthy();
+    expect(document.querySelector('#diagnostics .data-manual-files')).toBeNull();
     expect(screen.getByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     await user.upload(screen.getByLabelText('Upload WID_metadata_WO.csv'),
       new File(['metadata'],'WID_metadata_WO.csv'));
@@ -353,6 +366,22 @@ describe('unified Data and Diagnostics page',()=>{
     expect(sent.header).toBe('dashboard');
     expect(sent.url).toContain('fallback-upload?job_id=abc&role=metadata');
     expect(screen.queryByRole('button',{name:'Import staged files'})).toBeNull();
+  });
+
+  it('keeps OECD uploads with publisher files, outside technical troubleshooting',async()=>{
+    const user=userEvent.setup();
+    render(<DataHub/>);
+    const source=await screen.findByRole('combobox',{name:'Choose a publisher or dataset'});
+    expect((source as HTMLSelectElement).value).toBe('oecd-icio');
+    expect(document.querySelectorAll('#manual-files .original-uploader')).toHaveLength(1);
+    expect(document.querySelector('#diagnostics .original-uploader')).toBeNull();
+    expect(document.querySelector('#diagnostics #maintenance-tools')).toBeNull();
+    expect(screen.getByRole('button',{name:'View technical event log'})).toBeTruthy();
+    await user.selectOptions(source,'wid-world');
+    expect(await screen.findByLabelText('Upload WID observations')).toBeTruthy();
+    expect(document.querySelectorAll('.original-uploader')).toHaveLength(0);
+    await user.selectOptions(source,'oecd-icio');
+    expect(document.querySelectorAll('#manual-files .original-uploader')).toHaveLength(1);
   });
 
   it('prepares debug ZIP asynchronously, then offers cached download separately',async()=>{

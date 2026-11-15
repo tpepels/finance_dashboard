@@ -1104,7 +1104,7 @@ html[data-theme="dark"] .diagnostics-warnings {color:#e5b575;}
 /* Original-data upload lives inside the existing Source data workspace. */
 .original-uploader { margin: 0 0 25px; padding: 18px; border: 1px solid #71818d55;
   border-radius: 8px; background: rgba(125,140,150,.035); }
-.original-uploader h4 { margin: 0 0 6px; font-size: 18px; }
+.original-uploader h6 { margin: 0 0 6px; font-size: 18px; }
 .original-uploader header p { max-width: 75ch; line-height: 1.6; }
 .original-file-picker { display: inline-flex; flex-direction: column; gap: 9px;
   border: 1px dashed #7f9b9d; border-radius: 7px; padding: 12px 16px; margin: 12px 0;
@@ -1123,29 +1123,10 @@ html[data-theme="dark"] .diagnostics-warnings {color:#e5b575;}
 .original-import-note { font-size: 12px; max-width: 75ch; line-height: 1.5; opacity: .75; }
 
 
-/* One Data page: current data controls, compact manual imports, advanced audit. */
-.workspace-sources > .data-sync { padding: 16px 0 18px; border-bottom: 1px solid var(--border, #8796a455); }
-.data-sync-advanced { max-width: 750px; margin-top: 12px; font-size: 13px; }
-.data-sync-advanced > summary { cursor: pointer; width: max-content; padding: 5px 0; }
-.data-sync-advanced > button { padding: 9px 13px; margin: 8px 0;
-  border: 1px solid #7a929f; border-radius: 6px; cursor: pointer; font: inherit; }
-.data-sync-advanced > button:disabled { opacity: .5; cursor: default; }
-
-.manual-source-panel { margin: 20px 0; padding: 16px 0; }
-.manual-source-header h3 { margin: 0 0 5px; font-size: 18px; }
-.manual-source-header p { margin: 6px 0; max-width: 76ch; font-size: 13px; line-height: 1.6; }
-.manual-source-header p:last-child { font-size: 12px; opacity: .75; }
-.manual-source-list { display: grid; gap: 8px; margin-top: 16px; }
-.manual-source-entry { margin: 0; border: 1px solid var(--border, #81929c75);
-  border-radius: 8px; background: rgba(125,140,150,.025); }
-.manual-source-entry > summary { display: flex; cursor: pointer; justify-content: space-between;
-  align-items: center; gap: 10px; padding: 14px 16px; font-size: 13px;
-  list-style-position: inside; }
-.manual-source-entry > summary strong { font-size: 14px; line-height: 1.5; }
-.manual-source-entry > summary small { opacity: .72; white-space: nowrap; font-size: 11px; }
-.manual-source-entry[open] > summary { border-bottom: 1px solid var(--border, #81929c75); }
-.manual-source-entry-content { padding: 12px 16px 16px; display: grid; gap: 10px; }
-.manual-source-entry-content > p { max-width: 75ch; margin: 2px 0; font-size: 12px; line-height: 1.55; }
+/* Publisher file selector and uploader share a single place on Data & diagnostics. */
+.manual-source-panel { margin: 0; padding: 0; }
+.manual-source-header h4 { margin: 0 0 5px; font-size: 15px; }
+.manual-source-header p { margin: 6px 0; max-width: 76ch; font-size: 12px; line-height: 1.6; }
 .manual-source-file { display: flex; flex-wrap: wrap; align-items: center;
   justify-content: space-between; gap: 12px; padding: 8px 0;
   border-bottom: 1px solid var(--border, #81929c45); }
@@ -1159,15 +1140,7 @@ html[data-theme="dark"] .diagnostics-warnings {color:#e5b575;}
 .manual-source-outcome ul { margin: 6px 0; padding-left: 18px; line-height: 1.6; }
 .manual-source-outcome small { opacity: .75; }
 .manual-source-note { font-size: 12px; opacity: .8; }
-.manual-source-entry .original-uploader { margin: 12px 0 0; padding: 12px;
-  border-radius: 6px; }
-.manual-source-entry .original-uploader h4 { font-size: 15px; }
-.workspace-sources > .research-source-advanced > summary { cursor: pointer; }
 @media(max-width:650px) {
-  .manual-source-panel { margin: 12px 0; padding: 10px 0; }
-  .manual-source-entry > summary { padding: 12px; align-items: flex-start; }
-  .manual-source-entry > summary small { white-space: normal; text-align: right; }
-  .manual-source-entry-content { padding: 12px; }
   .manual-source-file { align-items: flex-start; flex-direction: column; }
   .manual-source-upload input { width: 100%; }
 }

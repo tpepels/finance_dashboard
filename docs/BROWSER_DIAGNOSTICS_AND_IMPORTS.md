@@ -63,7 +63,7 @@ historical research data.
 
 ## Upload originals from the browser
 
-The simplified **Data → Manual downloads and uploads** catalogue now links
+The **Data & diagnostics → Add publisher files** selector now links
 each unresolved original-source family, including WID world, MSCI regional
 factsheets and methodology, EU KLEMS US, Swinkels v6, gold XAU/USD and
 OECD ICIO. Uploads validate and import automatically once required files
@@ -144,8 +144,8 @@ diagnostics and per-RData numeric-array inventories. The Global → Supply
 chains section displays reconstructed share histories alongside published
 TiVA values and gives the number of matching/comparable country-years.
 
-**Already imported ZIPs:** click **Reassess previously imported OECD
-originals** in Source data. One background job re-verifies every sealed source
+**Already imported ZIPs:** choose **OECD — ICIO original archives** under
+Add publisher files and use **Recheck uploaded OECD files**. One background job re-verifies every sealed source
 archive and derives the new numeric results as immutable content-addressed
 scientific adjuncts under `icio/native-method-reports/`. Sealed archive bytes,
 original audit, acquisition receipt and SQLite observations remain unchanged.

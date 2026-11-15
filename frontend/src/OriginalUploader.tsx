@@ -158,7 +158,7 @@ export default function OriginalUploader() {
     }
   };
   const reassess = async () => {
-    setBusy(true); setError(''); setActivity('Checking stored OECD files for errors…');
+    setBusy(true); setError(''); setActivity('Rechecking uploaded OECD files…');
     try {
       const response = await fetch('/api/originals/reassess', {
         method: 'POST', headers: { 'X-GCM-Action': 'dashboard' },
@@ -179,12 +179,12 @@ export default function OriginalUploader() {
   const latest = inventory.jobs[0];
   return <section className="original-uploader" aria-labelledby="original-uploader-heading">
     <header>
-      <h4 id="original-uploader-heading">Add official OECD data files</h4>
-      <p>Add the OECD data ZIP files and their matching ReadMe workbook. The app checks
-        the files and adds the information to your research data.</p>
+      <h6 id="original-uploader-heading">Upload OECD archives</h6>
+      <p>Select original OECD ZIP files and the corresponding ReadMe workbook.
+        Valid files are processed automatically.</p>
     </header>
     <label className="original-file-picker">
-      <span>{busy ? 'Uploading files…' : 'Choose OECD files (.zip or .xlsx)'}</span>
+      <span>{busy ? 'Uploading files…' : 'Select OECD ZIP and ReadMe files'}</span>
       <input type="file" accept=".zip,.xlsx" multiple disabled={busy}
         aria-label="Upload original research ZIP files and ReadMe workbook"
         onChange={event => {
@@ -220,17 +220,17 @@ export default function OriginalUploader() {
           setError(reason instanceof Error ? reason.message : 'Import could not start')); }}>
         Finish adding uploaded files
       </button>}
-    <button type="button" className="original-reassess-import" disabled={busy || inventory.active}
-      onClick={() => { void reassess(); }}>
-      Check stored OECD files for errors
-    </button>
+    {inventory.files.length>0&&<button type="button" className="original-reassess-import"
+      disabled={busy || inventory.active} onClick={() => { void reassess(); }}>
+      Recheck uploaded OECD files
+    </button>}
     {inventory.files.length > 0 && <div className="original-staged-files">
       <h4>Files already uploaded ({inventory.files.length})</h4>
       <ul>{inventory.files.map(file => <li key={file.filename}>
         <span>{file.filename}</span><small>{size(file.bytes)}</small>
       </li>)}</ul>
     </div>}
-    <p className="original-import-note">The app checks each OECD file using the format and years
-      provided by the publisher. Any issues appear in the results above and in the troubleshooting report.</p>
+    <p className="original-import-note">File checks and import progress appear above.
+      If a file is rejected, the technical report contains its failure details.</p>
   </section>;
 }

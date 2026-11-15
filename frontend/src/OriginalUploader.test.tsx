@@ -45,7 +45,9 @@ describe('original research file upload', () => {
 
   it('reassesses already stored archives from the browser without re-upload', async () => {
     const requested: string[] = [];
-    const originals = { active: false, files: [], jobs: [] as unknown[] };
+    const originals = { active: false, files: [
+      {filename:'ICIO2021econA.zip',bytes:2400,kind:'edition_archive'}],
+      jobs: [] as unknown[] };
     vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
       if (url === '/api/originals/reassess') {
         requested.push(String(options?.headers && (options.headers as Record<string, string>)['X-GCM-Action']));
@@ -55,9 +57,9 @@ describe('original research file upload', () => {
     }));
     const user = userEvent.setup();
     render(<OriginalUploader/>);
-    await user.click(screen.getByRole('button', { name: 'Check stored OECD files for errors' }));
+    await user.click(screen.getByRole('button', { name: 'Recheck uploaded OECD files' }));
     await waitFor(() => expect(requested).toEqual(['dashboard']));
-    expect(screen.getByText(/Checking stored OECD files for errors/)).toBeTruthy();
+    expect(screen.getByText(/Rechecking uploaded OECD files/)).toBeTruthy();
   });
 
   it('retains a staged regular archive until its required ReadMe is supplied', async () => {

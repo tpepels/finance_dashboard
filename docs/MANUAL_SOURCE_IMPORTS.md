@@ -1,24 +1,17 @@
-# Data page: one-click source acquisition and agent diagnostics
+# Data & diagnostics: acquisition, publisher uploads and technical evidence
 
-The **Data** page is deliberately limited to two human-facing views:
+The page has one primary collection action, **Find and download missing data**.
+It displays collection progress, original-source availability, and research quality.
+All browser uploads are grouped under **Add publisher files**:
 
-1. **Source health** — one cumulative table for economic, market and FX
-   sources: totals, retained observations and sources requiring attention.
-   It also shows whether the acquisition/repair queue is running, deferred,
-   completed or has issues requiring an agent.
-2. **Files requiring manual download** — a table that is absent when there
-   are no download failures. Each row supplies the exact registered publisher
-   URL, a short human-readable reason and one upload control.
+- **Files requested by the latest collection:** Exact, official publisher links and upload controls, shown only for genuine manual-source requests.
+- **Other official publisher files:** One labeled source selector for WID, EU KLEMS, MSCI, Swinkels, gold and OECD. The selected source's download links, upload fields and import status are visible together. The OECD ZIP/ReadMe importer is inside this same section.
 
-There is one primary **Start automatic downloads** button.
-The page does **not** expose separate source explorers, archive diagnostics,
-accounting ledgers, and nested source-health reports. A **Download agent debug
-ZIP** action and one on-demand **Open debug console** action provide the
-developer/agent information.
+**Search for older records** is a distinct, optional historical-release and fund-filing action under Collection activity. **Investigate a data problem** contains only the technical ZIP report and on-demand event log. Ordinary collection and missing-source repair have no duplicate buttons.
 
 ## Automatic workflow
 
-`POST /api/data/acquire` begins both registered original-source acquisition
+`POST /api/data/collection/start` begins both registered original-source acquisition
 and the canonical `repair_source_health` job. The automatic original-source
 queue covers WID world CSV+metadata, EU KLEMS US LAB, Swinkels v6, current
 XAU/USD JSON, MSCI's three valuation PDF originals, the exact pinned MSCI
@@ -45,7 +38,7 @@ existing canonical parser and append-only ingestion service.
 ## Manual fallback
 
 Only files whose automatic download actually failed are presented in the
-second table. Select the official link, download in the browser and upload
+collection's requested-files table. Select the official link, download in the browser and upload
 the file in the same row. `POST /api/manual-sources/fallback-upload` checks
 the job/role identity, filename, type, size and original hash where pinned.
 After the last missing file arrives, the same durable job restarts ingestion
@@ -53,11 +46,9 @@ After the last missing file arrives, the same durable job restarts ingestion
 file: a Chrome-downloaded replacement never makes other uploaded bytes
 look publisher-retrieved.
 
-The 2025 OECD ZIP/ReadMe fallback uses its existing pinned archive importer.
-Older and extended OECD editions have different schema contracts and remain
-in the original historical archive importer, available in the **developer
-console → Advanced source operations**, including historical sync, gap
-repair and OECD reassessment.
+OECD ZIPs and ReadMe workbooks, including older and extended editions, are
+uploaded and rechecked in **Add publisher files → OECD — ICIO original archives**.
+The server retains its separate, edition-specific validation contracts.
 
 A download whose bytes arrived but failed economic/scientific parsing is
 **an agent issue**, rather than a request for the human to download identical
@@ -69,7 +60,8 @@ bytes again. Source-level status and failure codes are retained for debugging.
 repair status and the exact outstanding manual files. `GET
 /api/data/debug-console` provides the complete redacted state for developers.
 
-The single `GET /api/diagnostics/download` ZIP includes:
+The ZIP created through `POST /api/diagnostics/prepare` and downloaded from
+`GET /api/diagnostics/export-file` includes:
 
 - Release identity, diagnostic status, structured console and event journal.
 - Complete source coverage per series as JSON and CSV, with last periods,

@@ -34,6 +34,7 @@ export default function ManualSources() {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<Record<string,boolean>>({});
   const [complete, setComplete] = useState<string|null>(null);
+  const [selectedId, setSelectedId] = useState<string|null>(null);
   const observed = useRef<Map<string,string>>(new Map());
   useEffect(() => {
     let live = true;
@@ -149,97 +150,93 @@ export default function ManualSources() {
     } finally { setBusy(false); }
   }
 
+  const suggested = status?.datasets.find(item => Object.keys(item.staged).length>0)
+    ?? status?.datasets.find(item => status.jobs.some(job =>
+      job.dataset===item.id && !terminal.has(job.status) && job.status!=='deferred'))
+    ?? status?.datasets.find(item => item.id==='oecd-icio')
+    ?? status?.datasets[0];
+  const selected = status?.datasets.find(item => item.id===selectedId) ?? suggested;
+  const recent = selected ? status?.jobs.find(job => job.dataset===selected.id) : undefined;
+  const ready = selected ? selected.roles.length>0 &&
+    selected.roles.every(role => selected.staged[role.id]) : false;
+
   return <section className="manual-source-panel" aria-labelledby="manual-originals-heading">
     <header className="manual-source-header">
-      <h3 id="manual-originals-heading">Publisher downloads and manual fallback</h3>
-      <p>Fetch missing sources downloads registered publisher files on the server and automatically
-        validates and imports them. The import queue does not block uploads.</p>
-      <p>If the publisher blocks automatic access, download the original below and upload it.
-        Uploads are identified as user-supplied; first-publication dates are never inferred.</p>
-      <button type="button" disabled={busy} onClick={()=>void fetchPublishers()}>
-        Fetch missing sources
-      </button>
-      {status && (status.active || !!status.queued || !!status.deferred) && <small role="status">
-        {status.queued ?? 0} queued · {status.deferred ?? 0} waiting for publisher limits
-        · import worker {status.active?'running':'idle'}
-      </small>}
+      <h4 id="manual-originals-heading">Other official publisher files</h4>
+      <p>Choose a source if you already have its original file, or need to download
+        one manually. The app checks uploaded files and imports valid data automatically.</p>
     </header>
-    {error && <p role="alert">{error}</p>}
-    {message && <p role="status">{message}</p>}
-    {!status && !error && <p role="status">Loading manual source catalogue…</p>}
-    <div className="manual-source-list">
-    {status?.datasets.map(source=>{
-      const recent = status.jobs.find(job=>job.dataset===source.id);
-      const ready = source.roles.length > 0 &&
-        source.roles.every(role=>source.staged[role.id]);
-      return <details className="manual-source-entry" key={source.id}>
-        <summary><strong>{source.title}</strong>
-          <small>{recent ? recent.status.replaceAll('_',' ') :
-            Object.keys(source.staged).length ? 'Files uploaded' :
-            source.existing_importer ? 'ZIP / XLSX originals' : 'Download / upload'}</small>
-        </summary>
-        <div className="manual-source-entry-content">
-        <p>{source.description}</p>
-        {source.roles.map(role=><div className="manual-source-file" key={role.id}>
-          <div className="manual-source-file-name">
-            <a href={role.download_url} target="_blank" rel="noopener noreferrer">
-              Download {role.label}</a>
-            <small>{role.accept} · max {fileSize(role.max_bytes)}
-              {source.staged[role.id] ? ' · uploaded ('+
-                fileSize(source.staged[role.id].bytes)+')' : ''}</small>
-          </div>
-          <label className="manual-source-upload">
-            <span>Upload {role.label}</span>
-            <input type="file" aria-label={'Upload '+role.label}
-              accept={role.accept} disabled={!!uploading[source.id+'/'+role.id]}
-              onChange={event=>{
-                const file=event.currentTarget.files?.[0];
-                if(file) void upload(source,role,file);
-                event.currentTarget.value='';
-              }}/>
-          </label>
-        </div>)}
-        {(!!source.roles.length || source.id === 'oecd-icio') && <button type="button" disabled={busy}
-          onClick={()=>void fetchPublishers(source.id)}>Refresh from publisher</button>}
-        {!!source.reference_links?.length && <details>
-          <summary>{source.existing_importer ? 'OECD original downloads' : 'Additional publisher references'}</summary>
-          <ul>{source.reference_links.map(link=><li key={link.label}>
-            <a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
-          </li>)}</ul>
-        </details>}
-        {source.existing_importer && <OriginalUploader/>}
-        {ready && <button type="button" disabled={busy}
-          onClick={()=>{void retry(source.id);}}>Import staged files</button>}
-        {recent && <div className="manual-source-outcome" role="status">
-          <strong>{recent.status === 'deferred' ? 'Waiting for publisher rate limit' :
-            recent.status === 'downloading' ? 'Downloading publisher files' :
-            recent.status === 'complete' ? 'Imported' :
-            recent.status === 'partial' ? 'Partially imported' :
-            recent.status === 'failed' ? 'Import failed' : 'Import '+recent.status}</strong>
-          {recent.method && <small> · {recent.method === 'publisher' ? 'publisher HTTPS' : 'manual upload'}</small>}
-          {recent.error_code && <small> · {recent.error_code}</small>}
-          {recent.status === 'deferred' && recent.retry_at_unix &&
-            <small> · automatic retry {new Date(recent.retry_at_unix * 1000).toLocaleString()}</small>}
-          {recent.status === 'downloading' && <small> · {Object.keys(recent.downloaded ?? {}).length} downloaded</small>}
-          {(recent.status === 'failed' || recent.status === 'interrupted') && recent.method === 'publisher'
-            && <button type="button" disabled={busy} onClick={()=>void fetchPublishers(source.id)}>Retry publisher download</button>}
-          {(recent.status === 'failed' || recent.status === 'interrupted' || recent.status === 'partial')
-            && recent.method !== 'publisher'
-            && <button type="button" disabled={busy} onClick={()=>void retry(source.id)}>Retry import</button>}
-          {!!recent.sources?.length && <ul>{recent.sources.map(result=><li key={result.id}>
-            {result.id} — {result.status}
-            {result.last_period && ' · latest source period '+result.last_period}
-            {result.versions_added != null && ' · '+result.versions_added+' new/revised observations'}
-            {result.error_code && ' · '+result.error_code}
-          </li>)}</ul>}
-          {recent.status === 'complete' && <small>{recent.origin_verified
-            ? 'Fetched over HTTPS from registered publisher URLs.'
-            : 'Upload origin unverified.'} Original bytes remain available for source audit.</small>}
-        </div>}
+    {!status&&!error&&<p role="status">Loading available source files…</p>}
+    {status&&<label className="manual-source-selector" htmlFor="manual-source-selection">
+      <span>Choose a publisher or dataset</span>
+      <select id="manual-source-selection" value={selected?.id??''}
+        onChange={event=>setSelectedId(event.currentTarget.value)}>
+        {status.datasets.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}
+      </select>
+    </label>}
+    {error&&<p role="alert" className="manual-source-alert">{error}</p>}
+    {message&&<p role="status" className="manual-source-message">{message}</p>}
+    {selected&&<section className="manual-source-selected" aria-label={selected.title+' files'}>
+      <header>
+        <h5>{selected.title}</h5>
+        <p>{selected.description}</p>
+      </header>
+      {selected.roles.map(role=><div className="manual-source-file" key={role.id}>
+        <div className="manual-source-file-name">
+          <a href={role.download_url} target="_blank" rel="noopener noreferrer">
+            Download {role.label}</a>
+          <small>{role.accept} · max {fileSize(role.max_bytes)}
+            {selected.staged[role.id] ? ' · uploaded ('+
+              fileSize(selected.staged[role.id].bytes)+')' : ''}</small>
         </div>
-      </details>;
-    })}
-    </div>
-    {complete && <p className="manual-source-note">Import finished. Source coverage has been refreshed.</p>}
+        <label className="manual-source-upload">
+          <span>Upload {role.label}</span>
+          <input type="file" aria-label={'Upload '+role.label}
+            accept={role.accept} disabled={!!uploading[selected.id+'/'+role.id]}
+            onChange={event=>{
+              const file=event.currentTarget.files?.[0];
+              if(file)void upload(selected,role,file);
+              event.currentTarget.value='';
+            }}/>
+        </label>
+      </div>)}
+      {!!selected.reference_links?.length&&<div className="manual-source-references">
+        <h6>Official download links</h6>
+        <ul>{selected.reference_links.map(link=><li key={link.label}>
+          <a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a>
+        </li>)}</ul>
+      </div>}
+      {selected.existing_importer&&<OriginalUploader/>}
+      {ready && (!recent || ['failed','partial','interrupted'].includes(recent.status))
+        &&<button type="button" disabled={busy} onClick={()=>void retry(selected.id)}>
+          Recheck uploaded files</button>}
+      <div className="manual-source-secondary-actions">
+        <button type="button" disabled={busy} onClick={()=>void fetchPublishers(selected.id)}>
+          Download this source from publisher</button>
+        <small>Optional server-side download when publisher access is available.</small>
+      </div>
+      {recent&&<div className="manual-source-outcome" role="status">
+        <strong>{recent.status==='deferred'?'Waiting for publisher access':
+          recent.status==='downloading'?'Downloading publisher files':
+          recent.status==='complete'?'Files imported':
+          recent.status==='partial'?'Some files need checking':
+          recent.status==='failed'?'File import failed':'File check: '+recent.status.replaceAll('_',' ')}</strong>
+        {recent.error_code&&<small> · {recent.error_code}</small>}
+        {recent.status==='deferred'&&recent.retry_at_unix&&
+          <small> · automatic retry {new Date(recent.retry_at_unix*1000).toLocaleString()}</small>}
+        {!!recent.sources?.length&&<ul>{recent.sources.map(result=><li key={result.id}>
+          {result.id} — {result.status}
+          {result.last_period&&' · latest period '+result.last_period}
+          {result.versions_added!=null&&' · '+result.versions_added+' new/revised observations'}
+          {result.error_code&&' · '+result.error_code}
+        </li>)}</ul>}
+        {recent.status==='complete'&&<small>
+          {recent.origin_verified?'Publisher download verified.':'Uploaded file origin not verified.'}
+          {' '}Original bytes are retained for source verification.
+        </small>}
+      </div>}
+    </section>}
+    {complete&&<p className="manual-source-note" role="status">
+      File import finished. Source coverage has been updated.</p>}
   </section>;
 }

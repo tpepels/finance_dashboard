@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ManualSources from './ManualSources';
 
@@ -54,20 +54,19 @@ beforeEach(()=>{
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 
 describe('one manual original-source importer on simplified Data page',()=>{
-  it('lists exact publisher downloads for WID, MSCI and OECD under compact disclosures',async()=>{
+  it('has one visible source selector and its actual download/upload controls',async()=>{
     const user=userEvent.setup();
     render(<ManualSources/>);
-    expect(await screen.findByText('WID.world — world income and wealth')).toBeTruthy();
-    expect(screen.getByText('MSCI Eafe — valuation factsheet')).toBeTruthy();
-    expect(screen.getByText('OECD — ICIO original archives')).toBeTruthy();
-    await user.click(screen.getByText('WID.world — world income and wealth'));
+    const picker=await screen.findByRole('combobox',{name:'Choose a publisher or dataset'});
+    expect(picker.querySelectorAll('option')).toHaveLength(3);
+    expect(document.querySelectorAll('details')).toHaveLength(0);
+    await user.selectOptions(picker,'wid-world');
     const download=screen.getByRole('link',{name:'Download WID world observations'});
     expect(download.getAttribute('href')).toBe('https://wid.world/bulk_download/WID_data_WO.csv');
     expect(download.getAttribute('rel')).toContain('noopener');
     expect(screen.getByLabelText('Upload WID world observations')).toBeTruthy();
-    await user.click(screen.getByText('OECD — ICIO original archives'));
+    await user.selectOptions(picker,'oecd-icio');
     expect(screen.getByText('OECD canonical uploader')).toBeTruthy();
-    await user.click(screen.getByText('OECD original downloads'));
     expect(screen.getByRole('link',{name:'1995-2000_SML.zip'}).getAttribute('href'))
       .toContain('webfs-sti.oecd.org');
     expect(screen.queryByRole('checkbox')).toBeNull();
@@ -93,7 +92,7 @@ describe('one manual original-source importer on simplified Data page',()=>{
     }
     vi.stubGlobal('XMLHttpRequest',FakeXHR);
     render(<ManualSources/>);
-    await user.click(await screen.findByText('MSCI Eafe — valuation factsheet'));
+    await user.selectOptions(await screen.findByRole('combobox'), 'msci-eafe');
     const picker=screen.getByLabelText('Upload Index factsheet PDF');
     await user.upload(picker,new File(['%PDF-1.7'], 'msci-eafe.pdf', {type:'application/pdf'}));
     await waitFor(()=>expect(sent.body?.name).toBe('msci-eafe.pdf'));
@@ -111,19 +110,21 @@ describe('one manual original-source importer on simplified Data page',()=>{
         received:100,versions_added:1,last_period:'2024-01-01'}],
       origin_verified:false,finished_at:'2026-11-13'}] as typeof payload.jobs;
     render(<ManualSources/>);
-    await user.click(await screen.findByText('WID.world — world income and wealth'));
+    await user.selectOptions(await screen.findByRole('combobox'), 'wid-world');
     expect(screen.getByText(/latest source period 2024-01-01/)).toBeTruthy();
     const picker=screen.getByLabelText('Upload WID world observations');
     await user.upload(picker,new File(['a'.repeat(300001)],'WID_data_WO.csv'));
     expect(screen.getByRole('alert').textContent).toContain('exceeds');
   });
 
-  it('queues all missing publisher downloads with one action and no import confirmation',async()=>{
+  it('fetches only the selected source without a duplicate global download action',async()=>{
     const user=userEvent.setup();
     render(<ManualSources/>);
-    await user.click(await screen.findByRole('button',{name:'Fetch missing sources'}));
-    await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch'));
+    await user.selectOptions(await screen.findByRole('combobox'),'wid-world');
+    await user.click(screen.getByRole('button',{name:'Download this source from publisher'}));
+    await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch?dataset=wid-world'));
     expect(await screen.findByText(/1 publisher source job\(s\) queued/)).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Fetch missing sources'})).toBeNull();
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 
@@ -131,7 +132,7 @@ describe('one manual original-source importer on simplified Data page',()=>{
     const user=userEvent.setup();
     payload.active=true;
     render(<ManualSources/>);
-    await user.click(await screen.findByText('WID.world — world income and wealth'));
+    await user.selectOptions(await screen.findByRole('combobox'), 'wid-world');
     const picker=screen.getByLabelText('Upload WID world observations') as HTMLInputElement;
     expect(picker.disabled).toBe(false);
   });
@@ -139,11 +140,9 @@ describe('one manual original-source importer on simplified Data page',()=>{
   it('exposes per-source publisher retry alongside the OECD canonical manual importer',async()=>{
     const user=userEvent.setup();
     render(<ManualSources/>);
-    const heading = await screen.findByText('OECD — ICIO original archives');
-    await user.click(heading);
-    const oecd = heading.closest('.manual-source-entry');
-    expect(oecd).not.toBeNull();
-    await user.click(within(oecd as HTMLElement).getByRole('button',{name:'Refresh from publisher'}));
+    await screen.findByRole('combobox',{name:'Choose a publisher or dataset'});
+    expect(screen.getByText('OECD canonical uploader')).toBeTruthy();
+    await user.click(screen.getByRole('button',{name:'Download this source from publisher'}));
     await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch?dataset=oecd-icio'));
     expect(screen.getByText('OECD canonical uploader')).toBeTruthy();
   });
