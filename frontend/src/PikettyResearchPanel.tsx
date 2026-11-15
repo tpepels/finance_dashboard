@@ -1,4 +1,5 @@
 import {useMemo,useState} from 'react';
+import './PikettyResearchPanel.css';
 import {timeChart,breakGaps,type Recession,type Theme,type TimeSeries,type Point} from './chartKit';
 import TimePanel from './TimePanel';
 import {spanOf,type Bundle} from './analysisShell';
