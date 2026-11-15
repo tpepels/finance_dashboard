@@ -101,7 +101,7 @@ describe('unified Data and Diagnostics page',()=>{
     const view=render(<DataHub/>);
     expect(await screen.findByRole('heading',{name:'Data & diagnostics'})).toBeTruthy();
     expect(view.container.querySelectorAll('details')).toHaveLength(0);
-    expect(screen.getByRole('button',{name:'Collect original data'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
     expect(await screen.findByRole('cell',{name:'WID.world'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'EU KLEMS'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'OECD ICIO'})).toBeTruthy();
@@ -161,7 +161,7 @@ describe('unified Data and Diagnostics page',()=>{
       name:'Source collection needs a manual start',
     })).toBeTruthy();
     expect(screen.getByText('Attention needed')).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Collect original data'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
     expect(screen.queryByText('Manual source check (optional)')).toBeNull();
   });
 
@@ -171,7 +171,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByText(/Last research data update/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Repair gaps'})).toBeNull();
     expect(calls.some(item=>item.method==='POST')).toBe(false);
-    expect(screen.getByRole('button',{name:'Collect original data'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
     view.unmount();
   });
 
@@ -244,14 +244,14 @@ describe('unified Data and Diagnostics page',()=>{
     render(<DataHub/>);
     expect(await screen.findByText(/Automatic source refresh enabled/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Start automatic downloads'})).toBeNull();
-    const button=await screen.findByRole('button',{name:'Collect original data'});
+    const button=await screen.findByRole('button',{name:'Find and download missing data'});
     await user.click(button);
     await waitFor(()=>expect(calls.some(item=>item.url==='/api/data/collection/start'
       && item.method==='POST')).toBe(true));
     const request=calls.find(item=>item.url==='/api/data/collection/start')!;
     expect(JSON.parse(request.body||'{}').browser).toHaveProperty('language');
-    expect(await screen.findByText(/continues if you leave this page/)).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Collect original data'}).hasAttribute('disabled')).toBe(true);
+    expect(await screen.findByText(/You can leave this page while it runs/)).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Find and download missing data'}).hasAttribute('disabled')).toBe(true);
   });
 
   it('restores last-known status immediately when returning even if the server is delayed',async()=>{
@@ -300,16 +300,16 @@ describe('unified Data and Diagnostics page',()=>{
     run={...makeRun(),state:'complete',running:false};
     const user=userEvent.setup();
     const view=render(<DataHub/>);
-    await user.click(await screen.findByRole('button',{name:'Prepare diagnostic ZIP'}));
+    await user.click(await screen.findByRole('button',{name:'Create troubleshooting report'}));
     await waitFor(()=>expect(calls.some(item=>item.url==='/api/diagnostics/prepare?force=false')).toBe(true));
     expect(screen.getByText(/Preparing the archive in the background/)).toBeTruthy();
     view.unmount();
     exportState={state:'ready',ready:true,id:'export-1',
       prepared_at:'2026-11-14T11:35:00Z',size_bytes:5500000,error:null};
     render(<DataHub/>);
-    const link=await screen.findByRole('link',{name:'Download diagnostic ZIP'});
+    const link=await screen.findByRole('link',{name:'Download report (.zip)'});
     expect(link.getAttribute('href')).toBe('/api/diagnostics/export-file');
-    expect(screen.getByRole('button',{name:'Prepare fresh ZIP'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Create updated report'})).toBeTruthy();
     expect(calls.some(item=>item.url==='/api/diagnostics/download')).toBe(false);
   });
 
