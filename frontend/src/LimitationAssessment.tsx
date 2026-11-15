@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type Finding={
   id:string; category:string; severity:'high'|'medium'|'information';
@@ -60,6 +60,9 @@ export default function LimitationAssessment(){
       setError(cause instanceof Error?cause.message:'Assessment failed');
     }finally{setLoading(false);}
   }
+  // The unified page must show methodological limitations without an
+  // additional click. The existing explicit reassess action remains available.
+  useEffect(()=>{void load();},[]);
   const visible=useMemo(()=>{
     if(!audit)return [];
     return audit.findings.filter(row=>{
@@ -73,7 +76,7 @@ export default function LimitationAssessment(){
   },[audit,filter]);
 
   return <section className="limitation-audit" aria-label="Data and research limitation assessment">
-    <h3>Data and research limitations</h3>
+    <h4>Data and research limitations</h4>
     <p>Detect stale observations, missing evidence, deferred refreshes, recorded scientific
       acceptance restrictions and methodological assumptions. Fixed-date wording is
       flagged for verification against the publisher rather than automatically marked incorrect.</p>
