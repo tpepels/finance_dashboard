@@ -154,7 +154,7 @@ export default function LimitationAssessment(){
     {error&&<p role="alert">{error}</p>}
     {audit&&<>
       <p role="status">
-        {visible.length} findings shown ·
+        {visible.length} {visible.length===1?'finding':'findings'} shown ·
         {' '}{visible.filter(row=>row.severity==='high').length} high priority ·
         {' '}{visible.filter(row=>row.severity==='medium').length} need checking ·
         {' '}{visible.filter(row=>row.severity==='information').length} notes
