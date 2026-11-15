@@ -161,22 +161,22 @@ class ParserTests(unittest.TestCase):
             parse_pink_sheet_gold(rows)
 
     def test_world_bank_pink_sheet_copper_from_native_monthly_rows(self):
-        # Copper is explicitly quoted in USD per metric ton by the publisher.
+        # The values are a small excerpt of the official November 2026 Pink Sheet\n        # price table (Aug-Oct 2026), matching the monthly workbook units.
         rows = [
             ["World Bank Pink Sheet, monthly nominal prices"],
             ["2026 monthly original prices"],
             ["", "Gold", "Copper", "Crude oil, Brent"],
             ["", "($/troy oz)", "($/mt)", "($/bbl)"],
-            ["2026M08", 3370, 12631.5, 86],
-            ["2026M09", 3470, 12342.0, 87],
-            ["2026M10", 3595, 12752.25, 91],
+            ["2026M08", 4411, 14326, 90.9],
+            ["2026M09", 4319, 14474, 116.8],
+            ["2026M10", 4105, 14508, 125.0],
         ]
         from finance_dashboard.provider_parsers import parse_pink_sheet_price
         parsed = parse_pink_sheet_price(rows, "Copper")
-        self.assertEqual(parsed[date(2026, 8, 1)], Decimal("12631.5"))
-        self.assertEqual(parsed[date(2026, 10, 1)], Decimal("12752.25"))
+        self.assertEqual(parsed[date(2026, 8, 1)], Decimal("14326"))
+        self.assertEqual(parsed[date(2026, 10, 1)], Decimal("14508"))
         self.assertEqual(len(parsed), 3)
-        self.assertNotEqual(parsed[date(2026, 8, 1)], Decimal("3370"))
+        self.assertNotEqual(parsed[date(2026, 8, 1)], Decimal("4411"))
         shifted = [list(r) for r in rows]
         shifted[3][2] = "($/troy oz)"
         with self.assertRaisesRegex(ProviderError, "per metric ton"):
