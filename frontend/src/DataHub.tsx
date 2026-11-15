@@ -212,7 +212,7 @@ export default function DataHub(){
       if(!response.ok)throw new Error('Start failed (HTTP '+response.status+')');
       const result=await response.json() as Collection;
       collection.setValue(result);remember(LAST_COLLECTION,result);
-      setNotification('Collection started. It continues if you leave this page.');
+      setNotification('Checking publishers for available data. You can leave this page while it runs.');
       void health.reload();
     }catch(cause){setError(cause instanceof Error?cause.message:'Could not start collection');}
     finally{setStarting(false);}
@@ -278,10 +278,14 @@ export default function DataHub(){
     <header className="data-collection-heading">
       <div>
         <h2>Data &amp; diagnostics</h2>
-        <p>Source coverage, collection progress, research quality and investigation in one place.</p>
+        <p>See which data is missing, what the app is doing, and what needs your attention.</p>
       </div>
-      <button type="button" className="data-collection-primary" disabled={starting||active}
-        onClick={()=>void start()}>Collect original data</button>
+      <div className="data-main-action">
+        <button type="button" className="data-collection-primary" disabled={starting||active}
+          onClick={()=>void start()}>Find and download missing data</button>
+        <small>{active?'A collection is already running. Progress is shown below.':
+          'Checks official publishers and saves available data. Failures are reported below.'}</small>
+      </div>
     </header>
 
     <section className="data-overview" aria-label="Data overview">
@@ -411,7 +415,7 @@ export default function DataHub(){
               <td><a href={row.url} rel="noopener noreferrer" target="_blank">{row.name}</a></td>
               <td>{reason(row.reason)}</td>
               <td><label className="data-collection-upload">
-                <span>{uploading[key]?'Uploading '+uploading[key]:'Choose file'}</span>
+                <span>{uploading[key]?'Uploading '+uploading[key]:'Upload downloaded file'}</span>
                 <input type="file" accept={row.accept} disabled={Boolean(uploading[key])}
                   aria-label={'Upload '+row.name} onChange={event=>{
                     const file=event.currentTarget.files?.[0];
@@ -486,8 +490,8 @@ export default function DataHub(){
       <p>Download a diagnostic report, inspect errors or run a specific maintenance operation.</p>
     <section className="data-collection-export" aria-label="Diagnostic export">
       <div>
-        <strong>Diagnostic ZIP</strong>
-        <p>Full redacted source, queue, import and accounting evidence for investigation.</p>
+        <strong>Troubleshooting report</strong>
+        <p>A downloadable ZIP containing the source checks, errors, and file-import details needed to investigate problems.</p>
         {exporter.value?.state==='preparing'&&<small role="status">
           Preparing the archive in the background
           {exporter.value.started_at&&
@@ -504,11 +508,11 @@ export default function DataHub(){
       <div className="data-collection-export-actions">
         <button type="button" onClick={()=>void prepareExport()}
           disabled={preparing||exporter.value?.state==='preparing'}>
-          {preparing||exporter.value?.state==='preparing'?'Preparing ZIP…':
-           exporter.value?.ready?'Prepare fresh ZIP':'Prepare diagnostic ZIP'}
+          {preparing||exporter.value?.state==='preparing'?'Creating report…':
+           exporter.value?.ready?'Create updated report':'Create troubleshooting report'}
         </button>
         {exporter.value?.ready&&<a href="/api/diagnostics/export-file"
-          download>Download diagnostic ZIP</a>}
+          download>Download report (.zip)</a>}
       </div>
     </section>
     <DiagnosticsWorkspace/>
