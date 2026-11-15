@@ -31,7 +31,7 @@ describe('integrated data synchronization and source health repair',()=>{
     expect(screen.getByRole('button',{name:'Look for older historical records'})).toBeTruthy();
     expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(screen.getByText(/Checks economic indicators, market prices, exchange rates/)).toBeTruthy();
-    expect(screen.getByText(/Retries histories flagged as missing or old/)).toBeTruthy();
+    expect(screen.getByText(/Checks missing or outdated data again/)).toBeTruthy();
     expect(screen.getByText(/Searches earlier economic releases, fund holdings/)).toBeTruthy();
     for(const button of screen.getAllByRole('button')){
       expect(button.textContent).not.toMatch(/\b(refresh|ingest|analyse|reassess)\b/i);
@@ -113,13 +113,13 @@ describe('integrated data synchronization and source health repair',()=>{
       }),
     })));
     render(<DataOperations/>);
-    expect(await screen.findByText('Results of the last check')).toBeTruthy();
+    expect(await screen.findByText('Last check results')).toBeTruthy();
     expect(screen.getByText(/FRED API rejected the configured key/)).toBeTruthy();
     expect(screen.getByText(/964 missing/)).toBeTruthy();
-    expect(screen.getByText(/first rejected source SAHMREALTIME/)).toBeTruthy();
+    expect(screen.getByText(/first affected data series: SAHMREALTIME/)).toBeTruthy();
     expect(screen.getByText(/11 filings found\/cached in this run/)).toBeTruthy();
     expect(screen.getByText(/50 filings found\/cached in this run/)).toBeTruthy();
-    expect(screen.getByText(/additional older filings not scanned/)).toBeTruthy();
+    expect(screen.getByText(/Older records may be incomplete/)).toBeTruthy();
   });
   it('shows provider failures without hiding the result section',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({
@@ -141,7 +141,7 @@ describe('integrated data synchronization and source health repair',()=>{
       expect(screen.getByRole('status').textContent).toContain('Latest published data');
       expect(screen.getByRole('status').textContent).toContain('Completed with issues');
     });
-    expect(screen.getByText('Results of the last check')).toBeTruthy();
+    expect(screen.getByText('Last check results')).toBeTruthy();
     expect(document.querySelectorAll('details')).toHaveLength(0);
     expect(screen.getByText(/2 failed/).closest('.data-sync-results')).toBeTruthy();
   });
