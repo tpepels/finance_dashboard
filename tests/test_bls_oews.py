@@ -30,10 +30,15 @@ def data_rows():
     ]
 
 
-def zip_bytes(year):
+def zip_bytes(year, *, nested=False, file_name=None, extra_file=False):
     data = BytesIO()
     with ZipFile(data, "w") as archive:
-        archive.writestr(f"national_M{year}_dl.xlsx", b"PK\x03\x04test-workbook")
+        name = file_name or f"national_M{year}_dl.xlsx"
+        if nested:
+            name = f"oesm{year % 100:02d}nat/" + name
+        archive.writestr(name, b"PK\x03\x04test-workbook")
+        if extra_file:
+            archive.writestr("unverified.txt", "unrelated")
     return data.getvalue()
 
 
@@ -73,6 +78,37 @@ class BLSOEWSOriginalTests(unittest.TestCase):
             with self.assertRaisesRegex(ProviderError, "not an approved"):
                 parse_national_zip(b"HTTP 403 blocked", 2025)
 
+
+    def test_publisher_nested_zip_and_two_workbook_sheets_share_one_wage_population(self):
+        # Official publisher archives may place the workbook in oesmYYnat/
+        # and include a second sheet describing the field codes.
+        fake = MagicMock()
+        fake.sheet_names = ["national_M2025_dl", "Field Descriptions"]
+        main = MagicMock()
+        main.to_python.return_value = data_rows()
+        notes = MagicMock()
+        notes.to_python.return_value = [
+            ["Field", "Description"], ["OCC_CODE", "SOC 2018 occupation code"]]
+        fake.get_sheet_by_index.side_effect = [main, notes]
+        with patch("python_calamine.CalamineWorkbook.from_filelike", return_value=fake):
+            found = parse_national_zip(zip_bytes(2025, nested=True), 2025)
+        self.assertEqual(found, {"H_MEAN":Decimal("33.54"),"H_MEDIAN":Decimal("24.51")})
+        self.assertEqual(fake.get_sheet_by_index.call_count,1)
+
+    def test_publisher_national_zip_rejects_nested_wrong_year_and_extra_files(self):
+        for payload in (
+                zip_bytes(2024, nested=True),
+                zip_bytes(2025, nested=True, file_name="../national_M2025_dl.xlsx"),
+                zip_bytes(2025, nested=True, extra_file=True)):
+            with self.subTest(payload=len(payload)):
+                with self.assertRaisesRegex(ProviderError, "identity"):
+                    parse_national_zip(payload, 2025)
+        fake=MagicMock()
+        fake.sheet_names=["Field Descriptions", "Another sheet"]
+        fake.get_sheet_by_index.return_value.to_python.return_value=[["Not", "Wages"]]
+        with patch("python_calamine.CalamineWorkbook.from_filelike",return_value=fake):
+            with self.assertRaisesRegex(ProviderError,"worksheet"):
+                parse_national_zip(zip_bytes(2025, nested=True),2025)
 
     def test_phase1_l08_oews_accepted_source_pair_is_atomic_and_optional(self):
         from finance_dashboard.engine.analyses import DEFINITIONS
