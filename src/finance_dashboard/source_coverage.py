@@ -42,20 +42,29 @@ BIS_DSR_RELEASE = {
 }
 SOURCE_LAGS = {"D": 10, "W": 22, "M": 95, "Q": 220, "A": 1100}
 
-# These four named series had recent, hashed, full original publisher
-# snapshots in the owner's 2026-11-13 scientific audit, showing no newer
-# registered observation. A fresh full-source receipt may establish the
+# The named series below had hashed, full publisher responses and
+# acquisition receipts showing no newer original observation in recent
+# owner diagnostics. The BIS nominal keys were checked in the 2026-11-15
+# snapshot and matched the portal's country-specific WS_SPP source identities.
+# This is time-bounded confirmation of what that exact source returned,
+# not evidence that observed values are newly released or that a later
+# publication cannot appear. A fresh full-source receipt may establish the
 # *current source-availability state*, but never falsify the observation
 # age or claim that a subsequent publication did not occur. The short
 # 14-day expiry requires another full publisher check. A download without
 # archived evidence, a partial response, or a failed last attempt cannot
-# qualify. WID world and EUKLEMS US LAB are intentionally excluded:
+# qualify. WID world and EUKLEMS US LAB remain excluded:
 # the published release may have newer observations than local retention.
 RECENT_FULL_SOURCE_CHECK_DAYS = {
     "activity.us.oecd_cli_trend_restored": 14,
     "activity.jp.oecd_cli_trend_restored": 14,
     "profit.es.nfc_net_fixed_assets": 14,
     "profit.pt.nfc_net_fixed_assets": 14,
+    "property.de.nominal_residential.bis": 14,
+    "property.ea.nominal_residential.bis": 14,
+    "property.jp.nominal_residential.bis": 14,
+    "property.pt.nominal_residential.bis": 14,
+    "property.us.nominal_residential.bis": 14,
 }
 
 # Version-pinned official publication bounds, not a claim that the source
