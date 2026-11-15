@@ -109,6 +109,19 @@ describe('operator status based on actual collection, schedule and data',()=>{
     expect(status.now.title).toBe('Showing the last saved status');
     expect(status.tone).toBe('attention');
   });
+  it('does not interpret missing scheduler status as disabled',()=>{
+    const input=base();input.automatic=null as unknown as DataStatusInput['automatic'];
+    input.session=null;
+    const status=describeDataStatus(input);
+    expect(status.next.title).toBe('Checking the automatic schedule');
+    expect(status.yourAction.kind).not.toBe('start');
+  });
+  it('waits for a running source check before asking for technical investigation',()=>{
+    const input=base();
+    input.session!.running=true;
+    input.session!.repair!.status='running';
+    expect(describeDataStatus(input).yourAction.kind).toBe('none');
+  });
   it('does not fabricate a completed check from requests with zero repairs',()=>{
     const input=base();input.researchRunning=false;
     input.session!.repair!.details={resolved_issues:0,issues_after:49,issues_before:49};
