@@ -74,6 +74,8 @@ class PikettyResearchTests(unittest.TestCase):
         self.assertAlmostEqual(income["real_net_national_income_growth_pct"][0][1], 10, 5)
         self.assertAlmostEqual(
             income["accounting_net_income_yield_minus_growth_pp"][0][1], r - 10, 5)
+        self.assertEqual(income["piketty_r_minus_g_status"], "not_empirically_validated")
+        self.assertIn("excludes changes in asset values", income["piketty_r_minus_g_reason"])
 
         comp = us["composition"]
         self.assertEqual(comp["status"], "available")
