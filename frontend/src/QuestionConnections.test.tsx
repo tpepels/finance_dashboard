@@ -9,6 +9,12 @@ const graph=(state:'conditional'|'accepted'='conditional'):QuestionGraph=>({
  nodes:{
   L07:{id:'L07',question:'How is global income and wealth distributed?',
    parent_ids:[],child_ids:['L08'],research_state:state,
+   next_step:{kind:state==='accepted'?'ready':'publisher_data',
+     message:state==='accepted'?'No action needed.':'The publisher is still being checked.',
+     link:state==='accepted'?null:'#research-sources',role_count:state==='accepted'?0:1,
+     role_ids:state==='accepted'?[]:['income'],
+     counts:{required:1,required_accepted:state==='accepted'?1:0,
+      supplemental:0,supplemental_accepted:0,descoped:0}},
    source_citations:[{id:'S01',label:'WID originals',url:'https://wid.world/data/'}],
    cards:{
     measurement:[{role:'income',concept:'Pre-tax income shares',unit:'percent'}],
@@ -55,11 +61,14 @@ describe('Question evidence and follow-up navigation',()=>{
   const section=await screen.findByRole('region',{name:'Evidence and related research questions'});
   expect(within(section).getByRole('heading',{name:'What is measured'})).toBeTruthy();
   expect(within(section).getByText('Pre-tax income shares')).toBeTruthy();
-  expect(within(section).queryByText(/1 of 1 assessed source roles accepted/)).toBeNull();
-  expect(within(section).getByText(/0 of 1 assessed source roles accepted/)).toBeTruthy();
+  expect(within(section).queryByText(/1 of 1 required source roles accepted/)).toBeNull();
+  expect(within(section).getByText(/0 of 1 required source roles accepted/)).toBeTruthy();
   expect(within(section).getByText(/The original comparison still needs verification/)).toBeTruthy();
   expect(within(section).getByRole('link',{name:/L08.*Do median earnings follow productivity/})
    .getAttribute('href')).toBe('#q-L08');
+  expect(within(section).getByRole('link',{name:'See data collection and any action needed'})
+   .getAttribute('href')).toBe('#research-sources');
+  expect(within(section).getByText('The publisher is still being checked.')).toBeTruthy();
   expect(within(section).getByRole('link',{name:'WID originals'}).getAttribute('href'))
    .toBe('https://wid.world/data/');
   expect(section.querySelector('details')).toBeNull();
@@ -71,11 +80,13 @@ describe('Question evidence and follow-up navigation',()=>{
     JSON.stringify({evaluated_at:'2026-11-15',question_graph:graph(status)}))));
   vi.stubGlobal('fetch',request);
   const view=render(<QuestionConnections questionId="L07" dataVersion={0}/>);
-  expect(await screen.findByText(/0 of 1 assessed source roles accepted/)).toBeTruthy();
+  expect(await screen.findByText(/0 of 1 required source roles accepted/)).toBeTruthy();
   status='accepted';
   view.rerender(<QuestionConnections questionId="L07" dataVersion={1}/>);
-  expect(await screen.findByText(/1 of 1 assessed source roles accepted/)).toBeTruthy();
+  expect(await screen.findByText(/1 of 1 required source roles accepted/)).toBeTruthy();
   expect(screen.getByText('Method accepted')).toBeTruthy();
+  expect(screen.getByText('No action needed.')).toBeTruthy();
+  expect(screen.queryByRole('link',{name:'See data collection and any action needed'})).toBeNull();
   expect(request).toHaveBeenCalledTimes(2);
  });
 
