@@ -71,6 +71,7 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
   const outcome=repair?.details;
   const nextRun=formatDataTime(input.automatic?.next_refresh_at);
   const automaticRunning=input.automatic?.refresh_running===true;
+  const scheduleKnown=input.automatic?.scheduled_refresh_enabled!==undefined;
   const scheduleEnabled=input.automatic?.scheduled_refresh_enabled===true;
   const scheduleStopped=input.automatic?.refresh_state==='stopped'||
     input.automatic?.refresh_state==='not_started';
@@ -123,7 +124,7 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
   if(automaticRunning||session?.running){
     next={title:'After the current check',
       detail:'The app updates the list of available data and the affected research results.'};
-  }else if(!scheduleEnabled){
+  }else if(scheduleKnown&&!scheduleEnabled){
     next={title:'Automatic checks are off',
       detail:'The app is not scheduled to look for new publisher data.'};
   }else if(scheduleStopped){
@@ -149,7 +150,7 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
       detail:'These files need to be obtained from their publishers. The app processes each upload automatically.',
       kind:'manual',link:'#manual-files'};
     tone='attention';
-  }else if(!scheduleEnabled && (missing>0||needsReview>0) && !session?.running){
+  }else if(scheduleKnown&&!scheduleEnabled && (missing>0||needsReview>0) && !session?.running){
     yourAction={title:'Start a data check',
       detail:'Automatic updates are off. Use Find and download missing data above.',
       kind:'start',link:'#data-management'};
@@ -159,7 +160,7 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
       detail:'The automatic service has not started. You can start a check using the main button.',
       kind:'start',link:'#data-management'};
     tone='attention';
-  }else if(failedSeries>0){
+  }else if(failedSeries>0&&!session?.running&&!automaticRunning){
     yourAction={title:'Technical follow-up needed',
       detail:`No files need uploading. ${failedSeries} data ${failedSeries===1?'series has':'series have'} failed checks. See the troubleshooting report for the details needed to investigate.`,
       kind:'technical',link:'#diagnostics'};
