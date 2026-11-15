@@ -89,6 +89,61 @@ class PikettyResearchTests(unittest.TestCase):
         self.assertEqual(inherited["latest_year"], None)
         self.assertEqual(report["report_reference"]["reference_year"], 2025)
         self.assertEqual(report["report_reference"]["world_income_top10_pct"], 53)
+        self.assertEqual(report["report_reference"]["world_income_bottom50_pct"], 8)
+        self.assertEqual(report["report_reference"]["world_wealth_bottom50_pct"], 2)
+        self.assertEqual(report["report_reference"]["reconciliation"]["state"],
+                         "report_reference_separate")
+        self.assertEqual(share["compared_years"], [2024, 2025])
+        self.assertEqual(share["latest_comparable_year"], 2025)
+        self.assertAlmostEqual(
+            share["concepts"]["income"]["top_to_bottom_ratios"]["top10_to_bottom50"][-1][1],
+            49 / 12, 5)
+        self.assertIsNone(
+            share["concepts"]["wealth"]["top_to_bottom_ratios"]["top10_to_bottom50"][-1][1])
+        self.assertEqual(growth["distribution_incidence"]["status"],
+                         "awaiting_matched_originals")
+
+    def test_full_growth_incidence_needs_all_twelve_real_original_percentile_groups(self):
+        from finance_dashboard.piketty_research import INCIDENCE_GROUPS
+        data=source_fixture()
+        for index,(group,_,_) in enumerate(INCIDENCE_GROUPS):
+            first=100+10*index
+            data[f"piketty:US:income_distribution:{group}"]=points([
+                (1980,first),(1990,first*1.05),(2025,first*(1+.1*index))])
+        report=piketty_findings(data)
+        incidence=report["areas"][0]["growth_capture"]["distribution_incidence"]
+        self.assertEqual(incidence["status"],"available")
+        self.assertEqual((incidence["reference_year"],incidence["comparison_year"]),
+                         (1980,2025))
+        self.assertEqual(incidence["matched_years"],3)
+        self.assertEqual(len(incidence["rows"]),12)
+        self.assertEqual(sum(x["population_weight"] for x in incidence["rows"]),1)
+        self.assertAlmostEqual(incidence["rows"][-1]["cumulative_real_growth_pct"],110)
+        # A missing publisher percentile/period cannot be interpolated to
+        # complete the figure, even if other groups retain the last year.
+        data["piketty:US:income_distribution:p90_99"]=points([(1980,190)])
+        missing=piketty_findings(data)["areas"][0]["growth_capture"]["distribution_incidence"]
+        self.assertEqual(missing["status"],"awaiting_matched_originals")
+        self.assertEqual(missing["rows"],[])
+
+    def test_income_wealth_comparisons_never_mix_different_latest_years(self):
+        data=source_fixture()
+        for group in ("top1","top10","bottom50"):
+            data[f"piketty:US:wealth:{group}"]=points([
+                (2024,{"top1":.30,"top10":.72,"bottom50":.02}[group])])
+        concentration=piketty_findings(data)["areas"][0]["concentration"]
+        self.assertEqual(concentration["latest_comparable_year"],2024)
+        self.assertEqual(concentration["compared_years"],[2024])
+        multiple=concentration["concepts"]["wealth"]["top_to_bottom_ratios"]["top10_to_bottom50"]
+        self.assertEqual(multiple,[["2024",36.0]])
+
+    def test_extreme_bottom_wealth_does_not_produce_spurious_ratios(self):
+        data=source_fixture()
+        for group,value in (("top1",.28),("top10",.75),("bottom50",.000003)):
+            data[f"piketty:US:wealth:{group}"]=points([(2025,value)])
+        x=piketty_findings(data)["areas"][0]["concentration"]
+        self.assertIsNone(
+            x["concepts"]["wealth"]["top_to_bottom_ratios"]["top10_to_bottom50"][-1][1])
 
     def test_other_countries_never_inherit_us_series(self):
         report=piketty_findings(source_fixture())
