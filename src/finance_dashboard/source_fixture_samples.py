@@ -39,9 +39,12 @@ def _archive_file(folder: Path, entry: dict, filename: str, limit: int) -> Path:
                 or path.stat().st_size != entry.get("bytes")
                 or path.stat().st_size > limit):
             raise SampleUnavailable("source_file_unavailable")
+        digest = sha256()
         with path.open("rb") as handle:
-            if sha256(handle.read()).hexdigest() != entry["sha256"]:
-                raise SampleUnavailable("source_hash_mismatch")
+            for block in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(block)
+        if digest.hexdigest() != entry["sha256"]:
+            raise SampleUnavailable("source_hash_mismatch")
     except OSError:
         raise SampleUnavailable("source_file_unavailable") from None
     return path
