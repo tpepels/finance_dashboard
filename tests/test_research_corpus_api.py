@@ -33,6 +33,20 @@ class Phase2ResearchCorpusApiTests(unittest.TestCase):
         self.env.stop()
         self.engine.dispose()
 
+    def test_research_revision_is_lightweight_and_never_promotes_partial_reassessment(self):
+        first = self.client.get("/api/research-revision")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(set(first.json()), {"state", "evaluated_at"})
+        self.assertIn(first.json()["state"], {"ready", "not_evaluated", "updating"})
+        from unittest.mock import patch
+        with patch.object(self.client.app.state.acceptance,"peek",
+                          side_effect=AssertionError("should not inspect while loading")), \
+             patch.object(type(self.client.app.state.acceptance),"loading",
+                          new_callable=lambda:property(lambda self:True)):
+            busy=self.client.get("/api/research-revision")
+        self.assertEqual(busy.status_code,200)
+        self.assertEqual(busy.json(),{"state":"updating","evaluated_at":None})
+
     def test_35_questions_and_no_fabricated_completeness(self):
         response = self.client.get("/api/research-corpus")
         self.assertEqual(response.status_code, 200)
