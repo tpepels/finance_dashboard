@@ -31,6 +31,14 @@ type Job = {
 };
 type Queue = { active_job_id: string | null; jobs: Job[] };
 
+const PART_TITLES:Record<string,string> = {
+  macro:'Economic indicators',
+  markets:'Market prices and exchange rates',
+  earnings:'Company earnings',
+  alfred:'Earlier economic releases',
+  sec:'Fund holdings',
+  backup:'Saved data backup',
+};
 const TITLES: Record<string, string> = {
   sync_current: 'Latest published data',
   sync_history: 'Older historical records',
@@ -189,7 +197,7 @@ export default function DataOperations() {
       {last.result?.parts && <div className="data-sync-results">
         <strong>Results of the last check</strong>
         <ul>{Object.entries(last.result.parts).map(([key, value]) =>
-          <li key={key}><strong>{key.replaceAll('_',' ')}</strong> ·
+          <li key={key}><strong>{PART_TITLES[key]??key.replaceAll('_',' ')}</strong> ·
             {' '}{description(value.status ?? 'complete')}
             {value.failed != null && value.failed > 0 && ' · ' + value.failed + ' failed'}
             {value.downloaded != null && ' · ' + value.downloaded + ' downloaded'}
