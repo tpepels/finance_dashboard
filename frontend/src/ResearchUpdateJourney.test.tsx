@@ -170,6 +170,26 @@ describe('research update waiting-state journey',()=>{
     expect(model.stages[0].state).toBe('attention');
   });
 
+  it('shows a partial startup preflight without claiming collection is aborted',()=>{
+    const partial=missing({automation:{
+      scheduled_refresh_enabled:true,interval_seconds:86400,
+      refresh_running:false,refresh_state:'preflight_partial',
+      last_error_code:'planner_partial',
+      last_error_stage:'startup_refresh_preflight',
+      last_error_at:'2026-11-15T11:19:02Z',
+      next_refresh_at:'2026-11-15T22:02:42Z',
+    }});
+    const model=describeResearchUpdate(partial,null);
+    expect(model.heading).toBe('Source refresh preflight found isolated errors');
+    expect(model.tone).toBe('attention');
+    expect(model.action).toContain('still try other sources');
+    expect(model.stages[0].state).toBe('attention');
+    render(<ResearchUpdateJourney health={partial}/>);
+    expect(screen.getByRole('heading',{name:'Source refresh preflight found isolated errors'}))
+      .toBeTruthy();
+    expect(screen.getByText('Preflight issues')).toBeTruthy();
+  });
+
   it('does not recommend waiting when the configured automatic scheduler has not started',()=>{
     const missingWorker=missing({
       automation:{scheduled_refresh_enabled:true,interval_seconds:86400,
