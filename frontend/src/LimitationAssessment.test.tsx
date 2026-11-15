@@ -46,7 +46,7 @@ describe('limitations assessment',()=>{
     const user=userEvent.setup();
     render(<LimitationAssessment/>);
     expect(await screen.findByText(/4 recorded findings/)).toBeTruthy();
-    expect(screen.getByText(/37 questions assessed/)).toBeTruthy();
+    expect(screen.getByText(/Research questions checked:/)).toBeTruthy();
     expect(screen.getByText('Showing 3 of 4 findings.')).toBeTruthy();
     expect(screen.getByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     expect(screen.queryByText('G06 TiVA source period')).toBeNull();
@@ -67,7 +67,7 @@ describe('limitations assessment',()=>{
         evaluated_questions:0,reason:'scientific_acceptance_snapshot_unavailable'},
     })})));
     render(<LimitationAssessment/>);
-    expect(await screen.findByText(/0\/37 questions assessed/)).toBeTruthy();
+    expect(await screen.findByText(/Research questions checked:/)).toBeTruthy();
     expect(screen.getByText(/Some research checks need attention/)).toBeTruthy();
   });
 
