@@ -78,7 +78,7 @@ export default function App() {
       if(!active||inFlight||document.visibilityState==='hidden')return;
       inFlight=true;
       try{
-        const response=await fetch('/api/research-status',{cache:'no-store'});
+        const response=await fetch('/api/research-revision',{cache:'no-store'});
         if(!response.ok)return; // 503: assessment is still being rebuilt.
         const data=await response.json() as {evaluated_at?:string};
         const revision=data.evaluated_at;
