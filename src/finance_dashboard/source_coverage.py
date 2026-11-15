@@ -378,6 +378,7 @@ SAFE_ERROR_CODES = {
     "provider_http_502", "provider_http_503", "provider_http_504",
     "source_policy_deferred", "source_policy_denied",
     "source_parse_failed", "source_empty", "source_transport_failed",
+    "source_archive_failed",
     "source_invalid", "provider_failed", "fred_schema_invalid",
     "sec_nmfp_index_unavailable", "sec_nmfp_no_matching_filings",
     "sec_nmfp_archive_invalid", "sec_nmfp_liquidity_invalid",

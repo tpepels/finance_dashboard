@@ -50,6 +50,11 @@ class SourceFailureCodeTests(unittest.TestCase):
             ("WID research observation population mismatch", "wid_observation_invalid"),
             ("WID monetary total units differ within reference area", "wid_units_mismatch"),
         ]
+        cases.extend([
+            ("Original response could not be archived", "source_archive_failed"),
+            ("Rejected publisher response could not be archived", "source_archive_failed"),
+            ("Rejected source archive identity is invalid", "source_archive_failed"),
+        ])
         for message, category in cases:
             with self.subTest(category=category):
                 self.assertEqual(safe_source_failure_code(ValueError(message)), category)
