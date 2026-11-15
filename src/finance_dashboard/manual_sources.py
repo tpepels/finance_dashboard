@@ -46,6 +46,16 @@ def _recent_import(job: dict, dataset: str) -> bool:
     """Whether a successful import is still fresh for global collection."""
     if job.get("status") != "complete":
         return False
+    if dataset == "wid-world":
+        # A completed pre-expansion import covered only five world shares.
+        # New registered WID research histories must be checked on the
+        # next automatic refresh, including documented publisher omissions.
+        from .wid import WID_PIKETTY_SERIES
+        expected = {sid for sid, (area, _, _) in WID_PIKETTY_SERIES.items()
+                    if area == "WO"}
+        inspected = {row.get("id") for row in job.get("sources", [])}
+        if not expected.issubset(inspected):
+            return False
     interval = _REFRESH_SECONDS.get(dataset)
     if interval is None:
         return True
@@ -83,7 +93,7 @@ def _definitions() -> dict:
 
 def source_specs() -> dict[str, dict]:
     """Publisher links from canonical, fixed request identities only."""
-    from .wid import WID_ROOT, WID_SERIES
+    from .wid import WID_ROOT, WID_SERIES, WID_PIKETTY_SERIES
     from .research_returns import (SWINKELS_DATA_URL, SWINKELS_README_URL,
         SWINKELS_METADATA_URL, SWINKELS_ORIGINAL_METADATA_URL)
     from .euklems import euklems_url
@@ -98,8 +108,12 @@ def source_specs() -> dict[str, dict]:
     specs = {
         "wid-world": {
             "title": "WID.world — world income and wealth",
-            "description": "Both original world CSV files are required. Import updates five registered series.",
+            "description": ("The same original world data/metadata pair updates five core inequality "
+                            "histories and checks available additional Piketty observations. "
+                            "Missing publisher variables are reported, not fabricated."),
             "series_ids": sorted(sid for sid, (area, _, _) in WID_SERIES.items() if area == "WO"),
+            "optional_series_ids": sorted(sid for sid, (area, _, _) in WID_PIKETTY_SERIES.items()
+                                          if area == "WO"),
             "roles": [
                 role("data", "WID world observations", WID_ROOT + "/WID_data_WO.csv", ".csv", 200_000_000),
                 role("metadata", "WID variable metadata", WID_ROOT + "/WID_metadata_WO.csv", ".csv", 30_000_000),
@@ -154,7 +168,7 @@ def source_specs() -> dict[str, dict]:
             "roles": [role("factsheet", "Index factsheet PDF", original, ".pdf", 5_000_000)],
         }
     for spec in specs.values():
-        for sid in spec["series_ids"]:
+        for sid in [*spec["series_ids"], *spec.get("optional_series_ids", [])]:
             if sid not in defs or defs[sid]["status"] != "mapped":
                 raise RuntimeError("Manual source ID no longer registered: " + sid)
     specs["oecd-icio"] = {
@@ -179,6 +193,28 @@ def source_specs() -> dict[str, dict]:
         ],
     }
     return specs
+
+
+def _parse_optional_world_wid(files: dict[str, bytes]) -> dict[str, dict]:
+    """Select every independently valid published optional WID measure.
+
+    The same original CSV and metadata pair already used by the world
+    income/wealth importer is the only input. Missing original variables
+    remain absent; one malformed optional variable is quarantined without
+    promoting or suppressing independently valid registered observations.
+    """
+    from .wid import WID_PIKETTY_SERIES, parse_piketty_original
+    try:
+        data = files["data"].decode("utf-8-sig")
+        metadata = files["metadata"].decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ProviderError("WID optional original text encoding invalid") from exc
+    original = parse_piketty_original(data, metadata, area="WO", strict=False)
+    return {
+        sid: original[(variable, percentile)]
+        for sid, (area, variable, percentile) in WID_PIKETTY_SERIES.items()
+        if area == "WO" and original.get((variable, percentile))
+    }
 
 
 def _parse_source(dataset: str, files: dict[str, bytes]) -> dict[str, dict]:
@@ -731,6 +767,17 @@ class ManualSourceManager:
                     self._save()
                 return
             raise
+        optional = spec.get("optional_series_ids", [])
+        optional_error = None
+        if dataset == "wid-world":
+            try:
+                values.update(_parse_optional_world_wid(files))
+            except (ProviderError, UnicodeError, ValueError, KeyError, TypeError):
+                # A malformed supplemental original must not erase the
+                # independently valid core world income and wealth histories.
+                # The optional import is marked partial with a fixed, safe
+                # error code; full evidence is retained for repair.
+                optional_error = "wid_optional_original_invalid"
         verified_download = bool(downloads) and len(downloads) == len(spec["roles"])
         provenance_scope = ("publisher_https_source" if verified_download else
                             "mixed_user_upload_and_publisher_https" if downloads else
@@ -776,7 +823,27 @@ class ManualSourceManager:
             except Exception:
                 results.append({"id": sid, "status": "failed",
                                 "error_code": "manual_source_ingestion_failed"})
-        state = "complete" if all(x["status"] == "success" for x in results) else "partial"
+        for sid in sorted(optional):
+            if optional_error:
+                results.append({"id": sid, "status": "failed",
+                                "error_code": optional_error})
+                continue
+            if not values.get(sid):
+                results.append({"id": sid, "status": "not_published_in_original",
+                                "received": 0, "versions_added": 0,
+                                "last_period": None})
+                continue
+            try:
+                result = ingest.refresh(sid, full=True)
+                results.append({"id": sid, "status": "success",
+                                "received": result["received"],
+                                "versions_added": result["versions_added"],
+                                "last_period": max(values[sid]).isoformat()})
+            except Exception:
+                results.append({"id": sid, "status": "failed",
+                                "error_code": "manual_optional_source_ingestion_failed"})
+        state = ("complete" if all(x["status"] in ("success", "not_published_in_original")
+                                    for x in results) else "partial")
         with self.lock:
             job.update(sources=results, status=state, archive_sha256=digest,
                        origin_verified=verified_download,
