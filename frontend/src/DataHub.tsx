@@ -53,6 +53,11 @@ type ExportStatus = {
 const LAST_COLLECTION='gcm-collection-last-known-v1';
 const LAST_HEALTH='gcm-health-last-known-v1';
 const HEADERS={'Content-Type':'application/json','X-GCM-Action':'dashboard'};
+const repairLabels:Record<string,string>={
+  running:'Checking',queued:'Waiting',complete:'Finished',
+  partial:'Finished with problems',failed:'Failed',blocked:'Paused',
+  interrupted:'Interrupted',cancelled:'Stopped',
+};
 const statusLabels:Record<string,string>={
   complete:'Finished',partial:'Finished with problems',failed:'Failed',
   interrupted:'Stopped unexpectedly',manual_required:'File needed from publisher',
@@ -352,7 +357,7 @@ export default function DataHub(){
           <strong>{repair.origin==='latest_independent_check'?'Latest check of missing data':
             'Checking missing or outdated data'}</strong>
           <span>{repairTotal?(repair.completed??0)+' / '+repairTotal+' checked':
-            repair.status==='previous_build'?'Earlier results unavailable':repair.status}</span>
+            repair.status==='previous_build'?'Earlier results unavailable':repairLabels[repair.status??'']??'See troubleshooting report'}</span>
         </div>
         {repairTotal>0&&<div className="data-progress" role="progressbar"
           aria-label="Source-health repair" aria-valuemin={0} aria-valuemax={repairTotal}
@@ -364,14 +369,14 @@ export default function DataHub(){
         {repair.status==='previous_build'&&<small>
           The previous check has no saved results. Use a new check to see the latest outcome.</small>}
         {repair.current_item&&<small>Checking {repair.current_item}</small>}
-        {repair.details?.issues_after!==undefined&&<small>
+        {typeof repair.details?.issues_after==='number'&&<small>
           {repair.details.resolved_issues??Math.max(0,(repair.details.issues_before??0)-repair.details.issues_after)}
           {' '}data series updated · {repair.details.issues_after} still need attention
           {repair.details.failed_sources!==undefined&&repair.details.failed_sources>0?
             ' · '+repair.details.failed_sources+' downloads failed':''}
         </small>}
         {repair.error_code&&<small className="data-collection-alert">
-          {repair.details?.issues_after!==undefined&&repair.details.issues_after>0?
+          {typeof repair.details?.issues_after==='number'&&repair.details.issues_after>0?
             'These data series still need newer observations. The app will check again on its regular schedule.':
             reason(repair.error_code)}
         </small>}
@@ -384,7 +389,7 @@ export default function DataHub(){
           <tbody>{sourceList.map(source=><tr key={source.dataset}>
             <td>{source.label}</td>
             <td><span className={'data-state data-state-'+statusStyle(source.status)}>
-              {statusLabels[source.status]??source.status}</span></td>
+              {statusLabels[source.status]??'See troubleshooting report'}</span></td>
             <td>{source.status==='deferred'&&source.retry_at_unix?
               source.retry_at_unix*1000<=Date.now()?
                 'Ready to retry':
@@ -468,11 +473,11 @@ export default function DataHub(){
     </section>
 
     {(error||run?.startup_error)&&<p role="alert" className="data-collection-alert">
-      {error||run?.startup_error}
+      {error||reason(run?.startup_error)}
     </p>}
     {(collection.problem||(!run&&health.problem))&&<p role="alert" className="data-collection-alert">
-      {collection.problem?'Status connection: '+collection.problem:health.problem}
-      {run?.id?' Last known collection state is retained.':''}
+      {'Could not load the latest status. Please check the server connection.'}
+      {run?.id?' Showing the last saved download status.':''}
     </p>}
     {notification&&<p role="status" className="data-collection-notice">{notification}</p>}
 
