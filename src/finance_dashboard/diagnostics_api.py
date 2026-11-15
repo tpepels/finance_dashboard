@@ -14,6 +14,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from fastapi import FastAPI, Header, Request
 
 from .developer_logs import read_events
+from .failure_journal import read_failures
 from .runtime_release import release_info
 
 
@@ -338,7 +339,18 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         collection = app.state.collection_workflow.status()
         from .data_hub import automation_status
         automation = automation_status()
+        persistent = read_failures()
+        last = persistent["failures"][-1] if persistent["failures"] else None
+        recent = None if last is None else {
+            "id": last["id"], "release_id": last["release_id"],
+            "previous_release": last["release_id"] != release["release_id"],
+            "exception_type": last["exception_type"],
+            "component": last["component"], "stage": last["stage"],
+            "last_at": last["last_at"], "count": last["count"],
+        }
         return {"status": status, "release": release,
+                "failure_evidence": {"journal_state": persistent["state"],
+                                     "latest": recent},
                 "console": _console(events), "source_summary": summaries,
                 "source_health": {
                     "state": health.get("state"),
@@ -386,7 +398,8 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
         return {
             "release": release_info(), "status": status,
             "human_overview": human_overview(coverage, manual, operations, original),
-            "events": events, "source_coverage": coverage,
+            "events": events, "failure_journal": read_failures(),
+            "source_coverage": coverage,
             "acquisition": manual,
             "original_import": original,
             "maintenance": operations,
@@ -428,6 +441,7 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             })
             put("diagnostics/console.json", _console(events))
             put("diagnostics/events.json", events)
+            put("diagnostics/failure-journal.json", read_failures())
             put("diagnostics/source-coverage.json", {**coverage, "release": release})
             put("diagnostics/icio-consumer-dependencies.json", dependencies)
             put("diagnostics/limitation-assessment.json", limits)
@@ -528,7 +542,11 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
             archive.writestr("README.txt",
                 "Global Capital Monitor build: " + release["release_id"] + "\n"
                 "Release activated: " + str(release["activated_at"] or "not recorded") + "\n"
-                "Current-build diagnostic events and maintenance jobs are shown. "
+                "Current-build events and maintenance jobs are shown. "
+                "The independent failure-journal.json retains bounded sanitized "
+                "exception classes, application call sites, error stages and release "
+                "identities across deployments. A missing journal means no failure "
+                "has been recorded by this facility; previous exports cannot be reconstructed. "
                 "The latest collection-run snapshot is also retained across builds. "
                 "Original evidence, research history, and backups are retained.\n"
                 "Redacted diagnostic bundle with full source status, per-role publisher "
