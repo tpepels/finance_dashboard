@@ -48,7 +48,7 @@ def original_wid_quality(root: Path) -> dict:
                     continue
                 candidates=[]
                 for period,value in entries.items():
-                    if not re.fullmatch(r"\\d{4}-01-01",str(period)):
+                    if not re.fullmatch(r"\d{4}-01-01",str(period)):
                         continue
                     if value is not None and (not isinstance(value,str) or len(value)>24):
                         continue
