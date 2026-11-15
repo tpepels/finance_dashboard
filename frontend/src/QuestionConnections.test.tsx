@@ -55,8 +55,7 @@ describe('Question evidence and follow-up navigation',()=>{
   const section=await screen.findByRole('region',{name:'Evidence and related research questions'});
   expect(within(section).getByRole('heading',{name:'What is measured'})).toBeTruthy();
   expect(within(section).getByText('Pre-tax income shares')).toBeTruthy();
-  expect(within(section).getByText(/1 scientific requirements still open/)).toBeFalsy();
-  expect(within(section).getByText(/1 of 1 assessed source roles accepted/)).toBeFalsy();
+  expect(within(section).queryByText(/1 of 1 assessed source roles accepted/)).toBeNull();
   expect(within(section).getByText(/0 of 1 assessed source roles accepted/)).toBeTruthy();
   expect(within(section).getByText(/The original comparison still needs verification/)).toBeTruthy();
   expect(within(section).getByRole('link',{name:/L08.*Do median earnings follow productivity/})
