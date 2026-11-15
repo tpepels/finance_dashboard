@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReleaseInfo } from './release';
-import { describeResearchUpdate } from './ResearchUpdateJourney';
 import type { JourneyHealth, JourneyCollection } from './ResearchUpdateJourney';
 import { placeDiagnosticsPopup, type PopupPlacement } from './diagnosticsPosition';
 
