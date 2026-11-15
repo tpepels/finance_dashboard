@@ -64,7 +64,33 @@ def _growth_incidence(points, area):
                        "population WID percentile averages. No growth-incidence "
                        "curve can be produced from partial country or percentile series."),
         }
-    first, last = common[0], common[-1]
+    # The complete population partition must reconcile with WID's own
+    # all-adult mean on the two plotted endpoint dates. Without that source
+    # constraint, apparently complete percentile histories can still carry
+    # incompatible ranking, denominator or unit definitions.
+    all_average = _years(points.get(f"piketty:{area}:income_avg:all", []))
+    matched = []
+    rejected = []
+    for year in common:
+        total = all_average.get(year)
+        weighted = sum(weight * originals[key][year]
+                       for key, _, weight in INCIDENCE_GROUPS)
+        if total is None or total <= 0 or abs(weighted-total)/total > .025:
+            rejected.append(year)
+            continue
+        matched.append(year)
+    if len(matched) < 2:
+        return {
+            "status":"awaiting_matched_originals",
+            "reference_year":None,"comparison_year":None,
+            "matched_years":len(matched),"rows":[],
+            "missing_groups":missing,
+            "rejected_source_identity_years":rejected,
+            "reason":("The source percentile groups do not reconcile to two "
+                      "matching all-adult original average-income years within "
+                      "2.5%. No growth-incidence curve is accepted."),
+        }
+    first, last = matched[0], matched[-1]
     results = []
     for key, label, weight in INCIDENCE_GROUPS:
         previous, latest = originals[key][first], originals[key][last]
@@ -79,8 +105,9 @@ def _growth_incidence(points, area):
     return {
         "status": "available",
         "reference_year": first, "comparison_year": last,
-        "matched_years": len(common),
+        "matched_years": len(matched),
         "rows": results, "missing_groups": [],
+        "rejected_source_identity_years": rejected,
         "reason": ("Original WID group means for the same area, annual concept "
                    "and constant-price reference unit. Percentile membership "
                    "can change between years; this is not individual lifetime "
