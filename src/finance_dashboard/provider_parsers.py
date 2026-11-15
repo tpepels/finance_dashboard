@@ -251,7 +251,7 @@ def parse_pink_sheet_price(rows: list[list], variable: str, start: date | None =
     """Select one named original nominal USD benchmark; never fill missing months."""
     import re
     units = {"Gold": "troy oz", "Crude oil, Brent": "bbl",
-             "Natural gas, US": "mmbtu", "Maize": "mt"}
+             "Natural gas, US": "mmbtu", "Maize": "mt", "Copper": "mt"}
     if variable not in units:
         raise ProviderError("Unapproved World Bank Pink Sheet commodity")
     headers = [(i, j) for i, row in enumerate(rows[:15])
@@ -264,7 +264,8 @@ def parse_pink_sheet_price(rows: list[list], variable: str, start: date | None =
         raise ProviderError("World Bank commodity source unit row missing")
     if str(rows[header_row+1][column]).strip().lower() != f"($/{units[variable]})":
         denominators = {"Gold": "troy ounce", "Crude oil, Brent": "barrel",
-                        "Natural gas, US": "million Btu", "Maize": "metric ton"}
+                        "Natural gas, US": "million Btu", "Maize": "metric ton",
+                        "Copper": "metric ton"}
         raise ProviderError(f"World Bank {variable} must be priced per {denominators[variable]} in nominal USD")
     output: dict[date, Decimal] = {}
     for row in rows[header_row+2:]:
