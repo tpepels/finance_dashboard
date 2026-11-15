@@ -20,6 +20,14 @@ export type JourneyHealth = {
     refresh_current_source?:string|null;
     last_refresh_outcome?:string|null;last_error_code?:string|null;
     last_error_stage?:string|null;last_error_at?:string|null;
+    last_failure_id?:string|null;last_failure_persisted?:boolean|null;
+    failure_journal_state?:string;
+    last_persisted_failure?:{
+      id:string;release_id:string;previous_release:boolean;
+      component:string;stage:string;exception_type:string;
+      last_at:string;count:number;
+      origin?:{module:string;function:string;line:number}|null;
+    }|null;
   };
   downstream_updates?:{
     state:string;last_change_at?:string|null;last_reconciled_at?:string|null;
@@ -64,6 +72,11 @@ export function describeResearchUpdate(
   const schedulerState=health?.automation?.refresh_state;
   const collectorFailed=health?.automation?.last_error_code==='internal_error'
     && health?.automation?.last_refresh_outcome!=='complete';
+  const pastFailure=health?.automation?.last_persisted_failure;
+  const unresolvedPastFailure=Boolean(pastFailure?.previous_release &&
+    !health?.automation?.last_refresh_finished_at &&
+    !health?.automation?.refresh_running &&
+    source && source.total>source.with_data);
   const interval=health?.automation?.interval_seconds;
   const scheduled=health?.automation?.refresh_running===true;
   const macroRunning=scheduled&&(!health?.automation?.refresh_stage||
@@ -103,6 +116,20 @@ export function describeResearchUpdate(
     action='This refresh attempt did not resolve the missing sources. Inspect the '+
       'diagnostic scheduler and events, then correct the failed stage. '+
       'You can retry the source check after the error is resolved.';
+    tone='attention';
+  }else if(hasData && health?.automation?.failure_journal_state==='invalid'){
+    heading='Failure evidence journal is unreadable';
+    explanation='The persistent error journal is invalid or inaccessible. Internal errors may no longer be reconstructable from a diagnostic ZIP.';
+    action='Check the maintenance volume, file permissions and journal integrity. The source counts remain independent of this diagnostic failure.';
+    tone='attention';
+  }else if(hasData && unresolvedPastFailure){
+    heading='Previous deployment encountered an internal source failure';
+    explanation=missing+' source histories remain absent. The archived '+pastFailure!.component+
+      ' failure at '+pastFailure!.stage+' ('+pastFailure!.exception_type+
+      ') occurred on '+(showDate(pastFailure!.last_at)??'an unknown date')+
+      '. The current build has not recorded a successful refresh.';
+    action='The exact redacted code path and incident '+pastFailure!.id+
+      ' are retained in the Diagnostic ZIP. The next scheduled check has not yet confirmed recovery.';
     tone='attention';
   }else if(hasData && manual>0){
     heading='Manual source files are required';
@@ -183,7 +210,8 @@ export function describeResearchUpdate(
   }
 
   const sourcesState:StepState=!hasData?'waiting':
-    collectorFailed?'attention':
+    collectorFailed||unresolvedPastFailure||
+      health?.automation?.failure_journal_state==='invalid'?'attention':
     downloading?'running':
     manual>0||failed>0||config===false&&missing>0||
       missing>0&&config===true&&(schedulerState==='not_started'||schedulerState==='stopped')?'attention':
@@ -198,6 +226,7 @@ export function describeResearchUpdate(
   const stages:Stage[]=[
     {name:'Collect original data',state:sourcesState,
       explanation:collectorFailed?'Collection failed':
+        unresolvedPastFailure?'Previous deployment failure':
         downloading?'Source collection active':
         missing>0?missing+' histories without data':
         attention>0?attention+' histories need review':'Histories available'},
@@ -218,6 +247,7 @@ export function describeResearchUpdate(
     source:{total,missing,withData,withoutAttention,needsReviewWithData,attention},
     never,failed,manual,config,interval,
     nextRun,scientificChecking,downloading,hasData,schedulerState,collectorFailed,
+    unresolvedPastFailure,
   };
 }
 
