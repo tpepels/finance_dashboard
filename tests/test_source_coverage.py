@@ -45,6 +45,19 @@ class SourceCoverageTests(unittest.TestCase):
         self.assertEqual(rows['activity.jp.oecd_cli']['refresh_state'], 'success')
         self.assertEqual(rows['gold.usd.spot']['observation_state'], 'missing')
 
+    def test_wid_original_measure_absence_is_not_reported_as_a_generic_collector_fault(self):
+        from finance_dashboard.source_coverage import _next_action
+        action = _next_action(
+            mapped=True, count=0, stale=False, complete=False,
+            status="failed", error="wid_measure_unavailable")
+        self.assertIn("no rows", action)
+        self.assertIn("exact registered", action)
+        self.assertIn("No substitute", action)
+        generic = _next_action(
+            mapped=True, count=0, stale=False, complete=False,
+            status="failed", error="source_invalid")
+        self.assertIn("Review the recorded failure", generic)
+
     def test_stale_deferred_history_still_requires_attention(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',
                        when=date(2022, 1, 1), error='source_policy_deferred')

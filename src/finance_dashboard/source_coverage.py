@@ -441,6 +441,10 @@ def _next_action(*, mapped, count, stale, complete, status, error):
         return 'Resolve the source identity before collection.'
     if error in ('provider_http_401', 'provider_http_403'):
         return 'Access was refused; configure authorized access before retrying.'
+    if error == 'wid_measure_unavailable':
+        return ('The downloaded WID original has no rows for this exact registered '
+                'measure and percentile. Verify the publisher definition and '
+                'available groups before retrying. No substitute is accepted.')
     if status == 'deferred' and complete:
         return 'Complete for the pinned release; previous network deferral does not require another download.'
     if status == 'deferred' and count and not stale:
