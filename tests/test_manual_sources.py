@@ -508,12 +508,20 @@ class ManualSourceTests(unittest.TestCase):
         restored = ManualSourceManager(self.engine, stage=self.root / "pending",
                                        evidence=self.root / "evidence",
                                        journal=self.root / "recovered-jobs.json")
+        # A completed job is published before its daemon queue worker
+        # fully exits. Join that exact worker before temporary directories
+        # are removed, otherwise a concurrently finishing source receipt
+        # can race TemporaryDirectory.cleanup under CI load.
+        recovered_worker = restored._worker
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             if restored.jobs and restored.jobs[0]["status"] in ("complete", "failed"):
                 break
             time.sleep(.02)
         self.assertEqual(restored.jobs[0]["status"], "complete", restored.jobs[0])
+        self.assertIsNotNone(recovered_worker)
+        recovered_worker.join(timeout=5)
+        self.assertFalse(recovered_worker.is_alive())
         self.assertFalse((folder / "data.bin").exists())
         self.assertFalse((folder / "metadata.bin").exists())
 
