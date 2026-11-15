@@ -138,7 +138,7 @@ describe('integrated data synchronization and source health repair',()=>{
     })));
     render(<DataOperations/>);
     await waitFor(() => {
-      expect(screen.getByRole('status').textContent).toContain('Current data');
+      expect(screen.getByRole('status').textContent).toContain('Latest published data');
       expect(screen.getByRole('status').textContent).toContain('Completed with issues');
     });
     expect(screen.getByText('Results of the last check')).toBeTruthy();
