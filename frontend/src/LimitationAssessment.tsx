@@ -76,12 +76,12 @@ export default function LimitationAssessment(){
   },[audit,filter]);
 
   return <section className="limitation-audit" aria-label="Data and research limitation assessment">
-    <h4>Data and research limitations</h4>
-    <p>Detect stale observations, missing evidence, deferred refreshes, recorded scientific
-      acceptance restrictions and methodological assumptions. Fixed-date wording is
-      flagged for verification against the publisher rather than automatically marked incorrect.</p>
+    <h4>Problems and limitations affecting the research</h4>
+    <p>Lists missing evidence, data that may be outdated, and limitations that affect
+      research conclusions. Dates are checked against published sources where possible.</p>
     <button type="button" disabled={loading} onClick={()=>void load()}>
-      {loading?'Assessing limitations…':audit?'Reassess limitations':'Assess limitations'}
+      {loading?'Checking data and research problems…':
+        audit?'Check for changes in data and research problems':'Check data and research problems'}
     </button>
     {error&&<p role="alert">{error}</p>}
     {audit&&<>
