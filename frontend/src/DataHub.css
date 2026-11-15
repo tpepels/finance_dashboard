@@ -203,3 +203,14 @@ html[data-theme='dark'] .data-next-step p{color:#afc0c4}
   .data-issue-breakdown strong{font-size:18px}
   .data-next-steps{margin-top:-12px}
 }
+
+/* Scheduled automation is the default. Extra manual checks remain available
+   but only become the dominant action when automatic checking is unavailable. */
+.data-collection-optional{background:transparent;color:#285e70;border-color:#a7bec5}
+.data-collection-optional:not(:disabled):hover{background:#edf4f3}
+.data-overview-label{font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:#60757b;line-height:1.4}
+html[data-theme='dark'] .data-collection-optional{color:#b3d6e1;
+  border-color:#607a82;background:transparent}
+html[data-theme='dark'] .data-collection-optional:not(:disabled):hover{background:#2b454b}
+html[data-theme='dark'] .data-overview-label{color:#afc0c4}
