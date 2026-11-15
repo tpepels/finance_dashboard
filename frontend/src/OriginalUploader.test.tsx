@@ -55,7 +55,7 @@ describe('original research file upload', () => {
     }));
     const user = userEvent.setup();
     render(<OriginalUploader/>);
-    await user.click(screen.getByRole('button', { name: 'Reassess previously imported OECD originals' }));
+    await user.click(screen.getByRole('button', { name: 'Check stored OECD files for errors' }));
     await waitFor(() => expect(requested).toEqual(['dashboard']));
     expect(screen.getByText(/Reassessing previously registered original archives/)).toBeTruthy();
   });
