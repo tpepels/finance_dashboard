@@ -126,7 +126,7 @@ def parse_national_zip(payload: bytes, year: int) -> dict[str, Decimal]:
         raise
     except (BadZipFile, OSError, RuntimeError, ValueError) as exc:
         raise ProviderError("BLS OEWS ZIP is invalid") from exc
-    if len(data) > 12_000_000 or not data.startswith(b"PK\\x03\\x04"):
+    if len(data) > 12_000_000 or not data.startswith(b"PK\x03\x04"):
         raise ProviderError("BLS OEWS national XLSX is invalid")
     from python_calamine import CalamineWorkbook
     try:
