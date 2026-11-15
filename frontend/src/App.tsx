@@ -86,7 +86,7 @@ export default function App() {
   useEffect(() => {
     // The Data Collection page owns its own server-backed lifecycle.
     if (hash === '#portfolio-holdings') window.dispatchEvent(new Event('gcm-open-portfolio-holdings'));
-    const targetId = ['#source-coverage', '#diagnostics', '#research-quality'].includes(hash) ? hash.slice(1)
+    const targetId = ['#source-coverage', '#diagnostics', '#research-quality', '#manual-files'].includes(hash) ? hash.slice(1)
       : isSourceExplorerHash(hash) ? hash.slice(1)
       : hash === '#portfolio-holdings' ? 'portfolio-holdings'
       : selected.question ? `q-${selected.question}`
