@@ -231,9 +231,9 @@ describe('unified Data and Diagnostics page',()=>{
     render(<DataHub/>);
     expect(await screen.findByText('12 / 12 checked')).toBeTruthy();
     expect(screen.getByText(/0 data series updated/)).toBeTruthy();
-    expect(screen.getByText(/12 still require attention/)).toBeTruthy();
-    expect(screen.getByText(/3 provider requests failed/)).toBeTruthy();
-    expect(screen.getByText(/The publisher check finished, but these source histories remain older than expected/)).toBeTruthy();
+    expect(screen.getByText(/12 still need attention/)).toBeTruthy();
+    expect(screen.getByText(/3 downloads failed/)).toBeTruthy();
+    expect(screen.getByText(/These data series still need newer observations/)).toBeTruthy();
   });
 
   it('starts one server-owned collection using the browser language profile',async()=>{
