@@ -172,7 +172,7 @@ export default function OriginalUploader() {
   const latest = inventory.jobs[0];
   return <section className="original-uploader" aria-labelledby="original-uploader-heading">
     <header>
-      <h3 id="original-uploader-heading">Import original research files</h3>
+      <h4 id="original-uploader-heading">Import original research files</h4>
       <p>Upload official OECD ICIO ZIP archives and the matching ReadMe workbook. Files are
         verified and registered in the existing research store; already stored evidence is preserved.</p>
     </header>
