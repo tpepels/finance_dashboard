@@ -190,6 +190,17 @@ try {
   await page.goForward(); await shown(page.locator('#chart-gdp_growth_global'));
   await page.goto(`${seeded}/#q-C01`);
   await shown(page.locator('#q-C01'));
+  await shown(page.getByRole('heading', { name: 'Evidence and next questions' }));
+  await shown(page.getByRole('heading', { name: 'Questions to investigate next' }));
+  await shown(page.getByRole('link', { name: /C02.*yield curve/ }));
+  assert.equal(await page.locator('.question-connections details').count(), 0,
+    'Question evidence and next steps must be visible without nested disclosure arrows');
+  const questionGraph = await json(page, `${seeded}/api/research-status`);
+  assert.equal(questionGraph.question_graph?.question_count, 39,
+    'All approved questions must participate in the canonical follow-up graph');
+  assert.equal(questionGraph.question_graph?.link_count, 65,
+    'Versioned follow-up graph must contain the complete reviewed links');
+  record('39-question research network: visible evidence, source lineage, next question links');
   await page.goto(`${seeded}/#q-P07`);
   await shown(page.locator('#q-P07'));
   await page.goBack(); await shown(page.locator('#q-C01'));
