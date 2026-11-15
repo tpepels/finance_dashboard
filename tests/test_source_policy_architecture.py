@@ -133,7 +133,7 @@ class PolicyArchitectureTests(unittest.TestCase):
         result = catalog_source_policy_audit()
         self.assertEqual(result["series_catalog_count"], 623)
         self.assertTrue(result["all_declared_references_classified"])
-        self.assertEqual(result["source_references_classified"], 596)
+        self.assertEqual(result["source_references_classified"], 623)
         self.assertEqual(result["unclassified_or_invalid_source_references"], [])
         self.assertFalse(result["dynamic_network_origins_verified"])
 
