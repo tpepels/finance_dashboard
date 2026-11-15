@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import DataOperations from './DataOperations';
 import OriginalUploader from './OriginalUploader';
-import LimitationAssessment from './LimitationAssessment';
 
 /** Explicit developer view: no heavy diagnostic reads until requested. */
 export default function DiagnosticsWorkspace(){
@@ -21,18 +20,23 @@ export default function DiagnosticsWorkspace(){
     }finally{setBusy(false);}
   }
 
-  return <section id="diagnostics" className="research-source-shell workspace-diagnostics" tabIndex={-1}>
-    <h2>Diagnostics &amp; administration</h2>
-    <p>Historical maintenance, original archive administration and investigation tools.</p>
-    <button type="button" onClick={()=>void showConsole()} aria-expanded={open}>
-      {open?'Close diagnostic console':'Open diagnostic console'}
-    </button>
-    {open&&<pre tabIndex={0} aria-label="Full diagnostic console"
-      style={{maxHeight:'65vh',overflow:'auto',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>
-      {busy?'Loading diagnostics…':content}
-    </pre>}
-    <LimitationAssessment/>
-    <DataOperations/>
+  return <div className="data-tools-body">
+    <section className="data-technical-console" aria-label="Technical console">
+      <h4>Technical event log</h4>
+      <p>Read the current structured diagnostics when an import or assessment needs investigation.</p>
+      <button type="button" onClick={()=>void showConsole()} aria-expanded={open}
+        aria-controls="data-technical-log">
+        {open?'Close technical log':'View technical log'}
+      </button>
+      {open&&<pre id="data-technical-log" tabIndex={0} aria-label="Full diagnostic console"
+        style={{maxHeight:360,overflow:'auto',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>
+        {busy?'Loading diagnostics…':content}
+      </pre>}
+    </section>
+    <section className="data-technical-maintenance" aria-label="Additional maintenance">
+      <h4>Specific source checks</h4>
+      <DataOperations/>
+    </section>
     <OriginalUploader/>
-  </section>;
+  </div>;
 }
