@@ -42,11 +42,9 @@ beforeEach(()=>{vi.stubGlobal('fetch',vi.fn(async()=>({
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 
 describe('limitations assessment',()=>{
-  it('loads only when requested, separates actionable from method constraints and links questions',async()=>{
+  it('loads automatically and separates actionable from method constraints and links questions',async()=>{
     const user=userEvent.setup();
     render(<LimitationAssessment/>);
-    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button',{name:'Assess limitations'}));
     expect(await screen.findByText(/4 recorded findings/)).toBeTruthy();
     expect(screen.getByText(/37 questions assessed/)).toBeTruthy();
     expect(screen.getByText('Showing 3 of 4 findings.')).toBeTruthy();
@@ -70,7 +68,6 @@ describe('limitations assessment',()=>{
     })})));
     const user=userEvent.setup();
     render(<LimitationAssessment/>);
-    await user.click(screen.getByRole('button',{name:'Assess limitations'}));
     expect(await screen.findByText(/0\/37 questions assessed/)).toBeTruthy();
     expect(screen.getByText(/Research limitation findings may be incomplete/)).toBeTruthy();
   });
@@ -79,7 +76,6 @@ describe('limitations assessment',()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status:503})));
     const user=userEvent.setup();
     render(<LimitationAssessment/>);
-    await user.click(screen.getByRole('button',{name:'Assess limitations'}));
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('HTTP 503');
     expect(screen.getByRole('button',{name:'Assess limitations'})).toBeTruthy();
