@@ -234,6 +234,24 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     record_event("earnings", "collector_failed", level="warning",
                                  action="scheduled_refresh", reason="provider_failed")
                     log.warning("Local Wisesheets refresh cycle failed; retaining previous aggregate")
+            def record_core_exception(phase: str, exc: Exception):
+                nonlocal cycle_failed, core_crashed
+                cycle_failed = True
+                core_crashed = True
+                failure = record_failure("scheduler", phase, exc)
+                _record_schedule(refresh_state="source_collection_failed",
+                                 refresh_stage=phase,
+                                 last_error_code="internal_error",
+                                 last_error_stage=phase,
+                                 last_error_at=_utc_time(time.time()),
+                                 last_failure_id=failure["id"],
+                                 last_failure_persisted=failure["persisted"])
+                record_event("system", "collector_failed", level="error",
+                             action="scheduled_refresh", reason="internal_error",
+                             stage=phase)
+                log.error("%s refresh stage aborted (details redacted); "
+                          "continuing independent source stages", phase)
+
             try:
                 macro_failures = refresh_all(
                     engine, stopped=scheduled_stop, skip_complete_pinned=True,
@@ -243,36 +261,25 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     record_event("macro", "stage_finished", level="warning",
                                  action="scheduled_refresh", status="partial",
                                  failed=macro_failures)
-                    log.warning("%d macro sources failed; retained last successful observations",
+                    log.warning("%d macro sources failed; retained successful observations",
                                 macro_failures)
-                if include_markets and not scheduled_stop.is_set():
-                    _record_schedule(refresh_stage="markets")
+            except Exception as exc:
+                # Never prevent the independent market/FX collection stage.
+                record_core_exception("macro", exc)
+
+            if include_markets and not scheduled_stop.is_set():
+                _record_schedule(refresh_stage="markets")
+                try:
                     market_failures = refresh_market_all(engine, stopped=scheduled_stop)
                     if market_failures:
                         cycle_failed = True
                         record_event("markets", "stage_finished", level="warning",
                                      action="scheduled_refresh", status="partial",
                                      failed=market_failures)
-                        log.warning("%d market/FX sources failed; retained last successful observations",
+                        log.warning("%d market/FX sources failed; retained successful observations",
                                     market_failures)
-            except Exception as exc:
-                cycle_failed = True
-                core_crashed = True
-                failed_stage = scheduled_refresh_status().get("refresh_stage") or "macro"
-                failure = record_failure("scheduler", failed_stage, exc)
-                _record_schedule(refresh_state="source_collection_failed",
-                                 refresh_stage=failed_stage,
-                                 last_error_code="internal_error",
-                                 last_error_stage=failed_stage,
-                                 last_error_at=_utc_time(time.time()),
-                                 last_failure_id=failure["id"],
-                                 last_failure_persisted=failure["persisted"])
-                record_event("system", "collector_failed", level="error",
-                             action="scheduled_refresh", reason="internal_error",
-                             stage=failed_stage)
-                # A malformed provider response must not terminate the API or
-                # silently kill refresh. Do not log URLs containing API keys.
-                log.error("Background refresh cycle aborted (error redacted); preserving previous data")
+                except Exception as exc:
+                    record_core_exception("markets", exc)
             if enabled("FINANCE_VINTAGE_REFRESH", "1") and not scheduled_stop.is_set():
                 _record_schedule(refresh_stage="vintage")
                 try:
