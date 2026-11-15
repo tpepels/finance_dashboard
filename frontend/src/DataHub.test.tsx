@@ -111,7 +111,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByText('Data series available')).toBeTruthy();
     expect(screen.getByText('Available series to review').previousElementSibling?.textContent).toBe('12');
     expect(screen.getByRole('heading',{name:'Research quality'})).toBeTruthy();
-    expect(screen.getByRole('heading',{name:'Diagnostics & maintenance'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'Troubleshooting and other checks'})).toBeTruthy();
     expect(screen.getByRole('table',{name:'Source download progress'})).toBeTruthy();
     expect(await screen.findByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     expect(screen.queryByRole('link',{name:'Open source explorer'})).toBeNull();
@@ -221,7 +221,7 @@ describe('unified Data and Diagnostics page',()=>{
     run.sources[1].status='deferred';
     run.sources[1].retry_at_unix=Date.now()/1000-120;
     render(<DataHub/>);
-    expect(await screen.findByText('Retry eligible; waiting for download queue')).toBeTruthy();
+    expect(await screen.findByText('Ready to retry')).toBeTruthy();
   });
 
   it('shows the difference between 12 attempted repairs and zero resolved gaps',async()=>{
@@ -230,7 +230,7 @@ describe('unified Data and Diagnostics page',()=>{
         resolved_issues:0,failed_sources:3}};
     render(<DataHub/>);
     expect(await screen.findByText('12 / 12 checked')).toBeTruthy();
-    expect(screen.getByText(/0 source gaps resolved/)).toBeTruthy();
+    expect(screen.getByText(/0 data series updated/)).toBeTruthy();
     expect(screen.getByText(/12 still require attention/)).toBeTruthy();
     expect(screen.getByText(/3 provider requests failed/)).toBeTruthy();
     expect(screen.getByText(/The publisher check finished, but these source histories remain older than expected/)).toBeTruthy();
@@ -250,7 +250,7 @@ describe('unified Data and Diagnostics page',()=>{
       && item.method==='POST')).toBe(true));
     const request=calls.find(item=>item.url==='/api/data/collection/start')!;
     expect(JSON.parse(request.body||'{}').browser).toHaveProperty('language');
-    expect(await screen.findByText(/You can leave this page while it runs/)).toBeTruthy();
+    expect(await screen.findByText(/You can close this page while the check continues/)).toBeTruthy();
     expect(screen.getByRole('button',{name:'Find and download missing data'}).hasAttribute('disabled')).toBe(true);
   });
 
@@ -302,7 +302,7 @@ describe('unified Data and Diagnostics page',()=>{
     const view=render(<DataHub/>);
     await user.click(await screen.findByRole('button',{name:'Create troubleshooting report'}));
     await waitFor(()=>expect(calls.some(item=>item.url==='/api/diagnostics/prepare?force=false')).toBe(true));
-    expect(screen.getByText(/Preparing the archive in the background/)).toBeTruthy();
+    expect(screen.getByText(/Creating the report/)).toBeTruthy();
     view.unmount();
     exportState={state:'ready',ready:true,id:'export-1',
       prepared_at:'2026-11-14T11:35:00Z',size_bytes:5500000,error:null};
