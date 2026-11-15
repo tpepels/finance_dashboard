@@ -157,6 +157,19 @@ describe('research update waiting-state journey',()=>{
     expect(model.explanation).toContain('invalid or inaccessible');
   });
 
+  it('reports journal persistence failure instead of promising an informative ZIP',()=>{
+    const failed=missing({automation:{
+      scheduled_refresh_enabled:true,interval_seconds:86400,
+      refresh_running:false,refresh_state:'waiting',
+      last_error_code:'internal_error',last_failure_persisted:false,
+    }});
+    const model=describeResearchUpdate(failed,null);
+    expect(model.heading).toBe('Internal source failure could not be preserved');
+    expect(model.tone).toBe('attention');
+    expect(model.action).toContain('permissions and free space');
+    expect(model.stages[0].state).toBe('attention');
+  });
+
   it('does not recommend waiting when the configured automatic scheduler has not started',()=>{
     const missingWorker=missing({
       automation:{scheduled_refresh_enabled:true,interval_seconds:86400,
