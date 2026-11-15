@@ -731,6 +731,11 @@ class ManualSourceTests(unittest.TestCase):
                 break
             time.sleep(.02)
         self.assertEqual(resumed.jobs[0]["status"], "complete", resumed.jobs[0])
+        # A job can publish its terminal status just before the worker
+        # finishes removing the immutable upload spool. Await that final
+        # cleanup rather than racing the teardown thread on CI.
+        while spool.exists() and time.monotonic() < deadline:
+            time.sleep(.02)
         self.assertFalse(spool.exists())
 
     def test_download_api_disallows_arbitrary_urls_and_requires_dashboard_action(self):
