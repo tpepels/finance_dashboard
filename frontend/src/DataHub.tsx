@@ -249,7 +249,7 @@ export default function DataHub(){
         };
         request.send(file);
       });
-      setNotification(row.name+' received; validating and importing automatically.');
+      setNotification(row.name+' received. The app is checking the file and adding its data automatically.');
       void collection.reload();
     }catch(cause){setError(cause instanceof Error?cause.message:'Upload failed');}
     finally{setUploading(old=>{const next={...old};delete next[key];return next;});}
@@ -404,7 +404,7 @@ export default function DataHub(){
 
     {files.length>0&&<section className="data-collection-section" aria-labelledby="manual-files">
       <h3 id="manual-files">Files requiring manual download ({files.length})</h3>
-      <p>Download the official file in your browser, then upload it here. Validation and import resume without another confirmation.</p>
+      <p>Download the file from its official publisher, then upload it here. The app checks the file and adds the data automatically.</p>
       <div className="data-collection-table-scroll">
         <table aria-label="Files requiring manual download">
           <thead><tr><th>Source</th><th>Required file</th><th>Reason</th><th>Upload</th></tr></thead>
