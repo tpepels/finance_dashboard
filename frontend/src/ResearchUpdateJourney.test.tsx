@@ -32,25 +32,25 @@ afterEach(()=>cleanup());
 describe('research update waiting-state journey',()=>{
   it('explains 36 never-ingested sources without claiming the scheduler is running',()=>{
     const model=describeResearchUpdate(missing(),{running:false,manual_files:[]});
-    expect(model.heading).toBe('Waiting for initial source downloads');
+    expect(model.heading).toBe('Some data is missing');
     expect(model.never).toBe(36);
     expect(model.source).toEqual({
       total:462,missing:36,withData:426,withoutAttention:420,
       needsReviewWithData:6,attention:42,
     });
     expect(model.stages.map(s=>s.state)).toEqual(['waiting','waiting','waiting']);
-    expect(model.action).toContain('Next scheduled source check:');
+    expect(model.action).toContain('Next automatic check:');
     render(<ResearchUpdateJourney health={missing()} collection={{running:false}}/>);
-    expect(screen.getByRole('heading',{name:'Waiting for initial source downloads'})).toBeTruthy();
-    expect(screen.getByText(/36 have never had a collection attempt/)).toBeTruthy();
-    expect(screen.getByText('426 / 462 histories stored')).toBeTruthy();
-    const bar=screen.getByRole('img',{name:/420 histories with no source attention/});
-    expect(bar.getAttribute('aria-label')).toContain('36 histories without observations');
+    expect(screen.getByRole('heading',{name:'Some data is missing'})).toBeTruthy();
+    expect(screen.getByText(/36 have not been checked yet/)).toBeTruthy();
+    expect(screen.getByText('426 / 462 data series available')).toBeTruthy();
+    const bar=screen.getByRole('img',{name:/420 data series ready/});
+    expect(bar.getAttribute('aria-label')).toContain('36 data series missing');
     const steps=screen.getByRole('list',{name:'Update steps'});
-    expect(within(steps).getByText('Collect original data')).toBeTruthy();
-    expect(within(steps).getByText('Check source health')).toBeTruthy();
-    expect(within(steps).getByText('Evaluate research')).toBeTruthy();
-    expect(screen.getByRole('link',{name:'Inspect exact source histories'}).getAttribute('href'))
+    expect(within(steps).getByText('Find data')).toBeTruthy();
+    expect(within(steps).getByText('Check downloaded data')).toBeTruthy();
+    expect(within(steps).getByText('Update research results')).toBeTruthy();
+    expect(screen.getByRole('link',{name:'See data that needs attention'}).getAttribute('href'))
       .toBe('#source-coverage');
   });
 
@@ -60,9 +60,9 @@ describe('research update waiting-state journey',()=>{
         refresh_running:true,refresh_state:'collecting',next_refresh_at:null},
     });
     const model=describeResearchUpdate(scheduler,null);
-    expect(model.heading).toBe('Collecting missing original source histories');
+    expect(model.heading).toBe('Downloading data');
     expect(model.stages[0].state).toBe('running');
-    expect(model.action).toContain('After successful ingestion');
+    expect(model.action).toContain('The results will appear in Collection activity');
     expect(model.nextRun).toBeNull();
     expect(describeResearchUpdate(missing(),{running:true}).stages[0].state).toBe('running');
   });
@@ -73,9 +73,9 @@ describe('research update waiting-state journey',()=>{
       refresh_running:false,refresh_state:'disabled',next_refresh_at:null,
     }});
     const model=describeResearchUpdate(disabled,{running:false});
-    expect(model.heading).toBe('Source collection needs a manual start');
+    expect(model.heading).toBe('Automatic downloads are turned off');
     expect(model.tone).toBe('attention');
-    expect(model.action).toContain('Collect original data');
+    expect(model.action).toContain('Find data');
     render(<ResearchUpdateJourney health={disabled}/>);
     expect(screen.getByText('Action required')).toBeTruthy();
   });
@@ -89,10 +89,10 @@ describe('research update waiting-state journey',()=>{
       last_error_at:'2026-11-14T21:50:58Z',next_refresh_at:null,
     }});
     const model=describeResearchUpdate(failed,null);
-    expect(model.heading).toBe('Scheduled source collection failed');
+    expect(model.heading).toBe('Scheduled download stopped with an error');
     expect(model.tone).toBe('attention');
     expect(model.stages[0].state).toBe('attention');
-    expect(model.action).toContain('did not resolve');
+    expect(model.action).toContain('View the details under Troubleshooting');
     render(<ResearchUpdateJourney health={failed}/>);
     expect(screen.getByText('Action required')).toBeTruthy();
     expect(screen.queryByText('Source collection active')).toBeNull();
@@ -105,8 +105,8 @@ describe('research update waiting-state journey',()=>{
       refresh_completed:5,refresh_total:250,refresh_stage:'macro',
     }});
     render(<ResearchUpdateJourney health={running}/>);
-    expect(screen.getByText(/Macro tasks processed: 5 \/ 250/)).toBeTruthy();
-    expect(screen.getByText(/deferred or failed attempts/)).toBeTruthy();
+    expect(screen.getByText(/Publisher requests checked: 5 \/ 250/)).toBeTruthy();
+    expect(screen.getByText(/delayed or failed/)).toBeTruthy();
   });
 
   it('does not label vintage or backup maintenance as active macro collection',()=>{
@@ -116,7 +116,7 @@ describe('research update waiting-state journey',()=>{
       last_error_code:null,next_refresh_at:null,
     }});
     const model=describeResearchUpdate(checking,null);
-    expect(model.heading).toBe('Source collection stage finished; other maintenance is running');
+    expect(model.heading).toBe('Downloads finished; other checks are running');
     expect(model.tone).toBe('waiting');
     expect(model.stages[0].state).toBe('waiting');
   });
@@ -137,12 +137,12 @@ describe('research update waiting-state journey',()=>{
       },
     }});
     const model=describeResearchUpdate(previous,null);
-    expect(model.heading).toBe('Previous deployment encountered an internal source failure');
+    expect(model.heading).toBe('An earlier download check failed');
     expect(model.tone).toBe('attention');
     expect(model.stages[0].state).toBe('attention');
-    expect(model.action).toContain('1234aabbccdd5678');
+    expect(model.action).toContain('See the saved error under Troubleshooting');
     render(<ResearchUpdateJourney health={previous}/>);
-    expect(screen.getByRole('heading',{name:/Previous deployment encountered/})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:/An earlier download check failed/})).toBeTruthy();
   });
 
   it('does not silently hide an invalid persistent failure journal',()=>{
@@ -152,9 +152,9 @@ describe('research update waiting-state journey',()=>{
       failure_journal_state:'invalid',next_refresh_at:null,
     }});
     const model=describeResearchUpdate(bad,null);
-    expect(model.heading).toBe('Failure evidence journal is unreadable');
+    expect(model.heading).toBe('Saved error details are unavailable');
     expect(model.stages[0].state).toBe('attention');
-    expect(model.explanation).toContain('invalid or inaccessible');
+    expect(model.explanation).toContain('could not read its saved error log');
   });
 
   it('reports journal persistence failure instead of promising an informative ZIP',()=>{
@@ -164,9 +164,9 @@ describe('research update waiting-state journey',()=>{
       last_error_code:'internal_error',last_failure_persisted:false,
     }});
     const model=describeResearchUpdate(failed,null);
-    expect(model.heading).toBe('Internal source failure could not be preserved');
+    expect(model.heading).toBe('Error history could not be saved');
     expect(model.tone).toBe('attention');
-    expect(model.action).toContain('permissions and free space');
+    expect(model.action).toContain('disk space and file permissions');
     expect(model.stages[0].state).toBe('attention');
   });
 
@@ -180,14 +180,14 @@ describe('research update waiting-state journey',()=>{
       next_refresh_at:'2026-11-15T22:02:42Z',
     }});
     const model=describeResearchUpdate(partial,null);
-    expect(model.heading).toBe('Source refresh preflight found isolated errors');
+    expect(model.heading).toBe('Some publisher checks found problems');
     expect(model.tone).toBe('attention');
-    expect(model.action).toContain('still try other sources');
+    expect(model.action).toContain('Other publishers will still be checked');
     expect(model.stages[0].state).toBe('attention');
     render(<ResearchUpdateJourney health={partial}/>);
-    expect(screen.getByRole('heading',{name:'Source refresh preflight found isolated errors'}))
+    expect(screen.getByRole('heading',{name:'Some publisher checks found problems'}))
       .toBeTruthy();
-    expect(screen.getByText('Preflight issues')).toBeTruthy();
+    expect(screen.getByText('Publisher errors')).toBeTruthy();
   });
 
   it('does not recommend waiting when the configured automatic scheduler has not started',()=>{
@@ -196,14 +196,14 @@ describe('research update waiting-state journey',()=>{
         refresh_running:false,refresh_state:'not_started',next_refresh_at:null},
     });
     const model=describeResearchUpdate(missingWorker,{running:false});
-    expect(model.heading).toBe('Automatic source scheduler has not started');
+    expect(model.heading).toBe('Automatic downloads have not started');
     expect(model.tone).toBe('attention');
     expect(model.stages[0].state).toBe('attention');
-    expect(model.action).toContain('waiting alone may not start collection');
+    expect(model.action).toContain('Start a check using the main button');
     const stopped=describeResearchUpdate({...missingWorker,automation:{
       ...missingWorker.automation!,refresh_state:'stopped',
     }},{running:false});
-    expect(stopped.heading).toBe('Automatic source refresh is stopped');
+    expect(stopped.heading).toBe('Automatic downloads have stopped');
   });
 
   it('reports a scheduled worker paused for manual collection distinctly',()=>{
@@ -211,8 +211,8 @@ describe('research update waiting-state journey',()=>{
       interval_seconds:86400,refresh_running:false,
       refresh_state:'waiting_for_manual_collection',next_refresh_at:null}});
     const model=describeResearchUpdate(paused,{running:false});
-    expect(model.heading).toBe('Automatic source checks are waiting for manual collection');
-    expect(model.action).toContain('next cycle');
+    expect(model.heading).toBe('Automatic checks are waiting');
+    expect(model.action).toContain('schedule resumes');
     expect(model.stages[0].state).toBe('waiting');
   });
 
@@ -221,14 +221,14 @@ describe('research update waiting-state journey',()=>{
     trouble.snapshot!.attention_items![0].last_attempt_state='failed';
     trouble.snapshot!.attention_items![0].last_failure_code='provider_http_403';
     const failed=describeResearchUpdate(trouble,{running:false});
-    expect(failed.heading).toBe('Some source collection attempts failed');
-    expect(failed.action).toContain('waiting alone may not resolve');
+    expect(failed.heading).toBe('Some data downloads failed');
+    expect(failed.action).toContain('app will retry eligible downloads');
     expect(failed.stages[0].state).toBe('attention');
     const manual=describeResearchUpdate(missing(),{
       running:false,manual_files_count:2,
     });
-    expect(manual.heading).toBe('Manual source files are required');
-    expect(manual.action).toContain('Files requiring manual download');
+    expect(manual.heading).toBe('Files need to be downloaded');
+    expect(manual.action).toContain('Files to download yourself');
   });
 
   it('distinguishes post-ingestion source-health and scientific assessment work',()=>{
@@ -237,24 +237,24 @@ describe('research update waiting-state journey',()=>{
       sources:{total:462,with_data:462,needs_attention:0},attention_items:[],
     }});
     expect(describeResearchUpdate({...complete,state:'refreshing'},null).heading)
-      .toBe('Checking newly collected source data');
+      .toBe('Checking downloaded data');
     const assessing=describeResearchUpdate({
       ...complete,scientific_assessment:{running:true,evaluated_at:null},
     },null);
-    expect(assessing.heading).toBe('Updating scientific research evidence');
+    expect(assessing.heading).toBe('Updating research results');
     expect(assessing.stages[2].state).toBe('running');
     const accepted=describeResearchUpdate(complete,null);
-    expect(accepted.heading).toBe('Source checks completed');
-    expect(accepted.action).toContain('does not establish acceptance of every research method');
+    expect(accepted.heading).toBe('All registered data series are available');
+    expect(accepted.action).toContain('See Research quality');
   });
 
   it('does not fabricate status when the server is unavailable',()=>{
     const last=describeResearchUpdate(missing(),null,true);
-    expect(last.heading).toBe('Showing the last known update state');
+    expect(last.heading).toBe('Showing the last saved status');
     expect(last.tone).toBe('attention');
     const unknown=describeResearchUpdate(null,null);
-    expect(unknown.heading).toBe('Checking the source and research update state');
+    expect(unknown.heading).toBe('Checking data status');
     render(<ResearchUpdateJourney compact/>);
-    expect(screen.getByText(/next step cannot be determined/)).toBeTruthy();
+    expect(screen.getByText(/current status will appear/)).toBeTruthy();
   });
 });
