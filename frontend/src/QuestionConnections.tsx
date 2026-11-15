@@ -17,7 +17,7 @@ export type ResearchNode={
   findings:{research_state:string;evaluated_at:string|null;open_gates:string[];
    limitations:{code:string;text:string}[];disposition:{role:string;description:string;state:string;
     accepted:boolean;owner_input_required:boolean;supplemental?:boolean;
-    sources_with_observations?:number}[]};
+    sources_with_observations?:number;series_ids?:string[]}[]};
   distribution:{role:string;population:string|null;concept:string|null;unit:string|null}[];
   uncertainty:{outstanding_evidence:string;open_gates:string[];limitations:{code:string;text:string}[]};
  };
@@ -94,7 +94,7 @@ function ConnectionsView({node,graph}:{node:ResearchNode;graph:QuestionGraph}){
      <ul className="question-missing">
       {pendingCore.map(r=><li key={r.role}>
        {r.description} — {r.owner_input_required?'Your data is needed.':
-       r.series_ids.length&&r.sources_with_observations===0
+       (r.series_ids?.length??0)>0&&r.sources_with_observations===0
        ?'Publisher data have not been collected for the required series.':
        'This original has not passed all scientific checks.'}</li>)}
      </ul>
