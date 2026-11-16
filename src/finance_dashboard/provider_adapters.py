@@ -470,9 +470,14 @@ def fetch_oecd_nfc_accounts(self, series_id, start, item, key):
             include = True
         else:
             code = row.get("TRANSACTION")
-            if code not in OECD_NFC_TRANSACTIONS or row.get("ACCOUNTING_ENTRY") != OECD_NFC_TRANSACTIONS[code]:
+            entry = row.get("ACCOUNTING_ENTRY")
+            # The SDMX request explicitly crosses C+D with the six
+            # transactions. Both entry sides may be published for a code.
+            # Verify the requested target pair, not unrelated cross-product
+            # rows, while rejecting any unrequested transaction or entry.
+            if code not in OECD_NFC_TRANSACTIONS or entry not in ("C", "D"):
                 raise ProviderError("OECD corporate account transaction/entry mismatch")
-            include = code == transaction
+            include = code == transaction and entry == expected_entry
         observed_rows += 1
         if include and row.get("OBS_VALUE") not in (None, ""):
             day = date(int(row["TIME_PERIOD"]), 1, 1)

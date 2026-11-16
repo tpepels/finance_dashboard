@@ -374,11 +374,14 @@ def _oecd_nfc(raw, url, definition):
             # A many-series original cannot smuggle another economic series
             # under a permissive wildcard: every returned role must belong
             # to the exact audited key with the correct uses/resources entry.
-            if (code not in entries
-                    or row.get('ACCOUNTING_ENTRY') != entries[code]
-                    or (legacy and code != transaction)):
+            entry = row.get('ACCOUNTING_ENTRY')
+            if (code not in entries or entry not in ('C', 'D')
+                    or (legacy and (code != transaction or entry != entries[code]))):
                 _error()
-            include = code == transaction
+            # The country-wide requested Cartesian product can contain
+            # publisher rows for both accounting sides of a transaction.
+            # Extract only the exact documented role and entry.
+            include = code == transaction and entry == entries[code]
         if include:
             _add(values, seen, _native_period(row['TIME_PERIOD'], 'A'), row['OBS_VALUE'])
     if transaction != 'B2G' and any(value < 0 for value in values.values()):

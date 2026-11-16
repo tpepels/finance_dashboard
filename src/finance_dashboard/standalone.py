@@ -64,9 +64,13 @@ def _utc_time(timestamp: float) -> str:
 class _ScheduledStop:
     def __init__(self, stopped):
         self.stopped = stopped
+        self.preempted = False
 
     def is_set(self) -> bool:
-        return self.stopped.is_set() or manual_sync_pending.is_set()
+        pending = manual_sync_pending.is_set()
+        if pending:
+            self.preempted = True
+        return self.stopped.is_set() or pending
 
 
 def enabled(name: str, default: str = "0") -> bool:
@@ -215,10 +219,13 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
             _record_schedule(refresh_running=False,
                              refresh_state="waiting_for_manual_collection",
                              next_refresh_at=None)
-            if stopped.wait(interval_seconds):
+            # The manual job clears its event independently. Recheck it
+            # promptly instead of parking the interrupted schedule for a day.
+            if stopped.wait(min(interval_seconds, 30)):
                 break
             continue
         with maintenance_network_lock:
+            scheduled_stop.preempted = False
             _record_schedule(refresh_running=True, refresh_state="collecting",
                              refresh_stage="macro", refresh_completed=0,
                              refresh_total=None, refresh_current_source=None,
@@ -350,13 +357,19 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
                     record_event("backup", "collector_failed", level="error",
                                  action="scheduled_refresh", reason="backup_failed")
                     log.warning("SQLite online backup failed; latest verified backups retained")
-            interrupted = manual_sync_pending.is_set()
+            interrupted = scheduled_stop.preempted or manual_sync_pending.is_set()
             record_event("system", "finished",
                          level="warning" if cycle_failed or interrupted else "info",
                          action="scheduled_refresh",
                          status=("interrupted" if interrupted else
                                  "partial" if cycle_failed else "complete"))
-            if core_crashed:
+            if interrupted:
+                # Another collection preempted this batch; the untouched
+                # suffix still needs its regular attempt. Retry soon after
+                # the manual job, respecting the existing per-publisher quotas.
+                consecutive_core_errors = 0
+                retry_seconds = min(interval_seconds, 60)
+            elif core_crashed:
                 # A planner/collector exception leaves source histories
                 # unattempted. Retry sooner than the normal daily cadence,
                 # with bounded exponential backoff; publisher HTTP retries

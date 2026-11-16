@@ -293,6 +293,70 @@ class StandaloneContainerTests(TestCase):
         self.assertEqual(scheduled_refresh_status()["last_refresh_outcome"],"complete")
         self.assertIsNone(scheduled_refresh_status()["last_error_code"])
 
+    def test_interrupted_refresh_retries_unattempted_sources_after_manual_work(self):
+        from finance_dashboard.standalone import (
+            refresh_loop, scheduled_refresh_status, manual_sync_pending)
+        class TwoCycles:
+            def __init__(self): self.waits = []; self.snapshots = []
+            def is_set(self): return False
+            def wait(self, seconds):
+                self.waits.append(seconds)
+                self.snapshots.append(scheduled_refresh_status())
+                return len(self.waits) == 2
+        stop = TwoCycles()
+        calls = []
+        def collect(*args, **kwargs):
+            calls.append(1)
+            if len(calls) == 1:
+                manual_sync_pending.set()
+                self.assertTrue(kwargs["stopped"].is_set())
+                manual_sync_pending.clear()
+            return 0
+        with tempfile.TemporaryDirectory() as temp:
+            try:
+                with (environ(FINANCE_REFRESH_ON_START="1",
+                              FINANCE_VINTAGE_REFRESH="0",
+                              FINANCE_SEC_HOLDINGS_REFRESH="0",
+                              FINANCE_AUTO_BACKUP="0",
+                              FINANCE_REFRESH_SCHEDULE_PATH=str(Path(temp)/"schedule.json")),
+                      patch("finance_dashboard.worker.refresh_all", side_effect=collect),
+                      patch("finance_dashboard.data_change_bus.publish_change")):
+                    refresh_loop(None, stop, interval_seconds=86400,
+                                 include_markets=False, refresh_wisesheets=False)
+            finally:
+                manual_sync_pending.clear()
+        self.assertEqual(calls, [1, 1])
+        self.assertEqual(stop.waits, [60, 86400])
+        self.assertEqual(stop.snapshots[0]["last_refresh_outcome"], "interrupted")
+        self.assertEqual(stop.snapshots[1]["last_refresh_outcome"], "complete")
+
+    def test_waiting_for_manual_collection_polls_until_it_finishes(self):
+        from finance_dashboard.standalone import refresh_loop, manual_sync_pending
+        class WaitForManual:
+            def __init__(self): self.waits = []
+            def is_set(self): return False
+            def wait(self, seconds):
+                self.waits.append(seconds)
+                if len(self.waits) == 1:
+                    manual_sync_pending.clear()
+                    return False
+                return True
+        stop = WaitForManual()
+        try:
+            manual_sync_pending.set()
+            with (environ(FINANCE_REFRESH_ON_START="1",
+                          FINANCE_VINTAGE_REFRESH="0",
+                          FINANCE_SEC_HOLDINGS_REFRESH="0",
+                          FINANCE_AUTO_BACKUP="0"),
+                  patch("finance_dashboard.worker.refresh_all", return_value=0) as collect,
+                  patch("finance_dashboard.data_change_bus.publish_change")):
+                refresh_loop(None, stop, interval_seconds=86400,
+                             include_markets=False, refresh_wisesheets=False)
+                collect.assert_called_once()
+        finally:
+            manual_sync_pending.clear()
+        self.assertEqual(stop.waits, [30, 86400])
+
     def test_active_failure_is_observable_before_optional_maintenance_finishes(self):
         from finance_dashboard.standalone import refresh_loop, scheduled_refresh_status
         class Halt:

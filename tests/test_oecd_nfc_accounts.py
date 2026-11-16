@@ -55,9 +55,42 @@ class OecdNfcAccountsTests(unittest.TestCase):
             with self.subTest(code=code):
                 self.assertEqual(_oecd_nfc(body.encode(), URL, definition),
                                  {date(2024, 1, 1): Decimal(100 + number)})
-        wrong = body.replace(",C,D39,", ",D,D39,")
+        wrong = body.replace(",C,D39,", ",C,NOT_A_REGISTERED_CODE,")
         with self.assertRaises(EvidenceError):
             _oecd_nfc(wrong.encode(), URL, DEFINITION)
+
+    def test_shared_sdmx_cross_product_keeps_only_correct_target_entry(self):
+        from finance_dashboard.provider_adapters import fetch_oecd_nfc_accounts
+        from unittest.mock import MagicMock
+        extra = [
+            ROW.replace(",D,D1,", ",D,D1,").format(year=2024, value=100),
+            ROW.replace(",D,D1,", ",C,D1,").format(year=2024, value=900),
+            ROW.replace(",D,D1,", ",C,D39,").format(year=2024, value=200),
+            ROW.replace(",D,D1,", ",D,D39,").format(year=2024, value=800),
+        ]
+        body = HEADER + "".join(extra)
+        for code, expected in (("D1", 100), ("D39", 200)):
+            definition = {**DEFINITION, "source_key": "USA/" + code}
+            self.assertEqual(
+                _oecd_nfc(body.encode(), URL, definition),
+                {date(2024, 1, 1): Decimal(expected)})
+            provider = MagicMock()
+            provider._get_document.return_value = MagicMock(
+                text=body, request=MagicMock(url=URL))
+            result = fetch_oecd_nfc_accounts(
+                provider, "test.us.nfc_"+code.lower(), None,
+                definition, definition["source_key"])
+            self.assertEqual(result.observations,
+                             {date(2024, 1, 1): Decimal(expected)})
+        # Cross-product rows must never be promoted as the wrong entry
+        # even if they have a plausible numeric observation.
+        only_wrong = HEADER + extra[1] + extra[3]
+        with self.assertRaises(Exception):
+            provider = MagicMock()
+            provider._get_document.return_value = MagicMock(
+                text=only_wrong, request=MagicMock(url=URL))
+            fetch_oecd_nfc_accounts(
+                provider, "test.us.nfc_d1", None, DEFINITION, "USA/D1")
 
     def test_reader_rejects_other_series_currency_or_partial_windows(self):
         for body, url, definition in (
