@@ -4,147 +4,111 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ManualSources from './ManualSources';
 
-vi.mock('./OriginalUploader', () => ({
-  default: () => <div>OECD canonical uploader</div>,
-}));
+vi.mock('./OriginalUploader',()=>({default:()=> <div>OECD canonical uploader</div>}));
 
-const base = {
-  active:false, jobs:[],
+const base={
+  active:false,jobs:[],
   datasets:[
     {id:'wid-world',title:'WID.world — world income and wealth',
-     description:'Two original files.',series_ids:['inequality.world.pretax_income.top10'],
-     staged:{},roles:[
-       {id:'data',label:'WID world observations',download_url:'https://wid.world/bulk_download/WID_data_WO.csv',
-        accept:'.csv',max_bytes:300000},
-       {id:'metadata',label:'WID variable metadata',download_url:'https://wid.world/bulk_download/WID_metadata_WO.csv',
-        accept:'.csv',max_bytes:300000},
+     description:'Two original files.',series_ids:[],staged:{},roles:[
+       {id:'data',label:'WID world observations',
+         download_url:'https://wid.world/bulk_download/WID_data_WO.csv',
+         accept:'.csv',max_bytes:300000},
+       {id:'metadata',label:'WID variable metadata',
+         download_url:'https://wid.world/bulk_download/WID_metadata_WO.csv',
+         accept:'.csv',max_bytes:300000},
      ]},
-    {id:'msci-eafe',title:'MSCI Eafe — valuation factsheet',description:'Original PDF.',
-     series_ids:['valuation.eafe.msci_trailing_pe','valuation.eafe.msci_forward_pe'],
-     staged:{},roles:[
-       {id:'factsheet',label:'Index factsheet PDF',
-        download_url:'https://www.msci.com/documents/10199/255599/msci-eafe-index-usd-net.pdf',
-        accept:'.pdf',max_bytes:5000000},
-     ]},
-    {id:'oecd-icio',title:'OECD — ICIO original archives',description:'Publisher originals.',
-     series_ids:[],staged:{},roles:[],existing_importer:true,
-     reference_links:[{label:'1995-2000_SML.zip',
+    {id:'msci-eafe',title:'MSCI Eafe — valuation factsheet',description:'Official PDF.',
+     series_ids:[],staged:{},roles:[{id:'factsheet',label:'Index factsheet PDF',
+       download_url:'https://www.msci.com/pdf.pdf',accept:'.pdf',max_bytes:5000000}]},
+    {id:'oecd-icio',title:'OECD — ICIO original archives',
+     description:'OECD ZIPs and ReadMe.',series_ids:[],staged:{},roles:[],
+     existing_importer:true,reference_links:[{label:'1995-2000_SML.zip',
        url:'https://webfs-sti.oecd.org/files/STI-PIE/ICIO/2025/1995-2000_SML.zip'}]},
   ],
 };
-let payload = structuredClone(base);
+let payload: {active:boolean;
+  jobs:Array<{id:string;dataset:string;status:string;error_code?:string;sources:unknown[]}>;
+  datasets:typeof base.datasets}=structuredClone(base);
 const calls:string[]=[];
-const fakeFetch=vi.fn(async (request:string,options?:RequestInit)=>{
-  calls.push((options?.method??'GET')+' '+String(request));
-  if(String(request)==='/api/manual-sources') return {
-    ok:true,status:200,json:async()=>structuredClone(payload)};
-  if(String(request).startsWith('/api/manual-sources/import')) return {
-    ok:true,status:202,json:async()=>({job_id:'import-1'})};
-  if(String(request).startsWith('/api/manual-sources/fetch')) return {
-    ok:true,status:202,json:async()=>({jobs:[{dataset:'wid-world',job_id:'job1'}],skipped:{}})};
-  throw new Error('Unexpected request: '+request);
-});
-
 beforeEach(()=>{
-  payload=structuredClone(base);
-  calls.length=0;
-  fakeFetch.mockClear();
-  vi.stubGlobal('fetch',fakeFetch);
+  payload=structuredClone(base);calls.length=0;
+  vi.stubGlobal('fetch',vi.fn(async(request:string,options?:RequestInit)=>{
+    calls.push((options?.method??'GET')+' '+request);
+    if(request==='/api/manual-sources')return {ok:true,status:200,
+      json:async()=>structuredClone(payload)};
+    throw new Error('Unexpected request: '+request);
+  }));
 });
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 
-describe('one manual original-source importer on simplified Data page',()=>{
-  it('has one visible source selector and its actual download/upload controls',async()=>{
+describe('publisher files are manual inputs, not repeated maintenance actions',()=>{
+  it('does not prompt an upload until a source is selected',async()=>{
     const user=userEvent.setup();
     render(<ManualSources/>);
     const picker=await screen.findByRole('combobox',{name:'Choose a publisher or dataset'});
-    expect(picker.querySelectorAll('option')).toHaveLength(3);
+    expect((picker as HTMLSelectElement).value).toBe('');
+    expect(picker.querySelectorAll('option')).toHaveLength(4);
+    expect(screen.queryByLabelText('Upload WID world observations')).toBeNull();
+    expect(screen.queryByText('OECD canonical uploader')).toBeNull();
     expect(document.querySelectorAll('details')).toHaveLength(0);
     await user.selectOptions(picker,'wid-world');
-    const download=screen.getByRole('link',{name:'Download WID world observations'});
-    expect(download.getAttribute('href')).toBe('https://wid.world/bulk_download/WID_data_WO.csv');
-    expect(download.getAttribute('rel')).toContain('noopener');
+    expect(screen.getByRole('link',{name:'Download WID world observations'})
+      .getAttribute('href')).toContain('wid.world');
     expect(screen.getByLabelText('Upload WID world observations')).toBeTruthy();
     await user.selectOptions(picker,'oecd-icio');
     expect(screen.getByText('OECD canonical uploader')).toBeTruthy();
-    expect(screen.getByRole('link',{name:'1995-2000_SML.zip'}).getAttribute('href'))
-      .toContain('webfs-sti.oecd.org');
-    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getByRole('link',{name:'1995-2000_SML.zip'})).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
   });
-
-  it('uploads the exact selected role and starts automatic import without confirmation',async()=>{
+  it('uploads an official file and lets the existing importer start automatically',async()=>{
     const user=userEvent.setup();
-    const sent:{method?:string;url?:string;body?:File;headers?:Record<string,string>}={};
-    class FakeXHR {
-      status=201;
-      responseText=JSON.stringify({import_started:true,job_id:'import-1'});
-      onload:(()=>void)|null=null;
-      onerror:(()=>void)|null=null;
+    const sent:{url?:string;body?:File;header?:string}={};
+    class FakeXHR{
+      status=201;responseText='{"import_started":true,"job_id":"job1"}';
+      onload:(()=>void)|null=null;onerror:(()=>void)|null=null;
       upload={onprogress:null as ((e:{lengthComputable:boolean;loaded:number;total:number})=>void)|null};
-      open(method:string,url:string){sent.method=method;sent.url=url;}
-      setRequestHeader(name:string,value:string){
-        (sent.headers??={})[name]=value;
-      }
-      send(body:File){
-        sent.body=body;
-        queueMicrotask(()=>this.onload?.());
-      }
+      open(_method:string,url:string){sent.url=url;}
+      setRequestHeader(name:string,value:string){if(name==='X-GCM-Action')sent.header=value;}
+      send(file:File){sent.body=file;queueMicrotask(()=>this.onload?.());}
     }
     vi.stubGlobal('XMLHttpRequest',FakeXHR);
     render(<ManualSources/>);
-    await user.selectOptions(await screen.findByRole('combobox'), 'msci-eafe');
-    const picker=screen.getByLabelText('Upload Index factsheet PDF');
-    await user.upload(picker,new File(['%PDF-1.7'], 'msci-eafe.pdf', {type:'application/pdf'}));
+    await user.selectOptions(await screen.findByRole('combobox'),'msci-eafe');
+    await user.upload(screen.getByLabelText('Upload Index factsheet PDF'),
+      new File(['%PDF-1.7'],'msci-eafe.pdf',{type:'application/pdf'}));
     await waitFor(()=>expect(sent.body?.name).toBe('msci-eafe.pdf'));
-    expect(sent.method).toBe('POST');
     expect(sent.url).toContain('/api/manual-sources/upload?dataset=msci-eafe&role=factsheet');
-    expect(sent.headers?.['X-GCM-Action']).toBe('dashboard');
-    await waitFor(()=>expect(screen.getByText(/Uploaded and validating original/)).toBeTruthy());
-    expect(calls.filter(x=>x.startsWith('POST '))).toHaveLength(0);
+    expect(sent.header).toBe('dashboard');
+    expect(await screen.findByText(/Uploaded and validating original/)).toBeTruthy();
+    expect(calls.every(call=>call.startsWith('GET '))).toBe(true);
   });
-
-  it('rejects oversized source before attempting upload and shows real import periods',async()=>{
-    const user=userEvent.setup();
-    payload.jobs=[{id:'job1',dataset:'wid-world',status:'complete',
-      sources:[{id:'inequality.world.pretax_income.top10',status:'success',
-        received:100,versions_added:1,last_period:'2024-01-01'}],
-      origin_verified:false,finished_at:'2026-11-13'}] as typeof payload.jobs;
-    render(<ManualSources/>);
-    await user.selectOptions(await screen.findByRole('combobox'), 'wid-world');
-    expect(screen.getByText(/latest period 2024-01-01/)).toBeTruthy();
-    const picker=screen.getByLabelText('Upload WID world observations');
-    await user.upload(picker,new File(['a'.repeat(300001)],'WID_data_WO.csv'));
-    expect(screen.getByRole('alert').textContent).toContain('exceeds');
-  });
-
-  it('fetches only the selected source without a duplicate global download action',async()=>{
+  it('preserves a file-validation error and does not ask for a retry button',async()=>{
     const user=userEvent.setup();
     render(<ManualSources/>);
     await user.selectOptions(await screen.findByRole('combobox'),'wid-world');
-    await user.click(screen.getByRole('button',{name:'Download this source from publisher'}));
-    await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch?dataset=wid-world'));
-    expect(await screen.findByText(/1 publisher source job\(s\) queued/)).toBeTruthy();
-    expect(screen.queryByRole('button',{name:'Fetch missing sources'})).toBeNull();
-    expect(screen.queryByRole('checkbox')).toBeNull();
+    await user.upload(screen.getByLabelText('Upload WID world observations'),
+      new File(['a'.repeat(300001)],'WID_data_WO.csv'));
+    expect(screen.getByRole('alert').textContent).toContain('exceeds');
+    expect(screen.queryByRole('button',{name:'Recheck uploaded files'})).toBeNull();
+    expect(screen.queryByRole('button',{name:'Download this source from publisher'})).toBeNull();
   });
-
-  it('allows other source uploads while the background import queue is active',async()=>{
+  it('displays stored failures without manufacturing a manual recheck action',async()=>{
+    const user=userEvent.setup();
+    payload.jobs=[{id:'failed',dataset:'wid-world',status:'failed',
+      error_code:'source_invalid',sources:[]}];
+    render(<ManualSources/>);
+    await user.selectOptions(await screen.findByRole('combobox'),'wid-world');
+    expect(screen.getByText('File import failed')).toBeTruthy();
+    expect(screen.getByText(/No repeated upload is required/)).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+  it('keeps uploads enabled while the background importer is active',async()=>{
     const user=userEvent.setup();
     payload.active=true;
     render(<ManualSources/>);
-    await user.selectOptions(await screen.findByRole('combobox'), 'wid-world');
-    const picker=screen.getByLabelText('Upload WID world observations') as HTMLInputElement;
-    expect(picker.disabled).toBe(false);
+    await user.selectOptions(await screen.findByRole('combobox'),'wid-world');
+    expect((screen.getByLabelText('Upload WID world observations') as HTMLInputElement)
+      .disabled).toBe(false);
   });
-
-  it('exposes per-source publisher retry alongside the OECD canonical manual importer',async()=>{
-    const user=userEvent.setup();
-    render(<ManualSources/>);
-    await screen.findByRole('combobox',{name:'Choose a publisher or dataset'});
-    expect(screen.getByText('OECD canonical uploader')).toBeTruthy();
-    await user.click(screen.getByRole('button',{name:'Download this source from publisher'}));
-    await waitFor(()=>expect(calls).toContain('POST /api/manual-sources/fetch?dataset=oecd-icio'));
-    expect(screen.getByText('OECD canonical uploader')).toBeTruthy();
-  });
-
 });

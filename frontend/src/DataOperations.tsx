@@ -45,7 +45,6 @@ const TITLES: Record<string, string> = {
   repair_source_health: 'Missing or outdated histories',
 };
 const FINISHED = new Set(['complete', 'partial', 'failed', 'blocked', 'cancelled', 'interrupted']);
-const HEADERS = { 'Content-Type': 'application/json', 'X-GCM-Action': 'dashboard' };
 
 async function json(response: Response): Promise<unknown> {
   if (!response.ok) {
@@ -107,8 +106,6 @@ function description(status: string): string {
 export default function DataOperations() {
   const [queue, setQueue] = useState<Queue | null>(null);
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const submitted = useRef(new Set<string>());
   const notified = useRef(new Set<string>());
   const previouslySeen = useRef(new Map<string, string>());
 
@@ -119,8 +116,7 @@ export default function DataOperations() {
       const previous = previouslySeen.current.get(job.id);
       const becameFinished = previous !== undefined && !FINISHED.has(previous)
         && FINISHED.has(job.status);
-      if ((submitted.current.has(job.id) || becameFinished)
-          && FINISHED.has(job.status) && !notified.current.has(job.id)) {
+      if (becameFinished && !notified.current.has(job.id)) {
         notified.current.add(job.id);
         window.dispatchEvent(new Event('gcm-data-updated'));
       }
@@ -138,43 +134,12 @@ export default function DataOperations() {
     return () => { live = false; window.clearInterval(interval); };
   }, []);
 
-  async function sync() {
-    setError('');
-    setSubmitting(true);
-    try {
-      const job = await json(await fetch('/api/maintenance', {
-        method: 'POST', headers: HEADERS, body: JSON.stringify({ action: 'sync_history' }),
-      })) as Job;
-      submitted.current.add(job.id);
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Sync request failed');
-    } finally {
-      setSubmitting(false);
-    }
-  }
   const active = queue?.jobs.find(item => item.id === queue.active_job_id);
   const last = queue?.jobs.find(item => FINISHED.has(item.status));
-  async function cancel() {
-    if (!active) return;
-    setError('');
-    try {
-      await json(await fetch('/api/maintenance/' + active.id + '/cancel', {
-        method: 'POST', headers: HEADERS, body: '{}',
-      }));
-      await refresh();
-    } catch {
-      setError('Could not stop the check');
-    }
-  }
-  const disabled = submitting || Boolean(queue?.active_job_id) || !queue;
-  return <section className="data-sync" id="maintenance-tools" aria-label="Historical archives">
-    <div className="data-sync-historical-action">
-      <button type="button" disabled={disabled} className="data-sync-secondary"
-        onClick={()=>void sync()}>Search for older records</button>
-      <small>Checks earlier economic releases and fund holdings.
-        Normal publisher updates continue automatically.</small>
-    </div>
+  if(!active&&!last&&!error)return null;
+  return <section className="data-sync data-maintenance-status" id="maintenance-tools"
+    aria-label="Other data check status">
+    <h4>Other background data checks</h4>
     {active && <div className="data-sync-progress" role="status">
       <strong>{TITLES[active.action] ?? 'Data'} · {description(active.status)}</strong>
       {active.total != null && <progress aria-label="Data check progress"
@@ -183,8 +148,7 @@ export default function DataOperations() {
         {active.stage_total != null ?
           ' · ' + (active.stage_completed ?? 0) + ' / ' + active.stage_total : ''}
       </span>
-      <button type="button" onClick={() => void cancel()}
-        disabled={active.status === 'cancelling'}>Stop this check</button>
+
     </div>}
     {!active && last && <div className="data-sync-last" role="status">
       <span>{TITLES[last.action] ?? last.action} · {description(last.status)}</span>

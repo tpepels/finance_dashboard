@@ -110,27 +110,27 @@ describe('unified Data and Diagnostics page',()=>{
     expect(view.container.querySelectorAll('details')).toHaveLength(0);
     expect(view.container.querySelector('.data-collection-run .data-download-details')).toBeTruthy();
     expect(view.container.querySelector('#source-coverage .data-download-details')).toBeNull();
-    expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Start one-time publisher check'})).toBeNull();
     expect(await screen.findByRole('cell',{name:'WID.world'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'EU KLEMS'})).toBeTruthy();
     expect(screen.getByRole('cell',{name:'OECD ICIO'})).toBeTruthy();
     expect(screen.getByRole('progressbar',{name:'Source downloads'}).getAttribute('aria-valuenow')).toBe('1');
     expect(screen.getByRole('heading',{name:'Checking missing and outdated data'})).toBeTruthy();
     expect(screen.getByText('Next automatic step')).toBeTruthy();
-    expect(screen.getByText('Your action')).toBeTruthy();
-    expect(screen.getByText('No action while the check runs')).toBeTruthy();
-    expect(screen.getByRole('region',{name:'What happens next'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'What needs your input'})).toBeTruthy();
+    expect(screen.getByText(/No files or decisions are required from you/)).toBeTruthy();
+    expect(screen.getByRole('region',{name:'Next scheduled update'})).toBeTruthy();
     expect(screen.getByRole('progressbar',{name:'Missing-data check progress'}).getAttribute('aria-valuenow')).toBe('6');
     expect(screen.getByText('426 / 426')).toBeTruthy();
     expect(screen.getByText('Data series available')).toBeTruthy();
     expect(screen.getByText('Available series to review').previousElementSibling?.textContent).toBe('12');
     expect(screen.getByRole('heading',{name:'Research quality'})).toBeTruthy();
-    expect(screen.getByRole('heading',{name:'Investigate a data problem'})).toBeTruthy();
+    expect(screen.getByRole('heading',{name:'What needs your input'})).toBeTruthy();
     expect(screen.getByRole('heading',{name:'Add publisher files'})).toBeTruthy();
-    expect(screen.getByRole('heading',{name:'Older releases and fund holdings'})).toBeTruthy();
+    expect(screen.queryByRole('heading',{name:'Older releases and fund holdings'})).toBeNull();
     expect(screen.queryByRole('button',{name:'Check for newly published data'})).toBeNull();
     expect(screen.queryByRole('button',{name:'Try missing or outdated sources again'})).toBeNull();
-    expect(screen.getByRole('button',{name:'Search for older records'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Search for older records'})).toBeNull();
     expect(screen.getByRole('table',{name:'Source download progress'})).toBeTruthy();
     expect(await screen.findByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
     expect(screen.queryByRole('link',{name:'Open source explorer'})).toBeNull();
@@ -177,14 +177,15 @@ describe('unified Data and Diagnostics page',()=>{
     health.scientific_assessment.running=true;
     render(<DataHub/>);
     expect(await screen.findByRole('heading',{name:'Updating research results'})).toBeTruthy();
-    expect(screen.getByText('Technical follow-up needed')).toBeTruthy();
+    expect(screen.getByText(/31 data series have failed checks/)).toBeTruthy();
     expect(screen.getByText(/31 data series have failed checks/)).toBeTruthy();
     expect(screen.getByText(/No files need uploading/)).toBeTruthy();
     expect(screen.getByText(/Next publisher check:/)).toBeTruthy();
     expect(screen.getByText(/No automatic check has finished since the app last started/)).toBeTruthy();
     expect(screen.getByText('Files you need to upload').previousElementSibling?.textContent).toBe('0');
     expect(screen.getByText('Failed data checks').previousElementSibling?.textContent).toBe('31');
-    expect(screen.getByRole('link',{name:'See troubleshooting details'}).getAttribute('href')).toBe('#diagnostics');
+    expect(screen.getByRole('button',{name:'Create technical report'})).toBeTruthy();
+    expect(document.querySelector('#diagnostics .data-report-action')).toBeTruthy();
     expect(screen.queryByRole('link',{name:'See files to download'})).toBeNull();
     expect(screen.queryByText('source_invalid')).toBeNull();
   });
@@ -231,7 +232,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(await screen.findByText('Automatic checks are off')).toBeTruthy();
     expect(screen.getByText('Start a data check')).toBeTruthy();
     expect(screen.getAllByText('Needs attention').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Start one-time publisher check'})).toBeTruthy();
     expect(screen.queryByText('Manual source check (optional)')).toBeNull();
   });
 
@@ -241,7 +242,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByText(/Research results last updated/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Repair gaps'})).toBeNull();
     expect(calls.some(item=>item.method==='POST')).toBe(false);
-    expect(screen.getByRole('button',{name:'Find and download missing data'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Start one-time publisher check'})).toBeNull();
     view.unmount();
   });
 
@@ -310,18 +311,20 @@ describe('unified Data and Diagnostics page',()=>{
     run={...makeRun(),id:null,state:'idle',running:false,
       counts:{total:0,finished:0,completed:0,skipped:0,active:0,failed:0,manual_required:0},
       sources:[],manual_files:[],repair:null,started_at:null};
+    health.automation.scheduled_refresh_enabled=false;
+    health.snapshot.sources={total:462,with_data:426,needs_attention:36};
     const user=userEvent.setup();
     render(<DataHub/>);
-    expect(await screen.findByText(/Automatic checks are enabled/)).toBeTruthy();
+    expect(await screen.findByText(/Automatic checks are off/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Start automatic downloads'})).toBeNull();
-    const button=await screen.findByRole('button',{name:'Find and download missing data'});
+    const button=await screen.findByRole('button',{name:'Start one-time publisher check'});
     await user.click(button);
     await waitFor(()=>expect(calls.some(item=>item.url==='/api/data/collection/start'
       && item.method==='POST')).toBe(true));
     const request=calls.find(item=>item.url==='/api/data/collection/start')!;
     expect(JSON.parse(request.body||'{}').browser).toHaveProperty('language');
     expect(await screen.findByText(/You can close this page while the check continues/)).toBeTruthy();
-    expect(screen.getByRole('button',{name:'Find and download missing data'}).hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('button',{name:'Start one-time publisher check'})).toBeNull();
   });
 
   it('restores last-known status immediately when returning even if the server is delayed',async()=>{
@@ -359,7 +362,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.getByRole('table',{name:'Files requiring manual download'})).toBeTruthy();
     expect(document.querySelector('#manual-files .data-manual-files')).toBeTruthy();
     expect(document.querySelector('#diagnostics .data-manual-files')).toBeNull();
-    expect(screen.getByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
+    expect(screen.getByRole('region',{name:'Research integrity findings'})).toBeTruthy();
     await user.upload(screen.getByLabelText('Upload WID_metadata_WO.csv'),
       new File(['metadata'],'WID_metadata_WO.csv'));
     await waitFor(()=>expect(sent.file?.name).toBe('WID_metadata_WO.csv'));
@@ -372,11 +375,13 @@ describe('unified Data and Diagnostics page',()=>{
     const user=userEvent.setup();
     render(<DataHub/>);
     const source=await screen.findByRole('combobox',{name:'Choose a publisher or dataset'});
-    expect((source as HTMLSelectElement).value).toBe('oecd-icio');
+    expect((source as HTMLSelectElement).value).toBe('');
+    expect(document.querySelectorAll('#manual-files .original-uploader')).toHaveLength(0);
+    await user.selectOptions(source,'oecd-icio');
     expect(document.querySelectorAll('#manual-files .original-uploader')).toHaveLength(1);
     expect(document.querySelector('#diagnostics .original-uploader')).toBeNull();
     expect(document.querySelector('#diagnostics #maintenance-tools')).toBeNull();
-    expect(screen.getByRole('button',{name:'View technical event log'})).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'View technical event log'})).toBeNull();
     await user.selectOptions(source,'wid-world');
     expect(await screen.findByLabelText('Upload WID observations')).toBeTruthy();
     expect(document.querySelectorAll('.original-uploader')).toHaveLength(0);
@@ -385,17 +390,17 @@ describe('unified Data and Diagnostics page',()=>{
   });
 
   it('prepares debug ZIP asynchronously, then offers cached download separately',async()=>{
-    run={...makeRun(),state:'complete',running:false};
+    run={...makeRun(),state:'failed',running:false};
     const user=userEvent.setup();
     const view=render(<DataHub/>);
-    await user.click(await screen.findByRole('button',{name:'Create troubleshooting report'}));
+    await user.click(await screen.findByRole('button',{name:'Create technical report'}));
     await waitFor(()=>expect(calls.some(item=>item.url==='/api/diagnostics/prepare?force=false')).toBe(true));
     expect(screen.getByText(/Creating the report/)).toBeTruthy();
     view.unmount();
     exportState={state:'ready',ready:true,id:'export-1',
       prepared_at:'2026-11-14T11:35:00Z',size_bytes:5500000,error:null};
     render(<DataHub/>);
-    const link=await screen.findByRole('link',{name:'Download report (.zip)'});
+    const link=await screen.findByRole('link',{name:'Download technical report ZIP'});
     expect(link.getAttribute('href')).toBe('/api/diagnostics/export-file');
     expect(screen.getByRole('button',{name:'Create updated report'})).toBeTruthy();
     expect(calls.some(item=>item.url==='/api/diagnostics/download')).toBe(false);

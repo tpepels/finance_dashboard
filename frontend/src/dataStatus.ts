@@ -156,12 +156,12 @@ export function describeDataStatus(input:DataStatusInput):DataStatus{
     tone='attention';
   }else if(scheduleKnown&&!scheduleEnabled && (missing>0||needsReview>0) && !session?.running){
     yourAction={title:'Start a data check',
-      detail:'Automatic updates are off. Use Find and download missing data above.',
+      detail:'Automatic updates are off. A one-time publisher check is available under What needs your input.',
       kind:'start',link:'#data-management'};
     tone='attention';
   }else if(scheduleStopped && (missing>0||needsReview>0)&&!session?.running){
     yourAction={title:'Start a data check',
-      detail:'The automatic service has not started. You can start a check using the main button.',
+      detail:'The automatic service has not started. A one-time publisher check is available under What needs your input.',
       kind:'start',link:'#data-management'};
     tone='attention';
   }else if(session?.running||automaticRunning){

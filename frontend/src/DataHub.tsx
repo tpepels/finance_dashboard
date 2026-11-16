@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import './DataHub.css';
 import { describeDataStatus, formatDataTime, issueCategory, sourceNextStep } from './dataStatus';
 import LimitationAssessment from './LimitationAssessment';
-import DiagnosticsWorkspace from './DiagnosticsWorkspace';
 import DataOperations from './DataOperations';
 import ManualSources from './ManualSources';
 
@@ -293,16 +292,6 @@ export default function DataHub(){
         <h2>Data &amp; diagnostics</h2>
         <p>See available data, download progress, and issues that need a closer look.</p>
       </div>
-      <div className="data-main-action">
-        <button type="button"
-          className={'data-collection-primary'+
-            (status.yourAction.kind==='start'?'':' data-collection-optional')}
-          disabled={starting||active}
-          onClick={()=>void start()}>Find and download missing data</button>
-        <small>{active?'A check is already running. See Collection activity below.':
-          status.yourAction.kind==='start'?'Start a check here. Automatic downloads are currently unavailable.':
-          'Run an extra check now. Scheduled updates continue automatically.'}</small>
-      </div>
     </header>
 
     <section className="data-overview" aria-label="Current data status">
@@ -332,22 +321,57 @@ export default function DataHub(){
       </div>
     </section>
 
-    <section className="data-next-steps" aria-label="What happens next">
+    <section className="data-next-steps" aria-label="Next scheduled update">
       <div className="data-next-step" role="status">
         <span className="data-next-step-label">Next automatic step</span>
         <strong>{status.next.title}</strong>
         <p>{status.next.detail}</p>
       </div>
-      <div className={'data-next-step data-your-action data-your-action-'+status.yourAction.kind}
-        role="status">
-        <span className="data-next-step-label">Your action</span>
-        <strong>{status.yourAction.title}</strong>
+    </section>
+
+
+    <section className="data-collection-section data-intervention" id="diagnostics"
+      tabIndex={-1} aria-label="User actions and support">
+      <h3>What needs your input</h3>
+      {status.yourAction.kind==='manual' ? <>
+        <p>{files.length} {files.length===1?'official file needs':'official files need'} downloading.
+          Choose each publisher link and upload its file under Add publisher files.</p>
+        <a href="#manual-files">Go to the required files</a>
+      </> : status.yourAction.kind==='start' ? <>
+        <p>Automatic data checks are unavailable. A manual publisher check is possible here.</p>
+        {!active&&!starting&&<button type="button" className="data-collection-primary"
+          onClick={()=>void start()}>Start one-time publisher check</button>}
+        {starting&&<p role="status">Starting the publisher check…</p>}
+      </> : status.yourAction.kind==='technical' ? <>
         <p>{status.yourAction.detail}</p>
-        {status.yourAction.kind==='manual'&&status.yourAction.link&&
-          <a href={status.yourAction.link}>See files to download</a>}
-        {status.yourAction.kind==='technical'&&status.yourAction.link&&
-          <a href={status.yourAction.link}>See troubleshooting details</a>}
-      </div>
+        <p>Recorded source and research errors can be shared in a technical report
+          when investigation is needed.</p>
+      </> : <p role="status">No files or decisions are required from you.
+        Data collection and research checks run on their configured schedules.</p>}
+      {(status.yourAction.kind==='technical'||exporter.value?.ready||
+        exporter.value?.state==='preparing'||exporter.value?.state==='failed')&&
+        <div className="data-report-action">
+          <div>
+            <strong>Technical report for investigation</strong>
+            <p>Contains source failures, research evidence and archived-file checks.
+              Generate it when providing a diagnostic ZIP for investigation.</p>
+            {exporter.value?.state==='preparing'&&<small role="status">
+              Creating the report. You can leave this page.</small>}
+            {exporter.value?.ready&&<small>
+              Prepared {formatWhen(exporter.value.prepared_at)} ·
+              {' '}{Math.round((exporter.value.size_bytes??0)/1048576*10)/10} MB</small>}
+            {(exporter.value?.state==='failed'||exporter.value?.state==='interrupted')&&
+              <small role="alert">Report preparation failed. A new attempt is available.</small>}
+          </div>
+          <div className="data-report-controls">
+            {exporter.value?.ready&&<a href="/api/diagnostics/export-file"
+              download>Download technical report ZIP</a>}
+            {!preparing&&exporter.value?.state!=='preparing'&&
+              <button type="button" onClick={()=>void prepareExport()}>
+                {exporter.value?.ready?'Create a newer report':'Create technical report'}
+              </button>}
+          </div>
+        </div>}
     </section>
 
     <section aria-label="Collection activity" className="data-collection-run" aria-live="polite">
@@ -365,13 +389,15 @@ export default function DataHub(){
       </div>
       {run?.id?<div className="data-collection-progress-group">
         <div className="data-collection-progress-header">
-          <strong>Publisher downloads</strong>
-          <span>{finished} of {total} finished</span>
+          <strong>Publisher download groups in this run</strong>
+          <span>{finished} of {total} groups finished</span>
         </div>
         <div className="data-progress" role="progressbar" aria-label="Source downloads"
           aria-valuemin={0} aria-valuemax={total} aria-valuenow={finished}>
           <span style={{width:fraction+'%'}}/>
         </div>
+        <small>This run has {total} publisher download groups. The overview tracks
+          {' '}{summary?.total.toLocaleString()??'—'} individual data histories across the full catalogue.</small>
         <small>{run.counts.completed} completed · {run.counts.skipped} already available ·
           {' '}{run.counts.active} running · {run.counts.manual_required} files to download manually ·
           {' '}{run.counts.failed} failed</small>
@@ -406,7 +432,7 @@ export default function DataHub(){
         </small>}
       </div>}
     {run?.id&&sourceList.length>0&&<section className="data-download-details" aria-label="Download history">
-      <h4>Download details ({finished} of {total} finished)</h4>
+      <h4>Publisher download groups ({finished} of {total} finished)</h4>
       <div className="data-collection-table-scroll data-collection-source-list">
         <table aria-label="Source download progress">
           <thead><tr><th>Source</th><th>Status</th><th>Details</th></tr></thead>
@@ -429,24 +455,16 @@ export default function DataHub(){
       </div>
     </section>}
 
-       <section className="data-history-check" aria-label="Older historical data">
-         <div>
-           <h4>Older releases and fund holdings</h4>
-           <p>Regular updates check current sources. This separate check looks for
-             additional older economic releases and historical fund filings.</p>
-         </div>
-         <DataOperations/>
-       </section>
+       <DataOperations/>
     </section>
 
     <section className="data-collection-section data-source-uploads" id="manual-files"
       tabIndex={-1} aria-label="Add publisher files">
       <h3>Add publisher files</h3>
-      <p>Most sources update automatically. Upload a file only when a publisher
-        download needs your help or you have an original research archive to add.</p>
-      {files.length>0?<>
-    {files.length>0&&<div className="data-manual-files" aria-labelledby="manual-files">
-      <h4 id="manual-files">Files to download yourself ({files.length})</h4>
+      <p>Uploads are needed only for files explicitly requested above or
+        when you already have an official source file to add.</p>
+      {files.length>0?<div className="data-manual-files" aria-label="Files requested by current collection">
+      <h4>Files to download yourself ({files.length})</h4>
       <p>Download each file from its publisher and upload it here. The app checks and adds its contents.</p>
       <div className="data-collection-table-scroll">
         <table aria-label="Files requiring manual download">
@@ -470,8 +488,7 @@ export default function DataHub(){
           })}</tbody>
         </table>
       </div>
-    </div>}
-      </>:<p className="data-upload-none">No files requested by the current data check.</p>}
+    </div>:<p className="data-upload-none">No files requested by the current data check.</p>}
       <ManualSources/>
     </section>
 
@@ -547,40 +564,5 @@ export default function DataHub(){
       <LimitationAssessment/>
     </section>
 
-    <section className="data-collection-section data-investigation" id="diagnostics"
-      tabIndex={-1} aria-label="Diagnostics and maintenance">
-      <h3>Investigate a data problem</h3>
-      <p>When a download, uploaded file or research check fails, create a
-         technical report to investigate the cause or inspect the recorded events.</p>
-    <section className="data-collection-export" aria-label="Diagnostic export">
-      <div>
-        <strong>Download the technical report</strong>
-        <p>Create a ZIP to share when asking for help with failed data checks. It includes
-           source errors, archived-file inspections and research verification details.</p>
-        {exporter.value?.state==='preparing'&&<small role="status">
-          Creating the report
-          {exporter.value.started_at&&
-            ' · '+Math.max(0,Math.floor((Date.now()-Date.parse(exporter.value.started_at))/60000))+
-            ' min elapsed'}. You can leave this page.</small>}
-        {exporter.value?.state==='ready'&&<small>
-          Prepared {formatWhen(exporter.value.prepared_at)} ·
-          {' '}{Math.round((exporter.value.size_bytes??0)/1048576*10)/10} MB</small>}
-        {(exporter.value?.state==='failed'||exporter.value?.state==='interrupted')&&
-          <small className="data-collection-alert">
-            Preparation {exporter.value?.state==='interrupted'?'was interrupted':'failed'}.
-            {' '}You can retry.</small>}
-      </div>
-      <div className="data-collection-export-actions">
-        <button type="button" onClick={()=>void prepareExport()}
-          disabled={preparing||exporter.value?.state==='preparing'}>
-          {preparing||exporter.value?.state==='preparing'?'Creating report…':
-           exporter.value?.ready?'Create updated report':'Create troubleshooting report'}
-        </button>
-        {exporter.value?.ready&&<a href="/api/diagnostics/export-file"
-          download>Download report (.zip)</a>}
-      </div>
-    </section>
-    <DiagnosticsWorkspace/>
-    </section>
   </div>;
 }

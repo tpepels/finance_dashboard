@@ -42,6 +42,8 @@ export default function OriginalUploader() {
   const [busy, setBusy] = useState(false);
   const queuedJob = useRef<string | null>(null);
   const pendingImport = useRef<string[] | null>(null);
+  const attemptedRecovery = useRef(false);
+  const uploadingNow = useRef(false);
   const acceptStatus = (next: Inventory) => {
     setInventory(next);
     if (!next.active && pendingImport.current?.length) {
@@ -49,6 +51,15 @@ export default function OriginalUploader() {
       pendingImport.current = null;
       queueMicrotask(() => { void importFiles(next, selected).catch(reason =>
         setError(reason instanceof Error ? reason.message : 'Pending import could not start')); });
+    }
+    // One restart recovery attempt for staged archives. Avoid repeated retries
+    // for a persistent bad original, and never race an active browser upload.
+    if(!attemptedRecovery.current && !uploadingNow.current && !next.active &&
+       next.files.some(file=>file.kind!=='readme' &&
+         !uploadedSuccessfully(next.jobs,file.filename))) {
+      attemptedRecovery.current=true;
+      queueMicrotask(()=>{void importFiles(next,[]).catch(reason=>
+        setError(reason instanceof Error?reason.message:'Automatic file check failed'));});
     }
     const latest = next.jobs[0];
     if (!next.active && latest && queuedJob.current === latest.id &&
@@ -140,6 +151,7 @@ export default function OriginalUploader() {
   const chooseFiles = async (fileList: FileList | null) => {
     const chosen = [...(fileList ?? [])];
     if (!chosen.length) return;
+    uploadingNow.current=true;
     setBusy(true); setError(''); setActivity('Uploading original files…');
     const succeeded: string[] = [];
     try {
@@ -154,25 +166,7 @@ export default function OriginalUploader() {
       setError(reason instanceof Error ? reason.message : 'Original upload failed');
       await refresh().catch(() => undefined);
     } finally {
-      setBusy(false);
-    }
-  };
-  const reassess = async () => {
-    setBusy(true); setError(''); setActivity('Rechecking uploaded OECD files…');
-    try {
-      const response = await fetch('/api/originals/reassess', {
-        method: 'POST', headers: { 'X-GCM-Action': 'dashboard' },
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({})) as { detail?: string };
-        throw new Error(body.detail ?? 'Could not start checking stored OECD files (' + response.status + ')');
-      }
-      const queued = await response.json() as { id: string };
-      queuedJob.current = queued.id;
-      await refresh();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not check stored OECD files');
-    } finally {
+      uploadingNow.current=false;
       setBusy(false);
     }
   };
@@ -213,24 +207,14 @@ export default function OriginalUploader() {
           </small>}
         </li>)}</ul>}
     </div>}
-    {inventory.files.some(file => file.kind !== 'readme' &&
-      !uploadedSuccessfully(inventory.jobs, file.filename)) && !inventory.active &&
-      <button type="button" className="original-resume-import" disabled={busy}
-        onClick={() => { void importFiles(inventory, []).catch(reason =>
-          setError(reason instanceof Error ? reason.message : 'Import could not start')); }}>
-        Finish adding uploaded files
-      </button>}
-    {inventory.files.length>0&&<button type="button" className="original-reassess-import"
-      disabled={busy || inventory.active} onClick={() => { void reassess(); }}>
-      Recheck uploaded OECD files
-    </button>}
     {inventory.files.length > 0 && <div className="original-staged-files">
       <h4>Files already uploaded ({inventory.files.length})</h4>
       <ul>{inventory.files.map(file => <li key={file.filename}>
         <span>{file.filename}</span><small>{size(file.bytes)}</small>
       </li>)}</ul>
     </div>}
-    <p className="original-import-note">File checks and import progress appear above.
-      If a file is rejected, the technical report contains its failure details.</p>
+    <p className="original-import-note">Files are checked automatically,
+      including after an interrupted import. Rejected files retain their error
+      details for investigation.</p>
   </section>;
 }

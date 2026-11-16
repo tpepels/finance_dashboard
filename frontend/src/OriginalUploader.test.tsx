@@ -4,71 +4,69 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OriginalUploader from './OriginalUploader';
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 
-describe('original research file upload', () => {
-  it('uploads selected archives and automatically queues import through the existing API', async () => {
-    const sent: string[] = [];
-    const queue: string[][] = [];
-    const originals = { active: false, files: [] as { filename: string; bytes: number; kind: string }[],
-      jobs: [] as unknown[] };
-    class XMLHttpRequestMock {
-      status = 201;
-      responseText = '{}';
-      upload = { onprogress: null as ((e: { lengthComputable: boolean; loaded: number; total: number }) => void) | null };
-      onload: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-      open(_method: string, url: string) { sent.push(url); }
-      setRequestHeader(_key: string, _value: string) { /* same-origin action */ }
-      send(file: File) {
-        originals.files.push({ filename: file.name, bytes: file.size, kind: 'edition_archive' });
-        Promise.resolve().then(() => this.onload?.());
+describe('official OECD archives automatically registered',()=>{
+  it('uploads selected files and starts import without another confirmation',async()=>{
+    const sent:string[]=[];
+    const queued:string[][]=[];
+    const originals={active:false,files:[] as {filename:string;bytes:number;kind:string}[],
+      jobs:[] as unknown[]};
+    class FakeXHR{
+      status=201;responseText='{}';onload:(()=>void)|null=null;
+      onerror:(()=>void)|null=null;
+      upload={onprogress:null as ((event:{lengthComputable:boolean;loaded:number;total:number})=>void)|null};
+      open(_method:string,url:string){sent.push(url);}
+      setRequestHeader(_key:string,_value:string){}
+      send(file:File){
+        originals.files.push({filename:file.name,bytes:file.size,kind:'edition_archive'});
+        queueMicrotask(()=>this.onload?.());
       }
     }
-    vi.stubGlobal('XMLHttpRequest', XMLHttpRequestMock);
-    vi.stubGlobal('fetch', vi.fn(async (path: string, options?: RequestInit) => {
-      if (path === '/api/originals/import') {
-        const body = JSON.parse(String(options?.body)) as { filenames: string[] };
-        queue.push(body.filenames);
-        return { ok: true, json: async () => ({ id: 'job', status: 'queued' }) };
+    vi.stubGlobal('XMLHttpRequest',FakeXHR);
+    vi.stubGlobal('fetch',vi.fn(async(path:string,options?:RequestInit)=>{
+      if(path==='/api/originals/import'){
+        queued.push((JSON.parse(String(options?.body)) as {filenames:string[]}).filenames);
+        return {ok:true,json:async()=>({id:'queued',status:'queued'})};
       }
-      return { ok: true, json: async () => originals };
+      return {ok:true,json:async()=>originals};
     }));
-    const user = userEvent.setup();
     render(<OriginalUploader/>);
-    const file = new File(['archive-content'], 'ICIO2021econA.zip', { type: 'application/zip' });
-    await user.upload(screen.getByLabelText('Upload original research ZIP files and ReadMe workbook'), file);
-    await waitFor(() => expect(queue).toEqual([['ICIO2021econA.zip']]));
+    await userEvent.setup().upload(screen.getByLabelText('Upload original research ZIP files and ReadMe workbook'),
+      new File(['test'],'ICIO2021econA.zip',{type:'application/zip'}));
+    await waitFor(()=>expect(queued).toEqual([['ICIO2021econA.zip']]));
     expect(sent[0]).toContain('filename=ICIO2021econA.zip');
-    expect(screen.getByText(/Adding data from 1 file/)).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
   });
 
-  it('reassesses already stored archives from the browser without re-upload', async () => {
-    const requested: string[] = [];
-    const originals = { active: false, files: [
-      {filename:'ICIO2021econA.zip',bytes:2400,kind:'edition_archive'}],
-      jobs: [] as unknown[] };
-    vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
-      if (url === '/api/originals/reassess') {
-        requested.push(String(options?.headers && (options.headers as Record<string, string>)['X-GCM-Action']));
-        return { ok: true, json: async () => ({ id: 'recheck', status: 'queued' }) };
-      }
-      return { ok: true, json: async () => originals };
+  it('automatically resumes a staged ZIP after a page restart, once',async()=>{
+    const requests:string[]=[];
+    const originals={active:false,files:[
+      {filename:'ICIO2021econA.zip',bytes:2400,kind:'edition_archive'}],jobs:[]};
+    vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>{
+      requests.push((options?.method??'GET')+' '+url);
+      if(url==='/api/originals/import')return {ok:true,json:async()=>({id:'recovered'})};
+      return {ok:true,json:async()=>originals};
     }));
-    const user = userEvent.setup();
     render(<OriginalUploader/>);
-    await user.click(await screen.findByRole('button', { name: 'Recheck uploaded OECD files' }));
-    await waitFor(() => expect(requested).toEqual(['dashboard']));
-    expect(screen.getByText(/Rechecking uploaded OECD files/)).toBeTruthy();
+    await waitFor(()=>expect(requests).toContain('POST /api/originals/import'));
+    expect(requests.filter(x=>x==='POST /api/originals/import')).toHaveLength(1);
+    expect(screen.queryByRole('button',{name:'Recheck uploaded OECD files'})).toBeNull();
+    expect(screen.queryByRole('button',{name:'Finish adding uploaded files'})).toBeNull();
   });
 
-  it('retains a staged regular archive until its required ReadMe is supplied', async () => {
-    const original = { active: false, files: [{
-      filename: '1995-2000_SML.zip', bytes: 999, kind: 'verified_regular',
-    }], jobs: [] };
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => original })));
+  it('waits for a regular ZIP matching ReadMe rather than repeatedly attempting import',async()=>{
+    const requests:string[]=[];
+    const originals={active:false,files:[
+      {filename:'1995-2000_SML.zip',bytes:999,kind:'verified_regular'}],
+      jobs:[]};
+    vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>{
+      requests.push((options?.method??'GET')+' '+url);
+      return {ok:true,json:async()=>originals};
+    }));
     render(<OriginalUploader/>);
     expect(await screen.findByText('Files already uploaded (1)')).toBeTruthy();
-    expect(screen.queryByText(/verified publisher regular original/)).toBeNull();
+    await waitFor(()=>expect(screen.getByText(/Add ReadMe_ICIO_small.xlsx/)).toBeTruthy());
+    expect(requests.filter(x=>x.startsWith('POST'))).toHaveLength(0);
   });
 });

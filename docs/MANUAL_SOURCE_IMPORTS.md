@@ -1,13 +1,18 @@
 # Data & diagnostics: acquisition, publisher uploads and technical evidence
 
-The page has one primary collection action, **Find and download missing data**.
+The page uses automatic collection by default. **Start one-time publisher check**
+appears under **What needs your input** only when automatic collection is
+unavailable and unresolved histories remain.
 It displays collection progress, original-source availability, and research quality.
 All browser uploads are grouped under **Add publisher files**:
 
 - **Files requested by the latest collection:** Exact, official publisher links and upload controls, shown only for genuine manual-source requests.
 - **Other official publisher files:** One labeled source selector for WID, EU KLEMS, MSCI, Swinkels, gold and OECD. The selected source's download links, upload fields and import status are visible together. The OECD ZIP/ReadMe importer is inside this same section.
 
-**Search for older records** is a distinct, optional historical-release and fund-filing action under Collection activity. **Investigate a data problem** contains only the technical ZIP report and on-demand event log. Ordinary collection and missing-source repair have no duplicate buttons.
+Historical-release and fund-filing job results remain visible under Collection
+activity without another start/stop control. A technical ZIP can be created
+under **What needs your input** when investigation is required. Technical
+events are available from the existing header System status popup.
 
 ## Automatic workflow
 
@@ -47,7 +52,9 @@ file: a Chrome-downloaded replacement never makes other uploaded bytes
 look publisher-retrieved.
 
 OECD ZIPs and ReadMe workbooks, including older and extended editions, are
-uploaded and rechecked in **Add publisher files → OECD — ICIO original archives**.
+uploaded in **Add publisher files → OECD — ICIO original archives**.
+An interrupted staged archive is automatically reconsidered once after the page reloads,
+so the user does not have to click a separate recheck button.
 The server retains its separate, edition-specific validation contracts.
 
 A download whose bytes arrived but failed economic/scientific parsing is

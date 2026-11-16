@@ -27,7 +27,7 @@ a:hover { color: #0c364c; }
 .data-indicator { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4e8d75; margin-right: 7px; }
 .headline { padding: 56px 0 50px; display: flex; align-items: flex-end; justify-content: space-between; gap: 45px; }
 .headline > div:first-child { max-width: 740px; }
-.eyebrow { font-size: 10px; color: #a2633e; text-transform: uppercase; font-weight: 800; letter-spacing: .18em; margin-bottom: 17px; }
+.eyebrow { font-size: 10px; color: var(--dx-tertiary, #a2633e); text-transform: uppercase; font-weight: 800; letter-spacing: .18em; margin-bottom: 17px; }
 h1, h2, h3, h4, p { margin-top: 0; }
 h1 { font-size: clamp(36px, 4vw, 56px); letter-spacing: -.05em; line-height: 1.05; font-weight: 680; margin-bottom: 22px; color: #172c36; }
 .headline p { max-width: 680px; margin-bottom: 0; color: #59696e; font-size: 15px; line-height: 1.7; }
@@ -487,10 +487,10 @@ td small { display: block; color: #9aa7ac; font-size: 10px; }
    Sections, not cards: a rule separates questions; the hero graphic carries the answer. */
 .research-app { font-family: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
   --dx-page: #eef2f3; --dx-surface: #fcfdfd; --dx-ink: #14232b; --dx-secondary: #4a5d66; --dx-muted: #596d76;
-  --dx-rule: #d3dde0; --dx-focus: #2a78d6; }
+  --dx-rule: #d3dde0; --dx-focus: #2a78d6; --dx-tertiary: #a2633e; }
 .research-app[data-theme="dark"] {
   --dx-page: #080b10; --dx-surface: #121923; --dx-ink: #edf3fc; --dx-secondary: #b7c5d8; --dx-muted: #9bacc3;
-  --dx-rule: #273244; --dx-focus: #68aaff; }
+  --dx-rule: #273244; --dx-focus: #68aaff; --dx-tertiary: #edae7d; }
 .decision-container { max-width: 1320px; margin: 0 auto 40px; padding: 36px 40px 12px; color: var(--dx-ink); }
 .decision-intro h2 { font-size: 34px; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 10px; }
 .decision-intro p { font-size: 16px; line-height: 1.55; color: var(--dx-secondary); max-width: 68ch; margin: 0; }
@@ -1144,3 +1144,17 @@ html[data-theme="dark"] .diagnostics-warnings {color:#e5b575;}
   .manual-source-file { align-items: flex-start; flex-direction: column; }
   .manual-source-upload input { width: 100%; }
 }
+
+/* Shared tertiary text: section decks, compact subtitles and editorial kickers.
+   Body copy and status meanings retain their own legible colour hierarchy. */
+.research-app :is(.eyebrow,.dashboard-kicker,.chart-meta,
+  .dashboard-intro > p,.decision-intro > p,.decision-section-head > p,
+  .workbench-intro,.overview-question,.saved-views-head > p,
+  .figure-editor-intro > p,.research-state,.workspace-brand > span,
+  .data-collection-heading > div > p,
+  .data-source-uploads > p,.manual-source-header > p){
+  color:var(--dx-tertiary)}
+.research-app[data-theme="dark"] :is(.dashboard-kicker,.dashboard-intro > p,
+  .workspace-brand > span,.research-state,.decision-intro > p,
+  .decision-section-head > p,.workbench-intro,.overview-question){
+  color:var(--dx-tertiary)}

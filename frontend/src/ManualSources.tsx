@@ -32,7 +32,6 @@ export default function ManualSources() {
   const [error, setError] = useState('');
   const [statusError, setStatusError] = useState('');
   const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<Record<string,boolean>>({});
   const [complete, setComplete] = useState<string|null>(null);
   const [selectedId, setSelectedId] = useState<string|null>(null);
@@ -115,63 +114,23 @@ export default function ManualSources() {
     }
   }
 
-  async function retry(dataset: string) {
-    setBusy(true); setError(''); setMessage('Starting original validation…');
-    try {
-      const response = await fetch('/api/manual-sources/import?dataset='+
-        encodeURIComponent(dataset), {method:'POST',headers:{'X-GCM-Action':actionHeader}});
-      if (!response.ok) {
-        const details = await response.json().catch(()=>({})) as {detail?:string};
-        throw new Error(details.detail || 'Original import refused (HTTP '+response.status+')');
-      }
-      const job = await response.json() as {job_id:string};
-      setMessage('Import queued: ' + job.job_id.slice(0,8));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Original import failed');
-    } finally {setBusy(false);}
-  }
-
-  async function fetchPublishers(dataset?:string) {
-    setBusy(true); setError(''); setComplete(null);
-    setMessage(dataset ? 'Fetching original from publisher…' : 'Queueing missing publisher originals…');
-    const url = '/api/manual-sources/fetch' + (dataset ? '?dataset='+encodeURIComponent(dataset) : '');
-    try {
-      const response = await fetch(url, {method:'POST',headers:{'X-GCM-Action':actionHeader}});
-      if (!response.ok) {
-        const details = await response.json().catch(()=>({})) as {detail?:string};
-        throw new Error(details.detail || 'Publisher fetch failed (HTTP '+response.status+')');
-      }
-      const result = await response.json() as {jobs:{dataset:string;job_id:string}[];skipped:Record<string,string>};
-      setMessage(result.jobs.length ? result.jobs.length+' publisher source job(s) queued. Downloads and imports run automatically.'
-        : 'No missing registered sources. Use Refresh from publisher for an existing source.');
-      const statusResponse = await fetch('/api/manual-sources',{cache:'no-store'});
-      if (statusResponse.ok) setStatus(await statusResponse.json() as ManualStatus);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Publisher download unavailable');
-    } finally { setBusy(false); }
-  }
-
-  const suggested = status?.datasets.find(item => Object.keys(item.staged).length>0)
-    ?? status?.datasets.find(item => status.jobs.some(job =>
-      job.dataset===item.id && !terminal.has(job.status) && job.status!=='deferred'))
-    ?? status?.datasets.find(item => item.id==='oecd-icio')
-    ?? status?.datasets[0];
-  const selected = status?.datasets.find(item => item.id===selectedId) ?? suggested;
+  const stagedSource = status?.datasets.find(item => Object.keys(item.staged).length>0);
+  const selected = status?.datasets.find(item => item.id===selectedId) ??
+    (!selectedId?stagedSource:undefined);
   const recent = selected ? status?.jobs.find(job => job.dataset===selected.id) : undefined;
-  const ready = selected ? selected.roles.length>0 &&
-    selected.roles.every(role => selected.staged[role.id]) : false;
 
   return <section className="manual-source-panel" aria-labelledby="manual-originals-heading">
     <header className="manual-source-header">
-      <h4 id="manual-originals-heading">Other official publisher files</h4>
-      <p>Choose a source if you already have its original file, or need to download
-        one manually. The app checks uploaded files and imports valid data automatically.</p>
+      <h4 id="manual-originals-heading">Official files you can supply</h4>
+      <p>Only select a source when you have its original publication file.
+        Uploads are checked and processed automatically.</p>
     </header>
     {!status&&!error&&<p role="status">Loading available source files…</p>}
     {status&&<label className="manual-source-selector" htmlFor="manual-source-selection">
       <span>Choose a publisher or dataset</span>
       <select id="manual-source-selection" value={selected?.id??''}
         onChange={event=>setSelectedId(event.currentTarget.value)}>
+        <option value="">Select when you have a publisher file</option>
         {status.datasets.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}
       </select>
     </label>}
@@ -209,14 +168,10 @@ export default function ManualSources() {
         </li>)}</ul>
       </div>}
       {selected.existing_importer&&<OriginalUploader/>}
-      {ready && (!recent || ['failed','partial','interrupted'].includes(recent.status))
-        &&<button type="button" disabled={busy} onClick={()=>void retry(selected.id)}>
-          Recheck uploaded files</button>}
-      <div className="manual-source-secondary-actions">
-        <button type="button" disabled={busy} onClick={()=>void fetchPublishers(selected.id)}>
-          Download this source from publisher</button>
-        <small>Optional server-side download when publisher access is available.</small>
-      </div>
+      {['failed','partial','interrupted'].includes(recent?.status??'')&&
+        <p className="manual-source-note">
+          The app retained this result for investigation. No repeated upload is required
+          unless a specific replacement file is requested.</p>}
       {recent&&<div className="manual-source-outcome" role="status">
         <strong>{recent.status==='deferred'?'Waiting for publisher access':
           recent.status==='downloading'?'Downloading publisher files':

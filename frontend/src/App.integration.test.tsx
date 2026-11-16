@@ -225,18 +225,19 @@ describe('dashboard shell', () => {
     render(<App/>);
     await user.click(screen.getByRole('button', { name: 'Data & diagnostics' }));
     expect(await screen.findByRole('heading', { name: 'Data & diagnostics' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Find and download missing data' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Find and download missing data' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Collection activity' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Needs attention' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Research quality' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Investigate a data problem' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Create troubleshooting report' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'View technical event log' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'What needs your input' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Create troubleshooting report' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'View technical event log' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Check for newly published data' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Try missing or outdated sources again' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Search for older records' })).toBeTruthy();
-    expect(await screen.findByRole('heading', { name: 'Upload OECD archives' })).toBeTruthy();
-    expect(document.querySelector('#manual-files .original-uploader')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Search for older records' })).toBeNull();
+    expect(await screen.findByRole('combobox', { name: 'Choose a publisher or dataset' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Upload OECD archives' })).toBeNull();
+    expect(document.querySelector('#manual-files .original-uploader')).toBeNull();
     expect(document.querySelector('#diagnostics .original-uploader')).toBeNull();
     expect(await screen.findByRole('table', { name: 'Classified limitation findings' })).toBeTruthy();
     expect(document.querySelector('#research-sources details')).toBeNull();
@@ -256,7 +257,7 @@ describe('dashboard shell', () => {
   it('keeps old diagnostics deep links connected to the unified page and focuses the section', async () => {
     history.replaceState({}, '', '/#diagnostics');
     render(<App/>);
-    const section = await screen.findByRole('heading', { name: 'Investigate a data problem' });
+    const section = await screen.findByRole('heading', { name: 'What needs your input' });
     expect(section.closest('#diagnostics')).toBeTruthy();
     expect(await screen.findByRole('heading', { name: 'Data & diagnostics' })).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.id).toBe('diagnostics'));

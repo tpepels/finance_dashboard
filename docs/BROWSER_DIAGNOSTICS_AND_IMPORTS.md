@@ -144,8 +144,11 @@ diagnostics and per-RData numeric-array inventories. The Global → Supply
 chains section displays reconstructed share histories alongside published
 TiVA values and gives the number of matching/comparable country-years.
 
-**Already imported ZIPs:** choose **OECD — ICIO original archives** under
-Add publisher files and use **Recheck uploaded OECD files**. One background job re-verifies every sealed source
+**Already imported ZIPs:** original accounting evidence is preserved by the
+canonical importer. User-supplied OECD archives are selected under
+**Add publisher files → OECD — ICIO original archives** and checked on upload.
+Interrupted staged imports are retried once on page recovery; technical
+reassessment remains available through the existing server API. One background job re-verifies every sealed source
 archive and derives the new numeric results as immutable content-addressed
 scientific adjuncts under `icio/native-method-reports/`. Sealed archive bytes,
 original audit, acquisition receipt and SQLite observations remain unchanged.
