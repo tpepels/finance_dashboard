@@ -11,6 +11,7 @@ from html.parser import HTMLParser
 from io import BytesIO
 from urllib.parse import urljoin, urlparse
 from zipfile import ZipFile, BadZipFile
+import os
 import re
 
 from .bis import ProviderError, FetchedSeries
@@ -163,14 +164,22 @@ def fetch_bls_oews(self, series_id, start, item, key):
     """Called exclusively through the existing governed ProviderRouter."""
     if SOURCE_KEYS.get(series_id) != key:
         raise ProviderError("Unregistered BLS OEWS original wage measure")
-    index = self._get_document(INDEX_URL, headers={"Accept": "text/html"})
+    # www.bls.gov refuses automated clients that do not identify an operator.
+    # The owner may declare one in BLS_USER_AGENT; nothing is sent by default
+    # and a refusal is never worked around with a browser-like identity.
+    agent = os.environ.get("BLS_USER_AGENT", "").strip()
+    if agent and not ("@" in agent or "https://" in agent):
+        raise ProviderError("BLS_USER_AGENT must declare an operator contact")
+    declared = {"User-Agent": agent} if agent else {}
+    index = self._get_document(INDEX_URL, headers={"Accept": "text/html", **declared})
     releases = published_archives(index.text)
     observations = {}
     for year, url in releases:
         day = date(year, 5, 1)
         if start is not None and day < start:
             continue
-        response = self._get_document(url)
+        response = (self._get_document(url, headers=declared) if declared
+                    else self._get_document(url))
         observations[day] = parse_national_zip(response.content, year)[key.rsplit("/", 1)[-1]]
     if not observations:
         raise ProviderError("BLS OEWS original history has no eligible published year")

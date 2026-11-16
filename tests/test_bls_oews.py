@@ -169,6 +169,40 @@ class BLSOEWSOriginalTests(unittest.TestCase):
             fetch_bls_oews(router, "labour.us.cps_weekly_p50_nominal", None, {},
                            "NATIONAL/ALL_OCCUPATIONS/H_MEAN")
 
+    def _fetch(self, router):
+        fake = MagicMock()
+        fake.sheet_names = ["national"]
+        fake.get_sheet_by_index.return_value.to_python.return_value = data_rows()
+        with patch("python_calamine.CalamineWorkbook.from_filelike", return_value=fake):
+            return fetch_bls_oews(router, "labour.us.oews_all_mean_hourly",
+                date(2025, 1, 1), {}, SOURCE_KEYS["labour.us.oews_all_mean_hourly"])
+
+    def test_declared_operator_contact_is_sent_on_every_bls_request(self):
+        router = MagicMock()
+        router._get_document.side_effect = [
+            MagicMock(text=source_index()), MagicMock(content=zip_bytes(2025))]
+        agent = "GlobalCapitalMonitor/0.2 operator@example.org"
+        with patch.dict("os.environ", {"BLS_USER_AGENT": agent}):
+            self._fetch(router)
+        for call in router._get_document.call_args_list:
+            self.assertEqual(call.kwargs["headers"]["User-Agent"], agent)
+
+    def test_no_identity_is_sent_unless_the_owner_declares_one(self):
+        router = MagicMock()
+        router._get_document.side_effect = [
+            MagicMock(text=source_index()), MagicMock(content=zip_bytes(2025))]
+        with patch.dict("os.environ", {"BLS_USER_AGENT": ""}):
+            self._fetch(router)
+        for call in router._get_document.call_args_list:
+            self.assertNotIn("User-Agent", call.kwargs.get("headers", {}))
+
+    def test_declared_identity_without_contact_is_rejected_before_any_request(self):
+        router = MagicMock()
+        with patch.dict("os.environ", {"BLS_USER_AGENT": "Mozilla/5.0"}):
+            with self.assertRaisesRegex(ProviderError, "operator contact"):
+                self._fetch(router)
+        router._get_document.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
