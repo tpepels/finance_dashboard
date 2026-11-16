@@ -355,8 +355,12 @@ class SourceCoverageTests(unittest.TestCase):
         expired={row["id"]:row for row in build_coverage(
             self.engine,self.catalog,self.registry,
             asof=date(2026,11,18))["items"]}
+        # Four Q2 nominal series now have a time-bounded independent
+        # publication confirmation. Japan has no such confirmation.
         for sid in sources:
-            self.assertEqual(expired[sid]["state"],"stale")
+            self.assertEqual(
+                expired[sid]["state"],
+                "stale" if ".jp." in sid else "available")
         # Without a matching archived publisher receipt, the successful
         # network response alone never certifies that an aged series is current.
         with Session(self.engine) as session,session.begin():
