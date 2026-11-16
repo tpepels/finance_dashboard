@@ -137,6 +137,10 @@ def _month_zip(raw, month):
         submission=_tsv(zf,"SUBMISSION")
         series=_tsv(zf,"SERIESLEVELINFO")
         liquidity=_tsv(zf,"LIQUIDASSETSDETAILS")
+    # Validate the publisher's exact N-MFP3 column before dereferencing it.
+    # A malformed original must be classified as source schema evidence.
+    if not series or any("NETASSETOFSERIES" not in row for row in series):
+        raise EvidenceError("source_schema_invalid")
     reports={}
     for row in submission:
         if row.get("SUBMISSIONTYPE") not in ("N-MFP3","N-MFP3/A"):continue
