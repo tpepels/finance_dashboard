@@ -102,6 +102,34 @@ class WidPikettyOriginalTests(unittest.TestCase):
                 wid.fetch("piketty.us.factor_capital_share")
             self.assertEqual(len(list(Path(temp).glob("wid/US/*/manifest.json"))), 1)
 
+    def test_ingestion_marks_verified_absence_without_error_or_zero_observation(self):
+        from unittest.mock import patch
+        from sqlalchemy.orm import Session
+        from finance_dashboard.bis import PublisherMeasureUnavailable
+        from finance_dashboard.service import IngestionService
+        from finance_dashboard.database import make_engine, Base, IngestionRun, ObservationVersion
+        from sqlalchemy import select
+        from unittest.mock import Mock
+        with TemporaryDirectory() as temp:
+            engine = make_engine("sqlite:///" + str(Path(temp) / "evidence.db"))
+            Base.metadata.create_all(engine)
+            adapter = Mock()
+            adapter.last_evidence = None
+            adapter.fetch.side_effect = PublisherMeasureUnavailable(
+                "WID registered measure has no publisher observations")
+            with patch("finance_dashboard.data_change_bus.publish_change"):
+                report = IngestionService(engine, adapter).refresh(
+                    "piketty.us.factor_capital_share")
+            self.assertEqual(report["status"], "unavailable")
+            self.assertEqual(report["received"], 0)
+            self.assertEqual(report["versions_added"], 0)
+            with Session(engine) as session:
+                run = session.scalar(select(IngestionRun))
+                self.assertEqual(run.status, "unavailable")
+                self.assertEqual(run.error, "wid_measure_unavailable")
+                self.assertEqual(session.query(ObservationVersion).count(), 0)
+            engine.dispose()
+
     def test_same_governed_data_metadata_pair_serves_base_and_new_research_sources(self):
         data,metadata=extended_pair()
         calls=[]

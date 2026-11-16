@@ -299,5 +299,25 @@ class PublisherQuotaTests(unittest.TestCase):
         self.assertNotIn("secret", str(event).lower())
 
 
+class VerifiedPublisherAbsenceTests(unittest.TestCase):
+    def test_report_absence_as_missing_evidence_without_failed_job(self):
+        from unittest.mock import patch
+        from finance_dashboard.worker import execute_refresh_tasks, RefreshTask
+        task = RefreshTask(
+            family="macro", source_id="piketty.us.factor_capital_share",
+            execute=lambda: {"status":"unavailable","received":0,"versions_added":0},
+            progress_label="piketty.us.factor_capital_share", provider_group="WID")
+        with patch("finance_dashboard.worker.record_event") as event:
+            failures = execute_refresh_tasks([task])
+        self.assertEqual(failures, 0)
+        self.assertTrue(any(
+            call.args[1] == "source_unavailable" for call in event.call_args_list))
+        batch = next(call for call in event.call_args_list
+                     if call.kwargs.get("action") == "source_refresh_batch")
+        self.assertEqual(batch.kwargs["status"], "partial")
+        self.assertEqual(batch.kwargs["unavailable"], 1)
+        self.assertEqual(batch.kwargs["failed"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
