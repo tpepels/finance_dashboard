@@ -182,7 +182,7 @@ def parse_wid_bundle(data_text: str, metadata_text: str, *, area: str) -> WidBun
 
 
 def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
-                           strict: bool = True) -> dict:
+                           strict: bool = True, return_invalid: bool = False) -> dict | tuple:
     """Validate independently addressable optional WID source identities.
 
     strict=True rejects any contradictory selected original. strict=False
@@ -289,6 +289,8 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
     for key in keys:
         if key[0] in invalid:
             observations[key] = {}
+    if return_invalid:
+        return observations, frozenset(invalid)
     return observations
 
 
@@ -511,6 +513,7 @@ class WidClient:
         self.archive_dir = Path(archive_dir) if archive_dir is not None else None
         self._areas: dict[str, WidBundle] = {}
         self._piketty: dict[str, dict] = {}
+        self._piketty_invalid: dict[str, frozenset[str]] = {}
 
     def fetch(self, series_id: str, start: date | None = None) -> FetchedSeries:
         selected = WID_ALL_SERIES.get(series_id)
@@ -563,9 +566,14 @@ class WidClient:
             # Select each registered optional WID measure once from the same
             # validated publisher pair. Retain only compact parsed values;
             # never retain six entire 250 MB country CSV texts in RAM.
-            self._piketty[area] = parse_piketty_original(
-                data_text, metadata_text, area=area, strict=False)
+            self._piketty[area], self._piketty_invalid[area] = parse_piketty_original(
+                data_text, metadata_text, area=area, strict=False,
+                return_invalid=True)
         if series_id in WID_PIKETTY_SERIES:
+            if variable in self._piketty_invalid[area]:
+                # An invalid publisher variable was quarantined. Never
+                # reinterpret it as a genuinely unpublished measure.
+                raise ProviderError("WID research observation or metadata invalid")
             values = self._piketty[area].get((variable, percentile), {})
         else:
             values = self._areas[area].observations[(variable, percentile)]

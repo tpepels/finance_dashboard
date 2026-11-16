@@ -102,6 +102,29 @@ class WidPikettyOriginalTests(unittest.TestCase):
                 wid.fetch("piketty.us.factor_capital_share")
             self.assertEqual(len(list(Path(temp).glob("wid/US/*/manifest.json"))), 1)
 
+    def test_quarantined_invalid_metadata_is_not_marked_unpublished(self):
+        from finance_dashboard.bis import PublisherMeasureUnavailable
+        data, metadata = extended_pair()
+        # Change only the optional aptinc metadata's population identity,
+        # retaining the base WID input and its valid source pair.
+        damaged = metadata.replace(
+            "aptinc992j;992;j", "aptinc992j;999;i")
+        self.assertNotEqual(damaged, metadata)
+        observations, invalid = parse_piketty_original(
+            data, damaged, area="US", strict=False, return_invalid=True)
+        self.assertIn("aptinc992j", invalid)
+        self.assertEqual(observations[("aptinc992j","p0p100")], {})
+        def response(request):
+            return httpx.Response(200, text=(
+                damaged if "metadata" in request.url.path else data))
+        with httpx.Client(transport=httpx.MockTransport(response)) as client:
+            wid = WidClient(client)
+            base = wid.fetch("inequality.us.pretax_income.top10")
+            self.assertEqual(base.observations[date(2024,1,1)],Decimal(".46"))
+            with self.assertRaises(ProviderError) as error:
+                wid.fetch("piketty.us.real_pretax_average.all")
+            self.assertNotIsInstance(error.exception, PublisherMeasureUnavailable)
+
     def test_nonempty_optional_measure_before_incremental_start_is_not_absent(self):
         from finance_dashboard.bis import PublisherMeasureUnavailable
         data, metadata = extended_pair()
