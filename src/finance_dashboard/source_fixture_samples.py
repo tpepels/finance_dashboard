@@ -389,7 +389,7 @@ def collect_sec_archive_inspection(evidence_root: Path, coverage_items: list[dic
         "SUBMISSION": ("ACCESSION_NUMBER", "SUBMISSIONTYPE", "REPORTDATE",
                        "FILING_DATE", "SERIESID"),
         "SERIESLEVELINFO": ("ACCESSION_NUMBER", "FEEDERFUNDFLAG",
-                            "NETASSETSOFSERIES", "AVERAGEPORTFOLIOMATURITY",
+                            "NETASSETOFSERIES", "AVERAGEPORTFOLIOMATURITY",
                             "AVERAGELIFEMATURITY"),
         "LIQUIDASSETSDETAILS": ("ACCESSION_NUMBER",
                                 "TOTLIQUIDASSETSNEARPCTDATE",

@@ -32,7 +32,7 @@ def zipped_sec():
        "old\tN-MFP3\t2026-10-31\t2026-11-01\tS000000001\n"
        "new\tN-MFP3/A\t2026-10-31\t2026-11-03\tS000000001\n"
        "feeder\tN-MFP3\t2026-10-31\t2026-11-02\tS000000002\n",
-    "NMFP_SERIESLEVELINFO.tsv":"ACCESSION_NUMBER\tFEEDERFUNDFLAG\tNETASSETSOFSERIES\tAVERAGEPORTFOLIOMATURITY\tAVERAGELIFEMATURITY\n"
+    "NMFP_SERIESLEVELINFO.tsv":"ACCESSION_NUMBER\tFEEDERFUNDFLAG\tNETASSETOFSERIES\tAVERAGEPORTFOLIOMATURITY\tAVERAGELIFEMATURITY\n"
        "old\tN\t100000000\t30\t60\n"
        "new\tN\t200000000\t28\t56\n"
        "feeder\tY\t900000000\t10\t20\n",
@@ -137,6 +137,27 @@ class OriginalDataTests(unittest.TestCase):
                 sorted(archive.namelist()),
                 sorted(["NMFP_SUBMISSION.tsv", "NMFP_SERIESLEVELINFO.tsv",
                         "NMFP_LIQUIDASSETSDETAILS.tsv"]))
+
+    def test_sec_real_publisher_schema_rejects_invented_net_assets_column(self):
+        # Diagnostic archive 20250710-20250807_nmfp.zip names the original
+        # column NETASSETOFSERIES (without the plural S).
+        valid = zipped_sec()
+        self.assertEqual(
+            parse_nmfp_month(valid, date(2026, 10, 1))["NET_ASSETS_MUSD"],
+            Decimal("200"))
+        invalid = BytesIO()
+        with ZipFile(BytesIO(valid)) as source, ZipFile(invalid, "w") as dest:
+            for name in source.namelist():
+                contents = source.read(name)
+                if name == "NMFP_SERIESLEVELINFO.tsv":
+                    contents = contents.replace(
+                        b"NETASSETOFSERIES", b"NETASSETSOFSERIES")
+                dest.writestr(name, contents)
+        with self.assertRaises(ProviderError):
+            parse_nmfp_month(invalid.getvalue(), date(2026, 10, 1))
+        from finance_dashboard.extra_publisher_evidence import _month_zip, EvidenceError
+        with self.assertRaises(EvidenceError):
+            _month_zip(invalid.getvalue(), date(2026, 10, 1))
 
     def test_managed_ingestion_archive_and_independent_reconciliation(self):
         from pathlib import Path

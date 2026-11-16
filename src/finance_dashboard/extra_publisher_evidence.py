@@ -163,7 +163,7 @@ def _month_zip(raw, month):
     for _,accession in latest.values():
         row=rows[accession]
         if row["FEEDERFUNDFLAG"]=="Y":continue
-        value=_decimal(row["NETASSETSOFSERIES"])
+        value=_decimal(row["NETASSETOFSERIES"])
         if value>0:holdings[accession]=(value,row)
     if not holdings:raise EvidenceError("source_empty")
     assets=sum((v[0] for v in holdings.values()),Decimal(0))

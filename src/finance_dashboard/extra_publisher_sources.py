@@ -281,7 +281,7 @@ def parse_nmfp_month(raw: bytes, report_month: date) -> dict[str, Decimal]:
         row = source_rows[accession]
         if row.get("FEEDERFUNDFLAG","").strip().upper() == "Y":
             continue
-        size = _number(row.get("NETASSETSOFSERIES",""),"SEC N-MFP net assets")
+        size = _number(row.get("NETASSETOFSERIES",""),"SEC N-MFP net assets")
         if size > 0:
             eligible[accession] = (size,row)
     if not eligible:
