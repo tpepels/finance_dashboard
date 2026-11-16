@@ -55,6 +55,14 @@ describe('shareable developer diagnostic report',()=>{
     expect(text).not.toContain('secret-api-key');
     expect(text).not.toContain('api.example');
   });
+  it('reports unavailable original measures separately from failed downloads',()=>{
+    const entry={...sample.events[0],event:'stage_finished',scope:'macro',
+      action:'source_refresh_batch',status:'partial',completed:20,total:20,
+      failed:0,unavailable:4};
+    const line=eventLine(entry);
+    expect(line).toContain('failed=0');
+    expect(line).toContain('unavailable=4');
+  });
   it('formats a bounded safe event line without object dumps',()=>{
     expect(eventLine(sample.events[0])).toContain('reason=fred_api_key_rejected');
   });

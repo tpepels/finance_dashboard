@@ -5,7 +5,7 @@ export type DiagnosticEvent = {
   at: string; level: 'info' | 'warning' | 'error'; scope: string; event: string;
   action?: string; job_id?: string; source_id?: string;
   stage?: string; status?: string; reason?: string;
-  completed?: number; total?: number; failed?: number; http_status?: number;
+  completed?: number; total?: number; failed?: number; unavailable?: number; http_status?: number;
 };
 export type DiagnosticJob = {
   id?: string; action?: string; status?: string;
@@ -43,7 +43,7 @@ export function eventLine(e: DiagnosticEvent): string {
   return [e.at, e.level.toUpperCase(), e.scope + '.' + e.event,
     field('source',e.source_id),field('stage',e.stage),field('action',e.action),
     field('status',e.status),field('reason',e.reason),
-    field('failed',e.failed),field('done',e.completed),
+    field('failed',e.failed),field('unavailable',e.unavailable),field('done',e.completed),
     field('total',e.total),field('http',e.http_status)].join(' ').replace(/\s+/g,' ').trim();
 }
 export function formatDeveloperLog(report: DiagnosticReport): string {
