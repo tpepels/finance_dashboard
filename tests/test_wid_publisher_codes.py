@@ -92,7 +92,7 @@ class WidPublisherCodeTests(unittest.TestCase):
     def test_published_national_ratio_rows_are_read_as_filed(self):
         parsed, invalid = parse_piketty_original(
             US_DATA, US_METADATA, area="US", strict=False, return_invalid=True)
-        self.assertEqual(invalid, frozenset())
+        self.assertEqual(invalid, {})
         self.assertEqual(parsed[("wnweal999i", "p0p100")],
                          {date(2022, 1, 1): Decimal("5.966600000000001"),
                           date(2023, 1, 1): Decimal("5.7042")})
@@ -118,10 +118,32 @@ class WidPublisherCodeTests(unittest.TestCase):
         # must be quarantined as invalid, never reported as unpublished.
         parsed, invalid = parse_piketty_original(
             WO_DATA, WO_METADATA, area="WO", strict=False, return_invalid=True)
-        self.assertEqual(invalid, {"mnninci999", "mnweali999", "wnweali999"})
+        self.assertEqual(set(invalid), {"mnninci999", "mnweali999", "wnweali999"})
+        self.assertTrue(all("original method mismatch" in d for d in invalid.values()))
         self.assertEqual(parsed[("wnweali999", "p0p100")], {})
         with self.assertRaisesRegex(ProviderError, "original method mismatch"):
             parse_piketty_original(WO_DATA, WO_METADATA, area="WO")
+
+    def test_quarantined_world_series_reports_the_metadata_reason(self):
+        # Production showed these as wid_observation_invalid because the
+        # collector replaced the quarantine reason with a generic message.
+        import httpx
+        from finance_dashboard.service import safe_source_failure_code
+        from finance_dashboard.wid import WidClient
+
+        def response(request):
+            return httpx.Response(200, text=(
+                WO_METADATA if "metadata" in request.url.path else WO_DATA))
+        # The fixture holds only the optional world rows; the separately
+        # tested base-share bundle is not what this test is about.
+        from unittest.mock import MagicMock, patch
+        with httpx.Client(transport=httpx.MockTransport(response)) as client, \
+                patch("finance_dashboard.wid.parse_wid_bundle", return_value=MagicMock()):
+            with self.assertRaises(ProviderError) as error:
+                WidClient(client).fetch("piketty.world.wealth_to_income.national")
+        self.assertIn("original method mismatch", str(error.exception))
+        self.assertEqual(safe_source_failure_code(error.exception),
+                         "wid_metadata_invalid")
 
 
 

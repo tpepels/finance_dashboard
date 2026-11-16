@@ -226,12 +226,14 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
     if not keys:
         raise ProviderError("Unregistered WID research reference area")
     allowed = {variable for variable, _ in keys}
-    metadata, invalid = {}, set()
+    # Each quarantined variable keeps the first rule it failed, so a fetch
+    # reports the actual defect (metadata, units or observations).
+    metadata, invalid = {}, {}
 
     def reject(variable: str, detail: str) -> None:
         if strict:
             raise ProviderError(detail)
-        invalid.add(variable)
+        invalid.setdefault(variable, detail)
 
     # WID documents methodological notes as optional. Keep the original
     # source citation and exact variable/age/population/unit mandatory, while
@@ -275,7 +277,9 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
         if len(macro) > 1:
             if strict:
                 raise ProviderError("WID monetary total units differ within reference area")
-            invalid.update(v for v in metadata if v.startswith("m"))
+            for v in metadata:
+                if v.startswith("m"):
+                    invalid.setdefault(v, "WID monetary total units differ within reference area")
         observations = {key: {} for key in keys}
         reader = _reader(data_text, {"country", "variable", "percentile",
                                      "year", "value", "age", "pop"})
@@ -324,7 +328,7 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
         if key[0] in invalid:
             observations[key] = {}
     if return_invalid:
-        return observations, frozenset(invalid)
+        return observations, dict(invalid)
     return observations
 
 
@@ -547,7 +551,7 @@ class WidClient:
         self.archive_dir = Path(archive_dir) if archive_dir is not None else None
         self._areas: dict[str, WidBundle] = {}
         self._piketty: dict[str, dict] = {}
-        self._piketty_invalid: dict[str, frozenset[str]] = {}
+        self._piketty_invalid: dict[str, dict[str, str]] = {}
 
     def fetch(self, series_id: str, start: date | None = None) -> FetchedSeries:
         selected = WID_ALL_SERIES.get(series_id)
@@ -607,7 +611,7 @@ class WidClient:
             if variable in self._piketty_invalid[area]:
                 # An invalid publisher variable was quarantined. Never
                 # reinterpret it as a genuinely unpublished measure.
-                raise ProviderError("WID research observation or metadata invalid")
+                raise ProviderError(self._piketty_invalid[area][variable])
             values = self._piketty[area].get((variable, percentile), {})
         else:
             values = self._areas[area].observations[(variable, percentile)]
