@@ -100,7 +100,12 @@ class OriginalImportManager:
         if self.root.is_dir() and not self.root.is_symlink():
             for item in sorted(self.root.iterdir()):
                 if approved_file(item.name) and item.is_file() and not item.is_symlink():
-                    files.append({"filename": item.name, "bytes": item.stat().st_size,
+                    try:
+                        size = item.stat().st_size
+                    except OSError:
+                        # An import moved the file out after it was listed.
+                        continue
+                    files.append({"filename": item.name, "bytes": size,
                                   "kind": "readme" if item.name == README else
                                           "verified_regular" if item.name in PUBLISHER_ARCHIVES else
                                           "edition_archive"})
