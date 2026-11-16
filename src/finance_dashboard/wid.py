@@ -20,7 +20,7 @@ import tempfile
 
 import httpx
 
-from .bis import FetchedSeries, ProviderError
+from .bis import FetchedSeries, ProviderError, PublisherMeasureUnavailable
 from .source_policy import require_managed_client
 from .source_policy_types import PolicyDeferred
 from .source_evidence import record_acquisition_receipt
@@ -576,5 +576,5 @@ class WidClient:
             # absent from one area/vintage. Keep this distinct from invalid
             # original bytes so an absent publisher series isn't misreported
             # as a broken CSV parser.
-            raise ProviderError("WID registered measure has no publisher observations")
+            raise PublisherMeasureUnavailable("WID registered measure has no publisher observations")
         return FetchedSeries(series_id, data_url + " + " + metadata_url, None, observations)

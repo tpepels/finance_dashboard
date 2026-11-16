@@ -22,6 +22,10 @@ class ProviderError(ValueError):
     """Invalid/unavailable source data; safe to record without changing observations."""
 
 
+class PublisherMeasureUnavailable(ProviderError):
+    """Publisher original validated, but exact registered optional measure absent."""
+
+
 @dataclass(frozen=True)
 class FetchedSeries:
     series_id: str

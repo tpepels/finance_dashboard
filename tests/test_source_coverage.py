@@ -52,11 +52,22 @@ class SourceCoverageTests(unittest.TestCase):
             status="failed", error="wid_measure_unavailable")
         self.assertIn("no rows", action)
         self.assertIn("exact registered", action)
-        self.assertIn("No substitute", action)
+        self.assertIn("No manual action", action)
         generic = _next_action(
             mapped=True, count=0, stale=False, complete=False,
             status="failed", error="source_invalid")
         self.assertIn("Review the recorded failure", generic)
+
+    def test_missing_publisher_original_is_a_research_gap_not_collection_error(self):
+        sid = "piketty.us.factor_capital_share"
+        self.add_macro(sid, status="unavailable", error="wid_measure_unavailable")
+        item = {row["id"]: row for row in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 16))["items"]}[sid]
+        self.assertEqual(item["state"], "publisher_measure_absent")
+        self.assertEqual(item["observation_state"], "missing")
+        self.assertEqual(item["last_attempt_state"], "unavailable")
+        self.assertIn("No manual action", item["next_action"])
 
     def test_stale_deferred_history_still_requires_attention(self):
         self.add_macro('activity.us.oecd_cli', status='deferred',

@@ -43,6 +43,7 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
     progress exactly once. Stored observations remain untouched on failure.
     """
     failures = 0
+    unavailable = 0
     processed = 0
     total = len(tasks)
     # A confirmed publisher-wide hourly quota cannot be repaired by
@@ -82,10 +83,15 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
             continue
         try:
             report = task.execute()
-            log.info("%s refreshed: received=%s versions_added=%s",
-                     task.family,
-                     report.get("received") if isinstance(report, dict) else "unknown",
-                     report.get("versions_added") if isinstance(report, dict) else "unknown")
+            if isinstance(report, dict) and report.get("status") == "unavailable":
+                unavailable += 1
+                record_event(task.family, "source_unavailable", level="warning",
+                             source_id=task.source_id, reason="wid_measure_unavailable")
+            else:
+                log.info("%s refreshed: received=%s versions_added=%s",
+                         task.family,
+                         report.get("received") if isinstance(report, dict) else "unknown",
+                         report.get("versions_added") if isinstance(report, dict) else "unknown")
         except PolicyDeferred as exc:
             failures += 1
             if task.provider_group is not None and exc.reason in {
@@ -128,8 +134,9 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
         scope = "macro" if tasks[0].family == "macro" else "markets"
         record_event(scope, "stage_finished", action="source_refresh_batch",
                      status=("interrupted" if processed < total else
-                             "partial" if failures else "complete"),
-                     completed=processed, total=total, failed=failures)
+                             "partial" if failures or unavailable else "complete"),
+                     completed=processed, total=total, failed=failures,
+                     unavailable=unavailable)
     return failures
 
 
@@ -270,7 +277,7 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                         select(IngestionRun.series_id, func.max(func.coalesce(
                             IngestionRun.ended_at, IngestionRun.started_at)))
                         .where(IngestionRun.series_id.in_(chosen),
-                               IngestionRun.status.in_(("success", "failed")))
+                               IngestionRun.status.in_(("success", "failed", "unavailable")))
                         .group_by(IngestionRun.series_id)).all())
             except Exception as exc:
                 planner_fault("rotation_query", exc)

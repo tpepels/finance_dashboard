@@ -11,6 +11,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .bis import PublisherMeasureUnavailable
 from .providers import ProviderRouter
 from .provider_registry import get_provider
 from .source_policy import PolicyDeferred, PolicyViolation
@@ -264,9 +265,15 @@ class IngestionService:
             with Session(self.engine) as session, session.begin():
                 run = session.get(IngestionRun, run_id)
                 run.status = (
+                    "unavailable" if isinstance(exc, PublisherMeasureUnavailable) else
                     "deferred" if isinstance(exc, PolicyDeferred) else "failed")
                 run.ended_at = now_utc()
                 run.error = safe_source_failure_code(exc)
+            if isinstance(exc, PublisherMeasureUnavailable):
+                from .data_change_bus import publish_change
+                publish_change(self.engine, "publisher_measure_unavailable")
+                return {"id": run_id, "series_id": series_id,
+                        "status": "unavailable", "received": 0, "versions_added": 0}
             raise
 
 

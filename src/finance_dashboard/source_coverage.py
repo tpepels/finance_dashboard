@@ -449,6 +449,7 @@ def _summary(items: list[dict]) -> dict:
         "not_ingested", "collection_disabled", "collection_failed",
         "collection_deferred", "refresh_deferred_with_data",
         "refresh_failed_with_data", "stale", "source_unresolved",
+        "publisher_measure_absent",
     } for item in items)
     result['observations'] = {state: sum(item['observation_state'] == state for item in items)
                               for state in ('current', 'stale', 'missing')}
@@ -461,9 +462,9 @@ def _next_action(*, mapped, count, stale, complete, status, error):
     if error in ('provider_http_401', 'provider_http_403'):
         return 'Access was refused; configure authorized access before retrying.'
     if error == 'wid_measure_unavailable':
-        return ('The downloaded WID original has no rows for this exact registered '
-                'measure and percentile. Verify the publisher definition and '
-                'available groups before retrying. No substitute is accepted.')
+        return ('The verified WID original has no rows for this exact registered '
+                'measure and percentile. No manual action or substitute is '
+                'accepted. A scheduled publisher check can detect later releases.')
     if status == 'deferred' and complete:
         return 'Complete for the pinned release; previous network deferral does not require another download.'
     if status == 'deferred' and count and not stale:
@@ -538,6 +539,9 @@ def _make_item(*, family: str, id: str, name: str, provider: str, frequency: str
         state = "source_unresolved"
     elif count == 0 and last is not None and last["status"] == "deferred":
         state = "collection_deferred"
+    elif (count == 0 and last is not None and last["status"] == "unavailable"
+          and last.get("error") == "wid_measure_unavailable" and provider == "WID"):
+        state = "publisher_measure_absent"
     elif count == 0 and last is not None and last["status"] == "failed":
         state = "collection_failed"
     elif count == 0 and not configured:

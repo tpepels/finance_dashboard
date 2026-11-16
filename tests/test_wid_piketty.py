@@ -89,6 +89,19 @@ class WidPikettyOriginalTests(unittest.TestCase):
         with self.assertRaisesRegex(ProviderError,"original method mismatch"):
             parse_piketty_original(data,no_source,area="US")
 
+    def test_verified_optional_group_absence_has_typed_outcome(self):
+        from finance_dashboard.bis import PublisherMeasureUnavailable
+        data, metadata = extended_pair()
+        def respond(request):
+            return httpx.Response(200, text=(
+                metadata if "metadata" in request.url.path else data))
+        with TemporaryDirectory() as temp, httpx.Client(
+                transport=httpx.MockTransport(respond)) as client:
+            wid = WidClient(client, archive_dir=Path(temp))
+            with self.assertRaises(PublisherMeasureUnavailable):
+                wid.fetch("piketty.us.factor_capital_share")
+            self.assertEqual(len(list(Path(temp).glob("wid/US/*/manifest.json"))), 1)
+
     def test_same_governed_data_metadata_pair_serves_base_and_new_research_sources(self):
         data,metadata=extended_pair()
         calls=[]
