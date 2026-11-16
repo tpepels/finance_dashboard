@@ -21,7 +21,7 @@ _TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
 _SCOPES = frozenset(("sync", "macro", "markets", "fx", "alfred",
                      "sec", "earnings", "backup", "system"))
 _EVENTS = frozenset(("queued", "started", "finished", "stage_finished",
-                     "source_failed", "source_deferred", "collector_failed",
+                     "source_failed", "source_deferred", "source_unavailable", "collector_failed",
                      "cancel_requested",
                      "scheduled_warning"))
 _LEVELS = frozenset(("info", "warning", "error"))
@@ -70,7 +70,7 @@ def _sanitize(item: object) -> dict | None:
     status = item.get("status")
     if status in _STATUSES:
         out["status"] = status
-    for key in ("completed", "total", "failed"):
+    for key in ("completed", "total", "failed", "unavailable"):
         value = _nonnegative(item.get(key))
         if value is not None:
             out[key] = value
@@ -118,7 +118,8 @@ def record_event(scope: str, event: str, *, level: str = "info",
                  source_id: str | None = None, stage: str | None = None,
                  status: str | None = None, reason: str | None = None,
                  completed: int | None = None, total: int | None = None,
-                 failed: int | None = None, http_status: int | None = None) -> None:
+                 failed: int | None = None, unavailable: int | None = None,
+                 http_status: int | None = None) -> None:
     """Best-effort journal write, never allowed to break data ingestion.
 
     Deliberately no free-form message or exception parameter.
@@ -129,7 +130,7 @@ def record_event(scope: str, event: str, *, level: str = "info",
         "action": action, "job_id": job_id, "source_id": source_id,
         "stage": stage, "status": status, "reason": reason,
         "completed": completed, "total": total,
-        "failed": failed, "http_status": http_status,
+        "failed": failed, "unavailable": unavailable, "http_status": http_status,
     })
     if data is None:
         return

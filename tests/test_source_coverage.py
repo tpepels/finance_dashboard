@@ -60,7 +60,8 @@ class SourceCoverageTests(unittest.TestCase):
 
     def test_missing_publisher_original_is_a_research_gap_not_collection_error(self):
         sid = "piketty.us.factor_capital_share"
-        self.add_macro(sid, status="unavailable", error="wid_measure_unavailable")
+        self.add_macro(sid, status="unavailable", recorded=False,
+                       error="wid_measure_unavailable")
         item = {row["id"]: row for row in build_coverage(
             self.engine, self.catalog, self.registry,
             asof=date(2026, 11, 16))["items"]}[sid]
