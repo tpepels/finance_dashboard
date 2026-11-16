@@ -268,7 +268,9 @@ class ArchiveTests(unittest.TestCase):
             # Any tampered or swapped archived listing must not be silently
             # trusted as the basis for acquisition.
             parent = root / msci.ARCHIVE_DIR / "cdx" / msci.sha256(WORLD_URL.encode()).hexdigest()[:16]
-            folder = next(parent.iterdir())
+            # Directory order is filesystem-dependent and the parent also
+            # holds the retrieval log; select the hash-named evidence bundle.
+            folder = next(path for path in parent.iterdir() if len(path.name) == 64)
             (folder / "listing.json").write_bytes(b"[]")
             with self.assertRaisesRegex(msci.MsciFactsheetError, "bundle_file_hash_mismatch"):
                 msci._latest_cdx_listing(root, WORLD_URL)
