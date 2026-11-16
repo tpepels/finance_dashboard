@@ -150,6 +150,35 @@ class SourceCoverageTests(unittest.TestCase):
             asof=date(2026, 11, 13))["items"]}
         self.assertEqual(unverified["property.pt.commercial_all.bis"]["state"], "stale")
 
+    def test_bis_nominal_selected_q2_release_is_temporarily_current_not_japan(self):
+        # The precise official publication window applies only to four
+        # checked Q2 keys; it must not hide Japan's longer data gap.
+        nominal = ("us", "de", "pt", "ea")
+        for country in nominal:
+            self.add_macro(f"property.{country}.nominal_residential.bis",
+                           when=date(2026, 4, 1))
+        self.add_macro("property.jp.nominal_residential.bis",
+                       when=date(2025, 10, 1))
+        current = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 16))["items"]}
+        for country in nominal:
+            sid = f"property.{country}.nominal_residential.bis"
+            with self.subTest(series=sid):
+                self.assertEqual(current[sid]["state"], "available")
+                self.assertEqual(current[sid]["observation_state"], "current")
+                self.assertEqual(current[sid]["published_through"], "2026-04-01")
+                self.assertEqual(current[sid]["publisher_release_verified_as_of"],
+                                 "2026-11-16")
+        self.assertEqual(current["property.jp.nominal_residential.bis"]["state"], "stale")
+        expired = {item["id"]: item for item in build_coverage(
+            self.engine, self.catalog, self.registry,
+            asof=date(2026, 11, 26))["items"]}
+        for country in nominal:
+            sid = f"property.{country}.nominal_residential.bis"
+            self.assertEqual(expired[sid]["state"], "stale")
+            self.assertIsNone(expired[sid]["published_through"])
+
     def test_two_immutable_academic_and_archival_artifacts_are_not_live_series(self):
         source_latest = {
             "stress.us.high_yield_oas_fred_archive": date(2025, 11, 3),

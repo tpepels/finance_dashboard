@@ -176,6 +176,24 @@ PUBLICATION_BOUNDS.update({
     for sid, (area, through) in _BIS_PROPERTY_SERIES_END.items()
 })
 
+# BIS 29 October 2026 published selected residential prices through 2026-Q2.
+# Four exact nominal WS_SPP source keys in the verified production export also
+# end in Q2. The selected-series release calendar establishes the current
+# reference window, but NOT that all countries publish an observation in it:
+# Japan's nominal key ends in Q4 2025 and remains excluded and due for review.
+# Expire at the 26 November 2026 official release, when a new check is needed.
+_BIS_NOMINAL_Q2_KEYS = {"us": "US", "de": "DE", "pt": "PT", "ea": "XM"}
+PUBLICATION_BOUNDS.update({
+    f"property.{country}.nominal_residential.bis": {
+        "version": f"BIS selected residential prices WS_SPP Q.{area}.N.628, October 2026",
+        "verified_as_of": date(2026, 11, 16),
+        "expires": date(2026, 11, 26),
+        "through": date(2026, 4, 1),
+        "url": f"https://data.bis.org/topics/RPP/BIS%2CWS_SPP%2C1.0/Q.{area}.N.628",
+    }
+    for country, area in _BIS_NOMINAL_Q2_KEYS.items()
+})
+
 # BIS's official commercial property key is explicitly shown ending at
 # 2026-Q2 as of 2026-11-13; the next monthly commercial update is due
 # 26 November. This is not inferred from the residential or nominal series.
