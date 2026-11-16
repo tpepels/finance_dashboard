@@ -184,7 +184,9 @@ def _month_zip(raw, month):
         day=_sec_date(row["TOTLIQUIDASSETSNEARPCTDATE"])
         if (day.year,day.month)!=(month.year,month.month):continue
         fraction=_decimal(row["PCTWEEKLYLIQUIDASSETS"])
-        if not 0<=fraction<=1:raise EvidenceError("source_numeric_invalid")
+        # As-filed fractions of total assets reach 1.0004 in the publisher
+        # originals; only a marginal excess is unambiguous in scale.
+        if not 0<=fraction<=Decimal("1.01"):raise EvidenceError("source_numeric_invalid")
         if accession not in by_fund or day>by_fund[accession][0]:
             by_fund[accession]=(day,fraction*100)
         elif day==by_fund[accession][0]:raise EvidenceError("source_duplicate_identity")

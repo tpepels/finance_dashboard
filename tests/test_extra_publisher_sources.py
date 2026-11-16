@@ -230,6 +230,53 @@ class OriginalDataTests(unittest.TestCase):
         self.assertEqual(actual, independently_verified)
         self.assertEqual(actual["NET_ASSETS_MUSD"], Decimal("200"))
 
+    def test_sec_as_filed_liquidity_fraction_marginally_above_one(self):
+        # Minimal literal rows of SEC original 20250710-20250807_nmfp.zip
+        # (SHA-256 f14a3b3cd632221b9d4d5f0fbba0e0d39cf879c909743c9da928c10eb5e69573),
+        # accession 0001145549-25-050323, series S000080765. A government
+        # fund files weekly liquid assets marginally above total assets on
+        # some days. Fifteen of the sixteen 2025-07..2026-10 publisher months
+        # contain such rows, never above 1.0004.
+        from finance_dashboard.extra_publisher_evidence import _month_zip, EvidenceError
+        def original(liquidity_rows):
+            tables={
+            "NMFP_SUBMISSION.tsv":"ACCESSION_NUMBER\tSUBMISSIONTYPE\tREPORTDATE\tFILING_DATE\tSERIESID\n"
+               "0001145549-25-050323\tN-MFP3\t31-JUL-2025\t04-AUG-2025\tS000080765\n",
+            "NMFP_SERIESLEVELINFO.tsv":"ACCESSION_NUMBER\tFEEDERFUNDFLAG\tNETASSETOFSERIES\tAVERAGEPORTFOLIOMATURITY\tAVERAGELIFEMATURITY\n"
+               "0001145549-25-050323\tN\t   1125762182.06\t4\t4\n",
+            "NMFP_LIQUIDASSETSDETAILS.tsv":"ACCESSION_NUMBER\tTOTLIQUIDASSETSNEARPCTDATE\tPCTWEEKLYLIQUIDASSETS\n"
+               +"".join(f"0001145549-25-050323\t{day}\t{value}\n" for day,value in liquidity_rows)}
+            output=BytesIO()
+            with ZipFile(output,"w") as archive:
+                for name,rows in tables.items():archive.writestr(name,rows)
+            return output.getvalue()
+        month=date(2025,7,1)
+        published=original([("03-JUL-2025"," 1.0002"),("25-JUL-2025"," 1.0001"),
+                            ("31-JUL-2025","  .9998")])
+        result=parse_nmfp_month(published,month)
+        self.assertEqual(result["NET_ASSETS_MUSD"],Decimal("1125.76218206"))
+        self.assertEqual(result["WEEKLY_LIQUIDITY_PCT"],Decimal("99.98"))
+        self.assertEqual(result,_month_zip(published,month))
+        # The as-filed value is stored unchanged, never clipped to 100.
+        final_day=original([("31-JUL-2025"," 1.0002")])
+        self.assertEqual(parse_nmfp_month(final_day,month)["WEEKLY_LIQUIDITY_PCT"],
+                         Decimal("100.02"))
+        self.assertEqual(_month_zip(final_day,month)["WEEKLY_LIQUIDITY_PCT"],
+                         Decimal("100.02"))
+        # Anything further from the fraction scale stays an ambiguous
+        # convention and rejects the original; negatives stay invalid.
+        for ambiguous in (" 1.0101"," 1.5","99.98"):
+            raw=original([("31-JUL-2025",ambiguous)])
+            with self.assertRaisesRegex(ProviderError,"fraction exceeds"):
+                parse_nmfp_month(raw,month)
+            with self.assertRaises(EvidenceError):
+                _month_zip(raw,month)
+        negative=original([("31-JUL-2025","-.0001")])
+        with self.assertRaises(ProviderError):
+            parse_nmfp_month(negative,month)
+        with self.assertRaises(EvidenceError):
+            _month_zip(negative,month)
+
     def test_sec_requires_operator_contact(self):
         with patch.dict("os.environ",{"SEC_USER_AGENT":""}):
             with self.assertRaisesRegex(ProviderError,"SEC_USER_AGENT"):

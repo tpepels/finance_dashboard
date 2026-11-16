@@ -28,6 +28,13 @@ DWA_GROUPS = ("T10", "B50")
 HPI_AREAS = ("PT", "DE", "FR", "EA20", "EU27_2020")
 HPI_PURCHASES = ("TOTAL", "DW_NEW", "DW_EXST")
 SEC_METRICS = ("NET_ASSETS_MUSD", "WAM_DAYS", "WAL_DAYS", "WEEKLY_LIQUIDITY_PCT")
+# Funds file weekly liquid assets as a fraction of total assets. The publisher
+# originals for 2025-07..2026-10 contain fractions marginally above one in
+# fifteen of sixteen months (maximum 1.0004), because the liquid-asset value
+# can slightly exceed the total-asset denominator. One percentage point keeps
+# those as-filed values while a percent-scale filing (two orders larger under
+# Rule 2a-7 liquidity minimums) remains an unresolved convention and rejects.
+SEC_LIQUIDITY_FRACTION_MAX = Decimal("1.01")
 _SEC_FILE = re.compile(r"/files/dera/data/form-n-mfp-data-sets/(\d{8})-(\d{8})_nmfp\.zip", re.I)
 _MONTHS = ("January","February","March","April","May","June","July","August",
            "September","October","November","December")
@@ -306,10 +313,12 @@ def parse_nmfp_month(raw: bytes, report_month: date) -> dict[str, Decimal]:
             continue
         value = _number(row["PCTWEEKLYLIQUIDASSETS"],"SEC N-MFP weekly liquidity",
                         maximum=Decimal(100))
-        # N-MFP3 discloses proportions on a 0..1 scale. Do not guess
-        # whether an out-of-range original used a different convention.
-        if value > 1:
-            raise ProviderError("SEC N-MFP weekly liquidity fraction exceeds one")
+        # N-MFP3 discloses proportions of total assets on a 0..1 scale. Do
+        # not guess whether an out-of-range original used a different
+        # convention. Marginal as-filed excesses are stored unchanged.
+        if value > SEC_LIQUIDITY_FRACTION_MAX:
+            raise ProviderError(
+                "SEC N-MFP weekly liquidity fraction exceeds one beyond the as-filed bound")
         value *= 100
         if accession in last_liquid and day == last_liquid[accession][0]:
             raise ProviderError("SEC N-MFP repeated fund/date liquidity observation")
