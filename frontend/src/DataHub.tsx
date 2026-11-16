@@ -533,7 +533,7 @@ export default function DataHub(){
                   <td>{item.latest_source_date?.slice(0,7)??'No data'}</td>
                   <td><span className={'data-state data-state-'+
                     (kind==='technical'?'error':kind==='waiting'?'active':'attention')}>
-                    {kind==='technical'?'Failed':kind==='waiting'?'Postponed':
+                    {kind==='technical'?'Failed':item.state==='publisher_measure_absent'?'Not published':kind==='waiting'?'Postponed':
                       kind==='missing'?'Missing':'Possibly outdated'}
                   </span></td>
                   <td>{sourceNextStep(item.state,item.last_failure_code)}</td>

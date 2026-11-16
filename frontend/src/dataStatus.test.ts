@@ -91,12 +91,25 @@ describe('operator status based on actual collection, schedule and data',()=>{
   it('keeps a paused/failed backend request distinct from a stale successful source',()=>{
     expect(issueCategory('collection_failed','provider_http_403')).toBe('technical');
     expect(issueCategory('collection_deferred','source_policy_deferred')).toBe('waiting');
+    expect(issueCategory('publisher_measure_absent','wid_measure_unavailable')).toBe('waiting');
+    expect(sourceNextStep('publisher_measure_absent','wid_measure_unavailable')).toContain('no observations');
     expect(issueCategory('stale',null)).toBe('stale');
     expect(issueCategory('not_ingested',null)).toBe('missing');
     expect(sourceNextStep('not_ingested',null)).toContain('No data has been saved yet.');
     expect(sourceNextStep('collection_failed','provider_http_403')).toContain('access was refused');
     expect(sourceNextStep('collection_failed','source_invalid')).toContain('software fix');
     expect(sourceNextStep('collection_deferred','source_policy_deferred')).toContain('Scheduled checks');
+  });
+  it('does not prompt for technical action for an absent verified WID measure',()=>{
+    const input=base();input.attention=[{id:'piketty.us.factor_capital_share',provider:'WID',
+      state:'publisher_measure_absent',last_attempt_state:'unavailable',
+      last_failure_code:'wid_measure_unavailable'}];
+    input.sources={total:10,with_data:9,needs_attention:1};
+    input.session=null;
+    const status=describeDataStatus(input);
+    expect(status.failedSeries).toBe(0);
+    expect(status.waitingSeries).toBe(1);
+    expect(status.yourAction.kind).toBe('none');
   });
   it('does not demand user action for available but potentially old data',()=>{
     const input=base();input.attention=[{id:'existing',provider:'WID',state:'stale'}];

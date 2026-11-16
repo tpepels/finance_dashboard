@@ -102,6 +102,17 @@ class WidPikettyOriginalTests(unittest.TestCase):
                 wid.fetch("piketty.us.factor_capital_share")
             self.assertEqual(len(list(Path(temp).glob("wid/US/*/manifest.json"))), 1)
 
+    def test_nonempty_optional_measure_before_incremental_start_is_not_absent(self):
+        from finance_dashboard.bis import PublisherMeasureUnavailable
+        data, metadata = extended_pair()
+        def response(request):
+            return httpx.Response(200, text=(metadata if "metadata" in request.url.path else data))
+        with httpx.Client(transport=httpx.MockTransport(response)) as client:
+            adapter = WidClient(client)
+            with self.assertRaises(ProviderError) as error:
+                adapter.fetch("piketty.us.real_pretax_average.all",start=date(2025,1,1))
+            self.assertNotIsInstance(error.exception, PublisherMeasureUnavailable)
+
     def test_ingestion_marks_verified_absence_without_error_or_zero_observation(self):
         from unittest.mock import patch
         from sqlalchemy.orm import Session

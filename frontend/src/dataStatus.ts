@@ -42,6 +42,7 @@ export function formatDataTime(value?:string|null):string|null{
 }
 export function issueCategory(state:string,lastFailureCode?:string|null):
   'technical'|'waiting'|'stale'|'missing' {
+  if(state==='publisher_measure_absent')return 'waiting';
   if(state==='collection_failed'||lastFailureCode &&
      lastFailureCode!=='source_policy_deferred')return 'technical';
   if(state==='collection_deferred'||state==='source_checked_no_newer_data'||lastFailureCode==='source_policy_deferred')return 'waiting';
@@ -49,6 +50,8 @@ export function issueCategory(state:string,lastFailureCode?:string|null):
   return 'stale';
 }
 export function sourceNextStep(state:string,code?:string|null):string {
+  if(state==='publisher_measure_absent')
+    return 'Publisher original checked: no observations for this measure. Automatic checks continue.';
   if(issueCategory(state,code)==='technical'){
     if(/403|401|access_denied/.test(code??''))return 'Publisher access was refused. Needs investigation.';
     if(/invalid|identity|format/.test(code??''))return 'The downloaded data failed a check. Needs a software fix.';

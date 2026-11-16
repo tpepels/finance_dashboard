@@ -39,13 +39,14 @@ const LABELS: Record<string,string> = {
   collection_deferred: 'Source policy deferred collection; no stored data',
   refresh_deferred_with_data: 'Source policy deferred refresh; previous observations retained',
   source_checked_no_newer_data: 'Publisher original checked recently; no newer value published',
+  publisher_measure_absent: 'Verified publisher original has no observations for this measure',
   refresh_failed_with_data: 'Last refresh failed; previous observations retained',
   source_unresolved: 'Source mapping unresolved',
 };
 const ATTENTION = new Set([
   'stale','collection_disabled','not_ingested','collection_failed',
   'collection_deferred','refresh_deferred_with_data',
-  'refresh_failed_with_data','source_unresolved',
+  'refresh_failed_with_data','source_unresolved','publisher_measure_absent',
 ]);
 
 export default function SourceCoveragePanel() {
@@ -204,7 +205,7 @@ export default function SourceCoveragePanel() {
               </td>
               <td>{item.last_attempt_state}
                 {item.refresh_state && <small>{({ success: 'Refresh succeeded', deferred: 'Refresh deferred', failed: 'Refresh failed',
-                  running: 'Refresh running', never: 'No refresh recorded' } as Record<string, string>)[item.refresh_state] ?? item.refresh_state}</small>}
+                  running: 'Refresh running', unavailable: 'Published measure absent', never: 'No refresh recorded' } as Record<string, string>)[item.refresh_state] ?? item.refresh_state}</small>}
                 {item.evidence_kind && <small>
                   Evidence: {item.evidence_scope || item.evidence_kind}
                   {item.evidence_receipt_recorded ? ' · archived receipt' : ' · no linked receipt'}

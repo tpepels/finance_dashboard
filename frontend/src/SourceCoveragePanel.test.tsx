@@ -154,6 +154,23 @@ describe('single-page source completeness panel', () => {
       String(url) === '/api/developer-log')).toBe(true);
   });
 
+  it('shows verified WID measure absence without a false collector error', async () => {
+    const absent={...missing,provider:'WID',name:'US capital share',
+      state:'publisher_measure_absent',last_attempt_state:'unavailable',
+      refresh_state:'unavailable',last_failure_code:'wid_measure_unavailable',
+      next_action:'Original measure not published',observation_state:'missing'};
+    vi.stubGlobal('fetch',vi.fn(async (url:string)=>({ok:true,json:async()=>
+      String(url)==='/api/maintenance' ? {active_job_id:null,jobs:[],operations:[]}
+        : {...payload,items:[absent]}})));
+    const user=userEvent.setup();
+    render(<SourceCoveragePanel/>);
+    await user.click(await screen.findByText(/25 sources need attention/));
+    await user.click(screen.getByText(/Source diagnostics/));
+    expect(screen.getByText('US capital share')).toBeTruthy();
+    expect(screen.getByText(/Verified publisher original has no observations/)).toBeTruthy();
+    expect(screen.getByText('Published measure absent')).toBeTruthy();
+    expect(screen.queryByText('Last import failed; no stored data')).toBeNull();
+  });
   it('shows rate-limit deferrals separately from provider failures', async () => {
     const deferred = {
       ...missing, state: 'collection_deferred', last_attempt_state: 'deferred',

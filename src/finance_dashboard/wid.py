@@ -572,9 +572,11 @@ class WidClient:
         observations = {day: value for day, value in values.items()
                         if start is None or day >= start}
         if not observations:
-            # A registered, source-shaped optional measure can genuinely be
-            # absent from one area/vintage. Keep this distinct from invalid
-            # original bytes so an absent publisher series isn't misreported
-            # as a broken CSV parser.
-            raise PublisherMeasureUnavailable("WID registered measure has no publisher observations")
+            # Only a truly absent optional source identity qualifies. A
+            # populated original merely outside a requested incremental
+            # window is not an absent publication.
+            if series_id in WID_PIKETTY_SERIES and not values:
+                raise PublisherMeasureUnavailable(
+                    "WID registered measure has no publisher observations")
+            raise ProviderError("WID has no observations in requested window")
         return FetchedSeries(series_id, data_url + " + " + metadata_url, None, observations)

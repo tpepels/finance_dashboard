@@ -50,6 +50,17 @@ class DiagnosticJournalTests(unittest.TestCase):
         self.assertNotIn("VERYSECRET", path.read_text(encoding="utf-8"))
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
+    def test_verified_source_absence_and_count_are_sanitized(self):
+        record_event("macro","source_unavailable",level="warning",
+                     source_id="piketty.us.factor_capital_share",
+                     reason="wid_measure_unavailable")
+        record_event("macro","stage_finished",action="source_refresh_batch",
+                     status="partial",completed=20,total=20,failed=0,unavailable=2)
+        events=read_events()
+        self.assertEqual(events[0]["event"],"source_unavailable")
+        self.assertEqual(events[1]["unavailable"],2)
+        self.assertEqual(events[1]["failed"],0)
+
     def test_canonical_policy_deferral_is_retained_as_safe_event(self):
         record_event("macro", "source_deferred", level="warning",
                      source_id="policy_rate.us.fed_upper",
