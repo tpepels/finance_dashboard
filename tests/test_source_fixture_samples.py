@@ -318,7 +318,7 @@ class ArchivedOriginalSamplingTests(unittest.TestCase):
             parsed=parse_piketty_original(
                 _csv(row["data_header"],row["data_rows"]),
                 _csv(row["metadata_header"],row["metadata_rows"]),area="US")
-            self.assertEqual(parsed[("wwealn999i","p0p100")][date(2024,1,1)],
+            self.assertEqual(parsed[("wnweal999i","p0p100")][date(2024,1,1)],
                              Decimal("6"))
 
 

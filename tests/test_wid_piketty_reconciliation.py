@@ -68,7 +68,7 @@ class PikettyOriginalReconciliationTests(unittest.TestCase):
         writer.writerows(rows)
         parsed=parse_piketty_original(data,output.getvalue(),area="US",strict=False)
         self.assertEqual(parsed[("aptinc992j","p0p100")],{})
-        self.assertEqual(parsed[("wwealn999i","p0p100")][date(2024,1,1)],
+        self.assertEqual(parsed[("wnweal999i","p0p100")][date(2024,1,1)],
                          Decimal("6"))
         with self.assertRaisesRegex(ValueError,"duplicate"):
             parse_piketty_original(data,output.getvalue(),area="US")

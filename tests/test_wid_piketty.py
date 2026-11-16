@@ -36,7 +36,7 @@ def extended_pair():
          "year":"2024","value":"110","age":"992","pop":"j"},
         {"country":"US","variable":"aptinc992j","percentile":"p0p50",
          "year":"2024","value":"65","age":"992","pop":"j"},
-        {"country":"US","variable":"wwealn999i","percentile":"p0p100",
+        {"country":"US","variable":"wnweal999i","percentile":"p0p100",
          "year":"2024","value":"6","age":"999","pop":"i"},
         {"country":"US","variable":"mnninc999i","percentile":"p0p100",
          "year":"2024","value":"110","age":"999","pop":"i"},
@@ -44,7 +44,7 @@ def extended_pair():
     metadata = append(metadata, [
         {"country":"US","variable":"aptinc992j","age":"992","pop":"j","unit":"USD",
          "source":"WID original","method":"WID distribution methodology"},
-        {"country":"US","variable":"wwealn999i","age":"999","pop":"i","unit":"ratio",
+        {"country":"US","variable":"wnweal999i","age":"999","pop":"i","unit":"ratio",
          "source":"WID original","method":"WID national accounts methodology"},
         {"country":"US","variable":"mnninc999i","age":"999","pop":"i","unit":"USD",
          "source":"WID original","method":"WID real national income methodology"},
@@ -58,7 +58,7 @@ class WidPikettyOriginalTests(unittest.TestCase):
         self.assertEqual(len(WID_PIKETTY_SERIES),162)
         self.assertEqual(len(WID_ALL_SERIES),192)
         self.assertEqual(WID_ALL_SERIES["piketty.us.wealth_to_income.national"],
-                         ("US","wwealn999i","p0p100"))
+                         ("US","wnweal999i","p0p100"))
         self.assertEqual(WID_ALL_SERIES["piketty.world.real_pretax_average.all"],
                          ("WO","aptincj992","p0p100"))
         self.assertEqual(WID_ALL_SERIES["inequality.us.net_personal_wealth.top1"],
@@ -68,15 +68,15 @@ class WidPikettyOriginalTests(unittest.TestCase):
         data,metadata=extended_pair()
         parsed=parse_piketty_original(data,metadata,area="US")
         self.assertEqual(parsed[("aptinc992j","p0p100")][date(2024,1,1)],Decimal("110"))
-        self.assertEqual(parsed[("wwealn999i","p0p100")][date(2024,1,1)],Decimal("6"))
+        self.assertEqual(parsed[("wnweal999i","p0p100")][date(2024,1,1)],Decimal("6"))
         self.assertEqual(parsed[("shweal992j","p99p100")][date(2024,1,1)],Decimal(".30"))
         self.assertEqual(parsed[("mnweal999i","p0p100")],{})
         self.assertEqual(parsed[("aptinc992j","p90p100")],{})
 
     def test_invalid_macro_population_and_missing_metadata_are_rejected(self):
         data,metadata=extended_pair()
-        invalid=data.replace("wwealn999i;p0p100;2024;6;999;i",
-                             "wwealn999i;p0p100;2024;6;992;j")
+        invalid=data.replace("wnweal999i;p0p100;2024;6;999;i",
+                             "wnweal999i;p0p100;2024;6;992;j")
         self.assertNotEqual(data,invalid)
         with self.assertRaisesRegex(ProviderError,"population mismatch"):
             parse_piketty_original(invalid,metadata,area="US")

@@ -67,21 +67,28 @@ for _label, _area in _PIKETTY_AREAS:
     ):
         WID_PIKETTY_SERIES[f"piketty.{_label}.real_pretax_average.{_group}"] = (
             _area, "aptinc" + _sfx, _percentile)
-    for _role, _code in (("national", "wwealn999i"),
-                         ("private", "wwealp999i"),
-                         ("public", "wwealg999i")):
+    # National-accounts codes verified against the publisher originals: the
+    # ratios are w + nweal/pweal/gweal ("% of NNI"), and the world file writes
+    # the age/population suffix as i999. "wcapsh999i" stays as registered:
+    # no area file contains it, and choosing another capital-share concept
+    # would be a substitution.
+    _isfx = "i999" if _area == "WO" else "999i"
+    for _role, _stem in (("national", "wnweal"),
+                         ("private", "wpweal"),
+                         ("public", "wgweal")):
         WID_PIKETTY_SERIES[f"piketty.{_label}.wealth_to_income.{_role}"] = (
-            _area, _code, "p0p100")
-    for _role, _code in (
-        ("factor_capital_share", "wcapsh999i"),
-        ("net_national_income", "mnninc999i"),
-        ("net_national_wealth", "mnweal999i"),
-        ("net_capital_income", "mfkpin999i"),
-        ("national_housing_assets", "mnwhou999i"),
-        ("national_business_assets", "mnwbus999i"),
+            _area, _stem + _isfx, "p0p100")
+    WID_PIKETTY_SERIES[f"piketty.{_label}.factor_capital_share"] = (
+        _area, "wcapsh999i", "p0p100")
+    for _role, _stem in (
+        ("net_national_income", "mnninc"),
+        ("net_national_wealth", "mnweal"),
+        ("net_capital_income", "mfkpin"),
+        ("national_housing_assets", "mnwhou"),
+        ("national_business_assets", "mnwbus"),
     ):
         WID_PIKETTY_SERIES[f"piketty.{_label}.{_role}"] = (
-            _area, _code, "p0p100")
+            _area, _stem + _isfx, "p0p100")
 
 # The special WO legacy j992 suffix follows the existing original bulk
 # identity. Nothing is backfilled from a different reference area.
@@ -227,7 +234,10 @@ def parse_piketty_original(data_text: str, metadata_text: str, *, area: str,
             if variable[0] == "s" and unit != "share":
                 reject(variable, "WID wealth-share research unit mismatch")
                 continue
-            if variable[0] == "w" and unit not in ("share", "ratio"):
+            # The publisher labels its national-income ratios with this
+            # exact unit; values remain source fractions (6 = 600%).
+            if variable[0] == "w" and unit not in (
+                    "share", "ratio", "% of national income"):
                 reject(variable, "WID wealth-income research unit mismatch")
                 continue
             if variable[0] in ("m", "a") and unit in ("share", "ratio"):
