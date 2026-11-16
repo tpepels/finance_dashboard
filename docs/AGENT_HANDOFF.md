@@ -7,8 +7,9 @@
 - **Verified code commit:** `b8602a8db4120f053dae7a64dc144d75bcf84c79`
 - **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/43859621541
 - CI **passed** all four jobs: Python (1,557 tests, 10 skipped), frontend, browser, release-image.
-- **Deployed release:** `0.2.19+c474074b0851c6c2`, activated 2026-11-16T11:03:58Z. It contains the fixes up to `5195d5f`; it does **not** contain `b833082` (SEC) or `b8602a8` (WID codes).
-- **Post-deployment export:** `finance-debug-0.2.19+c474074b0851c6c2-20261116T111612.zip`, read from `/api/diagnostics/export-file`. It was taken **before any collection ran on 0.2.19**: every last attempt in it is dated 2026-11-15 under 0.2.18, the scheduler is `waiting`, and the next refresh is due 2026-11-16T23:41Z. It therefore verifies the release identity and the archived-original replays, not re-ingestion.
+- **Deployed release:** `0.2.20+caa79472d4a8f406`, activated 2026-11-16T11:58:41Z, server checkout at `3be6760` (contains the SEC and WID fixes). Checked over SSH on `media-server` (`~/media-stack`).
+- **Post-deployment export:** `finance-debug` for `0.2.20`, prepared 2026-11-16T12:15:26Z. On the production originals the deployed code now replays the SEC July 2025 archive as `accepted_shape_not_certified` (was `sec_nmfp_liquidity_invalid`), and the WID samples find rows for the corrected codes (for example US `wnweal999i` 226 rows, WO `mnninci999` 225 rows).
+- **Not yet re-ingested:** no collection has run on `0.2.20`. The newest attempt is 2026-11-16T00:47Z under `0.2.18`, the scheduler is `waiting`, and the next refresh is due 2026-11-16T23:41Z. Source states and the count of 75 attention items are therefore still the pre-fix records.
 
 ## Completed and tested work — do not repeat
 
@@ -68,7 +69,7 @@ Before any production validation, **confirm the owner deployed the new commit**,
 
 ## Exact continuation task
 
-1. Deploy `b8602a8` or later with the existing script, preserving volumes. Wait for a refresh on that release, or have the owner start a collection, then take a new export. Do not judge re-ingestion from an export taken before a refresh.
+1. `0.2.20` is deployed. Wait for the refresh due 2026-11-16T23:41Z, or have the owner start a collection, then take a new export. Do not judge re-ingestion from an export taken before a refresh.
 2. In that export expect: SEC 4 `available` with 16 months from 2025-07; OECD NFC 5 `available`; WID 15 ratios `available`, 8 world series `collection_failed`/`wid_metadata_invalid`, 17 `publisher_measure_absent`. Report any deviation by exact source ID.
 3. Ask the owner about the two WID decisions above (uncited world aggregates, `wcsnni999i`). Do not decide them in code.
 4. BLS OEWS: the owner must either approve a declared contact User-Agent for `www.bls.gov` (as `SEC_USER_AGENT` does for the SEC) or download `oesm21nat.zip`..`oesm25nat.zip` manually. Do not bypass the refusal.
