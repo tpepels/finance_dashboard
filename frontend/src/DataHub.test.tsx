@@ -132,7 +132,7 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.queryByRole('button',{name:'Try missing or outdated sources again'})).toBeNull();
     expect(screen.queryByRole('button',{name:'Search for older records'})).toBeNull();
     expect(screen.getByRole('table',{name:'Source download progress'})).toBeTruthy();
-    expect(await screen.findByRole('table',{name:'Classified limitation findings'})).toBeTruthy();
+    expect(await screen.findByRole('region',{name:'Research integrity findings'})).toBeTruthy();
     expect(screen.queryByRole('link',{name:'Open source explorer'})).toBeNull();
     expect(screen.queryByText('Source explorer')).toBeNull();
     expect(screen.queryByText('Advanced source operations')).toBeNull();
@@ -230,7 +230,7 @@ describe('unified Data and Diagnostics page',()=>{
     health.automation.scheduled_refresh_enabled=false;
     render(<DataHub/>);
     expect(await screen.findByText('Automatic checks are off')).toBeTruthy();
-    expect(screen.getByText('Start a data check')).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Start one-time publisher check'})).toBeTruthy();
     expect(screen.getAllByText('Needs attention').length).toBeGreaterThan(0);
     expect(screen.getByRole('button',{name:'Start one-time publisher check'})).toBeTruthy();
     expect(screen.queryByText('Manual source check (optional)')).toBeNull();
@@ -402,7 +402,7 @@ describe('unified Data and Diagnostics page',()=>{
     render(<DataHub/>);
     const link=await screen.findByRole('link',{name:'Download technical report ZIP'});
     expect(link.getAttribute('href')).toBe('/api/diagnostics/export-file');
-    expect(screen.getByRole('button',{name:'Create updated report'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Create a newer report'})).toBeTruthy();
     expect(calls.some(item=>item.url==='/api/diagnostics/download')).toBe(false);
   });
 

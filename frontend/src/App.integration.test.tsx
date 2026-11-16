@@ -239,7 +239,7 @@ describe('dashboard shell', () => {
     expect(screen.queryByRole('heading', { name: 'Upload OECD archives' })).toBeNull();
     expect(document.querySelector('#manual-files .original-uploader')).toBeNull();
     expect(document.querySelector('#diagnostics .original-uploader')).toBeNull();
-    expect(await screen.findByRole('table', { name: 'Classified limitation findings' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Data and research limitation assessment' })).toBeTruthy();
     expect(document.querySelector('#research-sources details')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     expect(screen.queryByRole('link', { name: 'Diagnostics' })).toBeNull();
