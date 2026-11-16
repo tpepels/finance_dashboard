@@ -1,14 +1,14 @@
-# Global Capital Monitor — agent handoff (16 November 2026)
+# Global Capital Monitor — agent handoff (16 November 2026, second checkpoint)
 
 **Purpose:** Resume the existing work in `tpepels/finance_dashboard` without reopening the completed audit or rebuilding implemented fixes. The authoritative source is code on `main`; this file is the investigation checkpoint, not a substitute for tests or new production evidence.
 
 ## Last verified checkpoint
 
-- **Verified code commit:** `5195d5f165ae686dbd9ec4d8722bb732116964df`
-- **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/43853221868
-- CI **passed** all four jobs: Python (1,550 tests, 10 skipped), frontend, browser, release-image.
-- The source inspection ZIP was collected from the **previous** deployed application release `0.2.18+8f10db0c0ebd7bc6` on 2026-11-16. It is a **pre-fix baseline** and should not be interpreted as a regression in `5195d5f`.
-- **Production deployment of this commit was not verified in this handoff.** The owner deploys on a remote server. A local agent must not assume it has access to the remote container or its database.
+- **Verified code commit:** `b8602a8db4120f053dae7a64dc144d75bcf84c79`
+- **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/43859621541
+- CI **passed** all four jobs: Python (1,557 tests, 10 skipped), frontend, browser, release-image.
+- **Deployed release:** `0.2.19+c474074b0851c6c2`, activated 2026-11-16T11:03:58Z. It contains the fixes up to `5195d5f`; it does **not** contain `b833082` (SEC) or `b8602a8` (WID codes).
+- **Post-deployment export:** `finance-debug-0.2.19+c474074b0851c6c2-20261116T111612.zip`, read from `/api/diagnostics/export-file`. It was taken **before any collection ran on 0.2.19**: every last attempt in it is dated 2026-11-15 under 0.2.18, the scheduler is `waiting`, and the next refresh is due 2026-11-16T23:41Z. It therefore verifies the release identity and the archived-original replays, not re-ingestion.
 
 ## Completed and tested work — do not repeat
 
@@ -22,18 +22,31 @@ The preceding commits already implemented and verified:
 6. Invalid/quarantined WID metadata and incremental-window emptiness cannot be classified as genuine publisher absence.
 7. Source coverage, data page, source audit, developer journal and developer report present that absence separately from collector failures, with relevant regression tests.
 
+8. SEC N-MFP3 weekly-liquidity bound (`b833082`). One government fund files fractions of 1.0001-1.0004 of total assets; the strict `> 1` bound rejected the whole month for all four SEC measures. Collector and independent verifier accept up to `1.01`, store values as filed, and still reject larger values as an unresolved scale convention. All 16 published months (2025-07..2026-10) were downloaded and parse identically in collector and verifier; 15 of them failed before.
+9. WID registered codes (`b8602a8`). 23 of the 40 "absent" WID measures were registered under codes that exist in no area file. Ratios are `wnweal`/`wpweal`/`wgweal` (unit `% of national income`), and the world file writes the suffix as `i999`. Collector identities and `definitions/series.json` source keys are corrected, and a test asserts they are equal.
+
 The scientific-acceptance and independent original-source gates were **not** weakened.
 
-## Production baseline that must be compared, not re-audited
+## Production state on 0.2.19 (export 2026-11-16T11:16Z, before any refresh)
 
-From `finance-debug-0.2.18+8f10db0c0ebd7bc6-20261116T102128.zip`:
+**651** registered histories, **605** stored, **75** attention items (baseline on 0.2.18: 79). Research assessment is unchanged: 24 accepted, 12 conditional, 2 incomplete, 1 deferred. The 54 ICIO failing originals and 24,869 failed equations are unchanged and stay quarantined; do not rebalance or waive them.
 
-- **651** registered histories; **605** stored histories; **79** attention items.
-- Of the 79: WID **40** missing exact registered source measures, WID **22** stale; OECD_NFC_ACCOUNTS **5** retained histories with failed refresh; SEC_NMFP **4** missing/invalid; BIS_PROPERTY **5** stale; BLS_OEWS **2** missing; EUKLEMS **1** stale. This list is a diagnostic snapshot, **not** proof these counts persist after redeployment.
-- **39** research questions assessed: 24 accepted, 12 conditional, 2 incomplete, 1 deferred. A green source-health counter is not scientific acceptance.
-- **54** ICIO other-edition original matrices failed strict accounting checks, with **24,869** recorded failed equations. The independent dependency audit found **zero exact hash matches** between those failing originals and direct current matrix consumers. Do **not** rebalance original cells or waive failed accounts; retain the evidence and investigate separately when it affects a consumer.
+| Source | Count | State in export | Verdict |
+| --- | --- | --- | --- |
+| BIS_PROPERTY | 5 -> 1 | US/DE/PT/EA now `available` | **Resolved** by the expiring bounds (expire 2026-11-26). `property.jp.nominal_residential.bis` stays stale: the live BIS series ends 2025-Q4, so this is publisher lag. |
+| SEC_NMFP | 4 | `collection_failed`; replay on 0.2.19 gives `sec_nmfp_liquidity_invalid` | **Newly diagnosed**, code-fixed in `b833082`, not deployed. The header fix is confirmed: `missing_columns` is empty. |
+| OECD_NFC_ACCOUNTS | 5 | `refresh_failed_with_data`, `source_invalid`, attempts from 0.2.18 | **Unverified in production.** The deployed parser reads all six transactions from the live ESP and FRA Table 14 documents fetched on 2026-11-16 (through 2025). |
+| WID optional measures | 40 | `collection_failed`, `wid_measure_unavailable`, attempts from 0.2.18 | **Reclassified**, code-fixed in `b8602a8`, not deployed. See the breakdown below. |
+| WID aged histories | 22 | `stale` (21 end 2023, 1 ends 2022) | **Unchanged.** Needs a newer publisher release. |
+| BLS_OEWS | 2 | one `provider_http_403`, one `source_policy_deferred` | **Unchanged.** `https://www.bls.gov/oes/tables.htm` returns Access Denied to a client without a declared contact. |
+| EUKLEMS | 1 | `stale`, `labour.us.euklems_labour_compensation` ends 2020 | **Unchanged, publisher gap.** The archived US growth-accounts workbook has a blank 2021 `LAB` cell for `TOT`. |
 
-The old ZIP was provided to ChatGPT, **not copied into the Git repository or into the local agent's filesystem**. To compare item-level statuses, the agent needs the owner to place that ZIP in a private workspace, or should start from the summary above and a new ZIP.
+WID 40, checked against the archived originals (hashes equal the production samples):
+
+- **15 national wealth-to-income ratios** (US, FR, PT, CN, IN x national/private/public) parse with data after `b8602a8`.
+- **8 world series** (3 ratios, 5 totals) are published, but the world metadata leaves the source citation blank. The citation rule quarantines them, so after deployment they should fail as `wid_metadata_invalid`, not show as publisher-absent. Accepting uncited world aggregates is an owner decision; the rule was not relaxed.
+- **17 are genuinely absent:** `wcapsh999i` in all six areas, `aptinc` `p99p99.9` in all six, and `aptinc` `p90p99` in US, FR, PT, CN and WO.
+- `wcapsh999i` exists in no file. The national files publish `wcsnni999i` ("Capital share of total national income at factor-price", 1970-2024) with empty descriptions, so the registered "30% of mixed income" method cannot be confirmed. It was left unchanged; re-registering it is an owner decision.
 
 ## Deployment topology and safe next step
 
@@ -55,14 +68,14 @@ Before any production validation, **confirm the owner deployed the new commit**,
 
 ## Exact continuation task
 
-1. Check current `main` and CI against this checkpoint; do not reimplement the changes above.
-2. Confirm that the remote release is on the new code. If not deployed, request/perform the **authorized** deployment using the existing script, preserving volumes.
-3. Obtain the first **post-deployment** diagnostic export. Compare its release ID, source-health **IDs and states**, repair status, error stages, source evidence receipts, scheduler progress and research assessment against the baseline. Report **resolved, unchanged, newly broken and unverified** by exact source ID.
-4. For SEC **4** and OECD NFC **5**, determine whether their fixed parsers now ingest originals. If not, inspect quarantined publisher headers/sample rows and fix the next **specific** mismatch with regression fixtures.
-5. Check WID **40** individually: a verified original with no matching row should be reported as `publisher_measure_absent`, not `collection_failed`, and remain an explicit missing scientific input. Re-evaluate after later publisher releases only. WID **22** aged histories need evidence of a newer release; do not invent publisher dates or extend freshness exemptions indefinitely.
-6. Investigate BLS OEWS **403/access** on the actual permitted official route; do not bypass access policy. Recheck one EU KLEMS US labour history and any BIS key still stale after the expiring exact-source release bounds.
-7. Keep the 54 ICIO accounting-failing originals quarantined as failed scientific evidence; only claim resolution if original balances, mappings and consumer dependence are independently verified. Do not count them as app crashes.
-8. Add regression tests from minimal approved original-source samples (with source identity and expected values); keep full original publisher files/credentials out of Git. Run the Python, frontend, browser and release-image CI workflows, and document remaining limitations.
+1. Deploy `b8602a8` or later with the existing script, preserving volumes. Wait for a refresh on that release, or have the owner start a collection, then take a new export. Do not judge re-ingestion from an export taken before a refresh.
+2. In that export expect: SEC 4 `available` with 16 months from 2025-07; OECD NFC 5 `available`; WID 15 ratios `available`, 8 world series `collection_failed`/`wid_metadata_invalid`, 17 `publisher_measure_absent`. Report any deviation by exact source ID.
+3. Ask the owner about the two WID decisions above (uncited world aggregates, `wcsnni999i`). Do not decide them in code.
+4. BLS OEWS: the owner must either approve a declared contact User-Agent for `www.bls.gov` (as `SEC_USER_AGENT` does for the SEC) or download `oesm21nat.zip`..`oesm25nat.zip` manually. Do not bypass the refusal.
+5. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
+6. Keep the ICIO originals quarantined. Add regression tests from minimal original samples with source identity; keep full publisher files and credentials out of Git.
+
+Local notes: the virtualenv lacked the declared `numpy` dependency, which made 10 ICIO tests error until it was installed at the locked version. `test_msci_regional_factsheets...reuses_verified_cdx` fails locally with and without these changes and passes in CI.
 
 ## Verification commands
 
