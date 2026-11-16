@@ -1,15 +1,14 @@
-# Global Capital Monitor — agent handoff (16 November 2026, second checkpoint)
+# Global Capital Monitor — agent handoff (16 November 2026, third checkpoint)
 
 **Purpose:** Resume the existing work in `tpepels/finance_dashboard` without reopening the completed audit or rebuilding implemented fixes. The authoritative source is code on `main`; this file is the investigation checkpoint, not a substitute for tests or new production evidence.
 
 ## Last verified checkpoint
 
-- **Verified code commit:** `b8602a8db4120f053dae7a64dc144d75bcf84c79`
-- **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/43859621541
-- CI **passed** all four jobs: Python (1,557 tests, 10 skipped), frontend, browser, release-image.
-- **Deployed release:** `0.2.20+caa79472d4a8f406`, activated 2026-11-16T11:58:41Z, server checkout at `3be6760` (contains the SEC and WID fixes). Checked over SSH on `media-server` (`~/media-stack`).
-- **Post-deployment export:** `finance-debug` for `0.2.20`, prepared 2026-11-16T12:15:26Z. On the production originals the deployed code now replays the SEC July 2025 archive as `accepted_shape_not_certified` (was `sec_nmfp_liquidity_invalid`), and the WID samples find rows for the corrected codes (for example US `wnweal999i` 226 rows, WO `mnninci999` 225 rows).
-- **Not yet re-ingested:** no collection has run on `0.2.20`. The newest attempt is 2026-11-16T00:47Z under `0.2.18`, the scheduler is `waiting`, and the next refresh is due 2026-11-16T23:41Z. Source states and the count of 75 attention items are therefore still the pre-fix records.
+- **Verified code commit:** `f03237a` (WID rebinding `178806c`, BLS contact `6d9bfce`, upload-status race `f03237a`)
+- **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/43920884968
+- CI **passed** all four jobs: Python (1,565 tests, 10 skipped), frontend, browser, release-image.
+- **Deployed release:** `0.2.21+52a1e8409d2c15ac`, server checkout at `8fd7642`. It does **not** contain `178806c`, `6d9bfce` or `f03237a`; the owner deploys.
+- **Post-collection export:** taken on `0.2.20+caa79472d4a8f406`, prepared 2026-11-16T13:24:43Z, after collection run `25e3dc699ba44464bc34d5a8155d873b` (12:17Z to 13:23Z, 75 sources refreshed). `0.2.21` differs from `0.2.20` only by a test file.
 
 ## Completed and tested work — do not repeat
 
@@ -26,28 +25,42 @@ The preceding commits already implemented and verified:
 8. SEC N-MFP3 weekly-liquidity bound (`b833082`). One government fund files fractions of 1.0001-1.0004 of total assets; the strict `> 1` bound rejected the whole month for all four SEC measures. Collector and independent verifier accept up to `1.01`, store values as filed, and still reject larger values as an unresolved scale convention. All 16 published months (2025-07..2026-10) were downloaded and parse identically in collector and verifier; 15 of them failed before.
 9. WID registered codes (`b8602a8`). 23 of the 40 "absent" WID measures were registered under codes that exist in no area file. Ratios are `wnweal`/`wpweal`/`wgweal` (unit `% of national income`), and the world file writes the suffix as `i999`. Collector identities and `definitions/series.json` source keys are corrected, and a test asserts they are equal.
 
+10. WID retired-key rebinding (`178806c`). Production kept the 23 database rows under the old nonexistent codes, so every refresh on 0.2.20 stopped at the mapping guard with `source_mapping_mismatch` before reading the original. `WID_RETIRED_SOURCE_KEYS` lists the exact retired keys; `IngestionService.refresh` rebinds a row only when its stored key equals the listed key **and** it holds no observations. Any other key, or any stored observation, still raises "requires explicit migration".
+11. Optional BLS operator contact (`6d9bfce`). `BLS_USER_AGENT` is empty by default; when set it must contain a contact and is sent on the BLS index and archive requests. Wired through `docker-compose.yml` and `.env.example`. Not verified against the live publisher, because no contact was sent from this workspace.
+12. Upload-status race (`f03237a`). `OriginalImportManager.public_status` raised `FileNotFoundError` when an import moved a file between listing and sizing; the file is now skipped. This also failed the offline suite intermittently.
+13. MSCI tamper test (`8fd7642`) selects the hash-named evidence bundle instead of the first directory entry. Test-only.
+
 The scientific-acceptance and independent original-source gates were **not** weakened.
 
-## Production state on 0.2.19 (export 2026-11-16T11:16Z, before any refresh)
+## Production state after the collection on 0.2.20 (export 2026-11-16T13:24Z)
 
-**651** registered histories, **605** stored, **75** attention items (baseline on 0.2.18: 79). Research assessment is unchanged: 24 accepted, 12 conditional, 2 incomplete, 1 deferred. The 54 ICIO failing originals and 24,869 failed equations are unchanged and stay quarantined; do not rebalance or waive them.
+**651** registered histories, **609** stored, **66** attention items (0.2.18 baseline: 79; before this run: 75). The 54 ICIO failing originals stay quarantined; do not rebalance or waive them. Research assessment was still running when the export was taken, so its counts were not re-read.
 
-| Source | Count | State in export | Verdict |
+| Source | Attention | State in export | Verdict |
 | --- | --- | --- | --- |
-| BIS_PROPERTY | 5 -> 1 | US/DE/PT/EA now `available` | **Resolved** by the expiring bounds (expire 2026-11-26). `property.jp.nominal_residential.bis` stays stale: the live BIS series ends 2025-Q4, so this is publisher lag. |
-| SEC_NMFP | 4 | `collection_failed`; replay on 0.2.19 gives `sec_nmfp_liquidity_invalid` | **Newly diagnosed**, code-fixed in `b833082`, not deployed. The header fix is confirmed: `missing_columns` is empty. |
-| OECD_NFC_ACCOUNTS | 5 | `refresh_failed_with_data`, `source_invalid`, attempts from 0.2.18 | **Unverified in production.** The deployed parser reads all six transactions from the live ESP and FRA Table 14 documents fetched on 2026-11-16 (through 2025). |
-| WID optional measures | 40 | `collection_failed`, `wid_measure_unavailable`, attempts from 0.2.18 | **Reclassified**, code-fixed in `b8602a8`, not deployed. See the breakdown below. |
+| SEC_NMFP | 4 -> 0 | all four `available`, 16 months through 2026-10 | **Fixed and verified in production** (`b833082`). |
+| OECD_NFC_ACCOUNTS | 5 -> 0 | ES and FR transactions `available` through 2025 | **Verified in production.** `profit.es.nfc_net_fixed_assets` and `profit.pt.nfc_net_fixed_assets` end 2023 and read `source_checked_no_newer_data`; they are not attention items. |
+| BIS_PROPERTY | 1 | `property.jp.nominal_residential.bis` `stale` | **Unchanged, publisher lag.** The live BIS series ends 2025-Q4. Bounds for US/DE/PT/EA expire 2026-11-26. |
+| WID corrected codes | 23 | `collection_failed`; run events show `source_mapping_mismatch`; newest stored attempt is still 00:47Z under 0.2.18 | **Not fixed by 0.2.20.** Root cause and fix are item 10 above (`178806c`), not deployed. |
+| WID absent measures | 17 | `publisher_measure_absent`, attempted 13:23Z | **Correct classification**, verified in production. |
 | WID aged histories | 22 | `stale` (21 end 2023, 1 ends 2022) | **Unchanged.** Needs a newer publisher release. |
-| BLS_OEWS | 2 | one `provider_http_403`, one `source_policy_deferred` | **Unchanged.** `https://www.bls.gov/oes/tables.htm` returns Access Denied to a client without a declared contact. |
-| EUKLEMS | 1 | `stale`, `labour.us.euklems_labour_compensation` ends 2020 | **Unchanged, publisher gap.** The archived US growth-accounts workbook has a blank 2021 `LAB` cell for `TOT`. |
+| BLS_OEWS | 2 | one `provider_http_403`, one `source_policy_deferred` | **Unchanged.** `www.bls.gov` refuses a client without a declared contact. Item 11 adds the optional setting. |
+| EUKLEMS | 1 | `stale`, `labour.us.euklems_labour_compensation` ends 2020 | **Unchanged, publisher gap.** The archived US workbook has a blank 2021 `LAB` cell for `TOT`. |
 
 WID 40, checked against the archived originals (hashes equal the production samples):
 
-- **15 national wealth-to-income ratios** (US, FR, PT, CN, IN x national/private/public) parse with data after `b8602a8`.
-- **8 world series** (3 ratios, 5 totals) are published, but the world metadata leaves the source citation blank. The citation rule quarantines them, so after deployment they should fail as `wid_metadata_invalid`, not show as publisher-absent. Accepting uncited world aggregates is an owner decision; the rule was not relaxed.
+- **15 national wealth-to-income ratios** (US, FR, PT, CN, IN x national/private/public) parse with data under the corrected codes. Expected `available` once `178806c` is deployed and a collection runs.
+- **8 world series** (3 ratios, 5 totals) are published, but the world metadata leaves the source citation blank. Expected `collection_failed` with `wid_metadata_invalid` after deployment.
 - **17 are genuinely absent:** `wcapsh999i` in all six areas, `aptinc` `p99p99.9` in all six, and `aptinc` `p90p99` in US, FR, PT, CN and WO.
-- `wcapsh999i` exists in no file. The national files publish `wcsnni999i` ("Capital share of total national income at factor-price", 1970-2024) with empty descriptions, so the registered "30% of mixed income" method cannot be confirmed. It was left unchanged; re-registering it is an owner decision.
+
+## Decisions taken on the owner's behalf (16 November 2026)
+
+The owner asked the agent to decide these. Both follow the existing rule that a WID variable needs a source citation; the rule was not relaxed.
+
+- **Uncited world aggregates stay quarantined.** The 8 world series are not accepted while WID publishes them without a source citation.
+- **Capital share is not re-registered as `wcsnni999i`.** That variable has a blank source and method in all five national files and does not exist in the world file, so it would be quarantined by the same rule and the registered "30% of mixed income" method cannot be confirmed. The six `factor_capital_share` series stay `publisher_measure_absent`.
+- **BLS:** the declared-contact route was chosen over manual downloads, as an opt-in setting. The owner still has to set `BLS_USER_AGENT` on the server; the agent did not send the owner's contact to BLS.
+- **SEC bound:** the `1.01` ceiling on as-filed weekly liquidity was the agent's choice; the largest filed value seen in 16 months is 1.0004.
 
 ## Deployment topology and safe next step
 
@@ -69,14 +82,13 @@ Before any production validation, **confirm the owner deployed the new commit**,
 
 ## Exact continuation task
 
-1. `0.2.20` is deployed. Wait for the refresh due 2026-11-16T23:41Z, or have the owner start a collection, then take a new export. Do not judge re-ingestion from an export taken before a refresh.
-2. In that export expect: SEC 4 `available` with 16 months from 2025-07; OECD NFC 5 `available`; WID 15 ratios `available`, 8 world series `collection_failed`/`wid_metadata_invalid`, 17 `publisher_measure_absent`. Report any deviation by exact source ID.
-3. Ask the owner about the two WID decisions above (uncited world aggregates, `wcsnni999i`). Do not decide them in code.
-4. BLS OEWS: the owner must either approve a declared contact User-Agent for `www.bls.gov` (as `SEC_USER_AGENT` does for the SEC) or download `oesm21nat.zip`..`oesm25nat.zip` manually. Do not bypass the refusal.
-5. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
-6. Keep the ICIO originals quarantined. Add regression tests from minimal original samples with source identity; keep full publisher files and credentials out of Git.
+1. Confirm the owner deployed a release containing `f03237a`, then start a collection (`POST /api/data/collection/start` with `Content-Type: application/json` and `X-GCM-Action: dashboard`) and take a new export when it ends. The repair run takes about an hour.
+2. In that export expect: WID 15 ratios `available`; 8 world series `collection_failed`/`wid_metadata_invalid`; 17 `publisher_measure_absent`; no `source_mapping_mismatch` events. Attention should fall from 66 to about 51. Report any deviation by exact source ID.
+3. BLS OEWS: once the owner sets `BLS_USER_AGENT` in the server environment (and passes it through the `~/media-stack` Compose file), check whether the two OEWS series collect. If BLS still refuses, fall back to the owner downloading `oesm21nat.zip`..`oesm25nat.zip`. Do not bypass the refusal.
+4. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
+5. Keep the ICIO originals quarantined. Add regression tests from minimal original samples with source identity; keep full publisher files and credentials out of Git.
 
-Local notes: the virtualenv lacked the declared `numpy` dependency, which made 10 ICIO tests error until it was installed at the locked version. `test_msci_regional_factsheets...reuses_verified_cdx` fails locally with and without these changes and passes in CI.
+Local notes: the virtualenv lacked the declared `numpy` dependency, which made 10 ICIO tests error until it was installed at the locked version.
 
 ## Verification commands
 
