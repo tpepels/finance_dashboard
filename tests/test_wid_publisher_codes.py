@@ -124,5 +124,108 @@ class WidPublisherCodeTests(unittest.TestCase):
             parse_piketty_original(WO_DATA, WO_METADATA, area="WO")
 
 
+
+class RetiredWidCodeRebindingTests(unittest.TestCase):
+    """Rows registered under the nonexistent codes hold no observations.
+
+    Production kept those database rows after the catalogue was corrected, so
+    every refresh stopped at the mapping guard before reading the original.
+    """
+    RETIRED = {
+        *(f"{area}/wweal{kind}999i/p0p100"
+          for area in ("CN", "FR", "IN", "PT", "US", "WO") for kind in "npg"),
+        "WO/mnwbus999i/p0p100", "WO/mnwhou999i/p0p100", "WO/mfkpin999i/p0p100",
+        "WO/mnninc999i/p0p100", "WO/mnweal999i/p0p100",
+    }
+
+    def setUp(self):
+        from sqlalchemy import create_engine
+        from finance_dashboard.database import Base
+        self.engine = create_engine("sqlite+pysqlite:///:memory:")
+        Base.metadata.create_all(self.engine)
+
+    def tearDown(self):
+        self.engine.dispose()
+
+    def _seed(self, series_id, key):
+        from sqlalchemy.orm import Session
+        from finance_dashboard.database import SeriesRow, IngestionRun, now_utc
+        with Session(self.engine) as session, session.begin():
+            session.add(SeriesRow(id=series_id, provider="WID", source_key=key,
+                                  updated_at=now_utc()))
+            session.add(IngestionRun(
+                id="old-" + series_id, series_id=series_id, started_at=now_utc(),
+                ended_at=now_utc(), status="failed", observations_received=0,
+                versions_added=0, error="wid_measure_unavailable"))
+
+    def test_retired_keys_are_exactly_the_23_corrected_registrations(self):
+        from finance_dashboard.wid import WID_ALL_SERIES, WID_RETIRED_SOURCE_KEYS
+        self.assertEqual(len(WID_RETIRED_SOURCE_KEYS), 23)
+        self.assertEqual(set(WID_RETIRED_SOURCE_KEYS.values()), self.RETIRED)
+        for series_id, old in WID_RETIRED_SOURCE_KEYS.items():
+            current = "/".join(WID_ALL_SERIES[series_id])
+            self.assertNotEqual(old, current)
+            self.assertEqual(old.split("/")[0], current.split("/")[0])
+            self.assertEqual(old.split("/")[2], current.split("/")[2])
+
+    def test_failed_only_row_is_rebound_and_keeps_its_old_failed_run(self):
+        from datetime import date
+        from decimal import Decimal
+        from sqlalchemy.orm import Session
+        from finance_dashboard.bis import FetchedSeries
+        from finance_dashboard.database import SeriesRow, IngestionRun
+        from finance_dashboard.service import IngestionService
+        sid = "piketty.us.wealth_to_income.national"
+        self._seed(sid, "US/wwealn999i/p0p100")
+
+        class Wid:
+            def fetch(self, series_id, start):
+                return FetchedSeries(series_id, "https://wid.world/bulk", None,
+                                     {date(2023, 1, 1): Decimal("5.5")})
+        done = IngestionService(self.engine, Wid()).refresh(sid, today=date(2026, 11, 16))
+        self.assertEqual(done["status"], "success")
+        with Session(self.engine) as session:
+            self.assertEqual(session.get(SeriesRow, sid).source_key,
+                             "US/wnweal999i/p0p100")
+            self.assertEqual(session.get(IngestionRun, "old-" + sid).status, "failed")
+
+    def test_row_with_observations_is_never_rebound(self):
+        from datetime import date
+        from decimal import Decimal
+        from sqlalchemy.orm import Session
+        from finance_dashboard.database import ObservationVersion, SeriesRow, now_utc
+        from finance_dashboard.service import IngestionService
+        sid = "piketty.us.wealth_to_income.national"
+        self._seed(sid, "US/wwealn999i/p0p100")
+        with Session(self.engine) as session, session.begin():
+            session.add(ObservationVersion(
+                series_id=sid, period=date(2020, 1, 1), value=Decimal("5"),
+                first_seen_at=now_utc(), ingestion_run_id="old-" + sid))
+
+        class Network:
+            def fetch(self, *args):
+                raise AssertionError("must stop before reading the publisher")
+        with self.assertRaisesRegex(ValueError, "explicit migration"):
+            IngestionService(self.engine, Network()).refresh(sid)
+        with Session(self.engine) as session:
+            self.assertEqual(session.get(SeriesRow, sid).source_key,
+                             "US/wwealn999i/p0p100")
+
+    def test_any_other_stored_key_still_requires_explicit_migration(self):
+        from sqlalchemy.orm import Session
+        from finance_dashboard.database import SeriesRow
+        from finance_dashboard.service import IngestionService
+        sid = "piketty.us.wealth_to_income.national"
+        self._seed(sid, "US/wwealp999i/p0p100")
+
+        class Network:
+            def fetch(self, *args):
+                raise AssertionError("must stop before reading the publisher")
+        with self.assertRaisesRegex(ValueError, "explicit migration"):
+            IngestionService(self.engine, Network()).refresh(sid)
+        with Session(self.engine) as session:
+            self.assertEqual(session.get(SeriesRow, sid).source_key,
+                             "US/wwealp999i/p0p100")
+
 if __name__ == "__main__":
     unittest.main()

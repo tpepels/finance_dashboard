@@ -16,6 +16,7 @@ from .providers import ProviderRouter
 from .provider_registry import get_provider
 from .source_policy import PolicyDeferred, PolicyViolation
 from .catalog import load_documents
+from .wid import WID_RETIRED_SOURCE_KEYS
 from .database import IngestionRun, ObservationVersion, SeriesRow, now_utc
 
 
@@ -154,6 +155,19 @@ class IngestionService:
                         row.updated_at = now_utc()
                     else:
                         raise ValueError("Source mapping changed: requires explicit migration")
+                elif (row.provider == "WID" and definition["provider"] == "WID"
+                      and WID_RETIRED_SOURCE_KEYS.get(series_id) == row.source_key):
+                    # The retired key named a variable WID never published,
+                    # so a valid row has no observations to co-mingle. Any
+                    # stored observation means the row is not what this
+                    # correction describes; leave it for explicit migration.
+                    old_count = session.scalar(
+                        select(func.count()).select_from(ObservationVersion)
+                        .where(ObservationVersion.series_id == series_id))
+                    if old_count != 0:
+                        raise ValueError("Source mapping changed: requires explicit migration")
+                    row.source_key = definition["source_key"]
+                    row.updated_at = now_utc()
                 else:
                     raise ValueError("Source mapping changed: requires explicit migration")
         with Session(self.engine) as session:

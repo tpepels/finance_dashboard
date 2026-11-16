@@ -95,6 +95,30 @@ for _label, _area in _PIKETTY_AREAS:
 WID_ALL_SERIES = {**WID_SERIES, **WID_PIKETTY_SERIES}
 
 
+def _retired_variable(area: str, variable: str) -> str | None:
+    """Return the nonexistent code a series was first registered under."""
+    stem, suffix = variable[:6], variable[6:]
+    if suffix != ("i999" if area == "WO" else "999i"):
+        return None
+    if stem in ("wnweal", "wpweal", "wgweal"):
+        return "wweal" + stem[1] + "999i"
+    if area == "WO" and stem in ("mnwbus", "mnwhou", "mfkpin", "mnninc", "mnweal"):
+        return stem + "999i"
+    return None
+
+
+# Twenty-three optional series were first registered under variable codes
+# that WID never published, so their database rows hold only failed attempts.
+# Listing the exact retired key lets the ingestion service rebind such an
+# observation-free row to the corrected publisher code. A row with stored
+# observations, or with any other key, still requires an explicit migration.
+WID_RETIRED_SOURCE_KEYS = {
+    _series_id: f"{_area}/{_old}/{_percentile}"
+    for _series_id, (_area, _variable, _percentile) in WID_PIKETTY_SERIES.items()
+    if (_old := _retired_variable(_area, _variable)) is not None
+}
+
+
 
 @dataclass(frozen=True)
 class WidBundle:
