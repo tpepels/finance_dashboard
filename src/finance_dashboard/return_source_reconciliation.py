@@ -93,17 +93,36 @@ def _manifest(parent, identity, select_manifest):
         'evidence_retrieved_at_utc': retrieved.isoformat(), 'selection_method': selection}
 
 
+# Independent of research_returns.FRENCH_DATASET_SPECS: written from the
+# publisher files themselves (member name, native columns, retained inputs).
+_FRENCH_ORIGINAL_LAYOUT = {
+    'Developed_3_Factors': ('Developed_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF')),
+    'Emerging_5_Factors': ('Emerging_5_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF'], ('Mkt-RF', 'RF')),
+    'Europe_3_Factors': ('Europe_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF')),
+    'Japan_3_Factors': ('Japan_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF')),
+    'Asia_Pacific_ex_Japan_3_Factors': ('Asia_Pacific_ex_Japan_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF')),
+    'Developed_Mom_Factor': ('Developed_MOM_Factor.csv', ['WML'], ('WML',)),
+    'Europe_Mom_Factor': ('Europe_MOM_Factor.csv', ['WML'], ('WML',)),
+    'Japan_Mom_Factor': ('Japan_MOM_Factor.csv', ['WML'], ('WML',)),
+    'Asia_Pacific_ex_Japan_Mom_Factor': ('Asia_Pacific_ex_Japan_MOM_Factor.csv', ['WML'], ('WML',)),
+    'Emerging_MOM_Factor': ('Emerging_MOM_Factor.csv', ['WML'], ('WML',)),
+}
+
+
 def _french_original(raw, dataset):
+    if dataset not in _FRENCH_ORIGINAL_LAYOUT:
+        raise _error('source_identity_mismatch')
+    member, native_columns, kept = _FRENCH_ORIGINAL_LAYOUT[dataset]
     files = _members(raw)
-    if set(files) != {dataset+'.csv'}:
+    if set(files) != {member}:
         raise _error('source_identity_mismatch')
     try:
-        body = files[dataset+'.csv'].decode('utf-8-sig')
+        body = files[member].decode('utf-8-sig')
         vintage = re.search(r'^This file was created using the ([0-9]{6}) Bloomberg database\.', body)
         if not vintage or 'Missing data are indicated by -99.99.' not in body:
             raise _error('source_identity_mismatch')
         source_vintage = datetime.strptime(vintage[1], '%Y%m').date()
-        columns = ['', 'Mkt-RF', 'SMB', 'HML'] + (['RMW', 'CMA'] if dataset=='Emerging_5_Factors' else []) + ['RF']
+        columns = [''] + native_columns
         rows = list(csv.reader(io.StringIO(body)))
         first = next(i for i, row in enumerate(rows) if [x.strip() for x in row] == columns)
     except (UnicodeError, ValueError, StopIteration, csv.Error):
@@ -130,8 +149,8 @@ def _french_original(raw, dataset):
                 missing[variable] += 1
                 value = None
             values[variable] = value
-        output[period] = {key: values[key] for key in ('Mkt-RF', 'RF')}
-        inputs[period.isoformat()] = {key: str(values[key]) if values[key] is not None else None for key in ('Mkt-RF', 'RF')}
+        output[period] = {key: values[key] for key in kept}
+        inputs[period.isoformat()] = {key: str(values[key]) if values[key] is not None else None for key in kept}
         periods[period.isoformat()] = date(period.year, period.month, calendar.monthrange(period.year, period.month)[1]).isoformat()
     if not output:
         raise _error('source_empty')

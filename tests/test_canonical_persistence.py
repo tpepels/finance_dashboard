@@ -16,16 +16,18 @@ from finance_dashboard.catalog import load_documents, validate
 from finance_dashboard.database import Base, make_engine, IngestionRun, ObservationVersion
 from finance_dashboard.providers import ProviderRouter
 from finance_dashboard.provider_parsers import SourceUnavailable
-from finance_dashboard.research_returns import FRENCH_SERIES, SWINKELS_SERIES
+from finance_dashboard.research_returns import FRENCH_DATASETS, FRENCH_SERIES, SWINKELS_SERIES
 from finance_dashboard.service import IngestionService, current_observations
 from test_research_returns import FIXTURES, ODS, french_zip
 
 
 def source_response(request, developed_body=None):
-    if request.url.path.endswith('Developed_3_Factors_CSV.zip'):
+    french = {f'{dataset}_CSV.zip': area for area, dataset in FRENCH_DATASETS.items()}
+    name = request.url.path.rsplit('/', 1)[-1]
+    if name == 'Developed_3_Factors_CSV.zip':
         body = french_zip(body=developed_body)
-    elif request.url.path.endswith('Emerging_5_Factors_CSV.zip'):
-        body = french_zip('emerging')
+    elif name in french:
+        body = french_zip(french[name])
     elif request.url.path.endswith('512630'):
         body = (FIXTURES / ODS).read_bytes()
     elif request.url.path.endswith('512631'):
@@ -77,10 +79,11 @@ class CanonicalReturnPersistenceTests(unittest.TestCase):
                     added += report['versions_added']
                     self.assertEqual(report['status'], 'success')
                     self.assertEqual(service.refresh(sid)['versions_added'], 0)
-                # Original ODS7435 + factual French excerpt(18+20)*3.
-                self.assertEqual(added, 7549)
+                # Original ODS7435 + factual French excerpts: (18+20)*3 developed/emerging,
+                # 8*3 for each of three regions and 8 for each of five momentum factors.
+                self.assertEqual(added, 7661)
                 with Session(engine) as session:
-                    self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 7549)
+                    self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 7661)
                     runs = session.scalars(select(IngestionRun)).all()
                     self.assertTrue(all(run.requested_from is None for run in runs))
                     self.assertIsNone(next(run for run in runs if run.series_id.startswith('returns.')).response_prepared_at)
@@ -93,7 +96,8 @@ class CanonicalReturnPersistenceTests(unittest.TestCase):
                     self.assertEqual((bonds[0].period, bonds[0].value), (date(1972,10,1), Decimal('-0.0180878031')))
                     self.assertEqual(len(bonds), 603)
                 manifests = list((root/'evidence/research-returns').glob('**/manifest.json'))
-                self.assertEqual(len(manifests), 3)
+                # Swinkels plus one archive per French dataset (two original, eight added in D1a).
+                self.assertEqual(len(manifests), 11)
                 self.assertTrue(all(json.loads(p.read_text())['original_first_publication_at'] is None for p in manifests))
                 reopened.dispose()
 

@@ -82,7 +82,12 @@ The owner answered a 10-question interview and asked for a design of a backtesti
 
 | Phase | Status | Branch / commit | Open evidence |
 | --- | --- | --- | --- |
-| D0 Governance and scaffolding | Code-complete (CI pending on push); charter amendment approved by the owner 2026-11-17 | `claude/allocation-d0` | Not merged to `main`; no production effect (flag off, no routes yet). Open owner inputs: broker fees (D3), example funds (D3/D9). |
+| D0 Governance and scaffolding | Code-complete; charter amendment approved by the owner 2026-11-17 | `claude/allocation-d0` | Not merged to `main`; no production effect (flag off, no routes yet). Open owner inputs: broker fees (D3), example funds (D3/D9). |
+| D1a French regions and momentum | Code-complete (14 series registered, catalogue 637) | `claude/allocation-d0` | Not deployed: the series appear only after deployment and a collection; verify with a post-collection ZIP that all 14 are `available` from the archived originals. Remaining D1a: US CRSP files, country portfolios, Bundesbank/ECB curves, Nareit, AQR. |
+
+Session network: publisher hosts for D1 are allowed through the owner's personal cloud environment `finance_dashboard` (created 2026-11-17). The default environment blocks them.
+
+Known unrelated failure on `main` (not caused by this branch): `test_standalone.StandaloneContainerTests.test_deferred_first_refresh_keeps_startup_read_only_until_interval` (900 != 86400), introduced with the quota-retry refresh change.
 
 Before D3, D5 and D9, rebase onto the latest `main`: those phases touch `engine/analyses.py` (P05 `simulate`), `worker.py`/`standalone.py` and `owner_inputs.py`, which are actively changed on `main`.
 

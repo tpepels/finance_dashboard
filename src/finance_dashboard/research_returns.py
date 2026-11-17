@@ -30,12 +30,44 @@ from .source_policy import require_managed_client
 from .source_evidence import record_acquisition_receipt
 
 FRENCH_ROOT = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp"
-FRENCH_DATASETS = {"developed": "Developed_3_Factors", "emerging": "Emerging_5_Factors"}
+# Dataset -> archive member, native monthly columns (after the period column) and
+# the columns retained as transformation inputs. Member names are matched exactly:
+# the momentum archives spell "MOM" inside although the download URL says "Mom".
+_FACTORS_3 = ("Mkt-RF", "SMB", "HML", "RF")
+FRENCH_DATASET_SPECS = {
+    "Developed_3_Factors": ("Developed_3_Factors.csv", _FACTORS_3, ("Mkt-RF", "RF")),
+    "Emerging_5_Factors": ("Emerging_5_Factors.csv", ("Mkt-RF", "SMB", "HML", "RMW", "CMA", "RF"), ("Mkt-RF", "RF")),
+    "Europe_3_Factors": ("Europe_3_Factors.csv", _FACTORS_3, ("Mkt-RF", "RF")),
+    "Japan_3_Factors": ("Japan_3_Factors.csv", _FACTORS_3, ("Mkt-RF", "RF")),
+    "Asia_Pacific_ex_Japan_3_Factors": ("Asia_Pacific_ex_Japan_3_Factors.csv", _FACTORS_3, ("Mkt-RF", "RF")),
+    "Developed_Mom_Factor": ("Developed_MOM_Factor.csv", ("WML",), ("WML",)),
+    "Europe_Mom_Factor": ("Europe_MOM_Factor.csv", ("WML",), ("WML",)),
+    "Japan_Mom_Factor": ("Japan_MOM_Factor.csv", ("WML",), ("WML",)),
+    "Asia_Pacific_ex_Japan_Mom_Factor": ("Asia_Pacific_ex_Japan_MOM_Factor.csv", ("WML",), ("WML",)),
+    "Emerging_MOM_Factor": ("Emerging_MOM_Factor.csv", ("WML",), ("WML",)),
+}
+# Archive area -> (dataset, series region label, kind).
+_FRENCH_AREAS = {
+    "developed": ("Developed_3_Factors", "developed", "market"),
+    "emerging": ("Emerging_5_Factors", "emerging", "market"),
+    "europe": ("Europe_3_Factors", "europe", "market"),
+    "japan": ("Japan_3_Factors", "japan", "market"),
+    "asia_pacific_ex_japan": ("Asia_Pacific_ex_Japan_3_Factors", "asia_pacific_ex_japan", "market"),
+    "developed_momentum": ("Developed_Mom_Factor", "developed", "momentum"),
+    "europe_momentum": ("Europe_Mom_Factor", "europe", "momentum"),
+    "japan_momentum": ("Japan_Mom_Factor", "japan", "momentum"),
+    "asia_pacific_ex_japan_momentum": ("Asia_Pacific_ex_Japan_Mom_Factor", "asia_pacific_ex_japan", "momentum"),
+    "emerging_momentum": ("Emerging_MOM_Factor", "emerging", "momentum"),
+}
+FRENCH_DATASETS = {area: dataset for area, (dataset, _region, _kind) in _FRENCH_AREAS.items()}
+_FRENCH_LABELS = {
+    "market": (("market_excess_usd", "Mkt-RF"), ("risk_free_usd", "RF"), ("market_total_usd", "Mkt-RF+RF")),
+    "momentum": (("momentum_wml_usd", "WML"),),
+}
 FRENCH_SERIES = {
-    f"returns.french.{area}.{label}": (dataset, variable)
-    for area, dataset in FRENCH_DATASETS.items()
-    for label, variable in (("market_excess_usd", "Mkt-RF"), ("risk_free_usd", "RF"),
-                            ("market_total_usd", "Mkt-RF+RF"))
+    f"returns.french.{region}.{label}": (dataset, variable)
+    for dataset, region, kind in _FRENCH_AREAS.values()
+    for label, variable in _FRENCH_LABELS[kind]
 }
 SWINKELS_DATA_URL = "https://dataverse.nl/api/access/datafile/512630"
 SWINKELS_README_URL = "https://dataverse.nl/api/access/datafile/512631"
@@ -102,15 +134,20 @@ def _zip_members(raw: bytes, *, maximum: int) -> dict[str, bytes]:
         raise ProviderError("Research return original archive invalid") from exc
 
 
+_FRENCH_CONVENTIONS = {"Mkt-RF+RF": "Explicit same-period total return", "Mkt-RF": "Source excess return",
+                       "RF": "Source risk-free return", "WML": "Source long-short momentum factor return"}
+
+
 def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
     """Select source monthly block; annual rows and unrelated missing factors differ."""
     if dataset not in FRENCH_DATASETS.values():
         raise ProviderError("Unregistered French research portfolio")
+    member, columns, input_names = FRENCH_DATASET_SPECS[dataset]
     members = _zip_members(raw, maximum=5_000_000)
-    if set(members) != {dataset + ".csv"}:
+    if set(members) != {member}:
         raise ProviderError("French research portfolio archive identity mismatch")
     try:
-        body = members[dataset + ".csv"].decode("utf-8-sig")
+        body = members[member].decode("utf-8-sig")
     except UnicodeError as exc:
         raise ProviderError("French original CSV encoding invalid") from exc
     vintage = re.search(r"^This file was created using the ([0-9]{6}) Bloomberg database\.", body)
@@ -120,7 +157,7 @@ def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
         vintage_date = datetime.strptime(vintage[1], "%Y%m").date()
     except ValueError as exc:
         raise ProviderError("French source database vintage invalid") from exc
-    expected = ["", "Mkt-RF", "SMB", "HML"] + (["RMW", "CMA"] if dataset == "Emerging_5_Factors" else []) + ["RF"]
+    expected = ["", *columns]
     rows = list(csv.reader(io.StringIO(body)))
     headers = [i for i, row in enumerate(rows) if [v.strip() for v in row] == expected]
     if not headers:
@@ -153,7 +190,7 @@ def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
                 missing[key] += 1
                 value = None
             values[key] = value
-        inputs[day.isoformat()] = {name: str(values[name]) if values[name] is not None else None for name in ("Mkt-RF", "RF")}
+        inputs[day.isoformat()] = {name: str(values[name]) if values[name] is not None else None for name in input_names}
         source_periods[day.isoformat()] = date(day.year, day.month, calendar.monthrange(day.year, day.month)[1]).isoformat()
         for sid, variable in selected.items():
             value = (values["Mkt-RF"] + values["RF"] if values["Mkt-RF"] is not None and values["RF"] is not None else None) if variable == "Mkt-RF+RF" else values[variable]
@@ -170,10 +207,12 @@ def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
         "series": {sid: {"source_variables": ["Mkt-RF", "RF"] if variable == "Mkt-RF+RF" else [variable],
                            "transformation": "Mkt-RF + RF" if variable == "Mkt-RF+RF" else None,
                            "source_periods": source_periods,
-                           "return_convention": "Explicit same-period total return" if variable == "Mkt-RF+RF" else "Source excess return" if variable == "Mkt-RF" else "Source risk-free return"}
+                           "return_convention": _FRENCH_CONVENTIONS[variable]}
                    for sid, variable in selected.items()},
         "transformation_inputs": inputs,
-        "measurement_note": "Source-defined value-weighted research portfolios; not MSCI ACWI/World or an investable fund. No fee, tax or FX equivalence implied.",
+        "measurement_note": ("Source-defined winners-minus-losers momentum factor: a long-short research return, not an investable long-only fund. No fee, tax or FX equivalence implied."
+                             if input_names == ("WML",) else
+                             "Source-defined value-weighted research portfolios; not MSCI ACWI/World or an investable fund. No fee, tax or FX equivalence implied."),
         "rights": "Public no-fee original; explicit redistribution licence unestablished; underlying Bloomberg/IFC inputs not redistributed separately.",
     })
 

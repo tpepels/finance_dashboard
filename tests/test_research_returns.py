@@ -27,7 +27,9 @@ NS = {"t": "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
 
 
 def french_zip(region="developed", body=None):
-    member = "Developed_3_Factors.csv" if region == "developed" else "Emerging_5_Factors.csv"
+    # region is the archive area; each area has a factual excerpt fixture named after it.
+    from finance_dashboard.research_returns import FRENCH_DATASETS, FRENCH_DATASET_SPECS
+    member = FRENCH_DATASET_SPECS[FRENCH_DATASETS[region]][0]
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
         z.writestr(zipfile.ZipInfo(member, (1980, 1, 1, 0, 0, 0)), body if body is not None else (FIXTURES / (region + "_excerpts.csv")).read_bytes())

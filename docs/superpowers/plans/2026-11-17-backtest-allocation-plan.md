@@ -116,7 +116,10 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
 **Files:** new provider modules (`french_regions.py`, `aqr_factors.py`, `bundesbank_curve.py`, `ecb_curves.py`, `fed_ebp.py`, `ec_esi.py`, `spf.py`, `nareit.py`, `cboe_vix.py`, `cb_statements.py`), `definitions/series.json`, `definitions/source_policies.json`, provider registry entries, minimal original fixtures under `tests/fixtures/`, reconciliation verifiers, `docs/SOURCE_POLICY.md`.
 
 **Wave D1a — returns inputs** (needed by D2/D3):
-- [ ] French data library: Europe, Japan, Asia Pacific ex Japan regions; momentum (UMD) for US/developed/regions; international country index portfolios with B/M, E/P, D/P.
+- [ ] French data library:
+  - [x] Europe, Japan and Asia Pacific ex Japan market/risk-free/total (1990-07+) and WML momentum for developed, Europe, Japan, Asia Pacific ex Japan (1990-11+) and emerging (1990-01+): 14 series. The French parser and the independent verifier are now table-driven; archive members are matched exactly (momentum archives use `*_MOM_Factor.csv` inside `*_Mom_Factor_CSV.zip`). Full originals downloaded 2026-11-17 parse identically in both (435/431/441 months to 2026-09, no missing values). Tests: `tests/test_allocation_d1a_french.py`.
+  - [ ] US CRSP files (`F-F_Research_Data_Factors`, `F-F_Momentum_Factor`, 5-factor): different vintage header ("CRSP database"), needs its own parser.
+  - [ ] International country index portfolios with B/M, E/P, D/P.
 - [ ] Bundesbank: Svensson yield-curve parameters (daily since 1972), inflation-indexed yields, call money rate, DEM/USD.
 - [ ] ECB Data Portal: euro area AAA and all-issuer curves, €STR, EONIA, euro corporate bond yields where published.
 - [ ] Nareit All Equity REITs TR (check terms and attribution first; register as a category D proxy).
