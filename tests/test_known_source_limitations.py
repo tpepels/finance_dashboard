@@ -135,5 +135,30 @@ class KnownLimitationSnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot["sources"]["needs_attention"], 1)
 
 
+class KnownLimitationAssessmentTests(unittest.TestCase):
+    def _report(self, row):
+        from finance_dashboard.limitation_assessment import assess_limitations
+        coverage = {"asof": "2026-11-17", "items": [row], "summary": {}}
+        return assess_limitations(coverage=coverage,
+                                  document={"analyses": [{"id": "L07", "title": "x"}]},
+                                  release={"release_id": "test"})["findings"]
+
+    def test_matching_limitation_is_documented_not_needs_evidence(self):
+        row = item(UNCITED, "collection_failed", "wid_metadata_invalid")
+        row["known_limitation"] = known_limitation(row, BEFORE_REVIEW)
+        finding = next(f for f in self._report(row) if f["source_ids"] == [UNCITED])
+        self.assertEqual(finding["status"], "documented")
+        self.assertEqual(finding["severity"], "information")
+        self.assertEqual(finding["category"], "documented_publisher_limitation")
+        self.assertIn("2027-07-01", finding["next_action"])
+
+    def test_same_series_without_a_match_still_needs_evidence(self):
+        row = item(UNCITED, "collection_failed", "source_transport_failed")
+        row["known_limitation"] = known_limitation(row, BEFORE_REVIEW)
+        finding = next(f for f in self._report(row) if f["source_ids"] == [UNCITED])
+        self.assertEqual(finding["status"], "needs_evidence")
+        self.assertEqual(finding["severity"], "high")
+
+
 if __name__ == "__main__":
     unittest.main()

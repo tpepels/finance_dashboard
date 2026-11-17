@@ -218,7 +218,15 @@ def assess_limitations(*, coverage: dict, document: dict,
         refreshed = item.get("refresh_state")
         if not sid:
             continue
-        if state in _SOURCE_ATTENTION:
+        known = item.get("known_limitation")
+        if isinstance(known, dict) and known.get("reason"):
+            # A reviewed publisher limitation whose state still matches
+            # exactly (checked in source_coverage). Recorded, not an alarm;
+            # it returns to needs_evidence as soon as anything changes.
+            category, severity, status = "documented_publisher_limitation", "information", "documented"
+            action = (f"{known['reason']} Review again by {known.get('review_by')}; "
+                      "no substitute observations are used.")
+        elif state in _SOURCE_ATTENTION:
             category = "source_missing" if state in _MISSING_STATES else "source_freshness"
             severity = "high" if item.get("stored_periods", 0) == 0 else "medium"
             status = "needs_evidence"
@@ -244,7 +252,7 @@ def assess_limitations(*, coverage: dict, document: dict,
                 "latest_source_date", "published_through", "days_since_latest_observation",
                 "expected_lag_days", "stored_periods", "last_attempt_state",
                 "last_failure_code", "refresh_state", "freshness_basis",
-                "source_checked_through_utc")},
+                "source_checked_through_utc", "known_limitation")},
         ))
     register = load_register()
     methods = register.get("method") or {}

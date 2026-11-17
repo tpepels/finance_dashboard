@@ -77,6 +77,11 @@ function explain(row:Finding):{title:string;meaning:string;next:string}{
       meaning:'A date in the method description may no longer match the publisher release. No newer record has been established by this warning.',
       next:'The source date requires verification before the method description is changed.'};
   }
+  if(row.category==='documented_publisher_limitation'){
+    return {title:'The publisher does not provide this series in a usable form',
+      meaning:row.detail,
+      next:'Nothing is filled in. The series is checked again by its review date and returns to the open list if anything changes.'};
+  }
   if(row.category==='documented_method_constraint'){
     return {title:'A recorded research assumption',meaning:row.detail,
       next:'The linked research question describes the scope of this assumption.'};

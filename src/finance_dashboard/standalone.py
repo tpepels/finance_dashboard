@@ -88,6 +88,18 @@ def refresh_interval() -> int:
     return value
 
 
+def quota_retry_budget() -> int:
+    """Seconds a scheduled refresh may wait for publisher quotas to reopen."""
+    raw = environ.get("FINANCE_QUOTA_RETRY_SECONDS", "14400")
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError("FINANCE_QUOTA_RETRY_SECONDS must be an integer") from exc
+    if not 0 <= value <= 43200:
+        raise ValueError("FINANCE_QUOTA_RETRY_SECONDS must be between 0 and 43200")
+    return value
+
+
 def _schedule_path() -> Path:
     return Path(environ.get("FINANCE_REFRESH_SCHEDULE_PATH",
                             "/data/maintenance/refresh-schedule.json"))
@@ -274,7 +286,10 @@ def refresh_loop(engine: Engine, stopped: Event, *, interval_seconds: int,
             try:
                 macro_failures = refresh_all(
                     engine, stopped=scheduled_stop, skip_complete_pinned=True,
-                    progress=macro_progress)
+                    progress=macro_progress,
+                    # Sources held back by a publisher's hourly quota are
+                    # served when it reopens instead of waiting a whole day.
+                    quota_retry_seconds=quota_retry_budget())
                 if macro_failures:
                     cycle_failed = True
                     record_event("macro", "stage_finished", level="warning",

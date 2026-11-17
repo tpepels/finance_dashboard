@@ -35,8 +35,11 @@ class RefreshTask:
     provider_group: str | None = None
 
 
+_QUOTA_REASONS = frozenset({"rolling_window_limit", "publisher_cooldown"})
+
+
 def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
-                          stopped=None) -> int:
+                          stopped=None, deferred: list | None = None) -> int:
     """One failure/deferral/progress lifecycle for macro, market and FX jobs.
 
     Policy deferrals are non-retryable within this batch. Every task advances
@@ -51,6 +54,7 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
     # Do not mark those unattempted sources as fresh or failed; retain their
     # previous acquisition history for the next scheduled cycle.
     unavailable_groups: set[str] = set()
+    group_retry_at: dict[str, float] = {}
     suppressed: dict[str, int] = {}
     def publish_progress(index: int, task: RefreshTask) -> int:
         if progress is None:
@@ -74,6 +78,8 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
         if task.provider_group is not None and task.provider_group in unavailable_groups:
             failures += 1  # incomplete refresh, but no new failed IngestionRun
             suppressed[task.provider_group] = suppressed.get(task.provider_group, 0) + 1
+            if deferred is not None:
+                deferred.append((task, group_retry_at[task.provider_group]))
             record_event(task.family, "source_deferred", level="warning",
                          action="publisher_quota_exhausted", status="deferred",
                          source_id=task.source_id,
@@ -94,9 +100,13 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
                          report.get("versions_added") if isinstance(report, dict) else "unknown")
         except PolicyDeferred as exc:
             failures += 1
-            if task.provider_group is not None and exc.reason in {
-                    "rolling_window_limit", "publisher_cooldown"}:
+            if task.provider_group is not None and exc.reason in _QUOTA_REASONS:
                 unavailable_groups.add(task.provider_group)
+                group_retry_at[task.provider_group] = exc.retry_at
+            if deferred is not None and exc.reason in _QUOTA_REASONS:
+                # The caller may resume this source once the publisher's own
+                # window reopens; other deferral reasons need a person.
+                deferred.append((task, exc.retry_at))
             record_event(task.family, "source_deferred", level="warning",
                          source_id=task.source_id,
                          reason="source_policy_deferred")
@@ -148,11 +158,40 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
     return failures
 
 
+def retry_quota_deferred(deferred: list, failures: int, *, budget_seconds: float,
+                         stopped=None, poll_seconds: float = 15.0) -> int:
+    """Resume quota-deferred sources when the publisher window reopens.
+
+    Every deferred task counted as one failure in the first pass. Waits only
+    until each source's own policy retry time, never beyond the budget, and
+    stops at once when a manual collection or shutdown is requested. Requests
+    still go through the canonical policy ledger, so no quota is exceeded.
+    """
+    deadline = time.monotonic() + max(0.0, budget_seconds)
+    while deferred and not (stopped is not None and stopped.is_set()):
+        wake_in = max(0.0, min(retry for _, retry in deferred) - time.time())
+        if time.monotonic() + wake_in > deadline:
+            break
+        until = time.monotonic() + wake_in
+        while time.monotonic() < until:
+            if stopped is not None and stopped.is_set():
+                return failures
+            time.sleep(min(poll_seconds, max(0.0, until - time.monotonic())))
+        retry = [task for task, _ in deferred]
+        deferred = []
+        record_event("macro", "stage_finished", action="quota_retry",
+                     status="running", total=len(retry))
+        failures += execute_refresh_tasks(retry, stopped=stopped,
+                                          deferred=deferred) - len(retry)
+    return failures
+
+
 def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                 series_ids: set[str] | None = None, progress=None,
                 stopped=None, skip_complete_pinned: bool = False,
                 attention_only: bool = False,
-                preflight_only: bool = False) -> int:
+                preflight_only: bool = False,
+                quota_retry_seconds: float = 0) -> int:
     """Refresh independent sources even when an advisory planning guard fails."""
     planning_failures = 0
 
@@ -339,8 +378,15 @@ def refresh_all(engine, full: bool = False, providers: set[str] | None = None,
                              total=len(tasks))
                 return planning_failures
             stage = "execute_tasks"
-            return planning_failures + execute_refresh_tasks(
-                tasks, progress=progress, stopped=stopped)
+            deferred = [] if quota_retry_seconds > 0 else None
+            failures = execute_refresh_tasks(
+                tasks, progress=progress, stopped=stopped, deferred=deferred)
+            if deferred:
+                stage = "quota_retry"
+                failures = retry_quota_deferred(
+                    deferred, failures, budget_seconds=quota_retry_seconds,
+                    stopped=stopped)
+            return planning_failures + failures
     except Exception as exc:
         # Persist sanitized Python module/function/line and exception kind
         # BEFORE the scheduler catches the exception or a new build clears
