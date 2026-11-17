@@ -130,5 +130,27 @@ class ArithmeticTests(unittest.TestCase):
                          {"ishares", "spdr", "vaneck", "vanguard"})
 
 
+class ArchiveFallbackTests(unittest.TestCase):
+    def test_archived_originals_are_reparsed_and_tampering_is_rejected(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        source = F.FUNDS["IE000YU9K6K2"]
+        original = xlsx_from_factual_cells(VANECK, "JEDI_asof_20261116")
+        def fake_summary(isin, issuer, as_of, rows, method):
+            return {"isin": isin, "issuer": issuer, "holdings_date": as_of.isoformat(),
+                    "holdings": len(rows), "euro_share": "0.3", "euro_method": method}
+        with TemporaryDirectory() as tmp, patch.object(F, "_summary", side_effect=fake_summary):
+            root = Path(tmp)
+            summary = F.parse_vaneck(original, source.isin, VANECK_PAGE)
+            bundle = F.archive_fund(root, summary, {"response-0.bin": VANECK_PAGE,
+                                                    "response-1.bin": original}, ["a", "b"])
+            found = F.latest_archived(root, source, today=date(2026, 11, 17))
+            self.assertTrue(found["from_archive"])
+            self.assertEqual(found["holdings_date"], "2026-11-16")
+            self.assertIsNone(F.latest_archived(root, source, today=date(2027, 1, 31)))
+            (bundle / "response-1.bin").write_bytes(original + b"x")
+            self.assertIsNone(F.latest_archived(root, source, today=date(2026, 11, 17)))
+
+
 if __name__ == "__main__":
     unittest.main()

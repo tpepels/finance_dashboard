@@ -311,6 +311,45 @@ def archive_fund(root: Path, summary: dict, files: dict[str, bytes], urls: list[
             shutil.rmtree(temporary, ignore_errors=True)
 
 
+ARCHIVE_MAX_AGE_DAYS = 45  # Vanguard publishes month-end holdings
+
+
+def parse_archived(source: FundSource, files: dict[str, bytes]) -> dict:
+    """Re-read archived originals with the same parser used at acquisition."""
+    if source.issuer == "ishares":
+        return parse_ishares(files["response-0.bin"], source.isin)
+    if source.issuer == "spdr":
+        return parse_spdr(files["response-0.bin"], source.isin)
+    if source.issuer == "vaneck":
+        return parse_vaneck(files["response-1.bin"], source.isin, files["response-0.bin"])
+    pages = [files[name] for name in sorted(files, key=lambda n: int(n.split("-")[1].split(".")[0]))
+             if name != "response-0.bin"]
+    return parse_vanguard(files["response-0.bin"], pages, source.isin, source.reference)
+
+
+def latest_archived(root: Path, source: FundSource, *, today: date) -> dict | None:
+    """Newest archived bundle whose files still match its manifest, re-parsed."""
+    base = root / "fund-lookthrough" / source.isin
+    if not base.is_dir():
+        return None
+    for day in sorted((p for p in base.iterdir() if p.is_dir()), reverse=True):
+        if (today - date.fromisoformat(day.name)).days > ARCHIVE_MAX_AGE_DAYS:
+            return None
+        for bundle in sorted(day.iterdir(), reverse=True):
+            try:
+                manifest = json.loads((bundle / "manifest.json").read_text())
+                files = {name: (bundle / name).read_bytes() for name in manifest["files"]
+                         if name != "facts.json"}
+                if any(sha256((bundle / name).read_bytes()).hexdigest() != digest
+                       for name, digest in manifest["files"].items()):
+                    continue
+                summary = parse_archived(source, files)
+            except (OSError, ValueError, KeyError, LookthroughError):
+                continue
+            return {**summary, "bundle": bundle.name, "from_archive": True}
+    return None
+
+
 def portfolio_euro_share(holdings: dict, funds: dict[str, dict]) -> dict:
     """Value-weighted euro share of the owner's equity funds."""
     equity = [fund for fund in holdings["summary"]["funds"] if fund["asset_class"] == "equity"]
@@ -349,7 +388,13 @@ def run(*, root: Path, apply: bool, client=None) -> dict:
                 summary["bundle"] = archive_fund(root, summary, files, urls).name
                 funds[isin] = summary
             except Exception as exc:  # keep going; the result says which fund failed
-                failures[isin] = f"{type(exc).__name__}: {exc}"[:300]
+                # A publisher quota or outage must not discard holdings that
+                # were already acquired and still verify against their hashes.
+                archived = latest_archived(root, FUNDS[isin], today=date.today())
+                if archived is not None:
+                    funds[isin] = archived
+                else:
+                    failures[isin] = f"{type(exc).__name__}: {exc}"[:300]
     finally:
         if owns:
             client.close()
