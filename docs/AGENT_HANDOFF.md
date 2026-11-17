@@ -34,6 +34,8 @@ The preceding commits already implemented and verified:
 17. Limitation assessment knows the reviewed limitations (`f114404`): a matching `known_limitation` is `documented_publisher_limitation` / information / documented; any other state of the same series still needs evidence.
 18. ICIO consumer materiality (`47b1622`). The 28 hash-pinned 2025 regular (January 2026) matrices that L04 reads also fail exact closure: per year 40-228 rows and 1-36 columns exceed the 4-decimal bound; the largest row residual is 0.089% of a node's own output (ISL_L 1998), at most 0.0036% of world output in total, concentrated in real estate (L) and households as employers (T). Recorded in `definitions/icio_2025_regular_materiality.json`; `classify_icio_dependencies` reports it as `consumer_materiality`, and the ICIO finding becomes documented information only if every pinned year is covered, every hash matches, every relative residual is at most 0.1% (threshold chosen by the agent on the owner's behalf) and no failing archive is read by an analysis. Nothing is rebalanced; the 54 archives stay quarantined.
 19. Independent readers for copper and OECD earnings (`befa540`). The Pink Sheet reader lacked copper (`source_identity_mismatch`); OECD earnings had no reader and fell through to the BIS JSON branch (`source_schema_invalid`). Against the production originals all 20 OECD earnings series and copper (802 months) now read with the same period counts as the stored histories. This should move C07 and L08 off `incomplete` once deployed and the assessment reruns; verify that rather than assume it.
+20. Owner inputs count only saved fields (`584d82f`). `validate()` fills absent fields from the example; `supplied_roles` used to accept those as owner-supplied. `save_owner_inputs` now records `supplied_fields`; `load_owner_inputs` returns `supplied_fields`/`example_fields`; P04/P05 are labelled examples while any field they read is an example.
+21. G01/G02 measured on the ACWI ETF (`bb6fa4e`, owner-approved 2026-11-17). The iShares MSCI ACWI ETF N-PORT holdings contracts are now the primary roles (previously an accepted fallback for licensed MSCI weights); MSCI factsheet bindings and the published top-ten comparison stay. Specification updated.
 
 The scientific-acceptance and independent original-source gates were **not** weakened.
 
@@ -54,6 +56,14 @@ The scientific-acceptance and independent original-source gates were **not** wea
 | FED_G17_DIFFUSION | 3 | `stale`, through 2026-08 | **Expected until today's release.** The publication bound expired 2026-11-17; the Fed publishes the next G.17 at 09:15 ET on 2026-11-17. Re-check after a refresh that runs later than that. |
 | BIS_PROPERTY | 1 | `property.jp.nominal_residential.bis` `stale` | Publisher lag; live BIS ends 2025-Q4. |
 | EUKLEMS | 1 | `labour.us.euklems_labour_compensation` ends 2020 | Publisher gap; blank 2021 `LAB` `TOT` cell. |
+
+## Owner data and decisions (17 November 2026)
+
+- Portfolio holdings (14 positions) set by the owner's answer to `as_of` 2026-11-11 and `scope` `full_invested_portfolio` through `PUT /api/portfolio-holdings` (revision 3). P01 `portfolio_fund_weights` is now owner-supplied.
+- Owner inputs saved through `PUT /api/owner-inputs`: allocation derived from those holdings (equity 0.983, gold 0.017 for the WisdomTree Physical Precious Metals basket, bonds 0), start value = holdings total, calendar rebalancing every 12 months, no trading costs, no tax, no contribution or withdrawal (the owner gave no amounts), bond duration 0 and no hedged bonds (no bond holdings), equity hedged share 0 (all share classes unhedged).
+- Still an example value: `equity_euro_share` (P04 `currency_portfolio_weights`). It needs a look-through of the owner's 11 equity ETFs from issuer holdings files (Vanguard, iShares, VanEck, SPDR); none of these ISINs has a holdings source yet. Do not estimate it.
+- Remaining owner-side gaps in P04/P05: P04 `convexity`; P05 `constituent_total_returns` and `benchmark_weights` have no supply adapter.
+- G03 stays deferred: no free source covers worldwide listed ultimate-parent income (Fortune/FT Global 500, Taxplorer CbCR and Kaggle sets are partial or unsourced).
 
 ## Decisions taken on the owner's behalf (16 November 2026)
 
