@@ -7027,19 +7027,6 @@
             "supply": "user"
           },
           {
-            "role": "convexity",
-            "description": "Source-documented convexity where the selected scenario includes the second-order term.",
-            "series_ids": [],
-            "expected": {
-              "concept": "Bond convexity with units documented"
-            },
-            "temporal_requirement": "source_asof",
-            "input_type": "scenario_parameter",
-            "artifact_ids": [],
-            "input_requirement": "Source-documented convexity where the selected scenario includes the second-order term.",
-            "supply": "user"
-          },
-          {
             "role": "inflation_index",
             "description": "Original BLS CPIAUCSL all-items CPI-U, US city average, seasonally adjusted, 1982-1984=100. This maps only the named US price-basis comparator, not other portfolio currencies.",
             "series_ids": [
@@ -7126,6 +7113,10 @@
         {
           "role": "fx_quotes",
           "reason": "Replaced by the explicit ECB USD-per-EUR reference rate role."
+        },
+        {
+          "role": "convexity",
+          "reason": "The P04 calculation applies first-order shocks only (transforms: first-order, ignores convexity); no selected scenario includes the second-order term, so convexity is neither an input nor a result. Descoped on 2026-11-17 under the owner's delegation; re-add it with a source-documented value if a second-order scenario is implemented."
         }
       ]
     },
@@ -7180,20 +7171,6 @@
             "supply": "user"
           },
           {
-            "role": "constituent_total_returns",
-            "description": "Original dated investable constituent total returns with inception and delisting/survivorship evidence.",
-            "series_ids": [],
-            "expected": {
-              "population": "Selected investable portfolio constituents",
-              "concept": "Distribution-reinvested constituent returns"
-            },
-            "temporal_requirement": "source_asof",
-            "input_type": "positions",
-            "artifact_ids": [],
-            "input_requirement": "Original dated investable constituent total returns with inception and delisting/survivorship evidence.",
-            "supply": "user"
-          },
-          {
             "role": "benchmark_total_return",
             "description": "Original named benchmark total returns; source identity is distinct from investable constituent returns.",
             "series_ids": [
@@ -7211,20 +7188,6 @@
             "temporal_requirement": "latest_revised",
             "input_type": "scalar_history",
             "artifact_ids": []
-          },
-          {
-            "role": "benchmark_weights",
-            "description": "Dated benchmark weights appropriate to the selected attribution/comparison.",
-            "series_ids": [],
-            "expected": {
-              "unit": "ratio",
-              "concept": "Benchmark allocations"
-            },
-            "temporal_requirement": "source_asof",
-            "input_type": "allocation",
-            "artifact_ids": [],
-            "input_requirement": "Dated benchmark weights appropriate to the selected attribution/comparison.",
-            "supply": "user"
           },
           {
             "role": "rebalance_policy",
@@ -7336,6 +7299,14 @@
         {
           "role": "execution_fx",
           "reason": "Replaced by the explicit ECB USD-per-EUR reference rate role; actual execution FX is an owner input if needed."
+        },
+        {
+          "role": "constituent_total_returns",
+          "reason": "The P05 replay applies the owner's asset-class mix to asset-class index returns (MSCI ACWI net in USD, gold, a named sovereign-bond series, all translated to EUR); it does not replay individual fund or security returns, so constituent returns are not an input. Descoped on 2026-11-17 under the owner's delegation; results describe the asset-class mix, not the owner's specific ETFs."
+        },
+        {
+          "role": "benchmark_weights",
+          "reason": "The P05 replay compares rebalancing rules with each other and performs no attribution against a weighted benchmark, so benchmark weights are not an input. Descoped on 2026-11-17 under the owner's delegation."
         }
       ]
     },

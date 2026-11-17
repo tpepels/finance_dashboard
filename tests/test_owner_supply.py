@@ -38,12 +38,14 @@ class AcceptanceTests(unittest.TestCase):
         from finance_dashboard.research_acceptance import analysis_acceptance
         from finance_dashboard.research_corpus import load_research_corpus
         p05 = next(a for a in load_research_corpus()["analyses"] if a["id"] == "P05")
-        supply = supplied_roles({**EXAMPLE, "is_example": False}, [])
+        # Saved without a rebalancing policy: that role must stay open.
+        saved = [field for field in EXAMPLE if field != "rebalancing"]
+        supply = supplied_roles({**EXAMPLE, "is_example": False, "supplied_fields": saved}, [])
         result = analysis_acceptance(p05, {}, {}, [], observations_checked=False, owner_supply=supply)
         roles = {r["role"]: r for r in result["requirements"]}
         self.assertTrue(roles["target_weights"]["accepted"])
         self.assertEqual(roles["target_weights"]["checks"][0]["code"], "owner_inputs_supplied")
         self.assertEqual(roles["target_weights"]["limitations"][0]["code"], "owner_supplied_values_not_verified")
-        self.assertFalse(roles["benchmark_weights"]["accepted"])
-        self.assertIn("benchmark_weights", result["blocking_roles"])
+        self.assertFalse(roles["rebalance_policy"]["accepted"])
+        self.assertIn("rebalance_policy", result["blocking_roles"])
         self.assertNotIn("target_weights", result["blocking_roles"])
