@@ -82,6 +82,8 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
             values,dimensions = _bundesbank(body,definition,source['url'])
         elif provider == 'OECD_CLI':
             values,dimensions = _oecd_cli(body,definition,source['url'])
+        elif provider == 'OECD_EARNINGS':
+            values,dimensions = _oecd_earnings(body,definition,source['url'])
         elif provider == 'IMF_BOP_IIP':
             values,dimensions = _imf_bop_iip(raw,definition,source['url'])
         elif provider == 'EUKLEMS':
@@ -475,7 +477,8 @@ def _pink_sheet(raw,definition,url):
         'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Gold':('Gold','troy oz','usd_per_oz'),
         'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Crude oil, Brent':('Crude oil, Brent','bbl','usd_per_barrel'),
         'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Natural gas, US':('Natural gas, US','mmbtu','usd_per_mmbtu'),
-        'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Maize':('Maize','mt','usd_per_metric_ton')}
+        'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Maize':('Maize','mt','usd_per_metric_ton'),
+        'CMO-Historical-Data-Monthly.xlsx#Monthly Prices:Copper':('Copper','mt','usd_per_metric_ton')}
     if url!=PINK_SHEET_URL or definition['source_key'] not in selectors or definition['frequency']!='M':
         raise EvidenceError('source_identity_mismatch')
     label,unit,native_unit=selectors[definition['source_key']]
@@ -823,6 +826,54 @@ def _oecd_cli(body,definition,url):
         'source_database_vintage':'dataflow version 4.1','source_decimals':sorted(decimals),
         'source_publisher_metadata':{'adjustment':{'AA':'amplitude adjusted (average 100)','TR':'trend restored'}[expected['ADJUSTMENT']],
             'methodology':'OECD harmonised'},'individual_observation_first_publication_verified':False}
+
+
+_OECD_EARNINGS_FLOWS = {
+    # flow id: (measure, unit by aggregation, sex, catalogue unit)
+    'OECD.ELS.SAE,DSD_EARNINGS@DEC_I,1.0': ('IR_GE', {'D9_1': 'FCTR_D1', 'D9_5': 'FCTR_D5', 'D5_1': 'FCTR_D1'}, '_T', 'ratio'),
+    'OECD.ELS.SAE,DSD_EARNINGS@MIN2AVE,1.0': ('MR_WG_FT', {'MEDIAN': 'PT_WG_A_SAL_FT'}, '_Z', 'percent'),
+}
+
+
+def _oecd_earnings(body,definition,url):
+    """Read an archived OECD earnings CSV by position-checked dimensions.
+
+    Written separately from oecd_earnings.parse_oecd_earnings_csv. Every row
+    must carry the exact flow, country, measure, unit, population and scale;
+    only rows with ordinary status A are values, as at ingestion.
+    """
+    from .source_reconciliation import EvidenceError
+    flow,_,series=definition['source_key'].partition('/')
+    if (flow not in _OECD_EARNINGS_FLOWS
+            or url!='https://sdmx.oecd.org/public/rest/data/%s/%s?format=csvfile'%(flow,series)
+            or definition['frequency']!='A'):
+        raise EvidenceError('source_identity_mismatch')
+    measure,units,sex,catalogue_unit=_OECD_EARNINGS_FLOWS[flow]
+    parts=series.split('.')
+    if len(parts)!=7 or any(parts[1:5]) or parts[5] not in units or definition['unit']!=catalogue_unit:
+        raise EvidenceError('source_identity_mismatch')
+    area,operation=parts[0],parts[5]
+    agency,name,version=flow.split(',')
+    expected={'DATAFLOW':f'{agency}:{name}({version})','REF_AREA':area,'MEASURE':measure,
+              'UNIT_MEASURE':units[operation],'PAY_PERIOD':'_Z','PRICE_BASE':'_Z',
+              'AGGREGATION_OPERATION':operation,'SEX':sex,'UNIT_MULT':'0'}
+    rows=csv.DictReader(io.StringIO(body))
+    if not rows.fieldnames or not set(expected)|{'TIME_PERIOD','OBS_VALUE','OBS_STATUS'}<=set(rows.fieldnames):
+        raise EvidenceError('source_schema_invalid')
+    values,seen,decimals={},set(),set()
+    for row in rows:
+        if any(row[name]!=value for name,value in expected.items()):
+            raise EvidenceError('source_identity_mismatch')
+        day=_native_period(row['TIME_PERIOD'],'A')
+        if row['OBS_STATUS']!='A':
+            if day in seen: raise EvidenceError('source_duplicate_period')
+            seen.add(day)
+            continue
+        decimals.add(row.get('DECIMALS'))
+        _add(values,seen,day,row['OBS_VALUE'])
+    return values,{'source_native_unit':units[operation],'source_dataset':f'OECD {name}',
+        'source_database_vintage':f'dataflow version {version}','source_decimals':sorted(d for d in decimals if d),
+        'individual_observation_first_publication_verified':False}
 
 
 def _imf_bop_iip(raw,definition,url):

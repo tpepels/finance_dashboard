@@ -113,6 +113,23 @@ class CapturedSourceFamilyTests(unittest.TestCase):
         with self.assertRaises(EvidenceError):
             _pink_sheet(xlsx_from_factual_cells(changed,'Monthly Prices'),self.registry['gold.usd.monthly_average'],PINK_SHEET_URL)
 
+    def test_pink_sheet_reads_copper_per_metric_ton(self):
+        # Cells copied from the World Bank CMO-Historical-Data-Monthly.xlsx
+        # archived in production (SHA-256 3c8d9d8d...), Monthly Prices sheet.
+        rows=[['World Bank Commodity Price Data (The Pink Sheet)'],[],[],[],
+              ['', 'Copper'],['', '($/mt)'],['1960M01', 715.0],['1960M02', 728.0],
+              ['2026M09', 14474.0],['2026M10', 14508.0]]
+        original=xlsx_from_factual_cells(rows,'Monthly Prices')
+        copper,meta=_pink_sheet(original,self.registry['prices.commodity.copper_usd'],PINK_SHEET_URL)
+        self.assertEqual(copper[date(1960,1,1)],Decimal('715.0'))
+        self.assertEqual(copper[date(2026,10,1)],Decimal('14508.0'))
+        self.assertEqual(meta['source_native_unit'],'usd_per_metric_ton')
+        self.assertEqual(meta['source_variable'],'Copper')
+        rows[5][1]='($/kg)'
+        with self.assertRaises(EvidenceError):
+            _pink_sheet(xlsx_from_factual_cells(rows,'Monthly Prices'),
+                        self.registry['prices.commodity.copper_usd'],PINK_SHEET_URL)
+
     def test_shiller_ordinary_cape_is_not_total_return_cape_and_link_identity_is_required(self):
         rows=json.loads((FIXTURE/'shiller_cape_cells.json').read_text())['rows']
         original=xlsx_from_factual_cells(rows,'Data')
