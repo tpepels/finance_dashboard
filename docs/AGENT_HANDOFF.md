@@ -1,12 +1,12 @@
-# Global Capital Monitor — agent handoff (17 November 2026, sixth checkpoint)
+# Global Capital Monitor — agent handoff (17 November 2026, seventh checkpoint)
 
 **Purpose:** Resume the existing work in `tpepels/finance_dashboard` without reopening the completed audit or rebuilding implemented fixes. The authoritative source is code on `main`; this file is the investigation checkpoint, not a substitute for tests or new production evidence.
 
 ## Last verified checkpoint
 
-- **Verified code commit:** `550bf70` (known publisher limitations). Earlier: WID quarantine reason `37c20fd`, WID rebinding `178806c`, BLS contact `6d9bfce`, upload-status race `f03237a`.
-- **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/44078441400 — **passed** all four jobs: Python (1,578 tests, 10 skipped), frontend (242), browser, release-image.
-- **Deployed release:** `0.2.23+4c5b87bf970451cc`, activated 2026-11-17T10:27:01Z, server checkout `b7bbc3a` (contains every fix above except `550bf70`). `BLS_USER_AGENT` is set in the container (value not recorded here).
+- **Verified code commit:** `befa540` (independent copper and OECD earnings readers). Earlier today: ICIO materiality `47b1622`, quota retry `f114404`, known limitations `550bf70`. CI for `befa540` must be checked before relying on it.
+- **Last fully verified CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/44078441400 (`550bf70`, all four jobs passed). Local checks at `befa540`: 1,595 Python tests (10 skipped), 242 frontend tests, type-check and catalogue validation pass.
+- **Deployed release:** `0.2.24+8f4d804756939310`, activated 2026-11-17T12:08:28Z, server checkout `192838a` (contains `550bf70`, not `f114404`, `47b1622` or `befa540`). With it the attention count fell from 52 to 28 and the status from red to orange.
 - **Post-collection export:** on `0.2.23`, prepared 2026-11-17T11:36:58Z, after collection run `4543c85475494761b1d92b9dfbfdb655` (10:28Z to 11:36Z).
 
 ## Completed and tested work — do not repeat
@@ -30,6 +30,10 @@ The preceding commits already implemented and verified:
 13. MSCI tamper test (`8fd7642`) selects the hash-named evidence bundle instead of the first directory entry. Test-only.
 14. WID quarantine reason (`37c20fd`). On 0.2.22 the eight world series were reported as `wid_observation_invalid`: the collector replaced each quarantine reason with a generic message whose prefix maps to the observation code. `parse_piketty_original(..., return_invalid=True)` now returns a `{variable: first failed rule}` mapping and `WidClient.fetch` raises that rule, so a blank source citation reports `wid_metadata_invalid`. Acceptance is unchanged.
 15. Known publisher limitations (`550bf70`). `KNOWN_SOURCE_LIMITATIONS` in `source_coverage.py` lists the 17 absent and 8 uncited WID series with expected state, failure code, reason and `review_by` 2027-07-01. `known_limitation()` applies only while the series has no stored data and state and code match exactly, before the review date; otherwise it counts as attention again. Matching series are excluded from `needs_attention`, the health snapshot's `attention_items`, the group `collection_failed` count and the repair census, and are listed in `known_limitations` (folded section on the data page). The scheduled refresh still checks them; a recurring reviewed failure is journalled as `source_known_limitation` at warning level, any other failure stays `source_failed`/error. Owner-approved on 2026-11-17. Do not add series to the list without checking the archived original.
+16. Nightly quota retry (`f114404`). The scheduled refresh used to stop serving a provider for the night once a publisher's hourly quota was used; with OECD's 20 requests per hour only ~5 of the 46 OECD corporate account series were refreshed per night and 69 sources showed a deferred refresh for up to 6 days. `retry_quota_deferred` in `worker.py` retries quota-deferred and suppressed sources once the ledger's own retry time passes, within `FINANCE_QUOTA_RETRY_SECONDS` (default 14400, 0 disables, max 43200). It stops at once for a manual collection or shutdown, and every request still goes through the policy ledger. Only the scheduled refresh uses it.
+17. Limitation assessment knows the reviewed limitations (`f114404`): a matching `known_limitation` is `documented_publisher_limitation` / information / documented; any other state of the same series still needs evidence.
+18. ICIO consumer materiality (`47b1622`). The 28 hash-pinned 2025 regular (January 2026) matrices that L04 reads also fail exact closure: per year 40-228 rows and 1-36 columns exceed the 4-decimal bound; the largest row residual is 0.089% of a node's own output (ISL_L 1998), at most 0.0036% of world output in total, concentrated in real estate (L) and households as employers (T). Recorded in `definitions/icio_2025_regular_materiality.json`; `classify_icio_dependencies` reports it as `consumer_materiality`, and the ICIO finding becomes documented information only if every pinned year is covered, every hash matches, every relative residual is at most 0.1% (threshold chosen by the agent on the owner's behalf) and no failing archive is read by an analysis. Nothing is rebalanced; the 54 archives stay quarantined.
+19. Independent readers for copper and OECD earnings (`befa540`). The Pink Sheet reader lacked copper (`source_identity_mismatch`); OECD earnings had no reader and fell through to the BIS JSON branch (`source_schema_invalid`). Against the production originals all 20 OECD earnings series and copper (802 months) now read with the same period counts as the stored histories. This should move C07 and L08 off `incomplete` once deployed and the assessment reruns; verify that rather than assume it.
 
 The scientific-acceptance and independent original-source gates were **not** weakened.
 
@@ -80,13 +84,20 @@ Before any production validation, **confirm the owner deployed the new commit**,
 
 ## Exact continuation task
 
-1. After the owner deploys `550bf70` and a collection or scheduled refresh has run, take an export. Expect attention to fall by 25 (to 27 with the G.17 series still pending, 24 once they update), `known_limitations` to list 25 series, and no `source_failed` error events for them.
-2. After the next scheduled refresh later than 2026-11-17T14:15Z, check that the three G.17 diffusion series move past 2026-08. If they do not, read `diff_sa.txt` and compare it with the stored history before changing anything.
-3. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
-4. On or after WID's next annual release (review date 2027-07-01), re-check the 25 known limitations and the 22 aged WID histories against the new originals and update or remove the entries.
-5. Keep the ICIO originals quarantined. Add regression tests from minimal original samples with source identity; keep full publisher files and credentials out of Git.
+1. Check CI for `befa540`. After the owner deploys it, wait for the research assessment to finish (`/api/diagnostics` -> `status.assessment_running` false) and read `/api/diagnostics/limitation-assessment`. Expect: the ICIO finding documented/information; C07 and L08 no longer `incomplete`; the 25 WID limitations documented. If C07 or L08 stay incomplete, read their `blocking_role_evidence` and run `reconcile_session` read-only for the series (see item 19).
+2. After the first nightly refresh on that release, check that OECD corporate account series no longer show `refresh_state` deferred for days (item 16).
+3. G.17 diffusion: the Fed released on 2026-11-17 at 09:15 ET. After the next refresh the three series should move past 2026-08; if not, compare `diff_sa.txt` with the stored history.
+4. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
+5. On or after WID's next annual release (review date 2027-07-01), re-check the 25 known limitations and the 22 aged WID histories.
 
-Local notes: the virtualenv lacked the declared `numpy` dependency, which made 10 ICIO tests error until it was installed at the locked version.
+## Open research questions and who can close them
+
+Last evaluated state (0.2.20): 24 accepted, 12 conditional, 2 incomplete (C07, L08 — addressed by item 19), 1 deferred (G03).
+
+- **Conditional by method, no action possible:** C02, F01, F07, L04, M04, P02, V03 carry documented method limitations ("qualified"). This is their intended final state.
+- **Proprietary data:** G01 and G02 need exact MSCI constituent and country weights, which MSCI licenses; the accepted fallback uses dated ACWI ETF N-PORT positions. G03 (deferred extension) needs worldwide listed ultimate-parent income with fiscal/currency identity, which only commercial fundamentals databases provide. Do not substitute national-account or index-earnings proxies.
+- **Owner inputs:** P01 needs a dated, identified snapshot of the owner's fund positions; P04 needs actual currency weights and modified duration (convexity is not used); P05 needs target and actual weights, rebalancing policy, trading costs, tax policy and a withdrawal plan. These are entered in the app's portfolio section, never fetched or inferred.
+
 
 ## Verification commands
 
