@@ -60,6 +60,10 @@ The owner asked the agent to decide these. Both follow the existing rule that a 
 - **BLS:** the declared-contact route was chosen over manual downloads, as an opt-in setting. The owner still has to set `BLS_USER_AGENT` on the server; the agent did not send the owner's contact to BLS.
 - **SEC bound:** the `1.01` ceiling on as-filed weekly liquidity was the agent's choice; the largest filed value seen in 16 months is 1.0004.
 
+## Proposed backtesting and allocation module (design only, 17 November 2026)
+
+The owner answered a 10-question interview and asked for a design of a backtesting/allocation module with Claude as an ensemble member. The design is in [docs/superpowers/specs/2026-11-17-backtest-allocation-design.md](superpowers/specs/2026-11-17-backtest-allocation-design.md). **Nothing is implemented.** Phase B0 needs an owner-approved charter amendment (validated conditional allocation) before any code. Do not start implementation, add sources or change the charter without that sign-off. This does not change the source-health continuation task below.
+
 ## Deployment topology and safe next step
 
 **Local machine:** checked-out Git repo, code changes, tests and commits.
