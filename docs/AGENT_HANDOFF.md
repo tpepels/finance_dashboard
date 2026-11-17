@@ -6,7 +6,7 @@
 
 - **Verified code commit:** `befa540` (independent copper and OECD earnings readers). Earlier today: ICIO materiality `47b1622`, quota retry `f114404`, known limitations `550bf70`. CI for `befa540` must be checked before relying on it.
 - **Last fully verified CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/44078441400 (`550bf70`, all four jobs passed). Local checks at `befa540`: 1,595 Python tests (10 skipped), 242 frontend tests, type-check and catalogue validation pass.
-- **Deployed release:** `0.2.24+8f4d804756939310`, activated 2026-11-17T12:08:28Z, server checkout `192838a` (contains `550bf70`, not `f114404`, `47b1622` or `befa540`). With it the attention count fell from 52 to 28 and the status from red to orange.
+- **Deployed release:** `0.2.26+23dce00440fc7c11`, activated 2026-11-17T15:02:06Z by the agent (owner-authorised ssh deploy), server checkout `314e722`. After a collection and a full research assessment (evaluated 2026-11-17T15:24:25Z): **28 accepted, 10 conditional, 0 incomplete, 1 deferred** (was 24/12/2/1). G01, G02, C07 and L08 are accepted; the ICIO finding is documented information; the three G.17 diffusion series are current.
 - **Post-collection export:** on `0.2.23`, prepared 2026-11-17T11:36:58Z, after collection run `4543c85475494761b1d92b9dfbfdb655` (10:28Z to 11:36Z).
 
 ## Completed and tested work — do not repeat
