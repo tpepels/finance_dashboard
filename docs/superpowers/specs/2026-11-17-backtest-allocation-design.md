@@ -268,6 +268,8 @@ For each bucket and each predictor *j* in its registered list, fit a univariate 
 
 **M6 — Volatility-managed adjustment.** Expected Sharpe ratios are constant-ish across volatility states (Moreira & Muir 2017), so `E[y_i] ← SR_i · σ̂_{i,t}`. This scales premia with forecast volatility instead of letting them be invariant.
 
+**M8–M11 — Machine-learning forecasters.** Elastic net, gradient-boosted trees, random forests, and regularised classifiers/HMM, fitted on pooled panels under purged nested validation. Defined in section 11.
+
 **M7 — Claude.** Section 8. It produces the same quantities (quantiles per bucket, event and regime probabilities) and is scored by the same metrics.
 
 ### 6.3 Turning outputs into a predictive distribution
@@ -458,79 +460,350 @@ After the quantitative pipeline finishes, one call turns the final result bundle
 
 ---
 
-## 10. Implementation architecture
+## 10. System architecture
 
-Everything fits the existing single-container, single-SQLite design. No new services.
+### 10.1 Architectural principles
+
+1. **One pipeline, many consumers.** One monthly market posterior (μ_BL, Σ_BL) is computed once and feeds the outlook, the model portfolios, the optional personal layer and the backtest. The backtest calls the *same* code as the live run, with an earlier `as_of`; there is no separate backtest implementation.
+2. **Point-in-time by construction.** Every layer above storage reads data only through `pit.as_of(t)`. Leakage is prevented structurally, not by convention, and an import-boundary test enforces it.
+3. **Every forecaster is a plug-in with one contract.** Econometric models (M1–M6), machine-learning models (M8–M11, section 11) and Claude (M7) implement the same `Forecaster` protocol. They are scored by the same metrics and earn weight through the same combination step. No model type has a privileged path to the allocation.
+4. **Provenance on every number.** Each forecast, posterior and allocation records the spec hash, data snapshot hash, model artifact hash and code commit, so any output can be traced and reproduced. LLM outputs are reproduced from their stored record.
+5. **Fits the existing deployment.** One container, SQLite WAL, the existing worker thread and maintenance job runner, the managed source collector and the engine/acceptance framework. CPU only; no GPU, no message broker, no separate model server.
+6. **Fail closed to the reference portfolio.** Any missing input, failed model, infeasible optimisation, failed gate or exhausted budget leads to the reference portfolio with a stated reason. It never leads to a stale or partial recommendation shown as current.
+
+### 10.2 Layered view
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ L8 Presentation   React panels: Outlook · Model portfolios · Personal ·     │
+│                   Backtest workspace · Scorecard · ML model cards           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ L7 Delivery       engine AnalysisDefinitions A01–A06 → bundles, exports,    │
+│                   acceptance gating; FastAPI /api/allocation/*              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ L6 Evaluation     walk-forward backtester · metrics · holdout lock ·        │
+│                   trial log · forward-test scorer · drift monitor           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ L5 Decision       optimiser (per reference portfolio) · alerts · trade list │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ L4 Synthesis      calibration · combination (skill weights) · Black–        │
+│                   Litterman posterior · risk model Σ                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ L3 Forecasting    ┌──────────────┐ ┌──────────────────┐ ┌────────────────┐  │
+│ (Forecaster       │ Econometric  │ │ Machine learning │ │ LLM member     │  │
+│  protocol)        │ M1–M6        │ │ M8–M11 (sec. 11) │ │ M7 Claude      │  │
+│                   └──────────────┘ └──────────────────┘ └────────────────┘  │
+│                   model registry · artifact store · hyperparameter specs    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ L2 Features       feature store: PIT feature snapshots, transforms, text     │
+│                   tone indices, targets (realised 12m excess returns)       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ L1 Point-in-time  pit_observation (Tier E / Tier R) · publication lags ·    │
+│    store          bucket_return · as_of() guard                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ L0 Acquisition    existing ProviderRouter → managed source policy →         │
+│                   SourceAcquisition → archived originals + reconciliation   │
+└─────────────────────────────────────────────────────────────────────────────┘
+Cross-cutting: pre-registration & spec hashing · job orchestration (worker,
+maintenance jobs) · provenance ledger · budget ledger (LLM) · backups
+```
+
+Each layer depends only on the layers below it. L3 forecasters do not see each other's outputs, except for the declared stacking input in 11.7 and the quant outputs given to Claude in its input pack (8.2). Both are recorded as explicit dependencies in the model registry, so the combination step can account for them.
+
+### 10.3 Component contracts
+
+Typed Python protocols in `allocation/contracts.py`. All of them are pure functions of their inputs, apart from logging.
+
+```python
+class FeatureSnapshot:            # L2 output, immutable
+    as_of: date; tier: Literal["E", "R"]
+    frame: "DataFrame"            # rows = (entity, as_of), cols = feature_id
+    targets: "DataFrame | None"   # realised y for entity rows with target end ≤ as_of
+    snapshot_hash: str            # hash of PIT rows used
+
+class ForecastDistribution:       # L3 output per bucket
+    bucket: str; mean: float; var: float
+    quantiles: dict[float, float] # at least 0.1, 0.5, 0.9
+    events: dict[str, float]      # calibrated later in L4
+    regimes: dict[str, float] | None
+    model_id: str; artifact_hash: str; as_of: date
+
+class Forecaster(Protocol):       # every model M1..M11
+    model_id: str
+    family: Literal["econometric", "ml", "llm"]
+    depends_on: tuple[str, ...]   # other model_ids it consumes (stacking, Claude pack)
+    def fit(self, history: Sequence[FeatureSnapshot], spec: ModelSpec) -> FittedModel: ...
+    def predict(self, fitted: FittedModel, snap: FeatureSnapshot) -> list[ForecastDistribution]: ...
+
+class Posterior:                  # L4 output, investor-independent
+    as_of: date; mu: Vector; sigma: Matrix
+    weights: dict[str, dict[str, float]]   # bucket → model_id → combination weight
+    view_omega: Vector; provenance: Provenance
+
+class ReferencePortfolio:         # R1..R5, market anchor, optional owner policy
+    id: str; w_ref: Vector; lam: float; caps: Caps; te_max: float; growth_band: float
+
+def optimise(post: Posterior, ref: ReferencePortfolio, w_prev: Vector, costs: Costs) -> Allocation: ...
+```
+
+`fit` receives only snapshots with `as_of ≤ t` and targets whose 12-month window ended by *t*. The backtester passes these through, so purging is enforced in one place (`backtest.training_window(t)`) rather than in each model.
+
+### 10.4 Data flow
+
+**Monthly live run** (worker, 3rd business day after month-end, after the scheduled refresh):
+
+```
+refresh sources ─► pit.ingest ─► features.snapshot(t, E and R)
+   ─► for each registered Forecaster: load fitted artifact (or refit if due) ─► predict
+   ─► calibrate events ─► combine (skill weights) ─► risk model ─► BL posterior
+   ─► optimise × {anchor, R1..R5, owner policy?} ─► alerts ─► Claude memo
+   ─► persist (model_forecast, posterior, allocation, forecast_log) ─► engine bundles A01–A06
+```
+
+**Backtest run** (maintenance job, started from the UI or CLI with a registered spec):
+
+```
+for t in decision dates:
+    snap_t = features.snapshot(t, tier)                     # cached by snapshot_hash
+    for f in forecasters: fitted = registry.get_or_fit(f, spec, t)   # cached by (spec, f, refit point)
+    the same L3–L5 code as the live run
+    simulate execution at t+1 with costs and tax
+score with metrics; write backtest_run and trial log
+```
+
+**Refit cadence:** parameters are refit monthly for cheap models (econometric, linear ML). Tree ensembles are refit every 12 months, with hyperparameters re-selected every 36 months. Each refit point is a cache key, so a backtest that reuses a refit point does not train again.
+
+### 10.5 Storage
+
+| Store | Kind | Content | Mutability |
+|---|---|---|---|
+| `pit_observation`, `bucket_return` | SQLite | Vintaged inputs, bucket returns | Append-only |
+| `feature_snapshot` | SQLite (metadata) + Parquet under `/data/allocation/features/` | Feature matrices per `as_of` and tier, keyed by `snapshot_hash` | Immutable per hash; rebuildable |
+| `model_registry` | SQLite | `model_id`, family, spec hash, hyperparameter space, `depends_on`, status (`research` / `registered` / `retired`), owner-visible model card | Versioned rows |
+| `model_artifact` | SQLite + files under `/data/allocation/models/<sha256>.joblib` | Fitted models per (model, spec, refit point, tier) | Immutable; loaded only if the file hash matches the registry row |
+| `model_forecast` | SQLite | All `ForecastDistribution`s | Append-only |
+| `posterior`, `allocation` | SQLite | Monthly posteriors and allocations per reference portfolio | Append-only |
+| `llm_forecast`, `llm_budget_ledger` | SQLite | Raw Claude calls, cost | Append-only |
+| `backtest_run`, `backtest_trial_log` | SQLite | Results and trial counts | Append-only |
+| `forecast_log` | SQLite with insert-only trigger | Live forward forecasts and allocations | Append-only |
+
+Artifacts are produced only by this application. They are never uploaded or imported, because pickled models execute code on load. Recovery bundles include the registry, forecasts, logs and posteriors. Artifacts and feature Parquet files are excluded because they can be rebuilt from the PIT store; their hashes are included so that a rebuild can be verified.
+
+### 10.6 Package layout
 
 ```
 src/finance_dashboard/allocation/
-    pit.py            # point-in-time store, as_of(), lag model, leakage guard
-    buckets.py        # bucket recipes → monthly EUR total/excess returns
-    features.py       # predictor transforms (changes, percentiles, ECY, CP factor)
+    contracts.py         # protocols and dataclasses above
+    pit.py               # point-in-time store, as_of(), lag model, leakage guard
+    buckets.py           # bucket recipes → monthly EUR total/excess returns
+    features/
+        build.py         # snapshot builder, caching by snapshot_hash
+        transforms.py    # changes, own-history percentiles, z-scores, ECY, CP factor
+        text_tone.py     # dictionary-based central-bank tone indices
+        targets.py       # 12m excess returns, event labels with announcement-date logic
     models/
-        equilibrium.py    # M1
-        building_blocks.py# M2
-        predictive.py     # M3 (univariate + combination)
-        trend.py          # M4
-        regime.py         # M5 (probit, regime classifier, Markov switching)
-        risk.py           # Σ: EWMA, Ledoit–Wolf, HAR, regime mixing
-        llm.py            # M7 (pack, call, validate, aggregate)
-    calibrate.py      # isotonic/Platt, PIT, reliability
-    combine.py        # log-score weights, BL posterior
-    optimise.py       # cvxpy QP/SOCP, resampling, partial adjustment
-    alerts.py         # rebalance/defer rules
-    backtest.py       # walk-forward loop, purging, costs, tax, tiers
-    metrics.py        # OOS R², Clark–West, CRPS, Brier, DSR, bootstrap, SPA
-    preregistration.py# spec hashing, trial log, holdout lock
-    llm_client.py     # Anthropic SDK wrapper: caching, batches, budget, logging
+        equilibrium.py building_blocks.py predictive.py trend.py regime.py   # M1–M5
+        risk.py          # Σ: EWMA, Ledoit–Wolf, HAR, regime mixing (also M6 scaling)
+        llm.py           # M7
+    ml/                  # section 11
+        datasets.py      # panel assembly, pooling, sample weights
+        cv.py            # purged/embargoed walk-forward CV, nested tuning
+        estimators.py    # M8–M11 wrappers implementing Forecaster
+        conformal.py     # adaptive conformal intervals
+        stacking.py      # constrained stacking meta-learner
+        explain.py       # permutation importance, partial dependence, model cards
+        drift.py         # feature drift (PSI), rolling calibration monitors
+        registry.py      # model registry and artifact store
+    calibrate.py combine.py optimise.py alerts.py
+    backtest.py metrics.py preregistration.py
+    llm_client.py llm_pack.py
+    jobs.py              # monthly run and backtest jobs; hooks into worker/maintenance
 ```
 
-- **Engine integration:** four new `AnalysisDefinition`s in `engine/analyses.py`, gated by `research_acceptance`, so that bundles, exports, limitations and saved views behave as for the other questions:
+### 10.7 Integration with the existing application
+
+- **Engine:** new `AnalysisDefinition`s in `engine/analyses.py`, gated by `research_acceptance`, so that bundles, exports, limitations and saved views behave as for the other questions:
   - **A01** Market outlook: general asset-class views and "where to put new money" (layer 1)
   - **A02** Model portfolios R1–R5 and simple versions (layer 2)
   - **A03** Backtest results (per rung, tier and variant)
   - **A04** Forecast scorecard, view hit rates and calibration
   - **A05** Personal allocation, gap analysis and alerts (layer 3; returns an explicit "not configured" state without owner policy or holdings)
+  - **A06** Model cards: ML and econometric model status, importance, drift and weight history
 
   They are added to `definitions/question_followups.json` and the catalogue under a new domain **A — Allocation** with decision-layer text.
-- **Definitions:** `allocation_buckets.json`, `allocation_instruments.json`, `allocation_policy.json` (neutral weights, caps, λ, TE), `allocation_predictors.json` (bucket → registered predictors), `publication_lags.json`, `allocation_preregistration.json`, `llm_models.json`.
-- **Migrations (Alembic):** `pit_observation`, `bucket_return`, `model_forecast` (all models, including Claude-aggregated), `llm_forecast` (raw calls), `backtest_run` (spec hash, tier, metrics JSON), `backtest_trial_log`, `forecast_log` (live, append-only, insert-only trigger).
-- **Jobs:** a monthly job (posterior once, then the outlook, all rungs and the optional personal run) in `worker.py`/`standalone.py`, running on the 3rd business day after month-end following the scheduled refresh. Backtests run as maintenance background jobs (they are expensive) with status in the existing lightweight status API pattern.
-- **API:** `GET /api/allocation/outlook`, `GET /api/allocation/model-portfolios`, `GET /api/allocation/personal`, `GET /api/allocation/backtests`, `POST /api/allocation/backtests` (start a registered variant; requires the action marker), `GET /api/allocation/scorecard`, `GET /api/allocation/forecast-log`, `PUT /api/allocation/policy`.
-- **Frontend:** `MarketOutlook.tsx` (layer 1), `ModelPortfolios.tsx` (layer 2), `PersonalAllocation.tsx` (layer 3, folded unless configured), `BacktestWorkspace.tsx`, `ForecastScorecard.tsx`, using existing ECharts helpers and the visualization contract.
-- **Backups:** policy, preregistration, `forecast_log` and `llm_forecast` are included in version-2 recovery bundles; the API key is excluded.
-- **Dependencies (frozen via uv):** `anthropic`, `cvxpy` + `clarabel`, `statsmodels` (HAC, Markov switching, probit), `scikit-learn` (isotonic only; optional, can be hand-rolled). `numpy` is already present.
+- **Definitions:** `allocation_buckets.json`, `allocation_instruments.json`, `allocation_references.json` (anchor, R1–R5, caps, TE, bands), `allocation_predictors.json` (bucket → registered features), `publication_lags.json`, `allocation_preregistration.json` (including ML hyperparameter spaces), `llm_models.json`, `ml_models.json` (registered ML models and their monotonic/sign constraints).
+- **Jobs:** the monthly run is a step in `worker.py`/`standalone.py` after the refresh cycle. Backtests and ML training run as maintenance background jobs with status in the existing lightweight status API pattern. One heavy job runs at a time, and it never blocks Data Collection status requests.
+- **API:** `GET /api/allocation/outlook`, `GET /api/allocation/model-portfolios`, `GET /api/allocation/personal`, `GET /api/allocation/backtests`, `POST /api/allocation/backtests` (start a registered variant; requires the action marker), `GET /api/allocation/scorecard`, `GET /api/allocation/forecast-log`, `GET /api/allocation/models` (model cards), `PUT /api/allocation/policy`.
+- **Frontend:** `MarketOutlook.tsx`, `ModelPortfolios.tsx`, `PersonalAllocation.tsx` (folded unless configured), `BacktestWorkspace.tsx`, `ForecastScorecard.tsx`, `ModelCards.tsx`, using existing ECharts helpers and the visualization contract.
+- **Diagnostics ZIP:** adds the registry, the latest posterior, the model weights, drift reports and the budget ledger. It excludes the API key and artifacts.
+- **Dependencies (frozen via uv):** `anthropic`; `cvxpy` + `clarabel`; `statsmodels` (HAC, Markov switching, probit, quantile regression); `scikit-learn` (ML layer); `pyarrow` (feature snapshots). `numpy` is already present. No deep-learning framework: section 11.4 explains why.
+
+### 10.8 Compute budget (single CPU container)
+
+| Workload | Estimate | Control |
+|---|---|---|
+| Monthly live run | < 2 min CPU, plus Claude latency | Artifacts are loaded, not retrained, except at scheduled refit points |
+| Full Tier R backtest (≈ 600 decision months, all models) | ~1–3 h CPU, dominated by tree-ensemble tuning | Annual refits, 36-month re-tuning, cached artifacts, `joblib` with ≤ (cores − 1) workers, `nice` priority |
+| Repeat backtest with a changed optimiser or cost only | Minutes | L3 forecasts reused from `model_forecast` by spec hash |
+
+### 10.9 Security and provenance
+
+- The Anthropic key is only an environment variable, and is never logged, exported or backed up.
+- Artifacts load only when their SHA-256 matches the registry.
+- Every bundle carries `Provenance{code_commit, spec_hash, snapshot_hashes, artifact_hashes, llm_record_ids}`. The acceptance model invalidates outputs when any of these change, as it does for existing analyses.
 
 ---
 
-## 11. Delivery phases and gates
+## 11. Machine-learning layer
+
+### 11.1 Purpose and stance
+
+The ML layer adds **nonlinear and interaction effects** and **data-driven variable selection** that the linear econometric models cannot capture. Examples: valuation mattering more when credit stress is high, or curve inversion mattering only together with tightening policy. ML models are ordinary forecasters in L3. They receive no special treatment:
+
+- they obey the point-in-time and purging rules (sections 4.3 and 5.1);
+- they are pre-registered with their hyperparameter search spaces, and every configuration tried counts towards the trial log used for the deflated Sharpe ratio;
+- they earn combination weight only through out-of-sample skill (section 6.4), and must beat the econometric combination on the development period to be registered at all (11.9).
+
+Machine learning is known to help in return prediction mainly through regularisation and pooling, not complexity (Gu, Kelly & Xiu 2020; Bianchi, Büchner & Tamoni 2021 for bond premia). The design therefore favours **regularised, shallow, constrained** models fitted on **pooled panels**.
+
+### 11.2 The sample-size problem and how it is handled
+
+Monthly 12-month targets are heavily overlapping. One series from 1973 gives ≈ 600 monthly rows, but only ≈ 50 independent 12-month outcomes, and the regional equity history from 1990 gives about 35. Unconstrained ML would overfit badly. Countermeasures:
+
+1. **Pooling across entities (panel learning).** One model per *asset family*, fitted across many entities with shared parameters, instead of one per bucket:
+   - equity family: French international country indices (≈ 20+ developed and emerging markets, 1975+) plus the regional buckets;
+   - government-bond family: Swinkels country sovereign returns plus Bundesbank/ECB curve buckets;
+   - credit, gold and others: their own buckets only, so ML is not used for them unless pooled data passes the gate.
+
+   Features are expressed in entity-relative form (own-history percentile, z-score against a 10-year expanding window), so countries are comparable. An entity indicator is never a feature: the model must learn economic relationships, not country identities.
+2. **Long annual pre-training panel.** The Jordà–Schularick–Taylor macrohistory database (already collected via `jst.py`) gives annual equity, bond and bill returns and macro variables for 18 countries since 1870, with **non-overlapping** annual targets. Tier R models may initialise from, or be regularised towards, a model fitted on the JST panel up to *t*. Annual data is used only for years ending before *t*, and results from such models are labelled "annual long-history panel" (Tier R only).
+3. **Effective-sample weighting.** Rows are down-weighted by their target-overlap degree (weight ∝ 1/12 per overlapping month, so each independent year counts once). Entities are weighted so the US does not dominate.
+4. **Strong regularisation and constraints** (11.5), and small feature sets per family (≤ 25 registered features).
+5. **No synthetic training data.** Bootstrap resampling of real rows is used for bagging and uncertainty. Generated or simulated observations are never used for training (charter: no fabricated observations).
+
+### 11.3 Features and targets
+
+**Feature store** (L2): every predictor in section 4.2, transformed per entity into:
+- level, 3- and 12-month change, own-history percentile, and z-score;
+- spreads and ratios defined in the registry (ECY, term spread, credit spread minus expected loss, real yield, carry);
+- momentum (12-1 months) and trend gap, and realised volatility;
+- regime probabilities from M5 (declared as a `depends_on` input);
+- **central-bank tone indices**: hawkish–dovish scores of FOMC and ECB statements, built with a published dictionary method (Apel & Blix Grimaldi 2014 lexicon; Loughran–McDonald for uncertainty). These are deterministic and free from LLM look-ahead. Claude-scored tone is available as a feature **only for post-cutoff months**, as a separate model variant.
+
+Missing feature values are never imputed with future information. Tree models handle missing values natively. Linear models use an expanding-window median plus a missingness indicator.
+
+**Targets:**
+- regression: 12-month excess log return per entity (pooled within a family);
+- quantile targets: the 10/50/90% conditional quantiles of the same quantity;
+- classification: the events from section 2 (12-month drawdown > 15%, recession start, equities underperforming bonds), labelled with announcement-date logic so that the label uses the true event date and the features use only what was known.
+
+### 11.4 Model families (registered ML forecasters)
+
+| ID | Model | Output | Why it is included | Key constraints |
+|---|---|---|---|---|
+| **M8** | **Elastic-net panel regression** (pooled, sklearn `ElasticNetCV` inside the purged CV) | Mean; variance from residuals | Strong, well-understood baseline for variable selection; the linear benchmark the nonlinear models must beat | Sign constraints from economic theory (for example, higher ECY cannot lower the expected equity premium), enforced by refitting without the offending coefficient |
+| **M9** | **Gradient-boosted trees** (`HistGradientBoostingRegressor` and `Classifier`), shallow (depth ≤ 3, ≥ 50 rows per leaf, learning rate ≤ 0.05, early stopping on the purged validation fold) | Mean (squared loss); quantiles (quantile loss, one model per quantile); event probabilities | Captures interactions and thresholds with tabular data; native missing values | **Monotonic constraints** for registered features with a theoretical sign; feature interaction limits by family |
+| **M10** | **Random forest / extra trees**, bagged on block-bootstrap samples (blocks of 12 months) | Mean; spread of tree predictions as an extra variance term | Different bias and variance profile from boosting; robust default settings; aids the combination | Minimum leaf size ≥ 50; max features ≈ √p |
+| **M11** | **Regularised logistic and multinomial regression and a Gaussian HMM** for event and regime probabilities | Event probabilities; 4-state regime probabilities | ML counterpart to the M5 probit and Markov-switching models, with automatic feature selection (L1) | L1 penalty chosen by purged CV; HMM states are matched to economic labels by their mean growth and stress, not by index order |
+
+**Deliberately excluded:** deep neural networks, LSTMs and transformers trained on this data. With ≈ 50–600 effective observations per family, they cannot be estimated reliably. They would also add a heavy dependency and make reproducibility on a CPU container harder. This exclusion is recorded and can be revisited if pooled data grows (for example, daily-frequency volatility models), through the normal registration process.
+
+Volatility and covariance stay econometric (section 6.1). Measured gains from ML there are small for monthly allocation, and Ledoit–Wolf/HAR are robust.
+
+### 11.5 Training protocol
+
+**Nested, purged walk-forward validation.** At each refit point *t*:
+
+```
+training set:   rows with target window end ≤ t                 (outer, from backtest.training_window)
+inner CV:       K = 5 expanding folds over the training set,
+                purge 12 months before each validation fold,
+                embargo 12 months after it  (López de Prado 2018)
+select:         hyperparameters minimising the inner-CV loss
+                (CRPS for distributions, log loss for events, MSE for means)
+refit:          on the full training set with the selected hyperparameters
+predict:        at t only; the result is stored in model_forecast
+```
+
+- **Hyperparameter spaces are pre-registered** in `allocation_preregistration.json` as small grids (≤ 30 configurations per model). Every inner-CV configuration is logged, and the configuration count feeds the trial log.
+- **Seeds are fixed** per (model, refit point). Tree models are trained with 5 seeds, and the predictions are averaged to reduce run-to-run variance.
+- **Losses are proper scoring rules,** so the models are trained for calibrated distributions, not only point accuracy.
+- **Regularisation towards a simpler model:** a boosted model's prediction is shrunk towards the M8 linear prediction, `ŷ = α·ŷ_GBM + (1−α)·ŷ_EN`, with α chosen by inner CV from {0, 0.25, 0.5, 0.75, 1}. α = 0 is a legitimate outcome and is reported.
+
+### 11.6 Uncertainty: conformal prediction intervals
+
+ML point and quantile models are often miscalibrated in small samples. Each ML forecaster's 10/90% interval is therefore corrected with **adaptive conformal inference** (Gibbs & Candès 2021). The interval width is adjusted online using past coverage errors of forecasts whose outcomes are known by *t*, with a target miscoverage of 20%. Predictive variance for the Black–Litterman step comes from the conformalised interval width. Coverage is monitored in the scorecard. This gives distribution-free, time-adaptive coverage, which suits non-stationary markets.
+
+### 11.7 How ML outputs enter the allocation
+
+- **As ordinary forecasters:** M8–M11 outputs join M1–M7 in the skill-weighted combination (section 6.4) and the Black–Litterman view uncertainty Ω. If an ML model has no out-of-sample skill, it gets no influence.
+- **Optional stacking (registered variant, not default):** a constrained meta-learner (non-negative least squares on out-of-sample forecasts, weights summing to 1, shrunk 50% towards equal weights). It replaces the log-score weights only if it beats them on the development period. The forecast-combination puzzle makes this unlikely, so it is a tested variant rather than an assumption.
+- **Event and regime probabilities** from M11 and M9 are recalibrated in L4 like all other probabilities. They feed the alerts and the regime-mixed covariance through the same combination.
+
+### 11.8 Interpretability (model cards, engine analysis A06)
+
+For every registered ML model, the system publishes a model card per refit point:
+- data span, entities, effective sample size and refit date;
+- selected hyperparameters and the shrinkage α towards linear;
+- **permutation feature importance** on the most recent purged validation fold, and **partial-dependence and ICE plots** for the top features (sklearn `inspection`, no extra dependency). An optional TreeSHAP contribution breakdown per month may be added later as a separate dependency decision;
+- monotonic and sign constraints and whether they bound;
+- out-of-sample skill (R², CRPS, Brier), conformal coverage and combination weight history;
+- drift status (11.9).
+
+In the monthly outlook (layer 1), each view lists the top contributing features across all models with nonzero weight. For tree models this uses the model's partial dependence at today's feature values. Contributions are described as associations, never as causes (charter interpretation standard).
+
+### 11.9 Lifecycle: registration, monitoring, retirement
+
+| Stage | Rule |
+|---|---|
+| **Research** | Any ML variant may be fitted on the development period. Results are visible only in the backtest workspace, labelled "research", and count towards the trial log. |
+| **Registration** | Requires, on the development period (purged walk-forward, Tier R and Tier E where available): CRPS or log loss better than the M8 linear baseline **and** better than the econometric combination for at least one family, with a Diebold–Mariano / Clark–West p-value < 0.10; conformal coverage within ±5 pp of target; and stable permutation importance (top-5 features overlap ≥ 3 across the last three refits). The specification is then frozen into the pre-registration before the holdout. |
+| **Holdout** | Evaluated once with all other models (section 5.2). Failure leads to a status of `research`, so the model is kept for transparency with zero weight. |
+| **Production monitoring** | Monthly: population stability index (PSI) per feature against the training distribution (PSI > 0.25 flags a feature); rolling 36-month calibration and coverage; combination weight. A flag is shown on the model card. Two consecutive coverage failures halve the model's weight cap until the next refit. |
+| **Retirement** | Six consecutive months of negative rolling skill, or a manual owner decision. Retired models keep their history and forecasts. |
+
+New ML models after the holdout has been used can be evaluated only on the **live forward log** (and on future data). They are never re-evaluated on the spent holdout. This prevents repeated holdout mining.
+
+### 11.10 What the ML layer must not do
+
+- Train on, or tune hyperparameters with, any row whose target window ends after the decision date.
+- Use entity identity, calendar dates or known event dummies (for example a "2008" flag) as features.
+- Generate synthetic observations, or fill missing history with model output.
+- Bypass the combination step, override optimiser constraints, or produce "crash probability" displays unless the corresponding event model passed calibration gates.
+- Be retrained automatically on a changed specification without a new pre-registration entry.
+
+---
+
+## 12. Delivery phases and gates
 
 Each phase is an end-to-end slice with tests and passing CI. Production claims follow AGENTS.md: deploy, collect, then verify with a post-deployment diagnostic ZIP.
 
 | Phase | Deliverable | Gate |
 |---|---|---|
 | **B0** | Charter amendment approved; this design reviewed; risk ladder, market anchor and cost assumptions confirmed by owner | Owner sign-off recorded in charter revision log |
-| **B1** | New sources (French regions/UMD, AQR, Bundesbank curve, ECB curves/€STR, EBP, ESI, SPF, Nareit, Cboe VIX, CB statements) via the managed collector, with originals and reconciliation | Source fixtures and reconciliation tests; registered in `series.json`; production export shows them `available` |
-| **B2** | `pit` store, lag table, `as_of()` and leakage guard; bucket return construction | Leakage tests (a value with `known_from > t` is never visible; a hand-built vintage fixture reproduces the ALFRED first-release value). Bucket returns reconcile to independent fixtures (par-bond arithmetic, FX conversion, hedge carry). |
-| **B3** | Backtest harness with baselines only; metrics library | Neutral/60-40/risk-parity results reproduce hand-calculated fixtures and P05's rebalancing numbers on a shared period. Metric unit tests against published examples (Clark–West, DSR, Brier). |
-| **B4** | Quant models M1–M6, calibration, combination, BL, optimiser, alerts; development-period results | Optimiser property tests (constraints always hold; infeasible inputs fall back to neutral). Development-period report. Pre-registration frozen and hashed. |
-| **B5** | One-time holdout evaluation (Tiers E and R) and acceptance gate | Holdout report committed under `docs/`, including the trial count; gate result decides "validated" vs "research view" |
+| **B1** | New sources (French regions/UMD/country indices, AQR, Bundesbank curve, ECB curves/€STR, EBP, ESI, SPF, Nareit, Cboe VIX, CB statements) via the managed collector, with originals and reconciliation | Source fixtures and reconciliation tests; registered in `series.json`; production export shows them `available` |
+| **B2** | `pit` store, lag table, `as_of()` and leakage guard; bucket return construction; feature store with snapshot hashing; text tone indices | Leakage tests (a value with `known_from > t` is never visible; a hand-built vintage fixture reproduces the ALFRED first-release value); import-boundary test. Bucket returns reconcile to independent fixtures (par-bond arithmetic, FX conversion, hedge carry). Snapshot rebuild is byte-identical. |
+| **B3** | Contracts, backtest harness with baselines only; metrics library | Baseline results reproduce hand-calculated fixtures and P05's rebalancing numbers on a shared period. Metric unit tests against published examples (Clark–West, DSR, Brier, CRPS). |
+| **B4** | Econometric models M1–M6, calibration, combination, BL, optimiser, alerts; development-period results | Optimiser property tests (constraints always hold; infeasible inputs fall back to the reference portfolio). Development-period report. |
+| **B4-ML** | ML layer: panel datasets, purged nested CV, M8–M11, conformal intervals, model registry and artifact store, model cards, drift monitor; development-period comparison against the econometric combination | CV leakage test (a planted future-dated feature yields no inner-CV gain); a deterministic fixture fit per model with fixed seeds; monotonic constraint test; artifact hash-check test; conformal coverage test on simulated exchangeable data (test harness only, never training data). ML registration decisions recorded. **Pre-registration frozen and hashed after this phase.** |
+| **B5** | One-time holdout evaluation (Tiers E and R) of all registered models together, and the acceptance gate | Holdout report committed under `docs/`, including the trial count; gate result decides "validated" vs "research view" |
 | **B6** | Claude member: pack builder, client with budget, schema validation, batch replay of post-cutoff months, memorisation probe, live forward log, explainer with number check | Offline tests with recorded responses (no network in CI). Budget-cap test. A schema-failure response becomes missing. A memo number mismatch blocks the memo. |
-| **B7** | UI panels, exports, backups, documentation (README, ARCHITECTURE, RUNNING, handoff) | Frontend and browser tests; light/dark and mobile review |
-| **B8** | Deployment and first live month | Post-deployment ZIP shows A01–A05 bundles, the `forecast_log` entry and the LLM spend ledger |
+| **B7** | UI panels (including model cards), exports, backups, documentation (README, ARCHITECTURE, RUNNING, handoff) | Frontend and browser tests; light/dark and mobile review |
+| **B8** | Deployment and first live month | Post-deployment ZIP shows A01–A06 bundles, the `forecast_log` entry, model registry state and the LLM spend ledger |
 
-Testing principles: CI never calls the Anthropic API; responses are recorded fixtures. Every model gets a deterministic fixture test. Every backtest result bundle stores the spec hash, data snapshot hash and code commit.
+Testing principles: CI never calls the Anthropic API; responses are recorded fixtures. Every model gets a deterministic fixture test. Every backtest result bundle stores the spec hash, data snapshot hash, artifact hashes and code commit. CI runs ML tests on small fixture panels so the suite stays fast.
 
 ---
 
-## 12. Open points for the owner (to settle in B0)
+## 13. Open points for the owner (to settle in B0)
 
 1. Confirm the general reference ladder (section 3): five rungs at 20/40/60/80/100% growth assets, anchored on the global market portfolio. Separately, and optionally, define your own policy for the personal layer.
 2. Your broker fee schedule and whether "after-tax" mode should be the default view.
 3. Which example funds to list per bucket in the general layer (UCITS, and optionally US-listed and index-fund alternatives), and which ones you use personally.
 4. Whether the €10/month Claude cap and the default models suit you.
 5. Approval of the charter amendment text in section 1.
+6. Whether a full backtest taking 1–3 hours of CPU on the home server is acceptable, or whether heavy ML training should be run only on the local machine and its artifacts rebuilt on the server from the same specification.
 
-## 13. Primary references
+## 14. Primary references
 
-Black & Litterman (1992); He & Litterman (1999); Campbell & Shiller (1998, 2001); Campbell & Thompson (2008); Goyal & Welch (2008); Rapach, Strauss & Zhou (2010); Clark & West (2007); Cochrane & Piazzesi (2005); Fama & Bliss (1987); Estrella & Mishkin (1998); Gilchrist & Zakrajšek (2012); Hamilton (1989); Ang & Bekaert (2002); Moskowitz, Ooi & Pedersen (2012); Hurst, Ooi & Pedersen (2017); Moreira & Muir (2017); Ledoit & Wolf (2004); Corsi (2009); Michaud (1998); Leland (1999); Donohue & Yip (2003); Bailey & López de Prado (2014); López de Prado (2018); Politis & Romano (1994); Hansen (2005); Hodrick (1992); Newey & West (1987); Claeskens, Magnus, Vasnev & Wang (2016); Gneiting & Raftery (2007, proper scoring rules); Erb & Harvey (2013); Asness (2003); Fama & French (1993, 2015).
+Black & Litterman (1992); He & Litterman (1999); Campbell & Shiller (1998, 2001); Campbell & Thompson (2008); Goyal & Welch (2008); Rapach, Strauss & Zhou (2010); Clark & West (2007); Diebold & Mariano (1995); Cochrane & Piazzesi (2005); Fama & Bliss (1987); Estrella & Mishkin (1998); Gilchrist & Zakrajšek (2012); Hamilton (1989); Ang & Bekaert (2002); Moskowitz, Ooi & Pedersen (2012); Hurst, Ooi & Pedersen (2017); Moreira & Muir (2017); Ledoit & Wolf (2004); Corsi (2009); Michaud (1998); Leland (1999); Donohue & Yip (2003); Bailey & López de Prado (2014); López de Prado (2018); Politis & Romano (1994); Hansen (2005); Hodrick (1992); Newey & West (1987); Claeskens, Magnus, Vasnev & Wang (2016); Gneiting & Raftery (2007, proper scoring rules); Erb & Harvey (2013); Asness (2003); Fama & French (1993, 2015); Doeswijk, Lam & Swinkels (2014, 2019); Jordà, Knoll, Kuvshinov, Schularick & Taylor (2019, rate of return on everything); **machine learning:** Gu, Kelly & Xiu (2020); Bianchi, Büchner & Tamoni (2021); Friedman (2001, gradient boosting); Breiman (2001, random forests); Zou & Hastie (2005, elastic net); Gibbs & Candès (2021, adaptive conformal inference); Apel & Blix Grimaldi (2014, central-bank tone); Loughran & McDonald (2011); Wolpert (1992) and Breiman (1996) on stacking.
