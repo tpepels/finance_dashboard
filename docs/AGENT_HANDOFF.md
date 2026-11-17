@@ -1,4 +1,4 @@
-# Global Capital Monitor — agent handoff (16 November 2026, fourth checkpoint)
+# Global Capital Monitor — agent handoff (17 November 2026, fifth checkpoint)
 
 **Purpose:** Resume the existing work in `tpepels/finance_dashboard` without reopening the completed audit or rebuilding implemented fixes. The authoritative source is code on `main`; this file is the investigation checkpoint, not a substitute for tests or new production evidence.
 
@@ -6,8 +6,8 @@
 
 - **Verified code commit:** `37c20fd` (WID quarantine reason). Earlier in this checkpoint: WID rebinding `178806c`, BLS contact `6d9bfce`, upload-status race `f03237a`.
 - **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/43981328973 — **passed** all four jobs: Python (1,566 tests, 10 skipped), frontend, browser, release-image.
-- **Deployed release:** `0.2.22+627304a4cd605b11`, activated 2026-11-16T19:24:13Z, server checkout `612f523`. It contains `178806c`, `6d9bfce` and `f03237a` but **not** `37c20fd`; the owner deploys.
-- **Post-collection export:** on `0.2.22`, prepared 2026-11-16T23:38:42Z, after collection run `4f370bd9b5414ba3a7a4caf79eaebbda` (22:31Z to 23:37Z).
+- **Deployed release:** `0.2.23+4c5b87bf970451cc`, activated 2026-11-17T10:27:01Z, server checkout `b7bbc3a` (contains every fix above). `BLS_USER_AGENT` is set in the container (value not recorded here).
+- **Post-collection export:** on `0.2.23`, prepared 2026-11-17T11:36:58Z, after collection run `4543c85475494761b1d92b9dfbfdb655` (10:28Z to 11:36Z).
 
 ## Completed and tested work — do not repeat
 
@@ -32,23 +32,23 @@ The preceding commits already implemented and verified:
 
 The scientific-acceptance and independent original-source gates were **not** weakened.
 
-## Production state after the collection on 0.2.22 (export 2026-11-16T23:38Z)
+## Production state after the collection on 0.2.23 (export 2026-11-17T11:36Z)
 
-**651** registered histories, **624** stored, **51** attention items (0.2.18 baseline: 79; 0.2.20 after collection: 66). The 54 ICIO failing originals stay quarantined; do not rebalance or waive them. Research assessment was still running when the export was taken, so its counts were not re-read.
+**651** registered histories, **626** stored, **52** attention items (0.2.18 baseline: 79). The 54 ICIO failing originals stay quarantined; do not rebalance or waive them.
 
 | Source | Attention | State in export | Verdict |
 | --- | --- | --- | --- |
-| SEC_NMFP | 0 | all four `available`, 16 months through 2026-10 | **Fixed and verified in production** (`b833082`, since 0.2.20). |
-| OECD_NFC_ACCOUNTS | 0 | ES and FR transactions `available` through 2025 | **Verified in production** (since 0.2.20). `profit.es.nfc_net_fixed_assets` and `profit.pt.nfc_net_fixed_assets` end 2023 and read `source_checked_no_newer_data`; not attention items. |
-| WID national wealth-income ratios | 15 -> 0 | all `available`; 226 annual values 1800-2025 (PT: 46, 1980-2025), equal to the archived originals | **Fixed and verified in production** (`b8602a8` + `178806c`). No `source_mapping_mismatch` events. |
-| WID world aggregates | 8 | `collection_failed`, reported as `wid_observation_invalid` | **Correctly rejected** (blank WID source citation), **mislabelled**. The label is fixed by `37c20fd`, not deployed; expect `wid_metadata_invalid` after the next deploy and collection. |
-| WID absent measures | 17 | `publisher_measure_absent` | **Correct classification**, verified in production. |
-| WID aged histories | 22 | `stale` (21 end 2023, 1 ends 2022) | **Unchanged.** Needs a newer publisher release. |
-| BIS_PROPERTY | 1 | `property.jp.nominal_residential.bis` `stale` | **Unchanged, publisher lag.** The live BIS series ends 2025-Q4. Bounds for US/DE/PT/EA expire 2026-11-26. |
-| BLS_OEWS | 2 | one `provider_http_403`, one `source_policy_deferred` | **Unchanged.** `BLS_USER_AGENT` is not set on the server; nothing has been sent with a declared contact yet. |
-| EUKLEMS | 1 | `stale`, `labour.us.euklems_labour_compensation` ends 2020 | **Unchanged, publisher gap.** The archived US workbook has a blank 2021 `LAB` cell for `TOT`. |
-
-The 17 absent WID measures are `wcapsh999i` in all six areas, `aptinc` `p99p99.9` in all six, and `aptinc` `p90p99` in US, FR, PT, CN and WO.
+| SEC_NMFP | 0 | all four `available`, 16 months through 2026-10 | **Fixed and verified** (`b833082`). |
+| OECD_NFC_ACCOUNTS | 0 | ES and FR `available` through 2025; ES/PT net fixed assets `source_checked_no_newer_data` (end 2023) | **Verified.** |
+| WID national wealth-income ratios | 0 | 15 `available`, 1800-2025 (PT 1980-2025), equal to the archived originals | **Fixed and verified** (`b8602a8`, `178806c`). |
+| BLS_OEWS | 0 | both `available`, five annual values 2021-2025 | **Fixed and verified** with the owner's declared contact (`6d9bfce`). |
+| WORLD_BANK | 0 | recovered | The nightly 2026-11-17T00:14Z run had `ReadTimeout` on 7 series; data was preserved and the next run succeeded. Transient, no code change. |
+| WID world aggregates | 8 | `collection_failed`, `wid_metadata_invalid` | **Correctly rejected and labelled** (`37c20fd`): WID leaves the source citation blank. |
+| WID absent measures | 17 | `publisher_measure_absent` | Correct: `wcapsh999i` in all six areas, `aptinc` `p99p99.9` in all six, `aptinc` `p90p99` in US, FR, PT, CN and WO. |
+| WID aged histories | 22 | `stale`; refreshed successfully 2026-11-17 | **Publisher lag.** The current WID world file ends in 2023 (country files reach 2025); `piketty.in.real_pretax_average.p90_99` ends 2022. The recent-check state does not apply because WID runs record `native_managed_unlinked` evidence without a bundle digest. |
+| FED_G17_DIFFUSION | 3 | `stale`, through 2026-08 | **Expected until today's release.** The publication bound expired 2026-11-17; the Fed publishes the next G.17 at 09:15 ET on 2026-11-17. Re-check after a refresh that runs later than that. |
+| BIS_PROPERTY | 1 | `property.jp.nominal_residential.bis` `stale` | Publisher lag; live BIS ends 2025-Q4. |
+| EUKLEMS | 1 | `labour.us.euklems_labour_compensation` ends 2020 | Publisher gap; blank 2021 `LAB` `TOT` cell. |
 
 ## Decisions taken on the owner's behalf (16 November 2026)
 
@@ -79,11 +79,10 @@ Before any production validation, **confirm the owner deployed the new commit**,
 
 ## Exact continuation task
 
-1. After the owner deploys a release containing `37c20fd`, start a collection (`POST /api/data/collection/start` with `Content-Type: application/json` and `X-GCM-Action: dashboard`; about an hour) and take a new export. Expect 51 attention items, with the 8 WID world series now `wid_metadata_invalid`. Report any deviation by exact source ID.
-2. BLS OEWS: the owner still has to set `BLS_USER_AGENT` (a contact, e.g. `GlobalCapitalMonitor/0.2 name@example.org`) in the server environment and pass it through the `~/media-stack` Compose file. Then check whether the two OEWS series collect. If BLS still refuses, fall back to the owner downloading `oesm21nat.zip`..`oesm25nat.zip`. Do not bypass the refusal.
-3. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
+1. After the next scheduled refresh (later than 2026-11-17T14:15Z), check that the three G.17 diffusion series move past 2026-08. If they do not, read `diff_sa.txt` and compare it with the stored history before changing anything.
+2. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
+3. The other 49 attention items are publisher-side (22 WID lag, 17 WID absent, 8 WID uncited, BIS JP, EU KLEMS). They need no code change; re-check them after WID's next annual release.
 4. Keep the ICIO originals quarantined. Add regression tests from minimal original samples with source identity; keep full publisher files and credentials out of Git.
-5. The remaining 51 items are publisher-side (22 WID stale, 17 WID absent, 8 WID uncited, BIS JP lag, EU KLEMS gap) or need the BLS setting. None is a known software defect.
 
 Local notes: the virtualenv lacked the declared `numpy` dependency, which made 10 ICIO tests error until it was installed at the locked version.
 
