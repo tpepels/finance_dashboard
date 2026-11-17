@@ -1,13 +1,12 @@
-# Global Capital Monitor — agent handoff (17 November 2026, seventh checkpoint)
+# Global Capital Monitor — agent handoff (17 November 2026, eighth checkpoint)
 
 **Purpose:** Resume the existing work in `tpepels/finance_dashboard` without reopening the completed audit or rebuilding implemented fixes. The authoritative source is code on `main`; this file is the investigation checkpoint, not a substitute for tests or new production evidence.
 
 ## Last verified checkpoint
 
-- **Verified code commit:** `befa540` (independent copper and OECD earnings readers). Earlier today: ICIO materiality `47b1622`, quota retry `f114404`, known limitations `550bf70`. CI for `befa540` must be checked before relying on it.
-- **Last fully verified CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/44078441400 (`550bf70`, all four jobs passed). Local checks at `befa540`: 1,595 Python tests (10 skipped), 242 frontend tests, type-check and catalogue validation pass.
-- **Deployed release:** `0.2.26+23dce00440fc7c11`, activated 2026-11-17T15:02:06Z by the agent (owner-authorised ssh deploy), server checkout `314e722`. After a collection and a full research assessment (evaluated 2026-11-17T15:24:25Z): **28 accepted, 10 conditional, 0 incomplete, 1 deferred** (was 24/12/2/1). G01, G02, C07 and L08 are accepted; the ICIO finding is documented information; the three G.17 diffusion series are current.
-- **Post-collection export:** on `0.2.23`, prepared 2026-11-17T11:36:58Z, after collection run `4543c85475494761b1d92b9dfbfdb655` (10:28Z to 11:36Z).
+- **Verified code commit:** `13823dc`. CI passed all four jobs on every commit pushed today; the last full run is for `13823dc`.
+- **Deployed release:** `0.2.29+1b798d5ccfe24263`, activated 2026-11-17T17:01:35Z by the agent. The owner authorised the agent to deploy itself: `ssh media-server 'cd ~/media-stack/finance_dashboard && git pull --ff-only && cd .. && sh finance_dashboard/deploy.sh'` after green CI.
+- **Verified research state on 0.2.26/0.2.28:** 28 accepted, 10 conditional, 0 incomplete, 1 deferred (G03). The 0.2.29 descoping (item 24) is deployed; confirm P04 and P05 have no open gates after the next assessment.
 
 ## Completed and tested work — do not repeat
 
@@ -36,6 +35,9 @@ The preceding commits already implemented and verified:
 19. Independent readers for copper and OECD earnings (`befa540`). The Pink Sheet reader lacked copper (`source_identity_mismatch`); OECD earnings had no reader and fell through to the BIS JSON branch (`source_schema_invalid`). Against the production originals all 20 OECD earnings series and copper (802 months) now read with the same period counts as the stored histories. This should move C07 and L08 off `incomplete` once deployed and the assessment reruns; verify that rather than assume it.
 20. Owner inputs count only saved fields (`584d82f`). `validate()` fills absent fields from the example; `supplied_roles` used to accept those as owner-supplied. `save_owner_inputs` now records `supplied_fields`; `load_owner_inputs` returns `supplied_fields`/`example_fields`; P04/P05 are labelled examples while any field they read is an example.
 21. G01/G02 measured on the ACWI ETF (`bb6fa4e`, owner-approved 2026-11-17). The iShares MSCI ACWI ETF N-PORT holdings contracts are now the primary roles (previously an accepted fallback for licensed MSCI weights); MSCI factsheet bindings and the published top-ten comparison stay. Specification updated.
+22. Fund look-through (`feb90c6`, `0b406b1`). `fund_lookthrough.py` reads the owner's 11 equity ETFs from their issuers and computes the value-weighted euro-area share for P04: iShares via the BlackRock fund-document workbook (portfolio ids 253743, 284219, 296576, 319084; ISIN in Key Facts; trading currency), SPDR via `holdings-daily-emea-en-spya-gy.xlsx` (ISIN in header; currency), VanEck via fund page (ISIN) plus `/ie/en/investments/{semiconductor-etf,space-etf,quantum-computing-etf}/downloads/holdings/` (Bloomberg exchange code; unknown codes fail), Vanguard via `www.de.vanguard/gpx/graphql` (port ids 9679, 9677, 9694; ISIN in the fund query; issuer country, because Vanguard gives no currency per holding). Originals are archived under `source-evidence/fund-lookthrough/<ISIN>/<date>/<digest>` with receipts; a deferred fetch falls back to the newest hash-verified archive of at most 45 days. Run: `docker exec finance-dashboard python -m finance_dashboard.fund_lookthrough --apply`; report in `/data/maintenance/fund-lookthrough.json`. Result on 2026-11-17: equity euro share 0.0569, saved as the owner's `equity_euro_share`.
+23. Source policies for `www.blackrock.com`, `www.ssga.com`, `www.vaneck.com` and `www.de.vanguard`. POST is allowed only for a policy with `read_only_graphql_post` (declared paths, JSON body of at most `max_body_bytes`, a `query` and no `mutation`/`subscription`); every other policy stays GET/HEAD.
+24. Descoped under the owner's delegation (`13823dc`): P04 `convexity` (the calculation is first-order only) and P05 `constituent_total_returns` and `benchmark_weights` (the replay uses asset-class index returns and compares rules without benchmark attribution). Each `descoped_roles` entry says when to re-add it.
 
 The scientific-acceptance and independent original-source gates were **not** weakened.
 
@@ -94,19 +96,19 @@ Before any production validation, **confirm the owner deployed the new commit**,
 
 ## Exact continuation task
 
-1. Check CI for `befa540`. After the owner deploys it, wait for the research assessment to finish (`/api/diagnostics` -> `status.assessment_running` false) and read `/api/diagnostics/limitation-assessment`. Expect: the ICIO finding documented/information; C07 and L08 no longer `incomplete`; the 25 WID limitations documented. If C07 or L08 stay incomplete, read their `blocking_role_evidence` and run `reconcile_session` read-only for the series (see item 19).
-2. After the first nightly refresh on that release, check that OECD corporate account series no longer show `refresh_state` deferred for days (item 16).
-3. G.17 diffusion: the Fed released on 2026-11-17 at 09:15 ET. After the next refresh the three series should move past 2026-08; if not, compare `diff_sa.txt` with the stored history.
-4. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
+1. After the next assessment on 0.2.29, confirm P04 and P05 have no open gates (`/api/diagnostics/limitation-assessment`). Their remaining state is conditional by documented limitations only (owner values not verified against a broker, latest revised data).
+2. **iShares SWDA source broken.** iShares moved its site in November 2026; `ucits_holdings.CSV_URL` (`.../251882/.../latest-holdings.csv`) now returns 400 "Unknown site: uk". The archived SWDA snapshot of 2026-11-05 keeps P01 valid until its 200-day limit (about 2027-05-24). The new BlackRock fund-document workbook (item 22) has holdings with weights and market currency but no ISIN or location per holding, so it cannot simply replace the CSV for P01's identity and country fields; investigate `.../product-data/api/v2/get-product-data` before that date.
+3. Re-run the fund look-through monthly (Vanguard publishes month-end holdings) or when the owner's holdings change.
+4. BIS nominal bounds expire 2026-11-26: re-check US/DE/PT/EA and Japan against the live BIS series; do not extend without a newer publication.
 5. On or after WID's next annual release (review date 2027-07-01), re-check the 25 known limitations and the 22 aged WID histories.
+
 
 ## Open research questions and who can close them
 
-Last evaluated state (0.2.20): 24 accepted, 12 conditional, 2 incomplete (C07, L08 — addressed by item 19), 1 deferred (G03).
+State on 0.2.28: 28 accepted, 10 conditional, 0 incomplete, 1 deferred.
 
-- **Conditional by method, no action possible:** C02, F01, F07, L04, M04, P02, V03 carry documented method limitations ("qualified"). This is their intended final state.
-- **Proprietary data:** G01 and G02 need exact MSCI constituent and country weights, which MSCI licenses; the accepted fallback uses dated ACWI ETF N-PORT positions. G03 (deferred extension) needs worldwide listed ultimate-parent income with fiscal/currency identity, which only commercial fundamentals databases provide. Do not substitute national-account or index-earnings proxies.
-- **Owner inputs:** P01 needs a dated, identified snapshot of the owner's fund positions; P04 needs actual currency weights and modified duration (convexity is not used); P05 needs target and actual weights, rebalancing policy, trading costs, tax policy and a withdrawal plan. These are entered in the app's portfolio section, never fetched or inferred.
+- **Conditional by documented limitations (intended end state):** C02, F01, F07, L04, M04, P01, P02, V03, and P04/P05 once item 24 is confirmed.
+- **Deferred:** G03 needs worldwide listed ultimate-parent income; no free source exists (Fortune/FT Global 500, Taxplorer CbCR and Kaggle sets are partial or unsourced). Do not substitute national-account or index-earnings proxies under G03.
 
 
 ## Verification commands
