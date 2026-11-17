@@ -1,7 +1,7 @@
 # Backtesting and allocation module — design
 
 **Status:** design proposal, 17 November 2026. Not implemented. Requires an owner-approved charter amendment (section 1) before any code lands.
-**Scope:** a walk-forward backtesting and monthly allocation engine for a EUR-based index/ETF investor. It combines established indicators and financial econometrics with Claude as one ensemble member, and produces a monthly strategic allocation plus rebalance/defer alerts.
+**Scope:** a walk-forward backtesting and monthly allocation engine for EUR-based index/ETF investors. It combines established indicators and financial econometrics with Claude as one ensemble member. It produces **general recommendations** (a market outlook and model portfolios at five risk levels) and, optionally, recommendations personalised to the owner's own policy and holdings.
 **Governing documents:** [scientific charter](../../PHASE1_SCIENTIFIC_CHARTER.md), [analysis catalogue](../../PHASE1_ANALYSIS_CATALOGUE.md), [architecture](../../ARCHITECTURE.md), [source policy](../../SOURCE_POLICY.md), [agent handoff](../../AGENT_HANDOFF.md).
 
 ---
@@ -19,7 +19,8 @@
 | 7 | Data rigour | **Two labelled tiers** | Tier E (real-time vintages) for headline results; Tier R (revised data with conservative publication lags) for longer history, labelled optimistic. |
 | 8 | Data rights | **Free, including free API keys** | The charter's free-data rule stands. Registered free keys (FRED/ALFRED, Tiingo/EODHD free tiers) are allowed; paid feeds are not. |
 | 9 | Generality | **Owner only, EUR** | One EUR investor profile in `owner_inputs.json`. Bucket and instrument mappings are data, so other UCITS/US ETFs or index funds can be substituted without code changes. No multi-user profiles. |
-| 10 | Risk budget and benchmark | **Moderate, around the profile's neutral policy** | Benchmark = the owner's neutral policy portfolio. Ex-ante tracking error ≤ 3%, equity share ±15 pp, per-bucket caps. |
+| 10 | Risk budget and benchmark | **Moderate, around the profile's neutral policy** | Each reference portfolio is its own benchmark. Ex-ante tracking error ≤ 3%, equity share ±15 pp, per-bucket caps. |
+| 11 | Follow-up (17 November): portfolio dependence | **"Not too fixed on the provided portfolio; also give general recommendations"** | The primary output is **portfolio-independent**: a market outlook per asset class (layer 1) and recommended model portfolios at five risk levels (layer 2). The owner's policy and recorded holdings are an **optional** personal layer (layer 3) that reuses the same forecasts. The forecasting and backtest never read holdings. See section 7. |
 
 ---
 
@@ -27,7 +28,7 @@
 
 The charter currently states "context only, never a timing signal". It also forbids unsupported crash probabilities and treats predictive claims as **category E**, which requires real-time data, leakage controls, baselines, independent holdouts and calibration. A monthly 12-month allocation is a conditional, slow-moving timing decision, so it needs an explicit owner revision. Proposed wording, to be added to the charter's revision log once approved:
 
-> **Revision 2026-11-xx (owner-directed): validated conditional allocation.** The application may recommend a monthly strategic allocation that deviates from the owner's neutral policy within a declared risk budget, **only to the extent that the deviating forecasts have earned out-of-sample skill under the category-E protocol** (pre-registered holdout, point-in-time data, purged walk-forward validation, baselines, calibration, deflated performance statistics). When skill is not established, the recommendation equals the neutral policy and says why. Recommendations are decision support for the owner, not automated trading or advice to third parties.
+> **Revision 2026-11-xx (owner-directed): validated conditional allocation.** The application may publish monthly asset-class views and recommended allocations that deviate from declared reference portfolios (the market anchor, a five-rung risk ladder and, optionally, the owner's policy) within a declared risk budget, **only to the extent that the deviating forecasts have earned out-of-sample skill under the category-E protocol** (pre-registered holdout, point-in-time data, purged walk-forward validation, baselines, calibration, deflated performance statistics). When skill is not established, the recommendation equals the reference portfolio and says why. Recommendations are general, educational decision support for the investor using the installation. They are not automated trading or personalised advice to third parties.
 
 The design enforces this by construction: forecasts enter the optimiser through a Black–Litterman posterior whose view confidence is the forecast's measured out-of-sample error (section 6.4). **An unskilled model has infinite view uncertainty and therefore no influence.** "No validated edge, hold the policy" is a legitimate and common output.
 
@@ -91,18 +92,23 @@ New definition files are `definitions/allocation_buckets.json` (bucket → retur
 
 **Costs.** Per bucket: TER (from the chosen ETF's KID), half-spread (default 5 bp core / 15 bp satellite), a per-trade broker fee (owner input) and measured tracking difference. Optionally, Portuguese tax: 28% on realised gains at sale, so routing contributions (deferring gains) is modelled explicitly. Taxes are applied only in "after-tax" backtest mode.
 
-**Neutral policy** (owner-editable, default proposal):
+**Reference portfolios (general, not owner-specific).** Recommendations are made against a published, rules-based ladder, so they apply to any EUR index investor:
 
-| Group | Weight | Split |
-|---|---|---|
-| Equity | 60% | Free-float world weights at *t* (FTSE All-World regional weights from existing MSCI/FTSE factsheet series; Tier R uses French regional market caps) |
-| EUR government | 25% | short 5 / intermediate 12 / long 3 / linker 5 |
-| Global government, hedged | 5% | |
-| IG credit | 5% | |
-| Gold | 5% | |
-| Factors, HY, REIT, commodities, cash | 0% | Each capped (default ≤ 10%; factor sleeve ≤ 20% combined) |
+1. **Market anchor.** The investable *global market portfolio* is the theoretical neutral (CAPM; Doeswijk, Lam & Swinkels 2014/2019, whose return series the application already registers). Its free-float equity regional split comes from FTSE All-World regional weights at *t* (existing factsheet series), with French regional market caps for Tier R. Within bonds, the anchor holds EUR government bonds across maturities in proportion to the euro area AAA outstanding-debt maturity profile (ECB), plus hedged global government and IG credit in market-value proportion. Gold is held at its approximate share of investable wealth (~2–3%).
+2. **Risk ladder.** Five reference portfolios differ only in their growth/defensive split, with the internal mix of each side taken from the market anchor:
 
-Constraints around the neutral policy (decision 10): long-only; Σw = 1; equity share within ±15 pp of neutral; ex-ante tracking error `√((w−w_b)ᵀΣ(w−w_b)) ≤ 3%`; per-bucket caps; cash ≤ 20%.
+| Reference | Growth assets (equity + REIT) | Defensive (gov + IG + gold + cash) | Typical investor |
+|---|---|---|---|
+| R1 Defensive | 20% | 80% | Short horizon, capital preservation |
+| R2 Conservative | 40% | 60% | |
+| R3 Balanced | 60% | 40% | |
+| R4 Growth | 80% | 20% | Long horizon, accumulating |
+| R5 Equity | 100% | 0% | Long horizon, high loss tolerance |
+
+   Factors, HY, REIT (beyond its market share), commodities and extra cash have 0% reference weight. They can enter only through validated views, with caps (default ≤ 10% each; factor sleeve ≤ 20% combined).
+3. **Owner policy (optional, layer 3).** The owner may define their own neutral policy in `owner_inputs.json`, for example by choosing a rung or editing weights. It is treated as one more reference portfolio. Nothing in layers 1–2 depends on it.
+
+Constraints for every reference portfolio (decision 10): long-only; Σw = 1; growth share within ±15 pp of the reference; ex-ante tracking error `√((w−w_b)ᵀΣ(w−w_b)) ≤ 3%`; per-bucket caps; cash ≤ 20%. Risk aversion λ is set per rung so that each reference is optimal under equilibrium returns (reverse optimisation, 6.2 M1).
 
 ---
 
@@ -190,7 +196,7 @@ Researcher degrees of freedom are the main overfitting risk. Before any holdout 
 
 ### 5.3 Baselines (always reported)
 
-1. **Neutral policy**, rebalanced by the same rule; this is the benchmark.
+1. **The reference portfolio itself** (each rung R1–R5, the market anchor, and the owner policy when defined), rebalanced by the same rule; this is the benchmark for that portfolio.
 2. 1/N across the core buckets.
 3. EUR 60/40 (world equity / EUR aggregate government).
 4. Risk parity (inverse volatility, then equal risk contribution).
@@ -207,7 +213,7 @@ Researcher degrees of freedom are the main overfitting risk. Before any holdout 
 
 **Portfolio outcome** (net of costs; optionally after tax):
 - CAGR, volatility, Sharpe and Sortino ratios; maximum drawdown, Ulcer index, time under water.
-- **Certainty-equivalent return** at the owner's risk aversion λ (primary economic metric).
+- **Certainty-equivalent return** at each portfolio's own risk aversion λ (primary economic metric).
 - Tracking error, information ratio and active-return t-statistic vs neutral.
 - Turnover, cost drag, tax drag.
 - **Deflated Sharpe ratio** (Bailey & López de Prado 2014) of the active return, using the trial count from `backtest_trial_log`.
@@ -241,7 +247,7 @@ Notation: N buckets, excess-return vector y_{t} ∈ ℝ^N over 12 months, inform
 
 ### 6.2 Forecast models (each yields a predictive mean and variance per bucket)
 
-**M1 — Equilibrium prior.** Reverse optimisation from neutral weights: `π_t = δ Σ_t w_b`, with δ chosen so the neutral policy is mean-variance optimal at the owner's risk aversion (Black & Litterman 1992; He & Litterman 1999). This is the anchor every view is shrunk towards.
+**M1 — Equilibrium prior.** Reverse optimisation from the **market anchor** weights: `π_t = δ Σ_t w_mkt`, with δ the market's implied risk aversion (market excess return / variance, estimated on the expanding window). The prior is therefore the same for every investor. Per-rung λ values are then chosen so each reference portfolio is optimal under π (Black & Litterman 1992; He & Litterman 1999). This is the anchor every view is shrunk towards.
 
 **M2 — Valuation and yield building blocks** (fully specified, few parameters):
 - Equity: `E[y_eq] = a + b · ECY_t`, where `ECY = 1/CAPE − real 10y yield` (Campbell & Shiller 1998/2001; Asness 2003 caution on the Fed model). For regions, country E/P and B/M from French international data are used in a pooled panel with region fixed effects.
@@ -293,10 +299,16 @@ subject to  Σ w = 1,  w ≥ 0,  w_i ≤ cap_i
 - The problem is convex (QP with one second-order cone constraint). It is solved with `cvxpy` and the `CLARABEL` solver (a new locked dependency), with an infeasibility fallback to the neutral policy that is logged.
 - **Robustness:** the optimiser is run on 200 posterior draws of μ (resampled efficiency, Michaud) and the average weight is reported, together with the 10–90% weight range per bucket. This range is shown in the UI as the recommendation's uncertainty.
 - **Partial adjustment:** the published target is `w_t = w̃_t + ρ (w*_t − w̃_t)`, where ρ (default 0.5) is selected on the development period only. This prevents month-to-month whipsaw.
+- **One posterior, many portfolios:** μ_BL and Σ_BL are computed once per month, independent of any investor. The optimiser then runs once per reference rung (R1–R5) and, if defined, once for the owner policy. Each run uses that portfolio's w_b, λ and caps. The general recommendations and the personal one can never disagree about the market view; they differ only in risk level and starting point.
 
 ### 6.6 Rebalance / defer alert rules
 
-Evaluated monthly on actual holdings (from `portfolio_holdings.json`) or on the model portfolio:
+**General signals (layer 1, no portfolio needed)** are published every month:
+- *Outlook changes:* a bucket's posterior tilt changes sign or crosses its ±1 s.e. band. Example: "EUR long duration moved from neutral to overweight."
+- *Rebalancing climate:* "rebalancing toward targets is normally fine" vs "stress regime: rebalance gradually or with new contributions; avoid forced selling" (F04 intent). This comes from the stress percentile and the calibrated drawdown model, and is shown only if the model passed its gate.
+- *Model-portfolio changes:* when any rung's target weights move by more than its band, the rung is flagged as changed.
+
+**Personal alerts (layer 3, optional)** apply the following table to the owner's recorded holdings (`portfolio_holdings.json`). Without holdings, they apply to a hypothetical investor tracking a chosen rung, so the backtest still covers them:
 
 | Alert | Rule | Basis |
 |---|---|---|
@@ -310,29 +322,58 @@ The value of each alert rule is itself backtested against calendar (annual) reba
 
 ---
 
-## 7. Actionable output (what the owner sees each month)
+## 7. Actionable output: three layers
 
-**Monthly allocation card** (dated *t*, data as of the latest `known_from`):
+The investor sees three layers, in this order. Layers 1 and 2 are general and identical for every user of the installation. They use no holdings and no personal input. Layer 3 is optional personalisation built on the same forecasts.
 
-| Bucket | Neutral | Recommended | 10–90% range | Current holdings | Action | Instrument (ISIN) | Model drivers |
+### 7.1 Layer 1 — Market outlook (general, portfolio-independent)
+
+A monthly, dated table of **relative views per asset class and per key decision**, expressed against the market anchor rather than against anyone's portfolio:
+
+| Decision axis | View (example layout) | Strength | Validation | Drivers |
+|---|---|---|---|---|
+| Equities vs bonds | Neutral / overweight / underweight | posterior tilt in s.e. units | validated / research view / no edge | M2 ECY, M5 recession probability |
+| Regions: US vs Europe vs Japan vs EM | Ranking with 12m expected-excess-return ranges | | | Regional E/P, B/M, trend |
+| Duration: short vs intermediate vs long EUR | | | | Curve slope, roll-down, CP factor |
+| Inflation protection: linkers vs nominals | | | | Breakevens vs SPF expectations |
+| Credit: IG / HY vs government | | | | Spread minus expected loss, EBP |
+| Currency: hedge foreign bonds / equities? | | | | Carry, P07 |
+| Diversifiers: gold, commodities, REITs | | | | Real yields, trend |
+| Factors: value, momentum, quality, size, min-vol | | | | Factor spreads and trend |
+| **Where to put new money now** | The 3 buckets with the highest posterior expected excess return per unit of marginal risk to the market anchor (`μ_BL,i / (Σ_BL w_mkt)_i`), within caps | | | |
+
+Each row also shows the 12-month expected excess-return range (10/50/90%) and the probability that the view is wrong (`P(sign reversed)` from the posterior). For example: "EUR long duration: overweight, moderate, validated on holdout, 12m excess return median +2.1%, 10–90% range −6% to +9%". Views without validated skill are shown as **neutral**, with the unvalidated model view behind a fold.
+
+"Where to put new money" is the general answer to "I have €X to invest this month". It is valid for any investor whose portfolio is close to market weights. Layer 3 gives the personalised version.
+
+### 7.2 Layer 2 — Model portfolios (general)
+
+The optimiser output for each reference rung R1–R5 (section 3):
+
+| Bucket | R1 | R2 | R3 | R4 | R5 | Change vs last month | Example UCITS ETF |
 |---|---|---|---|---|---|---|---|
-| EQ_US | 37% | 33% | 29–37% | 39% | Sell €3,100 / route contributions elsewhere | IE00B5BMR087 | M2 valuation (ECY low), Claude (weight 0.12) |
-| GOV_EUR_INT | 12% | 15% | 12–18% | 11% | Buy €2,000 | IE00B4WXJJ64 | M2 yield + roll-down |
+| EQ_US | … | … | … | … | … | ▲/▼ pp | IE00B5BMR087 |
 | … | | | | | | | |
 
-The numbers above are illustrative of the layout only, not forecasts.
+For each rung the layer shows: reference weights, recommended weights, the 10–90% weight range, expected 12-month median and 10% quantile of excess return, `P(DD > 15%)`, tracking error and expected turnover. A **"simple version"** collapses buckets into 3–5 funds (for example world equity, EUR government, gold) for investors who want fewer positions. The simplified mix is solved with the same optimiser under the additional constraint, not by rounding.
 
-The card also carries:
-- **Validation status per deviation:** "validated (holdout)", "unvalidated research view" or "neutral: no proven edge".
-- **Expected outcomes over 12 months** for recommended vs neutral: median excess return, 10% quantile, `P(DD > 15%)`, CE difference with confidence interval, TE.
-- **Trade list:** contributions first, then sales/purchases in whole ETF shares, with cost and estimated tax. Nothing is executed by the application.
-- **Alerts** (section 6.6) with the rule that fired.
-- **Claude memo:** half a page following the charter's interpretation standard (*measurement → pattern → historical context → limits*). Every number in it is checked against the result bundle (section 8.5).
-- **Exports:** CSV/JSON of weights, trades and forecasts; the existing AI export.
+Instrument mapping is data: each bucket lists alternative UCITS, US-listed ETFs and index funds. The recommendation is about the bucket, and the fund is a selectable implementation. ISINs are examples, not endorsements.
 
-**Backtest workspace:** cumulative and drawdown charts vs all baselines; rolling 36-month active return; deviation history heatmap (bucket × month); model-weight history; calibration/reliability plots; forecast scorecard (out-of-sample R², CRPS, Brier per model); toggles for tier (E/R), costs, tax, rebalancing rule, Claude on/off, and development vs holdout period. The holdout view states how many trials have been evaluated against it.
+### 7.3 Layer 3 — Personal (optional)
 
-**Forward-test scorecard:** the append-only `forecast_log` scored as outcomes arrive. This is the most honest evidence, and is displayed prominently.
+Shown only when the owner has defined a policy and/or recorded holdings:
+- The owner policy's recommended weights (the same posterior, the owner's own reference).
+- A **gap analysis** of actual holdings (from `portfolio_holdings.json`) vs the chosen target: drift, alerts from section 6.6, and a trade list (contributions first, then sales and purchases in whole ETF shares, with cost and estimated tax). The application executes nothing.
+- "Where to put this month's contribution" for the owner's actual holdings.
+
+The numbers in any layout examples are illustrative, not forecasts.
+
+### 7.4 Common elements
+
+- **Claude memo:** half a page on the general outlook (layers 1–2), following the charter's interpretation standard (*measurement → pattern → historical context → limits*). If layer 3 is active, it adds an optional personal paragraph. Every number is checked against the result bundle (section 8.5).
+- **Exports:** CSV/JSON of views, model portfolios, forecasts and (if present) personal trades; the existing AI export.
+- **Backtest workspace:** results **per rung** and for the owner policy. Cumulative and drawdown charts vs all baselines; rolling 36-month active return; deviation-history heatmap (bucket × month); model-weight history; calibration/reliability plots; forecast scorecard (out-of-sample R², CRPS, Brier per model); a separate hit-rate table for the layer-1 relative views (for example, did "equities over bonds" pay off over the next 12 months?). Toggles for tier (E/R), costs, tax, rebalancing rule, Claude on/off, and development vs holdout. The holdout view states how many trials have been evaluated against it.
+- **Forward-test scorecard:** the append-only `forecast_log` (views and all rungs) scored as outcomes arrive. This is the most honest evidence, and is displayed prominently.
 
 ---
 
@@ -360,7 +401,7 @@ Built by `allocation/llm_pack.py` from `pit.snapshot(t)` only:
 3. **Dated text:** central-bank statements published ≤ *t*, truncated to the last 3 meetings per bank.
 4. **No tools.** Web search/fetch is disabled in all forecasting calls, because live search would leak the future into a historical replay and make live calls non-reproducible.
 
-Privacy: euro amounts of holdings are never sent. Only bucket weights and macro data leave the server.
+Privacy and generality: forecasting calls contain **no portfolio information at all**. Only macro and market data leave the server, so Claude's views are the same general views as layer 1. Only the optional personal memo paragraph receives bucket weights (never euro amounts).
 
 ### 8.3 Call design
 
@@ -445,17 +486,18 @@ src/finance_dashboard/allocation/
 ```
 
 - **Engine integration:** four new `AnalysisDefinition`s in `engine/analyses.py`, gated by `research_acceptance`, so that bundles, exports, limitations and saved views behave as for the other questions:
-  - **A01** Monthly allocation recommendation
-  - **A02** Backtest results (per tier and variant)
-  - **A03** Forecast scorecard and calibration
-  - **A04** Rebalance/defer alerts on actual holdings
+  - **A01** Market outlook: general asset-class views and "where to put new money" (layer 1)
+  - **A02** Model portfolios R1–R5 and simple versions (layer 2)
+  - **A03** Backtest results (per rung, tier and variant)
+  - **A04** Forecast scorecard, view hit rates and calibration
+  - **A05** Personal allocation, gap analysis and alerts (layer 3; returns an explicit "not configured" state without owner policy or holdings)
 
   They are added to `definitions/question_followups.json` and the catalogue under a new domain **A — Allocation** with decision-layer text.
 - **Definitions:** `allocation_buckets.json`, `allocation_instruments.json`, `allocation_policy.json` (neutral weights, caps, λ, TE), `allocation_predictors.json` (bucket → registered predictors), `publication_lags.json`, `allocation_preregistration.json`, `llm_models.json`.
 - **Migrations (Alembic):** `pit_observation`, `bucket_return`, `model_forecast` (all models, including Claude-aggregated), `llm_forecast` (raw calls), `backtest_run` (spec hash, tier, metrics JSON), `backtest_trial_log`, `forecast_log` (live, append-only, insert-only trigger).
-- **Jobs:** a monthly allocation job in `worker.py`/`standalone.py`, running on the 3rd business day after month-end following the scheduled refresh. Backtests run as maintenance background jobs (they are expensive) with status in the existing lightweight status API pattern.
-- **API:** `GET /api/allocation/current`, `GET /api/allocation/backtests`, `POST /api/allocation/backtests` (start a registered variant; requires the action marker), `GET /api/allocation/scorecard`, `GET /api/allocation/forecast-log`, `PUT /api/allocation/policy`.
-- **Frontend:** `AllocationPanel.tsx` (monthly card), `BacktestWorkspace.tsx`, `ForecastScorecard.tsx`, using existing ECharts helpers and the visualization contract.
+- **Jobs:** a monthly job (posterior once, then the outlook, all rungs and the optional personal run) in `worker.py`/`standalone.py`, running on the 3rd business day after month-end following the scheduled refresh. Backtests run as maintenance background jobs (they are expensive) with status in the existing lightweight status API pattern.
+- **API:** `GET /api/allocation/outlook`, `GET /api/allocation/model-portfolios`, `GET /api/allocation/personal`, `GET /api/allocation/backtests`, `POST /api/allocation/backtests` (start a registered variant; requires the action marker), `GET /api/allocation/scorecard`, `GET /api/allocation/forecast-log`, `PUT /api/allocation/policy`.
+- **Frontend:** `MarketOutlook.tsx` (layer 1), `ModelPortfolios.tsx` (layer 2), `PersonalAllocation.tsx` (layer 3, folded unless configured), `BacktestWorkspace.tsx`, `ForecastScorecard.tsx`, using existing ECharts helpers and the visualization contract.
 - **Backups:** policy, preregistration, `forecast_log` and `llm_forecast` are included in version-2 recovery bundles; the API key is excluded.
 - **Dependencies (frozen via uv):** `anthropic`, `cvxpy` + `clarabel`, `statsmodels` (HAC, Markov switching, probit), `scikit-learn` (isotonic only; optional, can be hand-rolled). `numpy` is already present.
 
@@ -467,7 +509,7 @@ Each phase is an end-to-end slice with tests and passing CI. Production claims f
 
 | Phase | Deliverable | Gate |
 |---|---|---|
-| **B0** | Charter amendment approved; this design reviewed; neutral policy and costs confirmed by owner | Owner sign-off recorded in charter revision log |
+| **B0** | Charter amendment approved; this design reviewed; risk ladder, market anchor and cost assumptions confirmed by owner | Owner sign-off recorded in charter revision log |
 | **B1** | New sources (French regions/UMD, AQR, Bundesbank curve, ECB curves/€STR, EBP, ESI, SPF, Nareit, Cboe VIX, CB statements) via the managed collector, with originals and reconciliation | Source fixtures and reconciliation tests; registered in `series.json`; production export shows them `available` |
 | **B2** | `pit` store, lag table, `as_of()` and leakage guard; bucket return construction | Leakage tests (a value with `known_from > t` is never visible; a hand-built vintage fixture reproduces the ALFRED first-release value). Bucket returns reconcile to independent fixtures (par-bond arithmetic, FX conversion, hedge carry). |
 | **B3** | Backtest harness with baselines only; metrics library | Neutral/60-40/risk-parity results reproduce hand-calculated fixtures and P05's rebalancing numbers on a shared period. Metric unit tests against published examples (Clark–West, DSR, Brier). |
@@ -475,7 +517,7 @@ Each phase is an end-to-end slice with tests and passing CI. Production claims f
 | **B5** | One-time holdout evaluation (Tiers E and R) and acceptance gate | Holdout report committed under `docs/`, including the trial count; gate result decides "validated" vs "research view" |
 | **B6** | Claude member: pack builder, client with budget, schema validation, batch replay of post-cutoff months, memorisation probe, live forward log, explainer with number check | Offline tests with recorded responses (no network in CI). Budget-cap test. A schema-failure response becomes missing. A memo number mismatch blocks the memo. |
 | **B7** | UI panels, exports, backups, documentation (README, ARCHITECTURE, RUNNING, handoff) | Frontend and browser tests; light/dark and mobile review |
-| **B8** | Deployment and first live month | Post-deployment ZIP shows A01–A04 bundles, the `forecast_log` entry and the LLM spend ledger |
+| **B8** | Deployment and first live month | Post-deployment ZIP shows A01–A05 bundles, the `forecast_log` entry and the LLM spend ledger |
 
 Testing principles: CI never calls the Anthropic API; responses are recorded fixtures. Every model gets a deterministic fixture test. Every backtest result bundle stores the spec hash, data snapshot hash and code commit.
 
@@ -483,9 +525,9 @@ Testing principles: CI never calls the Anthropic API; responses are recorded fix
 
 ## 12. Open points for the owner (to settle in B0)
 
-1. Confirm or edit the default neutral policy (section 3), especially the 60% equity share and the 5% gold.
+1. Confirm the general reference ladder (section 3): five rungs at 20/40/60/80/100% growth assets, anchored on the global market portfolio. Separately, and optionally, define your own policy for the personal layer.
 2. Your broker fee schedule and whether "after-tax" mode should be the default view.
-3. Which ETF to use per bucket (the ISINs listed are examples taken from widely available UCITS funds, not recommendations).
+3. Which example funds to list per bucket in the general layer (UCITS, and optionally US-listed and index-fund alternatives), and which ones you use personally.
 4. Whether the €10/month Claude cap and the default models suit you.
 5. Approval of the charter amendment text in section 1.
 
