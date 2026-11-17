@@ -182,6 +182,36 @@
       "last_row": "202609,   6.70"
     },
     {
+      "dataset": "developed_5_factors",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Developed_5_Factors_CSV.zip",
+      "sha256": "954580906c3ae6fc1870677e40dfbe5a94a6cf188be5330c896f2fc578d9f0ba",
+      "member": "Developed_5_Factors.csv",
+      "member_sha256": "43be6c8c40e32c2174cd03783dc2a984a40b512230c4cfd77a48b62029c105cd",
+      "observed_at_utc": "2026-11-17T20:18:35.260939+00:00",
+      "last_modified": "Mon, 26 Oct 2026 20:49:43 GMT",
+      "full_publisher_months": 435,
+      "full_first_period": "1990-07",
+      "full_last_period": "2026-09",
+      "fixture_excerpt_months": 9,
+      "first_row": "199007    ,0.77    ,0.60   ,-0.36    ,0.21    ,1.35    ,0.68",
+      "last_row": "202609   ,-1.94   ,-2.75   ,-0.17   ,-0.85   ,-0.20    ,0.31"
+    },
+    {
+      "dataset": "us_5_factors",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_CSV.zip",
+      "sha256": "17d7a575e71d6764a70ddec3f8d887756c0eebf3a60f64d6ba95d2adde3fed26",
+      "member": "F-F_Research_Data_5_Factors_2x3.csv",
+      "member_sha256": "0028f2f3b9f634c34a2bdc0e67dc1e6fc22a2ef18b77177a7926635a785330dd",
+      "observed_at_utc": "2026-11-17T20:18:35.726391+00:00",
+      "last_modified": "Tue, 27 Oct 2026 15:18:47 GMT",
+      "full_publisher_months": 759,
+      "full_first_period": "1963-07",
+      "full_last_period": "2026-09",
+      "fixture_excerpt_months": 9,
+      "first_row": "196307,   -0.39,   -0.48,   -0.84,    0.64,   -1.15,    0.27",
+      "last_row": "202609,   -1.07,   -4.60,   -1.55,   -3.22,    1.08,    0.31"
+    },
+    {
       "file": "swinkels_publisher_metadata.json",
       "requested_url": "https://dataverse.nl/api/datasets/:persistentId/?persistentId=doi:10.34894/YWT2IX",
       "sha256": "4bd4bbd04b923baf92f12c85c2b633a16f57c50aad5665935ce43cf6df476a02",

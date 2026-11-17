@@ -43,10 +43,10 @@ class RealComparativeRecoveryTests(unittest.TestCase):
                     for sid in ids:
                         self.assertEqual(service.refresh(sid)["status"], "success")
             with Session(engine) as session:
-                self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 7757)
+                self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 7775)
                 proof = reconcile_session(session, evidence, ids)
                 self.assertTrue(proof["passed"], proof)
-                self.assertEqual(proof["matched_series"], 38)
+                self.assertEqual(proof["matched_series"], 40)
                 report = build_comparative_corpus(session, registry, corpus, source_proof=proof)
                 # Declared variants; derived per-role panels are counted separately.
                 self.assertEqual(sum(p["state"] == "bounded_current_vintage_verified" for p in report["panels"] if "derived_from_role" not in p), 3)
@@ -66,7 +66,7 @@ class RealComparativeRecoveryTests(unittest.TestCase):
             restored_engine = create_engine("sqlite:///" + str(restored_db))
             try:
                 with Session(restored_engine) as session:
-                    self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 7757)
+                    self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 7775)
                     original_report = Path(receipt["report_path"])
                     restored_report = restored / "source-evidence" / original_report.relative_to(evidence)
                     recovered = load_comparative_corpus(restored_report, registry, corpus, session=session)

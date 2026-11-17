@@ -19,7 +19,8 @@ from finance_dashboard.return_source_reconciliation import _french_original
 from test_research_returns import FIXTURES, french_zip
 
 NEW_AREAS = ("europe", "japan", "asia_pacific_ex_japan", "developed_momentum", "europe_momentum",
-             "japan_momentum", "asia_pacific_ex_japan_momentum", "emerging_momentum", "us", "us_momentum")
+             "japan_momentum", "asia_pacific_ex_japan_momentum", "emerging_momentum", "us", "us_momentum",
+             "developed_5_factors", "us_5_factors")
 
 
 def zip_with(member, body):
@@ -31,7 +32,7 @@ def zip_with(member, body):
 
 class FrenchRegionalAndMomentumTests(unittest.TestCase):
     def test_registry_covers_the_allocation_regions_and_momentum(self):
-        self.assertEqual(len(FRENCH_SERIES), 28)
+        self.assertEqual(len(FRENCH_SERIES), 30)
         for region in ("europe", "japan", "asia_pacific_ex_japan"):
             for suffix in ("market_excess_usd", "risk_free_usd", "market_total_usd"):
                 self.assertIn(f"returns.french.{region}.{suffix}", FRENCH_SERIES)
@@ -108,6 +109,17 @@ class FrenchRegionalAndMomentumTests(unittest.TestCase):
         self.assertEqual(bundle.observations["returns.french.developed.value_hml_usd"][date(1990, 7, 1)], Decimal("-0.36"))
         # Stored transformation inputs keep their earlier shape, so archived evidence stays verifiable.
         self.assertEqual(set(next(iter(bundle.metadata["transformation_inputs"].values()))), {"Mkt-RF", "RF"})
+
+    def test_profitability_comes_from_five_factor_files_without_a_second_smb(self):
+        us = parse_french_zip(french_zip("us_5_factors"), dataset="F-F_Research_Data_5_Factors_2x3")
+        # Publisher row: "196307,   -0.39,   -0.48,   -0.84,    0.64,   -1.15,    0.27"
+        self.assertEqual(us.observations, {"returns.french.us.profitability_rmw_usd": us.observations["returns.french.us.profitability_rmw_usd"]})
+        self.assertEqual(us.observations["returns.french.us.profitability_rmw_usd"][date(1963, 7, 1)], Decimal("0.64"))
+        developed = parse_french_zip(french_zip("developed_5_factors"), dataset="Developed_5_Factors")
+        # Publisher row: "199007    ,0.77    ,0.60   ,-0.36    ,0.21    ,1.35    ,0.68"
+        self.assertEqual(developed.observations["returns.french.developed.profitability_rmw_usd"][date(1990, 7, 1)], Decimal("0.21"))
+        smb = [sid for sid, (dataset, variable) in FRENCH_SERIES.items() if variable == "SMB"]
+        self.assertTrue(all(FRENCH_SERIES[sid][0].endswith("3_Factors") or FRENCH_SERIES[sid][0] == "F-F_Research_Data_Factors" for sid in smb))
 
     def test_independent_verifier_agrees_with_parser_for_every_new_dataset(self):
         for area in NEW_AREAS + ("developed", "emerging"):

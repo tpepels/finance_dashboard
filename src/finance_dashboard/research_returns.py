@@ -56,6 +56,12 @@ FRENCH_DATASET_SPECS = {
     "F-F_Research_Data_Factors": ("F-F_Research_Data_Factors.csv", _FACTORS_3, _MARKET_INPUTS, "CRSP", None),
     "F-F_Momentum_Factor": ("F-F_Momentum_Factor.csv", ("Mom",), ("Mom",), "CRSP",
                             "Missing data are indicated by -99.99 or -999."),
+    # Five-factor files: only RMW is used. Their SMB is constructed differently from
+    # the three-factor SMB and is deliberately not registered a second time.
+    "Developed_5_Factors": ("Developed_5_Factors.csv", ("Mkt-RF", "SMB", "HML", "RMW", "CMA", "RF"), ("RMW",),
+                            "Bloomberg", _BLOOMBERG_MISSING),
+    "F-F_Research_Data_5_Factors_2x3": ("F-F_Research_Data_5_Factors_2x3.csv", ("Mkt-RF", "SMB", "HML", "RMW", "CMA", "RF"),
+                                        ("RMW",), "CRSP", None),
 }
 _MISSING_MARKERS = (Decimal("-99.99"), Decimal("-999"))
 # Archive area -> (dataset, series region label, label groups).
@@ -72,6 +78,8 @@ _FRENCH_AREAS = {
     "emerging_momentum": ("Emerging_MOM_Factor", "emerging", ("momentum_wml",)),
     "us": ("F-F_Research_Data_Factors", "us", ("market", "size_value")),
     "us_momentum": ("F-F_Momentum_Factor", "us", ("momentum_mom",)),
+    "developed_5_factors": ("Developed_5_Factors", "developed", ("profitability",)),
+    "us_5_factors": ("F-F_Research_Data_5_Factors_2x3", "us", ("profitability",)),
 }
 FRENCH_DATASETS = {area: dataset for area, (dataset, _region, _groups) in _FRENCH_AREAS.items()}
 _FRENCH_LABELS = {
@@ -79,6 +87,7 @@ _FRENCH_LABELS = {
     "size_value": (("size_smb_usd", "SMB"), ("value_hml_usd", "HML")),
     "momentum_wml": (("momentum_wml_usd", "WML"),),
     "momentum_mom": (("momentum_umd_usd", "Mom"),),
+    "profitability": (("profitability_rmw_usd", "RMW"),),
 }
 FRENCH_SERIES = {
     f"returns.french.{region}.{label}": (dataset, variable)
@@ -154,7 +163,8 @@ def _zip_members(raw: bytes, *, maximum: int) -> dict[str, bytes]:
 _FRENCH_CONVENTIONS = {"Mkt-RF+RF": "Explicit same-period total return", "Mkt-RF": "Source excess return",
                        "RF": "Source risk-free return", "WML": "Source long-short momentum factor return",
                        "Mom": "Source long-short momentum factor return", "SMB": "Source long-short size factor return",
-                       "HML": "Source long-short value factor return"}
+                       "HML": "Source long-short value factor return",
+                       "RMW": "Source long-short profitability factor return"}
 
 
 def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
@@ -231,6 +241,8 @@ def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
         "transformation_inputs": inputs,
         "measurement_note": ("Source-defined momentum factor: a long-short research return, not an investable long-only fund. No fee, tax or FX equivalence implied."
                              if input_names in (("WML",), ("Mom",)) else
+                             "Source-defined profitability factor (robust minus weak): a long-short research return, not an investable long-only fund. No fee, tax or FX equivalence implied."
+                             if input_names == ("RMW",) else
                              "Source-defined value-weighted research portfolios; not MSCI ACWI/World or an investable fund. No fee, tax or FX equivalence implied."),
         "rights": "Public no-fee original; explicit redistribution licence unestablished; underlying Bloomberg/IFC inputs not redistributed separately.",
     })

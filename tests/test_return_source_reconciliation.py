@@ -38,7 +38,7 @@ class ReturnOriginalReconciliationTests(unittest.TestCase):
         values, proof = self.read()
         self.assertEqual(set(values), set(FRENCH_SERIES)|set(SWINKELS_SERIES))
         self.assertEqual(sum(len(values[sid]) for sid in SWINKELS_SERIES), 7435)
-        self.assertEqual(sum(len(values[sid]) for sid in FRENCH_SERIES), 322)
+        self.assertEqual(sum(len(values[sid]) for sid in FRENCH_SERIES), 340)
         self.assertEqual(values['returns.french.developed.market_total_usd'][date(1990,7,1)], Decimal('1.45'))
         self.assertEqual(values['returns.french.developed.market_excess_usd'][date(1990,7,1)], Decimal('0.77'))
         self.assertEqual(values['returns.french.emerging.market_total_usd'][date(1989,7,1)], Decimal('1.30'))

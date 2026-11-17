@@ -110,6 +110,8 @@ _FRENCH_ORIGINAL_LAYOUT = {
     'Emerging_MOM_Factor': ('Emerging_MOM_Factor.csv', ['WML'], ('WML',), 'Bloomberg', _B),
     'F-F_Research_Data_Factors': ('F-F_Research_Data_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF'), 'CRSP', None),
     'F-F_Momentum_Factor': ('F-F_Momentum_Factor.csv', ['Mom'], ('Mom',), 'CRSP', 'Missing data are indicated by -99.99 or -999.'),
+    'Developed_5_Factors': ('Developed_5_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF'], ('RMW',), 'Bloomberg', _B),
+    'F-F_Research_Data_5_Factors_2x3': ('F-F_Research_Data_5_Factors_2x3.csv', ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF'], ('RMW',), 'CRSP', None),
 }
 
 
