@@ -2,6 +2,14 @@
 
 **Status: all ten product-intent decisions plus the revised six-story / 35-question / free-data-only scientific direction are APPROVED on 2026-11-03. Full scientific/method and integrated interface acceptance remains OPEN.** Governed by [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). This is a normative description of the desired application, not an audit of current features/data. Research reference URLs are methodological starting points, not proof of import eligibility or complete empirical results.
 
+## Revision 2026-11-17 (owner-approved): validated conditional allocation
+
+Approved by the owner on 17 November 2026 for the [backtesting and allocation design](superpowers/specs/2026-11-17-backtest-allocation-design.md). It amends the "context only, never a timing signal" rule for the new allocation domain A only; every other analysis keeps that rule.
+
+> The application may publish monthly asset-class views and recommended allocations that deviate from declared reference portfolios (the market anchor, a five-rung risk ladder and, optionally, the owner's policy) within a declared risk budget, only to the extent that the deviating forecasts have earned out-of-sample skill under the category-E protocol (pre-registered holdout, point-in-time data, purged walk-forward validation, baselines, calibration, deflated performance statistics). When skill is not established, the recommendation equals the reference portfolio and says why. Recommendations are general, educational decision support for the investor using the installation. They are not automated trading or personalised advice to third parties.
+
+Decisions recorded with the approval: a five-rung reference ladder at 20/40/60/80/100% growth assets anchored on the global market portfolio; backtests show gross returns (no costs, no tax) by default, with costs and Portuguese tax as toggles; heavy backtest and training jobs run on the server at low priority, one at a time. All other rules in this charter (no fabricated data, real-time evidence for predictive claims, no unvalidated alarms or composite scores) apply unchanged.
+
 ## Revision 2026-11-06 (owner-directed, binding)
 
 The original ten decisions were framed by an assistant and accepted without overrides. After an independent review the owner directed these changes:

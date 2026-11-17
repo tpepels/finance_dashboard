@@ -52,6 +52,19 @@ This revision was directed by the owner after an independent review of the origi
 | P06 | descriptive | active | Expected long-horizon return ranges for equities and bonds (EUR and USD), with uncertainty, for savings-rate and allocation planning. |
 | P07 | descriptive | active | Whether to currency-hedge foreign equity and bond exposure as a EUR-based investor. |
 
+### Domain A — Allocation (added 2026-11-17, charter revision 2026-11-17)
+
+Specified in the [backtesting and allocation design](superpowers/specs/2026-11-17-backtest-allocation-design.md) and built by the [phased plan](superpowers/plans/2026-11-17-backtest-allocation-plan.md). All entries are hidden behind `FINANCE_ALLOCATION` until their gates pass. Predictive output is category E and is labelled "research view" until the one-time holdout (plan phase D7) validates it.
+
+| ID | Question | Evidence tier | Decision informed | Principal limits |
+|---|---|---|---|---|
+| A01 | What do validated 12-month asset-class views say, and where should new money go now? | predictive (E) | Equity/bond split, regions, duration, linkers, credit, hedging, diversifiers and factors for any EUR index investor | Weak 12-month predictability; views without holdout skill are shown as neutral |
+| A02 | What are the recommended model portfolios on the R1–R5 risk ladder? | predictive (E) over reference portfolios (descriptive) | Choice of a diversified mix at a given risk level, and its monthly adjustment | Reference weights until skill is validated; proxy buckets carry tracking-error bands |
+| A03 | How would reference and recommended portfolios have performed historically? | backtest (Tier E headline, Tier R labelled optimistic) | Confidence in any deviation from the reference portfolios | Revision bias, proxy histories before 1990 for regions, overlapping 12-month windows |
+| A04 | Which forecasts have shown out-of-sample skill and calibration? | predictive evaluation | How much weight each model deserves | Short post-cutoff history for Claude; spent holdout after D7 |
+| A05 | How does the owner's policy and recorded holdings compare with the target? | descriptive over A02 | Rebalancing, contribution routing and defer decisions | Optional; depends on recorded holdings and ISIN mapping |
+| A06 | What do the machine-learning and econometric models rely on, and are they drifting? | model diagnostics | Trust in individual models | Associations, not causes; small effective samples |
+
 ### Deferred research extensions
 
 * **V03** — Comparable regional valuation histories (trailing/forward P/E by region) are not freely available; global and US valuation remain in V01 and P06.

@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 
+from .allocation.references import load_allocation_documents, validate_allocation
 from .catalog import THEMES, build_report, load_documents, validate
 from .command_registry import GROUPS, dispatch
 
@@ -23,7 +24,7 @@ def main(argv=None) -> int:
         sub.add_parser(group, help=f"Operational {group} commands")
     args = parser.parse_args(argv)
     series, charts = load_documents()
-    errors = validate(series, charts)
+    errors = validate(series, charts) + validate_allocation(*load_allocation_documents())
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)

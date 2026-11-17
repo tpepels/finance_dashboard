@@ -2,6 +2,10 @@
 
 This is the top-level delivery plan. Its November 11 completion evidence is historical. The current research expansion is specified in the [November 14 research audit and phase roadmap](RESEARCH_AUDIT_ROADMAP_2026-11-14.md), with an [implementation/evidence checkpoint from November 15](RESEARCH_PHASES_PROGRESS_2026-11-15.md). Earlier detailed tasks remain in the [completion implementation plan](superpowers/plans/2026-11-11-project-completion.md), [research/presentation plan](superpowers/plans/2026-11-11-research-presentation.md), [research release verification](RESEARCH_RELEASE_VERIFICATION.md) and [archived history](archive/DEVELOPMENT_PLAN_HISTORY_2026-11.md). Neither a new commit nor CI success establishes a newer production data snapshot.
 
+## Separate track: backtesting and allocation (from 17 November 2026)
+
+The owner approved the [backtesting and allocation design](superpowers/specs/2026-11-17-backtest-allocation-design.md) and the [charter revision](PHASE1_SCIENTIFIC_CHARTER.md#revision-2026-11-17-owner-approved-validated-conditional-allocation). Work follows the [phased plan](superpowers/plans/2026-11-17-backtest-allocation-plan.md) (D0–D10) behind the `FINANCE_ALLOCATION` flag. It does not change existing acceptance thresholds or the research questions above; source-health work takes priority when the two conflict.
+
 ## Goal and deployment target
 
 A private workbench that helps a **EUR-based long-term ETF investor** assess allocation, hedging, rebalancing and savings decisions. Each question compares evidence, identifies sources and limits, and avoids fabricated data or timing recommendations.

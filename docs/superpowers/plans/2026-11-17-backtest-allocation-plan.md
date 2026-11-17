@@ -95,15 +95,17 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
 
 **Files:** `docs/PHASE1_SCIENTIFIC_CHARTER.md`, `docs/PHASE1_ANALYSIS_CATALOGUE.md`, `docs/DEVELOPMENT_PLAN.md`, `definitions/allocation_references.json`, `definitions/allocation_preregistration.json` (skeleton), `src/finance_dashboard/allocation/__init__.py`, `allocation/contracts.py`, `allocation/flags.py`, `tests/test_allocation_contracts.py`.
 
-- [ ] Owner approves the charter amendment (§1). Record it in the charter revision log with the date and exact wording.
-- [ ] Owner settles the open points (§13): reference ladder, costs and tax mode, example funds, Claude budget, backtest compute location.
-- [ ] Add catalogue domain **A — Allocation** with A01–A06 entries in the required research-record form (question, decision informed, evidence tier, limits).
-- [ ] Link this plan from `DEVELOPMENT_PLAN.md` as a separate track that does not change existing acceptance thresholds.
-- [ ] Create `allocation/` with `contracts.py` (`FeatureSnapshot`, `ForecastDistribution`, `Forecaster`, `Posterior`, `ReferencePortfolio`, `Allocation`, `Provenance`; §10.3) and `flags.py` (`FINANCE_ALLOCATION=0` by default; API routes return 404 and UI entries are hidden while it is off).
-- [ ] `allocation_references.json`: market anchor and R1–R5 rules with caps, TE and bands (§3), validated by `finance_dashboard validate`.
-- [ ] Tests: contract dataclasses are immutable and serialisable; references validate (weights sum to 1, caps consistent); the flag hides routes.
+- [x] Owner approves the charter amendment (§1). Record it in the charter revision log with the date and exact wording.
+- [x] Owner settles the open points (§13): reference ladder (5 rungs), default backtest view (gross: no costs, no tax), compute (server, low priority). Broker fees and example funds remain open for D3/D9.
+- [x] Add catalogue domain **A — Allocation** with A01–A06 entries in the required research-record form (question, decision informed, evidence tier, limits).
+- [x] Link this plan from `DEVELOPMENT_PLAN.md` as a separate track that does not change existing acceptance thresholds.
+- [x] Create `allocation/` with `contracts.py` (`FeatureSnapshot`, `ForecastDistribution`, `Forecaster`, `Posterior`, `ReferencePortfolio`, `Allocation`, `Provenance`; §10.3) and `flags.py` (`FINANCE_ALLOCATION=0` by default; API routes return 404 and UI entries are hidden while it is off).
+- [x] `allocation_references.json`: market anchor and R1–R5 rules with caps, TE and bands (§3), validated by `finance_dashboard validate`.
+- [x] Tests: contract dataclasses are immutable and serialisable; references validate (weights sum to 1, caps consistent); the flag hides routes.
 
 **Exit gate:** charter amendment recorded; CI green; no behaviour change with the flag off.
+
+**Status (17 November 2026):** code-complete on branch `claude/allocation-d0`. Contracts in `allocation/contracts.py`, flag in `allocation/flags.py` (`FINANCE_ALLOCATION`, wired in Compose and `.env.example`), references and pre-registration skeleton validated by `finance_dashboard validate` (`allocation/references.py`), tests in `tests/test_allocation_d0.py`. The growth mix is measured market weights from D2; the defensive mix is provisional and labelled so.
 
 ---
 

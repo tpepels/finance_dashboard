@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "draft",
+  "frozen": false,
+  "spec_hash": null,
+  "holdout": {
+    "start": "2010-01",
+    "end": "latest_complete_12m_target",
+    "evaluations_allowed_per_spec": 1
+  },
+  "development_period": {"tier_r_start": "1973-01", "end": "2009-12"},
+  "specification": {
+    "features": {},
+    "models": {},
+    "ml_hyperparameter_spaces": {},
+    "combination": {},
+    "optimiser": {},
+    "references": "definitions/allocation_references.json",
+    "costs": {}
+  },
+  "notes": "Skeleton created in phase D0. Filled in phases D3-D6 and frozen at the end of D6; the holdout may be evaluated only once per frozen spec_hash (design section 5.2)."
+}

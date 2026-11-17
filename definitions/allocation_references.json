@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "approved": {
+    "date": "2026-11-17",
+    "by": "owner",
+    "decisions": "Five-rung ladder 20-100% growth assets anchored on the global market portfolio; backtests default to gross returns (no costs, no tax) with costs and tax as toggles; heavy jobs run on the server at low priority."
+  },
+  "buckets": [
+    {"id": "EQ_US", "group": "growth", "category": "A", "cap": 0.70},
+    {"id": "EQ_EUROPE", "group": "growth", "category": "A", "cap": 0.40},
+    {"id": "EQ_JAPAN", "group": "growth", "category": "A", "cap": 0.25},
+    {"id": "EQ_APAC_XJ", "group": "growth", "category": "A", "cap": 0.20},
+    {"id": "EQ_EM", "group": "growth", "category": "A", "cap": 0.30},
+    {"id": "REIT_GLOBAL", "group": "growth", "category": "D", "cap": 0.10},
+    {"id": "EQ_VALUE", "group": "satellite", "sleeve": "factor", "category": "D", "cap": 0.10},
+    {"id": "EQ_MOMENTUM", "group": "satellite", "sleeve": "factor", "category": "D", "cap": 0.10},
+    {"id": "EQ_QUALITY", "group": "satellite", "sleeve": "factor", "category": "D", "cap": 0.10},
+    {"id": "EQ_SMALL", "group": "satellite", "sleeve": "factor", "category": "D", "cap": 0.10},
+    {"id": "EQ_MINVOL", "group": "satellite", "sleeve": "factor", "category": "D", "cap": 0.10},
+    {"id": "GOV_EUR_SHORT", "group": "defensive", "category": "B", "cap": 0.80},
+    {"id": "GOV_EUR_INT", "group": "defensive", "category": "B", "cap": 0.80},
+    {"id": "GOV_EUR_LONG", "group": "defensive", "category": "B", "cap": 0.40},
+    {"id": "GOV_EUR_LINKER", "group": "defensive", "category": "B", "cap": 0.30},
+    {"id": "GOV_GLOBAL_H", "group": "defensive", "category": "B", "cap": 0.30},
+    {"id": "CREDIT_IG", "group": "defensive", "category": "C", "cap": 0.30},
+    {"id": "CREDIT_HY", "group": "satellite", "category": "C", "cap": 0.10},
+    {"id": "GOLD", "group": "defensive", "category": "A", "cap": 0.15},
+    {"id": "COMMODITY", "group": "satellite", "category": "D", "cap": 0.10},
+    {"id": "CASH", "group": "defensive", "category": "A", "cap": 0.20}
+  ],
+  "anchor": {
+    "growth_mix": {
+      "method": "free_float_market_weights",
+      "description": "Regional free-float weights at the decision date: FTSE All-World regional weights from the registered factsheet series; Tier R uses Ken French regional market capitalisations. REIT_GLOBAL at its measured share of world equity.",
+      "status": "measured_from_phase_D2"
+    },
+    "defensive_mix": {
+      "method": "provisional_static",
+      "description": "Provisional shares until phase D2/D3 measures the euro area AAA maturity profile (ECB) and market-value proportions. Used only for validation and examples; never presented as measured market weights.",
+      "status": "provisional",
+      "shares": {
+        "GOV_EUR_SHORT": 0.20,
+        "GOV_EUR_INT": 0.35,
+        "GOV_EUR_LONG": 0.10,
+        "GOV_EUR_LINKER": 0.10,
+        "GOV_GLOBAL_H": 0.10,
+        "CREDIT_IG": 0.10,
+        "GOLD": 0.05,
+        "CASH": 0.0
+      }
+    }
+  },
+  "rungs": [
+    {"id": "R1", "label": "Defensive", "growth_share": 0.20},
+    {"id": "R2", "label": "Conservative", "growth_share": 0.40},
+    {"id": "R3", "label": "Balanced", "growth_share": 0.60},
+    {"id": "R4", "label": "Growth", "growth_share": 0.80},
+    {"id": "R5", "label": "Equity", "growth_share": 1.00}
+  ],
+  "constraints": {
+    "long_only": true,
+    "te_max": 0.03,
+    "growth_band": 0.15,
+    "cash_max": 0.20,
+    "satellite_cap": 0.10,
+    "factor_sleeve_cap": 0.20
+  },
+  "backtest_defaults": {
+    "costs": false,
+    "tax": false,
+    "tax_regime_when_enabled": {"country": "PT", "realised_gains_rate": 0.28}
+  },
+  "compute": {
+    "location": "server",
+    "priority": "low",
+    "max_concurrent_heavy_jobs": 1
+  }
+}

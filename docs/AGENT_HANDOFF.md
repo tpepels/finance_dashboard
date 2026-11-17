@@ -78,6 +78,14 @@ The owner asked the agent to decide these. Both follow the existing rule that a 
 
 The owner answered a 10-question interview and asked for a design of a backtesting/allocation module with Claude as an ensemble member. The design is in [docs/superpowers/specs/2026-11-17-backtest-allocation-design.md](superpowers/specs/2026-11-17-backtest-allocation-design.md). The phased development plan (D0–D10, one architectural layer per phase, starting from the current code) is [docs/superpowers/plans/2026-11-17-backtest-allocation-plan.md](superpowers/plans/2026-11-17-backtest-allocation-plan.md). **Nothing is implemented.** Phase B0 needs an owner-approved charter amendment (validated conditional allocation) before any code. Do not start implementation, add sources or change the charter without that sign-off. This does not change the source-health continuation task below.
 
+## Allocation module progress
+
+| Phase | Status | Branch / commit | Open evidence |
+| --- | --- | --- | --- |
+| D0 Governance and scaffolding | Code-complete (CI pending on push); charter amendment approved by the owner 2026-11-17 | `claude/allocation-d0` | Not merged to `main`; no production effect (flag off, no routes yet). Open owner inputs: broker fees (D3), example funds (D3/D9). |
+
+Before D3, D5 and D9, rebase onto the latest `main`: those phases touch `engine/analyses.py` (P05 `simulate`), `worker.py`/`standalone.py` and `owner_inputs.py`, which are actively changed on `main`.
+
 ## Deployment topology and safe next step
 
 **Local machine:** checked-out Git repo, code changes, tests and commits.

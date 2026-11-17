@@ -22,6 +22,10 @@
 | 9 | Generality | **Owner only, EUR** | One EUR investor profile in `owner_inputs.json`. Bucket and instrument mappings are data, so other UCITS/US ETFs or index funds can be substituted without code changes. No multi-user profiles. |
 | 10 | Risk budget and benchmark | **Moderate, around the profile's neutral policy** | Each reference portfolio is its own benchmark. Ex-ante tracking error ≤ 3%, equity share ±15 pp, per-bucket caps. |
 | 11 | Follow-up (17 November): portfolio dependence | **"Not too fixed on the provided portfolio; also give general recommendations"** | The primary output is **portfolio-independent**: a market outlook per asset class (layer 1) and recommended model portfolios at five risk levels (layer 2). The owner's policy and recorded holdings are an **optional** personal layer (layer 3) that reuses the same forecasts. The forecasting and backtest never read holdings. See section 7. |
+| 12 | Charter amendment (D0, 17 November) | **Approved as written** | Recorded in the charter revision log; domain A added to the catalogue. |
+| 13 | Reference ladder (D0) | **Five rungs, 20–100% growth assets** | `definitions/allocation_references.json`. |
+| 14 | Default backtest view (D0) | **No tax, no costs** | Backtests show gross returns by default; costs (TER, spread, fees) and Portuguese tax are toggles. This supersedes the cost-inclusive default implied in sections 3 and 5.4; the acceptance gate (5.4) is still evaluated **net of costs**, because a deviation must survive its trading costs to be called validated. |
+| 15 | Compute location (D0) | **Server, low priority** | Heavy jobs run as one-at-a-time maintenance jobs on the server. |
 
 ---
 
@@ -796,7 +800,10 @@ Testing principles: CI never calls the Anthropic API; responses are recorded fix
 
 ---
 
-## 13. Open points for the owner (to settle in B0)
+## 13. Open points for the owner (settled in D0 except where noted)
+
+Points 1, 4 (left at the configurable defaults), 5 and 6 were settled on 17 November 2026 (section 0, rows 12–15). Points 2 and 3 remain open and are needed by phases D3 and D9.
+
 
 1. Confirm the general reference ladder (section 3): five rungs at 20/40/60/80/100% growth assets, anchored on the global market portfolio. Separately, and optionally, define your own policy for the personal layer.
 2. Your broker fee schedule and whether "after-tax" mode should be the default view.
