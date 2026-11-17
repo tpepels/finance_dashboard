@@ -118,7 +118,8 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
 **Wave D1a — returns inputs** (needed by D2/D3):
 - [ ] French data library:
   - [x] Europe, Japan and Asia Pacific ex Japan market/risk-free/total (1990-07+) and WML momentum for developed, Europe, Japan, Asia Pacific ex Japan (1990-11+) and emerging (1990-01+): 14 series. The French parser and the independent verifier are now table-driven; archive members are matched exactly (momentum archives use `*_MOM_Factor.csv` inside `*_Mom_Factor_CSV.zip`). Full originals downloaded 2026-11-17 parse identically in both (435/431/441 months to 2026-09, no missing values). Tests: `tests/test_allocation_d1a_french.py`.
-  - [ ] US CRSP files (`F-F_Research_Data_Factors`, `F-F_Momentum_Factor`, 5-factor): different vintage header ("CRSP database"), needs its own parser.
+  - [x] US CRSP files `F-F_Research_Data_Factors` (market, RF, total, SMB, HML from 1926-07) and `F-F_Momentum_Factor` (Mom from 1927-01), plus developed SMB/HML from the existing archive: 8 series. Datasets declare their vintage database (Bloomberg or CRSP) and missing statement; -99.99 and -999 are missing everywhere. The RF series records the publisher's Ibbotson → ICE BofA T-bill change at 2024-06. Full originals parse identically in parser and verifier (1,203 and 1,197 months).
+  - [ ] Profitability (RMW, for the quality bucket) from the US and developed 5-factor files.
   - [ ] International country index portfolios with B/M, E/P, D/P.
 - [ ] Bundesbank: Svensson yield-curve parameters (daily since 1972), inflation-indexed yields, call money rate, DEM/USD.
 - [ ] ECB Data Portal: euro area AAA and all-issuer curves, €STR, EONIA, euro corporate bond yields where published.

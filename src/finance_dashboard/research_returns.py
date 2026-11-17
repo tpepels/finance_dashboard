@@ -30,44 +30,61 @@ from .source_policy import require_managed_client
 from .source_evidence import record_acquisition_receipt
 
 FRENCH_ROOT = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp"
-# Dataset -> archive member, native monthly columns (after the period column) and
-# the columns retained as transformation inputs. Member names are matched exactly:
-# the momentum archives spell "MOM" inside although the download URL says "Mom".
+# Dataset -> (archive member, native monthly columns after the period column,
+# columns retained as transformation inputs, source database, declared missing
+# statement or None). Member names are matched exactly: the international
+# momentum archives spell "MOM" inside although the download URL says "Mom".
+# Bloomberg (international) and CRSP (US) files differ in their vintage line and
+# missing-data statement; -99.99 and -999 are treated as missing in every file.
 _FACTORS_3 = ("Mkt-RF", "SMB", "HML", "RF")
+_MARKET_INPUTS = ("Mkt-RF", "RF")
+_BLOOMBERG_MISSING = "Missing data are indicated by -99.99."
 FRENCH_DATASET_SPECS = {
-    "Developed_3_Factors": ("Developed_3_Factors.csv", _FACTORS_3, ("Mkt-RF", "RF")),
-    "Emerging_5_Factors": ("Emerging_5_Factors.csv", ("Mkt-RF", "SMB", "HML", "RMW", "CMA", "RF"), ("Mkt-RF", "RF")),
-    "Europe_3_Factors": ("Europe_3_Factors.csv", _FACTORS_3, ("Mkt-RF", "RF")),
-    "Japan_3_Factors": ("Japan_3_Factors.csv", _FACTORS_3, ("Mkt-RF", "RF")),
-    "Asia_Pacific_ex_Japan_3_Factors": ("Asia_Pacific_ex_Japan_3_Factors.csv", _FACTORS_3, ("Mkt-RF", "RF")),
-    "Developed_Mom_Factor": ("Developed_MOM_Factor.csv", ("WML",), ("WML",)),
-    "Europe_Mom_Factor": ("Europe_MOM_Factor.csv", ("WML",), ("WML",)),
-    "Japan_Mom_Factor": ("Japan_MOM_Factor.csv", ("WML",), ("WML",)),
-    "Asia_Pacific_ex_Japan_Mom_Factor": ("Asia_Pacific_ex_Japan_MOM_Factor.csv", ("WML",), ("WML",)),
-    "Emerging_MOM_Factor": ("Emerging_MOM_Factor.csv", ("WML",), ("WML",)),
+    "Developed_3_Factors": ("Developed_3_Factors.csv", _FACTORS_3, _MARKET_INPUTS, "Bloomberg", _BLOOMBERG_MISSING),
+    "Emerging_5_Factors": ("Emerging_5_Factors.csv", ("Mkt-RF", "SMB", "HML", "RMW", "CMA", "RF"), _MARKET_INPUTS,
+                           "Bloomberg", _BLOOMBERG_MISSING),
+    "Europe_3_Factors": ("Europe_3_Factors.csv", _FACTORS_3, _MARKET_INPUTS, "Bloomberg", _BLOOMBERG_MISSING),
+    "Japan_3_Factors": ("Japan_3_Factors.csv", _FACTORS_3, _MARKET_INPUTS, "Bloomberg", _BLOOMBERG_MISSING),
+    "Asia_Pacific_ex_Japan_3_Factors": ("Asia_Pacific_ex_Japan_3_Factors.csv", _FACTORS_3, _MARKET_INPUTS,
+                                        "Bloomberg", _BLOOMBERG_MISSING),
+    "Developed_Mom_Factor": ("Developed_MOM_Factor.csv", ("WML",), ("WML",), "Bloomberg", _BLOOMBERG_MISSING),
+    "Europe_Mom_Factor": ("Europe_MOM_Factor.csv", ("WML",), ("WML",), "Bloomberg", _BLOOMBERG_MISSING),
+    "Japan_Mom_Factor": ("Japan_MOM_Factor.csv", ("WML",), ("WML",), "Bloomberg", _BLOOMBERG_MISSING),
+    "Asia_Pacific_ex_Japan_Mom_Factor": ("Asia_Pacific_ex_Japan_MOM_Factor.csv", ("WML",), ("WML",),
+                                         "Bloomberg", _BLOOMBERG_MISSING),
+    "Emerging_MOM_Factor": ("Emerging_MOM_Factor.csv", ("WML",), ("WML",), "Bloomberg", _BLOOMBERG_MISSING),
+    "F-F_Research_Data_Factors": ("F-F_Research_Data_Factors.csv", _FACTORS_3, _MARKET_INPUTS, "CRSP", None),
+    "F-F_Momentum_Factor": ("F-F_Momentum_Factor.csv", ("Mom",), ("Mom",), "CRSP",
+                            "Missing data are indicated by -99.99 or -999."),
 }
-# Archive area -> (dataset, series region label, kind).
+_MISSING_MARKERS = (Decimal("-99.99"), Decimal("-999"))
+# Archive area -> (dataset, series region label, label groups).
 _FRENCH_AREAS = {
-    "developed": ("Developed_3_Factors", "developed", "market"),
-    "emerging": ("Emerging_5_Factors", "emerging", "market"),
-    "europe": ("Europe_3_Factors", "europe", "market"),
-    "japan": ("Japan_3_Factors", "japan", "market"),
-    "asia_pacific_ex_japan": ("Asia_Pacific_ex_Japan_3_Factors", "asia_pacific_ex_japan", "market"),
-    "developed_momentum": ("Developed_Mom_Factor", "developed", "momentum"),
-    "europe_momentum": ("Europe_Mom_Factor", "europe", "momentum"),
-    "japan_momentum": ("Japan_Mom_Factor", "japan", "momentum"),
-    "asia_pacific_ex_japan_momentum": ("Asia_Pacific_ex_Japan_Mom_Factor", "asia_pacific_ex_japan", "momentum"),
-    "emerging_momentum": ("Emerging_MOM_Factor", "emerging", "momentum"),
+    "developed": ("Developed_3_Factors", "developed", ("market", "size_value")),
+    "emerging": ("Emerging_5_Factors", "emerging", ("market",)),
+    "europe": ("Europe_3_Factors", "europe", ("market",)),
+    "japan": ("Japan_3_Factors", "japan", ("market",)),
+    "asia_pacific_ex_japan": ("Asia_Pacific_ex_Japan_3_Factors", "asia_pacific_ex_japan", ("market",)),
+    "developed_momentum": ("Developed_Mom_Factor", "developed", ("momentum_wml",)),
+    "europe_momentum": ("Europe_Mom_Factor", "europe", ("momentum_wml",)),
+    "japan_momentum": ("Japan_Mom_Factor", "japan", ("momentum_wml",)),
+    "asia_pacific_ex_japan_momentum": ("Asia_Pacific_ex_Japan_Mom_Factor", "asia_pacific_ex_japan", ("momentum_wml",)),
+    "emerging_momentum": ("Emerging_MOM_Factor", "emerging", ("momentum_wml",)),
+    "us": ("F-F_Research_Data_Factors", "us", ("market", "size_value")),
+    "us_momentum": ("F-F_Momentum_Factor", "us", ("momentum_mom",)),
 }
-FRENCH_DATASETS = {area: dataset for area, (dataset, _region, _kind) in _FRENCH_AREAS.items()}
+FRENCH_DATASETS = {area: dataset for area, (dataset, _region, _groups) in _FRENCH_AREAS.items()}
 _FRENCH_LABELS = {
     "market": (("market_excess_usd", "Mkt-RF"), ("risk_free_usd", "RF"), ("market_total_usd", "Mkt-RF+RF")),
-    "momentum": (("momentum_wml_usd", "WML"),),
+    "size_value": (("size_smb_usd", "SMB"), ("value_hml_usd", "HML")),
+    "momentum_wml": (("momentum_wml_usd", "WML"),),
+    "momentum_mom": (("momentum_umd_usd", "Mom"),),
 }
 FRENCH_SERIES = {
     f"returns.french.{region}.{label}": (dataset, variable)
-    for dataset, region, kind in _FRENCH_AREAS.values()
-    for label, variable in _FRENCH_LABELS[kind]
+    for dataset, region, groups in _FRENCH_AREAS.values()
+    for group in groups
+    for label, variable in _FRENCH_LABELS[group]
 }
 SWINKELS_DATA_URL = "https://dataverse.nl/api/access/datafile/512630"
 SWINKELS_README_URL = "https://dataverse.nl/api/access/datafile/512631"
@@ -135,14 +152,16 @@ def _zip_members(raw: bytes, *, maximum: int) -> dict[str, bytes]:
 
 
 _FRENCH_CONVENTIONS = {"Mkt-RF+RF": "Explicit same-period total return", "Mkt-RF": "Source excess return",
-                       "RF": "Source risk-free return", "WML": "Source long-short momentum factor return"}
+                       "RF": "Source risk-free return", "WML": "Source long-short momentum factor return",
+                       "Mom": "Source long-short momentum factor return", "SMB": "Source long-short size factor return",
+                       "HML": "Source long-short value factor return"}
 
 
 def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
     """Select source monthly block; annual rows and unrelated missing factors differ."""
     if dataset not in FRENCH_DATASETS.values():
         raise ProviderError("Unregistered French research portfolio")
-    member, columns, input_names = FRENCH_DATASET_SPECS[dataset]
+    member, columns, input_names, database, missing_statement = FRENCH_DATASET_SPECS[dataset]
     members = _zip_members(raw, maximum=5_000_000)
     if set(members) != {member}:
         raise ProviderError("French research portfolio archive identity mismatch")
@@ -150,8 +169,8 @@ def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
         body = members[member].decode("utf-8-sig")
     except UnicodeError as exc:
         raise ProviderError("French original CSV encoding invalid") from exc
-    vintage = re.search(r"^This file was created using the ([0-9]{6}) Bloomberg database\.", body)
-    if not vintage or "Missing data are indicated by -99.99." not in body:
+    vintage = re.search(r"^This file was created using the ([0-9]{6}) " + database + r" database\.", body)
+    if not vintage or (missing_statement is not None and missing_statement not in body):
         raise ProviderError("French source vintage or missing convention absent")
     try:
         vintage_date = datetime.strptime(vintage[1], "%Y%m").date()
@@ -186,7 +205,7 @@ def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
         values = {}
         for key, raw_value in zip(expected[1:], row[1:]):
             value = _number(raw_value.strip())
-            if value == Decimal("-99.99"):
+            if value in _MISSING_MARKERS:
                 missing[key] += 1
                 value = None
             values[key] = value
@@ -210,8 +229,8 @@ def parse_french_zip(raw: bytes, *, dataset: str) -> ReturnsBundle:
                            "return_convention": _FRENCH_CONVENTIONS[variable]}
                    for sid, variable in selected.items()},
         "transformation_inputs": inputs,
-        "measurement_note": ("Source-defined winners-minus-losers momentum factor: a long-short research return, not an investable long-only fund. No fee, tax or FX equivalence implied."
-                             if input_names == ("WML",) else
+        "measurement_note": ("Source-defined momentum factor: a long-short research return, not an investable long-only fund. No fee, tax or FX equivalence implied."
+                             if input_names in (("WML",), ("Mom",)) else
                              "Source-defined value-weighted research portfolios; not MSCI ACWI/World or an investable fund. No fee, tax or FX equivalence implied."),
         "rights": "Public no-fee original; explicit redistribution licence unestablished; underlying Bloomberg/IFC inputs not redistributed separately.",
     })

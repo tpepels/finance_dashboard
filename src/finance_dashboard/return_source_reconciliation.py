@@ -94,32 +94,36 @@ def _manifest(parent, identity, select_manifest):
 
 
 # Independent of research_returns.FRENCH_DATASET_SPECS: written from the
-# publisher files themselves (member name, native columns, retained inputs).
+# publisher files themselves (member name, native columns, retained inputs,
+# vintage database name, declared missing-data statement).
+_B = 'Missing data are indicated by -99.99.'
 _FRENCH_ORIGINAL_LAYOUT = {
-    'Developed_3_Factors': ('Developed_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF')),
-    'Emerging_5_Factors': ('Emerging_5_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF'], ('Mkt-RF', 'RF')),
-    'Europe_3_Factors': ('Europe_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF')),
-    'Japan_3_Factors': ('Japan_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF')),
-    'Asia_Pacific_ex_Japan_3_Factors': ('Asia_Pacific_ex_Japan_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF')),
-    'Developed_Mom_Factor': ('Developed_MOM_Factor.csv', ['WML'], ('WML',)),
-    'Europe_Mom_Factor': ('Europe_MOM_Factor.csv', ['WML'], ('WML',)),
-    'Japan_Mom_Factor': ('Japan_MOM_Factor.csv', ['WML'], ('WML',)),
-    'Asia_Pacific_ex_Japan_Mom_Factor': ('Asia_Pacific_ex_Japan_MOM_Factor.csv', ['WML'], ('WML',)),
-    'Emerging_MOM_Factor': ('Emerging_MOM_Factor.csv', ['WML'], ('WML',)),
+    'Developed_3_Factors': ('Developed_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF'), 'Bloomberg', _B),
+    'Emerging_5_Factors': ('Emerging_5_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF'], ('Mkt-RF', 'RF'), 'Bloomberg', _B),
+    'Europe_3_Factors': ('Europe_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF'), 'Bloomberg', _B),
+    'Japan_3_Factors': ('Japan_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF'), 'Bloomberg', _B),
+    'Asia_Pacific_ex_Japan_3_Factors': ('Asia_Pacific_ex_Japan_3_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF'), 'Bloomberg', _B),
+    'Developed_Mom_Factor': ('Developed_MOM_Factor.csv', ['WML'], ('WML',), 'Bloomberg', _B),
+    'Europe_Mom_Factor': ('Europe_MOM_Factor.csv', ['WML'], ('WML',), 'Bloomberg', _B),
+    'Japan_Mom_Factor': ('Japan_MOM_Factor.csv', ['WML'], ('WML',), 'Bloomberg', _B),
+    'Asia_Pacific_ex_Japan_Mom_Factor': ('Asia_Pacific_ex_Japan_MOM_Factor.csv', ['WML'], ('WML',), 'Bloomberg', _B),
+    'Emerging_MOM_Factor': ('Emerging_MOM_Factor.csv', ['WML'], ('WML',), 'Bloomberg', _B),
+    'F-F_Research_Data_Factors': ('F-F_Research_Data_Factors.csv', ['Mkt-RF', 'SMB', 'HML', 'RF'], ('Mkt-RF', 'RF'), 'CRSP', None),
+    'F-F_Momentum_Factor': ('F-F_Momentum_Factor.csv', ['Mom'], ('Mom',), 'CRSP', 'Missing data are indicated by -99.99 or -999.'),
 }
 
 
 def _french_original(raw, dataset):
     if dataset not in _FRENCH_ORIGINAL_LAYOUT:
         raise _error('source_identity_mismatch')
-    member, native_columns, kept = _FRENCH_ORIGINAL_LAYOUT[dataset]
+    member, native_columns, kept, database, missing_statement = _FRENCH_ORIGINAL_LAYOUT[dataset]
     files = _members(raw)
     if set(files) != {member}:
         raise _error('source_identity_mismatch')
     try:
         body = files[member].decode('utf-8-sig')
-        vintage = re.search(r'^This file was created using the ([0-9]{6}) Bloomberg database\.', body)
-        if not vintage or 'Missing data are indicated by -99.99.' not in body:
+        vintage = re.search(r'^This file was created using the ([0-9]{6}) ' + database + r' database\.', body)
+        if not vintage or (missing_statement is not None and missing_statement not in body):
             raise _error('source_identity_mismatch')
         source_vintage = datetime.strptime(vintage[1], '%Y%m').date()
         columns = [''] + native_columns
@@ -145,11 +149,11 @@ def _french_original(raw, dataset):
         values = {}
         for variable, raw_value in zip(columns[1:], row[1:]):
             value = _decimal(raw_value.strip())
-            if value == Decimal('-99.99'):
+            if value in (Decimal('-99.99'), Decimal('-999')):
                 missing[variable] += 1
                 value = None
             values[variable] = value
-        output[period] = {key: values[key] for key in kept}
+        output[period] = values
         inputs[period.isoformat()] = {key: str(values[key]) if values[key] is not None else None for key in kept}
         periods[period.isoformat()] = date(period.year, period.month, calendar.monthrange(period.year, period.month)[1]).isoformat()
     if not output:

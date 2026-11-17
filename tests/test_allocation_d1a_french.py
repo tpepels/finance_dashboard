@@ -19,7 +19,7 @@ from finance_dashboard.return_source_reconciliation import _french_original
 from test_research_returns import FIXTURES, french_zip
 
 NEW_AREAS = ("europe", "japan", "asia_pacific_ex_japan", "developed_momentum", "europe_momentum",
-             "japan_momentum", "asia_pacific_ex_japan_momentum", "emerging_momentum")
+             "japan_momentum", "asia_pacific_ex_japan_momentum", "emerging_momentum", "us", "us_momentum")
 
 
 def zip_with(member, body):
@@ -31,7 +31,7 @@ def zip_with(member, body):
 
 class FrenchRegionalAndMomentumTests(unittest.TestCase):
     def test_registry_covers_the_allocation_regions_and_momentum(self):
-        self.assertEqual(len(FRENCH_SERIES), 20)
+        self.assertEqual(len(FRENCH_SERIES), 28)
         for region in ("europe", "japan", "asia_pacific_ex_japan"):
             for suffix in ("market_excess_usd", "risk_free_usd", "market_total_usd"):
                 self.assertIn(f"returns.french.{region}.{suffix}", FRENCH_SERIES)
@@ -79,8 +79,38 @@ class FrenchRegionalAndMomentumTests(unittest.TestCase):
         self.assertNotIn(date(1990, 11, 1), bundle.observations["returns.french.japan.momentum_wml_usd"])
         self.assertEqual(bundle.metadata["missing_values_by_variable"]["WML"], 1)
 
+    def test_us_crsp_files_parse_with_their_own_vintage_and_missing_rules(self):
+        bundle = parse_french_zip(french_zip("us"), dataset="F-F_Research_Data_Factors")
+        first = date(1926, 7, 1)
+        # Publisher row: "192607,   2.89,  -2.42,  -2.75,   0.22"
+        self.assertEqual(bundle.observations["returns.french.us.market_total_usd"][first], Decimal("3.11"))
+        self.assertEqual(bundle.observations["returns.french.us.size_smb_usd"][first], Decimal("-2.42"))
+        self.assertEqual(bundle.observations["returns.french.us.value_hml_usd"][first], Decimal("-2.75"))
+        self.assertEqual(bundle.metadata["source_database_vintage"], "202609")
+        momentum = parse_french_zip(french_zip("us_momentum"), dataset="F-F_Momentum_Factor")
+        self.assertEqual(momentum.observations["returns.french.us.momentum_umd_usd"][date(1927, 1, 1)], Decimal("0.57"))
+        body = (FIXTURES / "us_momentum_excerpts.csv").read_text().replace("192701,   0.57", "192701,   -999", 1)
+        missing = parse_french_zip(zip_with("F-F_Momentum_Factor.csv", body), dataset="F-F_Momentum_Factor")
+        self.assertNotIn(date(1927, 1, 1), missing.observations["returns.french.us.momentum_umd_usd"])
+        self.assertEqual(missing.metadata["missing_values_by_variable"]["Mom"], 1)
+        with self.assertRaises(ProviderError):     # the declared missing statement is required
+            parse_french_zip(zip_with("F-F_Momentum_Factor.csv", body.replace("-99.99 or -999.", "nothing.")),
+                             dataset="F-F_Momentum_Factor")
+        bloomberg_as_crsp = (FIXTURES / "developed_excerpts.csv").read_bytes()
+        with self.assertRaises(ProviderError):     # a Bloomberg file is not the CRSP dataset
+            parse_french_zip(zip_with("F-F_Research_Data_Factors.csv", bloomberg_as_crsp),
+                             dataset="F-F_Research_Data_Factors")
+
+    def test_developed_size_and_value_factors_come_from_the_existing_archive(self):
+        bundle = parse_french_zip(french_zip("developed"), dataset="Developed_3_Factors")
+        # Publisher row: "199007    ,0.77    ,0.53   ,-0.36    ,0.68"
+        self.assertEqual(bundle.observations["returns.french.developed.size_smb_usd"][date(1990, 7, 1)], Decimal("0.53"))
+        self.assertEqual(bundle.observations["returns.french.developed.value_hml_usd"][date(1990, 7, 1)], Decimal("-0.36"))
+        # Stored transformation inputs keep their earlier shape, so archived evidence stays verifiable.
+        self.assertEqual(set(next(iter(bundle.metadata["transformation_inputs"].values()))), {"Mkt-RF", "RF"})
+
     def test_independent_verifier_agrees_with_parser_for_every_new_dataset(self):
-        for area in NEW_AREAS:
+        for area in NEW_AREAS + ("developed", "emerging"):
             dataset = FRENCH_DATASETS[area]
             raw = french_zip(area)
             bundle = parse_french_zip(raw, dataset=dataset)

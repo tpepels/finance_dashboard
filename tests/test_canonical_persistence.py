@@ -79,11 +79,12 @@ class CanonicalReturnPersistenceTests(unittest.TestCase):
                     added += report['versions_added']
                     self.assertEqual(report['status'], 'success')
                     self.assertEqual(service.refresh(sid)['versions_added'], 0)
-                # Original ODS7435 + factual French excerpts: (18+20)*3 developed/emerging,
-                # 8*3 for each of three regions and 8 for each of five momentum factors.
-                self.assertEqual(added, 7661)
+                # Original ODS7435 + factual French excerpts: (18+20)*3 developed/emerging market,
+                # 18*2 developed SMB/HML, 8*3 for each of three regions, 8 for each of five
+                # international momentum factors, 10*5 US factors and 10 US momentum.
+                self.assertEqual(added, 7757)
                 with Session(engine) as session:
-                    self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 7661)
+                    self.assertEqual(session.scalar(select(func.count()).select_from(ObservationVersion)), 7757)
                     runs = session.scalars(select(IngestionRun)).all()
                     self.assertTrue(all(run.requested_from is None for run in runs))
                     self.assertIsNone(next(run for run in runs if run.series_id.startswith('returns.')).response_prepared_at)
@@ -96,8 +97,8 @@ class CanonicalReturnPersistenceTests(unittest.TestCase):
                     self.assertEqual((bonds[0].period, bonds[0].value), (date(1972,10,1), Decimal('-0.0180878031')))
                     self.assertEqual(len(bonds), 603)
                 manifests = list((root/'evidence/research-returns').glob('**/manifest.json'))
-                # Swinkels plus one archive per French dataset (two original, eight added in D1a).
-                self.assertEqual(len(manifests), 11)
+                # Swinkels plus one archive per French dataset (two original, ten added in D1a).
+                self.assertEqual(len(manifests), 13)
                 self.assertTrue(all(json.loads(p.read_text())['original_first_publication_at'] is None for p in manifests))
                 reopened.dispose()
 

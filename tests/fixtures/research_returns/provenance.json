@@ -152,6 +152,36 @@
       "last_row": "202609    ,5.92"
     },
     {
+      "dataset": "us",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip",
+      "sha256": "b03d39e4bb253dda0f14893db3b78e64b40b8d6549a0fc0fd4111dae84c98618",
+      "member": "F-F_Research_Data_Factors.csv",
+      "member_sha256": "a3894d74d553cab812eabbe706bdbf443c97eb20b24b05e3e5f3ce47e46b90bb",
+      "observed_at_utc": "2026-11-17T20:15:11.508802+00:00",
+      "last_modified": "Tue, 27 Oct 2026 15:18:47 GMT",
+      "full_publisher_months": 1203,
+      "full_first_period": "1926-07",
+      "full_last_period": "2026-09",
+      "fixture_excerpt_months": 10,
+      "first_row": "192607,   2.89,  -2.42,  -2.75,   0.22",
+      "last_row": "202609,  -1.07,  -3.16,  -1.55,   0.31"
+    },
+    {
+      "dataset": "us_momentum",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_CSV.zip",
+      "sha256": "27ed60e5b2caa9ea334a261cddfa864a9926f6bf45e9677c95dfd835c5abb315",
+      "member": "F-F_Momentum_Factor.csv",
+      "member_sha256": "81ff7cab5517159daa5a66c83fd90d4076a0864be2d5fef179719c0f9049a8cb",
+      "observed_at_utc": "2026-11-17T20:15:11.937855+00:00",
+      "last_modified": "Tue, 27 Oct 2026 15:18:48 GMT",
+      "full_publisher_months": 1197,
+      "full_first_period": "1927-01",
+      "full_last_period": "2026-09",
+      "fixture_excerpt_months": 10,
+      "first_row": "192701,   0.57",
+      "last_row": "202609,   6.70"
+    },
+    {
       "file": "swinkels_publisher_metadata.json",
       "requested_url": "https://dataverse.nl/api/datasets/:persistentId/?persistentId=doi:10.34894/YWT2IX",
       "sha256": "4bd4bbd04b923baf92f12c85c2b633a16f57c50aad5665935ce43cf6df476a02",
