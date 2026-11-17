@@ -81,13 +81,17 @@ class EvidencedEndStateTests(unittest.TestCase):
             inputs = set(analysis_series_ids(analysis))
             for role in analysis["comparison_contract"]["original_requirements"]:
                 unavailability = role.get("verified_unavailability")
+                contracts = [role["holdings_contract"]] if "holdings_contract" in role else []
                 if unavailability:
-                    cited += 1
                     fallback = unavailability["fallback"]
                     self.assertLessEqual(set(fallback.get("series_ids", [])), inputs,
                                          (analysis["id"], role["role"]))
-                    # A holdings fallback names funds the collectors acquire.
-                    for spec in fallback.get("holdings_contract", {}).get("funds", []):
+                    contracts += [fallback["holdings_contract"]] if "holdings_contract" in fallback else []
+                # Every holdings contract, primary or fallback, names funds the
+                # collectors acquire.
+                for contract in contracts:
+                    cited += 1
+                    for spec in contract["funds"]:
                         self.assertIn(spec["fund"], collected[spec["artifact_id"]], (analysis["id"], role["role"]))
         self.assertGreater(cited, 0)
 

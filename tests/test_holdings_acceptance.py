@@ -134,13 +134,16 @@ class HoldingsAcceptanceTests(unittest.TestCase):
         g01 = analysis_acceptance(analyses["G01"], by_id, {}, [], observations_checked=True,
                                   artifact_evidence=evidence, as_of=AS_OF)
         roles = {r["role"]: r for r in g01["requirements"]}
+        # Owner-approved 2026-11-17: G01/G02 are measured on the ACWI ETF's
+        # reported positions, so these are primary roles, not fallbacks.
         for name in ("original_security_weights", "issuer_crosswalk"):
-            self.assertEqual(roles[name]["state"], "unavailable_with_fallback", name)
+            self.assertEqual(roles[name]["state"], "accepted", name)
+            self.assertIn("holdings_evaluation", roles[name])
             self.assertIn(name, g01["comparison"]["covered_roles"])
         g02 = analysis_acceptance(analyses["G02"], by_id, {}, [], observations_checked=True,
                                   artifact_evidence=evidence, as_of=AS_OF)
         weights = next(r for r in g02["requirements"] if r["role"] == "index_country_weights")
-        self.assertEqual(weights["state"], "unavailable_with_fallback")
+        self.assertEqual(weights["state"], "accepted")
         self.assertIn("index_country_weights", g02["comparison"]["covered_roles"])
         p01 = analysis_acceptance(analyses["P01"], by_id, {}, [], observations_checked=True,
                                   artifact_evidence=evidence, as_of=AS_OF)

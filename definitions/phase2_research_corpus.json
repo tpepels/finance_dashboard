@@ -2540,11 +2540,11 @@
     },
     {
       "id": "G01",
-      "title": "How much of ACWI market capitalization is concentrated in the largest constituents?",
+      "title": "How concentrated is an MSCI ACWI-tracking world ETF in its largest holdings?",
       "primary_method_sources": [
         "S36"
       ],
-      "outstanding_evidence": "Sparse official MSCI published top-ten security weights and constituent counts are verified. Exact complete index weights and ultimate-issuer mapping remain unavailable; accepted fallback uses dated ACWI ETF N-PORT positions and reported issuer-name grouping, not MSCI free-float or ultimate-parent weights.",
+      "outstanding_evidence": "Measured on dated iShares MSCI ACWI ETF N-PORT positions with reported issuer grouping; official MSCI top-ten weights and constituent counts are a separate published comparison. Owner-approved revision 2026-11-17: the question is measured on the complete reported positions of an MSCI ACWI-tracking ETF; complete MSCI index weights are licensed and are not the target.",
       "fallback_options": [
         {
           "tier": "first",
@@ -2573,12 +2573,11 @@
         "original_requirements": [
           {
             "role": "original_security_weights",
-            "description": "Original dated complete MSCI ACWI free-float security weights and index universe.",
+            "description": "Dated complete reported security positions of the iShares MSCI ACWI ETF (SEC N-PORT), as fractions of fund net assets.",
             "series_ids": [],
             "expected": {
-              "unit": "percent",
-              "population": "MSCI ACWI original eligible securities",
-              "concept": "Complete dated security constituent weights"
+              "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
+              "concept": "Fund security position weights tracking MSCI ACWI"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "positions",
@@ -2587,45 +2586,30 @@
               "ucits_holdings",
               "msci_concentration"
             ],
-            "input_requirement": "Original dated complete MSCI ACWI free-float security weights and index universe.",
-            "verified_unavailability": {
-              "reviewed_on": "2026-11-07",
-              "reason": "MSCI publishes only the ten largest ACWI constituents freely, on its index factsheets and pages; complete dated constituent weights are distributed only through MSCI's subscription data products.",
-              "evidence_urls": [
-                "https://www.msci.com/www/product-documentation/msci-constituent-history/0163808536",
-                "https://developer.msci.com/apis/index-api"
+            "input_requirement": "Dated complete reported security positions of the iShares MSCI ACWI ETF (SEC N-PORT), as fractions of fund net assets.",
+            "holdings_contract": {
+              "funds": [
+                {
+                  "fund": "acwi",
+                  "artifact_id": "sec_holdings",
+                  "source": "SEC_NPORT_PRIMARY_XML"
+                }
               ],
-              "fallback": {
-                "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
-                "holdings_contract": {
-                  "funds": [
-                    {
-                      "fund": "acwi",
-                      "artifact_id": "sec_holdings",
-                      "source": "SEC_NPORT_PRIMARY_XML"
-                    }
-                  ],
-                  "required_fields": [
-                    "security_identifier"
-                  ],
-                  "minimum_weight_coverage": "0.95",
-                  "maximum_snapshot_age_days": 200
-                },
-                "expected": {
-                  "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
-                  "concept": "Fund security position weights tracking MSCI ACWI"
-                },
-                "population_difference": "Quarterly N-PORT positions of an ETF tracking MSCI ACWI, as fractions of fund NAV: the fund holds cash and securities-lending collateral and may sample the smallest constituents, so weights approximate but are not MSCI free-float index weights."
-              }
-            }
+              "required_fields": [
+                "security_identifier"
+              ],
+              "minimum_weight_coverage": "0.95",
+              "maximum_snapshot_age_days": 200
+            },
+            "population_note": "Quarterly N-PORT positions of an ETF tracking MSCI ACWI, as fractions of fund NAV: the fund holds cash and securities-lending collateral and may sample the smallest constituents, so weights approximate but are not MSCI free-float index weights."
           },
           {
             "role": "issuer_crosswalk",
-            "description": "Original dated security-to-ultimate-issuer/share-class crosswalk.",
+            "description": "Issuer grouping of the same reported ETF positions by exact reported issuer name, cross-checked against reported LEIs.",
             "series_ids": [],
             "expected": {
-              "population": "Same MSCI ACWI securities",
-              "concept": "Unique issuer aggregation mapping"
+              "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
+              "concept": "Reported issuer aggregation of the same positions"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "entity_mapping",
@@ -2633,38 +2617,23 @@
               "sec_holdings",
               "ucits_holdings"
             ],
-            "input_requirement": "Original dated security-to-ultimate-issuer/share-class crosswalk.",
-            "verified_unavailability": {
-              "reviewed_on": "2026-11-07",
-              "reason": "MSCI publishes only the ten largest ACWI constituents freely, on its index factsheets and pages; complete dated constituent weights are distributed only through MSCI's subscription data products.",
-              "evidence_urls": [
-                "https://www.msci.com/www/product-documentation/msci-constituent-history/0163808536",
-                "https://developer.msci.com/apis/index-api"
+            "input_requirement": "Issuer grouping of the same reported ETF positions by exact reported issuer name, cross-checked against reported LEIs.",
+            "holdings_contract": {
+              "funds": [
+                {
+                  "fund": "acwi",
+                  "artifact_id": "sec_holdings",
+                  "source": "SEC_NPORT_PRIMARY_XML"
+                }
               ],
-              "fallback": {
-                "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
-                "holdings_contract": {
-                  "funds": [
-                    {
-                      "fund": "acwi",
-                      "artifact_id": "sec_holdings",
-                      "source": "SEC_NPORT_PRIMARY_XML"
-                    }
-                  ],
-                  "required_fields": [
-                    "holding_name"
-                  ],
-                  "minimum_weight_coverage": "0.95",
-                  "maximum_snapshot_age_days": 200,
-                  "issuer_grouping": true
-                },
-                "expected": {
-                  "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
-                  "concept": "Reported issuer aggregation of the same positions"
-                },
-                "population_difference": "Share classes are grouped by the fund's exact reported issuer name, cross-checked against reported LEIs; this is issuer-level, not ultimate-parent, aggregation."
-              }
-            }
+              "required_fields": [
+                "holding_name"
+              ],
+              "minimum_weight_coverage": "0.95",
+              "maximum_snapshot_age_days": 200,
+              "issuer_grouping": true
+            },
+            "population_note": "Share classes are grouped by the fund's exact reported issuer name, cross-checked against reported LEIs; this is issuer-level, not ultimate-parent, aggregation."
           },
           {
             "role": "constituent_count",
@@ -2715,12 +2684,12 @@
     },
     {
       "id": "G02",
-      "title": "How does investable equity geographic weight differ from economic size?",
+      "title": "How does a world ETF's country weight differ from economic size?",
       "primary_method_sources": [
         "S36",
         "S09"
       ],
-      "outstanding_evidence": "Same-year WDI country/world nominal GDP and dated ACWI ETF N-PORT country weights are verified. Exact MSCI country weights remain unavailable; N-PORT investment-country assignments, cash and collateral retain their own scope, different from MSCI country classification or revenue exposure.",
+      "outstanding_evidence": "Same-year WDI country/world nominal GDP against dated ACWI ETF N-PORT country weights; the N-PORT investment country differs from MSCI's own country classification and from revenue exposure. Owner-approved revision 2026-11-17: the question is measured on the complete reported positions of an MSCI ACWI-tracking ETF; complete MSCI index weights are licensed and are not the target.",
       "fallback_options": [],
       "comparison_contract": {
         "version": 1,
@@ -2728,49 +2697,34 @@
         "original_requirements": [
           {
             "role": "index_country_weights",
-            "description": "Original dated MSCI ACWI free-float index country weights and membership.",
+            "description": "Dated country weights of the complete reported positions of the iShares MSCI ACWI ETF (SEC N-PORT investment country), as fractions of fund net assets.",
             "series_ids": [],
             "expected": {
-              "unit": "percent",
-              "population": "MSCI ACWI assigned countries",
-              "concept": "Investable index country weights"
+              "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
+              "concept": "Fund position country weights tracking MSCI ACWI"
             },
             "temporal_requirement": "latest_revised",
             "input_type": "allocation",
             "artifact_ids": [
-              "msci_concentration"
+              "msci_concentration",
+              "sec_holdings"
             ],
-            "input_requirement": "Original dated MSCI ACWI free-float index country weights and membership.",
-            "verified_unavailability": {
-              "reviewed_on": "2026-11-07",
-              "reason": "MSCI's free ACWI factsheet shows only the largest country weights and an 'Other' remainder; complete dated country weights and membership are distributed only through MSCI's subscription data products.",
-              "evidence_urls": [
-                "https://www.msci.com/www/product-documentation/msci-constituent-history/0163808536",
-                "https://developer.msci.com/apis/index-api"
+            "input_requirement": "Dated country weights of the complete reported positions of the iShares MSCI ACWI ETF (SEC N-PORT investment country), as fractions of fund net assets.",
+            "holdings_contract": {
+              "funds": [
+                {
+                  "fund": "acwi",
+                  "artifact_id": "sec_holdings",
+                  "source": "SEC_NPORT_PRIMARY_XML"
+                }
               ],
-              "fallback": {
-                "reference": "docs/PHASE1_FALLBACK_SOURCE_MATRIX.md",
-                "holdings_contract": {
-                  "funds": [
-                    {
-                      "fund": "acwi",
-                      "artifact_id": "sec_holdings",
-                      "source": "SEC_NPORT_PRIMARY_XML"
-                    }
-                  ],
-                  "required_fields": [
-                    "country"
-                  ],
-                  "minimum_weight_coverage": "0.95",
-                  "maximum_snapshot_age_days": 200
-                },
-                "expected": {
-                  "population": "iShares MSCI ACWI ETF (SEC series S000021461) reported positions",
-                  "concept": "Fund position country weights tracking MSCI ACWI"
-                },
-                "population_difference": "Country is the N-PORT investment country of each position (Item C.5), not MSCI's own country classification, and weights are fractions of fund NAV including cash and collateral, not index free-float weights."
-              }
-            }
+              "required_fields": [
+                "country"
+              ],
+              "minimum_weight_coverage": "0.95",
+              "maximum_snapshot_age_days": 200
+            },
+            "population_note": "Country is the N-PORT investment country of each position (Item C.5), not MSCI's own country classification, and weights are fractions of fund NAV including cash and collateral, not index free-float weights."
           },
           {
             "role": "country_nominal_gdp",

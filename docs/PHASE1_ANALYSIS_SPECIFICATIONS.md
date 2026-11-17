@@ -501,7 +501,9 @@ Each record specifies (1) original measured variable/source or source-defined pr
 
 ## G — Global market concentration and capital transmission
 
-### G01 — How much of ACWI market capitalization is concentrated in the largest constituents?
+### G01 — How concentrated is an MSCI ACWI-tracking world ETF in its largest holdings?
+
+> **Owner-approved revision (2026-11-17).** Complete MSCI ACWI index weights are licensed data. The question is measured on the complete dated reported positions of the iShares MSCI ACWI ETF (SEC N-PORT, series S000021461), with issuers grouped by the fund's exact reported issuer name cross-checked against LEIs. These are fractions of fund net assets, including cash and collateral, not MSCI free-float index weights. MSCI's published top-ten weights and constituent counts remain a separate comparison. The original index specification below is kept for reference.
 
 **Published variables and exact source identity.** Dated original MSCI ACWI free-float-adjusted security index weight w_{security,t}; security-to-issuer/company crosswalk (including multi-share classes), number of constituents and full index universe definition.
 
@@ -517,7 +519,9 @@ Each record specifies (1) original measured variable/source or source-defined pr
 
 **Recommended figure.** Concentration historical line + dated top-issuer bar contributions.
 
-### G02 — How does investable equity geographic weight differ from economic size?
+### G02 — How does a world ETF's country weight differ from economic size?
+
+> **Owner-approved revision (2026-11-17).** Country weights come from the complete dated reported positions of the iShares MSCI ACWI ETF (SEC N-PORT investment country, Item C.5), as fractions of fund net assets. This is not MSCI's own country classification and not revenue exposure. The original index specification below is kept for reference.
 
 **Published variables and exact source identity.** Dated original MSCI ACWI country constituent free-float index weights (%); World Bank NY.GDP.MKTP.CD country nominal current-US$ GDP (annual) and properly scoped country-group/world numerator; alternative WDI CM.MKT.LCAP.GD.ZS (domestic listed-company cap/GDP) is a separate *different* stock universe.
 
