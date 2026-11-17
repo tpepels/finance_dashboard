@@ -524,6 +524,9 @@ def install_diagnostics(app: FastAPI, *, db, catalog, market_registry,
                             "calculated_at": cached.get("calculated_at"),
                             "sources": cached.get("sources"),
                             "attention_items": attention_items,
+                            "known_limitations": [
+                                item for item in cached.get("known_limitations", [])
+                                if isinstance(item, dict)],
                         } if cached else None,
                         "automation": automation,
                         "downstream_updates": {"state": updates["state"]},

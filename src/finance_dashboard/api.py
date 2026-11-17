@@ -310,6 +310,7 @@ def create_app(engine=None) -> FastAPI:
             "state": item["state"],
             "latest_source_date": item["latest_source_date"],
             "last_failure_code": item["last_failure_code"],
+            "known_limitation": bool(item.get("known_limitation")),
         } for item in census["items"] if item["state"] != "available"]
         fred_key = environ.get("FRED_API_KEY", "").strip()
         sec_contact = environ.get("SEC_USER_AGENT", "").strip()
@@ -333,7 +334,8 @@ def create_app(engine=None) -> FastAPI:
                 "registered": len(census["items"]),
                 "with_data": sum(item["stored_periods"] > 0
                                  for item in census["items"]),
-                "needs_attention": len(issues),
+                "needs_attention": sum(not item["known_limitation"] for item in issues),
+                "known_limitations": sum(item["known_limitation"] for item in issues),
             },
             "issues": issues,
             "jobs": recent_jobs(maintenance.list()["jobs"], since=release["activated_at"]),

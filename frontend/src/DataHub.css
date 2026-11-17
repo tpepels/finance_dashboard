@@ -99,6 +99,13 @@
   color:var(--dx-secondary);margin:0 0 8px}
 .data-collection-attention{margin-top:15px;border-top:1px solid var(--dx-rule);
   padding-top:14px}
+.data-collection-known{margin-top:15px;border-top:1px solid var(--dx-rule);
+  padding-top:12px}
+.data-collection-known summary{font-size:14px;font-weight:600;cursor:pointer}
+.data-collection-known>p{font-size:12px;line-height:1.5;
+  color:var(--dx-secondary);margin:9px 0 12px}
+.data-collection-known td{font-size:12px}
+.data-collection-known td small{display:block;font-size:11px;color:var(--dx-secondary)}
 .data-collection-attention h4{font-size:14px;margin:0 0 7px}
 .data-collection-attention>p{font-size:12px;line-height:1.5;
   color:var(--dx-secondary);margin:9px 0 12px}

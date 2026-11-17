@@ -107,9 +107,17 @@ def execute_refresh_tasks(tasks: list[RefreshTask], *, progress=None,
             from .failure_journal import record_failure
             record_failure(task.family, "execute_source_task", exc,
                            series_id=task.source_id)
-            record_event(task.family, "source_failed", level="error",
+            code = safe_source_failure_code(exc)
+            from .source_coverage import KNOWN_SOURCE_LIMITATIONS
+            known = KNOWN_SOURCE_LIMITATIONS.get(task.source_id)
+            # The exact reviewed publisher limitation recurring is expected;
+            # any other failure of the same source is still an error.
+            expected = known is not None and known["failure_code"] == code
+            record_event(task.family,
+                         "source_known_limitation" if expected else "source_failed",
+                         level="warning" if expected else "error",
                          source_id=task.source_id,
-                         reason=safe_source_failure_code(exc),
+                         reason=code,
                          # These identifiers come exclusively from application-
                          # controlled publisher-policy contracts, never raw
                          # response text, URLs or credentials. This distinguishes

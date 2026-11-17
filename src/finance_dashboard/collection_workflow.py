@@ -495,16 +495,31 @@ class SourceHealthCache:
                                "total": int(group.get("total", 0)),
                                "with_data": int(group.get("with_data", 0)),
                                "attention": int(group.get("needs_attention", 0)),
-                               "collection_failed": int(group.get("collection_failed", 0)),
+                               "collection_failed": max(0, int(group.get("collection_failed", 0))
+                                   - sum(1 for item in summary.get("items", [])
+                                         if item.get("family") == key
+                                         and item.get("state") == "collection_failed"
+                                         and item.get("known_limitation"))),
+                               "known_limitations": int(group.get("known_limitations", 0)),
                                "refresh_failed_with_data": int(group.get("refresh_failed_with_data", 0))})
             # Include each source requiring attention from the very same
             # coverage census. No second DB query or upstream request.
             # Keep source identity, last observed period and publisher caveat;
             # do not relabel old observations as current after a successful
             # download when the latest published source year is unverified.
-            attention_items = []
+            attention_items, known_limitations = [], []
             for item in summary.get("items", []):
                 if item.get("state") in ("available", "source_checked_no_newer_data"):
+                    continue
+                if item.get("known_limitation"):
+                    # Still shown, with its real state and code, but apart
+                    # from the series that need a fix or a new check.
+                    known_limitations.append({
+                        **{key: item.get(key) for key in (
+                            "id", "name", "provider", "state", "last_failure_code",
+                            "research_questions")},
+                        "reason": item["known_limitation"]["reason"],
+                        "review_by": item["known_limitation"]["review_by"]})
                     continue
                 attention_items.append({key: item.get(key) for key in (
                     "id", "name", "provider", "state", "latest_source_date",
@@ -514,6 +529,7 @@ class SourceHealthCache:
                         "release_id": release_info()["release_id"],
                         "calculated_at": _utc(), "calculated_unix": time.time(),
                         "groups": groups, "attention_items": attention_items,
+                        "known_limitations": known_limitations,
                         "sources": {"total": sum(row["total"] for row in groups),
                                     "with_data": sum(row["with_data"] for row in groups),
                                     "needs_attention": sum(row["attention"] for row in groups)}}

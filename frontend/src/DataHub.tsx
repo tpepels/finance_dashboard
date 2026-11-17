@@ -38,6 +38,10 @@ type Health = {
       last_attempt_state?:string|null;last_failure_code?:string|null;
       next_action?:string|null;research_questions?:string[];
     }[];
+    known_limitations?:{
+      id:string;name:string;provider:string;state:string;
+      last_failure_code?:string|null;reason:string;review_by:string;
+    }[];
   }|null; error?:string|null;
   automation?:{scheduled_refresh_enabled:boolean;interval_seconds:number;
     automatic_post_ingestion_updates:boolean;refresh_running?:boolean;
@@ -542,6 +546,24 @@ export default function DataHub(){
             </table>
           </div>
         </div>}
+        {Boolean(snapshot?.known_limitations?.length)&&<details className="data-collection-known">
+          <summary>Known source limitations ({snapshot?.known_limitations?.length})</summary>
+          <p>The publisher does not provide these series in a usable form. They are
+            not counted as needing attention, no data is filled in for them, and they
+            are reviewed again on the date shown. Any other result counts as attention again.</p>
+          <div className="data-collection-table-scroll data-collection-source-list">
+            <table aria-label="Known source limitations">
+              <thead><tr><th>Data series</th><th>Why</th><th>Review by</th></tr></thead>
+              <tbody>{[...(snapshot?.known_limitations??[])]
+                .sort((a,b)=>a.name.localeCompare(b.name)).map(item=>
+                <tr key={item.id}>
+                  <td><strong>{item.name}</strong><small>{item.provider}</small></td>
+                  <td>{item.reason}</td>
+                  <td>{item.review_by}</td>
+                </tr>)}</tbody>
+            </table>
+          </div>
+        </details>}
         {(health.problem||health.value?.error)&&<p className="data-collection-alert">
           Could not update this list. Showing the last saved results.</p>}
       </div>:<p>{health.value?.state==='refreshing'?'Checking which data is available…':

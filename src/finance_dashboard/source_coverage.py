@@ -20,6 +20,61 @@ from .oecd_tiva import TIVA_SERIES
 from .research_returns import SWINKELS_SERIES
 
 FX_CURRENCIES = ("USD", "GBP", "CHF")
+
+# Reviewed publisher limitations that no collector or owner action can fix.
+# They stay visible with their real state and failure code, but stop counting
+# as attention so that a new problem is not lost among permanent ones. An
+# entry applies only while the source still has no stored observations, its
+# state and failure code are exactly the recorded ones, and the review date
+# has not passed. Any other outcome counts as attention again. Checked on
+# 2026-11-17 against the archived WID originals for all six areas.
+_WID_REVIEW_BY = date(2027, 7, 1)  # after WID's usual annual update
+_WID_ABSENT = (
+    "WID does not publish this variable and percentile in the current bulk "
+    "release for this area; the registered measure has no publisher rows.")
+_WID_UNCITED = (
+    "WID publishes this world aggregate with a blank source citation; the "
+    "citation rule rejects it. Not accepted until WID cites a source.")
+KNOWN_SOURCE_LIMITATIONS = {
+    **{f"piketty.{area}.{measure}": {
+        "state": "publisher_measure_absent",
+        "failure_code": "wid_measure_unavailable",
+        "reason": _WID_ABSENT, "review_by": _WID_REVIEW_BY}
+       for area, measures in (
+           ("cn", ("factor_capital_share", "real_pretax_average.p99_99_9",
+                   "real_pretax_average.p90_99")),
+           ("fr", ("factor_capital_share", "real_pretax_average.p99_99_9",
+                   "real_pretax_average.p90_99")),
+           ("in", ("factor_capital_share", "real_pretax_average.p99_99_9")),
+           ("pt", ("factor_capital_share", "real_pretax_average.p99_99_9",
+                   "real_pretax_average.p90_99")),
+           ("us", ("factor_capital_share", "real_pretax_average.p99_99_9",
+                   "real_pretax_average.p90_99")),
+           ("world", ("factor_capital_share", "real_pretax_average.p99_99_9",
+                      "real_pretax_average.p90_99")),
+       ) for measure in measures},
+    **{f"piketty.world.{measure}": {
+        "state": "collection_failed",
+        "failure_code": "wid_metadata_invalid",
+        "reason": _WID_UNCITED, "review_by": _WID_REVIEW_BY}
+       for measure in (
+           "national_business_assets", "national_housing_assets",
+           "net_capital_income", "net_national_income", "net_national_wealth",
+           "wealth_to_income.national", "wealth_to_income.private",
+           "wealth_to_income.public")},
+}
+
+
+def known_limitation(item: dict, asof: date) -> dict | None:
+    """Return the reviewed limitation only while it still describes the item."""
+    entry = KNOWN_SOURCE_LIMITATIONS.get(item.get("id"))
+    if (entry is None or item.get("family") != "macro"
+            or item.get("stored_periods", 0) != 0
+            or item.get("state") != entry["state"]
+            or item.get("last_failure_code") != entry["failure_code"]
+            or asof >= entry["review_by"]):
+        return None
+    return {"reason": entry["reason"], "review_by": entry["review_by"].isoformat()}
 # Official BIS credit-to-GDP gaps release 2026-09-14 contains 2026-Q1
 # observations; the next official release is scheduled for 2026-12-07.
 # This is a time-bounded bulletin, not a permanent publication-lag exemption.
@@ -450,7 +505,8 @@ def _summary(items: list[dict]) -> dict:
         "collection_deferred", "refresh_deferred_with_data",
         "refresh_failed_with_data", "stale", "source_unresolved",
         "publisher_measure_absent",
-    } for item in items)
+    } and not item.get("known_limitation") for item in items)
+    result["known_limitations"] = sum(bool(item.get("known_limitation")) for item in items)
     result['observations'] = {state: sum(item['observation_state'] == state for item in items)
                               for state in ('current', 'stale', 'missing')}
     return result
@@ -708,6 +764,8 @@ def coverage_from_session(session: Session, catalog: list[dict], market_registry
         provider="ECB", frequency="D", configured=market_enabled,
         mapped=True, counts=fx_counts, runs=fx_runs, successes=fx_success, asof=today,
     ) for currency in FX_CURRENCIES]
+    for item in macros + markets + fx:
+        item["known_limitation"] = known_limitation(item, today)
 
     return {
         "asof": today.isoformat(),

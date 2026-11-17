@@ -71,6 +71,25 @@ class SourceHealthRepairTests(unittest.TestCase):
         self.assertFalse(refresh.call_args.kwargs["full"])
         self.assertNotIn("skip_complete_pinned", refresh.call_args.kwargs)
 
+    def test_reviewed_publisher_limitation_is_not_repaired_or_counted(self):
+        known = {"id": "piketty.world.net_national_income", "family": "macro",
+                 "state": "collection_failed",
+                 "known_limitation": {"reason": "uncited", "review_by": "2027-07-01"}}
+        before = census(("prices.ea.hicp_index", "stale"))
+        before["items"].append(known)
+        after = census(("prices.ea.hicp_index", "available"))
+        after["items"].append(known)
+        manager = Manager()
+        with patch("finance_dashboard.source_coverage.build_coverage",
+                   side_effect=[before, after]), \
+             patch("finance_dashboard.worker.refresh_all", return_value=0) as refresh:
+            result = run_repair_source_health(manager, "job1",
+                "repair_source_health", {}, Event())
+        self.assertEqual(refresh.call_args.kwargs["series_ids"], {"prices.ea.hicp_index"})
+        self.assertEqual(result["issues_before"], 1)
+        self.assertEqual(result["issues_after"], 0)
+        self.assertEqual(result["status"], "complete")
+
     def test_swinkels_failed_pinned_original_is_retried_not_silenced(self):
         sid = "returns.swinkels.au.sovereign_10y_modelled_local"
         rows = census((sid, "refresh_failed_with_data"))

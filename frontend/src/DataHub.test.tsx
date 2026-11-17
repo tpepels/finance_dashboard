@@ -190,6 +190,23 @@ describe('unified Data and Diagnostics page',()=>{
     expect(screen.queryByText('source_invalid')).toBeNull();
   });
 
+  it('lists known source limitations apart from series that need attention',async()=>{
+    run.running=false;
+    run.state='complete';
+    Object.assign(health.snapshot,{known_limitations:[
+      {id:'piketty.world.net_national_income',name:'World net national income',
+       provider:'WID',state:'collection_failed',last_failure_code:'wid_metadata_invalid',
+       reason:'WID publishes this world aggregate with a blank source citation.',
+       review_by:'2027-07-01'}]});
+    render(<DataHub/>);
+    const summary=await screen.findByText('Known source limitations (1)');
+    expect(summary.closest('details')?.open).toBe(false);
+    expect(screen.getByRole('table',{name:'Known source limitations'})).toBeTruthy();
+    expect(screen.getByText(/blank source citation/)).toBeTruthy();
+    expect(screen.getByText('2027-07-01')).toBeTruthy();
+    expect(screen.queryByRole('table',{name:'Sources requiring attention'})).toBeNull();
+  });
+
   it('shows 36 never-ingested sources and the scheduled waiting pipeline',async()=>{
     run.running=false;
     run.state='complete';

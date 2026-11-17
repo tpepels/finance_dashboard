@@ -38,7 +38,10 @@ def run_repair_source_health(self, job_id, action, options, cancelled):
         report = build_coverage(self.engine, definitions, instruments())
         actionable = sorted(item["id"] for item in report["items"]
                             if item["family"] == "macro" and item["state"] not in (
-                                "available", "source_checked_no_newer_data"))
+                                "available", "source_checked_no_newer_data")
+                            # A reviewed publisher limitation cannot be repaired by
+                            # another download; the scheduled refresh still checks it.
+                            and not item.get("known_limitation"))
         return report, actionable
     # Source-health SQL is advisory for selection. A broken census must
     # never prevent the canonical collector from attempting registered sources.
