@@ -3,6 +3,7 @@ from __future__ import annotations
 from hashlib import sha256
 import json
 import os
+import re
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 import httpx
@@ -80,9 +81,20 @@ class PolicyRegistry:
                     "cooldown_503_seconds", "cooldown_access_denied_seconds",
                     "cooldown_other_5xx_seconds"))):
             raise PolicyViolation(rule_id, "invalid_rate_bounds")
+        graphql = restrictions.get("read_only_graphql_post")
+        if graphql is not None and not (
+                isinstance(graphql, dict) and set(graphql) == {"paths", "max_body_bytes"}
+                and isinstance(graphql["paths"], list) and graphql["paths"]
+                and all(isinstance(path, str) and path.startswith("/") and "?" not in path
+                        for path in graphql["paths"])
+                and type(graphql["max_body_bytes"]) is int
+                and 0 < graphql["max_body_bytes"] <= 16384):
+            raise PolicyViolation(rule_id, "invalid_restrictions")
         if (not isinstance(restrictions.get("methods"), list)
                 or not restrictions["methods"]
-                or any(m not in {"GET", "HEAD"} for m in restrictions["methods"])
+                # POST only for a declared read-only GraphQL endpoint.
+                or any(m not in ({"GET", "HEAD", "POST"} if graphql else {"GET", "HEAD"})
+                       for m in restrictions["methods"])
                 or not isinstance(restrictions.get("blocked_query_parameters"), list)
                 or any(not isinstance(restrictions.get(k), bool) for k in (
                     "require_direct_network_ack", "require_contact_user_agent"))
@@ -114,6 +126,8 @@ class PolicyRegistry:
         rules = policy.restrictions
         if request.method.upper() not in rules["methods"]:
             raise PolicyViolation(policy.id, "method_not_permitted")
+        if request.method.upper() == "POST":
+            self._check_read_only_graphql(request, policy)
         blocked = {key.casefold() for key in rules["blocked_query_parameters"]}
         if any(key.casefold() in blocked
                for key, _ in parse_qsl(request.url.query.decode("utf-8"),
@@ -134,6 +148,28 @@ class PolicyRegistry:
         # Collection is best-effort for this private deployment. Rights
         # classifications remain provenance metadata and never deny requests.
         # Authentication, HTTP access errors and publisher cooldowns still apply.
+
+    @staticmethod
+    def _check_read_only_graphql(request: httpx.Request, policy: Policy) -> None:
+        """A POST must be one bounded JSON GraphQL query to a declared path.
+
+        Queries read data; mutations and subscriptions change or hold state
+        and are refused, as is any other body or path.
+        """
+        rules = policy.restrictions.get("read_only_graphql_post") or {}
+        body = request.content if isinstance(request.stream, httpx.ByteStream) else None
+        if (request.url.path not in rules.get("paths", ())
+                or body is None or len(body) > rules["max_body_bytes"]
+                or request.headers.get("content-type", "").split(";")[0].strip() != "application/json"):
+            raise PolicyViolation(policy.id, "graphql_read_only_post_required")
+        try:
+            payload = json.loads(body)
+        except (ValueError, UnicodeDecodeError):
+            raise PolicyViolation(policy.id, "graphql_read_only_post_required") from None
+        query = payload.get("query") if isinstance(payload, dict) else None
+        if (not isinstance(query, str) or not query.lstrip().startswith(("query ", "query{", "{"))
+                or re.search(r"\b(mutation|subscription)\b", query)):
+            raise PolicyViolation(policy.id, "graphql_read_only_post_required")
 
     def require_redistribution_clearance(self, url: str) -> dict:
         """Fail closed for publication/export using a publisher's source data.

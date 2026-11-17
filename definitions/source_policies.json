@@ -1616,6 +1616,145 @@
         "redistribution": "not_cleared",
         "machine_verified_licence": false
       }
+    },
+    {
+      "id": "blackrock-product-data",
+      "hosts": [
+        "www.blackrock.com"
+      ],
+      "classification": "restricted_use",
+      "evidence_url": "https://www.blackrock.com/",
+      "rate": {
+        "limit": 12,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 20,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "ssga",
+      "hosts": [
+        "www.ssga.com"
+      ],
+      "classification": "restricted_use",
+      "evidence_url": "https://www.ssga.com/",
+      "rate": {
+        "limit": 6,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 30,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "vaneck",
+      "hosts": [
+        "www.vaneck.com"
+      ],
+      "classification": "restricted_use",
+      "evidence_url": "https://www.vaneck.com/",
+      "rate": {
+        "limit": 18,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 10,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
+    },
+    {
+      "id": "vanguard-de",
+      "hosts": [
+        "www.de.vanguard"
+      ],
+      "classification": "restricted_use",
+      "evidence_url": "https://www.de.vanguard/",
+      "rate": {
+        "limit": 12,
+        "window_seconds": 3600,
+        "min_spacing_seconds": 10,
+        "max_concurrent": 1,
+        "cooldown_429_seconds": 3600,
+        "cooldown_503_seconds": 3600,
+        "lease_seconds": 240,
+        "cooldown_access_denied_seconds": 3600,
+        "cooldown_other_5xx_seconds": 120
+      },
+      "restrictions": {
+        "methods": [
+          "GET",
+          "HEAD",
+          "POST"
+        ],
+        "blocked_query_parameters": [],
+        "require_direct_network_ack": false,
+        "require_contact_user_agent": false,
+        "read_only_graphql_post": {
+          "paths": [
+            "/gpx/graphql"
+          ],
+          "max_body_bytes": 8192
+        }
+      },
+      "rights": {
+        "internal_analysis": "allowed_with_attribution",
+        "redistribution": "not_cleared",
+        "machine_verified_licence": false
+      }
     }
   ],
   "collection_policy": {
