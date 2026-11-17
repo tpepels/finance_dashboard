@@ -2,6 +2,7 @@
 
 **Status:** design proposal, 17 November 2026. Not implemented. Requires an owner-approved charter amendment (section 1) before any code lands.
 **Scope:** a walk-forward backtesting and monthly allocation engine for EUR-based index/ETF investors. It combines established indicators and financial econometrics with Claude as one ensemble member. It produces **general recommendations** (a market outlook and model portfolios at five risk levels) and, optionally, recommendations personalised to the owner's own policy and holdings.
+**Implementation plan:** [phased development plan](../plans/2026-11-17-backtest-allocation-plan.md).
 **Governing documents:** [scientific charter](../../PHASE1_SCIENTIFIC_CHARTER.md), [analysis catalogue](../../PHASE1_ANALYSIS_CATALOGUE.md), [architecture](../../ARCHITECTURE.md), [source policy](../../SOURCE_POLICY.md), [agent handoff](../../AGENT_HANDOFF.md).
 
 ---
