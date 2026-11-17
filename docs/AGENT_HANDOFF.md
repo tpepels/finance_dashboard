@@ -1,12 +1,12 @@
-# Global Capital Monitor — agent handoff (17 November 2026, fifth checkpoint)
+# Global Capital Monitor — agent handoff (17 November 2026, sixth checkpoint)
 
 **Purpose:** Resume the existing work in `tpepels/finance_dashboard` without reopening the completed audit or rebuilding implemented fixes. The authoritative source is code on `main`; this file is the investigation checkpoint, not a substitute for tests or new production evidence.
 
 ## Last verified checkpoint
 
-- **Verified code commit:** `37c20fd` (WID quarantine reason). Earlier in this checkpoint: WID rebinding `178806c`, BLS contact `6d9bfce`, upload-status race `f03237a`.
-- **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/43981328973 — **passed** all four jobs: Python (1,566 tests, 10 skipped), frontend, browser, release-image.
-- **Deployed release:** `0.2.23+4c5b87bf970451cc`, activated 2026-11-17T10:27:01Z, server checkout `b7bbc3a` (contains every fix above). `BLS_USER_AGENT` is set in the container (value not recorded here).
+- **Verified code commit:** `550bf70` (known publisher limitations). Earlier: WID quarantine reason `37c20fd`, WID rebinding `178806c`, BLS contact `6d9bfce`, upload-status race `f03237a`.
+- **CI run:** https://github.com/tpepels/finance_dashboard/actions/runs/44078441400 — **passed** all four jobs: Python (1,578 tests, 10 skipped), frontend (242), browser, release-image.
+- **Deployed release:** `0.2.23+4c5b87bf970451cc`, activated 2026-11-17T10:27:01Z, server checkout `b7bbc3a` (contains every fix above except `550bf70`). `BLS_USER_AGENT` is set in the container (value not recorded here).
 - **Post-collection export:** on `0.2.23`, prepared 2026-11-17T11:36:58Z, after collection run `4543c85475494761b1d92b9dfbfdb655` (10:28Z to 11:36Z).
 
 ## Completed and tested work — do not repeat
@@ -29,6 +29,7 @@ The preceding commits already implemented and verified:
 12. Upload-status race (`f03237a`). `OriginalImportManager.public_status` raised `FileNotFoundError` when an import moved a file between listing and sizing; the file is now skipped. This also failed the offline suite intermittently.
 13. MSCI tamper test (`8fd7642`) selects the hash-named evidence bundle instead of the first directory entry. Test-only.
 14. WID quarantine reason (`37c20fd`). On 0.2.22 the eight world series were reported as `wid_observation_invalid`: the collector replaced each quarantine reason with a generic message whose prefix maps to the observation code. `parse_piketty_original(..., return_invalid=True)` now returns a `{variable: first failed rule}` mapping and `WidClient.fetch` raises that rule, so a blank source citation reports `wid_metadata_invalid`. Acceptance is unchanged.
+15. Known publisher limitations (`550bf70`). `KNOWN_SOURCE_LIMITATIONS` in `source_coverage.py` lists the 17 absent and 8 uncited WID series with expected state, failure code, reason and `review_by` 2027-07-01. `known_limitation()` applies only while the series has no stored data and state and code match exactly, before the review date; otherwise it counts as attention again. Matching series are excluded from `needs_attention`, the health snapshot's `attention_items`, the group `collection_failed` count and the repair census, and are listed in `known_limitations` (folded section on the data page). The scheduled refresh still checks them; a recurring reviewed failure is journalled as `source_known_limitation` at warning level, any other failure stays `source_failed`/error. Owner-approved on 2026-11-17. Do not add series to the list without checking the archived original.
 
 The scientific-acceptance and independent original-source gates were **not** weakened.
 
@@ -79,10 +80,11 @@ Before any production validation, **confirm the owner deployed the new commit**,
 
 ## Exact continuation task
 
-1. After the next scheduled refresh (later than 2026-11-17T14:15Z), check that the three G.17 diffusion series move past 2026-08. If they do not, read `diff_sa.txt` and compare it with the stored history before changing anything.
-2. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
-3. The other 49 attention items are publisher-side (22 WID lag, 17 WID absent, 8 WID uncited, BIS JP, EU KLEMS). They need no code change; re-check them after WID's next annual release.
-4. Keep the ICIO originals quarantined. Add regression tests from minimal original samples with source identity; keep full publisher files and credentials out of Git.
+1. After the owner deploys `550bf70` and a collection or scheduled refresh has run, take an export. Expect attention to fall by 25 (to 27 with the G.17 series still pending, 24 once they update), `known_limitations` to list 25 series, and no `source_failed` error events for them.
+2. After the next scheduled refresh later than 2026-11-17T14:15Z, check that the three G.17 diffusion series move past 2026-08. If they do not, read `diff_sa.txt` and compare it with the stored history before changing anything.
+3. BIS nominal bounds expire 2026-11-26. Re-check US/DE/PT/EA and Japan against the live BIS series then; do not extend the bounds without a newer publication.
+4. On or after WID's next annual release (review date 2027-07-01), re-check the 25 known limitations and the 22 aged WID histories against the new originals and update or remove the entries.
+5. Keep the ICIO originals quarantined. Add regression tests from minimal original samples with source identity; keep full publisher files and credentials out of Git.
 
 Local notes: the virtualenv lacked the declared `numpy` dependency, which made 10 ICIO tests error until it was installed at the locked version.
 
