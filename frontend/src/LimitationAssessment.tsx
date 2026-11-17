@@ -23,6 +23,11 @@ function count(value:unknown):number {
     ? Math.floor(value) : 0;
 }
 function explain(row:Finding):{title:string;meaning:string;next:string}{
+  if(row.category==='source_accounting_integrity'&&row.status==='documented'){
+    return {title:'OECD input-output tables do not add up exactly; the gaps are small',
+      meaning:row.detail,
+      next:'Nothing is adjusted. The check is repeated when OECD publishes a new release.'};
+  }
   if(row.category==='source_accounting_integrity'){
     const failures=count(row.evidence.failure_equations_exported);
     const incomplete=count(row.evidence.incomplete_annual_ledgers);

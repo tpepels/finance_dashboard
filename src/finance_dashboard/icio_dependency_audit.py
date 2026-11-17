@@ -7,7 +7,53 @@ match before an archived failure can be attributed to an analytic input.
 """
 from __future__ import annotations
 
+import json
+
+from .catalog import DEFAULT_ROOT
 from .icio import PUBLISHER_MATRICES
+
+MATERIALITY_FILE = "icio_2025_regular_materiality.json"
+MATERIALITY_LIMIT = 0.001  # residual share of a node's own output
+
+
+def load_consumer_materiality(root=None) -> dict | None:
+    """Read the recorded residual sizes of the L04 input matrices, if present."""
+    path = (root or DEFAULT_ROOT) / "definitions" / MATERIALITY_FILE
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def consumer_materiality(record: dict | None) -> dict:
+    """Verified only if every pinned year is covered, hash-matched and small.
+
+    This records how large the publisher's own residuals are. It never
+    rebalances a cell or marks a matrix as balanced.
+    """
+    years = {row.get("year"): row for row in (record or {}).get("years", [])
+             if isinstance(row, dict)}
+    try:
+        relative = {year: float(row["max_relative"]) for year, row in years.items()}
+    except (KeyError, TypeError, ValueError):
+        relative = {}
+    complete = bool(record) and set(years) == set(PUBLISHER_MATRICES) and len(relative) == len(years)
+    hashes = complete and all(row.get("sha_matches_pin") is True for row in years.values())
+    worst_year = max(relative, key=relative.get) if relative else None
+    worst = relative.get(worst_year) if worst_year is not None else None
+    return {
+        "verified": bool(hashes and worst is not None and worst <= MATERIALITY_LIMIT),
+        "years_covered": len(years), "years_required": len(PUBLISHER_MATRICES),
+        "all_hashes_match": bool(hashes),
+        "max_relative_row_residual": worst,
+        "max_relative_node": years[worst_year].get("max_relative_node") if worst_year else None,
+        "max_relative_year": worst_year,
+        "max_share_of_world_output": max(
+            (float(row.get("sum_abs_row_residual_share_of_world_output") or 0)
+             for row in years.values()), default=None),
+        "limit": MATERIALITY_LIMIT,
+        "checked_on": (record or {}).get("checked_on"),
+    }
 
 
 def classify_icio_dependencies(summary: dict) -> dict:
@@ -83,6 +129,7 @@ def classify_icio_dependencies(summary: dict) -> dict:
                     "note": "G06 may compare TiVA reconstruction diagnostics; this is not evidence that it consumes failed other-edition matrices"},
         },
         "counts": counts, "matrices": matrices,
+        "consumer_materiality": consumer_materiality(load_consumer_materiality()),
         "interpretation": (
             "An accounting failure in an imported other-edition archive is "
             "not automatically an error in a G06 or L04 output. Where a "

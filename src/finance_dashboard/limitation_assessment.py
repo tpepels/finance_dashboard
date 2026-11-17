@@ -364,36 +364,66 @@ def assess_limitations(*, coverage: dict, document: dict,
                 scope = "failing_exact_consumer_hash"
             else:
                 scope = "no_failing_exact_consumer_hash_in_archive_inventory"
-            findings.append(_finding(
-                id="scientific-integrity:icio-accounting",
-                category="source_accounting_integrity",
-                severity="high", status="needs_evidence",
-                title=("OECD ICIO source-accounting failures in archived matrices"
-                       if not consumer_matched else
-                       "OECD ICIO accounting failures affect an exact L04 consumer source"),
-                detail=(f"{failures} failure equations exported; "
-                        f"{len(incomplete)} annual matrices have incomplete failure ledgers. "
-                        + ("Source-consumer identity not assessed in this report."
-                           if not dependencies else
-                           f"{matching_failures} failed exact-consumer matrices; "
-                           f"{other_failures} failed other-edition matrices. "
-                           "Nonmatching archives cannot be attributed to G06 or L04; "
-                           "unmatched consumer originals are not independently validated.")),
-                next_action=("Inspect diagnostics/icio-accounting-failures.csv alongside "
-                             "diagnostics/icio-consumer-dependencies.json. Reconcile original "
-                             "archive definitions and verify consumer member SHA before "
-                             "granting any source-accounting scientific acceptance."),
-                analysis_ids=linked,
-                provenance="icio_accounting_manifest_and_consumer_scope",
-                evidence={"failure_equations_exported": failures,
-                          "incomplete_annual_ledgers": len(incomplete),
-                          "consumer_scope_state": scope,
-                          "failed_exact_consumer_matrices": matching_failures,
-                          "failed_other_matrices": other_failures,
-                          "exact_consumer_origin_matches": matching_origins,
-                          "complete_publisher_reader_audit":
-                              dependencies.get("complete_publisher_reader_audit") is True},
-            ))
+            materiality = dependencies.get("consumer_materiality") or {}
+            immaterial = (scope == "no_failing_exact_consumer_hash_in_archive_inventory"
+                          and materiality.get("verified") is True)
+            if immaterial:
+                # The failing archives are not read by any analysis, and the
+                # residuals in the matrices L04 does read are recorded and
+                # small. Nothing is rebalanced; the archives stay quarantined.
+                findings.append(_finding(
+                    id="scientific-integrity:icio-accounting",
+                    category="source_accounting_integrity",
+                    severity="information", status="documented",
+                    title="OECD ICIO tables do not close exactly; the residuals are recorded and immaterial",
+                    detail=(f"{failures} failure equations in {other_failures} other-edition "
+                            "archives, none of which is read by any analysis; they stay quarantined. "
+                            f"The {materiality.get('years_required')} hash-pinned matrices that L04 reads "
+                            "also have publisher residuals: at most "
+                            f"{materiality['max_relative_row_residual'] * 100:.3f}% of a node's own output "
+                            f"({materiality.get('max_relative_node')}, {materiality.get('max_relative_year')}), "
+                            f"and at most {materiality['max_share_of_world_output'] * 100:.4f}% of world "
+                            "output in total. No cell is adjusted."),
+                    next_action=("Re-run the materiality check when OECD publishes a new ICIO "
+                                 "release or the pinned L04 matrices change."),
+                    analysis_ids=["L04"] if "L04" in question_ids else [],
+                    provenance="icio_accounting_manifest_and_consumer_scope",
+                    evidence={"failure_equations_exported": failures,
+                              "failed_other_matrices": other_failures,
+                              "failed_exact_consumer_matrices": matching_failures,
+                              "consumer_scope_state": scope,
+                              "consumer_materiality": materiality}))
+            else:
+                findings.append(_finding(
+                    id="scientific-integrity:icio-accounting",
+                    category="source_accounting_integrity",
+                    severity="high", status="needs_evidence",
+                    title=("OECD ICIO source-accounting failures in archived matrices"
+                           if not consumer_matched else
+                           "OECD ICIO accounting failures affect an exact L04 consumer source"),
+                    detail=(f"{failures} failure equations exported; "
+                            f"{len(incomplete)} annual matrices have incomplete failure ledgers. "
+                            + ("Source-consumer identity not assessed in this report."
+                               if not dependencies else
+                               f"{matching_failures} failed exact-consumer matrices; "
+                               f"{other_failures} failed other-edition matrices. "
+                               "Nonmatching archives cannot be attributed to G06 or L04; "
+                               "unmatched consumer originals are not independently validated.")),
+                    next_action=("Inspect diagnostics/icio-accounting-failures.csv alongside "
+                                 "diagnostics/icio-consumer-dependencies.json. Reconcile original "
+                                 "archive definitions and verify consumer member SHA before "
+                                 "granting any source-accounting scientific acceptance."),
+                    analysis_ids=linked,
+                    provenance="icio_accounting_manifest_and_consumer_scope",
+                    evidence={"failure_equations_exported": failures,
+                              "incomplete_annual_ledgers": len(incomplete),
+                              "consumer_scope_state": scope,
+                              "failed_exact_consumer_matrices": matching_failures,
+                              "failed_other_matrices": other_failures,
+                              "exact_consumer_origin_matches": matching_origins,
+                              "complete_publisher_reader_audit":
+                                  dependencies.get("complete_publisher_reader_audit") is True},
+                ))
     findings.sort(key=lambda item: (
         {"high": 0, "medium": 1, "information": 2}.get(item["severity"], 3),
         item["category"], item["id"]))
