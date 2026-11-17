@@ -1519,6 +1519,22 @@ def _p01(points: dict, view: dict, artifacts: dict) -> Computed:
 P01 = AnalysisDefinition("P01", {}, _p01,
                          artifacts=("ucits_world", "vt_nport", "bnd_nport", "portfolio_holdings"))
 
+P04_OWNER_FIELDS = ("allocation", "bond_duration_years", "equity_hedged_share",
+                    "equity_euro_share", "bonds_hedged")
+P05_OWNER_FIELDS = ("allocation", "rebalancing", "trading_cost_bps", "start_value_eur",
+                    "monthly_contribution_eur", "annual_withdrawal_pct", "tax")
+
+
+def _uses_example(owner: dict, fields) -> bool:
+    """True while any input this analysis reads is still an example value."""
+    return bool(owner.get("is_example", True)
+                or set(fields) & set(owner.get("example_fields", ())))
+
+
+def p05_example_flag(owner: dict) -> bool:
+    return _uses_example(owner, P05_OWNER_FIELDS)
+
+
 def _owner(artifacts: dict) -> dict:
     from ..owner_inputs import EXAMPLE
     return artifacts.get("owner_inputs") or {**EXAMPLE, "is_example": True}
@@ -1534,7 +1550,8 @@ def _p04(points: dict, view: dict, artifacts: dict) -> Computed:
          "impact_pct": -(unhedged_foreign_equity * 10 + w["gold"] * 10 + (0 if owner["bonds_hedged"] else w["bonds"] * 10))},
         {"key": "equities_down", "label": "World equities fall 20%", "impact_pct": -w["equity"] * 20},
     ]
-    values = {"shocks": shocks, "is_example": owner.get("is_example", True),
+    values = {"shocks": shocks, "is_example": _uses_example(owner, P04_OWNER_FIELDS),
+              "example_fields": sorted(set(P04_OWNER_FIELDS) & set(owner.get("example_fields", ()))),
               "inputs": {k: owner[k] for k in ("allocation", "bond_duration_years", "equity_hedged_share", "equity_euro_share", "bonds_hedged")},
               "history": {"us_10y": _month_series(points.get("nominal_10y", [])), "usd_per_eur": _month_series(points.get("usd_per_eur", []))}}
     return Computed(values=values, estimates=None, comparison=["shocks"], transforms=[
@@ -1652,7 +1669,7 @@ def _p05(daily: dict, view: dict, artifacts: dict) -> Computed:
                                                           tax_mode=owner.get("tax", {}).get("mode", "none"),
                                                           tax_rate=owner.get("tax", {}).get("rate_pct", 0.0) / 100)}
              for key in ("never", "calendar", "threshold")]
-    values = {"rules": rules, "chosen": reb["rule"], "is_example": owner.get("is_example", True),
+    values = {"rules": rules, "chosen": reb["rule"], "is_example": p05_example_flag(owner),
               "bond_leg": "euro" if euro_bonds else "us_in_eur",
               "period": {"from": _month_label(run[0]) if run else None, "to": _month_label(run[-1]) if run else None, "months": len(run)},
               "inputs": {**{k: owner[k] for k in ("allocation", "rebalancing", "trading_cost_bps", "start_value_eur",

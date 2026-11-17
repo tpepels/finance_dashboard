@@ -100,18 +100,30 @@ def validate(raw: dict) -> dict:
 def load_owner_inputs(path: Path | None = None) -> dict:
     path = path or default_path()
     try:
-        return {**validate(json.loads(path.read_text())), "is_example": False}
+        raw = json.loads(path.read_text())
+        clean = validate(raw)
     except (OSError, ValueError, TypeError, KeyError):
-        return {**copy.deepcopy(EXAMPLE), "is_example": True}
+        return {**copy.deepcopy(EXAMPLE), "is_example": True,
+                "supplied_fields": [], "example_fields": sorted(EXAMPLE)}
+    # validate() completes absent fields from the example so calculations
+    # can run; only fields the owner saved count as theirs. A file saved
+    # before supplied_fields was recorded holds every field explicitly.
+    recorded = raw.get("supplied_fields") if isinstance(raw, dict) else None
+    supplied = (sorted(field for field in recorded if field in EXAMPLE)
+                if isinstance(recorded, list) else sorted(EXAMPLE))
+    return {**clean, "is_example": False, "supplied_fields": supplied,
+            "example_fields": sorted(set(EXAMPLE) - set(supplied))}
 
 
 def save_owner_inputs(path: Path | None, raw: dict) -> dict:
     """Validate, then write atomically; invalid inputs never touch the stored file."""
     path = path or default_path()
     clean = validate(raw)
+    supplied = sorted(field for field in EXAMPLE if field in raw)
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False, suffix=".tmp") as handle:
-        json.dump(clean, handle, indent=2)
+        json.dump({**clean, "supplied_fields": supplied}, handle, indent=2)
         temporary = Path(handle.name)
     temporary.replace(path)
-    return {**clean, "is_example": False}
+    return {**clean, "is_example": False, "supplied_fields": supplied,
+            "example_fields": sorted(set(EXAMPLE) - set(supplied))}

@@ -8,6 +8,7 @@ type Inputs = {
   rebalancing: { rule: 'never' | 'calendar' | 'threshold'; months: number; band_pp: number };
   trading_cost_bps: number; start_value_eur: number; monthly_contribution_eur: number; annual_withdrawal_pct: number;
   tax: { mode: 'none' | 'realised_gains' | 'yearly_on_value'; rate_pct: number }; is_example?: boolean;
+  example_fields?: string[];
 };
 
 const percent = (v: number) => String(Math.round(v * 1000) / 10);
@@ -29,6 +30,7 @@ function ModelInputs() {
   const [hedgedBonds, setHedgedBonds] = usePortfolioEditorState('model.hedgedBonds', true);
   const [taxMode, setTaxMode] = usePortfolioEditorState<Inputs['tax']['mode']>('model.taxMode', 'none');
   const [example, setExample] = usePortfolioEditorState<boolean | null>('model.example', null);
+  const [exampleFields, setExampleFields] = usePortfolioEditorState<string[]>('model.exampleFields', []);
   const [status, setStatus] = usePortfolioEditorState<{ kind: 'saved' | 'error'; text: string } | null>('model.status', null);
   const [saving, setSaving] = usePortfolioEditorState('model.saving', false);
   const loaded = usePortfolioEditorRef('model.loaded', false);
@@ -44,6 +46,7 @@ function ModelInputs() {
     setRule(d.rebalancing.rule);
     setHedgedBonds(d.bonds_hedged);
     setExample(Boolean(d.is_example));
+    setExampleFields(d.is_example ? [] : (d.example_fields ?? []));
     loaded.current = true;
   };
 
@@ -79,6 +82,7 @@ function ModelInputs() {
       setStatus({ kind: 'saved', text: 'Saved. The model analyses now use this scenario.' });
     } else {
       setExample(Boolean((data as Inputs).is_example));
+      setExampleFields((data as Inputs).example_fields ?? []);
       setStatus({ kind: 'saved', text: 'Submitted model scenario saved. Newer model edits remain unsaved.' });
     }
     window.dispatchEvent(new Event('gcm-data-updated'));
@@ -92,6 +96,9 @@ function ModelInputs() {
       <h3 id="owner-inputs-title">Model portfolio scenarios</h3>
       <p>{example ? 'The model analyses use an example portfolio until you save a scenario.'
         : 'The model analyses use your saved scenario.'} These broad asset assumptions are separate from your actual ETF holdings.</p>
+      {!example && exampleFields.length > 0 && <p className="owner-example-fields">
+        Not saved yet, so still example values: {exampleFields.map(f => f.replace(/_/g, ' ')).join(', ')}.
+        Results that use them are labelled as examples.</p>}
     </header>
     <form className="owner-form" onSubmit={save} onChangeCapture={() => { generation.current += 1; setStatus(null); }}>
       <fieldset>

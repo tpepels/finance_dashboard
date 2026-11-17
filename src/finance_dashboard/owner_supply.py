@@ -43,8 +43,10 @@ def supplied_roles(owner: dict | None, events: list[dict] | None, *,
                    portfolio: dict | None = None) -> dict[tuple[str, str], dict]:
     out = {}
     if owner and owner.get("is_example") is False:
+        # Fields completed from the example for calculation never count.
+        saved = set(owner.get("supplied_fields", owner))
         for key, fields in OWNER_ROLES.items():
-            if all(field in owner for field in fields):
+            if all(field in saved for field in fields):
                 out[key] = {"supplied_by": "owner_inputs", "fields": list(fields),
                             "limitation": {"code": "owner_supplied_values_not_verified",
                                            "detail": "Supplied by your saved portfolio inputs (the replay starts at the "
