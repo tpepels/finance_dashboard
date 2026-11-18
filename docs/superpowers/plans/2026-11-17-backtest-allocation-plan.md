@@ -129,8 +129,8 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
 - [ ] ECB Data Portal:
   - [x] Euro area AAA **par yields** for 1, 2, 3, 5, 7, 10, 15, 20 and 30 years (business daily from 2004-09-06, 5,676 observations each, no gaps), €STR (`EST.B.EU000A2X2A25.WT`, from 2019-10-01; its unit column is `UNIT_MEASURE` "PC") and EONIA monthly average (`FM.M.U2.EUR.4F.MM.EONIA.HSTA`, 1994-01 to 2021-12; the daily key does not exist). 11 series through the existing ECB provider with approved dimensions in `_ECB_SERIES`. EONIA values before 1999-01 precede the euro and EONIA itself, so they are registered as published but flagged as unusable for euro cash until documented. Tests: `tests/test_allocation_d1a_ecb.py`.
   - [ ] All-issuer curve and euro corporate bond yields.
-- [ ] Nareit All Equity REITs TR (check terms and attribution first; register as a category D proxy).
-- [ ] AQR datasets: QMJ, BAB, Century of Factor Premia (attribution recorded).
+- [ ] Nareit All Equity REITs TR (category D proxy). The guessed download URL returned an HTML page; the real file location must be found first.
+- [x] AQR datasets via a new `AQR_FACTORS` provider (`aqr.py`, adapter, independent reader `_aqr` in `captured_sources.py`, policy `aqr-data-sets`): QMJ US (1957-07+) and global (1989-07+), BAB US (1930-12+) and global (1987-02+), and from the Century of Factor Premia file the commodities market, carry and momentum, equity-index value and momentum, and fixed-income carry (1926-07+). Decimal excess returns, fully revised at every AQR update. Each workbook is fetched once per collection batch. **Design change:** the AQR commodities market excess return (futures, with roll) replaces the World Bank Pink Sheet spot proxy for the COMMODITY bucket. Tests: `tests/test_allocation_d1a_aqr.py`.
 
 **Wave D1b — predictors:**
 - [ ] Fed excess bond premium (Favara et al. CSV); Cboe VIX history; EC Economic Sentiment Indicator; ECB SPF and Philly Fed SPF/Livingston; Wu–Xia shadow rates; OECD MEI original-release/revisions data for CLI vintages; BIS REER; OECD PPP.

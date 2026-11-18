@@ -1,0 +1,38 @@
+{
+  "notice": "Factual cell excerpts of AQR data-set workbooks downloaded 2026-11-18: description rows, the header row and selected data rows, unchanged. Tests pack them into a minimal workbook; the full originals are not committed.",
+  "workbooks": [
+    {
+      "workbook": "Quality-Minus-Junk-Factors-Monthly.xlsx",
+      "url": "https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/Quality-Minus-Junk-Factors-Monthly.xlsx",
+      "sha256": "d26f09cd8f58977f478e8fb298d22b1efe2d262c5f4a3a21b8ec112e041d6fbf",
+      "bytes": 2265582,
+      "observed_at_utc": "2026-11-18T11:16:36.099782+00:00",
+      "sheet": "QMJ Factors",
+      "data_rows": 830,
+      "first_date": "07/31/1957",
+      "last_date": "08/31/2026"
+    },
+    {
+      "workbook": "Betting-Against-Beta-Equity-Factors-Monthly.xlsx",
+      "url": "https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/Betting-Against-Beta-Equity-Factors-Monthly.xlsx",
+      "sha256": "9f4ee5eb1dfc28ea81479228bf650ce0dff74a933c806735a36500cf72aeeca0",
+      "bytes": 2504680,
+      "observed_at_utc": "2026-11-18T11:16:36.154383+00:00",
+      "sheet": "BAB Factors",
+      "data_rows": 1149,
+      "first_date": "12/31/1930",
+      "last_date": "08/31/2026"
+    },
+    {
+      "workbook": "Century-of-Factor-Premia-Monthly.xlsx",
+      "url": "https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/Century-of-Factor-Premia-Monthly.xlsx",
+      "sha256": "0bf8ba978e64964282ead98a6a25691218d4517d07c98c89e2716706f6f0a127",
+      "bytes": 1784414,
+      "observed_at_utc": "2026-11-18T11:16:36.237726+00:00",
+      "sheet": "Century of Factor Premia",
+      "data_rows": 1196,
+      "first_date": "07/30/1926",
+      "last_date": "02/27/2026"
+    }
+  ]
+}

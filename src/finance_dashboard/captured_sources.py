@@ -50,7 +50,7 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
                    for index,source in enumerate(sources)]
         source=sources[-1]
         raw,data_hash=originals[-1]
-        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS','SEC_NMFP'} else None
+        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS','SEC_NMFP','AQR_FACTORS'} else None
         dimensions={}
         if provider == "FRED":
             values = _fred(body, definition, source["url"])
@@ -63,6 +63,8 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
                       else _bea_q(body,definition,source['url']))
         elif provider == 'WORLD_BANK_PINK_SHEET':
             values,dimensions = _pink_sheet(raw,definition,source['url'])
+        elif provider == 'AQR_FACTORS':
+            values,dimensions = _aqr(raw,definition,source['url'])
         elif provider == 'SHILLER':
             values,dimensions = _shiller(raw,definition,originals[0][0].decode('utf-8-sig'),
                               sources[0]['url'],source['url'], return_metadata=True)
@@ -508,6 +510,42 @@ def _pink_sheet(raw,definition,url):
         if day in values and values[day]<=0: raise EvidenceError('source_value_invalid')
     return values,{'source_native_unit':native_unit,'source_native_unit_label':unit_label,
                    'source_currency':'USD','source_sheet':'Monthly Prices','source_variable':label}
+
+
+def _aqr(raw,definition,url):
+    """Independent reader of an archived AQR data-set workbook (not aqr.parse_aqr_rows)."""
+    from .source_reconciliation import EvidenceError
+    sheets={'Quality-Minus-Junk-Factors-Monthly.xlsx':('QMJ Factors','Quality Minus Junk (QMJ) factors'),
+            'Betting-Against-Beta-Equity-Factors-Monthly.xlsx':('BAB Factors','Betting Against Beta (BAB) factors'),
+            'Century-of-Factor-Premia-Monthly.xlsx':('Century of Factor Premia','A Century of Evidence')}
+    key=definition['source_key']
+    workbook,_,rest=key.partition('#')
+    sheet,_,label=rest.partition(':')
+    if (workbook not in sheets or sheets[workbook][0]!=sheet or not label
+            or url!='https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/'+workbook
+            or definition['unit']!='ratio' or definition['frequency']!='M'):
+        raise EvidenceError('source_identity_mismatch')
+    rows=_workbook_rows(raw,sheet)
+    intro=[str(row[0]) for row in rows[:12] if row and row[0] is not None]
+    if not any(sheets[workbook][1] in text for text in intro) or not any('self-financing excess returns' in text for text in intro):
+        raise EvidenceError('source_identity_mismatch')
+    header=[index for index,row in enumerate(rows[:40]) if row and str(row[0]).strip() in ('DATE','Date')]
+    if len(header)!=1: raise EvidenceError('source_schema_invalid')
+    names=[str(cell).strip() for cell in rows[header[0]]]
+    if names.count(label)!=1: raise EvidenceError('source_identity_mismatch')
+    column=names.index(label)
+    values,seen={},set()
+    for row in rows[header[0]+1:]:
+        stamp=str(row[0]).strip() if row and row[0] is not None else ''
+        cell=row[column] if len(row)>column else None
+        if not stamp:
+            if cell not in (None,''): raise EvidenceError('source_schema_invalid')
+            continue
+        if not re.fullmatch(r'\d{2}/\d{2}/\d{4}',stamp): raise EvidenceError('source_period_invalid')
+        month,_day,year=stamp.split('/')
+        _add(values,seen,_native_period(year+'-'+month,'M'),None if cell in (None,'') else repr(float(cell)))
+    return values,{'source_native_unit':'ratio','source_native_unit_label':'decimal self-financing excess return',
+                   'source_sheet':sheet,'source_variable':label}
 
 
 class _OriginalWorkbookLinks(HTMLParser):

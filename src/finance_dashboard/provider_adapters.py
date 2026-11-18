@@ -23,6 +23,7 @@ from .bis_credit import BIS_TC_ROOT, TC_SERIES, tc_key, parse_bis_total_credit
 from .bis_dsr import BIS_DSR_ROOT, DSR_SERIES, parse_bis_dsr
 from .bis_property import PROPERTY_SOURCES, BIS_SPP_ROOT, BIS_CPP_ROOT, parse_bis_property
 from .boj_call_rates import BOJ_SERIES, boj_url, parse_boj_csv
+from .aqr import AQR_SERIES, AQR_WORKBOOKS, aqr_source_key, aqr_url, parse_aqr_rows
 from .bundesbank import BUNDESBANK_SERIES, bundesbank_url, parse_bundesbank_csv
 from .fdic_banks import FDIC_FINANCIALS_URL, FDIC_QUERY, FDIC_SERIES, parse_fdic_aggregates
 from .fed_g17 import G17_DIFFUSION_SERIES, G17_DIFFUSION_URL, parse_g17_diffusion
@@ -804,6 +805,24 @@ def fetch_world_bank_pink_sheet(self, series_id, start, item, key):
         raise SourceUnavailable("Unapproved World Bank Pink Sheet commodity")
     observations = parse_pink_sheet_price(rows, key[len(prefix):], start)
     return FetchedSeries(series_id, PINK_SHEET_URL, None, observations)
+
+
+def fetch_aqr_factors(self, series_id, start, item, key):
+    """Validate and fetch one column of an AQR data-set workbook (shared within a batch)."""
+    from io import BytesIO
+    from python_calamine import CalamineWorkbook
+    if series_id not in AQR_SERIES or key != aqr_source_key(series_id):
+        raise SourceUnavailable("AQR series identity differs from the approved definition")
+    workbook, _column = AQR_SERIES[series_id]
+    url = aqr_url(workbook)
+    response = self._get_document(url)
+    if len(response.content) > 15_000_000:
+        raise ProviderError("AQR workbook exceeds safe size limit")
+    try:
+        rows = CalamineWorkbook.from_filelike(BytesIO(response.content)).get_sheet_by_name(AQR_WORKBOOKS[workbook][0]).to_python()
+    except Exception as exc:
+        raise ProviderError("AQR workbook is invalid") from exc
+    return FetchedSeries(series_id, url, None, parse_aqr_rows(rows, series_id, start))
 
 
 def fetch_un_sdg(self, series_id, start, item, key):

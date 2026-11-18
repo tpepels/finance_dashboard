@@ -90,6 +90,12 @@ The owner answered a 10-question interview and asked for a design of a backtesti
 | D1a ECB AAA par yields, €STR, EONIA | Code-complete (11 series registered, catalogue 666) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. The nine daily AAA series add about 51,000 observations to the database on first collection. |
 | D1a German pre-euro cash and DEM/USD (FRED) | Code-complete (3 series registered, catalogue 669) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. Remaining D1a: linker yields, ECB all-issuer and corporate yields, country portfolios, Nareit, AQR. |
 
+| D1a AQR factors (new provider `AQR_FACTORS`) | Code-complete (10 series, catalogue 679, 50 providers) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. Century-of-factor-premia data end 2026-02 (publisher lag). |
+
+**Owner rule (2026-11-18): terms of use are not a limiting factor.** The installation is used only by the owner, so any free data may be acquired; series keep `rights: review_required` as a record, but that field never blocks acquisition. Ask the owner for an API key when a free source needs one.
+
+**French collection time:** the `french-library` policy allows 6 requests per hour at least 10 minutes apart. With 14 French archives, a full French collection takes about 2.3 hours; this is expected, not a fault.
+
 Session network: publisher hosts for D1 are allowed through the owner's personal cloud environment `finance_dashboard` (created 2026-11-17). The default environment blocks them.
 
 Known unrelated failure on `main` (not caused by this branch): `test_standalone.StandaloneContainerTests.test_deferred_first_refresh_keeps_startup_read_only_until_interval` (900 != 86400), introduced with the quota-retry refresh change.
