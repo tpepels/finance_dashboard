@@ -321,6 +321,16 @@ _ECB_SERIES = {
     **{f'EXR.D.{cur}.EUR.SP00.A': ('EXR', 'D', 'currency_per_eur',
         {'FREQ': 'D', 'CURRENCY': cur, 'CURRENCY_DENOM': 'EUR', 'EXR_TYPE': 'SP00', 'EXR_SUFFIX': 'A'},
         None, None) for cur in ('USD', 'JPY', 'GBP', 'CHF')},
+    # Allocation module (plan phase D1a): AAA par yields, the euro short-term rate
+    # and the monthly-average EONIA. Dimensions and unit codes are taken from the
+    # downloads of 2026-11-18; EST reports UNIT_MEASURE "PC" rather than UNIT.
+    **{f'YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_{years}Y': ('YC', 'D', 'percent',
+        {'FREQ': 'B', 'REF_AREA': 'U2', 'CURRENCY': 'EUR', 'DATA_TYPE_FM': f'PY_{years}Y', 'UNIT_MULT': '0'},
+        {'PCPA'}, 'EUR') for years in (1, 2, 3, 5, 7, 10, 15, 20, 30)},
+    'EST.B.EU000A2X2A25.WT': ('EST', 'D', 'percent',
+        {'FREQ': 'B', 'BENCHMARK_ITEM': 'EU000A2X2A25', 'DATA_TYPE_EST': 'WT', 'UNIT_MULT': '0'}, {'PC'}, 'EUR'),
+    'FM.M.U2.EUR.4F.MM.EONIA.HSTA': ('FM', 'M', 'percent',
+        {'FREQ': 'M', 'REF_AREA': 'U2', 'CURRENCY': 'EUR', 'DATA_TYPE_FM': 'HSTA', 'UNIT_MULT': '0'}, {'PCPA'}, 'EUR'),
 }
 ECB_DATASETS = frozenset(item[0] for item in _ECB_SERIES.values())
 

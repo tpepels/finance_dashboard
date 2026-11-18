@@ -1,0 +1,126 @@
+{
+  "notice": "Excerpts of ECB Data Portal csvdata downloads (header row and the first three and last two observation rows, verbatim). Full downloads are not committed; hashes and extent are recorded here.",
+  "downloads": [
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_1Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_1Y?format=csvdata",
+      "sha256": "a07e9304897ed0dc4c05ccfc285d82b6f11fd216fe4d14746264f4343e023371",
+      "observed_at_utc": "2026-11-18T10:29:22.802778+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "2.2996948534167028",
+      "last_value": "2.9848110268"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_2Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_2Y?format=csvdata",
+      "sha256": "d2c93243a5c255e003a4dc9a758b2a089de4afdf3e76ab852a6ad1883f9aa671",
+      "observed_at_utc": "2026-11-18T10:29:22.873187+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "2.6381597553472673",
+      "last_value": "3.1062536569"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_3Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_3Y?format=csvdata",
+      "sha256": "d003b83f4bfae14f1f03d6736cfa96bffa782f035e735ee79f67378c24207b8e",
+      "observed_at_utc": "2026-11-18T10:29:22.949906+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "2.9411358181283838",
+      "last_value": "3.1281508052"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_5Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_5Y?format=csvdata",
+      "sha256": "2849a782b5920748c674273732f0dbfc34b0ff9494de5a539969677722ec2ff5",
+      "observed_at_utc": "2026-11-18T10:29:23.019486+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "3.4244297096757124",
+      "last_value": "3.1698515114"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_7Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_7Y?format=csvdata",
+      "sha256": "0ce1cb2f16ca73741e2ec916c730c16324a845f55c656a830ba6d58fa3a4393d",
+      "observed_at_utc": "2026-11-18T10:29:23.067894+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "3.7683481732671256",
+      "last_value": "3.2541840422"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_10Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_10Y?format=csvdata",
+      "sha256": "dc4f9137bfa08fb90714682eb21448d5fd16ee744364fb959541a9fb80ce9c2f",
+      "observed_at_utc": "2026-11-18T10:29:23.128120+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "4.107901839271964",
+      "last_value": "3.3951415505"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_15Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_15Y?format=csvdata",
+      "sha256": "67abe41b4ee5c6ec9a305ff45f81f6fc7731374dc708f9d91f18cf09682186b2",
+      "observed_at_utc": "2026-11-18T10:29:23.197811+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "4.418005325227244",
+      "last_value": "3.5629964226"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_20Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_20Y?format=csvdata",
+      "sha256": "eb2ead4d66e82d0374646d38c46e0d249f142c27e4a366a18f06ed7445269668",
+      "observed_at_utc": "2026-11-18T10:29:23.246221+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "4.578748955878622",
+      "last_value": "3.6390791902"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_30Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.PY_30Y?format=csvdata",
+      "sha256": "fe2272fb4864816ee8c298872fe59a304793d34673dd096471a2dfc3f113c9de",
+      "observed_at_utc": "2026-11-18T10:29:23.288553+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-16",
+      "first_value": "4.730569045263239",
+      "last_value": "3.6348875553"
+    },
+    {
+      "source_key": "EST.B.EU000A2X2A25.WT",
+      "url": "https://data-api.ecb.europa.eu/service/data/EST/B.EU000A2X2A25.WT?format=csvdata",
+      "sha256": "8f5d4eff11b39bfc109f4e006ec80ae2ddf14f6bff2c9d89a35233d2f2adb89d",
+      "observed_at_utc": "2026-11-18T10:29:23.299923+00:00",
+      "observations": 1827,
+      "first_period": "2019-10-01",
+      "last_period": "2026-11-17",
+      "first_value": "-0.549",
+      "last_value": "2.441"
+    },
+    {
+      "source_key": "FM.M.U2.EUR.4F.MM.EONIA.HSTA",
+      "url": "https://data-api.ecb.europa.eu/service/data/FM/M.U2.EUR.4F.MM.EONIA.HSTA?format=csvdata",
+      "sha256": "1bf3914b3e53468eccb2618391f904b62e3daa3fa5394e51490a42288811eeb3",
+      "observed_at_utc": "2026-11-18T10:29:23.302640+00:00",
+      "observations": 336,
+      "first_period": "1994-01",
+      "last_period": "2021-12",
+      "first_value": "6.840000152587891",
+      "last_value": "-0.4922173913043477"
+    }
+  ]
+}

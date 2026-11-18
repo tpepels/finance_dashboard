@@ -126,7 +126,9 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
   - [ ] Inflation-indexed (linker) real yields: the series key could not yet be identified in the Bundesbank API (candidate dataflows `BBSIS`, `BBSEI`); find it from the dataflow structure before registering.
   - [ ] Pre-1999 cash: guessed `BBIG1` money-market keys returned 404. Use the OECD immediate interest rate for Germany (FRED `IRSTCI01DEM156N`, OECD MEI) through the existing FRED provider instead, labelled as the DEM-era cash proxy.
   - [ ] DEM/USD before 1999 (FRED `EXGEUS` or Bundesbank) for the DEM-based EUR proxy.
-- [ ] ECB Data Portal: euro area AAA and all-issuer curves, €STR, EONIA, euro corporate bond yields where published.
+- [ ] ECB Data Portal:
+  - [x] Euro area AAA **par yields** for 1, 2, 3, 5, 7, 10, 15, 20 and 30 years (business daily from 2004-09-06, 5,676 observations each, no gaps), €STR (`EST.B.EU000A2X2A25.WT`, from 2019-10-01; its unit column is `UNIT_MEASURE` "PC") and EONIA monthly average (`FM.M.U2.EUR.4F.MM.EONIA.HSTA`, 1994-01 to 2021-12; the daily key does not exist). 11 series through the existing ECB provider with approved dimensions in `_ECB_SERIES`. EONIA values before 1999-01 precede the euro and EONIA itself, so they are registered as published but flagged as unusable for euro cash until documented. Tests: `tests/test_allocation_d1a_ecb.py`.
+  - [ ] All-issuer curve and euro corporate bond yields.
 - [ ] Nareit All Equity REITs TR (check terms and attribution first; register as a category D proxy).
 - [ ] AQR datasets: QMJ, BAB, Century of Factor Premia (attribution recorded).
 
