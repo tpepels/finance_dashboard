@@ -27,6 +27,24 @@
       "observations": 372,
       "first_row": "1971-01-01,3.6370",
       "last_row": "2001-12-01,2.1946"
+    },
+    {
+      "series": "AAA",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=AAA",
+      "sha256": "0f89a825d20cbc97cda34952c9727a642eda7167625feb5d77d1756f53dec59a",
+      "observed_at_utc": "2026-11-18T11:32:24.117404+00:00",
+      "observations": 1294,
+      "first_row": "1919-01-01,5.35",
+      "last_row": "2026-10-01,6.12"
+    },
+    {
+      "series": "BAA",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAA",
+      "sha256": "0d7a21abcb6af2a2d7ac83fb6a8941a5e3ad8ddcec913dcff1b7d9d50eed6404",
+      "observed_at_utc": "2026-11-18T11:32:24.117404+00:00",
+      "observations": 1294,
+      "first_row": "1919-01-01,7.12",
+      "last_row": "2026-10-01,6.59"
     }
   ]
 }

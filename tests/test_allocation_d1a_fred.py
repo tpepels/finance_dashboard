@@ -14,7 +14,9 @@ from finance_dashboard.provider_parsers import parse_fred_csv
 FIXTURES = Path(__file__).parent / "fixtures" / "fred_allocation"
 SERIES = {"rates.de.immediate_rate_oecd": ("IRSTCI01DEM156N", "percent", 802),
           "rates.de.interbank_3m_oecd": ("IR3TIB01DEM156N", "percent", 802),
-          "fx.dem_per_usd.fred": ("EXGEUS", "currency_per_usd", 372)}
+          "fx.dem_per_usd.fred": ("EXGEUS", "currency_per_usd", 372),
+          "credit.us.moodys_aaa_yield": ("AAA", "percent", 1294),
+          "credit.us.moodys_baa_yield": ("BAA", "percent", 1294)}
 
 
 class GermanPreEuroInputsTests(unittest.TestCase):

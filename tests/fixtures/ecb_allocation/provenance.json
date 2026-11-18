@@ -121,6 +121,50 @@
       "last_period": "2021-12",
       "first_value": "6.840000152587891",
       "last_value": "-0.4922173913043477"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_C.SV_C_YM.PY_2Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_C.SV_C_YM.PY_2Y?format=csvdata",
+      "sha256": "d52b3627b02d84b69d034258dd639f690206277d1aa3ed88f386a23ffac32b13",
+      "observed_at_utc": "2026-11-18T11:32:24.117404+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-17",
+      "first_value": "2.6520940787201046",
+      "last_value": "3.2515200409"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_C.SV_C_YM.PY_5Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_C.SV_C_YM.PY_5Y?format=csvdata",
+      "sha256": "2f98cabff650ace2200ea467a366aae07007bb7c13cd6ea7369a2bb17d5fc064",
+      "observed_at_utc": "2026-11-18T11:32:24.117404+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-17",
+      "first_value": "3.4500518423578344",
+      "last_value": "3.5331119697"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_C.SV_C_YM.PY_10Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_C.SV_C_YM.PY_10Y?format=csvdata",
+      "sha256": "0994bcbc373ccc9072d399418ddae047cb8687d2d686f8030fac8e99f1da430b",
+      "observed_at_utc": "2026-11-18T11:32:24.117404+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-17",
+      "first_value": "4.156515872513721",
+      "last_value": "3.9585009807"
+    },
+    {
+      "source_key": "YC.B.U2.EUR.4F.G_N_C.SV_C_YM.PY_30Y",
+      "url": "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_C.SV_C_YM.PY_30Y?format=csvdata",
+      "sha256": "78c73981961976733f616eee189624a16773879060a70a317b3a9b5f86e284a7",
+      "observed_at_utc": "2026-11-18T11:32:24.117404+00:00",
+      "observations": 5676,
+      "first_period": "2004-09-06",
+      "last_period": "2026-11-17",
+      "first_value": "4.792164226176801",
+      "last_value": "4.3314964111"
     }
   ]
 }

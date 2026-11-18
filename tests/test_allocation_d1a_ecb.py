@@ -18,6 +18,7 @@ from finance_dashboard.source_reconciliation import EvidenceError
 FIXTURES = Path(__file__).parent / "fixtures" / "ecb_allocation"
 PROVENANCE = {item["source_key"]: item for item in json.loads((FIXTURES / "provenance.json").read_text())["downloads"]}
 SERIES = {**{f"bond.ea.aaa_{n}y_par_yield": f"YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_{n}Y" for n in (1, 2, 3, 5, 7, 10, 15, 20, 30)},
+          **{f"bond.ea.all_issuer_{n}y_par_yield": f"YC.B.U2.EUR.4F.G_N_C.SV_C_YM.PY_{n}Y" for n in (2, 5, 10, 30)},
           "rates.ea.estr": "EST.B.EU000A2X2A25.WT", "rates.ea.eonia_monthly_average": "FM.M.U2.EUR.4F.MM.EONIA.HSTA"}
 
 
@@ -58,6 +59,10 @@ class EcbAllocationSeriesTests(unittest.TestCase):
         self.assertEqual(metadata["source_native_unit_codes"], ["PC"])
         with self.assertRaises(EvidenceError):    # a different native unit is refused
             _ecb(body(key).replace(",PC,0", ",PCPA,0"), item, PROVENANCE[key]["url"])
+
+    def test_aaa_and_all_issuer_curves_are_not_interchangeable(self):
+        with self.assertRaises(ProviderError):
+            parse_ecb_csv(body(SERIES["bond.ea.aaa_10y_par_yield"]), SERIES["bond.ea.all_issuer_10y_par_yield"], "D")
 
     def test_a_maturity_cannot_be_read_as_another(self):
         with self.assertRaises(ProviderError):
