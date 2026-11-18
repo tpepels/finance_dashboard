@@ -1,0 +1,32 @@
+{
+  "notice": "Eurostat ei_bssi_m_r2 JSON-stat responses of 2026-11-18 trimmed to their first three and last two periods with values; dimensions and labels unchanged.",
+  "downloads": [
+    {
+      "geo": "EA21",
+      "sha256": "3d3396087e1aaebb8f08462a722bfb790ac7fc0d4839efb465ddfc725f8965e9",
+      "observed_at_utc": "2026-11-18T11:57:48.334348+00:00",
+      "periods": 562,
+      "with_values": 562,
+      "first": "1980-01",
+      "last": "2026-10"
+    },
+    {
+      "geo": "DE",
+      "sha256": "70e9cffaf3e1811a1c45dece56d950c7ce26a68baa10b6f03db7ad61c4cf0816",
+      "observed_at_utc": "2026-11-18T11:57:48.335416+00:00",
+      "periods": 562,
+      "with_values": 562,
+      "first": "1980-01",
+      "last": "2026-10"
+    },
+    {
+      "geo": "PT",
+      "sha256": "80ce03927ab6b1996fae05c9bf691a6d66a9fdcd481375c8a1354eba4e9379e6",
+      "observed_at_utc": "2026-11-18T11:57:48.336426+00:00",
+      "periods": 562,
+      "with_values": 478,
+      "first": "1987-01",
+      "last": "2026-10"
+    }
+  ]
+}

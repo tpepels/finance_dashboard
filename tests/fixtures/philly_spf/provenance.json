@@ -1,0 +1,7 @@
+{
+  "notice": "Factual cell excerpt of the Philadelphia Fed SPF Inflation.xlsx downloaded 2026-11-18 (header, first rounds, the first CPI rounds and the last two rounds).",
+  "url": "https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/survey-of-professional-forecasters/historical-data/inflation.xlsx",
+  "sha256": "2b2147fb5bf756ec0a48e70a376aedac8ea5b6eccaab02d03da480878e7a8a9e",
+  "observed_at_utc": "2026-11-18T11:56:14.321880+00:00",
+  "rounds": 228
+}

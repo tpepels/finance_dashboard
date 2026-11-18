@@ -1,0 +1,93 @@
+{
+ "version": "2.0",
+ "class": "dataset",
+ "label": "Economic sentiment and confidence indicators by sector - monthly data",
+ "source": "ESTAT",
+ "updated": "2026-10-29T11:00:00+0100",
+ "id": [
+  "freq",
+  "indic",
+  "s_adj",
+  "geo",
+  "time"
+ ],
+ "size": [
+  1,
+  1,
+  1,
+  1,
+  5
+ ],
+ "dimension": {
+  "freq": {
+   "label": "Time frequency",
+   "category": {
+    "index": {
+     "M": 0
+    },
+    "label": {
+     "M": "Monthly"
+    }
+   }
+  },
+  "indic": {
+   "label": "Indicator",
+   "category": {
+    "index": {
+     "BS-ESI-I": 0
+    },
+    "label": {
+     "BS-ESI-I": "Economic sentiment indicator"
+    }
+   }
+  },
+  "s_adj": {
+   "label": "Seasonal adjustment",
+   "category": {
+    "index": {
+     "SA": 0
+    },
+    "label": {
+     "SA": "Seasonally adjusted data, not calendar adjusted data"
+    }
+   }
+  },
+  "geo": {
+   "label": "Geopolitical entity (reporting)",
+   "category": {
+    "index": {
+     "EA21": 0
+    },
+    "label": {
+     "EA21": "Euro area – 21 countries (from 2026)"
+    }
+   }
+  },
+  "time": {
+   "label": "Time",
+   "category": {
+    "index": {
+     "1980-01": 0,
+     "1980-02": 1,
+     "1980-03": 2,
+     "2026-09": 3,
+     "2026-10": 4
+    },
+    "label": {
+     "1980-01": "1980-01",
+     "1980-02": "1980-02",
+     "1980-03": "1980-03",
+     "2026-09": "2026-09",
+     "2026-10": "2026-10"
+    }
+   }
+  }
+ },
+ "value": {
+  "0": 101.2,
+  "1": 102.4,
+  "2": 100.5,
+  "3": 97.5,
+  "4": 96.9
+ }
+}

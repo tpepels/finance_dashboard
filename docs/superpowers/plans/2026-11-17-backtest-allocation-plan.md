@@ -138,7 +138,9 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
 - [x] Fed excess bond premium and GZ spread (1973-01+) through a new `FED_EBP` provider; the Board's recession-probability column is a forecast and is not registered. Tests: `tests/test_allocation_d1b_ebp.py`.
 - [x] VIX: already registered (`stress.us.vix`, FRED `VIXCLS`).
 - [x] ECB SPF longer-term expectations for HICP inflation, real GDP growth and unemployment (quarterly rounds from 1999-Q1) via the ECB provider. The rolling-horizon SPF series (P9M, P21M) are dated by target quarter, which ingestion rightly rejects as future periods; they need point-in-time handling in D2 before registration.
-- [ ] Philly Fed SPF/Livingston (US inflation expectations); EC Economic Sentiment Indicator (euro area); Wu–Xia shadow rates; OECD MEI original-release/revisions data for CLI vintages; BIS REER; OECD PPP.
+- [x] Philadelphia Fed SPF median inflation expectations (`Inflation.xlsx`): GDP price 1 year (1970-Q2+), CPI 1 year (1981-Q3+) and CPI 10 years (1991-Q4+) through a new `PHILLY_SPF` provider. The separate mean-level workbooks return a script page to scripted requests and are not used. Tests: `tests/test_allocation_d1b_philly_spf.py`.
+- [x] EC Economic Sentiment Indicator via Eurostat `ei_bssi_m_r2` for the euro area (EA21 composition, 1980-01+; EA20 ended 2025-12), Germany and Portugal through a new `EUROSTAT_SENTIMENT` provider. Tests: `tests/test_allocation_d1b_sentiment.py`.
+- [ ] Wu–Xia shadow rates; OECD MEI original-release/revisions data for CLI vintages; BIS REER; OECD PPP.
 - [ ] Euro-area OECD CLI: the OECD has no `EA20`, `EA19`, `EA` or `EZ` series in `DF_CLI`; use the registered German and French CLIs or the EC sentiment indicator instead.
 - [x] FRED coverage: Moody's Aaa/Baa, DGS2/DGS3MO/DGS10, T10Y3M, DFII10 and DEM/USD are registered. [ ] Extend `vintage.py` targets for FRED predictors with revisions (D2).
 

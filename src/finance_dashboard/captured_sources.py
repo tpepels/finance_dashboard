@@ -50,7 +50,7 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
                    for index,source in enumerate(sources)]
         source=sources[-1]
         raw,data_hash=originals[-1]
-        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS','SEC_NMFP','AQR_FACTORS','FRENCH_COUNTRIES'} else None
+        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS','SEC_NMFP','AQR_FACTORS','FRENCH_COUNTRIES','PHILLY_SPF'} else None
         dimensions={}
         if provider == "FRED":
             values = _fred(body, definition, source["url"])
@@ -69,6 +69,10 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
             values,dimensions = _french_countries(raw,definition,source['url'])
         elif provider == 'FED_EBP':
             values,dimensions = _fed_ebp(body,definition,source['url'])
+        elif provider == 'PHILLY_SPF':
+            values,dimensions = _philly_spf(raw,definition,source['url'])
+        elif provider == 'EUROSTAT_SENTIMENT':
+            values,dimensions = _eurostat_sentiment(json.loads(body,parse_float=Decimal),definition,source['url'])
         elif provider == 'SHILLER':
             values,dimensions = _shiller(raw,definition,originals[0][0].decode('utf-8-sig'),
                               sources[0]['url'],source['url'], return_metadata=True)
@@ -622,6 +626,47 @@ def _fed_ebp(body,definition,url):
         if not re.fullmatch(r'\d{4}-\d{2}-01',row['date'] or ''): raise EvidenceError('source_period_invalid')
         _add(values,seen,_native_period(row['date'][:7],'M'),row[definition['source_key']])
     return values,{'source_native_unit':'percentage_points','source_variable':definition['source_key']}
+
+
+def _philly_spf(raw,definition,url):
+    """Independent reader of the archived Philadelphia Fed SPF inflation workbook (not philly_spf.py)."""
+    from .source_reconciliation import EvidenceError
+    if (url!='https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/survey-of-professional-forecasters/historical-data/inflation.xlsx'
+            or definition['source_key'] not in ('INFPGDP1YR','INFCPI1YR','INFCPI10YR')
+            or definition['unit']!='percent' or definition['frequency']!='Q'):
+        raise EvidenceError('source_identity_mismatch')
+    rows=_workbook_rows(raw,'INFLATION')
+    names=[str(cell).strip() for cell in rows[0]] if rows else []
+    if names[:2]!=['YEAR','QUARTER'] or names.count(definition['source_key'])!=1:
+        raise EvidenceError('source_schema_invalid')
+    column=names.index(definition['source_key'])
+    values,seen={},set()
+    for row in rows[1:]:
+        if not any(cell not in ('',None) for cell in row): continue
+        year,quarter=row[0],row[1]
+        if not (float(year).is_integer() and float(quarter) in (1.0,2.0,3.0,4.0)): raise EvidenceError('source_period_invalid')
+        cell=row[column]
+        _add(values,seen,_native_period('%d-Q%d'%(int(year),int(quarter)),'Q'),None if cell in ('#N/A','',None) else repr(float(cell)))
+    return values,{'source_native_unit':'percent','source_variable':definition['source_key']}
+
+
+def _eurostat_sentiment(payload,definition,url):
+    """Independent reader of an archived Eurostat ei_bssi_m_r2 JSON-stat response (not eurostat_sentiment.py)."""
+    from .source_reconciliation import EvidenceError
+    from urllib.parse import urlsplit,parse_qs
+    parts=urlsplit(url); query=parse_qs(parts.query)
+    match=re.fullmatch(r'ei_bssi_m_r2/M\.BS-ESI-I\.SA\.([A-Z0-9_]+)',definition['source_key'])
+    if (not match or parts.netloc!='ec.europa.eu' or parts.path!='/eurostat/api/dissemination/statistics/1.0/data/ei_bssi_m_r2'
+            or query.get('geo')!=[match.group(1)] or query.get('indic')!=['BS-ESI-I'] or query.get('s_adj')!=['SA']
+            or definition['unit']!='index' or definition['frequency']!='M'):
+        raise EvidenceError('source_identity_mismatch')
+    dims=payload.get('dimension',{})
+    for name,code in (('freq','M'),('indic','BS-ESI-I'),('s_adj','SA'),('geo',match.group(1))):
+        if list(dims.get(name,{}).get('category',{}).get('index',{}))!=[code]: raise EvidenceError('source_identity_mismatch')
+    values,seen={},set()
+    for label,position in dims['time']['category']['index'].items():
+        _add(values,seen,_native_period(label,'M'),payload.get('value',{}).get(str(position)))
+    return values,{'source_native_unit':'index','source_dataset':'ei_bssi_m_r2','source_geo':match.group(1)}
 
 
 class _OriginalWorkbookLinks(HTMLParser):

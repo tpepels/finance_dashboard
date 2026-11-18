@@ -28,6 +28,8 @@ from .french_countries import (FRENCH_COUNTRIES_URL, FRENCH_COUNTRY_SERIES, fren
                                parse_french_country)
 from .bundesbank import BUNDESBANK_SERIES, bundesbank_url, parse_bundesbank_csv
 from .fed_ebp import FED_EBP_SERIES, FED_EBP_URL, parse_fed_ebp
+from .eurostat_sentiment import EUROSTAT_SENTIMENT_SERIES, EUROSTAT_SENTIMENT_URL, parse_eurostat_sentiment, sentiment_params
+from .philly_spf import PHILLY_SPF_SERIES, PHILLY_SPF_SHEET, PHILLY_SPF_URL, parse_philly_spf_rows
 from .fdic_banks import FDIC_FINANCIALS_URL, FDIC_QUERY, FDIC_SERIES, parse_fdic_aggregates
 from .fed_g17 import G17_DIFFUSION_SERIES, G17_DIFFUSION_URL, parse_g17_diffusion
 from .imf_external import IMF_SDMX_ROOT, IMF_SERIES, imf_key, parse_imf_bop_iip
@@ -844,6 +846,30 @@ def fetch_fed_ebp(self, series_id, start, item, key):
         raise SourceUnavailable("Federal Reserve EBP series identity differs from the approved definition")
     response = self._get_document(FED_EBP_URL)
     return FetchedSeries(series_id, FED_EBP_URL, None, parse_fed_ebp(response.text, series_id, start))
+
+
+def fetch_philly_spf(self, series_id, start, item, key):
+    """Validate and fetch one column of the Philadelphia Fed SPF inflation workbook (shared within a batch)."""
+    from io import BytesIO
+    from python_calamine import CalamineWorkbook
+    if PHILLY_SPF_SERIES.get(series_id) != key:
+        raise SourceUnavailable("Philadelphia Fed SPF series identity differs from the approved definition")
+    response = self._get_document(PHILLY_SPF_URL)
+    if len(response.content) > 5_000_000:
+        raise ProviderError("Philadelphia Fed SPF workbook exceeds safe size limit")
+    try:
+        rows = CalamineWorkbook.from_filelike(BytesIO(response.content)).get_sheet_by_name(PHILLY_SPF_SHEET).to_python()
+    except Exception as exc:
+        raise ProviderError("Philadelphia Fed SPF workbook is invalid") from exc
+    return FetchedSeries(series_id, PHILLY_SPF_URL, None, parse_philly_spf_rows(rows, series_id, start))
+
+
+def fetch_eurostat_sentiment(self, series_id, start, item, key):
+    """Validate and fetch one Eurostat economic sentiment indicator series."""
+    if EUROSTAT_SENTIMENT_SERIES.get(series_id) != key:
+        raise SourceUnavailable("Eurostat sentiment series identity differs from the approved definition")
+    response = self._get(EUROSTAT_SENTIMENT_URL, params=sentiment_params(key))
+    return FetchedSeries(series_id, str(response.request.url), None, parse_eurostat_sentiment(response.json(), key, start))
 
 
 def fetch_un_sdg(self, series_id, start, item, key):
