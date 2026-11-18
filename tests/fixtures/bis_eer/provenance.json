@@ -1,0 +1,59 @@
+{
+  "notice": "BIS WS_EER SDMX-JSON responses of 2026-11-18 trimmed to their first three and last two months; structure, codes and values unchanged otherwise.",
+  "downloads": [
+    {
+      "area": "US",
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_EER/1.0/M.R.B.US",
+      "sha256": "28d74f0702014d5e3fd4bf6d8131b5053ab0de3bcff15cf2a556a948dd81378b",
+      "observed_at_utc": "2026-11-18T12:01:35.737459+00:00",
+      "months": 393,
+      "first": "1994-01",
+      "last": "2026-09"
+    },
+    {
+      "area": "XM",
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_EER/1.0/M.R.B.XM",
+      "sha256": "8b6c18285b2da5332557e48e54680d5c8cfdc819834de644459eb481aebd9e84",
+      "observed_at_utc": "2026-11-18T12:01:35.739058+00:00",
+      "months": 393,
+      "first": "1994-01",
+      "last": "2026-09"
+    },
+    {
+      "area": "JP",
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_EER/1.0/M.R.B.JP",
+      "sha256": "1261857ff0decce2efcbc1f08303585d2bc5a9cc0a59a0526c6c5ceb27f63476",
+      "observed_at_utc": "2026-11-18T12:01:35.740201+00:00",
+      "months": 393,
+      "first": "1994-01",
+      "last": "2026-09"
+    },
+    {
+      "area": "GB",
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_EER/1.0/M.R.B.GB",
+      "sha256": "402f63e977388c3c2abe5a8a0f15c4fcba81a87272c2e58841b3c82ecce0ceb4",
+      "observed_at_utc": "2026-11-18T12:01:35.741315+00:00",
+      "months": 393,
+      "first": "1994-01",
+      "last": "2026-09"
+    },
+    {
+      "area": "CN",
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_EER/1.0/M.R.B.CN",
+      "sha256": "80f22f6b446ba21d111186fa136ea8d10693dd5d00322786803b28ae5aeea1f7",
+      "observed_at_utc": "2026-11-18T12:01:35.742553+00:00",
+      "months": 393,
+      "first": "1994-01",
+      "last": "2026-09"
+    },
+    {
+      "area": "CH",
+      "url": "https://stats.bis.org/api/v2/data/dataflow/BIS/WS_EER/1.0/M.R.B.CH",
+      "sha256": "b66aee4dbdf74c0e658de83f9e28bc30a11f34a264df3267338af8cbbf4c0937",
+      "observed_at_utc": "2026-11-18T12:01:35.743785+00:00",
+      "months": 393,
+      "first": "1994-01",
+      "last": "2026-09"
+    }
+  ]
+}

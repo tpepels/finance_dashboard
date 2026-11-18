@@ -56,6 +56,7 @@ _REGISTRATIONS = (
     ProviderRegistration("GOLD_API_SPOT", "fetch_gold_api_spot", "response", "windowed"),
     ProviderRegistration("BIS_PROPERTY", "fetch_bis_property", "response", "windowed"),
     ProviderRegistration("BIS_DSR", "fetch_bis_dsr", "response", "windowed"),
+    ProviderRegistration("BIS_EER", "fetch_bis_eer", "response", "windowed"),
     ProviderRegistration("BIS_CREDIT_GAP", "fetch_bis_credit_gap", "response", "windowed"),
     ProviderRegistration("BIS_TOTAL_CREDIT", "fetch_bis_total_credit", "response", "full"),
     ProviderRegistration("FED_G17_DIFFUSION", "fetch_fed_g17_diffusion", "response", "full"),

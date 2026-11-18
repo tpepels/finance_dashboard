@@ -20,6 +20,7 @@ from .source_policy import managed_client, require_managed_client
 
 from .bis import BisPolicyClient, FetchedSeries, ProviderError, COUNTRIES, _dimension_code, ACCEPT
 from .bis_credit import BIS_TC_ROOT, TC_SERIES, tc_key, parse_bis_total_credit
+from .bis_eer import BIS_EER_ROOT, EER_SERIES, eer_key, parse_bis_eer
 from .bis_dsr import BIS_DSR_ROOT, DSR_SERIES, parse_bis_dsr
 from .bis_property import PROPERTY_SOURCES, BIS_SPP_ROOT, BIS_CPP_ROOT, parse_bis_property
 from .boj_call_rates import BOJ_SERIES, boj_url, parse_boj_csv
@@ -625,6 +626,18 @@ def fetch_bis_property(self, series_id, start, item, key):
         headers={"Accept": ACCEPT})
     values, prepared = parse_bis_property(
         response.json(), flow=flow, original_key=original_key, start=start)
+    return FetchedSeries(series_id, str(response.request.url), prepared, values)
+
+
+def fetch_bis_eer(self, series_id, start, item, key):
+    """Validate and fetch one BIS real broad effective exchange rate."""
+    area = EER_SERIES.get(series_id)
+    if area is None or key != eer_key(area):
+        raise SourceUnavailable("BIS EER source key differs from the approved area")
+    response = self._get(f"{BIS_EER_ROOT}/M.R.B.{area}",
+                         params={"startPeriod": f"{start.year}-{start.month:02d}"} if start else {},
+                         headers={"Accept": ACCEPT})
+    values, prepared = parse_bis_eer(response.json(), area=area, start=start)
     return FetchedSeries(series_id, str(response.request.url), prepared, values)
 
 

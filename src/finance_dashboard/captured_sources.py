@@ -750,6 +750,10 @@ def _bis(payload, definition):
             raise EvidenceError('source_identity_mismatch')
     elif provider == "BIS_DSR":
         names = ("FREQ", "BORROWERS_CTY", "DSR_BORROWERS")
+    elif provider == "BIS_EER":
+        names = ("FREQ", "EER_TYPE", "EER_BASKET", "REF_AREA")
+        if definition['frequency'] != 'M' or definition['unit'] != 'index':
+            raise EvidenceError('source_identity_mismatch')
     elif provider == "BIS_TOTAL_CREDIT":
         names = ("FREQ", "BORROWERS_CTY", "TC_BORROWERS", "TC_LENDERS", "VALUATION", "UNIT_TYPE", "TC_ADJUST")
     elif provider == "BIS_CREDIT_GAP":
