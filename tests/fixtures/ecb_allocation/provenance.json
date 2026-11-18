@@ -165,6 +165,39 @@
       "last_period": "2026-11-17",
       "first_value": "4.792164226176801",
       "last_value": "4.3314964111"
+    },
+    {
+      "source_key": "SPF.Q.U2.HICP.POINT.LT.Q.AVG",
+      "url": "https://data-api.ecb.europa.eu/service/data/SPF/Q.U2.HICP.POINT.LT.Q.AVG?format=csvdata",
+      "sha256": "9b7dea9472585878931fe772333b1f353da8b7d8f143947ab122c364a966e0ff",
+      "observed_at_utc": "2026-11-18T11:36:15.041183+00:00",
+      "observations": 106,
+      "first_period": "1999-Q1",
+      "last_period": "2026-Q4",
+      "first_value": "1.8636065573770493",
+      "last_value": "2.0190515007894736"
+    },
+    {
+      "source_key": "SPF.Q.U2.RGDP.POINT.LT.Q.AVG",
+      "url": "https://data-api.ecb.europa.eu/service/data/SPF/Q.U2.RGDP.POINT.LT.Q.AVG?format=csvdata",
+      "sha256": "5ab64f104f9243f3785d8e71ebfc53a7fff5530eb3f84df7f4f94798e5b7afdd",
+      "observed_at_utc": "2026-11-18T11:36:15.041183+00:00",
+      "observations": 106,
+      "first_period": "1999-Q1",
+      "last_period": "2026-Q4",
+      "first_value": "2.4641666666666664",
+      "last_value": "1.2569636755263158"
+    },
+    {
+      "source_key": "SPF.Q.U2.UNEM.POINT.LT.Q.AVG",
+      "url": "https://data-api.ecb.europa.eu/service/data/SPF/Q.U2.UNEM.POINT.LT.Q.AVG?format=csvdata",
+      "sha256": "f8f27c175e1e6250d35d41ce7149028f0448ad51a6fa73f56723aa6e6a35bae3",
+      "observed_at_utc": "2026-11-18T11:36:15.041183+00:00",
+      "observations": 106,
+      "first_period": "1999-Q1",
+      "last_period": "2026-Q4",
+      "first_value": "9.540862068965517",
+      "last_value": "6.139841375757577"
     }
   ]
 }

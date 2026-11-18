@@ -92,7 +92,8 @@ The owner answered a 10-question interview and asked for a design of a backtesti
 
 | D1a AQR factors (new provider `AQR_FACTORS`) | Code-complete (10 series) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. Century-of-factor-premia data end 2026-02 (publisher lag). |
 | D1a French country portfolios (new provider `FRENCH_COUNTRIES`) | Code-complete (100 series, catalogue 779, 51 providers) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. Blocked: Nareit (JavaScript challenge, owner decision needed). Open: Bundesbank linker key, euro corporate yields (no free long series). |
-| D1a ECB all-issuer par yields, Moody's Aaa/Baa | Code-complete (6 series, catalogue 785) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. |
+| D1a ECB all-issuer par yields, Moody's Aaa/Baa | Code-complete (6 series) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. |
+| D1b EBP/GZ spread (new provider `FED_EBP`), ECB SPF longer-term expectations | Code-complete (5 series, catalogue 790, 52 providers) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. Remaining D1b: Philly SPF, EC ESI, shadow rates, CLI vintages, REER, PPP. |
 
 **Owner rule (2026-11-18): terms of use are not a limiting factor.** The installation is used only by the owner, so any free data may be acquired; series keep `rights: review_required` as a record, but that field never blocks acquisition. Ask the owner for an API key when a free source needs one.
 

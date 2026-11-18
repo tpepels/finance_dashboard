@@ -19,6 +19,8 @@ FIXTURES = Path(__file__).parent / "fixtures" / "ecb_allocation"
 PROVENANCE = {item["source_key"]: item for item in json.loads((FIXTURES / "provenance.json").read_text())["downloads"]}
 SERIES = {**{f"bond.ea.aaa_{n}y_par_yield": f"YC.B.U2.EUR.4F.G_N_A.SV_C_YM.PY_{n}Y" for n in (1, 2, 3, 5, 7, 10, 15, 20, 30)},
           **{f"bond.ea.all_issuer_{n}y_par_yield": f"YC.B.U2.EUR.4F.G_N_C.SV_C_YM.PY_{n}Y" for n in (2, 5, 10, 30)},
+          **{f"expectations.ea.spf_longer_term_{name}": f"SPF.Q.U2.{topic}.POINT.LT.Q.AVG"
+             for name, topic in (("inflation", "HICP"), ("real_gdp_growth", "RGDP"), ("unemployment", "UNEM"))},
           "rates.ea.estr": "EST.B.EU000A2X2A25.WT", "rates.ea.eonia_monthly_average": "FM.M.U2.EUR.4F.MM.EONIA.HSTA"}
 
 
@@ -27,6 +29,8 @@ def body(key):
 
 
 def period(text, frequency):
+    if frequency == "Q":
+        return date(int(text[:4]), 3 * int(text[-1]) - 2, 1)
     return date(int(text[:4]), int(text[5:7]), 1 if frequency == "M" else int(text[8:10]))
 
 
@@ -48,7 +52,8 @@ class EcbAllocationSeriesTests(unittest.TestCase):
             parsed = parse_ecb_csv(text, key, item["frequency"])
             values, metadata = _ecb(text, item, record["url"])
             self.assertEqual(values, parsed, sid)
-            self.assertEqual(metadata["source_currency"], "EUR")
+            if not sid.startswith("expectations."):
+                self.assertEqual(metadata["source_currency"], "EUR")
             self.assertEqual(parsed[period(record["first_period"], item["frequency"])], Decimal(record["first_value"]))
             self.assertEqual(parsed[period(record["last_period"], item["frequency"])], Decimal(record["last_value"]))
 

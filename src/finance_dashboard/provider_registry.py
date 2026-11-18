@@ -64,6 +64,7 @@ _REGISTRATIONS = (
     ProviderRegistration("BUNDESBANK", "fetch_bundesbank", "response", "full"),
     ProviderRegistration("AQR_FACTORS", "fetch_aqr_factors", "response", "full"),
     ProviderRegistration("FRENCH_COUNTRIES", "fetch_french_countries", "response", "full"),
+    ProviderRegistration("FED_EBP", "fetch_fed_ebp", "response", "full"),
     ProviderRegistration("FRED_WAYBACK", "fetch_fred_wayback", "native", "full"),
     ProviderRegistration("OECD_CLI", "fetch_oecd_cli", "response", "full",
                          request_origin="https://sdmx.oecd.org/public/rest/data"),

@@ -1,0 +1,9 @@
+{
+  "notice": "Excerpt of the Federal Reserve EBP CSV (header, first three and last two rows, verbatim).",
+  "url": "https://www.federalreserve.gov/econres/notes/feds-notes/ebp_csv.csv",
+  "sha256": "caa16e0619cb5399b9c8f44433868351f01973f9594c50a4f1f87dd0856542c5",
+  "observed_at_utc": "2026-11-18T11:37:24.668220+00:00",
+  "rows": 646,
+  "first_row": "1973-01-01,1.1307714053429057,-0.04765868268656903,0.1827584903883351",
+  "last_row": "2026-10-01,1.0045612268832755,-0.26533114775416333,0.11939321668604688"
+}

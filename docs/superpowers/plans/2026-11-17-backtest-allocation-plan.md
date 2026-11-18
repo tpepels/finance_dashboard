@@ -135,8 +135,12 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
 - [x] AQR datasets via a new `AQR_FACTORS` provider (`aqr.py`, adapter, independent reader `_aqr` in `captured_sources.py`, policy `aqr-data-sets`): QMJ US (1957-07+) and global (1989-07+), BAB US (1930-12+) and global (1987-02+), and from the Century of Factor Premia file the commodities market, carry and momentum, equity-index value and momentum, and fixed-income carry (1926-07+). Decimal excess returns, fully revised at every AQR update. Each workbook is fetched once per collection batch. **Design change:** the AQR commodities market excess return (futures, with roll) replaces the World Bank Pink Sheet spot proxy for the COMMODITY bucket. Tests: `tests/test_allocation_d1a_aqr.py`.
 
 **Wave D1b — predictors:**
-- [ ] Fed excess bond premium (Favara et al. CSV); Cboe VIX history; EC Economic Sentiment Indicator; ECB SPF and Philly Fed SPF/Livingston; Wu–Xia shadow rates; OECD MEI original-release/revisions data for CLI vintages; BIS REER; OECD PPP.
-- [ ] Confirm FRED/ALFRED coverage for Moody's Aaa/Baa, Treasury curve, T-bill and DEXGEUS. Extend `vintage.py` targets for any FRED predictors with revisions.
+- [x] Fed excess bond premium and GZ spread (1973-01+) through a new `FED_EBP` provider; the Board's recession-probability column is a forecast and is not registered. Tests: `tests/test_allocation_d1b_ebp.py`.
+- [x] VIX: already registered (`stress.us.vix`, FRED `VIXCLS`).
+- [x] ECB SPF longer-term expectations for HICP inflation, real GDP growth and unemployment (quarterly rounds from 1999-Q1) via the ECB provider. The rolling-horizon SPF series (P9M, P21M) are dated by target quarter, which ingestion rightly rejects as future periods; they need point-in-time handling in D2 before registration.
+- [ ] Philly Fed SPF/Livingston (US inflation expectations); EC Economic Sentiment Indicator (euro area); Wu–Xia shadow rates; OECD MEI original-release/revisions data for CLI vintages; BIS REER; OECD PPP.
+- [ ] Euro-area OECD CLI: the OECD has no `EA20`, `EA19`, `EA` or `EZ` series in `DF_CLI`; use the registered German and French CLIs or the EC sentiment indicator instead.
+- [x] FRED coverage: Moody's Aaa/Baa, DGS2/DGS3MO/DGS10, T10Y3M, DFII10 and DEM/USD are registered. [ ] Extend `vintage.py` targets for FRED predictors with revisions (D2).
 
 **Wave D1c — text:**
 - [ ] FOMC statements and minutes; ECB monetary policy statements and press conferences. Store as dated originals with publication timestamps (`cb_statements.py`). Text is stored as evidence, not as series observations.

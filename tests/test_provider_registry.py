@@ -17,8 +17,8 @@ class ProviderRegistryTests(unittest.TestCase):
         mapped = {row["provider"] for row in load_documents()[0]["series"]
                   if row["status"] == "mapped"}
         self.assertFalse(mapped - PROVIDER_CODES)
-        # 49 before the allocation module added AQR_FACTORS and FRENCH_COUNTRIES (phase D1a).
-        self.assertEqual(len(PROVIDER_CODES), 51)
+        # 49 before the allocation module added AQR_FACTORS, FRENCH_COUNTRIES (D1a) and FED_EBP (D1b).
+        self.assertEqual(len(PROVIDER_CODES), 52)
         for code, registration in PROVIDER_REGISTRY.items():
             self.assertTrue(callable(getattr(provider_adapters, registration.handler, None)))
             self.assertIn(registration.acquisition,

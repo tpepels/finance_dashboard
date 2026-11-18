@@ -27,6 +27,7 @@ from .aqr import AQR_SERIES, AQR_WORKBOOKS, aqr_source_key, aqr_url, parse_aqr_r
 from .french_countries import (FRENCH_COUNTRIES_URL, FRENCH_COUNTRY_SERIES, french_country_source_key,
                                parse_french_country)
 from .bundesbank import BUNDESBANK_SERIES, bundesbank_url, parse_bundesbank_csv
+from .fed_ebp import FED_EBP_SERIES, FED_EBP_URL, parse_fed_ebp
 from .fdic_banks import FDIC_FINANCIALS_URL, FDIC_QUERY, FDIC_SERIES, parse_fdic_aggregates
 from .fed_g17 import G17_DIFFUSION_SERIES, G17_DIFFUSION_URL, parse_g17_diffusion
 from .imf_external import IMF_SDMX_ROOT, IMF_SERIES, imf_key, parse_imf_bop_iip
@@ -835,6 +836,14 @@ def fetch_french_countries(self, series_id, start, item, key):
     if len(response.content) > 5_000_000:
         raise ProviderError("French international country archive exceeds safe size limit")
     return FetchedSeries(series_id, FRENCH_COUNTRIES_URL, None, parse_french_country(response.content, series_id, start))
+
+
+def fetch_fed_ebp(self, series_id, start, item, key):
+    """Validate and fetch one column of the Federal Reserve excess bond premium CSV (shared within a batch)."""
+    if FED_EBP_SERIES.get(series_id) != key:
+        raise SourceUnavailable("Federal Reserve EBP series identity differs from the approved definition")
+    response = self._get_document(FED_EBP_URL)
+    return FetchedSeries(series_id, FED_EBP_URL, None, parse_fed_ebp(response.text, series_id, start))
 
 
 def fetch_un_sdg(self, series_id, start, item, key):

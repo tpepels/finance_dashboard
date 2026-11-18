@@ -67,6 +67,8 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
             values,dimensions = _aqr(raw,definition,source['url'])
         elif provider == 'FRENCH_COUNTRIES':
             values,dimensions = _french_countries(raw,definition,source['url'])
+        elif provider == 'FED_EBP':
+            values,dimensions = _fed_ebp(body,definition,source['url'])
         elif provider == 'SHILLER':
             values,dimensions = _shiller(raw,definition,originals[0][0].decode('utf-8-sig'),
                               sources[0]['url'],source['url'], return_metadata=True)
@@ -334,6 +336,11 @@ _ECB_SERIES = {
     **{f'YC.B.U2.EUR.4F.G_N_C.SV_C_YM.PY_{years}Y': ('YC', 'D', 'percent',
         {'FREQ': 'B', 'REF_AREA': 'U2', 'CURRENCY': 'EUR', 'INSTRUMENT_FM': 'G_N_C', 'DATA_TYPE_FM': f'PY_{years}Y', 'UNIT_MULT': '0'},
         {'PCPA'}, 'EUR') for years in (2, 5, 10, 30)},
+    # ECB Survey of Professional Forecasters, longer-term point forecasts (period = survey round).
+    **{f'SPF.Q.U2.{topic}.POINT.LT.Q.AVG': ('SPF', 'Q', 'percent',
+        {'FREQ': 'Q', 'REF_AREA': 'U2', 'FCT_TOPIC': topic, 'FCT_BREAKDOWN': 'POINT', 'FCT_HORIZON': 'LT',
+         'SURVEY_FREQ': 'Q', 'FCT_SOURCE': 'AVG', 'UNIT_MULT': '0'}, {unit}, None)
+       for topic, unit in (('HICP', 'PCPA'), ('RGDP', 'PCPA'), ('UNEM', 'PC'))},
     'EST.B.EU000A2X2A25.WT': ('EST', 'D', 'percent',
         {'FREQ': 'B', 'BENCHMARK_ITEM': 'EU000A2X2A25', 'DATA_TYPE_EST': 'WT', 'UNIT_MULT': '0'}, {'PC'}, 'EUR'),
     'FM.M.U2.EUR.4F.MM.EONIA.HSTA': ('FM', 'M', 'percent',
@@ -598,6 +605,23 @@ def _french_countries(raw,definition,url):
         _add(values,seen,_native_period(period,'A' if block=='Ratios' else 'M'),None if raw_value in ('-99.99','-999','-999.00') else raw_value)
     return values,{'source_native_unit':'percent','source_native_unit_label':'percent' if block!='Ratios' else 'ratio x 100',
                    'source_member':member,'source_block':block,'source_variable':column}
+
+
+def _fed_ebp(body,definition,url):
+    """Independent reader of the archived Federal Reserve EBP CSV (not fed_ebp.py)."""
+    from .source_reconciliation import EvidenceError
+    if (url!='https://www.federalreserve.gov/econres/notes/feds-notes/ebp_csv.csv'
+            or definition['source_key'] not in ('gz_spread','ebp')
+            or definition['unit']!='percentage_points' or definition['frequency']!='M'):
+        raise EvidenceError('source_identity_mismatch')
+    table=list(csv.DictReader(io.StringIO(body.lstrip('\ufeff'))))
+    if not table or list(table[0])!=['date','gz_spread','ebp','est_prob']:
+        raise EvidenceError('source_schema_invalid')
+    values,seen={},set()
+    for row in table:
+        if not re.fullmatch(r'\d{4}-\d{2}-01',row['date'] or ''): raise EvidenceError('source_period_invalid')
+        _add(values,seen,_native_period(row['date'][:7],'M'),row[definition['source_key']])
+    return values,{'source_native_unit':'percentage_points','source_variable':definition['source_key']}
 
 
 class _OriginalWorkbookLinks(HTMLParser):
