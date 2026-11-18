@@ -142,7 +142,8 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
 - [x] EC Economic Sentiment Indicator via Eurostat `ei_bssi_m_r2` for the euro area (EA21 composition, 1980-01+; EA20 ended 2025-12), Germany and Portugal through a new `EUROSTAT_SENTIMENT` provider. Tests: `tests/test_allocation_d1b_sentiment.py`.
 - [x] BIS real broad effective exchange rates (`WS_EER`, M.R.B) for USD, EUR, JPY, GBP, CNY and CHF, monthly from 1994-01, through a new `BIS_EER` provider and the shared BIS capture reader. Tests: `tests/test_allocation_d1b_bis_eer.py`.
 - [x] Wu–Xia shadow federal funds rate: evaluated, **not registered**. The Atlanta Fed workbook ends 2022-02 (discontinued) and the shadow column is populated only in the zero-lower-bound windows; elsewhere it equals the registered policy rate.
-- [ ] OECD MEI original-release/revisions data for CLI vintages; OECD PPP.
+- [x] CLI vintages located (implementation moves to D2): OECD dataflow `OECD.SDD.STES,DSD_STES_REVISIONS@DF_STES_REVISIONS` (dimensions REF_AREA, FREQ, MEASURE, UNIT_MEASURE, ACTIVITY, EDITION). Query `<area>.M.LI_AA...?format=csvfile` returns every monthly edition from 2001-01 to the current one, each with its full history (US: 305 editions, 196,611 rows, about 20 MB). Measures also include `LI_TR`, `RS` (GDP ratio to trend), `PRVM`, `CP` and quarterly GDP. These are vintages, so they go straight into `pit_observation` (Tier E, `vintage_source` = `OECD_STES_REVISIONS`, `known_from` = edition date) rather than into ordinary observation versions.
+- [ ] OECD PPP / World Bank price levels: `PA.NUS.PPPC.RF` (price level ratio) has been withdrawn by the World Bank ("indicator was not found"). Use `PA.NUS.PPP` and `PA.NUS.FCRF` through the existing `WORLD_BANK` provider; the World Bank API is slow and intermittently resets from this environment.
 - [ ] Euro-area OECD CLI: the OECD has no `EA20`, `EA19`, `EA` or `EZ` series in `DF_CLI`; use the registered German and French CLIs or the EC sentiment indicator instead.
 - [x] FRED coverage: Moody's Aaa/Baa, DGS2/DGS3MO/DGS10, T10Y3M, DFII10 and DEM/USD are registered. [ ] Extend `vintage.py` targets for FRED predictors with revisions (D2).
 
@@ -178,6 +179,7 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
 - [ ] Instrument mapping file: bucket → example UCITS, US-listed and index-fund implementations (data only).
 - [ ] Add bucket returns to Source Explorer as derived series, with recipe, category and limitations.
 - [ ] Add dependency `pyarrow` if feature caching is started here; otherwise defer to D4.
+- [ ] OECD CLI editions (located in D1b): acquire `DF_STES_REVISIONS` per area as an archived original and load each edition's values as Tier E rows; the latest edition must reconcile with the registered `activity.*.oecd_cli` series.
 
 **Tests:**
 - A value with `known_from > t` is never returned.
