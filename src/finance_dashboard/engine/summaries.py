@@ -469,8 +469,13 @@ def _p04(v):
     if not rows:
         return []
     r = next((r for r in rows if r.get("key") == "rates_up"), rows[0])
+    if round(r["impact_pct"], 1) == 0:
+        # A portfolio without bonds has no rate exposure; lead with the
+        # shock that actually moves it instead of a meaningless -0.0%.
+        r = max(rows, key=lambda row: abs(row["impact_pct"]))
+    impact = round(r["impact_pct"], 1) + 0.0  # never print -0.0
     label = "Example" if v.get("is_example", True) else "Saved-input"
-    return [f"{label} scenario — {r['label']}: modeled impact {r['impact_pct']:+.1f}% of portfolio value.",
+    return [f"{label} scenario — {r['label']}: modeled impact {impact:+.1f}% of portfolio value.",
             "This is a first-order, separate shock with assumed weights and duration, not a probability or a joint-shock forecast."]
 
 
