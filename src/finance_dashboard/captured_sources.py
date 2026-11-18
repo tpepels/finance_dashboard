@@ -50,7 +50,7 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
                    for index,source in enumerate(sources)]
         source=sources[-1]
         raw,data_hash=originals[-1]
-        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS','SEC_NMFP','AQR_FACTORS'} else None
+        body=raw.decode('utf-8-sig') if provider not in {'SHILLER','WORLD_BANK_PINK_SHEET','EUKLEMS','SEC_NMFP','AQR_FACTORS','FRENCH_COUNTRIES'} else None
         dimensions={}
         if provider == "FRED":
             values = _fred(body, definition, source["url"])
@@ -65,6 +65,8 @@ def captured_source(root, definition, select_manifest, original_file, *, allow_s
             values,dimensions = _pink_sheet(raw,definition,source['url'])
         elif provider == 'AQR_FACTORS':
             values,dimensions = _aqr(raw,definition,source['url'])
+        elif provider == 'FRENCH_COUNTRIES':
+            values,dimensions = _french_countries(raw,definition,source['url'])
         elif provider == 'SHILLER':
             values,dimensions = _shiller(raw,definition,originals[0][0].decode('utf-8-sig'),
                               sources[0]['url'],source['url'], return_metadata=True)
@@ -546,6 +548,53 @@ def _aqr(raw,definition,url):
         _add(values,seen,_native_period(year+'-'+month,'M'),None if cell in (None,'') else repr(float(cell)))
     return values,{'source_native_unit':'ratio','source_native_unit_label':'decimal self-financing excess return',
                    'source_sheet':sheet,'source_variable':label}
+
+
+def _french_countries(raw,definition,url):
+    """Independent reader of the archived French international country archive (not french_countries.py)."""
+    from .source_reconciliation import EvidenceError
+    import zipfile
+    archive_url='https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_International_Countries.zip'
+    match=re.fullmatch(r'F-F_International_Countries\.zip#([A-Za-z]+\.Dat):(Dollar|Local|Ratios):(Mkt|B/M|E/P|Yld)',definition['source_key'])
+    if (url!=archive_url or not match or definition['unit']!='percent'
+            or definition['frequency']!=('A' if match.group(2)=='Ratios' else 'M')
+            or (match.group(2)=='Ratios')!=(match.group(3)!='Mkt')):
+        raise EvidenceError('source_identity_mismatch')
+    member,block,column=match.groups()
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            names=archive.namelist()
+            if member not in names or len(names)!=len(set(names)) or len(names)!=21:
+                raise EvidenceError('source_identity_mismatch')
+            text=archive.read(member).decode('ascii')
+    except (zipfile.BadZipFile,UnicodeError,OSError):
+        raise EvidenceError('source_schema_invalid') from None
+    lines=[line.rstrip() for line in text.splitlines()]
+    if block=='Ratios':
+        marks=[i for i in range(len(lines)-3) if lines[i].strip()=='All 4 Data Items Not Reqd' and lines[i+1].strip().startswith('Ratios x 100')]
+        if len(marks)!=1: raise EvidenceError('source_schema_invalid')
+        head=next((i for i in range(marks[0],len(lines)) if lines[i].split()==['Firms','B/M','E/P','CE/P','Yld']),None)
+        width,position,stamp=5,['Firms','B/M','E/P','CE/P','Yld'].index(column),r'\d{4}'
+    else:
+        title='Value-Weight %s%s Returns'%(block,'' if block=='Dollar' else ' ')
+        marks=[i for i,line in enumerate(lines) if title in line and line.strip().endswith('All 4 Data Items Not Reqd')]
+        if not marks: raise EvidenceError('source_schema_invalid')
+        head=marks[0]+2
+        width,position,stamp=10,0,r'\d{6}'
+        if lines[head].split()[:1]!=['Mkt']: raise EvidenceError('source_schema_invalid')
+    if head is None: raise EvidenceError('source_schema_invalid')
+    values,seen={},set()
+    for line in lines[head+1:]:
+        cells=line.split()
+        if not cells:
+            if values or seen: break
+            continue
+        if not re.fullmatch(stamp,cells[0]) or len(cells)!=width+1: raise EvidenceError('source_schema_invalid')
+        period=cells[0][:4]+('-'+cells[0][4:6] if block!='Ratios' else '')
+        raw_value=cells[position+1]
+        _add(values,seen,_native_period(period,'A' if block=='Ratios' else 'M'),None if raw_value in ('-99.99','-999','-999.00') else raw_value)
+    return values,{'source_native_unit':'percent','source_native_unit_label':'percent' if block!='Ratios' else 'ratio x 100',
+                   'source_member':member,'source_block':block,'source_variable':column}
 
 
 class _OriginalWorkbookLinks(HTMLParser):

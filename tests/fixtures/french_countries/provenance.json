@@ -1,0 +1,9 @@
+{
+  "notice": "Line excerpts of every member of F-F_International_Countries.zip (all text lines, with the first two and last data rows of each block), downloaded 2026-11-18. Tests repack them; the full archive is not committed.",
+  "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_International_Countries.zip",
+  "sha256": "6041ff104726d6aadfea76c4ef25af35594e799b90064b76b6bb83bd4acb0091",
+  "bytes": 1281647,
+  "last_modified": "Fri, 13 Feb 2026 23:16:36 GMT",
+  "observed_at_utc": "2026-11-18T11:24:48.537773+00:00",
+  "members": 21
+}

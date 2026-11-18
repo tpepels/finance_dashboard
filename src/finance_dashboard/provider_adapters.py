@@ -24,6 +24,8 @@ from .bis_dsr import BIS_DSR_ROOT, DSR_SERIES, parse_bis_dsr
 from .bis_property import PROPERTY_SOURCES, BIS_SPP_ROOT, BIS_CPP_ROOT, parse_bis_property
 from .boj_call_rates import BOJ_SERIES, boj_url, parse_boj_csv
 from .aqr import AQR_SERIES, AQR_WORKBOOKS, aqr_source_key, aqr_url, parse_aqr_rows
+from .french_countries import (FRENCH_COUNTRIES_URL, FRENCH_COUNTRY_SERIES, french_country_source_key,
+                               parse_french_country)
 from .bundesbank import BUNDESBANK_SERIES, bundesbank_url, parse_bundesbank_csv
 from .fdic_banks import FDIC_FINANCIALS_URL, FDIC_QUERY, FDIC_SERIES, parse_fdic_aggregates
 from .fed_g17 import G17_DIFFUSION_SERIES, G17_DIFFUSION_URL, parse_g17_diffusion
@@ -823,6 +825,16 @@ def fetch_aqr_factors(self, series_id, start, item, key):
     except Exception as exc:
         raise ProviderError("AQR workbook is invalid") from exc
     return FetchedSeries(series_id, url, None, parse_aqr_rows(rows, series_id, start))
+
+
+def fetch_french_countries(self, series_id, start, item, key):
+    """Validate and fetch one measure of the French international country archive (shared within a batch)."""
+    if series_id not in FRENCH_COUNTRY_SERIES or key != french_country_source_key(series_id):
+        raise SourceUnavailable("French country series identity differs from the approved definition")
+    response = self._get_document(FRENCH_COUNTRIES_URL)
+    if len(response.content) > 5_000_000:
+        raise ProviderError("French international country archive exceeds safe size limit")
+    return FetchedSeries(series_id, FRENCH_COUNTRIES_URL, None, parse_french_country(response.content, series_id, start))
 
 
 def fetch_un_sdg(self, series_id, start, item, key):
