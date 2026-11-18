@@ -1,0 +1,32 @@
+{
+  "notice": "Excerpts of public FRED fredgraph.csv downloads (header and first three and last two rows, verbatim). Full downloads are not committed.",
+  "downloads": [
+    {
+      "series": "IRSTCI01DEM156N",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=IRSTCI01DEM156N",
+      "sha256": "c2a5a3979e7136014c8b2db56ee69ad6e592fab5401820d1446aabb9b85ea59f",
+      "observed_at_utc": "2026-11-18T10:32:16.862096+00:00",
+      "observations": 802,
+      "first_row": "1960-01-01,3.840000000000000",
+      "last_row": "2026-10-01,2.440242727300000"
+    },
+    {
+      "series": "IR3TIB01DEM156N",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=IR3TIB01DEM156N",
+      "sha256": "b172a5523c7ce2063bda3094151b24ebb4f8ea66f2f0025c79b2647b4286411d",
+      "observed_at_utc": "2026-11-18T10:32:16.862297+00:00",
+      "observations": 802,
+      "first_row": "1960-01-01,4.3600000000000003",
+      "last_row": "2026-10-01,2.6346818000000001"
+    },
+    {
+      "series": "EXGEUS",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=EXGEUS",
+      "sha256": "534f5a7124ff0821048a6452b0fa3b2e2ca14eb93767ace6a6371e9f610026ea",
+      "observed_at_utc": "2026-11-18T10:32:16.862377+00:00",
+      "observations": 372,
+      "first_row": "1971-01-01,3.6370",
+      "last_row": "2001-12-01,2.1946"
+    }
+  ]
+}
