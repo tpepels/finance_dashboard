@@ -121,7 +121,11 @@ D9 needs only D5 to function, but it is released after D7 so personal recommenda
   - [x] US CRSP files `F-F_Research_Data_Factors` (market, RF, total, SMB, HML from 1926-07) and `F-F_Momentum_Factor` (Mom from 1927-01), plus developed SMB/HML from the existing archive: 8 series. Datasets declare their vintage database (Bloomberg or CRSP) and missing statement; -99.99 and -999 are missing everywhere. The RF series records the publisher's Ibbotson → ICE BofA T-bill change at 2024-06. Full originals parse identically in parser and verifier (1,203 and 1,197 months).
   - [x] Profitability (RMW, for the quality bucket) from the US (1963-07+) and developed (1990-07+) five-factor files; their SMB is not registered a second time because it is constructed differently from the three-factor SMB.
   - [ ] International country index portfolios with B/M, E/P, D/P.
-- [ ] Bundesbank: Svensson yield-curve parameters (daily since 1972), inflation-indexed yields, call money rate, DEM/USD.
+- [ ] Bundesbank:
+  - [x] Month-end par yields on listed Federal securities for 1, 2, 3, 5, 7, 15, 20 and 30 years (with the existing 10-year series), from the same `BBSIS` family and provider: 650 months from 1972-09 for 1–7 years, 485 from 1986-06 for 15/20 years, 322 from 2000-01 for 30 years, no gaps. **Design change:** par yields replace Svensson parameters as the bond-bucket input. Swinkels' par-bond formula already reproduces his published German returns from the 10-year par yield, so every maturity can use the same tested method without re-deriving yields from curve parameters. Tests: `tests/test_allocation_d1a_bundesbank.py`.
+  - [ ] Inflation-indexed (linker) real yields: the series key could not yet be identified in the Bundesbank API (candidate dataflows `BBSIS`, `BBSEI`); find it from the dataflow structure before registering.
+  - [ ] Pre-1999 cash: guessed `BBIG1` money-market keys returned 404. Use the OECD immediate interest rate for Germany (FRED `IRSTCI01DEM156N`, OECD MEI) through the existing FRED provider instead, labelled as the DEM-era cash proxy.
+  - [ ] DEM/USD before 1999 (FRED `EXGEUS` or Bundesbank) for the DEM-based EUR proxy.
 - [ ] ECB Data Portal: euro area AAA and all-issuer curves, €STR, EONIA, euro corporate bond yields where published.
 - [ ] Nareit All Equity REITs TR (check terms and attribution first; register as a category D proxy).
 - [ ] AQR datasets: QMJ, BAB, Century of Factor Premia (attribution recorded).

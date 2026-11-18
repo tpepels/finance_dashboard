@@ -1,0 +1,13 @@
+﻿"",BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R20XX.R.A.A._Z._Z.A,BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R20XX.R.A.A._Z._Z.A_FLAGS
+"","Yields, derived from the term structure of interest rates, on listed Federal securities with annual coupon payments / residual maturity of 20.0 years / monthly data",
+BBK_UNIT_ENG,percent,
+Decimals,2,
+Time format code,P1M,
+category,ZRZS,
+unit multiplier,One,
+last update,2026-11-02 12:47:45,
+1986-06,6.21,
+1986-07,6.19,
+1986-08,6.01,
+2026-09,3.83,
+2026-10,3.61,

@@ -1,0 +1,101 @@
+{
+  "notice": "Excerpts of Deutsche Bundesbank time-series CSV downloads (header lines verbatim plus the first three and the last two monthly rows). Full downloads are not committed; their hashes and extent are recorded here.",
+  "downloads": [
+    {
+      "maturity_years": 1,
+      "series_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R01XX.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R01XX.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "6782f8dd70711816f046ea09e1b8c4a292ff09c92185fb1041428ce306854dad",
+      "observed_at_utc": "2026-11-18T10:21:11.031308+00:00",
+      "last_update_line": "last update,2026-11-02 12:47:45,",
+      "months": 650,
+      "gaps": 0,
+      "first_row": "1972-09,6.70,",
+      "last_row": "2026-10,2.93,"
+    },
+    {
+      "maturity_years": 2,
+      "series_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R02XX.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R02XX.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "30d8a2ddae8d10e616ad8fa94bf1e1cee998b74ce42a8a9511dd699962e9072d",
+      "observed_at_utc": "2026-11-18T10:21:11.031820+00:00",
+      "last_update_line": "last update,2026-11-02 12:47:45,",
+      "months": 650,
+      "gaps": 0,
+      "first_row": "1972-09,6.27,",
+      "last_row": "2026-10,3.06,"
+    },
+    {
+      "maturity_years": 3,
+      "series_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R03XX.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R03XX.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "a45702b7706d8a1327a22d7f73f31ae54da33f862329811ae83fceebcbd7eea4",
+      "observed_at_utc": "2026-11-18T10:21:11.032299+00:00",
+      "last_update_line": "last update,2026-11-02 12:47:45,",
+      "months": 650,
+      "gaps": 0,
+      "first_row": "1972-09,6.88,",
+      "last_row": "2026-10,3.08,"
+    },
+    {
+      "maturity_years": 5,
+      "series_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R05XX.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R05XX.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "7d42d0446b97cc78d7eb40437185d4aaae49ef19392852bfb2999c0faa48f1c2",
+      "observed_at_utc": "2026-11-18T10:21:11.032720+00:00",
+      "last_update_line": "last update,2026-11-02 12:47:45,",
+      "months": 650,
+      "gaps": 0,
+      "first_row": "1972-09,7.48,",
+      "last_row": "2026-10,3.13,"
+    },
+    {
+      "maturity_years": 7,
+      "series_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R07XX.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R07XX.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "41d21216e2cf103bc52e8d423b10814efc1200a434c535ce6f88103fe576921d",
+      "observed_at_utc": "2026-11-18T10:21:11.033232+00:00",
+      "last_update_line": "last update,2026-11-02 12:47:45,",
+      "months": 650,
+      "gaps": 0,
+      "first_row": "1972-09,7.74,",
+      "last_row": "2026-10,3.23,"
+    },
+    {
+      "maturity_years": 15,
+      "series_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R15XX.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R15XX.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "c0d36110d46dbd2ecd08dfb9a650e4623c94763f34282a3bbcedb92f2306456f",
+      "observed_at_utc": "2026-11-18T10:21:11.033557+00:00",
+      "last_update_line": "last update,2026-11-02 12:47:45,",
+      "months": 485,
+      "gaps": 0,
+      "first_row": "1986-06,6.16,",
+      "last_row": "2026-10,3.53,"
+    },
+    {
+      "maturity_years": 20,
+      "series_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R20XX.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R20XX.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "e53b6c6084e8b1822cb70f0a21d254835217aa6687f5267245a2e6c664832e2a",
+      "observed_at_utc": "2026-11-18T10:21:11.034073+00:00",
+      "last_update_line": "last update,2026-11-02 12:47:45,",
+      "months": 485,
+      "gaps": 0,
+      "first_row": "1986-06,6.21,",
+      "last_row": "2026-10,3.61,"
+    },
+    {
+      "maturity_years": 30,
+      "series_key": "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R30XX.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.ZAR.ZI.EUR.S1311.B.A604.R30XX.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "94427101f2fdcff993a6b5c939b8b28fa8c12374b231c7d8acf97a70ee5c814d",
+      "observed_at_utc": "2026-11-18T10:21:11.034477+00:00",
+      "last_update_line": "last update,2026-11-02 12:47:46,",
+      "months": 322,
+      "gaps": 0,
+      "first_row": "2000-01,6.10,",
+      "last_row": "2026-10,3.69,"
+    }
+  ]
+}

@@ -22,6 +22,15 @@ BUNDESBANK_UNIT = "percent"
 BUNDESBANK_SERIES = {
     "bond.de.bund_10y_par_yield_month_end": ("BBSIS", "BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A", "M"),
 }
+# Other residual maturities of the same par-yield family, registered for the
+# allocation module's EUR government buckets (plan phase D1a). 1-7 years start in
+# 1972-09, 15 and 20 years in 1986-06 and 30 years in 2000-01.
+PAR_YIELD_MATURITIES = (1, 2, 3, 5, 7, 15, 20, 30)
+BUNDESBANK_SERIES.update({
+    f"bond.de.bund_{years}y_par_yield_month_end":
+        ("BBSIS", f"BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R{years:02d}XX.R.A.A._Z._Z.A", "M")
+    for years in PAR_YIELD_MATURITIES
+})
 
 
 def bundesbank_url(flow: str, key: str) -> str:

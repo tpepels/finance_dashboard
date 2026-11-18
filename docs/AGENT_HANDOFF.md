@@ -85,7 +85,8 @@ The owner answered a 10-question interview and asked for a design of a backtesti
 | Phase | Status | Branch / commit | Open evidence |
 | --- | --- | --- | --- |
 | D0 Governance and scaffolding | Code-complete; charter amendment approved by the owner 2026-11-17 | `claude/allocation-d0` | Not merged to `main`; no production effect (flag off, no routes yet). Open owner inputs: broker fees (D3), example funds (D3/D9). |
-| D1a French data library (regions, momentum, US, size/value/profitability factors) | Code-complete (24 series registered, catalogue 647) | `claude/allocation-d0` | Not deployed: the series appear only after deployment and a collection; verify with a post-collection ZIP that all 24 are `available` from the archived originals. Remaining D1a: country portfolios, Bundesbank/ECB curves, Nareit, AQR. |
+| D1a French data library (regions, momentum, US, size/value/profitability factors) | Code-complete (24 series registered) | `claude/allocation-d0` | Not deployed: the series appear only after deployment and a collection; verify with a post-collection ZIP that all 24 are `available` from the archived originals. |
+| D1a Bundesbank par yields (1–30 years) | Code-complete (8 series registered, catalogue 655) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. Remaining D1a: linker yields and pre-1999 cash/FX (see plan), country portfolios, ECB curves/€STR, Nareit, AQR. |
 
 Session network: publisher hosts for D1 are allowed through the owner's personal cloud environment `finance_dashboard` (created 2026-11-17). The default environment blocks them.
 
