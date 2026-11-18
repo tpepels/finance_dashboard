@@ -1,0 +1,19 @@
+{
+  "notice": "World Bank API responses of 2026-11-18 trimmed to five rows with values (first three and last two by year); page metadata and row fields unchanged.",
+  "downloads": [
+    {
+      "file": "PA.NUS.FCRF_EMU.json",
+      "sha256": "01c19031b725917194083af3ba90e05154cc1564b19516d8b9650bb34c2d6087",
+      "observed_at_utc": "2026-11-18T12:26:25.650567+00:00",
+      "rows_with_values": 27,
+      "lastupdated": "2026-11-11"
+    },
+    {
+      "file": "PA.NUS.PPP_JPN.json",
+      "sha256": "44bc5047cd840f6d838018b34e03ac71422643bb1b3ceab898266e6931d6a303",
+      "observed_at_utc": "2026-11-18T12:26:25.651128+00:00",
+      "rows_with_values": 36,
+      "lastupdated": "2026-11-11"
+    }
+  ]
+}

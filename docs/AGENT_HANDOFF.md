@@ -95,7 +95,10 @@ The owner answered a 10-question interview and asked for a design of a backtesti
 | D1a ECB all-issuer par yields, Moody's Aaa/Baa | Code-complete (6 series) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. |
 | D1b EBP/GZ spread (new provider `FED_EBP`), ECB SPF longer-term expectations | Code-complete (5 series, catalogue 790, 52 providers) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. |
 | D1b Philadelphia Fed SPF (`PHILLY_SPF`), EC sentiment (`EUROSTAT_SENTIMENT`) | Code-complete (6 series, catalogue 796, 54 providers) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. The euro-area ESI code (EA21) will change when the euro area enlarges; the series then fails closed and must be re-registered. |
-| D1b BIS real effective exchange rates (`BIS_EER`) | Code-complete (6 series, catalogue 802, 55 providers) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. Wu–Xia not registered (discontinued 2022). Remaining D1b: CLI vintages, PPP. |
+| D1b BIS real effective exchange rates (`BIS_EER`) | Code-complete (6 series, catalogue 802, 55 providers) | `claude/allocation-d0` | Not deployed; verify in a post-collection ZIP. Wu–Xia not registered (discontinued 2022). |
+| D1b World Bank PPP factors and official rates | Code-complete (10 series, catalogue 812) | `claude/allocation-d0` | Not deployed. Only 2 of 10 downloads verified here (World Bank API timeouts); verify all 10 in a post-collection ZIP. CLI vintages located; loading moves to D2. D1c (statements) access verified; implemented with D4. |
+
+**Test timing note:** `test_maintenance` waits only 2 seconds for jobs and `test_source_document_reuse` measures waits, so both fail when a full run is slow (over about 140 s). They pass in isolation and on rerun; this is load, not a regression.
 
 **Owner rule (2026-11-18): terms of use are not a limiting factor.** The installation is used only by the owner, so any free data may be acquired; series keep `rights: review_required` as a record, but that field never blocks acquisition. Ask the owner for an API key when a free source needs one.
 

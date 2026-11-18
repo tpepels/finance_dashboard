@@ -8118,6 +8118,216 @@
       "notes": "Welfare measure follows the national survey (income or consumption, per capita); not comparable with WID national-income shares; gaps are years without a survey."
     },
     {
+      "id": "fx.ea.ppp_conversion_factor.wb",
+      "name": "PPP conversion factor, GDP, Euro area (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "EMU/PA.NUS.PPP",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.PPP?locations=EMU",
+      "geography": "EMU",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Local currency units per international dollar (GDP PPP conversion factor), Euro area, annual.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual; revised with each ICP benchmark round. Divided by the official exchange rate it gives the price level relative to the US, a currency valuation predictor. Registered for the allocation module (plan phase D1b); the withdrawn World Bank ratio indicator PA.NUS.PPPC.RF is not used.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.ea.official_rate_per_usd.wb",
+      "name": "Official exchange rate per US dollar, period average, Euro area (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "EMU/PA.NUS.FCRF",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.FCRF?locations=EMU",
+      "geography": "EMU",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Official exchange rate, local currency units per US dollar, annual average, Euro area.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual average; the denominator of the PPP price-level ratio. Registered for the allocation module (plan phase D1b).",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.jp.ppp_conversion_factor.wb",
+      "name": "PPP conversion factor, GDP, Japan (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "JPN/PA.NUS.PPP",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.PPP?locations=JPN",
+      "geography": "JPN",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Local currency units per international dollar (GDP PPP conversion factor), Japan, annual.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual; revised with each ICP benchmark round. Divided by the official exchange rate it gives the price level relative to the US, a currency valuation predictor. Registered for the allocation module (plan phase D1b); the withdrawn World Bank ratio indicator PA.NUS.PPPC.RF is not used.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.jp.official_rate_per_usd.wb",
+      "name": "Official exchange rate per US dollar, period average, Japan (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "JPN/PA.NUS.FCRF",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.FCRF?locations=JPN",
+      "geography": "JPN",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Official exchange rate, local currency units per US dollar, annual average, Japan.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual average; the denominator of the PPP price-level ratio. Registered for the allocation module (plan phase D1b).",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.gb.ppp_conversion_factor.wb",
+      "name": "PPP conversion factor, GDP, United Kingdom (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "GBR/PA.NUS.PPP",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.PPP?locations=GBR",
+      "geography": "GBR",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Local currency units per international dollar (GDP PPP conversion factor), United Kingdom, annual.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual; revised with each ICP benchmark round. Divided by the official exchange rate it gives the price level relative to the US, a currency valuation predictor. Registered for the allocation module (plan phase D1b); the withdrawn World Bank ratio indicator PA.NUS.PPPC.RF is not used.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.gb.official_rate_per_usd.wb",
+      "name": "Official exchange rate per US dollar, period average, United Kingdom (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "GBR/PA.NUS.FCRF",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.FCRF?locations=GBR",
+      "geography": "GBR",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Official exchange rate, local currency units per US dollar, annual average, United Kingdom.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual average; the denominator of the PPP price-level ratio. Registered for the allocation module (plan phase D1b).",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.cn.ppp_conversion_factor.wb",
+      "name": "PPP conversion factor, GDP, China (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "CHN/PA.NUS.PPP",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.PPP?locations=CHN",
+      "geography": "CHN",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Local currency units per international dollar (GDP PPP conversion factor), China, annual.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual; revised with each ICP benchmark round. Divided by the official exchange rate it gives the price level relative to the US, a currency valuation predictor. Registered for the allocation module (plan phase D1b); the withdrawn World Bank ratio indicator PA.NUS.PPPC.RF is not used.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.cn.official_rate_per_usd.wb",
+      "name": "Official exchange rate per US dollar, period average, China (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "CHN/PA.NUS.FCRF",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.FCRF?locations=CHN",
+      "geography": "CHN",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Official exchange rate, local currency units per US dollar, annual average, China.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual average; the denominator of the PPP price-level ratio. Registered for the allocation module (plan phase D1b).",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.ch.ppp_conversion_factor.wb",
+      "name": "PPP conversion factor, GDP, Switzerland (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "CHE/PA.NUS.PPP",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.PPP?locations=CHE",
+      "geography": "CHE",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Local currency units per international dollar (GDP PPP conversion factor), Switzerland, annual.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual; revised with each ICP benchmark round. Divided by the official exchange rate it gives the price level relative to the US, a currency valuation predictor. Registered for the allocation module (plan phase D1b); the withdrawn World Bank ratio indicator PA.NUS.PPPC.RF is not used.",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
+      "id": "fx.ch.official_rate_per_usd.wb",
+      "name": "Official exchange rate per US dollar, period average, Switzerland (World Bank)",
+      "theme": "structural_risk",
+      "status": "mapped",
+      "provider": "WORLD_BANK",
+      "source_key": "CHE/PA.NUS.FCRF",
+      "source_url": "https://data.worldbank.org/indicator/PA.NUS.FCRF?locations=CHE",
+      "geography": "CHE",
+      "frequency": "A",
+      "unit": "currency_per_usd",
+      "measurement": "Official exchange rate, local currency units per US dollar, annual average, Switzerland.",
+      "revision_policy": "revisable",
+      "rights": "review_required",
+      "notes": "Annual average; the denominator of the PPP price-level ratio. Registered for the allocation module (plan phase D1b).",
+      "release_dating": {
+        "mode": "publisher_vintage_archive",
+        "evidence_url": "https://datatopics.worldbank.org/world-development-indicators/wdi-archives.html",
+        "reviewed_on": "2026-11-06"
+      }
+    },
+    {
       "id": "valuation.us.nfc_produced_assets_bea",
       "name": "Produced assets of domestic nonfinancial corporations (BEA)",
       "theme": "valuation",
