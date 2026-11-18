@@ -16,7 +16,8 @@ from finance_dashboard.captured_sources import _bundesbank
 from finance_dashboard.catalog import load_documents
 
 FIXTURES = Path(__file__).parent / "fixtures" / "bundesbank"
-PROVENANCE = {item["maturity_years"]: item for item in json.loads((FIXTURES / "provenance.json").read_text())["downloads"]}
+PROVENANCE = {item["maturity_years"]: item for item in json.loads((FIXTURES / "provenance.json").read_text())["downloads"]
+              if "maturity_years" in item}
 
 
 def excerpt(years):
@@ -68,6 +69,36 @@ class BundesbankParYieldTests(unittest.TestCase):
             self.assertEqual(PROVENANCE[years]["months"], months)
             self.assertEqual(PROVENANCE[years]["gaps"], 0)
             self.assertEqual(PROVENANCE[years]["last_row"][:7], "2026-10")
+
+
+
+class BundesbankOutstandingYieldTests(unittest.TestCase):
+    """German corporate, bank and public bond yields outstanding (long euro IG credit history)."""
+    SERIES = {"bond.de.corporate_yield_outstanding": "corporate_yield", "bond.de.bank_bond_yield_outstanding": "bank_bond_yield",
+              "bond.de.public_yield_outstanding": "public_yield", "bond.de.corporate_residual_maturity": "corporate_residual_maturity"}
+
+    def test_parser_and_reader_agree_and_dashes_are_absent(self):
+        catalog = {item["id"]: item for item in load_documents()[0]["series"]}
+        for sid, name in self.SERIES.items():
+            body = (FIXTURES / f"{name}_excerpt.csv").read_text(encoding="utf-8")
+            parsed = parse_bundesbank_csv(body, sid)
+            values, metadata = _bundesbank(body, catalog[sid], catalog[sid]["source_url"] + "?format=csv&lang=en")
+            self.assertEqual(values, parsed, sid)
+            self.assertEqual(metadata["source_native_unit"], catalog[sid]["unit"])
+        public = parse_bundesbank_csv((FIXTURES / "public_yield_excerpt.csv").read_text(encoding="utf-8"), "bond.de.public_yield_outstanding")
+        self.assertNotIn(date(1955, 1, 1), public)                       # "1955-01,-,Nothing exists"
+        corporate = parse_bundesbank_csv((FIXTURES / "corporate_yield_excerpt.csv").read_text(encoding="utf-8"), "bond.de.corporate_yield_outstanding")
+        self.assertEqual(corporate[date(1957, 1, 1)], Decimal("8.10"))
+
+    def test_maturity_unit_is_years_and_cannot_pass_as_percent(self):
+        body = (FIXTURES / "corporate_residual_maturity_excerpt.csv").read_text(encoding="utf-8")
+        self.assertEqual(parse_bundesbank_csv(body, "bond.de.corporate_residual_maturity")[date(1977, 1, 1)], Decimal("5.02"))
+        with self.assertRaises(ProviderError):
+            parse_bundesbank_csv(body.replace("unit,Jahre", "unit,Prozent"), "bond.de.corporate_residual_maturity")
+        catalog = {item["id"]: item for item in load_documents()[0]["series"]}
+        wrong = {**catalog["bond.de.corporate_residual_maturity"], "unit": "percent"}
+        with self.assertRaises(Exception):
+            _bundesbank(body, wrong, catalog["bond.de.corporate_residual_maturity"]["source_url"] + "?format=csv&lang=en")
 
 
 if __name__ == "__main__":

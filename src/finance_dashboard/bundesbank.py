@@ -31,6 +31,19 @@ BUNDESBANK_SERIES.update({
         ("BBSIS", f"BBSIS.M.I.ZAR.ZI.EUR.S1311.B.A604.R{years:02d}XX.R.A.A._Z._Z.A", "M")
     for years in PAR_YIELD_MATURITIES
 })
+# Yields on debt securities outstanding (monthly averages) by issuer group, and
+# the corporate bonds' weighted average residual maturity: the long German
+# corporate bond history used for the euro investment-grade credit bucket.
+# The Bundesbank adjusted the scope of included securities on 2020-05-01.
+BUNDESBANK_SERIES.update({
+    "bond.de.corporate_yield_outstanding": ("BBSIS", "BBSIS.M.I.UMR.RD.EUR.X2000.B.A.A.R.A.A._Z._Z.A", "M"),
+    "bond.de.bank_bond_yield_outstanding": ("BBSIS", "BBSIS.M.I.UMR.RD.EUR.S122.B.A.A.R.A.A._Z._Z.A", "M"),
+    "bond.de.public_yield_outstanding": ("BBSIS", "BBSIS.M.I.UMR.RD.EUR.S13.B.A.A.R.A.A._Z._Z.A", "M"),
+    "bond.de.corporate_residual_maturity": ("BBSIS", "BBSIS.M.I.UMR.DR.EUR.X2000.B.A.A.R.A.A._Z._Z.A", "M"),
+})
+# (metadata row label, expected value). The maturity series states its unit only
+# in German ("unit,Jahre"); every other registered series is "BBK_UNIT_ENG,percent".
+BUNDESBANK_UNIT_ROWS = {"bond.de.corporate_residual_maturity": ("unit", "Jahre")}
 
 
 def bundesbank_url(flow: str, key: str) -> str:
@@ -45,8 +58,9 @@ def parse_bundesbank_csv(text: str, series_id: str, start: date | None = None) -
     rows = list(csv.reader(io.StringIO(text.lstrip("﻿"))))
     if not rows or len(rows[0]) < 2 or rows[0][1] != key:
         raise ProviderError("Bundesbank series key changed")
-    unit = next((row[1] for row in rows if row and row[0] == "BBK_UNIT_ENG"), None)
-    if unit != BUNDESBANK_UNIT:
+    label, expected_unit = BUNDESBANK_UNIT_ROWS.get(series_id, ("BBK_UNIT_ENG", BUNDESBANK_UNIT))
+    unit = next((row[1] for row in rows if row and row[0] == label), None)
+    if unit != expected_unit:
         raise ProviderError("Bundesbank native unit changed")
     pattern = r"\d{4}-\d{2}" if frequency == "M" else r"\d{4}-\d{2}-\d{2}"
     values: dict[date, Decimal] = {}
@@ -59,7 +73,7 @@ def parse_bundesbank_csv(text: str, series_id: str, start: date | None = None) -
             raise ProviderError("Bundesbank observation is duplicated or future-dated")
         seen.add(day)
         raw = row[1].strip() if len(row) > 1 else ""
-        if raw in ("", "."):
+        if raw in ("", ".", "-"):      # "-" is flagged "Nothing exists"
             continue
         try:
             value = Decimal(raw)

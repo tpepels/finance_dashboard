@@ -96,6 +96,50 @@
       "gaps": 0,
       "first_row": "2000-01,6.10,",
       "last_row": "2026-10,3.69,"
+    },
+    {
+      "series_key": "BBSIS.M.I.UMR.RD.EUR.X2000.B.A.A.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.UMR.RD.EUR.X2000.B.A.A.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "42ad31f96cf0d9930f393c529b2d62d61f481211310c137e01ba96ce7f94d68c",
+      "observed_at_utc": "2026-11-18T12:34:11.954019+00:00",
+      "months": 838,
+      "months_with_values": 838,
+      "first_row": "1957-01,8.10,",
+      "last_row": "2026-10,4.55,",
+      "first_value_row": "1957-01,8.10,"
+    },
+    {
+      "series_key": "BBSIS.M.I.UMR.RD.EUR.S122.B.A.A.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.UMR.RD.EUR.S122.B.A.A.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "4b7aa2901a0a0e74a51a902c88d24deb450570ca940cba7a6b32280a561bce03",
+      "observed_at_utc": "2026-11-18T12:34:11.954650+00:00",
+      "months": 862,
+      "months_with_values": 850,
+      "first_row": "1955-01,-,Nothing exists",
+      "last_row": "2026-10,3.74,",
+      "first_value_row": "1956-01,6.00,"
+    },
+    {
+      "series_key": "BBSIS.M.I.UMR.RD.EUR.S13.B.A.A.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.UMR.RD.EUR.S13.B.A.A.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "54c2b858adf309e74467bbe3b933951c95bc1c0ef6adf35d9f045439886d7fb3",
+      "observed_at_utc": "2026-11-18T12:34:11.955311+00:00",
+      "months": 862,
+      "months_with_values": 846,
+      "first_row": "1955-01,-,Nothing exists",
+      "last_row": "2026-10,3.46,",
+      "first_value_row": "1956-05,6.40,"
+    },
+    {
+      "series_key": "BBSIS.M.I.UMR.DR.EUR.X2000.B.A.A.R.A.A._Z._Z.A",
+      "url": "https://api.statistiken.bundesbank.de/rest/data/BBSIS/M.I.UMR.DR.EUR.X2000.B.A.A.R.A.A._Z._Z.A?format=csv&lang=en",
+      "sha256": "ab2894e5ee6e3173d5af95b4214f8f793fdbc833aa3a661af2fb18230587ac71",
+      "observed_at_utc": "2026-11-18T12:34:11.955789+00:00",
+      "months": 598,
+      "months_with_values": 598,
+      "first_row": "1977-01,5.02,",
+      "last_row": "2026-10,7.10,",
+      "first_value_row": "1977-01,5.02,"
     }
   ]
 }

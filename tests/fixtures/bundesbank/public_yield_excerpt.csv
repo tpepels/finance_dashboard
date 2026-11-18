@@ -1,0 +1,14 @@
+﻿"",BBSIS.M.I.UMR.RD.EUR.S13.B.A.A.R.A.A._Z._Z.A,BBSIS.M.I.UMR.RD.EUR.S13.B.A.A.R.A.A._Z._Z.A_FLAGS
+"",Yields on debt securities outstanding/Public debt securities/Monthly averages,
+BBK_UNIT_ENG,percent,
+Comment (in english),"Adjustment of the scope of securities included on 1 May 2020. Values calculated from 1 May 2020 onwards with two decimal places. Previous values calculated with one decimal place. For technical reasons, these values are also displayed with two decimal places and the second decimal place is filled with a ""0"". Up to and including November 2022 all values calculated and published with one decimal place.",
+Decimals,2,
+Time format code,P1M,
+category,ZRWR,
+unit multiplier,One,
+last update,2026-11-02 12:47:44,
+1955-01,-,Nothing exists
+1955-02,-,Nothing exists
+1955-03,-,Nothing exists
+2026-09,3.50,
+2026-10,3.46,

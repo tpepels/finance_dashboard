@@ -959,18 +959,20 @@ def _bundesbank(body,definition,url):
     key=definition['source_key']
     flow=key.split('.',1)[0]
     if (not url.startswith('https://api.statistiken.bundesbank.de/rest/data/%s/%s'%(flow,key[len(flow)+1:]))
-            or definition['unit']!='percent' or definition['frequency'] not in ('M','D')):
+            or definition['unit'] not in ('percent','years') or definition['frequency'] not in ('M','D')):
         raise EvidenceError('source_identity_mismatch')
     rows=list(csv.reader(io.StringIO(body.lstrip('\ufeff'))))
-    unit={row[0]:row[1] for row in rows if len(row)>1 and row[0] in ('BBK_UNIT_ENG',)}
-    if not rows or len(rows[0])<2 or rows[0][1]!=key or unit.get('BBK_UNIT_ENG')!='percent':
+    unit={row[0]:row[1] for row in rows if len(row)>1 and row[0] in ('BBK_UNIT_ENG','unit')}
+    label,expected=('unit','Jahre') if definition['unit']=='years' else ('BBK_UNIT_ENG','percent')
+    if not rows or len(rows[0])<2 or rows[0][1]!=key or unit.get(label)!=expected:
         raise EvidenceError('source_identity_mismatch')
     pattern=r'\d{4}-\d{2}' if definition['frequency']=='M' else r'\d{4}-\d{2}-\d{2}'
     values,seen=({},set())
     for row in rows:
         if row and re.fullmatch(pattern,row[0]):
-            _add(values,seen,_native_period(row[0],definition['frequency']),row[1] if len(row)>1 else None)
-    return values,{'source_native_unit':'percent','source_native_unit_label':unit['BBK_UNIT_ENG'],
+            cell=row[1].strip() if len(row)>1 else None
+            _add(values,seen,_native_period(row[0],definition['frequency']),None if cell=='-' else cell)
+    return values,{'source_native_unit':definition['unit'],'source_native_unit_label':unit[label],
         'source_publisher_metadata':{'series_key':key,'title':rows[1][1] if len(rows)>1 and len(rows[1])>1 else None},
         'individual_observation_first_publication_verified':False}
 
